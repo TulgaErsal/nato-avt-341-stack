@@ -36,7 +36,7 @@ To test the installation, type
 roslaunch avt_341 example.launch
 ```
 
-The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341](https://github.com/TulgaErsal/AVT-341)
+The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
 
 ##  Troubleshooting
 The package requires the ROS PointCloud Library (PCL) interface. If you get errors related to missing pcl header files, then you may need to install pcl_ros on your system.
