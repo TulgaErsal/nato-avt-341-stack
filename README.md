@@ -12,8 +12,10 @@ git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 From the top level catkin_ws directory, type
 ```bash
 catkin_make install
+```
 
-# Or to build only this package: 
+Or, if you want to build only this package:
+```bash
 catkin_make --only-pkg-with-deps avt_341
 ```
 
