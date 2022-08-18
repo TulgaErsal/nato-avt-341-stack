@@ -7,7 +7,7 @@ Ubuntu 16.04 with [ROS-Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu)
 ## Installation
 Clone the repo into your catkin_ws/src directory with the following command.
 ```bash
-$git clone https://github.com/CGoodin/avt_341.git
+$git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 ```
 From the top level catkin_ws directory, type
 ```bash
