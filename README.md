@@ -19,13 +19,15 @@ Or, if you want to build only this package:
 catkin_make --only-pkg-with-deps avt_341
 ```
 
-__If user-defined workspace with default install spaces:__ Make sure that ```setup.bash``` has been sourced in either the workspace's ```devel``` or ```install``` folder depending on if ```catkin_make``` or ```catkin_make install``` has been used respectively. Though typically this command is added to ```~/.bashrc``` so that it is called on opening a command prompt instead of being issued manually.  
+__If user-defined workspace with default install spaces:__ Make sure that ```setup.bash``` has been sourced in either the workspace's ```devel``` or ```install``` folder depending on if ```catkin_make``` or ```catkin_make install``` has been used respectively. Typically this command is added to ```~/.bashrc``` so that it is called on opening a command prompt instead of being issued manually.  
 
+Can be placed in ~/.bashrc also so does not need to be issued manually
 ```bash 
-# Can be placed in ~/.bashrc also so does not need to be issued manually
 source ~/<path_to_catkin_workspace>/[install|devel]/setup.bash
+```
 
-# Example on my computer (when built with catkin_make): 
+Example (when built with catkin_make): 
+```bash
 source ~/catkin_ws/devel/setup.bash
 ```
 
