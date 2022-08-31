@@ -90,13 +90,8 @@ namespace avt_341 {
           return;
         }
 
-        if(name_local == "waypoints_x" || name_local == "waypoints_y"){
-          bool is_empty_waypoints;
-          node_->declare_parameter("is_empty_waypoints", false);
-          node_->get_parameter("is_empty_waypoints", is_empty_waypoints);
-          if (is_empty_waypoints){
+        if(is_empty_waypoints_ && (name_local == "/waypoints_x" || name_local == "/waypoints_y")){
             return;
-          }
         }
 
         node_->declare_parameter(name_local, default_value);
@@ -121,6 +116,7 @@ namespace avt_341 {
 
     private:
       std::shared_ptr<rclcpp::Node> node_;
+      bool is_empty_waypoints_;
     };
 
     inline std::shared_ptr<NodeProxy> make_shared(const std::string &name) {
@@ -131,6 +127,7 @@ namespace avt_341 {
       init(argc, argv);
       return make_shared(name);
     }
+
   }
 }
 

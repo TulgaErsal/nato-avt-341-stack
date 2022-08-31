@@ -1,0 +1,10 @@
+*~
+*.vs
+*.vscode
+*/*.vs
+*/*.vscode
+*/*/*.vs
+*/*/*.vscode
+
+cmake-build-debug
+.idea

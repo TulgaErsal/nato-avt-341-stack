@@ -20,7 +20,7 @@ def generate_launch_description():
     waypoints_file = os.path.join(
         avt_341_package_dir,
         'config',
-        'no_waypoints.yaml'
+        'waypoints.yaml'
     )
     avt_341_dir = get_package_share_directory('avt_341')
     base_launch = launch.actions.IncludeLaunchDescription(

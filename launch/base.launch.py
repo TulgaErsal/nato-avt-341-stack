@@ -18,10 +18,10 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
         for line in f.readlines():
             if "waypoints_x" in line:
                 waypoints_x = line.split(":")[1]
-                is_empty_waypoints = is_empty_waypoints or len(waypoints_x.split(',')) > 0
+                is_empty_waypoints = is_empty_waypoints or waypoints_x.replace(' ', '') == '[]'
             if "waypoints_y" in line:
                 waypoints_y = line.split(":")[1]
-                is_empty_waypoints = is_empty_waypoints or len(waypoints_x.split(',')) > 0
+                is_empty_waypoints = is_empty_waypoints or waypoints_y.replace(' ', '') == '[]'
 
     if is_empty_waypoints:
         waypoints_x = "[ 0.0 ]"
@@ -30,7 +30,9 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
     return [
         DeclareLaunchArgument('waypoints_x', description="List of waypoint x coordinates. Will override waypoints_file is specified.", default_value=waypoints_x),
         DeclareLaunchArgument('waypoints_y', description="List of waypoint y coordinates. Will override waypoints_file is specified.", default_value=waypoints_y),
-        DeclareLaunchArgument('is_empty_waypoints', description="Parameter set internally to detect if waypoints file empty. ROS2 foxy workaround (https://answers.ros.org/question/396556/what-is-best-practice-for-parameters-which-are-empty-lists-in-ros2/). Do not set manually", default_value='True'),
+        DeclareLaunchArgument('is_empty_waypoints',
+                              description="Parameter set internally to detect if waypoints file empty. ROS2 foxy workaround (https://answers.ros.org/question/396556/what-is-best-practice-for-parameters-which-are-empty-lists-in-ros2/). Do not set manually",
+                              default_value=str(is_empty_waypoints).capitalize()),
     ]
 
 
