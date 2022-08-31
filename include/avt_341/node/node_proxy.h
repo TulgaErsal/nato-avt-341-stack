@@ -90,6 +90,15 @@ namespace avt_341 {
           return;
         }
 
+        if(name_local == "waypoints_x" || name_local == "waypoints_y"){
+          bool is_empty_waypoints;
+          node_->declare_parameter("is_empty_waypoints", false);
+          node_->get_parameter("is_empty_waypoints", is_empty_waypoints);
+          if (is_empty_waypoints){
+            return;
+          }
+        }
+
         node_->declare_parameter(name_local, default_value);
         node_->get_parameter(name_local, parameter_out);
       }
