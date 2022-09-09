@@ -40,6 +40,9 @@ public:
 	 */ 
 	avt_341::msg::Path Plan(avt_341::msg::OccupancyGrid grid, avt_341::msg::Odometry odom);
 
+	/// Set the segmentation grid to use
+	void SetSegGrid(avt_341::msg::OccupancyGrid seg_grid){ seg_grid_ = seg_grid; seg_grid_set_ = true; }
+
 	/**
 	 * Set the goal point in the local ENU coordinate frame
 	 */
@@ -57,6 +60,9 @@ public:
 	/// obstacles closer than this range will be ignored
 	void SetInnerCutoff(float inner_cutoff){ inner_cutoff_dist_ = inner_cutoff; }
 
+	/// Set the threshold over which something would be considered an obstacle. Ranges from 0-100
+	void SetObstacleCostThreshold(int oct){ obs_cost_thresh_ = oct; }
+	
 private:
 	float Hypot(float x, float y);
     
@@ -78,7 +84,9 @@ private:
 	std::vector<float> ry_;
 	std::vector<float> old_rx_;
 	std::vector<float> old_ry_;
-
+	avt_341::msg::OccupancyGrid seg_grid_;
+	bool seg_grid_set_;
+	int obs_cost_thresh_;
 };
 
 } // namespace planning

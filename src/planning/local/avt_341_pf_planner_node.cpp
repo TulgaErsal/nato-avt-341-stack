@@ -62,8 +62,10 @@ int main(int argc, char *argv[]){
   // planner params
   float kp, eta, cutoff_dist, inner_cutoff_dist, rate;
   bool use_global_path;
+  int obs_cost_thresh;
   n->get_parameter("~kp", kp, 5.0f);
   n->get_parameter("~eta", eta, 100.0f);
+  n->get_parameter("~obstacle_cost_thresh", obs_cost_thresh, 0);
   n->get_parameter("~cutoff_dist", cutoff_dist, 20.0f);
   n->get_parameter("~inner_cutoff_dist", inner_cutoff_dist, 1.5f);
   n->get_parameter("~use_global_path", use_global_path, false);
@@ -74,6 +76,7 @@ int main(int argc, char *argv[]){
   planner.SetKp(kp);
   planner.SetCutoffDistance(cutoff_dist);
   planner.SetInnerCutoff(inner_cutoff_dist);
+  planner.SetObstacleCostThreshold(obs_cost_thresh);
 
   unsigned int loop_count = 0;
   float dt = 1.0f / rate;
@@ -95,6 +98,7 @@ int main(int argc, char *argv[]){
 
       planner.SetGoal(gx, gy);
 
+      if (new_seg_grid_rcvd) planner.SetSegGrid(segmentation_grid);
       avt_341::msg::Path local_path = planner.Plan(grid, odom);
 
       local_path.header.frame_id = "map";

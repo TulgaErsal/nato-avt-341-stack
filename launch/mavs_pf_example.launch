@@ -80,6 +80,7 @@
   <node name="pf_planner_node" pkg="avt_341" type="avt_341_pf_planner_node" output="screen" required="true" >
     <param name="use_global_path" value="false" />
     <param name="rate" value="10.0" />
+    <param name="obstacle_cost_thresh" value="0" /> <!-- threshold for making something an obstacle (0-100), primarily for use with segmentation grid -->
     <param name="kp" value="10.0" /> <!-- attractive potential coeff -->
     <param name="eta" value="1.0" /> <!-- repulsive potential coeff -->
     <param name="cutoff_dist" value="40.0" /> <!-- obstacles farther than this are ignored -->

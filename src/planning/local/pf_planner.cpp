@@ -10,6 +10,8 @@ PfPlanner::PfPlanner() {
 	eta_ = 100.0f;
 	obs_cutoff_dist_ = 20.0f;
 	inner_cutoff_dist_ = 1.5f;
+	seg_grid_set_ = false;
+	obs_cost_thresh_ = 0;
 }
 
 avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::msg::Odometry odom){
@@ -28,7 +30,10 @@ avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::ms
 		for (int j = 0; j < grid.info.height; j++){
 			float y = grid.info.origin.position.y + (j + 0.5f) * grid.info.resolution;
 			float dy = sy - y;
-			if (grid.data[ndx] > 0){
+			int cost = grid.data[ndx];
+			if (seg_grid_set_ && seg_grid_.info.height==grid.info.height && seg_grid_.info.width==grid.info.width) cost += seg_grid_.data[ndx];
+			//if (grid.data[ndx] > 0){
+			if (cost > obs_cost_thresh_){
 				float d = sqrtf(dx * dx + dy * dy);
 				if (d < obs_cutoff_dist_ && d>inner_cutoff_dist_){
 					ox.push_back(x);
