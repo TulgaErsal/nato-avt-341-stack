@@ -45,14 +45,17 @@ public:
 	 */
 	void SetGoal(float gx, float gy);
 
-	/// Set the Eta parameter
+	/// Set the strength of the repulsive potential
 	void SetEta(float eta){eta_ = eta;}
 
-	/// Set the Kp parameter
+	/// Set the strength of the attractive potential
 	void SetKp(float kp){kp_ = kp;}
 
 	/// Set the cutoff distance
 	void SetCutoffDistance(float cutoff_dist){ obs_cutoff_dist_ = cutoff_dist; }
+
+	/// obstacles closer than this range will be ignored
+	void SetInnerCutoff(float inner_cutoff){ inner_cutoff_dist_ = inner_cutoff; }
 
 private:
 	float Hypot(float x, float y);
@@ -70,8 +73,12 @@ private:
 	float kp_;
 	float eta_;
 	float obs_cutoff_dist_;
+	float inner_cutoff_dist_;
 	std::vector<float> rx_;
 	std::vector<float> ry_;
+	std::vector<float> old_rx_;
+	std::vector<float> old_ry_;
+
 };
 
 } // namespace planning
