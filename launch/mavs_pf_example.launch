@@ -28,7 +28,7 @@
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
     <param name="use_elevation" value="false" />
-    <param name="slope_threshold" value="2.5" />
+    <param name="slope_threshold" value="1.0" />
     <param name="grid_height" value="120.0" />
     <param name="grid_width" value="120.0" />
     <param name="stitch_lidar_points" value="true"/>
@@ -36,7 +36,9 @@
     <param name="time_register_window" value="0.015" />
     <param name="grid_llx" value="-60.0" />
     <param name="grid_lly" value="-60.0" />
-    <param name="grid_res" value="0.25" />
+    <param name="grid_dilate_x" value="0.5" />
+    <param name="grid_dilate_y" value="0.5" />
+    <param name="grid_res" value="0.5" />
     <param name="overhead_clearance" value="7.0" />
     <param name="warmup_time" value="5.0" />
     <param name="use_registered" value="true" />
@@ -45,18 +47,18 @@
 
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
     <param name="vehicle_wheelbase" value="2.72" />
-    <param name="vehicle_max_steer_angle_degrees" value="35.0" />
-    <param name="steering_coefficient" value="4.5" />
+    <param name="vehicle_max_steer_angle_degrees" value="30.0" />
+    <param name="steering_coefficient" value="6.5" />
     <param name="throttle_coefficient" value="1.0" />
-    <param name="vehicle_speed" value="5.0" />
+    <param name="vehicle_speed" value="7.0" />
     <param name="throttle_kp" value="0.1129" />
     <param name="throttle_ki" value="0.0" />
-    <param name="throttle_kd" value="0.0435" />
-    <param name="use_feed_forward" value="true" />
+    <param name="throttle_kd" value="0.0" />
+    <param name="use_feed_forward" value="false" />
     <param name="ff_a0" value="0.0402" />
     <param name="ff_a1" value="0.0814" />
     <param name="ff_a2" value="-0.0023" />
-    <param name="max_desired_lateral_g" value="0.25" />
+    <param name="max_desired_lateral_g" value="50.0" />
     <param name="time_to_max_brake" value="4.0" />
     <param name="time_to_max_throttle" value="3.0" />
   </node>
@@ -77,10 +79,12 @@
 
   <node name="pf_planner_node" pkg="avt_341" type="avt_341_pf_planner_node" output="screen" required="true" >
     <param name="use_global_path" value="false" />
-    <param name="rate" value="50.0" />
-    <param name="kp" value="5.0" />
-    <param name="eta" value="100.0" />
-    <param name="cutoff_dist" value="20.0" />
+    <param name="rate" value="10.0" />
+    <param name="obstacle_cost_thresh" value="0" /> <!-- threshold for making something an obstacle (0-100), primarily for use with segmentation grid -->
+    <param name="kp" value="10.0" /> <!-- attractive potential coeff -->
+    <param name="eta" value="1.0" /> <!-- repulsive potential coeff -->
+    <param name="cutoff_dist" value="40.0" /> <!-- obstacles farther than this are ignored -->
+    <param name="inner_cutoff_dist" value="1.5" /> <!-- obstacles closer than this are ignored -->
   </node>
 
   <include file="$(find mavs_avt_example)/launch/mavs_sim.launch">
