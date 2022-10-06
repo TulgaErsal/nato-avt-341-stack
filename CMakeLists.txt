@@ -98,6 +98,8 @@ add_executable(avt_bot_state_publisher_node
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
+ament_python_install_package(uab-perception)
+
 install(DIRECTORY
         launch
         config
@@ -115,5 +117,7 @@ install(TARGETS
         avt_bot_state_publisher_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
+
+install(PROGRAMS uab-perception/perception_sem_seg.py DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
