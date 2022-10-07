@@ -7,6 +7,8 @@ There are currently two ways to run the UAB Perception package:
 
 The `perception_sem_seg` node is a Python wrapper for the machine learning model written in MATLAB. This is easier to build/run due to issues with ROS2 support in MATLAB, but decreases performance.
 
+Before running, set `matlab_code_folder` in `perception_sem_seg.py` to full path of the `uab-perception/semantic_segmentation` directory.
+
 ## Subscriptions
 - `avt_341/odometry` ([`nav_msgs/Odometry`](http://docs.ros.org/en/api/nav_msgs/html/msg/Odometry.html))
 - `avt_341/points` ([`sensor_msgs/PointCloud2`](http://docs.ros.org/en/api/sensor_msgs/html/msg/PointCloud2.html))
