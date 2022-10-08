@@ -1,13 +1,13 @@
-# UAB Perception ROS2 Package
+# UAB Perception ROS2 Node
 ### Performs semantic segmentation on camera images using the DeepLab V3+ architecture and fuses with LiDAR pointcloud data to create a costmap based on vehicle traversability. Requires MATLAB 2022a.
 ---
-There are currently two ways to run the UAB Perception package:
-1. Run using the `perception_sem_seg` ROS2 node: `ros2 run avt_341 perception_sem_seg`
-1. Run the `ex_PerceptionAlgorithm.m` file directly in MATLAB 2022a
-
 The `perception_sem_seg` node is a Python wrapper for the machine learning model written in MATLAB. This is easier to build/run due to issues with ROS2 support in MATLAB, but decreases performance.
 
 Before running, set `matlab_code_folder` in `perception_sem_seg.py` to full path of the `uab-perception/semantic_segmentation` directory.
+
+There are currently two ways to run the UAB Perception Node:
+1. Run using the `perception_sem_seg` ROS2 node: `ros2 launch avt_341 single_tile.launch.py`
+1. Run the `ex_PerceptionAlgorithm.m` file directly in MATLAB 2022a
 
 ## Subscriptions
 - `avt_341/odometry` ([`nav_msgs/Odometry`](http://docs.ros.org/en/api/nav_msgs/html/msg/Odometry.html))
