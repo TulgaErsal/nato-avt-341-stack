@@ -228,8 +228,6 @@ def main():
                     print("calling matlab PerceptionAlgorithm")
                     # get the occupancy_grid from MATLAB code
                     occupancy_grid = proc.call_ex_PerceptionAlgorithm(flgLoadNet, rawImage, rawLidar, odom_data)
-                    # make sure flgLoadNet is set only once
-                    if flgLoadNet == 1: flgLoadNet = 0
                     # publish the og to the network
                     publish_occupancy_grid(occupancy_grid)
                 else:
