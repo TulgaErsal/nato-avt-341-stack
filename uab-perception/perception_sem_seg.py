@@ -1,13 +1,10 @@
-import rclpy
-from sensor_msgs.msg import Image
-from sensor_msgs.msg import PointCloud2
-from nav_msgs.msg import OccupancyGrid
-from nav_msgs.msg import Odometry
+from avt_341_types import Image, PointCloud2, OccupancyGrid, Odometry
+from avt_341_node_proxy import NodeProxy
 import numpy
-
 import matlab.engine
 
 matlab_code_folder = "C:\\path\\to\\nato-avt-314-stack\\semantic_segmentation"
+matlab_code_folder = "C:\\Users\\Nic\\Documents\\git\\nato-avt-341-stack\\uab-perception\\semantic_segmentation"
 
 record_bin_file = False
 node = None 
@@ -185,12 +182,11 @@ def build_occupancy_grid_msg(data: list) -> OccupancyGrid:
     return grid
 
 def setup_ros():
-    global node 
+    global node
     global pub_occupancy_grid
     global pub_vis_occupancy_grid
 
-    rclpy.init()
-    node = rclpy.create_node('Perception_sem_seg')
+    node = NodeProxy('Perception_sem_seg')
     logger = node.get_logger()
 
     # start subscriptions
@@ -222,7 +218,7 @@ def main():
     try:
         if record_bin_file == False:
             while True:
-                rclpy.spin_once(node, executor=None, timeout_sec=0.0)  # timeout == 0.0
+                node.spin()
                 # make sure we have good data before we try to process it
                 if rawImage != None and rawLidar != None and odom_data != None:
                     print("calling matlab PerceptionAlgorithm")
@@ -234,7 +230,7 @@ def main():
                     print("no ros data from subscriptions yet")
         else:
             while True:
-                rclpy.spin_once(node, executor=None, timeout_sec=0.0)  # timeout == 0.0
+                node.spin()
                 # make sure we have good data before we try to process it
                 if rawImage != None and rawLidar != None:
                     print("calling matlab call_ex_record_bin_file")
@@ -250,8 +246,7 @@ def main():
     except Exception as e:
         print(e)
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        node.shutdown()
          
 if __name__ == '__main__':
     main()

@@ -118,6 +118,9 @@ install(TARGETS
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
-install(PROGRAMS uab-perception/perception_sem_seg.py DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS uab-perception/perception_sem_seg.py
+                uab-perception/avt_341_types.py
+                uab-perception/avt_341_node_proxy.py
+                DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
