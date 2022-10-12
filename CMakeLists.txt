@@ -16,6 +16,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 
 set(dependencies
         rclcpp
@@ -98,8 +100,6 @@ add_executable(avt_bot_state_publisher_node
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
-ament_python_install_package(uab-perception)
-
 install(DIRECTORY
         launch
         config
@@ -118,9 +118,11 @@ install(TARGETS
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
-install(PROGRAMS uab-perception/perception_sem_seg.py
-                uab-perception/avt_341_types.py
-                uab-perception/avt_341_node_proxy.py
+ament_python_install_package(uab_perception)
+
+install(PROGRAMS uab_perception/perception_sem_seg.py
+                uab_perception/avt_341_types.py
+                uab_perception/avt_341_node_proxy.py
                 DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

@@ -13,6 +13,7 @@
 
   <license>BSD-III</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>amend_cmake_python</buildtool_depend>
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>

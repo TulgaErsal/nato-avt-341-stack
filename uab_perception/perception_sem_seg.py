@@ -1,9 +1,9 @@
+#!/usr/bin/env python3
 from avt_341_types import Image, PointCloud2, OccupancyGrid, Odometry
 from avt_341_node_proxy import NodeProxy
 import numpy
 import matlab.engine
 
-matlab_code_folder = "C:\\path\\to\\nato-avt-314-stack\\semantic_segmentation"
 matlab_code_folder = "C:\\Users\\Nic\\Documents\\git\\nato-avt-341-stack\\uab-perception\\semantic_segmentation"
 
 record_bin_file = False
