@@ -120,7 +120,7 @@ install(TARGETS
 
 ament_python_install_package(uab_perception)
 
-install(PROGRAMS uab_perception/perception_sem_seg.py
+install(PROGRAMS uab_perception/uab_perception.py
                 uab_perception/avt_341_types.py
                 uab_perception/avt_341_node_proxy.py
                 DESTINATION lib/${PROJECT_NAME})

@@ -2,16 +2,14 @@
 from avt_341_types import Image, PointCloud2, OccupancyGrid, Odometry
 from avt_341_node_proxy import NodeProxy
 import numpy
-import matlab.engine
-
-matlab_code_folder = "C:\\path\\to\\nato-avt-341-stack\\uab-perception\\semantic_segmentation"
+import perception_wrapper
 
 record_bin_file = False
 node = None 
 pub_occupancy_grid = None
 pub_vis_occupancy_grid = None
-rawImage = None 
-rawLidar = None 
+raw_image = None 
+raw_lidar = None 
 odom_data = None
 queue_size = 10
 
@@ -21,113 +19,21 @@ grid_res = 0.5
 grid_llx = -252
 grid_lly = -41
 
-class MatlabWrapper():
-    def __init__(self, parameters):
-        self.matlab_code_folder = parameters['matlab_code_folder']
-        print(f"code folder {self.matlab_code_folder}")
-        print(f"code folder type {type(self.matlab_code_folder)}")
-
-    def init_matlab_engine(self, connect):
-        """runs matlab in the background"""
-        if connect == True:
-            print("connecting to matlab")
-            self.eng = matlab.engine.connect_matlab()
-        else:
-            print("spawning matlab instance")
-            self.eng = matlab.engine.start_matlab()
-        s = self.eng.genpath(self.matlab_code_folder)
-        self.eng.addpath(s, nargout=0)
-               
-    def stop_process(self):
-        self.disp_msg("entered stop_process")
-        self.eng.quit()
-
-    def call_ex_PerceptionAlgorithm(self,flgLoadNNet,rawImage,rawLidar,rawOdom):
-        
-        print("calling image_to_array")
-        ar_image = self.image_to_array(rawImage)
-        ar_lidar = self.point_cloud_to_array(rawLidar)
-        # parse the odometry variables from the rawOdom message
-        pose_point_x, pose_point_y, pose_point_z, pose_quat_w, pose_quat_x, pose_quat_y, pose_quat_z = self.parse_odom(rawOdom)
-
-        print("calling self.eng.ex_PerceptionAlgorithm")
-        return self.eng.perception_wrapper(flgLoadNNet, ar_image, ar_lidar, pose_point_x, pose_point_y, pose_point_z, pose_quat_w, pose_quat_x, pose_quat_y, pose_quat_z )
-
-    def call_ex_record_bin_file(self,rawImage,rawLidar):
-        
-        print("calling image_to_array")
-        ar_image = self.image_to_array(rawImage)
-        ar_lidar = self.point_cloud_to_array(rawLidar)
-
-        print("calling self.eng.ex_record_bin_file")
-        return self.eng.ex_record_bin_file(ar_image, ar_lidar)
-
-    def parse_odom(self, odom_msg):
-        pose_point_x = odom_msg.pose.pose.position.x
-        pose_point_y = odom_msg.pose.pose.position.y
-        pose_point_z = odom_msg.pose.pose.position.z
-        pose_quat_x = odom_msg.pose.pose.orientation.x
-        pose_quat_y = odom_msg.pose.pose.orientation.y
-        pose_quat_z = odom_msg.pose.pose.orientation.z
-        pose_quat_w = odom_msg.pose.pose.orientation.w
-
-        return pose_point_x, pose_point_y, pose_point_z, pose_quat_w, pose_quat_x, pose_quat_y, pose_quat_z
-
-
-    def image_to_array(self, rawImage):
-        print(f"{rawImage.encoding}")
-        print(f"{rawImage.header}")
-        print(f"{rawImage.height}")
-        print(f"{rawImage.is_bigendian}")
-        print(f"{rawImage.step}")
-        print(f"{rawImage.width}")
-        ar_image = matlab.uint8(rawImage.data)
-        return ar_image
-
-    def point_cloud_to_array(self, rawPointCloud):
-        print(f"{rawPointCloud.height}")
-        print(f"{rawPointCloud.width}")
-        print(f"{rawPointCloud.fields}")
-        print(f"{rawPointCloud.is_bigendian}")
-        print(f"{rawPointCloud.point_step}")
-        print(f"{rawPointCloud.row_step}")
-        print(f"{len(rawPointCloud.data)}")
-        print(f"{rawPointCloud.is_dense}")
-        ar_point_cloud = matlab.uint8(rawPointCloud.data)
-        return ar_point_cloud
-
-    def list_props(self, obj):
-        props = dir(obj)
-        for prop in props:
-            if len(prop) > 100:
-                prop = prop[0:100]
-            print(prop)
-
-    def call_test(self):
-        return self.eng.ex_test(nargout=1)
-
-def start_matlab_proc(matlab_code_folder, connect):
-    parameters = {}
-    parameters['matlab_code_folder'] = matlab_code_folder
-    proc = MatlabWrapper(parameters)
-    proc.init_matlab_engine(connect)
-    return proc 
-
 def listener_callback_camera(image_msg):
     """listen for camera messages.
        sensor_msgs/msg/Image
     """
     print(f"camera callback  {type(image_msg)}" )
-    global rawImage
-    rawImage = image_msg
+    global raw_image
+    raw_image = image_msg
     
 def listener_callback_lidar(lidar_msg):
     """listen for lidar messages.
        sensor_msgs/msg/PointCloud2
     """
     print(f"lidar callback  {type(lidar_msg)}")
-    global rawLidar
-    rawLidar = lidar_msg
+    global raw_lidar
+    raw_lidar = lidar_msg
 
 def listener_callback_odom(odom_msg):
     """listen for odom messages.
@@ -198,11 +104,18 @@ def setup_ros():
     pub_occupancy_grid = node.create_publisher(OccupancyGrid, 'avt_341/occupancy_grid', queue_size)
     pub_vis_occupancy_grid = node.create_publisher(OccupancyGrid, 'avt_341/occupancy_grid_vis', queue_size)
 
-    logger.info("node running")
+    logger.info("uab perception node running")
 
-def setup_matlab():
-    proc = start_matlab_proc(matlab_code_folder, connect=False)   
-    return proc   
+def parse_odom(odom_msg):
+    pose_point_x = odom_msg.pose.pose.position.x
+    pose_point_y = odom_msg.pose.pose.position.y
+    pose_point_z = odom_msg.pose.pose.position.z
+    pose_quat_x = odom_msg.pose.pose.orientation.x
+    pose_quat_y = odom_msg.pose.pose.orientation.y
+    pose_quat_z = odom_msg.pose.pose.orientation.z
+    pose_quat_w = odom_msg.pose.pose.orientation.w
+
+    return pose_point_x, pose_point_y, pose_point_z, pose_quat_w, pose_quat_x, pose_quat_y, pose_quat_z
 
 def main():
     global node 
@@ -210,42 +123,28 @@ def main():
 
     # set up ROS
     setup_ros()
-
     # set up MATLAB connection
-    proc = setup_matlab()
+    matlab_perception = perception_wrapper.initialize()
 
-    print("Starting main loop")
     try:
-        if record_bin_file == False:
-            while True:
-                node.spin()
-                # make sure we have good data before we try to process it
-                if rawImage != None and rawLidar != None and odom_data != None:
-                    print("calling matlab PerceptionAlgorithm")
-                    # get the occupancy_grid from MATLAB code
-                    occupancy_grid = proc.call_ex_PerceptionAlgorithm(flgLoadNet, rawImage, rawLidar, odom_data)
-                    # publish the og to the network
-                    publish_occupancy_grid(occupancy_grid)
-                else:
-                    print("no ros data from subscriptions yet")
-        else:
-            while True:
-                node.spin()
-                # make sure we have good data before we try to process it
-                if rawImage != None and rawLidar != None:
-                    print("calling matlab call_ex_record_bin_file")
-                    # get the occupancy_grid from MATLAB code
-                    occupancy_grid = proc.call_ex_record_bin_file(rawImage, rawLidar)
-                    # we only need one frame
-                    break
-
-                else:
-                    print("no ros data from subscriptions yet")
+        while True:
+            node.spin()
+            # make sure we have good data before we try to process it
+            if raw_image != None and raw_lidar != None and odom_data != None:
+                print("calling matlab PerceptionAlgorithm")
+                # get the occupancy_grid from MATLAB code
+                [x, y, z, qw, qx, qy, qz] = parse_odom(odom_data)
+                occupancy_grid = matlab_perception.perception_wrapper(flgLoadNet, list(raw_image.data), list(raw_lidar.data), x, y, z, qw, qx, qy, qz)
+                # publish occupancy grid
+                publish_occupancy_grid(occupancy_grid)
+            else:
+                print("no ros data from subscriptions yet")
             
 
     except Exception as e:
         print(e)
     finally:
+        matlab_perception.terminate()
         node.shutdown()
          
 if __name__ == '__main__':
