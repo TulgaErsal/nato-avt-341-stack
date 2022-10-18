@@ -122,6 +122,11 @@ def generate_launch_description():
             name='state_publisher'),
         Node(
             package='avt_341',
+            executable='uab_perception_node',
+            name='uab_perception_node'
+        ),
+        Node(
+            package='avt_341',
             executable='avt_341_control_node',
             name='vehicle_control_node',
             output='screen',

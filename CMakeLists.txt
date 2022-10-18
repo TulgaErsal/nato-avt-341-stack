@@ -16,8 +16,6 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(rclpy REQUIRED)
-find_package(ament_cmake_python REQUIRED)
 
 set(dependencies
         rclcpp
@@ -35,6 +33,8 @@ set(dependencies
 include_directories(
         include
         ${OpenCV_INCLUDE_DIRS}
+        # todo: find this directory dynamically
+        "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\include"
 )
 
 add_executable(avt_341_perception_node
@@ -100,6 +100,19 @@ add_executable(avt_bot_state_publisher_node
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
+link_directories("C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\lib\\win64\\microsoft")
+add_executable(uab_perception_node
+        src/perception/uab_perception_node.cpp
+        src/node/node_proxy.cpp
+)
+ament_target_dependencies(uab_perception_node ${dependencies})
+target_link_libraries(uab_perception_node
+        # todo: set these dynamically
+        # todo: move perception_wrapper.dll to install\avt_341\lib\avt_341
+        "C:\\Users\\Nic\\Documents\\git\\nato-avt-341-stack\\include\\avt_341\\perception\\perception_wrapper.lib"
+        "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib"
+)
+
 install(DIRECTORY
         launch
         config
@@ -115,14 +128,8 @@ install(TARGETS
         avt_341_global_path_node
         avt_341_sim_test_node
         avt_bot_state_publisher_node
+        uab_perception_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
-
-ament_python_install_package(uab_perception)
-
-install(PROGRAMS uab_perception/uab_perception.py
-                uab_perception/avt_341_types.py
-                uab_perception/avt_341_node_proxy.py
-                DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

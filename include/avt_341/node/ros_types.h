@@ -10,6 +10,7 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "sensor_msgs/msg/Image.hpp"
 #include "sensor_msgs/point_cloud_conversion.hpp"
 
 #include "geometry_msgs/msg/twist.hpp"
@@ -44,6 +45,9 @@ namespace avt_341 {
 
     using JointState = sensor_msgs::msg::JointState;
     using JointStatePtr = sensor_msgs::msg::JointState::SharedPtr;
+
+    using Image = sensor_msgs::msg::Image;
+    using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
 
     using Twist = geometry_msgs::msg::Twist;
     using TwistPtr = const geometry_msgs::msg::Twist::SharedPtr;

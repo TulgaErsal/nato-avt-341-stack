@@ -13,7 +13,6 @@
 
   <license>BSD-III</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>amend_cmake_python</buildtool_depend>
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
@@ -23,7 +22,6 @@
   <depend>nav_msgs</depend>
   <depend>ament_index_cpp</depend>
   <depend>tf2_ros</depend>
-  <depend>rclpy</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
