@@ -13,6 +13,7 @@ The `uab_perception` node is a C++ wrapper for the machine learning model writte
 
 ## Before running:
 - Install MATLAB Runtime 2022a
+- Update `Matlab_MCLMCRRT_LIB` path in `CMakeLists.txt` to MATLAB Runtime install location
 
 ## Building
 - `colcon build --packages-select avt_341`
