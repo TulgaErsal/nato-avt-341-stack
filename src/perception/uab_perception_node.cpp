@@ -42,7 +42,7 @@ bool allMsgsReceived()
 * GetCostmapFromMatlab packages up all the data from ROS (odometry, pointcloud, and image), calls
 * the semantic segmentation model in Matlab, and populates an array of cost values based on traversability
 */
-std::vector<double> GetCostmapFromMatlab()
+std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
 {
     //odometry
     mwArray x(current_pose.pose.pose.position.x);
@@ -67,8 +67,7 @@ std::vector<double> GetCostmapFromMatlab()
         mwArray costmap;
         perception_wrapper(1, costmap, imgData, pcData, x, y, z, qw, qx, qy, qz);
 
-        double costs[81600]; // todo: parameterize costmap length
-        costmap.GetData(costs, std::size(costs));
+        costmap.GetData(costs.data(), costs.size());
         std::vector<double> costVec(std::begin(costs), std::end(costs));
         return costVec;
     }
@@ -79,8 +78,10 @@ std::vector<double> GetCostmapFromMatlab()
 }
 
 void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
-                        uint16_t width,
-                        uint16_t height,
+                        float width,
+                        float height,
+                        float startX,
+                        float startY,
                         std::vector<std::vector<double>> data,
                         bool forVisualization = false)
 {
@@ -88,8 +89,8 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.info.resolution = 0.5;
     grid.info.height = height;
     grid.info.width = width;
-    grid.info.origin.position.x = -252;
-    grid.info.origin.position.y = -41;
+    grid.info.origin.position.x = startX;
+    grid.info.origin.position.y = startY;
     grid.info.origin.orientation.w = 1.0;
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
@@ -123,16 +124,16 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     }
 }
 
-std::vector<std::vector<double>> to2D(std::vector<double> vec, int width, int height)
+std::vector<std::vector<double>> to2D(std::vector<double> vec, float width, float height)
 {
     //1d -> 2d
     std::vector<std::vector<double>> vec2D(height, std::vector<double>(width));
     int c = 0;
-    for (int j = 0; j < height; j++)
+    for (int i = 0; i < height; i++)
     {
-        for (int k = 0; k < width; k++)
+        for (int j = 0; j < width; j++)
         {
-            vec2D[j][k] = vec[c++];
+            vec2D[i][j] = vec[c++];
         }
     }
 
@@ -149,6 +150,15 @@ int main(int argc, char *argv[])
 
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
     auto seg_grid_vis_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid_vis", 1);
+
+    float width;
+    node->get_parameter("~uab_grid_width", width, 100.0f);
+    float height;
+    node->get_parameter("~uab_grid_height", height, 100.0f);
+    float startX;
+    node->get_parameter("~uab_grid_start_x", startX, 0.0f);
+    float startY;
+    node->get_parameter("~uab_grid_start_y", startY, 0.0f);
 
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
@@ -177,21 +187,19 @@ int main(int argc, char *argv[])
         }
         else
         {
-            //todo: parameterize length/width
-            uint16_t width = 510;
-            uint16_t height = 160;
-            std::vector<double> costmap = GetCostmapFromMatlab();
+            std::vector<double> costs(width * height);
+            std::vector<double> costmap = GetCostmapFromMatlab(costs);
             std::vector<std::vector<double>> costmap2D = to2D(costmap, width, height);
             
             //grid for planners
             avt_341::msg::OccupancyGrid grid;
-            BuildOccupancyGrid(grid, width, height, costmap2D);
+            BuildOccupancyGrid(grid, width, height, startX, startY, costmap2D);
             seg_grid_pub->publish(grid);
 
             //grid for RVIZ
             avt_341::msg::OccupancyGrid visGrid;
             bool forVisualization = true;
-            BuildOccupancyGrid(visGrid, width, height, costmap2D, forVisualization);
+            BuildOccupancyGrid(visGrid, width, height, startX, startY, costmap2D, forVisualization);
             seg_grid_vis_pub->publish(visGrid);
         }
         node->spin_some();

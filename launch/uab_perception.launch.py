@@ -59,6 +59,12 @@ def generate_launch_description():
         DeclareLaunchArgument('use_registered', default_value='True', description="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."),
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
+        
+        # UAB Perception
+        DeclareLaunchArgument('uab_grid_height', default_value='100.0', description="Height of segmentation grid output from UAB perception node."),
+        DeclareLaunchArgument('uab_grid_width', default_value='100.0', description="Width of segmentation grid output from UAB perception node."),
+        DeclareLaunchArgument('uab_grid_start_x', default_value='0.0', description="X starting coordinate of segmentation grid output from UAB perception node."),
+        DeclareLaunchArgument('uab_grid_start_y', default_value='0.0', description="Y starting coordinate of segmentation grid output from UAB perception node."),
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
@@ -119,7 +125,13 @@ def generate_launch_description():
         Node(
             package='avt_341',
             executable='uab_perception_node',
-            name='uab_perception_node'
+            name='uab_perception_node',
+            parameters=[{
+                'uab_grid_width': launch.substitutions.LaunchConfiguration('uab_grid_width'),
+                'uab_grid_height': launch.substitutions.LaunchConfiguration('uab_grid_height'),
+                'uab_grid_start_x': launch.substitutions.LaunchConfiguration('uab_grid_start_x'),
+                'uab_grid_start_y': launch.substitutions.LaunchConfiguration('uab_grid_start_y'),
+            }]
         ),
         Node(
             package='avt_341',

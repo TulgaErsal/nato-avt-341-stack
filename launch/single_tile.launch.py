@@ -42,7 +42,11 @@ def generate_launch_description():
                           'vehicle_wheelbase': '3.3',
                           'cull_lidar': 'True',
                           'cull_lidar_dist': '70.0',
-                          'overhead_clearance': '5.0'}.items()
+                          'overhead_clearance': '5.0',
+                          'uab_grid_width': '510.0',
+                          'uab_grid_height':'160.0',
+                          'uab_grid_start_x':'-252.0',
+                          'uab_grid_start_y':'-41.0'}.items()
     )
 
     launch_description = LaunchDescription([
