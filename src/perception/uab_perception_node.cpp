@@ -17,7 +17,7 @@ bool img_received = false;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
-	current_pose = *rcv_odom;
+    current_pose = *rcv_odom;
     odom_received = true;
 }
 
