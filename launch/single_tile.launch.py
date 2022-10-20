@@ -27,9 +27,22 @@ def generate_launch_description():
                           'use_sim_time': 'False',
                           'goal_dist': '7.0',
                           'path_look_ahead': '40.0',
+                          'grid_width': '400.0',
+                          'grid_height': '400.0',
+                          'grid_llx': '-200.0',
+                          'grid_lly': '-200.0',
+                          'stitch_lidar_points': 'False',
+                          'use_registered': 'False',
+                          'slope_threshold': '2.0',
+                          'vehicle_width': '5.0',
+                          'grid_dilate': 'False',
+                          'grid_dilate_y': '1.0',
                           'steering_coefficient': '2.5',
                           'vehicle_max_steer_angle_degrees': '38.7',
-                          'vehicle_wheelbase': '3.3'}.items()
+                          'vehicle_wheelbase': '3.3',
+                          'cull_lidar': 'True',
+                          'cull_lidar_dist': '70.0',
+                          'overhead_clearance': '5.0'}.items()
     )
 
     launch_description = LaunchDescription([

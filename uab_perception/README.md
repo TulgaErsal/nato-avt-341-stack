@@ -1,7 +1,7 @@
 # UAB Perception ROS2 Node
 ## Performs semantic segmentation on camera images using the DeepLab V3+ architecture and fuses with LiDAR pointcloud data to create a costmap based on vehicle traversability. Requires MATLAB 2022a Runtime.
 
-The `uab_perception` node is a C++ wrapper for the machine learning model written in MATLAB. This is easier to build/run due to issues with ROS2 support in MATLAB, but decreases performance.
+The `uab_perception_node` is a C++ wrapper for the machine learning model written in MATLAB. This is easier to build/run due to issues with ROS2 support in MATLAB, but decreases performance.
 
 ## Subscriptions
 - `avt_341/odometry` ([`nav_msgs/Odometry`](http://docs.ros.org/en/api/nav_msgs/html/msg/Odometry.html))
@@ -9,7 +9,8 @@ The `uab_perception` node is a C++ wrapper for the machine learning model writte
 - `camera/rgb/image_raw` ([`sensor_msgs/Image`](http://docs.ros.org/en/api/sensor_msgs/html/msg/Image.html))
 
 ## Publishers
-- `avt_341/occupancy_grid` ([`nav_msgs/OccupancyGrid`](http://docs.ros.org/en/api/nav_msgs/html/msg/OccupancyGrid.html))
+- `avt_341/segmentation_grid` ([`nav_msgs/OccupancyGrid`](http://docs.ros.org/en/api/nav_msgs/html/msg/OccupancyGrid.html))
+- `avt_341/segmentation_grid_vis` ([`nav_msgs/OccupancyGrid`](http://docs.ros.org/en/api/nav_msgs/html/msg/OccupancyGrid.html))
 
 ## Before running:
 - Install MATLAB Runtime 2022a

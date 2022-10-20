@@ -1,7 +1,3 @@
-#
-# This is identical to base.launch.py, except the UAB perception node (perception_sem_seg)
-# is used in place of the avt_341_perception_node
-#
 import os
 import launch.conditions
 from ament_index_python.packages import get_package_share_directory
@@ -124,6 +120,33 @@ def generate_launch_description():
             package='avt_341',
             executable='uab_perception_node',
             name='uab_perception_node'
+        ),
+        Node(
+            package='avt_341',
+            executable='avt_341_perception_node',
+            name='perception_node',
+            output='screen',
+            parameters=[{
+                'use_elevation': launch.substitutions.LaunchConfiguration('use_elevation'),
+                'slope_threshold': launch.substitutions.LaunchConfiguration('slope_threshold'),
+                'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
+                'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
+                'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
+                'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
+                'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
+                'overhead_clearance': 7.0,
+                'grid_dilate': launch.substitutions.LaunchConfiguration('grid_dilate'),
+                'grid_dilate_x': launch.substitutions.LaunchConfiguration('grid_dilate_x'),
+                'grid_dilate_y': launch.substitutions.LaunchConfiguration('grid_dilate_y'),
+                'grid_dilate_proportion': launch.substitutions.LaunchConfiguration('grid_dilate_proportion'),
+                'cull_lidar': launch.substitutions.LaunchConfiguration('cull_lidar'),
+                'cull_lidar_dist': launch.substitutions.LaunchConfiguration('cull_lidar_dist'),
+                'warmup_time': 5.0,
+                'use_registered': launch.substitutions.LaunchConfiguration('use_registered'),
+                'display': display_type,
+                'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
+                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar')
+            }],
         ),
         Node(
             package='avt_341',

@@ -147,8 +147,8 @@ int main(int argc, char *argv[])
     auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
     auto img_sub = node->create_subscription<avt_341::msg::Image>("camera/rgb/image_raw", 10, ImageCallback);
 
-    auto grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
-    auto grid_vis_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid_vis", 1);
+    auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
+    auto seg_grid_vis_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid_vis", 1);
 
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
@@ -186,13 +186,13 @@ int main(int argc, char *argv[])
             //grid for planners
             avt_341::msg::OccupancyGrid grid;
             BuildOccupancyGrid(grid, width, height, costmap2D);
-            grid_pub->publish(grid);
+            seg_grid_pub->publish(grid);
 
             //grid for RVIZ
             avt_341::msg::OccupancyGrid visGrid;
             bool forVisualization = true;
             BuildOccupancyGrid(visGrid, width, height, costmap2D, forVisualization);
-            grid_vis_pub->publish(visGrid);
+            seg_grid_vis_pub->publish(visGrid);
         }
         node->spin_some();
         rate.sleep();
