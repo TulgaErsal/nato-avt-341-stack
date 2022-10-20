@@ -181,6 +181,8 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~display", display, std::string("image"));
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
+	float max_point_age = 5.0f;
+	n->get_parameter("~max_point_age",max_point_age,5.0f);
 	bool filter_highest_lidar;
 	n->get_parameter("~filter_highest_lidar", filter_highest_lidar, false);
     float cull_lidar_points_dist;
@@ -204,6 +206,7 @@ int main(int argc, char *argv[]) {
 	grid.SetDilation(grid_dilate, grid_dilate_x, grid_dilate_y, grid_dilate_proportion);
 	grid.SetStitchPoints(stitch_points);
 	grid.SetFilterHighest(filter_highest_lidar);
+	grid.SetMaxPointAge(max_point_age);
 
 	double start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(100.0);
