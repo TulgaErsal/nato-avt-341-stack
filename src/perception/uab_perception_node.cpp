@@ -99,7 +99,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     int c = 0;
     if (forVisualization)
     {
-        //RVIZ expects column major order
+        //RVIZ expects row major order
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
@@ -111,7 +111,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     }
     else
     {
-        //planners expect row major order
+        //planners expect column major order
         for (int j = 0; j < width; j++)
         {
             for (int i = 0; i < height; i++)
