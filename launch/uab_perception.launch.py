@@ -127,10 +127,10 @@ def generate_launch_description():
             executable='uab_perception_node',
             name='uab_perception_node',
             parameters=[{
-                'uab_grid_width': launch.substitutions.LaunchConfiguration('uab_grid_width'),
-                'uab_grid_height': launch.substitutions.LaunchConfiguration('uab_grid_height'),
-                'uab_grid_start_x': launch.substitutions.LaunchConfiguration('uab_grid_start_x'),
-                'uab_grid_start_y': launch.substitutions.LaunchConfiguration('uab_grid_start_y'),
+                'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
+                'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
+                'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
+                'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
             }]
         ),
         Node(

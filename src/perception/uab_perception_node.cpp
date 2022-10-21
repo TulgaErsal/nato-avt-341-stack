@@ -152,13 +152,13 @@ int main(int argc, char *argv[])
     auto seg_grid_vis_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid_vis", 1);
 
     float width;
-    node->get_parameter("~uab_grid_width", width, 100.0f);
+    node->get_parameter("~grid_width", width, 100.0f);
     float height;
-    node->get_parameter("~uab_grid_height", height, 100.0f);
+    node->get_parameter("~grid_height", height, 100.0f);
     float startX;
-    node->get_parameter("~uab_grid_start_x", startX, 0.0f);
+    node->get_parameter("~grid_llx", startX, 0.0f);
     float startY;
-    node->get_parameter("~uab_grid_start_y", startY, 0.0f);
+    node->get_parameter("~grid_lly", startY, 0.0f);
 
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
