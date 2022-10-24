@@ -39,6 +39,7 @@
     <param name="grid_dilate_x" value="0.5" />
     <param name="grid_dilate_y" value="0.5" />
     <param name="grid_res" value="0.5" />
+    <param name="max_point_age" value="1.0" />
     <param name="overhead_clearance" value="7.0" />
     <param name="warmup_time" value="5.0" />
     <param name="use_registered" value="true" />
