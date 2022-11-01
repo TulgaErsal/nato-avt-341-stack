@@ -85,6 +85,9 @@ namespace avt_341 {
         using Float64MultiArray = std_msgs::Float64MultiArray;
         using Float64MultiArrayPtr = const std_msgs::Float64MultiArray::ConstPtr &;
 
+        using MultiArrayDimension = std_msgs::MultiArrayDimension;
+        using MultiArrayDimensionPtr = const std_msgs::MultiArrayDimension::ConstPtr &;
+
         using Int32 = std_msgs::Int32;
         using Int32Ptr = const std_msgs::Int32::ConstPtr &;
     }
