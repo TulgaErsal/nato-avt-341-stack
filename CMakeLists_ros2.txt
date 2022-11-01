@@ -5,6 +5,8 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
 endif()
 
+set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 find_package(ament_cmake REQUIRED)
@@ -16,7 +18,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(Matlab)
+find_package(X11 REQUIRED)
+#find_package(Matlab)
 
 set(dependencies
         rclcpp
@@ -29,7 +32,7 @@ set(dependencies
         )
 
 # this should point to the installation location of MATLAB Runtime
-set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+#set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
 
 ###########
 ## Build ##
@@ -37,7 +40,7 @@ set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern
 include_directories(
         include
         ${OpenCV_INCLUDE_DIRS}
-        ${Matlab_INCLUDE_DIRS}
+        #${Matlab_INCLUDE_DIRS}
 )
 
 add_executable(avt_341_perception_node
@@ -76,6 +79,7 @@ add_executable(avt_341_local_planner_node
 ament_target_dependencies(avt_341_local_planner_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_local_planner_node
         ${OpenCV_LIBS}
+        X11
         )
 #
 add_executable(avt_341_global_path_node
@@ -87,6 +91,7 @@ add_executable(avt_341_global_path_node
 ament_target_dependencies(avt_341_global_path_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_global_path_node
         ${OpenCV_LIBS}
+        X11
         )
 
 add_executable(avt_341_sim_test_node
@@ -103,26 +108,26 @@ add_executable(avt_bot_state_publisher_node
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
-if (Matlab_FOUND)
-        add_executable(uab_perception_node
-                src/perception/uab_perception_node.cpp
-                src/node/node_proxy.cpp
-        )
-        ament_target_dependencies(uab_perception_node ${dependencies})
-        target_link_libraries(uab_perception_node
-                ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
-                ${Matlab_MCLMCRRT_LIB}
-        )
+# if (Matlab_FOUND)
+#         add_executable(uab_perception_node
+#                 src/perception/uab_perception_node.cpp
+#                 src/node/node_proxy.cpp
+#         )
+#         ament_target_dependencies(uab_perception_node ${dependencies})
+#         target_link_libraries(uab_perception_node
+#                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
+#                 ${Matlab_MCLMCRRT_LIB}
+#         )
 
-        install(FILES
-                ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll
-                DESTINATION lib/${PROJECT_NAME})
+#         install(FILES
+#                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll
+#                 DESTINATION lib/${PROJECT_NAME})
 
-        install(TARGETS
-                uab_perception_node
-                EXPORT export_${PROJECT_NAME}
-                DESTINATION lib/${PROJECT_NAME})
-endif()
+#         install(TARGETS
+#                 uab_perception_node
+#                 EXPORT export_${PROJECT_NAME}
+#                 DESTINATION lib/${PROJECT_NAME})
+# endif()
 
 install(DIRECTORY
         launch
