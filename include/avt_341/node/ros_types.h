@@ -102,7 +102,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
-#include "sensor_msgs/msg/Image.hpp"
+#include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/point_cloud_conversion.hpp"
 
 #include "geometry_msgs/msg/twist.hpp"
