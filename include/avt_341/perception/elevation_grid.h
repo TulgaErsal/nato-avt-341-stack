@@ -18,20 +18,59 @@
 namespace avt_341{
 namespace perception{
 
-struct Cell{
-    float low = std::numeric_limits<float>::max();
-    float high = std::numeric_limits<float>::lowest();
-    float highest = std::numeric_limits<float>::lowest();
-    float second_highest = std::numeric_limits<float>::lowest();
-    float height = 0.0f;
-    bool filled = false;
+class ElevAge{
+  public:
+    ElevAge(){
+        val = 0.0f;
+        age = 0.0f;
+    }
+    float val;
+    float age;
+};
+
+class Cell{
+    //float low = std::numeric_limits<float>::max();
+    //float high = std::numeric_limits<float>::lowest();
+    //float highest = std::numeric_limits<float>::lowest();
+    //float second_highest = std::numeric_limits<float>::lowest();
+    public:
+    Cell(){
+
+        low.val = std::numeric_limits<float>::max();
+        high.val = std::numeric_limits<float>::lowest();
+        highest.val = std::numeric_limits<float>::lowest();
+        second_highest.val = std::numeric_limits<float>::lowest();
+        height = 0.0f;
+        filled = false;
+        slope = 0.0f;
+        obstacle = false;
+        has_dilated = false;
+        dilated_val = 0;
+        terrain = 0.0f;
+        dilated_age = 0.0f;
+    }
+    void AgeCell(float dt){
+        low.age += dt;
+        high.age += dt;
+        highest.age += dt;
+        second_highest.age += dt;
+        dilated_age += dt;
+    }
+    ElevAge low,high,highest,second_highest;
+    //low.val = std::numeric_limits<float>::max();
+    //high.val = std::numeric_limits<float>::lowest();
+    //highest.val = std::numeric_limits<float>::lowest();
+    //second_highest.val = std::numeric_limits<float>::lowest();
+    float height; // = 0.0f;
+    bool filled; //  = false;
     //float slope_x = 0.0f;
     //float slope_y = 0.0f;
-    float slope = 0.0f;
-    bool obstacle = false;
-    bool has_dilated = false;
-    uint8_t dilated_val = 0;
-    float terrain = 0.0f;
+    float slope; //  = 0.0f;
+    bool obstacle; //  = false;
+    bool has_dilated; //  = false;
+    uint8_t dilated_val; //  = 0;
+    float dilated_age;
+    float terrain; //  = 0.0f;
 };
 
 class ElevationGrid{
@@ -65,6 +104,10 @@ class ElevationGrid{
     void SetRes(float r){
         res_ = r;
         ResizeGrid();
+    }
+
+    void SetMaxPointAge(float mpa){
+        max_point_age_ = mpa;
     }
 
     void SetSlopeThreshold(float tr){
@@ -104,6 +147,7 @@ class ElevationGrid{
     uint8_t GetGridCellValue(const Cell & cell) const;
     void ResizeGrid();
     void FillImage();
+    void AgeCells();
     std::vector< std::vector<Cell> > cells_;
     float width_;
     float height_;
@@ -123,6 +167,7 @@ class ElevationGrid{
     const uint8_t GRID_MAX_VALUE = 100;
     const float GRID_SLOPE_MULT = 50.0f;
     bool has_segmentation_ = false;
+    float max_point_age_;
 };
 
 } // namespace perception

@@ -179,7 +179,7 @@ int main(int argc, char *argv[]){
     else{
       vel = sqrtf(state.twist.twist.linear.x*state.twist.twist.linear.x + state.twist.twist.linear.y*state.twist.twist.linear.y);
     }
-    
+
     controller.SetVehicleState(state);
     controller.SetVehicleSpeed(vel);
 
