@@ -75,6 +75,7 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
     {
         std::cerr << "Failed to execute Matlab perception_wrapper. " << e.what() << std::endl;
     }
+    return {};
 }
 
 void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
@@ -212,5 +213,5 @@ int main(int argc, char *argv[])
     }
 
     mclTerminateApplication();
-    return f0;
+    return 0;
 }
