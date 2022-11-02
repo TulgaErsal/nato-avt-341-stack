@@ -70,6 +70,8 @@ def generate_launch_description():
         DeclareLaunchArgument('use_registered', default_value='True', description="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."),
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
+        DeclareLaunchArgument('time_register_window', default_value='0.05', description="Maximum window of time between odom and point cloud time stamps"),
+        DeclareLaunchArgument('max_point_age', default_value='100.0', description="Lifetime of a point before it is cleared"),
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
@@ -79,15 +81,15 @@ def generate_launch_description():
         DeclareLaunchArgument("rate", default_value="10.0"),
         DeclareLaunchArgument("obstacle_cost_thresh" , default_value="50", description="threshold for making something an obstacle (0-100), primarily for use with segmentation grid"),
         DeclareLaunchArgument("kp" , default_value="10.0", description="attractive potential coeff"),
-        DeclareLaunchArgument("eta" , default_value="1.0", description="repulsive potential coeff"),
+        DeclareLaunchArgument("eta" , default_value="7.5", description="repulsive potential coeff"),
         DeclareLaunchArgument("cutoff_dist" , default_value="40.0", description="obstacles farther than this are ignored"),
-        DeclareLaunchArgument("inner_cutoff_dist" , default_value="1.5", description="obstacles closer than this are ignored"),
+        DeclareLaunchArgument("inner_cutoff_dist" , default_value="0.0", description="obstacles closer than this are ignored"),
 
         # Pure Pursuit Control
         DeclareLaunchArgument('vehicle_wheelbase', default_value='2.72', description="Pure pursuit controller - vehicle_wheelbase."),
         DeclareLaunchArgument('vehicle_max_steer_angle_degrees', default_value='30.0', description="Pure pursuit controller - max steer angle in degrees."),
-        DeclareLaunchArgument('steering_coefficient', default_value='4.5', description="Pure pursuit controller - steering coefficient."),
-        DeclareLaunchArgument('vehicle_speed', default_value='5.0', description="Pure pursuit controller - vehicle_speed m/s."),
+        DeclareLaunchArgument('steering_coefficient', default_value='3.5', description="Pure pursuit controller - steering coefficient."),
+        DeclareLaunchArgument('vehicle_speed', default_value='7.0', description="Pure pursuit controller - vehicle_speed m/s."),
         DeclareLaunchArgument('throttle_coefficient', default_value='1.0', description="Pure pursuit controller - scale factor for the commanded steering. l.t. 1.0 will make the acceleration less agressive, g.t. 1.0 will make it more agressive"),
         DeclareLaunchArgument('throttle_kp', default_value='0.1129', description="Throttle PID Control - proportional coeff for the PID speed controller"),
         DeclareLaunchArgument('throttle_ki', default_value='0.0', description="Throttle PID Control - integral coeff for the PID speed controller"),

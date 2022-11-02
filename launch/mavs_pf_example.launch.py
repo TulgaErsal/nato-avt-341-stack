@@ -73,7 +73,7 @@ def generate_launch_description():
             name='mavs_lidar_node',
             parameters=[
                 {'scene_file': scene_file},
-                {'offset': [0.0,0.0,1.5]},
+                {'offset': [1.0,0.0,0.2]},
                 {'orientation': [1.0, 0.0, 0.0, 0.0]},
                 {'display': False},
                 {'update_rate_hz': 10.0},
