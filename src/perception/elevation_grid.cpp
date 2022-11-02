@@ -131,7 +131,7 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
 
         // Optional dilation
         if(dilate_ && !cells_[i][j].has_dilated){
-            if( (use_elevation_ && cells_[i][j].high > thresh_)  || cells_[i][j].slope > thresh_){
+            if( (use_elevation_ && cells_[i][j].high.val > thresh_)  || cells_[i][j].slope > thresh_){
                 cells_[i][j].has_dilated = true;
 
                 uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * GetGridCellValue( cells_[i][j]));
