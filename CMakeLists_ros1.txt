@@ -27,6 +27,9 @@ else()
   )
 endif()
 
+
+add_definitions(-DROS_1)
+
 find_package(PCL REQUIRED)
 add_definitions(${PCL_DEFINITIONS})
 

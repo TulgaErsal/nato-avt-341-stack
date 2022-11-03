@@ -1,14 +1,25 @@
 # AVT-341
 ROS package with autonomy algorithms for the NATO AVT-341.
 
-## Requirements
-Ubuntu 16.04 with [ROS-Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu) and a functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) are required to build and run this code. It **may** work with more recent releases of Ubuntu but has not been tested.
+The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
 
-## Installation
+## Requirements
+The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22. 
+
+## ROS-1 Installation
+A functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) is required to build and run this code.
+
 Clone the repo into your catkin_ws/src directory with the following command.
 ```bash
 git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 ```
+
+Next, since you are building on ROS-1, copy the appropriate CMake and package files.
+```bash
+cp CMakeLists_ros1.txt CMakeLists.txt
+cp package_ros1.xml package.xml
+```
+
 From the top level catkin_ws directory, type
 ```bash
 catkin_make install
@@ -36,35 +47,67 @@ To test the installation, type
 roslaunch avt_341 example.launch
 ```
 
-The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
+## ROS-2 Installation
+A functioning [colcon workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html) is required to build and run this code.
+
+Clone the repo into your catkin_ws/src directory with the following command.
+```bash
+git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
+```
+
+Next, since you are building on ROS-2, copy the appropriate CMake and package files.
+```bash
+cp CMakeLists_ros2.txt CMakeLists.txt
+cp package_ros2.xml package.xml
+```
+
+From the top level ros2_ws directory, type
+```bash
+colcon build
+```
+Currently, colcon will echo some warning messages on the first build about deprecated point cloud libraries. Execute the build a second time:
+```bash
+colcon build
+```
+and these will be fised.
+
+__If user-defined workspace with default install spaces:__ Make sure that ```ros2_ws/install/setup.bash``` has been sourced after the build. Typically this command is added to ```~/.bashrc``` so that it is called on opening a command prompt instead of being issued manually.  
+
+Can be placed in ~/.bashrc also so does not need to be issued manually
+```bash 
+source ~/<path_to_colcon_workspace>/[install]/setup.bash
+```
+
+To test the installation, type
+```bash
+ros2 launch avt_341 example.launch.py
+```
 
 ##  Troubleshooting
-The package requires the ROS PointCloud Library (PCL) interface. If you get errors related to missing pcl header files, then you may need to install pcl_ros on your system.
+In ROS1, the package requires the ROS PointCloud Library (PCL) interface. If you get errors related to missing pcl header files, then you may need to install pcl_ros on your system.
 ```bash
 sudo apt-get install ros-kinetic-pcl-ros
 ```
 
 ## Running with MAVS
-To run an example simulation with MAVS, first [install and build MAVS](https://gitlab.com/cgoodin/msu-autonomous-vehicle-simulator/-/wikis/MavsBuildInstructions).
+To run an example simulation with MAVS, first [install and build MAVS](https://mavs-documentation.readthedocs.io/en/latest/MavsBuildInstructions/).
+
+Next, install and build the [MAVS-ROS package](https://github.com/CGoodin/mavs_ros) (for ROS1) or the [MAVS-ROS2](https://github.com/CGoodin/mavs-ros2) package (for ROS2).
 
 Next, clone the example MAVS simulation package.
 ```bash
 git clone https://github.com/CGoodin/mavs_avt_example.git
 ```
 
-In order to build the repo, you will need to modify the CMakeLists.txt file in the mavs_avt_example to find your MAVS installation. In lines 8-9, change the following lines 
-```
-SET(mavs_INCLUDE_DIR  "/home/msucavs/mavs/src/")
-SET(mavs_LIB_DIR  "/home/msucavs/mavs/build/lib")
-```
-to match the path to the MAVS "src" and "lib" directories on your system. Then, from the top level catkin_ws directory, type
+To test in ROS-1:
 ```bash
-catkin_make install
+roslaunch avt_341 mavs_example.launch
 ```
 
-To use the MAVS example with the AVT-341 autonomy, uncomment lines 58-62 of "example.launch" and comment out line 52. Then, run the example as before.
+To test in ROS-2:
 ```bash
-roslaunch avt_341 example.launch
+ros2 launch avt_341 mavs_example.launch.py
 ```
 
+## Funding Acknowledgement
 This project is made possible by technical and financial support of the Mississippi State University Center for Advanced Vehicular Systems as well as the Automotive Research Center (ARC) in accordance with Cooperative Agreement W56HZV 14 2 0001 U.S. Army CCDC Ground Vehicle Systems Center (GVSC) Warren, MI.
