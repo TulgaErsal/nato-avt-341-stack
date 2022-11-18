@@ -5,15 +5,10 @@
 #ifndef AVT_341_NODE_PROXY_H
 #define AVT_341_NODE_PROXY_H
 
-<<<<<<< HEAD
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/header.hpp"
-=======
 #ifdef ROS_1
 
 #include "ros/ros.h"
 #include "std_msgs/Header.h"
->>>>>>> main
 
 namespace avt_341 {
   namespace node {
