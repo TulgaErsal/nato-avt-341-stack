@@ -125,13 +125,9 @@ def generate_launch_description():
                 'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
                 'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
                 'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
-<<<<<<< HEAD
                 'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
             }],
             output='screen'
-=======
-            }]
->>>>>>> main
         ),
         Node(
             package='avt_341',

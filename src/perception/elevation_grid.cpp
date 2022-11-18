@@ -118,8 +118,8 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
     }
   }
 
-    int dsize_x = lround(grid_dilate_x_/res_);
-    int dsize_y = lround(grid_dilate_y_/res_);
+  std::vector<int> cells_to_dilate_x {};
+  std::vector<int> cells_to_dilate_y {};
 
   //find the slopes
   for (int i=0; i<nx_;i++){
@@ -128,26 +128,44 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
         cells_[i][j].height = cells_[i][j].high.val - cells_[i][j].low.val;
         //if (cells_[i][j].height/res_ > thresh_) cells_[i][j].obstacle = true;
         cells_[i][j].slope = cells_[i][j].height/res_;
-
-        // Optional dilation
-        if(dilate_ && !cells_[i][j].has_dilated){
-            if( (use_elevation_ && cells_[i][j].high.val > thresh_)  || cells_[i][j].slope > thresh_){
-                cells_[i][j].has_dilated = true;
-
-                uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * GetGridCellValue( cells_[i][j]));
-                for (int id=-dsize_x; id<=dsize_x; id++){
-                    for (int jd=-dsize_y; jd<=dsize_y; jd++){
-                        Cell & cell = cells_[i + id][j + jd];
-                        cell.dilated_val = std::max(grid_val, cell.dilated_val);
-                    }
-                }
-
-            }
+        if(!cells_[i][j].has_dilated && cells_[i][j].slope > thresh_){
+          cells_[i][j].has_dilated = true;
+          cells_to_dilate_x.push_back(i);
+          cells_to_dilate_y.push_back(j);
         }
-
       } // if cell filled
     } //over j
   } //over i
+
+  //dilate the grid
+  if(dilate_){
+    int dsize_x = lround(grid_dilate_x_/res_);
+    int dsize_y = lround(grid_dilate_y_/res_);
+
+    for(const int & i : cells_to_dilate_x){
+      if(i < dsize_x || i >= nx_-dsize_x){
+        continue;
+      }
+
+      for(const int & j : cells_to_dilate_y){
+        if(j < dsize_y || j >= ny_-dsize_y){
+          continue;
+        }
+
+        if(!cells_[i][j].has_dilated){
+          continue;
+        }
+        uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * GetGridCellValue( cells_[i][j]));
+        for (int id=-dsize_x; id<=dsize_x; id++){
+          for (int jd=-dsize_y; jd<=dsize_y; jd++){
+            Cell & cell = cells_[i + id][j + jd];
+            cell.dilated_val = std::max(grid_val, cell.dilated_val);
+          }
+        }
+      }
+    }
+  }
+
 
   //loop back through the points and remove ground points
   std::vector<avt_341::msg::Point32> points;
