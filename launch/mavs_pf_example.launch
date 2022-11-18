@@ -42,6 +42,7 @@
     <param name="max_point_age" value="1.0" />
     <param name="overhead_clearance" value="7.0" />
     <param name="warmup_time" value="5.0" />
+    <param name="max_point_age" value="100.0" />
     <param name="use_registered" value="true" />
     <param name="display" value="$(arg display)" />
   </node>
@@ -49,7 +50,7 @@
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
     <param name="vehicle_wheelbase" value="2.72" />
     <param name="vehicle_max_steer_angle_degrees" value="30.0" />
-    <param name="steering_coefficient" value="6.5" />
+    <param name="steering_coefficient" value="3.5" />
     <param name="throttle_coefficient" value="1.0" />
     <param name="vehicle_speed" value="7.0" />
     <param name="throttle_kp" value="0.1129" />
@@ -83,12 +84,12 @@
     <param name="rate" value="10.0" />
     <param name="obstacle_cost_thresh" value="0" /> <!-- threshold for making something an obstacle (0-100), primarily for use with segmentation grid -->
     <param name="kp" value="10.0" /> <!-- attractive potential coeff -->
-    <param name="eta" value="1.0" /> <!-- repulsive potential coeff -->
+    <param name="eta" value="7.5" /> <!-- repulsive potential coeff -->
     <param name="cutoff_dist" value="40.0" /> <!-- obstacles farther than this are ignored -->
-    <param name="inner_cutoff_dist" value="1.5" /> <!-- obstacles closer than this are ignored -->
+    <param name="inner_cutoff_dist" value="0.0" /> <!-- obstacles closer than this are ignored -->
   </node>
 
-  <include file="$(find mavs_avt_example)/launch/mavs_sim.launch">
+  <include file="$(find mavs_ros)/launch/mavs_sim.launch">
     <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
     <arg name="point_cloud_topic_arg" default="avt_341/points" />
     <arg name="odometry_topic_arg" default="avt_341/odometry" />

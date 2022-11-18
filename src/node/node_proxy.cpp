@@ -3,6 +3,34 @@
 namespace avt_341 {
   namespace node {
 
+#ifdef ROS_1
+
+Rate::Rate(double hz) : rate_(hz) {
+}
+
+    void Rate::sleep() {
+      rate_.sleep();
+    }
+
+    NodeProxy::NodeProxy(const std::string &node_name) {
+      node_ = rclcpp::Node::make_shared("avt_341_control_node");
+      this->get_parameter("/is_empty_waypoints", is_empty_waypoints_, false);
+    }
+
+    rclcpp::Logger NodeProxy::get_logger() const {
+      return node_->get_logger();
+    }
+
+    rclcpp::Time NodeProxy::get_stamp() const {
+      return node_->get_clock()->now();
+    }
+
+    double NodeProxy::get_now_seconds() const {
+      return get_stamp().seconds();
+    }
+
+#else
+
     Rate::Rate(double hz) : rate_(hz) {
     }
 
@@ -31,5 +59,8 @@ namespace avt_341 {
       rclcpp::spin_some(node_);
     }
 
-  }
-}
+#endif
+
+
+} // namespace node
+} // namespace avt_341
