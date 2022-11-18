@@ -1,6 +1,7 @@
 
 #include "avt_341/control/pid_controller.h"
 #include <ctime>
+#include <string>
 
 namespace avt_341 {
 namespace control{
