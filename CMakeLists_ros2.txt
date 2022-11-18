@@ -18,8 +18,18 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
-# find_package(X11 REQUIRED)
 
+if (WIN32 OR WIN64)
+set (link_libs
+${OpenCV_LIBS}
+)
+else()
+ find_package(X11 REQUIRED)
+set (link_libs
+${OpenCV_LIBS}
+X11
+)
+endif()
 
 set(dependencies
         rclcpp
@@ -74,8 +84,7 @@ add_executable(avt_341_local_planner_node
         )
 ament_target_dependencies(avt_341_local_planner_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_local_planner_node
-        ${OpenCV_LIBS}
-#         X11
+        ${link_libs}
         )
 
 
@@ -87,7 +96,7 @@ add_executable(avt_341_pf_planner_node
       )
 ament_target_dependencies(avt_341_pf_planner_node ${dependencies} )
 target_link_libraries(avt_341_pf_planner_node
-#         X11
+${link_libs}
       )
 
 add_executable(avt_341_global_path_node
@@ -98,8 +107,7 @@ add_executable(avt_341_global_path_node
         )
 ament_target_dependencies(avt_341_global_path_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_global_path_node
-        ${OpenCV_LIBS}
-#         X11
+${link_libs}
         )
 
 add_executable(avt_341_sim_test_node
