@@ -75,6 +75,7 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
     {
         std::cerr << "Failed to execute Matlab perception_wrapper. " << e.what() << std::endl;
     }
+    return {};
 }
 
 void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
@@ -82,11 +83,12 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
                         float height,
                         float startX,
                         float startY,
+                        float res,
                         std::vector<std::vector<double>> data,
                         bool forVisualization = false)
 {
     grid.header.frame_id = "map";
-    grid.info.resolution = 0.5;
+    grid.info.resolution = res;
     grid.info.height = height;
     grid.info.width = width;
     grid.info.origin.position.x = startX;
@@ -159,6 +161,10 @@ int main(int argc, char *argv[])
     node->get_parameter("~grid_llx", startX, 0.0f);
     float startY;
     node->get_parameter("~grid_lly", startY, 0.0f);
+    float res;
+    node->get_parameter("~grid_res", res, 1.0f);
+    width = width/res;
+    height = height/res;
 
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
@@ -193,13 +199,13 @@ int main(int argc, char *argv[])
             
             //grid for planners
             avt_341::msg::OccupancyGrid grid;
-            BuildOccupancyGrid(grid, width, height, startX, startY, costmap2D);
+            BuildOccupancyGrid(grid, width, height, startX, startY, res, costmap2D);
             seg_grid_pub->publish(grid);
 
             //grid for RVIZ
             avt_341::msg::OccupancyGrid visGrid;
             bool forVisualization = true;
-            BuildOccupancyGrid(visGrid, width, height, startX, startY, costmap2D, forVisualization);
+            BuildOccupancyGrid(visGrid, width, height, startX, startY, res, costmap2D, forVisualization);
             seg_grid_vis_pub->publish(visGrid);
         }
         node->spin_some();
