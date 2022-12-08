@@ -86,6 +86,7 @@
     <param name="kp" value="10.0" /> <!-- attractive potential coeff -->
     <param name="eta" value="7.5" /> <!-- repulsive potential coeff -->
     <param name="cutoff_dist" value="40.0" /> <!-- obstacles farther than this are ignored -->
+    <param name="motion_model_res" value="0.25" />
     <param name="inner_cutoff_dist" value="0.0" /> <!-- obstacles closer than this are ignored -->
   </node>
 

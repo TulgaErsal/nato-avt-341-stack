@@ -15,6 +15,7 @@ PfPlanner::PfPlanner() {
 	inner_cutoff_dist_ = 1.5f;
 	seg_grid_set_ = false;
 	obs_cost_thresh_ = 0;
+	motion_model_res_ = 0.5f;
 }
 
 avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::msg::Odometry odom){
@@ -48,7 +49,7 @@ avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::ms
 	} // loop over i
 
 	// run the potential field algorithm
-	PotentialFieldPlanning(grid.info.origin.position.x, grid.info.origin.position.y, grid.info.resolution, sx, sy, gx, gy, ox, oy);
+	PotentialFieldPlanning(grid.info.origin.position.x, grid.info.origin.position.y, motion_model_res_, sx, sy, gx, gy, ox, oy);
 
 	// copy the result to a path message
 	avt_341::msg::Path path;
