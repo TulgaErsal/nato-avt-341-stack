@@ -63,6 +63,9 @@ public:
 	/// Set the threshold over which something would be considered an obstacle. Ranges from 0-100
 	void SetObstacleCostThreshold(int oct){ obs_cost_thresh_ = oct; }
 	
+	/// Set the size of the step for the motion model (meters)
+	void SetMotionModelRes(float res){motion_model_res_ = res;}
+
 private:
 	float Hypot(float x, float y);
     
@@ -80,6 +83,7 @@ private:
 	float eta_;
 	float obs_cutoff_dist_;
 	float inner_cutoff_dist_;
+	float motion_model_res_;
 	std::vector<float> rx_;
 	std::vector<float> ry_;
 	std::vector<float> old_rx_;

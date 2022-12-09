@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
   // planner params
-  float kp, eta, cutoff_dist, inner_cutoff_dist, rate;
+  float kp, eta, cutoff_dist, inner_cutoff_dist, rate, motion_model_res;
   bool use_global_path;
   int obs_cost_thresh;
   n->get_parameter("~kp", kp, 5.0f);
@@ -68,6 +68,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~obstacle_cost_thresh", obs_cost_thresh, 0);
   n->get_parameter("~cutoff_dist", cutoff_dist, 20.0f);
   n->get_parameter("~inner_cutoff_dist", inner_cutoff_dist, 1.5f);
+  n->get_parameter("~motion_model_res", motion_model_res, 0.5f);
   n->get_parameter("~use_global_path", use_global_path, false);
   n->get_parameter("~rate", rate, 50.0f);
 
@@ -77,6 +78,7 @@ int main(int argc, char *argv[]){
   planner.SetCutoffDistance(cutoff_dist);
   planner.SetInnerCutoff(inner_cutoff_dist);
   planner.SetObstacleCostThreshold(obs_cost_thresh);
+  planner.SetMotionModelRes(motion_model_res);
 
   unsigned int loop_count = 0;
   float dt = 1.0f / rate;

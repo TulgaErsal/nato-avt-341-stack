@@ -84,6 +84,7 @@ def generate_launch_description():
         DeclareLaunchArgument("eta" , default_value="7.5", description="repulsive potential coeff"),
         DeclareLaunchArgument("cutoff_dist" , default_value="40.0", description="obstacles farther than this are ignored"),
         DeclareLaunchArgument("inner_cutoff_dist" , default_value="0.0", description="obstacles closer than this are ignored"),
+        DeclareLaunchArgument("motion_model_res" , default_value="0.25", description="step size for the motion model in meters"),
 
         # Pure Pursuit Control
         DeclareLaunchArgument('vehicle_wheelbase', default_value='2.72', description="Pure pursuit controller - vehicle_wheelbase."),
@@ -194,6 +195,7 @@ def generate_launch_description():
                 'kp': launch.substitutions.LaunchConfiguration('kp'),
                 'eta': launch.substitutions.LaunchConfiguration('eta'),
                 'cutoff_dist': launch.substitutions.LaunchConfiguration('cutoff_dist'),
+                'motion_model_res': launch.substitutions.LaunchConfiguration('motion_model_res'),
                 'inner_cutoff_dist': launch.substitutions.LaunchConfiguration('inner_cutoff_dist'),
                 'display': display_type
             }],
