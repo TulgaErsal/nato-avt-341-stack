@@ -42,6 +42,7 @@ add_definitions(${PCL_DEFINITIONS})
 add_message_files(
  FILES
  Sinkage.msg
+ Obstacles.msg
 )
 
 generate_messages(
