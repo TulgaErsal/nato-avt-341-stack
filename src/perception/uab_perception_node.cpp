@@ -5,6 +5,9 @@
 #include "mclmcrrt.h"
 #include <vector>
 #include <array>
+#include <math.h>
+
+const float MATLAB_COSTMAP_DEFAULT_VAL = 0.5;
 
 avt_341::msg::Odometry current_pose;
 bool odom_received = false;
@@ -103,8 +106,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     {
         for (int j = 0; j < width; j++)
         {
-            //scale matlab costs up
-            grid.data[c++] = data[i][j] * 100;
+            grid.data[c++] = data[i][j];
         }
     }
 }
@@ -118,7 +120,13 @@ std::vector<std::vector<double>> to2D(std::vector<double> vec, float width, floa
     {
         for (int j = 0; j < width; j++)
         {
-            vec2D[i][j] = vec[c++];
+            //default Matlab OG value is 0.5 for some reason.
+            //there is no terrain value of 0.5, so we can assume that's just the default value.
+            vec[c] = (double)((int)(vec[c] * 100)) / 100;
+            if (vec[c] == MATLAB_COSTMAP_DEFAULT_VAL) vec[c] = 0;
+
+            //scale up cost from Matlab (0..1 -> 0..100)
+            vec2D[i][j] = vec[c++] * 100;
         }
     }
 
