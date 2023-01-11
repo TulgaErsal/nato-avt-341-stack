@@ -14,9 +14,8 @@ Clone the repo into your catkin_ws/src directory with the following command.
 git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 ```
 
-Next, since you are building on ROS-1, copy the appropriate CMake and package files.
+Next, since you are building on ROS-1, copy the appropriate package file.
 ```bash
-cp CMakeLists_ros1.txt CMakeLists.txt
 cp package_ros1.xml package.xml
 ```
 
@@ -55,9 +54,8 @@ Clone the repo into your catkin_ws/src directory with the following command.
 git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 ```
 
-Next, since you are building on ROS-2, copy the appropriate CMake and package files.
+Next, since you are building on ROS-2, copy the appropriate package file.
 ```bash
-cp CMakeLists_ros2.txt CMakeLists.txt
 cp package_ros2.xml package.xml
 ```
 
