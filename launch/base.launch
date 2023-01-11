@@ -152,6 +152,18 @@
     <param name="display" value="$(arg display_type)" />
   </node>
 
+  <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
+    <!-- Input Topic Names -->
+    <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+    <!-- Output Topic Names -->
+    <param name="cloud_ground_topic"                  value="/detection/lidar_detector/cloud_ground"/>
+    <param name="cloud_clusters_topic"                value="/detection/lidar_detector/cloud_clusters"/>
+    <param name="jsk_bboxes_topic"                    value="/detection/lidar_detector/jsk_bboxes"/>
+    <param name="autoware_objects_topic"              value="/detection/lidar_detector/objects"/>
+    <!-- Parameters -->
+    <param name="bbox_target_frame"                   value="base_link"/>
+  </node>
+
   <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
   <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz'))">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
