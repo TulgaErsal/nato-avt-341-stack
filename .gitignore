@@ -32,7 +32,6 @@
 *.app
 
 # custom
-CMakeLists.txt
 package.xml
 *mavs_config.txt
 *__pycache__

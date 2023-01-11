@@ -1,14 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
-project(avt_341)
-
-if($ENV{ROS_DISTRO} STREQUAL "noetic")
-  set(CMAKE_CXX_STANDARD 14)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  set(CMAKE_CXX_EXTENSIONS OFF)
-
-else()
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-endif()
+cmake_minimum_required(VERSION 3.5)
 
 if($ENV{ROS_DISTRO} STREQUAL "noetic")
   find_package(catkin REQUIRED COMPONENTS
