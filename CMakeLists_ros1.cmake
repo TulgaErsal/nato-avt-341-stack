@@ -1,21 +1,26 @@
 cmake_minimum_required(VERSION 3.5)
 
-if($ENV{ROS_DISTRO} STREQUAL "noetic")
+set(REQUIRED_ROS_PACKAGES
+  roscpp
+  rospy
+  std_msgs
+  tf
+  message_generation
+  tf2_ros
+  tf2_geometry_msgs
+  dynamic_reconfigure
+  autoware_msgs
+  jsk_recognition_msgs    
+)
+
+if($ENV{ROS_DISTRO} STREQUAL "noetic" OR $ENV{ROS_DISTRO} STREQUAL "melodic")
   find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    rospy
+    ${REQUIRED_ROS_PACKAGES}
     pcl_ros
-    std_msgs
-    tf
-    message_generation
   )
 else()
   find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    rospy
-    std_msgs
-    tf
-    message_generation
+    ${REQUIRED_ROS_PACKAGES}
   )
 endif()
 
@@ -24,6 +29,11 @@ add_definitions(-DROS_1)
 
 find_package(PCL REQUIRED)
 add_definitions(${PCL_DEFINITIONS})
+
+## Generate dynamic reconfigure parameters in the 'cfg' folder
+generate_dynamic_reconfigure_options(
+  config/obstacle_detector.cfg
+)
 
 #########################
 ## add custom messages ##
@@ -174,6 +184,22 @@ target_link_libraries(avt_bot_state_publisher_node
    ${catkin_LIBRARIES}
 )
 
+## lidar_obstacle_detector node
+add_executable(avt_341_lidar_obstacle_detector_node
+  ${LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES}
+)
+add_dependencies(avt_341_lidar_obstacle_detector_node 
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  # obstacle_detector_gencfg
+  ${PROJECT_NAME}
+)
+target_link_libraries(avt_341_lidar_obstacle_detector_node
+  ${catkin_LIBRARIES}
+  ${${PROJECT_NAME}_LIBRARY}
+  ${PROJECT_NAME}
+)
+
 set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
@@ -205,6 +231,7 @@ avt_341_control_node
 avt_341_local_planner_node
 avt_341_pf_planner_node
 avt_341_global_path_node
+avt_341_lidar_obstacle_detector_node
 avt_341_sim_test_node
 gps_to_enu_node
 gps_spoof_node
