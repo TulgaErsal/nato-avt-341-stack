@@ -1,12 +1,13 @@
 <launch>
 
-  <param name="/use_sim_time" value="false"/>
+
 
   <!-- General  -->
   <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
   <arg name="auto_launch_rviz" default="true" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
   <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
   <arg name="robot_description_file" doc="URDF robot description file to use"/>
+  <arg name="use_sim_time" default="false" doc="Use sim time instead of wall time."/>  
 
   <!-- Elevation Grid  -->
   <arg name="use_elevation" default="false" doc="Elevation grid - To use elevation or slope value when making occupancy grid based on heightmap."/>
@@ -65,6 +66,7 @@
   <arg name="ff_a2" default="0.0" doc="2nd order coeff in the feed-forward model"/>
   <arg name="max_desired_lateral_g" default="0.75" doc="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2" />
 
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
   <rosparam file="$(arg waypoints_file)" />
   <param name="robot_description" command="cat $(arg robot_description_file)" />
 
