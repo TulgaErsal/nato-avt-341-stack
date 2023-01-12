@@ -220,7 +220,11 @@ def generate_launch_description():
             executable='rviz2',
             name='rviz2',
             condition=launch.conditions.IfCondition(auto_launch_rviz),
-            arguments=["-d", rviz_config_path])
+            arguments=["-d", rviz_config_path]),
+        Node(
+            package='avt_341',
+            executable='avt_341_grid_compression_node',
+            name='grid_compression')
     ])
 
     return launch_description
