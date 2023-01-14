@@ -111,7 +111,7 @@ Visualization Manager:
       Draw Behind: true
       Enabled: true
       Name: OccupancyGrid
-      Topic: /avt_341/occupancy_grid_vis
+      Topic: /avt_341/occupancy_grid
       Unreliable: false
       Use Timestamp: false
       Value: true

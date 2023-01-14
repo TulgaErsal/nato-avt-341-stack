@@ -213,7 +213,7 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
   return 0;
 }
 
-avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool row_major, bool is_segmentation){
+avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
   avt_341::msg::OccupancyGrid grid;
   grid.header.frame_id = "map";
   grid.info.resolution = res_;
@@ -228,18 +228,10 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool row_major, bool is_segme
   grid.data.resize(nx_*ny_);
   int c = 0;
 
-  if(row_major){
-    for (int j=0;j<ny_;j++){
-      for (int i=0;i<nx_;i++){
-        grid.data[c++] = is_segmentation ? (uint8_t)(cells_[i][j].terrain) : std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
+  for (int j = 0; j < ny_; j++) {
+      for (int i = 0; i < nx_; i++) {
+          grid.data[c++] = is_segmentation ? (uint8_t)(cells_[i][j].terrain) : std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
       }
-    }
-  }else{
-    for (int i=0;i<nx_;i++){
-      for (int j=0;j<ny_;j++){
-        grid.data[c++] = is_segmentation ? (uint8_t)(cells_[i][j].terrain) : std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
-      }
-    }
   }
   return grid;
 }
