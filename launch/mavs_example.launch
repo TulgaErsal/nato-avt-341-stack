@@ -1,24 +1,26 @@
 <launch>
 
-  <param name="/use_sim_time" value="false"/> 
+  <param name="/use_sim_time" value="false"/>
   <arg name="display" default="rviz"/>
   <arg name="auto_launch_rviz" default="true"/>
+  <arg name="use_mpc" default="false" doc="Local planner - Use MPC local planner instead of road centerline constrained splines."/>
+
 
   <rosparam file="$(find avt_341)/config/waypoints.yaml" />
 
   <param name="robot_description" command="cat $(find avt_341)/config/avt_bot.urdf" />
 
 
-  <group if="$(eval env('ROS_DISTRO') =='noetic')"> 
+  <group if="$(eval env('ROS_DISTRO') =='noetic')">
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
   </group>
-  <group if="$(eval env('ROS_DISTRO') =='melodic')"> 
+  <group if="$(eval env('ROS_DISTRO') =='melodic')">
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
   </group>
-  <group if="$(eval env('ROS_DISTRO') =='lunar')"> 
+  <group if="$(eval env('ROS_DISTRO') =='lunar')">
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
   </group>
-  <group if="$(eval env('ROS_DISTRO') =='kinetic')"> 
+  <group if="$(eval env('ROS_DISTRO') =='kinetic')">
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
   </group>
 
@@ -50,6 +52,8 @@
     <param name="warmup_time" value="5.0" />
     <param name="use_registered" value="true" />
     <param name="display" value="$(arg display)" />
+    <!-- <param name="grid_dilate" value="false"/>
+    <param name="max_point_age" value="0.0"/> -->
   </node>
 
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
@@ -84,8 +88,8 @@
   </node>
 
 
-  <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" >
-    <param name="path_look_ahead" value="20.0" /> 
+  <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))">
+    <param name="path_look_ahead" value="20.0" />
     <param name="vehicle_width" value="3.0" />
     <param name="use_global_path" value="false" />
     <param name="num_paths" value="31" />
@@ -96,7 +100,7 @@
     <param name="w_c" value="0.0" />
     <param name="w_s" value="0.95" />
     <param name="w_d" value="0.0" />
-    <param name="w_r" value="0.05" /> 
+    <param name="w_r" value="0.05" />
     <param name="rate" value="50.0" />
     <param name="trim_path" value="true" />
     <param name="display" value="$(arg display)" />
