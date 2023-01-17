@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES
-  include/lidar_obstacle_detector/box.hpp
-  include/lidar_obstacle_detector/obstacle_detector.hpp
-  src/lidar_obstacle_detector/obstacle_detector_node.cpp
+  include/avt_341/perception/box.hpp
+  include/avt_341/perception/lidar_obstacle_detector.hpp
+  src/perception/lidar_obstacle_detector_node.cpp
 )
 
 if($ENV{ROS_VERSION} EQUAL 1)

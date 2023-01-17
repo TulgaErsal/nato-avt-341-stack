@@ -27,8 +27,9 @@
 
 #include "box.hpp"
 
-namespace lidar_obstacle_detector
-{
+namespace avt_341{
+namespace perception{
+  
 template <typename PointT>
 class ObstacleDetector
 {
@@ -466,4 +467,5 @@ int ObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes, cons
   return -1;
 }
 
-} // namespace lidar_obstacle_detector
+} // namespace perception
+} // namespace avt_341

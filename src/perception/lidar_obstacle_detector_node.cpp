@@ -20,12 +20,12 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <dynamic_reconfigure/server.h>
-#include <lidar_obstacle_detector/obstacle_detector_Config.h>
+#include <avt_341/lidar_obstacle_detector_Config.h>
 
-#include "lidar_obstacle_detector/obstacle_detector.hpp"
+#include "avt_341/perception/lidar_obstacle_detector.hpp"
 
-namespace lidar_obstacle_detector 
-{
+namespace avt_341 {
+namespace perception {
 
 // Pointcloud Filtering Parameters
 bool USE_PCA_BOX;
@@ -52,8 +52,8 @@ class ObstacleDetectorNode
   ros::NodeHandle nh;
   tf2_ros::Buffer tf2_buffer;
   tf2_ros::TransformListener tf2_listener;
-  dynamic_reconfigure::Server<lidar_obstacle_detector::obstacle_detector_Config> server;
-  dynamic_reconfigure::Server<lidar_obstacle_detector::obstacle_detector_Config>::CallbackType f;
+  dynamic_reconfigure::Server<lidar_obstacle_detector::lidar_obstacle_detector_Config> server;
+  dynamic_reconfigure::Server<lidar_obstacle_detector::lidar_obstacle_detector_Config>::CallbackType f;
 
   ros::Subscriber sub_lidar_points;
   ros::Publisher pub_cloud_ground;
@@ -67,7 +67,7 @@ class ObstacleDetectorNode
 };
 
 // Dynamic parameter server callback function
-void dynamicParamCallback(lidar_obstacle_detector::obstacle_detector_Config& config, uint32_t level)
+void dynamicParamCallback(lidar_obstacle_detector::lidar_obstacle_detector_Config& config, uint32_t level)
 {
   // Pointcloud Filtering Parameters
   USE_PCA_BOX = config.use_pca_box;
@@ -238,13 +238,14 @@ void ObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pc
   curr_boxes_.clear();
 }
 
+} // namespace perception
+} // namespace avt_341
 
-} // namespace lidar_obstacle_detector
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "obstacle_detector_node");
-  lidar_obstacle_detector::ObstacleDetectorNode obstacle_detector_node;
+  avt_341::perception::ObstacleDetectorNode obstacle_detector_node;
   ros::spin();
   return 0;
 }
