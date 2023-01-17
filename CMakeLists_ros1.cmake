@@ -9,7 +9,6 @@ set(REQUIRED_ROS_PACKAGES
   tf2_ros
   tf2_geometry_msgs
   dynamic_reconfigure
-  autoware_msgs
   jsk_recognition_msgs    
 )
 

@@ -15,7 +15,6 @@
 
 #include <jsk_recognition_msgs/BoundingBox.h>
 #include <jsk_recognition_msgs/BoundingBoxArray.h>
-#include <autoware_msgs/DetectedObjectArray.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -60,12 +59,10 @@ class ObstacleDetectorNode
   ros::Publisher pub_cloud_ground;
   ros::Publisher pub_cloud_clusters;
   ros::Publisher pub_jsk_bboxes;
-  ros::Publisher pub_autoware_objects;
 
   void lidarPointsCallback(const sensor_msgs::PointCloud2::ConstPtr& lidar_points);
   void publishClouds(const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>&& segmented_clouds, const std_msgs::Header& header);
   jsk_recognition_msgs::BoundingBox transformJskBbox(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed);
-  autoware_msgs::DetectedObject transformAutowareObject(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed);
   void publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& cloud_clusters, const std_msgs::Header& header);
 };
 
@@ -94,20 +91,17 @@ ObstacleDetectorNode::ObstacleDetectorNode() : tf2_listener(tf2_buffer)
   std::string cloud_ground_topic;
   std::string cloud_clusters_topic;
   std::string jsk_bboxes_topic;
-  std::string autoware_objects_topic;
   
   ROS_ASSERT(private_nh.getParam("lidar_points_topic", lidar_points_topic));
   ROS_ASSERT(private_nh.getParam("cloud_ground_topic", cloud_ground_topic));
   ROS_ASSERT(private_nh.getParam("cloud_clusters_topic", cloud_clusters_topic));
   ROS_ASSERT(private_nh.getParam("jsk_bboxes_topic", jsk_bboxes_topic));
-  ROS_ASSERT(private_nh.getParam("autoware_objects_topic", autoware_objects_topic));
   ROS_ASSERT(private_nh.getParam("bbox_target_frame", bbox_target_frame_));
 
   sub_lidar_points = nh.subscribe(lidar_points_topic, 1, &ObstacleDetectorNode::lidarPointsCallback, this);
   pub_cloud_ground = nh.advertise<sensor_msgs::PointCloud2>(cloud_ground_topic, 1);
   pub_cloud_clusters = nh.advertise<sensor_msgs::PointCloud2>(cloud_clusters_topic, 1);
   pub_jsk_bboxes = nh.advertise<jsk_recognition_msgs::BoundingBoxArray>(jsk_bboxes_topic, 1);
-  pub_autoware_objects = nh.advertise<autoware_msgs::DetectedObjectArray>(autoware_objects_topic, 1);
 
   // Dynamic Parameter Server & Function
   f = boost::bind(&dynamicParamCallback, _1, _2);
@@ -177,24 +171,6 @@ jsk_recognition_msgs::BoundingBox ObstacleDetectorNode::transformJskBbox(const B
   return std::move(jsk_bbox);
 }
 
-
-autoware_msgs::DetectedObject ObstacleDetectorNode::transformAutowareObject(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed)
-{
-  autoware_msgs::DetectedObject autoware_object;
-  autoware_object.header = header;
-  autoware_object.id = box.id;
-  autoware_object.label = "unknown";
-  autoware_object.score = 1.0f;
-  autoware_object.pose = pose_transformed;
-  autoware_object.pose_reliable = true;
-  autoware_object.dimensions.x = box.dimension(0);
-  autoware_object.dimensions.y = box.dimension(1);
-  autoware_object.dimensions.z = box.dimension(2);
-  autoware_object.valid = true;
-
-  return std::move(autoware_object);
-}
-
 void ObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& cloud_clusters, const std_msgs::Header& header)
 {
   for (auto& cluster : cloud_clusters)
@@ -239,8 +215,6 @@ void ObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pc
   // Construct Bounding Boxes from the clusters
   jsk_recognition_msgs::BoundingBoxArray jsk_bboxes;
   jsk_bboxes.header = bbox_header;
-  autoware_msgs::DetectedObjectArray autoware_objects;
-  autoware_objects.header = bbox_header;
 
   // Transform boxes from lidar frame to base_link frame, and convert to jsk and autoware msg formats
   for (auto& box : curr_boxes_)
@@ -256,10 +230,8 @@ void ObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pc
     tf2::doTransform(pose, pose_transformed, transform_stamped);
 
     jsk_bboxes.boxes.emplace_back(transformJskBbox(box, bbox_header, pose_transformed));
-    autoware_objects.objects.emplace_back(transformAutowareObject(box, bbox_header, pose_transformed));
   }
   pub_jsk_bboxes.publish(std::move(jsk_bboxes));
-  pub_autoware_objects.publish(std::move(autoware_objects));
 
   // Update previous bounding boxes
   prev_boxes_.swap(curr_boxes_);
