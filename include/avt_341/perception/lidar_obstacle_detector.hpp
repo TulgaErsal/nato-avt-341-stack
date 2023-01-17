@@ -31,11 +31,11 @@ namespace avt_341{
 namespace perception{
   
 template <typename PointT>
-class ObstacleDetector
+class LidarObstacleDetector
 {
  public:
-  ObstacleDetector();
-  virtual ~ObstacleDetector();
+  LidarObstacleDetector();
+  virtual ~LidarObstacleDetector();
 
   // ****************** Detection ***********************
 
@@ -77,14 +77,14 @@ class ObstacleDetector
 
 // constructor:
 template <typename PointT>
-ObstacleDetector<PointT>::ObstacleDetector() {}
+LidarObstacleDetector<PointT>::LidarObstacleDetector() {}
 
 // de-constructor:
 template <typename PointT>
-ObstacleDetector<PointT>::~ObstacleDetector() {}
+LidarObstacleDetector<PointT>::~LidarObstacleDetector() {}
 
 template <typename PointT>
-typename pcl::PointCloud<PointT>::Ptr ObstacleDetector<PointT>::filterCloud(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float filter_res, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt)
+typename pcl::PointCloud<PointT>::Ptr LidarObstacleDetector<PointT>::filterCloud(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float filter_res, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt)
 {
   // Time segmentation process
   // const auto start_time = std::chrono::steady_clock::now();
@@ -130,7 +130,7 @@ typename pcl::PointCloud<PointT>::Ptr ObstacleDetector<PointT>::filterCloud(cons
 }
 
 template <typename PointT>
-std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ObstacleDetector<PointT>::separateClouds(const pcl::PointIndices::ConstPtr& inliers, const typename pcl::PointCloud<PointT>::ConstPtr& cloud)
+std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> LidarObstacleDetector<PointT>::separateClouds(const pcl::PointIndices::ConstPtr& inliers, const typename pcl::PointCloud<PointT>::ConstPtr& cloud)
 {
   typename pcl::PointCloud<PointT>::Ptr obstacle_cloud(new pcl::PointCloud<PointT>());
   typename pcl::PointCloud<PointT>::Ptr ground_cloud(new pcl::PointCloud<PointT>());
@@ -152,7 +152,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 }
 
 template <typename PointT>
-std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ObstacleDetector<PointT>::segmentPlane(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const int max_iterations, const float distance_thresh)
+std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> LidarObstacleDetector<PointT>::segmentPlane(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const int max_iterations, const float distance_thresh)
 {
   // Time segmentation process
   // const auto start_time = std::chrono::steady_clock::now();
@@ -184,7 +184,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr> ObstacleDetector<PointT>::clustering(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float cluster_tolerance, const int min_size, const int max_size)
+std::vector<typename pcl::PointCloud<PointT>::Ptr> LidarObstacleDetector<PointT>::clustering(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float cluster_tolerance, const int min_size, const int max_size)
 {
   // Time clustering process
   // const auto start_time = std::chrono::steady_clock::now();
@@ -226,7 +226,7 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ObstacleDetector<PointT>::clu
 }
 
 template <typename PointT>
-Box ObstacleDetector<PointT>::axisAlignedBoundingBox(const typename pcl::PointCloud<PointT>::ConstPtr& cluster, const int id)
+Box LidarObstacleDetector<PointT>::axisAlignedBoundingBox(const typename pcl::PointCloud<PointT>::ConstPtr& cluster, const int id)
 {
   // Find bounding box for one of the clusters
   PointT min_pt, max_pt;
@@ -239,7 +239,7 @@ Box ObstacleDetector<PointT>::axisAlignedBoundingBox(const typename pcl::PointCl
 }
 
 template <typename PointT>
-Box ObstacleDetector<PointT>::pcaBoundingBox(typename pcl::PointCloud<PointT>::Ptr& cluster, const int id)
+Box LidarObstacleDetector<PointT>::pcaBoundingBox(typename pcl::PointCloud<PointT>::Ptr& cluster, const int id)
 {
   // Compute the bounding box height (to be used later for recreating the box)
   PointT min_pt, max_pt;
@@ -279,7 +279,7 @@ Box ObstacleDetector<PointT>::pcaBoundingBox(typename pcl::PointCloud<PointT>::P
 
 // ************************* Tracking ***************************
 template <typename PointT>
-void ObstacleDetector<PointT>::obstacleTracking(const std::vector<Box>& prev_boxes, std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh)
+void LidarObstacleDetector<PointT>::obstacleTracking(const std::vector<Box>& prev_boxes, std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh)
 {
   // Tracking (based on the change in size and displacement between frames)
   
@@ -325,7 +325,7 @@ void ObstacleDetector<PointT>::obstacleTracking(const std::vector<Box>& prev_box
 }
 
 template <typename PointT>
-bool ObstacleDetector<PointT>::compareBoxes(const Box& a, const Box& b, const float displacement_thresh, const float iou_thresh)
+bool LidarObstacleDetector<PointT>::compareBoxes(const Box& a, const Box& b, const float displacement_thresh, const float iou_thresh)
 {
   // Percetage Displacements ranging between [0.0, +oo]
   const float dis = sqrt((a.position[0] - b.position[0]) * (a.position[0] - b.position[0]) + (a.position[1] - b.position[1]) * (a.position[1] - b.position[1]) + (a.position[2] - b.position[2]) * (a.position[2] - b.position[2]));
@@ -350,7 +350,7 @@ bool ObstacleDetector<PointT>::compareBoxes(const Box& a, const Box& b, const fl
 }
 
 template <typename PointT>
-std::vector<std::vector<int>> ObstacleDetector<PointT>::associateBoxes(const std::vector<Box>& prev_boxes, const std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh)
+std::vector<std::vector<int>> LidarObstacleDetector<PointT>::associateBoxes(const std::vector<Box>& prev_boxes, const std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh)
 {
   std::vector<std::vector<int>> connection_pairs;
 
@@ -370,7 +370,7 @@ std::vector<std::vector<int>> ObstacleDetector<PointT>::associateBoxes(const std
 }
 
 template <typename PointT>
-std::vector<std::vector<int>> ObstacleDetector<PointT>::connectionMatrix(const std::vector<std::vector<int>>& connection_pairs, std::vector<int>& left, std::vector<int>& right)
+std::vector<std::vector<int>> LidarObstacleDetector<PointT>::connectionMatrix(const std::vector<std::vector<int>>& connection_pairs, std::vector<int>& left, std::vector<int>& right)
 {
   // Hash the box ids in the connection_pairs to two vectors(sets), left and right
   for (auto& pair : connection_pairs)
@@ -420,7 +420,7 @@ std::vector<std::vector<int>> ObstacleDetector<PointT>::connectionMatrix(const s
 }
 
 template <typename PointT>
-bool ObstacleDetector<PointT>::hungarianFind(const int i, const std::vector<std::vector<int>>& connection_matrix, std::vector<bool>& right_connected, std::vector<int>& right_pair)
+bool LidarObstacleDetector<PointT>::hungarianFind(const int i, const std::vector<std::vector<int>>& connection_matrix, std::vector<bool>& right_connected, std::vector<int>& right_pair)
 {
   for (int j = 0; j < connection_matrix[0].size(); ++j)
   {
@@ -438,7 +438,7 @@ bool ObstacleDetector<PointT>::hungarianFind(const int i, const std::vector<std:
 }
 
 template <typename PointT>
-std::vector<int> ObstacleDetector<PointT>::hungarian(const std::vector<std::vector<int>>& connection_matrix)
+std::vector<int> LidarObstacleDetector<PointT>::hungarian(const std::vector<std::vector<int>>& connection_matrix)
 {
   std::vector<bool> right_connected(connection_matrix[0].size(), false);
   std::vector<int> right_pair(connection_matrix[0].size(), -1);
@@ -456,7 +456,7 @@ std::vector<int> ObstacleDetector<PointT>::hungarian(const std::vector<std::vect
 }
 
 template <typename PointT>
-int ObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes, const int id)
+int LidarObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes, const int id)
 {
   for (int i = 0; i < boxes.size(); i++)
   {

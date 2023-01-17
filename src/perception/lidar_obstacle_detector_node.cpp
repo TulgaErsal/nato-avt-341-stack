@@ -37,17 +37,17 @@ float CLUSTER_THRESH;
 int CLUSTER_MAX_SIZE, CLUSTER_MIN_SIZE;
 float DISPLACEMENT_THRESH, IOU_THRESH;
 
-class ObstacleDetectorNode
+class LidarObstacleDetectorNode
 {
  public:
-  ObstacleDetectorNode();
-  virtual ~ObstacleDetectorNode() {};
+  LidarObstacleDetectorNode();
+  virtual ~LidarObstacleDetectorNode() {};
 
  private:
   size_t obstacle_id_;
   std::string bbox_target_frame_, bbox_source_frame_;
   std::vector<Box> prev_boxes_, curr_boxes_;
-  std::shared_ptr<ObstacleDetector<pcl::PointXYZ>> obstacle_detector;
+  std::shared_ptr<LidarObstacleDetector<pcl::PointXYZ>> obstacle_detector;
 
   ros::NodeHandle nh;
   tf2_ros::Buffer tf2_buffer;
@@ -83,7 +83,7 @@ void dynamicParamCallback(lidar_obstacle_detector::lidar_obstacle_detector_Confi
   IOU_THRESH = config.iou_threshold;
 }
 
-ObstacleDetectorNode::ObstacleDetectorNode() : tf2_listener(tf2_buffer)
+LidarObstacleDetectorNode::LidarObstacleDetectorNode() : tf2_listener(tf2_buffer)
 {
   ros::NodeHandle private_nh("~");
   
@@ -98,7 +98,7 @@ ObstacleDetectorNode::ObstacleDetectorNode() : tf2_listener(tf2_buffer)
   ROS_ASSERT(private_nh.getParam("jsk_bboxes_topic", jsk_bboxes_topic));
   ROS_ASSERT(private_nh.getParam("bbox_target_frame", bbox_target_frame_));
 
-  sub_lidar_points = nh.subscribe(lidar_points_topic, 1, &ObstacleDetectorNode::lidarPointsCallback, this);
+  sub_lidar_points = nh.subscribe(lidar_points_topic, 1, &LidarObstacleDetectorNode::lidarPointsCallback, this);
   pub_cloud_ground = nh.advertise<sensor_msgs::PointCloud2>(cloud_ground_topic, 1);
   pub_cloud_clusters = nh.advertise<sensor_msgs::PointCloud2>(cloud_clusters_topic, 1);
   pub_jsk_bboxes = nh.advertise<jsk_recognition_msgs::BoundingBoxArray>(jsk_bboxes_topic, 1);
@@ -108,11 +108,11 @@ ObstacleDetectorNode::ObstacleDetectorNode() : tf2_listener(tf2_buffer)
   server.setCallback(f);
 
   // Create point processor
-  obstacle_detector = std::make_shared<ObstacleDetector<pcl::PointXYZ>>();
+  obstacle_detector = std::make_shared<LidarObstacleDetector<pcl::PointXYZ>>();
   obstacle_id_ = 0;
 }
 
-void ObstacleDetectorNode::lidarPointsCallback(const sensor_msgs::PointCloud2::ConstPtr& lidar_points)
+void LidarObstacleDetectorNode::lidarPointsCallback(const sensor_msgs::PointCloud2::ConstPtr& lidar_points)
 {
   ROS_DEBUG("lidar points recieved");
   // Time the whole process
@@ -143,7 +143,7 @@ void ObstacleDetectorNode::lidarPointsCallback(const sensor_msgs::PointCloud2::C
   ROS_INFO("The obstacle_detector_node found %d obstacles in %.3f second", int(prev_boxes_.size()), float(elapsed_time.count()/1000.0));
 }
 
-void ObstacleDetectorNode::publishClouds(const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>&& segmented_clouds, const std_msgs::Header& header)
+void LidarObstacleDetectorNode::publishClouds(const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>&& segmented_clouds, const std_msgs::Header& header)
 {
   sensor_msgs::PointCloud2::Ptr ground_cloud(new sensor_msgs::PointCloud2);
   pcl::toROSMsg(*(segmented_clouds.second), *ground_cloud);
@@ -157,7 +157,7 @@ void ObstacleDetectorNode::publishClouds(const std::pair<pcl::PointCloud<pcl::Po
   pub_cloud_clusters.publish(std::move(obstacle_cloud));
 }
 
-jsk_recognition_msgs::BoundingBox ObstacleDetectorNode::transformJskBbox(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed)
+jsk_recognition_msgs::BoundingBox LidarObstacleDetectorNode::transformJskBbox(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed)
 {
   jsk_recognition_msgs::BoundingBox jsk_bbox;
   jsk_bbox.header = header;
@@ -171,7 +171,7 @@ jsk_recognition_msgs::BoundingBox ObstacleDetectorNode::transformJskBbox(const B
   return std::move(jsk_bbox);
 }
 
-void ObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& cloud_clusters, const std_msgs::Header& header)
+void LidarObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& cloud_clusters, const std_msgs::Header& header)
 {
   for (auto& cluster : cloud_clusters)
   {
@@ -245,7 +245,7 @@ void ObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointCloud<pc
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "obstacle_detector_node");
-  avt_341::perception::ObstacleDetectorNode obstacle_detector_node;
+  avt_341::perception::LidarObstacleDetectorNode obstacle_detector_node;
   ros::spin();
   return 0;
 }
