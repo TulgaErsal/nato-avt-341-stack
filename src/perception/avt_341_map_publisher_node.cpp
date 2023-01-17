@@ -12,7 +12,7 @@ std::vector<double> obs_x_list, obs_y_list, obs_r_list;
 float grid_res, grid_llx, grid_lly;
 float grid_width, grid_height;
 
-avt_341::msg::OccupancyGrid CreateGrid(bool row_major){
+avt_341::msg::OccupancyGrid CreateGrid(){
 	avt_341::msg::OccupancyGrid grid;
   grid.header.frame_id = "map";
   grid.info.resolution = grid_res;
@@ -29,10 +29,9 @@ avt_341::msg::OccupancyGrid CreateGrid(bool row_major){
   grid.data.resize(nx*ny);
   int c = 0;
 
-  if(row_major){
-    for (int j=0;j<ny;j++){
+	for (int j=0;j<ny;j++){
 			double y = grid_lly + (j+0.5)*grid_res;
-      for (int i=0;i<nx;i++){
+	  for (int i=0;i<nx;i++){
 				double x = grid_llx + (i+0.5)*grid_res;
 				int cost = 0;
 				for (int k=0;k<obs_x_list.size();k++){
@@ -41,26 +40,9 @@ avt_341::msg::OccupancyGrid CreateGrid(bool row_major){
 					double d = sqrt(dx*dx + dy*dy);
 					if (d<obs_r_list[k]+grid_res) cost = 100;
 				}
-        grid.data[c++] = cost;
-      }
-    }
-  }
-	else {
-    for (int i=0;i<nx;i++){
-			double x = grid_llx + (i+0.5)*grid_res;
-      for (int j=0;j<ny;j++){
-				double y = grid_lly + (j+0.5)*grid_res;
-        int cost = 0;
-				for (int k=0;k<obs_x_list.size();k++){
-					double dx = x - obs_x_list[k];
-					double dy = y - obs_y_list[k];
-					double d = sqrt(dx*dx + dy*dy);
-					if (d<obs_r_list[k]+grid_res) cost = 100;
-				}
-        grid.data[c++] = cost;
-      }
-    }
-  }
+	    grid.data[c++] = cost;
+	  }
+	}
   return grid;
 }
 
@@ -75,9 +57,6 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~grid_llx", grid_llx, -100.0f);
   n->get_parameter("~grid_lly", grid_lly, -100.0f);
 
-	std::string display;
-  n->get_parameter("~display", display, std::string("image"));
-
   n->get_parameter("/obstacles_x", obs_x_list, std::vector<double>(0));
   n->get_parameter("/obstacles_y", obs_y_list, std::vector<double>(0));
 	n->get_parameter("/obstacles_r", obs_r_list, std::vector<double>(0));
@@ -87,14 +66,7 @@ int main(int argc, char *argv[]) {
 		exit(29);
 	}
 
-  bool use_rviz = display == "rviz";
-  std::shared_ptr<avt_341::node::Publisher<avt_341::msg::OccupancyGrid>> grid_pub_vis;
-  if(use_rviz){
-    grid_pub_vis = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid_vis", 1);
-  }
-
-	avt_341::msg::OccupancyGrid grd = CreateGrid(false);
-	avt_341::msg::OccupancyGrid grd_vis = CreateGrid( true);
+	avt_341::msg::OccupancyGrid grd = CreateGrid();
 
 	int nloops = 0;
 	avt_341::node::Rate rate(100.0);
@@ -102,11 +74,6 @@ int main(int argc, char *argv[]) {
 
     grd.header.stamp = n->get_stamp();
 		grid_pub->publish(grd);
-
-		if(use_rviz && nloops % 10 == 0){
-			grd_vis.header.stamp = n->get_stamp();
-			grid_pub_vis->publish(grd_vis);
-		}
 		nloops++;
 		n->spin_some();
 		rate.sleep();
