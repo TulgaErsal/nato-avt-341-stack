@@ -97,7 +97,7 @@ void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		channel_values.push_back(std::vector<float>());
 	}
 	if (converted && fabs(dt)<time_register_window && odom_rcvd){
-    avt_341::msg_tf::Quaternion q(pose_to_use.pose.pose.orientation.x, pose_to_use.pose.pose.orientation.y, pose_to_use.pose.pose.orientation.z, current_pose.pose.pose.orientation.w);
+    avt_341::msg_tf::Quaternion q(pose_to_use.pose.pose.orientation.x, pose_to_use.pose.pose.orientation.y, pose_to_use.pose.pose.orientation.z, pose_to_use.pose.pose.orientation.w);
     avt_341::msg_tf::Matrix3x3 R(q);
     avt_341::msg_tf::Vector3 origin(pose_to_use.pose.pose.position.x, pose_to_use.pose.pose.position.y, pose_to_use.pose.pose.position.z);
 		std::vector<avt_341::msg::Point32> points;
