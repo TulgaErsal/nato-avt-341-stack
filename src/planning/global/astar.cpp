@@ -341,9 +341,9 @@ std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid *gr
 	std::vector<float> gr;
 	gr = GetCurrentGoal();
   int n =0;
-	for (int i=0;i<width_;i++){
-		for (int j = 0; j < height_; j++) {
-			SetMapValue(i, j, grid->data[n], has_segmentation ? grid_segmentation->data[n] : 0);
+	for (int yi=0;yi< height_;yi++){
+		for (int xi = 0; xi < width_; xi++) {
+			SetMapValue(xi, yi, grid->data[n], has_segmentation ? grid_segmentation->data[n] : 0);
       n++;
 		}
 	}
