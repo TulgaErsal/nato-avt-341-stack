@@ -97,7 +97,7 @@ void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		channel_values.push_back(std::vector<float>());
 	}
 	if (converted && fabs(dt)<time_register_window && odom_rcvd){
-    avt_341::msg_tf::Quaternion q(pose_to_use.pose.pose.orientation.x, pose_to_use.pose.pose.orientation.y, pose_to_use.pose.pose.orientation.z, current_pose.pose.pose.orientation.w);
+    avt_341::msg_tf::Quaternion q(pose_to_use.pose.pose.orientation.x, pose_to_use.pose.pose.orientation.y, pose_to_use.pose.pose.orientation.z, pose_to_use.pose.pose.orientation.w);
     avt_341::msg_tf::Matrix3x3 R(q);
     avt_341::msg_tf::Vector3 origin(pose_to_use.pose.pose.position.x, pose_to_use.pose.pose.position.y, pose_to_use.pose.pose.position.z);
 		std::vector<avt_341::msg::Point32> points;
@@ -163,7 +163,6 @@ int main(int argc, char *argv[]) {
 
     float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion;
     bool use_elevation, grid_dilate;
-    std::string display;
 
 	n->get_parameter("~grid_res", grid_res, 1.0f);
 	n->get_parameter("~grid_llx", grid_llx, -100.0f);
@@ -178,7 +177,6 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~grid_dilate_y", grid_dilate_y, 2.0f);
 	n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
 	n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
-	n->get_parameter("~display", display, std::string("image"));
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
 	float max_point_age = 5.0f;
@@ -189,15 +187,6 @@ int main(int argc, char *argv[]) {
     n->get_parameter("~cull_lidar", cull_lidar_points, false);
     n->get_parameter("~cull_lidar_dist", cull_lidar_points_dist, 100.0f);
     cull_lidar_points_dist_sqr = cull_lidar_points_dist * cull_lidar_points_dist;
-
-
-  bool use_rviz = display == "rviz";
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::OccupancyGrid>> grid_pub_vis;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::OccupancyGrid>> grid_segmentation_vis_pub;
-    if(use_rviz){
-      grid_pub_vis = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid_vis", 1);
-      grid_segmentation_vis_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid_vis", 1);
-    }
 
 	grid.SetSlopeThreshold(thresh);
 	grid.SetRes(grid_res);
@@ -220,21 +209,11 @@ int main(int argc, char *argv[]) {
 			grid_pub->publish(grd);
 
 			if(grid.has_segmentation()){
-				grd = grid.GetGrid(false, true);
+				grd = grid.GetGrid(true);
 				grd.header.stamp = n->get_stamp();
 				grid_segmentation_pub->publish(grd);
 			}
 
-			if(use_rviz && nloops % 10 == 0){
-				avt_341::msg::OccupancyGrid grd_vis = grid.GetGrid( true);
-				grd_vis.header.stamp = n->get_stamp();
-				grid_pub_vis->publish(grd_vis);
-				if(grid.has_segmentation()){
-					grd_vis = grid.GetGrid(true, true);
-					grd_vis.header.stamp = n->get_stamp();
-					grid_segmentation_vis_pub->publish(grd_vis);
-				}
-			}
 			nloops++;
 
 		}

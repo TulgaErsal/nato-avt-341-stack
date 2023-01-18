@@ -84,8 +84,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
                         float startX,
                         float startY,
                         float res,
-                        std::vector<std::vector<double>> data,
-                        bool forVisualization = false)
+                        std::vector<std::vector<double>> data)
 {
     grid.header.frame_id = "map";
     grid.info.resolution = res;
@@ -100,28 +99,12 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.data.resize(width*height);
 
     int c = 0;
-    if (forVisualization)
+    for (int i = 0; i < height; i++)
     {
-        //RVIZ expects row major order
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                //scale matlab costs up
-                grid.data[c++] = data[i][j] * 100;
-            }
-        }
-    }
-    else
-    {
-        //planners expect column major order
         for (int j = 0; j < width; j++)
         {
-            for (int i = 0; i < height; i++)
-            {
-                //scale matlab costs up
-                grid.data[c++] = data[i][j] * 100;
-            }
+            //scale matlab costs up
+            grid.data[c++] = data[i][j] * 100;
         }
     }
 }
@@ -151,7 +134,6 @@ int main(int argc, char *argv[])
     auto img_sub = node->create_subscription<avt_341::msg::Image>("camera/rgb/image_raw", 10, ImageCallback);
 
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
-    auto seg_grid_vis_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid_vis", 1);
 
     float width;
     node->get_parameter("~grid_width", width, 100.0f);
@@ -197,16 +179,9 @@ int main(int argc, char *argv[])
             std::vector<double> costmap = GetCostmapFromMatlab(costs);
             std::vector<std::vector<double>> costmap2D = to2D(costmap, width, height);
             
-            //grid for planners
             avt_341::msg::OccupancyGrid grid;
             BuildOccupancyGrid(grid, width, height, startX, startY, res, costmap2D);
             seg_grid_pub->publish(grid);
-
-            //grid for RVIZ
-            avt_341::msg::OccupancyGrid visGrid;
-            bool forVisualization = true;
-            BuildOccupancyGrid(visGrid, width, height, startX, startY, res, costmap2D, forVisualization);
-            seg_grid_vis_pub->publish(visGrid);
         }
         node->spin_some();
         rate.sleep();
