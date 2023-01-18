@@ -5,10 +5,11 @@
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_broadcaster.h>
 
-geometry_msgs::Pose pose;
+nav_msgs::Odometry odometry;
+geometry_msgs::Pose &pose = odometry.pose.pose;
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
-    std::cout<<"State publisher recieved odometry "<<std::endl;
-	pose = rcv_odom->pose.pose;
+  std::cout<<"State publisher recieved odometry "<<std::endl;
+	odometry = *(rcv_odom.get());
 }
 
 int main(int argc, char** argv) {
@@ -34,13 +35,13 @@ int main(int argc, char** argv) {
     ros::Rate loop_rate(100.0);
     while (ros::ok()) {
         //update joint_state
-        joint_state.header.stamp = ros::Time::now();
+        joint_state.header.stamp = odometry.header.stamp;
         joint_state.name.resize(3);
         joint_state.position.resize(3);
         joint_state.name[0] ="lidar_joint";
         joint_state.position[0] = 0.0;
         
-        odom_trans.header.stamp = ros::Time::now();
+        odom_trans.header.stamp = odometry.header.stamp;
         odom_trans.transform.translation.x = pose.position.x;
         odom_trans.transform.translation.y = pose.position.y;
         odom_trans.transform.translation.z = pose.position.z;
@@ -51,7 +52,7 @@ int main(int argc, char** argv) {
         broadcaster.sendTransform(odom_trans);
 
         // map to odom broadcast transform
-        tf_map_to_odom.stamp_ = ros::Time::now();
+        tf_map_to_odom.stamp_ = odometry.header.stamp;
         //tf_map_to_odom.setOrigin(tf::Vector3(pose.position.x, pose.position.y, pose.position.z));
         //tf_map_to_odom.setRotation(tf::Quaternion(pose.orientation.x, pose.orientation.y,
         //                                          pose.orientation.z,pose.orientation.w));
@@ -81,10 +82,11 @@ int main(int argc, char** argv) {
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 
-geometry_msgs::msg::Pose pose;
+nav_msgs::Odometry odometry;
+geometry_msgs::Pose &pose = odometry.pose.pose;
 void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr rcv_odom){
   std::cout<<"State publisher recieved odometry "<<std::endl;
-  pose = rcv_odom->pose.pose;
+  odometry = *(rcv_odom.get());
 }
 
 int main(int argc, char** argv) {
@@ -109,13 +111,13 @@ int main(int argc, char** argv) {
   rclcpp::Rate loop_rate(100.0);
   while (rclcpp::ok()) {
     //update joint_state
-    joint_state.header.stamp = n->get_clock()->now();
+    joint_state.header.stamp = odometry.header.stamp;
     joint_state.name.resize(3);
     joint_state.position.resize(3);
     joint_state.name[0] ="lidar_joint";
     joint_state.position[0] = 0.0;
 
-    odom_trans.header.stamp = n->get_clock()->now();
+    odom_trans.header.stamp = odometry.header.stamp;
     odom_trans.transform.translation.x = pose.position.x;
     odom_trans.transform.translation.y = pose.position.y;
     odom_trans.transform.translation.z = pose.position.z;
@@ -126,7 +128,7 @@ int main(int argc, char** argv) {
     broadcaster.sendTransform(odom_trans);
 
     // map to odom broadcast transform
-    tf_map_to_odom.header.stamp = n->get_clock()->now();
+    tf_map_to_odom.header.stamp = odometry.header.stamp;
     tf_map_to_odom.transform.translation.x = 0.0;
     tf_map_to_odom.transform.translation.y = 0.0;
     tf_map_to_odom.transform.translation.z = 0.0;
