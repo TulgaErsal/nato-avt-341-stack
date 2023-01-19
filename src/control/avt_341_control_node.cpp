@@ -37,7 +37,6 @@ void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
 void DesiredSpeedCallback(avt_341::msg::Float64Ptr rcv_des_speed) {
 	desired_speed = rcv_des_speed->data;
   des_speed_rcvd = true; 
-  std::cout<<"Desired speed = "<<desired_speed<<std::endl;
 }
 
 
@@ -214,7 +213,6 @@ int main(int argc, char *argv[]){
       }
       if (des_speed_rcvd){
         desired_velocity = desired_speed;
-        std::cout<<"Settign desired velocity to "<<desired_speed<<std::endl;
       }
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);

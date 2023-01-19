@@ -33,6 +33,7 @@
 
 # custom
 package.xml
+CMakeLists.txt
 *mavs_config.txt
 *__pycache__
 
