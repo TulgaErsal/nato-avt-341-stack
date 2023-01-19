@@ -22,6 +22,8 @@ int current_run_state = -1;   // startup state
 bool shutdown_condition = false;
 double mrzr_speedometer = 0.0;
 bool speedometer_rcvd = false;
+bool des_speed_rcvd = false;
+float desired_speed = 0.0f;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_state) {
 	state = *rcv_state; 
@@ -31,6 +33,13 @@ void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
 	mrzr_speedometer = rcv_speed->data;
   speedometer_rcvd = true; 
 }
+
+void DesiredSpeedCallback(avt_341::msg::Float64Ptr rcv_des_speed) {
+	desired_speed = rcv_des_speed->data;
+  des_speed_rcvd = true; 
+  std::cout<<"Desired speed = "<<desired_speed<<std::endl;
+}
+
 
 void PathCallback(avt_341::msg::PathPtr rcv_control){
   control_msg.poses = rcv_control->poses;
@@ -91,6 +100,8 @@ int main(int argc, char *argv[]){
   auto control_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/state",1,StateCallback);
 
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",1,SpeedCallback);
+
+  auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
 
 
   avt_341::control::PurePursuitController controller;
@@ -200,6 +211,10 @@ int main(int argc, char *argv[]){
       if (lateral_g_force>max_desired_lateral_g){
         desired_velocity = sqrt(9.806*max_desired_lateral_g/max_curvature);
         if (desired_velocity>vehicle_speed)desired_velocity=vehicle_speed;
+      }
+      if (des_speed_rcvd){
+        desired_velocity = desired_speed;
+        std::cout<<"Settign desired velocity to "<<desired_speed<<std::endl;
       }
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);
