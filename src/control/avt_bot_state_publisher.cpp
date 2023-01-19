@@ -82,8 +82,8 @@ int main(int argc, char** argv) {
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 
-nav_msgs::Odometry odometry;
-geometry_msgs::Pose &pose = odometry.pose.pose;
+nav_msgs::msg::Odometry odometry;
+geometry_msgs::msg::Pose &pose = odometry.pose.pose;
 void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr rcv_odom){
   std::cout<<"State publisher recieved odometry "<<std::endl;
   odometry = *(rcv_odom.get());
