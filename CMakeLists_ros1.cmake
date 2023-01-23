@@ -1,3 +1,5 @@
+project(avt_341)
+
 cmake_minimum_required(VERSION 3.5)
 
 if($ENV{ROS_DISTRO} STREQUAL "noetic")
@@ -118,6 +120,15 @@ target_link_libraries(avt_341_control_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(speed_control_test_node
+  src/control/speed_control_test_node.cpp
+  src/node/node_proxy.cpp
+)
+
+target_link_libraries(speed_control_test_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(avt_341_local_planner_node
   src/planning/local/avt_341_local_planner_node.cpp
   src/planning/local/spline_path.cpp
@@ -209,6 +220,7 @@ avt_341_sim_test_node
 gps_to_enu_node
 gps_spoof_node
 path_manager_node
+speed_control_test_node
 avt_bot_state_publisher_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

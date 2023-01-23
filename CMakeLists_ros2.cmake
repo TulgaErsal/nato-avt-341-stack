@@ -1,3 +1,5 @@
+project(avt_341)
+
 cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
@@ -68,6 +70,12 @@ add_executable(avt_341_control_node
         )
 ament_target_dependencies(avt_341_control_node ${dependencies})
 
+add_executable(speed_control_test_node
+        src/control/speed_control_test_node.cpp
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(speed_control_test_node ${dependencies})
+
 add_executable(avt_341_local_planner_node
         src/planning/local/avt_341_local_planner_node.cpp
         src/planning/local/spline_path.cpp
@@ -81,7 +89,6 @@ ament_target_dependencies(avt_341_local_planner_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_local_planner_node
         ${link_libs}
         )
-
 
 add_executable(avt_341_pf_planner_node 
         src/planning/local/avt_341_pf_planner_node.cpp 
@@ -166,6 +173,7 @@ install(TARGETS
         avt_341_global_path_node
         avt_341_sim_test_node
         avt_bot_state_publisher_node
+        speed_control_test_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
