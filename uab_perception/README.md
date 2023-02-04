@@ -1,4 +1,7 @@
 # UAB Perception ROS2 Node
+
+## The DLL is available [here](https://drive.google.com/file/d/1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X/view?usp=sharing)
+
 ## Performs semantic segmentation on camera images using the DeepLab V3+ architecture and fuses with LiDAR pointcloud data to create a costmap based on vehicle traversability. Requires MATLAB 2022a Runtime.
 
 The `uab_perception_node` is a C++ wrapper for the machine learning model written in MATLAB. This is easier to build/run due to issues with ROS2 support in MATLAB, but decreases performance.
