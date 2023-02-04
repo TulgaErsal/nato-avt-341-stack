@@ -1,6 +1,6 @@
 # UAB Perception ROS2 Node
 
-## The DLL is available [here](https://drive.google.com/file/d/1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X/view?usp=sharing)
+## The DLL is available [here](https://drive.google.com/file/d/1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X/view?usp=sharing). It has been moved because of the GitHub bandwidth and storage limits on private repositories.
 
 ## Performs semantic segmentation on camera images using the DeepLab V3+ architecture and fuses with LiDAR pointcloud data to create a costmap based on vehicle traversability. Requires MATLAB 2022a Runtime.
 
