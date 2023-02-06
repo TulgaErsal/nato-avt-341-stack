@@ -87,7 +87,7 @@ void Plotter::Display(bool save, const std::string & ofname, int nx, int ny) {
 			float y = y_lo_ + (j + 0.5f)*pixdim_;
 			int idy = (int)floor((y - grid_.info.origin.position.y) / grid_.info.resolution);
 			if (idx >= 0 && idx < (int)grid_.info.width && idy >= 0 && idy <= (int)grid_.info.height) {
-				int n = idx * grid_.info.height + idy;
+				int n = idy * grid_.info.width + idx;
 				if (grid_.data[n] > 0) {
           visualizer_->draw_point(i,j,red);
 				}

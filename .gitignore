@@ -33,5 +33,14 @@
 
 # custom
 package.xml
+CMakeLists.txt
 *mavs_config.txt
 *__pycache__
+
+# Clion
+.idea
+cmake-build-debug
+
+# Visual Studio
+.vs
+out/build

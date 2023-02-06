@@ -5,6 +5,9 @@
 #include "mclmcrrt.h"
 #include <vector>
 #include <array>
+#include <math.h>
+
+const float MATLAB_COSTMAP_DEFAULT_VAL = 0.5;
 
 avt_341::msg::Odometry current_pose;
 bool odom_received = false;
@@ -84,8 +87,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
                         float startX,
                         float startY,
                         float res,
-                        std::vector<std::vector<double>> data,
-                        bool forVisualization = false)
+                        std::vector<double> data)
 {
     grid.header.frame_id = "map";
     grid.info.resolution = res;
@@ -100,46 +102,18 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.data.resize(width*height);
 
     int c = 0;
-    if (forVisualization)
+    for (double val : data)
     {
-        //RVIZ expects row major order
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                //scale matlab costs up
-                grid.data[c++] = data[i][j] * 100;
-            }
-        }
-    }
-    else
-    {
-        //planners expect column major order
-        for (int j = 0; j < width; j++)
-        {
-            for (int i = 0; i < height; i++)
-            {
-                //scale matlab costs up
-                grid.data[c++] = data[i][j] * 100;
-            }
-        }
-    }
-}
+        //default Matlab OG value is 0.5 for some reason.
+        //there is no terrain value of 0.5, so we can assume that's just the default value.
+        val = (double)((int)(val * 100)) / 100;
+        if (val == MATLAB_COSTMAP_DEFAULT_VAL) val = 0;
 
-std::vector<std::vector<double>> to2D(std::vector<double> vec, float width, float height)
-{
-    //1d -> 2d
-    std::vector<std::vector<double>> vec2D(height, std::vector<double>(width));
-    int c = 0;
-    for (int i = 0; i < height; i++)
-    {
-        for (int j = 0; j < width; j++)
-        {
-            vec2D[i][j] = vec[c++];
-        }
-    }
+        //scale up cost from Matlab (0..1 -> 0..100)
+        val *= 100;
 
-    return vec2D;
+        grid.data[c++] = val;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -151,7 +125,6 @@ int main(int argc, char *argv[])
     auto img_sub = node->create_subscription<avt_341::msg::Image>("camera/rgb/image_raw", 10, ImageCallback);
 
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
-    auto seg_grid_vis_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid_vis", 1);
 
     float width;
     node->get_parameter("~grid_width", width, 100.0f);
@@ -195,18 +168,10 @@ int main(int argc, char *argv[])
         {
             std::vector<double> costs(width * height);
             std::vector<double> costmap = GetCostmapFromMatlab(costs);
-            std::vector<std::vector<double>> costmap2D = to2D(costmap, width, height);
             
-            //grid for planners
             avt_341::msg::OccupancyGrid grid;
-            BuildOccupancyGrid(grid, width, height, startX, startY, res, costmap2D);
+            BuildOccupancyGrid(grid, width, height, startX, startY, res, costmap);
             seg_grid_pub->publish(grid);
-
-            //grid for RVIZ
-            avt_341::msg::OccupancyGrid visGrid;
-            bool forVisualization = true;
-            BuildOccupancyGrid(visGrid, width, height, startX, startY, res, costmap2D, forVisualization);
-            seg_grid_vis_pub->publish(visGrid);
         }
         node->spin_some();
         rate.sleep();

@@ -130,12 +130,12 @@ void Planner::DilateGrid(avt_341::msg::OccupancyGrid &grid, int x, float llx, fl
 
 	for (int i=ix+x;i<imax_x-x;i++){
 		for (int j=iy+x;j<imax_y-x;j++){
-			int n = i*grid.info.height+j;
+			int n = j*grid.info.width+i;
 			for (int ii=-x;ii<=x;ii++){
 				for (int jj=-x;jj<=x;jj++){
 					int iii = i+ii;
 					int jjj = j+jj;
-					int nd = iii*grid.info.height+jjj;
+					int nd = jjj*grid.info.width+iii;
 					new_data[n] = std::max(new_data[n],grid.data[nd]);
 				}
 			}
@@ -157,7 +157,7 @@ void Planner::CalculateStaticSafetyAndSegCost(const avt_341::msg::OccupancyGrid 
 			int ix = (int)floor((p.x - grid.info.origin.position.x) / grid.info.resolution);
 			int iy = (int)floor((p.y - grid.info.origin.position.y) / grid.info.resolution);
 			if (ix >= 0 && ix < (int)grid.info.width && iy >= 0 && iy < (int)grid.info.height) {
-				int ndx = ix * grid.info.height + iy;
+				int ndx = iy * grid.info.width + ix;
 				stat_safe += grid.data[ndx];
 				traj_seg_cost += (has_segmentation ? grid_seg.data[ndx] : 0.0f);
 			}

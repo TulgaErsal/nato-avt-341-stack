@@ -128,7 +128,7 @@ class ElevationGrid{
         dilate_ = use_dil;
     }
 
-    avt_341::msg::OccupancyGrid GetGrid(bool row_major=false, bool is_segmentation=false);
+    avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation=false);
 
     void SetCorner(float llx, float lly){
         llx_ = llx;
