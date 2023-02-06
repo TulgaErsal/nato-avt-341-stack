@@ -27,13 +27,13 @@ avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::ms
 
 	// first populate the obstacle list from the current grid
 	std::vector<float> ox, oy;
-	int ndx = 0;
 	for (int i = 0; i < grid.info.width; i++){
 		float x = grid.info.origin.position.x + (i + 0.5f) * grid.info.resolution;
 		float dx = sx - x;
 		for (int j = 0; j < grid.info.height; j++){
 			float y = grid.info.origin.position.y + (j + 0.5f) * grid.info.resolution;
 			float dy = sy - y;
+			unsigned int ndx = j * grid.info.width + i;
 			int cost = grid.data[ndx];
 			if (seg_grid_set_ && seg_grid_.info.height==grid.info.height && seg_grid_.info.width==grid.info.width) cost += seg_grid_.data[ndx];
 			//if (grid.data[ndx] > 0){
@@ -44,7 +44,6 @@ avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::ms
 					oy.push_back(y);
 				} // if closer than cutoff distance
 			} // if cell occupied
-			ndx++;
 		} // loop over j
 	} // loop over i
 
