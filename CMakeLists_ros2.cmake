@@ -4,6 +4,15 @@ set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
+###########################
+## download the UAB dll ##
+##########################
+file(DOWNLOAD
+  https://drive.google.com/uc?export=download&id=1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ALgDtsyupXZiPm3DJaloDSGQrRXG:1675708587711
+  ../src/nato-avt-341-stack/uab_perception/perception_wrapper.dll
+  SHOW_PROGRESS
+)
+
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -83,8 +92,8 @@ target_link_libraries(avt_341_local_planner_node
         )
 
 
-add_executable(avt_341_pf_planner_node 
-        src/planning/local/avt_341_pf_planner_node.cpp 
+add_executable(avt_341_pf_planner_node
+        src/planning/local/avt_341_pf_planner_node.cpp
         src/planning/local/pf_planner.cpp
         src/node/node_proxy.cpp
         src/visualization/image_visualizer.cpp
