@@ -129,6 +129,17 @@ target_link_libraries(avt_341_control_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(avt_341_speed_control_node
+  src/control/avt_341_speed_control_node.cpp
+  src/control/pure_pursuit_controller.cpp
+  src/control/pid_controller.cpp
+  src/node/node_proxy.cpp
+)
+
+target_link_libraries(avt_341_speed_control_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(speed_control_test_node
   src/control/speed_control_test_node.cpp
   src/node/node_proxy.cpp
