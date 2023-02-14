@@ -11,7 +11,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 ##########################
 file(DOWNLOAD
   https://drive.google.com/uc?export=download&id=1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ALgDtsyupXZiPm3DJaloDSGQrRXG:1675708587711
-  ../src/nato-avt-341-stack/uab_perception/perception_wrapper.dll
+  ${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll
   SHOW_PROGRESS
 )
 
@@ -99,14 +99,8 @@ target_link_libraries(avt_341_local_planner_node
         ${link_libs}
         )
 
-<<<<<<< HEAD
-
 add_executable(avt_341_pf_planner_node
         src/planning/local/avt_341_pf_planner_node.cpp
-=======
-add_executable(avt_341_pf_planner_node 
-        src/planning/local/avt_341_pf_planner_node.cpp 
->>>>>>> ea4297fba55f624b23436e05e84be1ce774a7f6d
         src/planning/local/pf_planner.cpp
         src/node/node_proxy.cpp
         src/visualization/image_visualizer.cpp
