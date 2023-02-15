@@ -1,3 +1,5 @@
+project(avt_341)
+
 cmake_minimum_required(VERSION 3.5)
 
 set(REQUIRED_ROS_PACKAGES
@@ -23,6 +25,15 @@ else()
   )
 endif()
 
+
+###########################
+## download the UAB dll ##
+##########################
+file(DOWNLOAD
+  https://drive.google.com/uc?export=download&id=1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ALgDtsyupXZiPm3DJaloDSGQrRXG:1675708587711
+  ${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll
+  SHOW_PROGRESS
+)
 
 add_definitions(-DROS_1)
 
@@ -124,6 +135,15 @@ add_executable(avt_341_control_node
 )
 
 target_link_libraries(avt_341_control_node
+  ${catkin_LIBRARIES}
+)
+
+add_executable(speed_control_test_node
+  src/control/speed_control_test_node.cpp
+  src/node/node_proxy.cpp
+)
+
+target_link_libraries(speed_control_test_node
   ${catkin_LIBRARIES}
 )
 
@@ -235,6 +255,7 @@ avt_341_sim_test_node
 gps_to_enu_node
 gps_spoof_node
 path_manager_node
+speed_control_test_node
 avt_bot_state_publisher_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
