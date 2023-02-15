@@ -228,10 +228,10 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 3
+          Size (Pixels): 6
           Size (m): 0.10000000149011612
-          Style: Flat Squares
-          Topic: /detection/lidar_detector/cloud_ground
+          Style: Points
+          Topic: /avt_341/lidar_detector/cloud_ground
           Unreliable: false
           Use Fixed Frame: false
           Use rainbow: true
@@ -258,10 +258,10 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 3
+          Size (Pixels): 6
           Size (m): 0.10000000149011612
-          Style: Flat Squares
-          Topic: /detection/lidar_detector/cloud_clusters
+          Style: Points
+          Topic: /avt_341/lidar_detector/cloud_clusters
           Unreliable: false
           Use Fixed Frame: false
           Use rainbow: true
@@ -269,7 +269,7 @@ Visualization Manager:
         - Class: jsk_rviz_plugin/BoundingBoxArray
           Enabled: true
           Name: BoundingBoxArray
-          Topic: /detection/lidar_detector/jsk_bboxes
+          Topic: /avt_341/lidar_detector/jsk_bboxes
           Unreliable: false
           Value: true
           alpha: 0.800000011920929

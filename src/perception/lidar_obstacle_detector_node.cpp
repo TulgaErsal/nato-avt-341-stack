@@ -216,7 +216,7 @@ void LidarObstacleDetectorNode::publishDetectedObjects(std::vector<pcl::PointClo
   jsk_recognition_msgs::BoundingBoxArray jsk_bboxes;
   jsk_bboxes.header = bbox_header;
 
-  // Transform boxes from lidar frame to base_link frame, and convert to jsk and autoware msg formats
+  // Transform boxes from lidar frame to base_link frame, and convert to jsk msg format
   for (auto& box : curr_boxes_)
   {
     geometry_msgs::Pose pose, pose_transformed;

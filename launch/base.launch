@@ -160,10 +160,9 @@
       <!-- Input Topic Names -->
       <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
       <!-- Output Topic Names -->
-      <param name="cloud_ground_topic"                  value="/detection/lidar_detector/cloud_ground"/>
-      <param name="cloud_clusters_topic"                value="/detection/lidar_detector/cloud_clusters"/>
-      <param name="jsk_bboxes_topic"                    value="/detection/lidar_detector/jsk_bboxes"/>
-      <param name="autoware_objects_topic"              value="/detection/lidar_detector/objects"/>
+      <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
+      <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
+      <param name="jsk_bboxes_topic"                    value="/avt_341/lidar_detector/jsk_bboxes"/>
       <!-- Parameters -->
       <param name="bbox_target_frame"                   value="base_link"/>
     </node>
