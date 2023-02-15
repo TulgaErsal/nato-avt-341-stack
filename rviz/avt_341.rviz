@@ -206,26 +206,6 @@ Visualization Manager:
       Value: true
     - Class: rviz/Group
       Displays:
-        - Class: jsk_rviz_plugin/BoundingBoxArray
-          Enabled: false
-          Name: BoundingBoxArray
-          Topic: /lgsvl_utils/ground_truth/jsk_bounding_boxes
-          Unreliable: false
-          Value: false
-          alpha: 0.800000011920929
-          color: 25; 255; 0
-          coloring: Auto
-          line width: 0.10000000149011612
-          only edge: false
-          show coords: false
-        - Class: rviz/MarkerArray
-          Enabled: false
-          Marker Topic: /lgsvl_utils/ground_truth/objects_markers
-          Name: AutowareObjectMarkers
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -298,16 +278,6 @@ Visualization Manager:
           line width: 0.10000000149011612
           only edge: false
           show coords: false
-        - Class: rviz/MarkerArray
-          Enabled: true
-          Marker Topic: /detection/lidar_detector/objects_markers
-          Name: AutowareObjectMarkers
-          Namespaces:
-            /detection/lidar_detector/box_markers: true
-            /detection/lidar_detector/centroid_markers: true
-            /detection/lidar_detector/label_markers: true
-          Queue Size: 100
-          Value: true
       Enabled: true
       Name: Perception      
   Enabled: true

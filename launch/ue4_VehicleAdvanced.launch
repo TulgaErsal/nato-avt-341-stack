@@ -9,6 +9,7 @@
 		<!-- no_waypoints.yaml ue4_VehicleAdvanced_waypoints.yaml -->
 		<arg name="waypoints_file" value="$(find avt_341)/config/no_waypoints.yaml"/>
 		<arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf"/>
+  		<arg name="use_lidar_obstacle_detector" value="true"/>
 
 		<arg name="use_sim_time" value="true"/>
 		<arg name="use_registered" value="false"/>

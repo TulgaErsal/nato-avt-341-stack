@@ -4,6 +4,7 @@
 
   <!-- General  -->
   <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
+  <arg name="use_lidar_obstacle_detector" default="false" doc="Should we start the Lidar Obstacle Detector node?"/>
   <arg name="auto_launch_rviz" default="true" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
   <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
   <arg name="robot_description_file" doc="URDF robot description file to use"/>
@@ -154,17 +155,19 @@
     <param name="display" value="$(arg display_type)" />
   </node>
 
-  <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
-    <!-- Input Topic Names -->
-    <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
-    <!-- Output Topic Names -->
-    <param name="cloud_ground_topic"                  value="/detection/lidar_detector/cloud_ground"/>
-    <param name="cloud_clusters_topic"                value="/detection/lidar_detector/cloud_clusters"/>
-    <param name="jsk_bboxes_topic"                    value="/detection/lidar_detector/jsk_bboxes"/>
-    <param name="autoware_objects_topic"              value="/detection/lidar_detector/objects"/>
-    <!-- Parameters -->
-    <param name="bbox_target_frame"                   value="base_link"/>
-  </node>
+  <group if="$(eval arg('use_lidar_obstacle_detector'))">
+    <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
+      <!-- Input Topic Names -->
+      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <!-- Output Topic Names -->
+      <param name="cloud_ground_topic"                  value="/detection/lidar_detector/cloud_ground"/>
+      <param name="cloud_clusters_topic"                value="/detection/lidar_detector/cloud_clusters"/>
+      <param name="jsk_bboxes_topic"                    value="/detection/lidar_detector/jsk_bboxes"/>
+      <param name="autoware_objects_topic"              value="/detection/lidar_detector/objects"/>
+      <!-- Parameters -->
+      <param name="bbox_target_frame"                   value="base_link"/>
+    </node>
+  </group>
 
   <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
   <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz'))">
