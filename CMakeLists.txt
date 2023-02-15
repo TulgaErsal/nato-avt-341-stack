@@ -11,10 +11,6 @@ set(LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES
   src/perception/lidar_obstacle_detector_node.cpp
 )
 
-set(OBJECT_FUSION_NODE_SOURCES
-  src/perception/object_fusion_node.cpp
-)
-
 if($ENV{ROS_VERSION} EQUAL 1)
   include("CMakeLists_ros1.cmake")
 elseif($ENV{ROS_VERSION} EQUAL 2)

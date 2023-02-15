@@ -32,7 +32,6 @@ add_definitions(${PCL_DEFINITIONS})
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
   config/lidar_obstacle_detector.cfg
-  config/object_fusion.cfg
 )
 
 #########################
@@ -195,22 +194,6 @@ add_dependencies(avt_341_lidar_obstacle_detector_node
   ${PROJECT_NAME}
 )
 target_link_libraries(avt_341_lidar_obstacle_detector_node
-  ${catkin_LIBRARIES}
-  ${${PROJECT_NAME}_LIBRARY}
-  ${PROJECT_NAME}
-)
-
-#obstacle_fusion node
-add_executable(avt_341_object_fusion_node
-  ${OBJECT_FUSION_NODE_SOURCES}
-)
-add_dependencies(avt_341_object_fusion_node 
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-  # obstacle_detector_gencfg
-  ${PROJECT_NAME}
-)
-target_link_libraries(avt_341_object_fusion_node
   ${catkin_LIBRARIES}
   ${${PROJECT_NAME}_LIBRARY}
   ${PROJECT_NAME}
