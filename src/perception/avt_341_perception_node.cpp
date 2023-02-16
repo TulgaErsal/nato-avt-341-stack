@@ -162,7 +162,8 @@ int main(int argc, char *argv[]) {
     grid.SetSize(grid_width,grid_height);
 
     float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion;
-    bool use_elevation, grid_dilate;
+    bool use_elevation, grid_dilate, clear_method_visualize;
+    std::string clear_method;
 
 	n->get_parameter("~grid_res", grid_res, 1.0f);
 	n->get_parameter("~grid_llx", grid_llx, -100.0f);
@@ -177,6 +178,8 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~grid_dilate_y", grid_dilate_y, 2.0f);
 	n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
 	n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
+	n->get_parameter("~clear_method", clear_method, std::string("time"));
+	n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
 	float max_point_age = 5.0f;
@@ -196,6 +199,7 @@ int main(int argc, char *argv[]) {
 	grid.SetStitchPoints(stitch_points);
 	grid.SetFilterHighest(filter_highest_lidar);
 	grid.SetMaxPointAge(max_point_age);
+	grid.SetCostmapClearingMethod(clear_method, clear_method_visualize);
 
 	double start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(100.0);

@@ -14,10 +14,19 @@
 #include <limits>
 #include <string>
 #include "avt_341/node/ros_types.h"
+#include "avt_341/perception/costmap_clearing_method.h"
 
 namespace avt_341{
 namespace perception{
 
+enum CostmapClearMethodType
+{
+	None,
+  Time,
+  Raytrace,
+  VoxelRaytrace
+};
+	
 class ElevAge{
   public:
     ElevAge(){
@@ -95,6 +104,14 @@ class ElevationGrid{
         ResizeGrid();
     }
 
+    static CostmapClearMethodType string_to_clear_type(const std::string & val) {
+      if(val == "none"){ return CostmapClearMethodType::None; }
+      if(val == "time"){ return CostmapClearMethodType::Time; }
+      if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
+      if(val == "voxel_raytrace"){ return CostmapClearMethodType::VoxelRaytrace; }
+      throw std::runtime_error("Unknown costmap clearing type " + val);
+    }
+
     void SetSize(float width,float height){
         width_ = width;
         height_ = height;
@@ -104,6 +121,21 @@ class ElevationGrid{
     void SetRes(float r){
         res_ = r;
         ResizeGrid();
+    }
+
+    void SetCostmapClearingMethod(const std::string & clearing_method_type, bool visualize){
+      clearing_method_type_ = ElevationGrid::string_to_clear_type(clearing_method_type);
+      clear_method_visualize_ = visualize;
+      switch(clearing_method_type_){
+        case CostmapClearMethodType::Raytrace:
+          clearing_method_ = std::make_shared<RaytraceClearingMethod>(nullptr, false);
+          break;
+        case CostmapClearMethodType::VoxelRaytrace:
+          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(nullptr, false);
+          break;
+        default:
+          clearing_method_ = std::make_shared<CostmapClearingMethod>(nullptr, false);
+      }
     }
 
     void SetMaxPointAge(float mpa){
@@ -168,6 +200,10 @@ class ElevationGrid{
     const float GRID_SLOPE_MULT = 50.0f;
     bool has_segmentation_ = false;
     float max_point_age_;
+    CostmapClearMethodType clearing_method_type_ = CostmapClearMethodType::None;
+    bool clear_method_visualize_ = false;
+    std::shared_ptr<CostmapClearingMethod> clearing_method_ = nullptr;
+
 };
 
 } // namespace perception

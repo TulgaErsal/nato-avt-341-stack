@@ -51,18 +51,7 @@ void ElevationGrid::AgeCells(){
   float dt = 0.1f; // typical for lidar
   for (int i=0; i<nx_;i++){
     for (int j=0; j<ny_; j++){
-      //if (cells_[i][j].filled){
       cells_[i][j].AgeCell(dt);
-      if (cells_[i][j].low.age>max_point_age_ || 
-          cells_[i][j].highest.age>max_point_age_ || 
-          cells_[i][j].second_highest.age>max_point_age_ ||
-          cells_[i][j].high.age>max_point_age_){
-        cells_[i][j]=empty_cell;
-      }
-      if (cells_[i][j].dilated_val>0 && cells_[i][j].dilated_age>max_point_age_){
-        cells_[i][j]=empty_cell;
-      }
-      //}
     }
   }
 
@@ -76,9 +65,9 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
   if (!stitch_points_){
     ClearGrid();
   }
-  else{
-    AgeCells();
-  }
+  AgeCells();
+  clearing_method_->Apply(point_cloud);
+
   // fill the cells with highest and lowest points
   for (int i=0;i<point_cloud.points.size();i++){
     if (!(point_cloud.points[i].x==0.0 && point_cloud.points[i].y==0.0)){
