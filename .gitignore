@@ -44,3 +44,7 @@ cmake-build-debug
 # Visual Studio
 .vs
 out/build
+.project
+
+# Visual Studio Code
+.vscode/

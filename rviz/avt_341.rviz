@@ -204,6 +204,82 @@ Visualization Manager:
       Topic: /avt_341/control_next_waypoint
       Unreliable: false
       Value: true
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: -1.2886924743652344
+            Min Value: -2.329639196395874
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 253
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: Ground Cloud
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 6
+          Size (m): 0.10000000149011612
+          Style: Points
+          Topic: /avt_341/lidar_detector/cloud_ground
+          Unreliable: false
+          Use Fixed Frame: false
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 9.18552303314209
+            Min Value: -2.218491315841675
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 25; 255; 0
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 253
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: Obstacle Cloud
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 6
+          Size (m): 0.10000000149011612
+          Style: Points
+          Topic: /avt_341/lidar_detector/cloud_clusters
+          Unreliable: false
+          Use Fixed Frame: false
+          Use rainbow: true
+          Value: true
+        - Class: jsk_rviz_plugin/BoundingBoxArray
+          Enabled: true
+          Name: BoundingBoxArray
+          Topic: /avt_341/lidar_detector/jsk_bboxes
+          Unreliable: false
+          Value: true
+          alpha: 0.800000011920929
+          color: 25; 255; 0
+          coloring: Label
+          line width: 0.10000000149011612
+          only edge: false
+          show coords: false
+      Enabled: true
+      Name: Perception      
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
