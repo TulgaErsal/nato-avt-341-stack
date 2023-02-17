@@ -14,6 +14,13 @@ namespace perception{
       : CostmapClearingMethod(costmap_cells, visualize), max_point_age_(max_point_age){
   }
 
+  NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell>> &costmap_cells, bool visualize)
+      : CostmapClearingMethod(costmap_cells, visualize) {
+  }
+
+  void NullClearingMethod::Apply(const msg::PointCloud &point_cloud) {
+  }
+
 
   void TimedClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud){
     Cell empty_cell;
@@ -42,7 +49,7 @@ namespace perception{
   }
 
   void RaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud) {
-    CostmapClearingMethod::Apply(point_cloud);
+
   }
 
   void RaytraceClearingMethod::Bresenham3D(int off_a, int off_b, int off_c,

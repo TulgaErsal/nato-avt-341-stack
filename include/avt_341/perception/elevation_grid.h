@@ -14,73 +14,11 @@
 #include <limits>
 #include <string>
 #include "avt_341/node/ros_types.h"
+#include "avt_341/perception/elevation_grid_cell.h"
 #include "avt_341/perception/costmap_clearing_method.h"
 
 namespace avt_341{
 namespace perception{
-
-enum CostmapClearMethodType
-{
-	None,
-  Time,
-  Raytrace,
-  VoxelRaytrace
-};
-	
-class ElevAge{
-  public:
-    ElevAge(){
-        val = 0.0f;
-        age = 0.0f;
-    }
-    float val;
-    float age;
-};
-
-class Cell{
-    //float low = std::numeric_limits<float>::max();
-    //float high = std::numeric_limits<float>::lowest();
-    //float highest = std::numeric_limits<float>::lowest();
-    //float second_highest = std::numeric_limits<float>::lowest();
-    public:
-    Cell(){
-
-        low.val = std::numeric_limits<float>::max();
-        high.val = std::numeric_limits<float>::lowest();
-        highest.val = std::numeric_limits<float>::lowest();
-        second_highest.val = std::numeric_limits<float>::lowest();
-        height = 0.0f;
-        filled = false;
-        slope = 0.0f;
-        obstacle = false;
-        has_dilated = false;
-        dilated_val = 0;
-        terrain = 0.0f;
-        dilated_age = 0.0f;
-    }
-    void AgeCell(float dt){
-        low.age += dt;
-        high.age += dt;
-        highest.age += dt;
-        second_highest.age += dt;
-        dilated_age += dt;
-    }
-    ElevAge low,high,highest,second_highest;
-    //low.val = std::numeric_limits<float>::max();
-    //high.val = std::numeric_limits<float>::lowest();
-    //highest.val = std::numeric_limits<float>::lowest();
-    //second_highest.val = std::numeric_limits<float>::lowest();
-    float height; // = 0.0f;
-    bool filled; //  = false;
-    //float slope_x = 0.0f;
-    //float slope_y = 0.0f;
-    float slope; //  = 0.0f;
-    bool obstacle; //  = false;
-    bool has_dilated; //  = false;
-    uint8_t dilated_val; //  = 0;
-    float dilated_age;
-    float terrain; //  = 0.0f;
-};
 
 class ElevationGrid{
   public:
@@ -104,14 +42,6 @@ class ElevationGrid{
         ResizeGrid();
     }
 
-    static CostmapClearMethodType string_to_clear_type(const std::string & val) {
-      if(val == "none"){ return CostmapClearMethodType::None; }
-      if(val == "time"){ return CostmapClearMethodType::Time; }
-      if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
-      if(val == "voxel_raytrace"){ return CostmapClearMethodType::VoxelRaytrace; }
-      throw std::runtime_error("Unknown costmap clearing type " + val);
-    }
-
     void SetSize(float width,float height){
         width_ = width;
         height_ = height;
@@ -124,17 +54,19 @@ class ElevationGrid{
     }
 
     void SetCostmapClearingMethod(const std::string & clearing_method_type, bool visualize){
-      clearing_method_type_ = ElevationGrid::string_to_clear_type(clearing_method_type);
-      clear_method_visualize_ = visualize;
+      clearing_method_type_ = CostmapClearingMethod::string_to_clear_type(clearing_method_type);
       switch(clearing_method_type_){
+        case CostmapClearMethodType::Time:
+          clearing_method_ = std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualize);
+          break;
         case CostmapClearMethodType::Raytrace:
-          clearing_method_ = std::make_shared<RaytraceClearingMethod>(nullptr, false);
+          clearing_method_ = std::make_shared<RaytraceClearingMethod>(nullptr, cells_, visualize);
           break;
         case CostmapClearMethodType::VoxelRaytrace:
-          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(nullptr, false);
+          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(nullptr, cells_, visualize);
           break;
         default:
-          clearing_method_ = std::make_shared<CostmapClearingMethod>(nullptr, false);
+          clearing_method_ = std::make_shared<NullClearingMethod>(cells_, visualize);
       }
     }
 

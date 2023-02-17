@@ -4,18 +4,34 @@
 #include <bitset>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-#include "elevation_grid.h"
+#include "avt_341/perception/elevation_grid_cell.h"
 
 namespace avt_341 {
 namespace perception {
+
+enum CostmapClearMethodType
+{
+  None,
+  Time,
+  Raytrace,
+  VoxelRaytrace
+};
 
 class CostmapClearingMethod{
 
 public:
   CostmapClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, bool visualize);
 
-  virtual void Apply(const avt_341::msg::PointCloud &point_cloud){}
-  virtual void Visualize() const{}
+  virtual void Apply(const avt_341::msg::PointCloud &point_cloud) = 0;
+  virtual void Visualize() const {};
+
+  static CostmapClearMethodType string_to_clear_type(const std::string & val) {
+    if(val == "none"){ return CostmapClearMethodType::None; }
+    if(val == "time"){ return CostmapClearMethodType::Time; }
+    if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
+    if(val == "voxel_raytrace"){ return CostmapClearMethodType::VoxelRaytrace; }
+    throw std::runtime_error("Unknown costmap clearing type " + val);
+  }
 
 protected:
   bool visualize_;
@@ -23,6 +39,12 @@ protected:
   unsigned int Ny_;
   std::vector< std::vector<Cell>> & costmap_cells_;
 
+};
+
+class NullClearingMethod : public CostmapClearingMethod{
+public:
+  NullClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, bool visualize);
+  void Apply(const avt_341::msg::PointCloud &point_cloud) override;
 };
 
 class TimedClearingMethod: public CostmapClearingMethod {
@@ -35,7 +57,7 @@ public:
 private:
   float max_point_age_;
 
-}
+};
 
 class RaytraceClearingMethod: public CostmapClearingMethod{
 

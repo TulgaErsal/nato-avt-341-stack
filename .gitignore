@@ -42,3 +42,5 @@ cmake-build-debug*
 # Visual Studio
 .vs
 out/build
+
+cmake-build-debug-*/
