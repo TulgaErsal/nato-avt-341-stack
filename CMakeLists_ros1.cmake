@@ -194,6 +194,21 @@ target_link_libraries(avt_bot_state_publisher_node
    ${catkin_LIBRARIES}
 )
 
+add_executable(avt_341_comm_node
+  src/communication/avt_341_comm_node.cpp
+  src/node/node_proxy.cpp
+)
+target_link_libraries(avt_341_comm_node
+  ${catkin_LIBRARIES}
+)
+
+add_executable(avt_341_comm_publisher_node
+  src/communication/avt_341_comm_publisher_node.cpp
+)
+target_link_libraries(avt_341_comm_publisher_node
+  ${catkin_LIBRARIES}
+)
+
 set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
@@ -231,6 +246,8 @@ gps_spoof_node
 path_manager_node
 speed_control_test_node
 avt_bot_state_publisher_node
+avt_341_comm_node
+avt_341_comm_publisher_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
