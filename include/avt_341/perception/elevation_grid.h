@@ -53,17 +53,17 @@ class ElevationGrid{
         ResizeGrid();
     }
 
-    void SetCostmapClearingMethod(const std::string & clearing_method_type, bool visualize){
+    void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, const std::string & clearing_method_type, bool visualize){
       clearing_method_type_ = CostmapClearingMethod::string_to_clear_type(clearing_method_type);
       switch(clearing_method_type_){
         case CostmapClearMethodType::Time:
           clearing_method_ = std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualize);
           break;
         case CostmapClearMethodType::Raytrace:
-          clearing_method_ = std::make_shared<RaytraceClearingMethod>(nullptr, cells_, visualize);
+          clearing_method_ = std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualize);
           break;
         case CostmapClearMethodType::VoxelRaytrace:
-          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(nullptr, cells_, visualize);
+          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(node_ref, cells_, visualize);
           break;
         default:
           clearing_method_ = std::make_shared<NullClearingMethod>(cells_, visualize);

@@ -49,7 +49,9 @@ namespace perception{
   }
 
   void RaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud) {
-    Visualize();
+    if(visualize_){
+      Visualize();
+    }
   }
 
   void RaytraceClearingMethod::Bresenham3D(int off_a, int off_b, int off_c,
@@ -86,30 +88,30 @@ namespace perception{
     CostmapClearingMethod::Visualize();
 
     avt_341::msg::MarkerArray marker_array;
-    for (int i = 0; i < Nx_; i++) {
-      for (int j = 0; j < Ny_; j++) {
-        for (int k = 0; k < 2; k++) {
-          avt_341::msg::Marker marker;
-          marker.header.frame_id = "map";
-          marker.header.stamp = rclcpp::Clock().now();
-          marker.id = i * Ny_ + j + (k == 0 ? 0 : Nx_ * Ny_);
-          marker.type = avt_341::msg::Marker::CUBE;
-          marker.action = avt_341::msg::Marker::ADD;
-          marker.pose.position.z = k == 0 ? costmap_cells_[i][j].low.val : costmap_cells_[i][j].high.val;
-          marker.pose.position.x = i * 0.1;
-          marker.pose.position.y = j * 0.1;
-          marker.scale.x = 1.0;
-          marker.scale.x = 1.0;
-          marker.scale.z = 0.15;
-          if(k == 0){
-            marker.color.r = 1.0;
-          }else{
-            marker.color.b = 1.0;
-          }
-          marker_array.markers.push_back(marker);
-        }
-      }
-    }
+//    for (int i = 0; i < Nx_; i++) {
+//      for (int j = 0; j < Ny_; j++) {
+//        for (int k = 0; k < 2; k++) {
+//          avt_341::msg::Marker marker;
+//          marker.header.frame_id = "map";
+//          marker.header.stamp = rclcpp::Clock().now();
+//          marker.id = i * Ny_ + j + (k == 0 ? 0 : Nx_ * Ny_);
+//          marker.type = avt_341::msg::Marker::CUBE;
+//          marker.action = avt_341::msg::Marker::ADD;
+//          marker.pose.position.z = k == 0 ? costmap_cells_[i][j].low.val : costmap_cells_[i][j].high.val;
+//          marker.pose.position.x = i * 0.1;
+//          marker.pose.position.y = j * 0.1;
+//          marker.scale.x = 1.0;
+//          marker.scale.x = 1.0;
+//          marker.scale.z = 0.15;
+//          if(k == 0){
+//            marker.color.r = 1.0;
+//          }else{
+//            marker.color.b = 1.0;
+//          }
+//          marker_array.markers.push_back(marker);
+//        }
+//      }
+//    }
     minmax_vis_publisher_->publish(marker_array);
   }
 

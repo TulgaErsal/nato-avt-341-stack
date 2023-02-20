@@ -173,13 +173,13 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~slope_threshold", thresh, 1.0f);
 	n->get_parameter("~use_elevation", use_elevation, false);
 	n->get_parameter("~use_registered", use_registered, true);
-	n->get_parameter("~grid_dilate", grid_dilate, true);
+	n->get_parameter("~grid_dilate", grid_dilate, false);
 	n->get_parameter("~grid_dilate_x", grid_dilate_x, 2.0f);
 	n->get_parameter("~grid_dilate_y", grid_dilate_y, 2.0f);
 	n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
 	n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
-	n->get_parameter("~clear_method", clear_method, std::string("time"));
-	n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
+	n->get_parameter("~clear_method", clear_method, std::string("raytrace"));
+	n->get_parameter("~clear_method_visualize", clear_method_visualize, true);
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
 	float max_point_age = 5.0f;
@@ -199,11 +199,12 @@ int main(int argc, char *argv[]) {
 	grid.SetStitchPoints(stitch_points);
 	grid.SetFilterHighest(filter_highest_lidar);
 	grid.SetMaxPointAge(max_point_age);
-	grid.SetCostmapClearingMethod(clear_method, clear_method_visualize);
+	grid.SetCostmapClearingMethod(n, clear_method, clear_method_visualize);
 
 	double start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(100.0);
   int nloops = 0;
+    std::cout << "Starting" << std::endl;
 	while (avt_341::node::ok()){
 		double elapsed_time = (n->get_now_seconds()-start_time);
 		if (grid_created && elapsed_time > warmup_time) {
