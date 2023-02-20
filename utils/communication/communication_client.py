@@ -1,3 +1,14 @@
+#
+#file communication_client.py
+#
+# Simple python client 
+# 
+# author Daniel Carruth
+#
+# contact dwc2@cavs.msstate.edu
+#
+# date 2/19/2023
+#
 import sys
 import socket
 import select

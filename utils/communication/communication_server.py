@@ -1,3 +1,14 @@
+#
+#file communication_server.py
+#
+# Simple python echo server 
+# 
+# author Daniel Carruth
+#
+# contact dwc2@cavs.msstate.edu
+#
+# date 2/19/2023
+#
 import sys
 import socket
 import select
