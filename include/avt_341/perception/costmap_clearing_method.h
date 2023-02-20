@@ -71,10 +71,11 @@ public:
   void Bresenham2D();
   void Apply(const avt_341::msg::PointCloud &point_cloud) override;
   void Visualize() const override;
+  avt_341::msg::Marker get_marker_msg(int type, int id, bool is_blocked) const;
 protected:
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> minmax_vis_publisher_;
-
+  std::shared_ptr<avt_341::node::NodeProxy> node_;
 };
 
 class VoxelRaytraceClearingMethod: public RaytraceClearingMethod{
