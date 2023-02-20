@@ -70,6 +70,8 @@ def generate_launch_description():
         DeclareLaunchArgument('use_registered', default_value='True', description="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."),
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
+        DeclareLaunchArgument('clear_method', default_value='time', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_voxel."),
+        DeclareLaunchArgument('clear_method_visualize', default_value='False', description="Elevation grid - If true, visualizes costmap clearing method."),
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
@@ -151,7 +153,9 @@ def generate_launch_description():
                 'use_registered': launch.substitutions.LaunchConfiguration('use_registered'),
                 'display': display_type,
                 'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
-                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar')
+                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
+                'clear_method': launch.substitutions.LaunchConfiguration('clear_method'),
+                'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize')
             }],
         ),
         Node(

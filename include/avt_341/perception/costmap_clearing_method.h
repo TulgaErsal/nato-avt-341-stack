@@ -29,7 +29,7 @@ public:
     if(val == "none"){ return CostmapClearMethodType::None; }
     if(val == "time"){ return CostmapClearMethodType::Time; }
     if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
-    if(val == "voxel_raytrace"){ return CostmapClearMethodType::VoxelRaytrace; }
+    if(val == "raytrace_voxel"){ return CostmapClearMethodType::VoxelRaytrace; }
     throw std::runtime_error("Unknown costmap clearing type " + val);
   }
 

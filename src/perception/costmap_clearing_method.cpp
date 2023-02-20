@@ -49,7 +49,7 @@ namespace perception{
   }
 
   void RaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud) {
-
+    Visualize();
   }
 
   void RaytraceClearingMethod::Bresenham3D(int off_a, int off_b, int off_c,
@@ -85,7 +85,6 @@ namespace perception{
   void RaytraceClearingMethod::Visualize() const {
     CostmapClearingMethod::Visualize();
 
-    // TODO: Filter based on proximity to robot
     avt_341::msg::MarkerArray marker_array;
     for (int i = 0; i < Nx_; i++) {
       for (int j = 0; j < Ny_; j++) {

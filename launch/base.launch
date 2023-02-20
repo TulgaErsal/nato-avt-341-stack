@@ -25,7 +25,7 @@
   <arg name="use_registered" default="true" doc="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."/>
   <arg name="stitch_lidar_points" default="true" doc="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."/>
   <arg name="filter_highest_lidar" default="false" doc="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."/>
-  <arg name="clear_method" default="time" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytracevoxel."/>
+  <arg name="clear_method" default="time" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_voxel."/>
   <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
 
   <!-- Global Planner  -->
@@ -106,6 +106,8 @@
     <param name="display" value="$(arg display_type)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)"/>
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)"/>
+    <param name="clear_method" value="$(arg clear_method)"/>
+    <param name="clear_method_visualize" value="$(arg clear_method_visualize)"/>
   </node>
 
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
