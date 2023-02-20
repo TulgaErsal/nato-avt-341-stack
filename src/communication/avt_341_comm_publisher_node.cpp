@@ -1,3 +1,16 @@
+/**
+ * \file avt_341_comm_publisher_node.cpp
+ *
+ * ROS node to publish test messages for the comm system 
+ * Publishes test message to avt_341/comm_messages
+ * 
+ * \author Daniel Carruth
+ *
+ * \contact dwc2@cavs.msstate.edu
+ * 
+ * \date 2/19/2023
+ */
+
 #include <ros/ros.h>
 #include <sys/types.h>
 #include <sys/socket.h>
