@@ -45,9 +45,9 @@ find_package(PCL REQUIRED)
 add_definitions(${PCL_DEFINITIONS})
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-generate_dynamic_reconfigure_options(
-  config/lidar_obstacle_detector.cfg
-)
+#generate_dynamic_reconfigure_options(
+#  config/lidar_obstacle_detector.cfg
+#)
 
 #########################
 ## add custom messages ##
@@ -57,6 +57,7 @@ add_message_files(
  FILES
  Sinkage.msg
  Obstacles.msg
+ FollowerStatus.msg
 )
 
 generate_messages(
@@ -114,6 +115,16 @@ target_link_libraries(gps_spoof_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(avt_341_formation_control_node
+  src/mission/formation_control_node.cpp
+  src/mission/formation_controller.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(avt_341_formation_control_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(avt_341_formation_control_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(avt_341_perception_node
 src/perception/avt_341_perception_node.cpp
 src/perception/elevation_grid.cpp
@@ -137,7 +148,6 @@ add_executable(avt_341_control_node
   src/control/pid_controller.cpp
   src/node/node_proxy.cpp
 )
-
 target_link_libraries(avt_341_control_node
   ${catkin_LIBRARIES}
 )
@@ -147,7 +157,6 @@ add_executable(avt_341_speed_control_node
   src/control/pid_controller.cpp
   src/node/node_proxy.cpp
 )
-
 target_link_libraries(avt_341_speed_control_node
   ${catkin_LIBRARIES}
 )
@@ -156,7 +165,6 @@ add_executable(speed_control_test_node
   src/control/speed_control_test_node.cpp
   src/node/node_proxy.cpp
 )
-
 target_link_libraries(speed_control_test_node
   ${catkin_LIBRARIES}
 )
@@ -218,20 +226,20 @@ target_link_libraries(avt_bot_state_publisher_node
 )
 
 ## lidar_obstacle_detector node
-add_executable(avt_341_lidar_obstacle_detector_node
-  src/perception/lidar_obstacle_detector_node.cpp
-)
-add_dependencies(avt_341_lidar_obstacle_detector_node 
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-  # obstacle_detector_gencfg
-  ${PROJECT_NAME}
-)
-target_link_libraries(avt_341_lidar_obstacle_detector_node
-  ${catkin_LIBRARIES}
-  ${${PROJECT_NAME}_LIBRARY}
-  ${PROJECT_NAME}
-)
+# add_executable(avt_341_lidar_obstacle_detector_node
+#   src/perception/lidar_obstacle_detector_node.cpp
+# )
+# add_dependencies(avt_341_lidar_obstacle_detector_node 
+#   ${${PROJECT_NAME}_EXPORTED_TARGETS}
+#   ${catkin_EXPORTED_TARGETS}
+#   # obstacle_detector_gencfg
+#   ${PROJECT_NAME}
+# )
+# target_link_libraries(avt_341_lidar_obstacle_detector_node
+#   ${catkin_LIBRARIES}
+#   ${${PROJECT_NAME}_LIBRARY}
+#   ${PROJECT_NAME}
+# )
 
 set(LIB_SOURCES
 src/control/pid_controller.cpp
@@ -265,13 +273,14 @@ avt_341_speed_control_node
 avt_341_local_planner_node
 avt_341_pf_planner_node
 avt_341_global_path_node
-avt_341_lidar_obstacle_detector_node
+#avt_341_lidar_obstacle_detector_node
 avt_341_sim_test_node
 gps_to_enu_node
 gps_spoof_node
 path_manager_node
 speed_control_test_node
 avt_bot_state_publisher_node
+avt_341_formation_control_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )

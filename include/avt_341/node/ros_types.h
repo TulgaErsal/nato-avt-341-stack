@@ -32,6 +32,8 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 
+#include "avt_341/FollowerStatus.h"
+
 namespace avt_341 {
     namespace msg {
         using PointCloud = sensor_msgs::PointCloud;
@@ -90,6 +92,9 @@ namespace avt_341 {
 
         using Int32 = std_msgs::Int32;
         using Int32Ptr = const std_msgs::Int32::ConstPtr &;
+
+        using FollowerStatus = avt_341::FollowerStatus;
+        using FollowerStatusPtr = const avt_341::FollowerStatus::ConstPtr &;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;
