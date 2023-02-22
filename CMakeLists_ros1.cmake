@@ -29,11 +29,15 @@ endif()
 ###########################
 ## download the UAB dll ##
 ##########################
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll")
+   # do nothing
+else()
 file(DOWNLOAD
   https://drive.google.com/uc?export=download&id=1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ALgDtsyupXZiPm3DJaloDSGQrRXG:1675708587711
   ${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll
   SHOW_PROGRESS
 )
+endif()
 
 add_definitions(-DROS_1)
 
@@ -215,7 +219,7 @@ target_link_libraries(avt_bot_state_publisher_node
 
 ## lidar_obstacle_detector node
 add_executable(avt_341_lidar_obstacle_detector_node
-  ${LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES}
+  src/perception/lidar_obstacle_detector_node.cpp
 )
 add_dependencies(avt_341_lidar_obstacle_detector_node 
   ${${PROJECT_NAME}_EXPORTED_TARGETS}

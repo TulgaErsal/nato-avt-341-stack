@@ -48,3 +48,6 @@ out/build
 
 # Visual Studio Code
 .vscode/
+
+CMakeLists.txt
+package.xml
