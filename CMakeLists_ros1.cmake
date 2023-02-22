@@ -76,6 +76,12 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
+set(LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES
+  include/avt_341/perception/box.hpp
+  include/avt_341/perception/lidar_obstacle_detector.hpp
+  src/perception/lidar_obstacle_detector_node.cpp
+)
+
 
 ###########
 ## Build ##
@@ -225,21 +231,23 @@ target_link_libraries(avt_bot_state_publisher_node
    ${catkin_LIBRARIES}
 )
 
-## lidar_obstacle_detector node
-# add_executable(avt_341_lidar_obstacle_detector_node
-#   src/perception/lidar_obstacle_detector_node.cpp
-# )
-# add_dependencies(avt_341_lidar_obstacle_detector_node 
-#   ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#   ${catkin_EXPORTED_TARGETS}
-#   # obstacle_detector_gencfg
-#   ${PROJECT_NAME}
-# )
-# target_link_libraries(avt_341_lidar_obstacle_detector_node
-#   ${catkin_LIBRARIES}
-#   ${${PROJECT_NAME}_LIBRARY}
-#   ${PROJECT_NAME}
-# )
+# lidar_obstacle_detector node
+add_executable(avt_341_lidar_obstacle_detector_node
+include/avt_341/perception/box.hpp
+include/avt_341/perception/lidar_obstacle_detector.hpp
+src/perception/lidar_obstacle_detector_node.cpp
+)
+add_dependencies(avt_341_lidar_obstacle_detector_node 
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  # obstacle_detector_gencfg
+  ${PROJECT_NAME}
+)
+target_link_libraries(avt_341_lidar_obstacle_detector_node
+  ${catkin_LIBRARIES}
+  ${${PROJECT_NAME}_LIBRARY}
+  ${PROJECT_NAME}
+)
 
 set(LIB_SOURCES
 src/control/pid_controller.cpp
@@ -273,7 +281,7 @@ avt_341_speed_control_node
 avt_341_local_planner_node
 avt_341_pf_planner_node
 avt_341_global_path_node
-#avt_341_lidar_obstacle_detector_node
+avt_341_lidar_obstacle_detector_node
 avt_341_sim_test_node
 gps_to_enu_node
 gps_spoof_node
