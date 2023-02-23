@@ -115,6 +115,7 @@ namespace avt_341 {
             }
 
             ros::Time get_stamp() const;
+            ros::Duration get_duration(double seconds) const;
             double get_now_seconds() const;
             void spin_some();
 
@@ -242,6 +243,7 @@ namespace avt_341 {
 
       rclcpp::Logger get_logger() const;
       rclcpp::Time get_stamp() const;
+      rclcpp::Duration get_duration(double seconds) const;
       double get_now_seconds() const;
       void spin_some();
 

@@ -4,19 +4,19 @@
 namespace avt_341{
 namespace perception{
 
-  CostmapClearingMethod::CostmapClearingMethod(std::vector<std::vector<Cell>> &costmap_cells, bool visualize)
-                                              : costmap_cells_(costmap_cells), visualize_(visualize)
+  CostmapClearingMethod::CostmapClearingMethod(std::vector<std::vector<Cell>> &costmap_cells, float visualization_range, bool visualize)
+                                              : costmap_cells_(costmap_cells), visualization_range_(visualization_range), visualize_(visualize)
   {
     Nx_ = costmap_cells_.size();
     Ny_ = costmap_cells_[0].size();
   }
 
-  TimedClearingMethod::TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & costmap_cells, bool visualize)
-      : CostmapClearingMethod(costmap_cells, visualize), max_point_age_(max_point_age){
+  TimedClearingMethod::TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize)
+      : CostmapClearingMethod(costmap_cells, visualization_range, visualize), max_point_age_(max_point_age){
   }
 
-  NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell>> &costmap_cells, bool visualize)
-      : CostmapClearingMethod(costmap_cells, visualize) {
+  NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell>> &costmap_cells, float visualization_range, bool visualize)
+      : CostmapClearingMethod(costmap_cells, visualization_range, visualize) {
   }
 
   void NullClearingMethod::Apply(const msg::PointCloud &point_cloud) {
@@ -41,18 +41,17 @@ namespace perception{
   }
 
 
-  RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,  bool visualize)
-    : node_(node_ref), CostmapClearingMethod(costmap_cells, visualize){
+  RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
+                                                 float visualization_range, bool visualize, float llx, float lly, float res)
+    : node_(node_ref), llx_(llx), lly_(lly), res_(res), CostmapClearingMethod(costmap_cells, visualization_range, visualize){
 
     if(visualize_){
-      minmax_vis_publisher_ = node_ref->create_publisher<avt_341::msg::MarkerArray>("avt_341/costmap/minmax", 1);
+      minmax_vis_publisher_ = node_ref->create_publisher<avt_341::msg::MarkerArray>("avt_341/costmap/minmax",1);
     }
   }
 
   void RaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud) {
-    if(visualize_){
-      Visualize();
-    }
+
   }
 
   void RaytraceClearingMethod::Bresenham3D(int off_a, int off_b, int off_c,
@@ -85,109 +84,160 @@ namespace perception{
   {
   }
 
-  avt_341::msg::Marker RaytraceClearingMethod::get_marker_msg(int type, int id, bool is_blocked) const{
+  avt_341::msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, utils::vec3 color, float alpha, double z_scale) const{
     avt_341::msg::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = node_->get_stamp();
     marker.id = id;
     marker.type = type;
     marker.action = avt_341::msg::Marker::MODIFY;
-    marker.color.a = 1.0;
+    marker.color.a = alpha;
     marker.scale.x = 1.0;
     marker.scale.y = 1.0;
-    marker.scale.z = 1.0;
-    if(is_blocked){
-      marker.color.r = 1.0;
-    }else{
-      marker.color.b = 1.0;
-    }
+    marker.scale.z = z_scale;
+    marker.color.r = color.x;
+    marker.color.g = color.y;
+    marker.color.b = color.z;
     marker.pose.orientation.x = 0.0;
     marker.pose.orientation.y = 0.0;
     marker.pose.orientation.z = 0.0;
     marker.pose.orientation.w = 1.0;
+    marker.lifetime = node_->get_duration(1.0);
     return marker;
   }
 
-  void RaytraceClearingMethod::Visualize() const {
-    CostmapClearingMethod::Visualize();
+  void RaytraceClearingMethod::GetVoxelBounds(const avt_341::msg::Odometry & odom, int & x_0, int & y_0, int & x_N, int & y_N) const{
+    if(visualization_range_ > 0.0){
+      x_0 = static_cast<int>((odom.pose.pose.position.x - llx_ - visualization_range_)/res_);
+      y_0 = static_cast<int>((odom.pose.pose.position.y - lly_ - visualization_range_)/res_);
+      x_N = x_0 + 2*static_cast<int>(visualization_range_/res_);
+      y_N = y_0 + 2*static_cast<int>(visualization_range_/res_);
+      x_0 = std::min(std::max(0, x_0), Nx_);
+      y_0 = std::min(std::max(0, y_0), Ny_);
+      x_N = std::min(std::max(0, x_N), Nx_);
+      y_N = std::min(std::max(0, y_N), Ny_);
+    }else{
+      x_0 = 0;
+      y_0 = 0;
+      x_N = Nx_;
+      y_N = Ny_;
+    }
+  }
 
-//    avt_341::msg::MarkerArray marker_array;
-//    avt_341::msg::Marker candidate_paths_marker = get_marker_msg(avt_341::msg::Marker::LINE_LIST, 0, false);
-//    candidate_paths_marker.action = avt_341::msg::Marker::MODIFY;
-//    for(int i = 0; i < 20; i++){
-//      avt_341::msg::Point p0;
-//      avt_341::msg::Point p1;
-//      p0.x = static_cast<float>(i);
-//      p0.y = static_cast<float>(i);
-//      p0.z = 0.0;
-//      p1.x = static_cast<float>(i+1);
-//      p1.y = static_cast<float>(i+1);
-//      p1.z = 0.0;
-//      candidate_paths_marker.points.push_back(p0);
-//      candidate_paths_marker.points.push_back(p1);
-//    }
-//    marker_array.markers.push_back(candidate_paths_marker);
+  void RaytraceClearingMethod::Visualize(const avt_341::msg::Odometry & odom) const {
+    CostmapClearingMethod::Visualize(odom);
 
     avt_341::msg::MarkerArray marker_array;
-    avt_341::msg::Marker candidate_paths_marker = get_marker_msg(avt_341::msg::Marker::CUBE_LIST, 0, false);
-    candidate_paths_marker.action = avt_341::msg::Marker::MODIFY;
-    for(int i = 0; i < 40; i++){
-      avt_341::msg::Point p0;
-      p0.x = static_cast<float>(i);
-      p0.y = static_cast<float>(i);
-      p0.z = 0.0;
-//      auto color = std_msgs::msg::ColorRGBA();
-//      color.a = 1.0;
-//      color.g = 1.0;
-//      candidate_paths_marker.colors.push_back(color);
-      candidate_paths_marker.points.push_back(p0);
-    }
-    marker_array.markers.push_back(candidate_paths_marker);
+    avt_341::msg::Marker mins_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 0, utils::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
+    avt_341::msg::Marker maxes_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 1, utils::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
+    const float max_value = std::numeric_limits<float>::max() - 1e-5;
+    const float min_value = std::numeric_limits<float>::lowest() + 1e-5;
 
-//    for (int i = 0; i < 2; i++) {
-//      for (int j = 0; j < 2; j++) {
-//        for (int k = 0; k < 2; k++) {
-//          avt_341::msg::Marker marker;
-//          marker.header.frame_id = "map";
-//          marker.header.stamp = rclcpp::Clock().now();
-//          marker.id = i * Ny_ + j + (k == 0 ? 0 : Nx_ * Ny_);
-//          marker.type = avt_341::msg::Marker::POINTS;
-//          marker.action = avt_341::msg::Marker::MODIFY;
-////          marker.pose.position.z = k == 0 ? costmap_cells_[i][j].low.val : costmap_cells_[i][j].high.val;
-//          marker.pose.position.z = 10.0f;
-//          marker.pose.position.x = i * 0.1;
-//          marker.pose.position.y = j * 0.1;
-//          marker.scale.x = 3.0;
-//          marker.scale.x = 3.0;
-//          marker.scale.z = 0.15;
-//          if(k == 0){
-//            marker.color.r = 1.0;
-//          }else{
-//            marker.color.b = 1.0;
-//          }
-//          marker_array.markers.push_back(marker);
-//        }
-//      }
-//    }
+    int x_0, y_0, x_N, y_N;
+    GetVoxelBounds(odom, x_0, y_0, x_N, y_N);
+
+    for(int i = x_0; i < x_N; i++){
+      for(int j = y_0; j < y_N; j++){
+        float x_i = llx_ + (static_cast<float>(i) + 0.5)*res_;
+        float y_i = lly_ + (static_cast<float>(j) + 0.5)*res_;
+        if(costmap_cells_[i][j].low.val < max_value){
+          avt_341::msg::Point p1;
+          p1.x = x_i;
+          p1.y = y_i;
+          p1.z = costmap_cells_[i][j].low.val;
+          mins_marker.points.push_back(p1);
+        }
+        if(costmap_cells_[i][j].high.val > min_value && std::abs(costmap_cells_[i][j].high.val - costmap_cells_[i][j].low.val) > 1e-1){
+          avt_341::msg::Point p0;
+          p0.x = x_i;
+          p0.y = y_i;
+          p0.z = costmap_cells_[i][j].high.val;
+          maxes_marker.points.push_back(p0);
+        }
+      }
+    }
+    marker_array.markers.push_back(maxes_marker);
+    marker_array.markers.push_back(mins_marker);
     minmax_vis_publisher_->publish(marker_array);
   }
 
-  VoxelRaytraceClearingMethod::VoxelRaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells, bool visualize)
-    : RaytraceClearingMethod(node_ref, costmap_cells, visualize){
-    voxel_grid = new std::bitset<1024>[Nx_ * Ny_];
+  VoxelRaytraceClearingMethod::VoxelRaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
+                                                           float visualization_range, bool visualize, float llx, float lly, float res, float voxel_height_min, float voxel_height_res)
+    : voxel_height_min_(voxel_height_min), voxel_height_res_(voxel_height_res), RaytraceClearingMethod(node_ref, costmap_cells, visualization_range, visualize, llx, lly, res){
+    voxel_grid = new std::bitset<N_VOXELS_PER_CELL>[Nx_ * Ny_];
     if(visualize_){
       voxel_vis_publisher_ = node_ref->create_publisher<avt_341::msg::MarkerArray>("avt_341/costmap/voxels", 1);
     }
 
   }
 
-  void VoxelRaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud) {
-    RaytraceClearingMethod::Apply(point_cloud);
-
+  VoxelRaytraceClearingMethod::~VoxelRaytraceClearingMethod(){
+    delete voxel_grid;
   }
 
-  void VoxelRaytraceClearingMethod::Visualize() const {
-    RaytraceClearingMethod::Visualize();
+  void VoxelRaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud) {
+    RaytraceClearingMethod::Apply(point_cloud);
+    for(const auto & point : point_cloud.points){
+      int x = static_cast<int>((point.x - llx_)/res_);
+      int y = static_cast<int>((point.y - lly_)/res_);
+      int z = static_cast<int>((point.z - voxel_height_min_)/voxel_height_res_);
+      if(x >= 0 && x < Nx_ && y >= 0 && y < Ny_ && z >= 0 && z < N_VOXELS_PER_CELL){
+        voxel_grid[x*Ny_ + y].set(z);
+      }
+    }
+  }
+
+  void VoxelRaytraceClearingMethod::Visualize(const avt_341::msg::Odometry & odom) const {
+    avt_341::msg::MarkerArray marker_array;
+    avt_341::msg::Marker mins_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 0, utils::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
+    avt_341::msg::Marker maxes_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 1, utils::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
+    avt_341::msg::Marker voxel_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 2, utils::vec3(0.8, 0.8, 0.8), 0.4f, 1.0);
+    const float max_value = std::numeric_limits<float>::max() - 1e-5;
+
+    int x_0, y_0, x_N, y_N;
+    GetVoxelBounds(odom, x_0, y_0, x_N, y_N);
+
+    for(int i = x_0; i < x_N; i++){
+      for(int j = y_0; j < y_N; j++){
+        bool has_value = costmap_cells_[i][j].low.val < max_value;
+        if(has_value){
+          float x_i = llx_ + (static_cast<float>(i) + 0.5)*res_;
+          float y_i = lly_ + (static_cast<float>(j) + 0.5)*res_;
+
+          avt_341::msg::Point p1;
+          p1.x = x_i;
+          p1.y = y_i;
+          p1.z = costmap_cells_[i][j].low.val;
+          mins_marker.points.push_back(p1);
+
+          if(std::abs(costmap_cells_[i][j].high.val - costmap_cells_[i][j].low.val) > 1e-1){
+            avt_341::msg::Point p0;
+            p0.x = x_i;
+            p0.y = y_i;
+            p0.z = costmap_cells_[i][j].high.val;
+            maxes_marker.points.push_back(p0);
+          }
+
+          auto z_pos = std::max(0, static_cast<int>((costmap_cells_[i][j].low.val - voxel_height_min_)/voxel_height_res_));
+          auto max_z_pos = std::min(N_VOXELS_PER_CELL, static_cast<int>((costmap_cells_[i][j].high.val - voxel_height_min_)/voxel_height_res_));
+          while(z_pos <= max_z_pos){
+            if(voxel_grid[i*Ny_ + j].test(z_pos)){
+              avt_341::msg::Point p2;
+              p2.x = x_i;
+              p2.y = y_i;
+              p2.z = voxel_height_min_ + (static_cast<float>(z_pos) + 1.0)*voxel_height_res_;
+              voxel_marker.points.push_back(p2);
+            }
+            z_pos += 1;
+          }
+        }
+
+      }
+    }
+    marker_array.markers.push_back(maxes_marker);
+    marker_array.markers.push_back(mins_marker);
+    marker_array.markers.push_back(voxel_marker);
+    minmax_vis_publisher_->publish(marker_array);
   }
 
 }
