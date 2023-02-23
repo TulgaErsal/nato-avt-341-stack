@@ -173,6 +173,16 @@ target_link_libraries(avt_341_pf_planner_node
   X11
 )
 
+add_executable(avt_341_dwa_planner_node
+  src/planning/local/avt_341_dwa_planner_node.cpp
+  src/planning/local/dwa_planner.cpp
+  src/node/node_proxy.cpp
+  src/visualization/image_visualizer.cpp
+)
+target_link_libraries(avt_341_dwa_planner_node
+  ${catkin_LIBRARIES}
+  X11
+)
 
 add_executable(avt_341_global_path_node
   src/planning/global/avt_341_global_path_node.cpp
@@ -250,6 +260,7 @@ avt_341_control_node
 avt_341_speed_control_node
 avt_341_local_planner_node
 avt_341_pf_planner_node
+avt_341_dwa_planner_node
 avt_341_global_path_node
 avt_341_lidar_obstacle_detector_node
 avt_341_sim_test_node
