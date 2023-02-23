@@ -3,10 +3,14 @@
 // c++ includes
 #include <math.h>
 
-
+namespace avt_341 {
+namespace mission {
+	
 FormationController::FormationController(){
-	GlobalPathPointsDist = 1.0f;
-	followerDistGain = 1.0f;
+	global_path_points_dist_ = 1.0f;
+	gpp2_ = global_path_points_dist_*global_path_points_dist_;
+	follower_dist_gain_ = 1.0f;
+	desired_speed_ = 0.0f;
 }
 
 void FormationController::ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R){
@@ -28,38 +32,38 @@ void FormationController::NormalizeVec2D(Vec2d &v){
 void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVy){
 	if(!status.use_leader) return;
 	float leaderYoffset = status.y_offset;
-	if(GlobalPath.poses.size() == 0){
+	if(desired_global_path_.poses.size() == 0){
 		avt_341::msg::PoseStamped pose;
 		pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset;
 		pose.pose.position.x = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset;
 		pose.pose.position.y = leader_odom.pose.pose.position.z;
-		GlobalPath.poses.push_back(pose);
-		//ROS_INFO("Global Path: %i X:%g Y:%g Z:%g", numGlobalPathPoints, GlobalPath[0], GlobalPath[1], GlobalPath[2]);
+		desired_global_path_.poses.push_back(pose);
+		//ROS_INFO("Global Path: %i X:%g Y:%g Z:%g", numdesired_global_path_Points, desired_global_path_[0], desired_global_path_[1], desired_global_path_[2]);
 		return;
 	}
 
-	int n3 = (int)GlobalPath.poses.size()-1;
-	float dx = (leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset) - GlobalPath.poses[n3].pose.position.x;
-	float dy = (leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset) - GlobalPath.poses[n3].pose.position.y;
-	float dz = leader_odom.pose.pose.position.z - GlobalPath.poses[n3].pose.position.z;
+	int n3 = (int)desired_global_path_.poses.size()-1;
+	float dx = (leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset) - desired_global_path_.poses[n3].pose.position.x;
+	float dy = (leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset) - desired_global_path_.poses[n3].pose.position.y;
+	float dz = leader_odom.pose.pose.position.z - desired_global_path_.poses[n3].pose.position.z;
 
 	float dist2 = dx*dx + dy*dy + dz*dz;
-	if(dist2 < GlobalPathPointsDist * GlobalPathPointsDist) return;
+	if(dist2 < gpp2_) return;
 
 	avt_341::msg::PoseStamped pose;
 	pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset;
 	pose.pose.position.x = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset;
 	pose.pose.position.y = leader_odom.pose.pose.position.z;
-	GlobalPath.poses.push_back(pose);
+	desired_global_path_.poses.push_back(pose);
 
 	return;
-	//ROS_INFO("Global Path: %i X:%g Y:%g Z:%g", numGlobalPathPoints, GlobalPath[n3], GlobalPath[n3+1], GlobalPath[n3+2]);
+	//ROS_INFO("Global Path: %i X:%g Y:%g Z:%g", numdesired_global_path_Points, desired_global_path_[n3], desired_global_path_[n3+1], desired_global_path_[n3+2]);
 }
 
 
 //Formation Vehicle Speed Calculation
 //Output: target follower speed
-float FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
+void FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
 	float targetSpeed = 0.0f;
 	float leaderXoffset = status.x_offset;
 	float leaderYoffset = status.y_offset;
@@ -87,13 +91,13 @@ float FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_
 		//Speed along vehicle heading
 		float speedHeading = vehicleVx[0]*relativeVel[0] + vehicleVx[1]*relativeVel[1];
 
-		targetSpeed = dotP * followerDistGain + speedHeading;
+		targetSpeed = dotP * follower_dist_gain_ + speedHeading;
 		if(targetSpeed < 0.0f)targetSpeed = 0.0f;
 	}
 	else{
 		targetSpeed = 0.0f; 
 	}
-	return targetSpeed;
+	desired_speed_ = targetSpeed;
 }
 
 
@@ -127,14 +131,14 @@ void FormationController::CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d
 
 void FormationController::Update(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status){
 
-
 	Vec2d leaderVx, leaderVy;
+
 	CalcLeaderRotation(leader_odom, leaderVx, leaderVy);
 
 	GenerateLeaderPath(leader_odom, status, leaderVy);
 
-	float desired_speed = CalculateFollowerSpeed(leader_odom, odom, status, leaderVx, leaderVy);
-
-	//publish GlobalPath
-	//publish desired_speed
+	CalculateFollowerSpeed(leader_odom, odom, status, leaderVx, leaderVy);
 }
+
+} // namespace mission
+} // namespace avt_341
