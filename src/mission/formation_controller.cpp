@@ -5,7 +5,7 @@
 
 namespace avt_341 {
 namespace mission {
-	
+
 FormationController::FormationController(){
 	global_path_points_dist_ = 1.0f;
 	gpp2_ = global_path_points_dist_*global_path_points_dist_;
@@ -14,8 +14,6 @@ FormationController::FormationController(){
 }
 
 void FormationController::ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R){
-	//float q[4];
-	//q[0] = quat.x; q[1] = quat.y, q[2]=quat.z; q[3] = quat.w;
 	R[0][0]=1.f+2.f*(-q[1]*q[1]-q[2]*q[2]); R[0][1]=2.f*(q[0]*q[1]-q[2]*q[3]); R[0][2]=2.f*(q[0]*q[2]+q[1]*q[3]);
 	R[1][0]=2.f*(q[0]*q[1]+q[2]*q[3]); R[1][1]=1.f+2.f*(-q[0]*q[0]-q[2]*q[2]); R[1][2]=2.f*(q[1]*q[2]-q[0]*q[3]);
 	R[2][0]=2.f*(q[0]*q[2]-q[1]*q[3]); R[2][1]=2.f*(q[1]*q[2]+q[0]*q[3]); R[2][2]=1.f+2.f*(-q[0]*q[0]-q[1]*q[1]);
@@ -27,11 +25,18 @@ void FormationController::NormalizeVec2D(Vec2d &v){
 	v[0]*=l; v[1]*=l;
 }
 
-
-//Global Path Generator
+/**
+ * @brief Generate the global path for the vehicle
+ * 
+ * @param leader_odom Current odometry status of the lead vehicle
+ * @param status Message containing desired offsets for this vehicle
+ * @param leaderVy Orientation of the leader vehicle
+ */
 void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVy){
-	if(!status.use_leader) return;
+	if(!(bool)status.use_leader) return;
+
 	float leaderYoffset = status.y_offset;
+
 	if(desired_global_path_.poses.size() == 0){
 		avt_341::msg::PoseStamped pose;
 		pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset;
@@ -57,12 +62,17 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
 	desired_global_path_.poses.push_back(pose);
 
 	return;
-	//ROS_INFO("Global Path: %i X:%g Y:%g Z:%g", numdesired_global_path_Points, desired_global_path_[n3], desired_global_path_[n3+1], desired_global_path_[n3+2]);
 }
 
-
-//Formation Vehicle Speed Calculation
-//Output: target follower speed
+/**
+ * @brief Calculate the desired speed for the follower vehicle
+ * 
+ * @param leader_odom Current odometry status of the lead vehicle
+ * @param odom Current odometry of the ego-vehicle
+ * @param status Message containing desired offsets for this vehicle
+ * @param leaderVx Orientation of the leader vehicle 
+ * @param leaderVy Orientation of the leader vehicle 
+ */
 void FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
 	float targetSpeed = 0.0f;
 	float leaderXoffset = status.x_offset;
@@ -74,9 +84,10 @@ void FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_o
 
 
 	//Calculate vector to target leader point
+	// CTG 2/23/23 - these were facing the wrong way, added the minus sign
 	float vec[2];
-	vec[0] = odom.pose.pose.position.x - targetLeaderPoint[0];
-	vec[1] = odom.pose.pose.position.y - targetLeaderPoint[1];
+	vec[0] = -(odom.pose.pose.position.x - targetLeaderPoint[0]);
+	vec[1] = -(odom.pose.pose.position.y - targetLeaderPoint[1]);
 
 	Vec2d vehicleVx;
 	CalcVehicleRotation(odom,vehicleVx);
@@ -97,10 +108,12 @@ void FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_o
 	else{
 		targetSpeed = 0.0f; 
 	}
+
+	
 	desired_speed_ = targetSpeed;
 }
 
-
+/// @brief  Calculate the 2D rotation of the leader vehicle
 void FormationController::CalcLeaderRotation(avt_341::msg::Odometry leader_odom, Vec2d &leaderVx, Vec2d &leaderVy){
 	Matrix3x3 leaderRotMatrix;
 	TQuat q;
@@ -116,6 +129,7 @@ void FormationController::CalcLeaderRotation(avt_341::msg::Odometry leader_odom,
 	leaderVy[1] =-leaderVx[0];
 }
 
+/// @brief  Calculate the 2D rotation of the ego vehicle
 void FormationController::CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx){
 	Matrix3x3 vehicleRotMatrix;
 	TQuat q;

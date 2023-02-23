@@ -1,8 +1,13 @@
 <launch>
+<!-- Launch file to test the formation control node.
+It creates one leader and two followers.
+Each vehicle has its own formation controller.
+Each vehicle also has it's own tester.
+The follower nodes will subscribe to the "leader_odometry" topic and their own odometry topic.
+-->
 
-<!-- set up the "leader" block-->
+<!-- __________________ Launch the leader node and tester __________________________________________________________________________-->
   <node name="l_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
-  <!-- the follower nodes will look for leader_odometry and their own odometry-->
     <remap from="avt_341/odometry" to="avt_341/leader_odometry"/> 
     <remap from="avt_341/follower_status" to="avt_341/leader_status"/> 
     <remap from="avt_341/global_path" to="avt_341/leader_global_path"/>
@@ -11,6 +16,7 @@
   </node>
 
   <node name="l_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for the leader -->
     <remap from="avt_341/odometry" to="avt_341/leader_odometry"/> 
     <remap from="avt_341/follower_status" to="avt_341/leader_status"/> 
     <remap from="avt_341/global_path" to="avt_341/leader_global_path"/>
@@ -21,7 +27,8 @@
     <param name="leader_speed" value="5.0" />
   </node>
 
-<!-- Set up the "follower1 block" -->
+
+<!-- __________________ Launch the first follower and the test node for the first follower __________________________________________-->
   <node name="f1_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
     <remap from="avt_341/odometry" to="avt_341/follower1_odometry"/>
     <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
@@ -33,6 +40,7 @@
   </node>
 
   <node name="f1_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for follower 1 -->
     <remap from="avt_341/odometry" to="avt_341/follower1_odometry"/> 
     <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
     <remap from="avt_341/global_path" to="avt_341/follower1_global_path"/>
@@ -42,7 +50,8 @@
     <param name="y_offset" value="10.0" />
   </node>
 
-<!-- Set up the "follower2 block" -->
+
+<!-- __________________ Launch the 2nd follower and the test node for the 2nd follower _____________________________________________-->
   <node name="f2_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
     <remap from="avt_341/odometry" to="avt_341/follower2_odometry"/>
     <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
@@ -54,6 +63,7 @@
   </node>
 
   <node name="f2_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for follower 2 -->
     <remap from="avt_341/odometry" to="avt_341/follower2_odometry"/> 
     <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
     <remap from="avt_341/global_path" to="avt_341/follower2_global_path"/>

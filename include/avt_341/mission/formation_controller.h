@@ -1,3 +1,13 @@
+/**
+* \class FormationController
+*
+* Controller for vehicle global path points based on desired formation.
+* Adapted to ROS by CTG from original code by Tamer Wasfy
+*
+* \author Tamer Wasfy, Chris Goodin
+*
+* \date 8/31/2020
+*/
 // c++ includes
 #include <string>
 // local includes
@@ -7,35 +17,39 @@
 namespace avt_341 {
 namespace mission {
 
+// convenient shorthands for adapting TW's code
 typedef float Matrix3x3[3][3];
-
 typedef float Vec2d[2];
-
 typedef float TQuat[4];
 
-// class for formation control
+/// Class for formation control
 class FormationController{
 
   public:
-
+	/// Construct a formation controller
 	FormationController();
 	
+	/// Update the controller based on the most recent leader odometry, vehicle odometry, and status message
 	void Update(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status);
 
+	/// Set the global path point distance in meters - this is the spacing between points
 	void SetGlobalPathPointsDist(float d){global_path_points_dist_ = d; gpp2_ = d*d; }
 
+	/// Set the follower dist gain. This controls how aggressively the vehicle closes ground, equavilent to the "P" in PID
 	void SetFollowerDistGain(float gain){follower_dist_gain_ = gain;}
 
+	/// Get the current desired global path
 	avt_341::msg::Path GetPath(){return desired_global_path_; }
 
+	/// Get the current desired speed in m/s
 	avt_341::msg::Float64 GetSpeed(){avt_341::msg::Float64 ds; ds.data = desired_speed_; }
 
   private:
 
-	//Global Path Generator
+	// Method to generate global path based on formation
 	void  GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVy);
 
-	//Formation Vehicle Speed Calculation
+	// Method to calculate desired speed based on formation
 	void CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
 	// control parameters
@@ -47,12 +61,10 @@ class FormationController{
 	avt_341::msg::Path desired_global_path_;
 	float desired_speed_;
 
+	// utility functions and intermediate calculations
 	void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R);
-
 	void NormalizeVec2D(Vec2d &v);
-
 	void CalcLeaderRotation(avt_341::msg::Odometry leader_odom, Vec2d &leaderVx, Vec2d &leaderVy);
-
 	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);
 
 }; // class formation controller
