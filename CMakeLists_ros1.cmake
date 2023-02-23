@@ -1,6 +1,6 @@
-project(avt_341)
+#project(avt_341)
 
-cmake_minimum_required(VERSION 3.5)
+#cmake_minimum_required(VERSION 3.5)
 
 set(REQUIRED_ROS_PACKAGES
   roscpp

@@ -1,6 +1,6 @@
-project(avt_341)
+#project(avt_341)
 
-cmake_minimum_required(VERSION 3.5)
+#cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
 
@@ -15,6 +15,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+#find_package(builtin_interfaces REQUIRED)
 
 if (WIN32 OR WIN64)
 set (link_libs
@@ -37,6 +39,12 @@ set(dependencies
         std_msgs
         tf2_ros
         )
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+        "msg/FollowerStatus.msg"
+        #DEPENDENCIES std_msgs builtin_interfaces
+)
+ament_export_dependencies(rosidl_default_runtime)
 
 ###########
 ## Build ##
@@ -133,6 +141,33 @@ add_executable(avt_bot_state_publisher_node
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
+
+
+
+# # formation control stuff using custom messages
+# # see: https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Single-Package-Define-And-Use-Interface.html#use-an-interface-from-the-same-package
+# rosidl_get_typesupport_target(cpp_typesupport_target
+#   ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+# add_executable(avt_341_formation_control_node
+#   src/mission/formation_control_node.cpp
+#   src/mission/formation_controller.cpp
+#   src/node/node_proxy.cpp
+# )
+
+# ament_target_dependencies(avt_341_formation_control_node ${dependencies} )
+# target_link_libraries(avt_341_formation_control_node ${link_libs} ${cpp_typesupport_target} )
+
+# add_executable(avt_341_test_formation_control_node
+#   src/mission/test_formation_control_node.cpp
+#   src/node/node_proxy.cpp
+# )
+# ament_target_dependencies(avt_341_test_formation_control_node ${dependencies} )
+# target_link_libraries(avt_341_test_formation_control_node ${link_libs} ${cpp_typesupport_target})
+
+
+
+
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime
 find_package(Matlab)
@@ -182,6 +217,8 @@ install(TARGETS
         avt_341_sim_test_node
         avt_bot_state_publisher_node
         speed_control_test_node
+        #avt_341_test_formation_control_node
+        #avt_341_formation_control_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 

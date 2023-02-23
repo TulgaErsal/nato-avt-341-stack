@@ -132,6 +132,8 @@ namespace avt_341 {
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
 
+//#include "avt_341/msg/follower_status.hpp"
+
 namespace avt_341 {
   namespace msg {
     using PointCloud = sensor_msgs::msg::PointCloud;
@@ -187,6 +189,9 @@ namespace avt_341 {
 
     using Int32 = std_msgs::msg::Int32;
     using Int32Ptr = std_msgs::msg::Int32::SharedPtr;
+
+    //using FollowerStatus = avt_341::FollowerStatus;
+    //using FollowerStatusPtr = avt_341::FollowerStatus::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;
