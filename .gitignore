@@ -32,8 +32,6 @@
 *.app
 
 # custom
-package.xml
-CMakeLists.txt
 *mavs_config.txt
 *__pycache__
 
@@ -49,5 +47,4 @@ out/build
 # Visual Studio Code
 .vscode/
 
-CMakeLists.txt
 package.xml
