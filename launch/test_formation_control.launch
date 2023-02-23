@@ -1,0 +1,67 @@
+<launch>
+
+<!-- set up the "leader" block-->
+  <node name="l_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+  <!-- the follower nodes will look for leader_odometry and their own odometry-->
+    <remap from="avt_341/odometry" to="avt_341/leader_odometry"/> 
+    <remap from="avt_341/follower_status" to="avt_341/leader_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/leader_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/leader_desired_speed"/> 
+    <param name="is_leader" value="true" />
+  </node>
+
+  <node name="l_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/leader_odometry"/> 
+    <remap from="avt_341/follower_status" to="avt_341/leader_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/leader_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/leader_desired_speed"/>
+    <param name="is_leader" value="true" /> 
+    <param name="x_offset" value="0.0" />
+    <param name="y_offset" value="0.0" />
+    <param name="leader_speed" value="5.0" />
+  </node>
+
+<!-- Set up the "follower1 block" -->
+  <node name="f1_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower1_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower1_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower1_desired_speed"/> 
+    <param name="is_leader" value="false" />
+    <param name="follower_dist_gain" value="1.0" />
+    <param name="global_path_point_dist" value="1.0" />
+  </node>
+
+  <node name="f1_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower1_odometry"/> 
+    <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower1_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower1_desired_speed"/> 
+    <param name="is_leader" value="false" />
+    <param name="x_offset" value="10.0" />
+    <param name="y_offset" value="10.0" />
+  </node>
+
+<!-- Set up the "follower2 block" -->
+  <node name="f2_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower2_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower2_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower2_desired_speed"/> 
+    <param name="is_leader" value="false" />
+    <param name="follower_dist_gain" value="1.0" />
+    <param name="global_path_point_dist" value="1.0" />
+  </node>
+
+  <node name="f2_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower2_odometry"/> 
+    <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower2_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower2_desired_speed"/>
+    <param name="is_leader" value="false" /> 
+    <param name="x_offset" value="10.0" />
+    <param name="y_offset" value="-10.0" />
+  </node>
+
+</launch>
+

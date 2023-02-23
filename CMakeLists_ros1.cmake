@@ -110,6 +110,15 @@ target_link_libraries(avt_341_formation_control_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(avt_341_test_formation_control_node
+  src/mission/test_formation_control_node.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(avt_341_test_formation_control_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(avt_341_test_formation_control_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(avt_341_perception_node
 src/perception/avt_341_perception_node.cpp
 src/perception/elevation_grid.cpp
@@ -266,6 +275,7 @@ path_manager_node
 speed_control_test_node
 avt_bot_state_publisher_node
 avt_341_formation_control_node
+avt_341_test_formation_control_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )

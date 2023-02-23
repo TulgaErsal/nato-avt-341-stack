@@ -5,7 +5,6 @@
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/mission/formation_controller.h"
 
-
 avt_341::msg::Odometry odom;
 avt_341::msg::Odometry ldr_odom;
 avt_341::msg::FollowerStatus status;
@@ -38,13 +37,24 @@ int main(int argc, char **argv){
     auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
     auto speed_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
 
+    bool is_leader = false;
+    n->get_parameter("~is_leader", is_leader, false);
+
+    float dist_gain = 1.0f;
+    n->get_parameter("~follower_dist_gain", dist_gain, 1.0f);
+
+    float path_point_dist = 1.0f;
+    n->get_parameter("~global_path_point_dist", path_point_dist, 1.0f);
+
     avt_341::mission::FormationController controller;
+    controller.SetGlobalPathPointsDist(path_point_dist);
+    controller.SetFollowerDistGain(dist_gain);
 
     avt_341::node::Rate loop_rate(10);
     
     while(avt_341::node::ok()){
 
-        if (odom_rcvd && ldr_odom_rcvd && status_rcvd){
+        if ( (odom_rcvd && ldr_odom_rcvd && status_rcvd) ){
             controller.Update(ldr_odom, odom, status);
             speed_pub->publish(controller.GetSpeed());
             path_pub->publish(controller.GetPath());
