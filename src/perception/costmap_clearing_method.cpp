@@ -102,7 +102,7 @@ namespace perception{
     marker.pose.orientation.y = 0.0;
     marker.pose.orientation.z = 0.0;
     marker.pose.orientation.w = 1.0;
-    marker.lifetime = node_->get_duration(1.0);
+    marker.lifetime = avt_341::node::make_duration(1.0);
     return marker;
   }
 

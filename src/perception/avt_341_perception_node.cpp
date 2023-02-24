@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
 	n->get_parameter("~clear_method", clear_method, std::string("raytrace_voxel"));
 	n->get_parameter("~clear_method_visualize", clear_method_visualize, true);
-  n->get_parameter("~clear_method_visualize_range", visualization_range, -1.0f);
+  n->get_parameter("~clear_method_visualize_range", visualization_range, 15.0f);
   n->get_parameter("~voxel_height_min", voxel_height_min, 0.0f);
   n->get_parameter("~voxel_height_res", voxel_height_res, 0.5f);
 

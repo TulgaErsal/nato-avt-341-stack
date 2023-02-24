@@ -191,13 +191,8 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
   if(use_elevation_ && cell.high.val > thresh_)
     return GRID_MAX_VALUE;
 
-  if(!use_elevation_){
-    uint8_t val = (uint8_t) (GRID_SLOPE_MULT*cell.slope);
-    if (val<0) val = 0;
-    if (val>GRID_MAX_VALUE) val = GRID_MAX_VALUE;
-    if (cell.slope>thresh_){
-      return val;
-    }
+  if(!use_elevation_ && cell.slope>thresh_){
+    return static_cast<uint8_t>(std::min(std::max(0.0f, GRID_SLOPE_MULT*cell.slope), static_cast<float>(GRID_MAX_VALUE)));
   }
   return 0;
 }

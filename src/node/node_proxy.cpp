@@ -23,10 +23,6 @@ ros::Time NodeProxy::get_stamp() const {
     return ros::Time::now();
 }
 
-ros::Duration get_duration(double seconds) const{
-    return ros::Duration(seconds);
-}
-
 void NodeProxy::spin_some() {
     ros::spinOnce();
 }
@@ -51,10 +47,6 @@ void NodeProxy::spin_some() {
 
     rclcpp::Time NodeProxy::get_stamp() const {
       return node_->get_clock()->now();
-    }
-
-    rclcpp::Duration NodeProxy::get_duration(double seconds) const {
-      return rclcpp::Duration::from_seconds(seconds);
     }
 
     double NodeProxy::get_now_seconds() const {

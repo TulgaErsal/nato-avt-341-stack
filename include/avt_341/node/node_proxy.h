@@ -1,6 +1,3 @@
-//
-// Created by Stefan on 2021-07-28.
-//
 
 #ifndef AVT_341_NODE_PROXY_H
 #define AVT_341_NODE_PROXY_H
@@ -115,7 +112,6 @@ namespace avt_341 {
             }
 
             ros::Time get_stamp() const;
-            ros::Duration get_duration(double seconds) const;
             double get_now_seconds() const;
             void spin_some();
 
@@ -142,6 +138,15 @@ namespace avt_341 {
 
 namespace avt_341 {
   namespace node {
+
+    inline rclcpp::Duration make_duration(float period){
+      return rclcpp::Duration::from_seconds(period);
+    }
+
+    inline rclcpp::Duration make_duration(int32_t sec, int32_t nsec){
+      return rclcpp::Duration(sec, nsec);
+    }
+
     template<
         typename MessageT,
         typename AllocatorT = std::allocator<void>,
