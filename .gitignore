@@ -32,7 +32,6 @@
 *.app
 
 # custom
-package.xml
 *mavs_config.txt
 *__pycache__
 
@@ -43,3 +42,9 @@ cmake-build-debug
 # Visual Studio
 .vs
 out/build
+.project
+
+# Visual Studio Code
+.vscode/
+
+package.xml

@@ -1,0 +1,29 @@
+<launch>
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+		<arg name="bson_only_mode" value="true"/>
+		<!-- UE4 Websockets need this parameter. Other implementations don't-->
+		<arg name="websocket_external_port" value="80"/>
+	</include>
+
+	<include file="$(find avt_341)/launch/base.launch">
+		<!-- no_waypoints.yaml ue4_VehicleAdvanced_waypoints.yaml -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/no_waypoints.yaml"/>
+		<arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf"/>
+  		<arg name="use_lidar_obstacle_detector" value="true"/>
+
+		<arg name="use_sim_time" value="true"/>
+		<arg name="use_registered" value="false"/>
+
+		<!-- These values are for the "VehicleAdvanced" example project in UE4 -->
+		<arg name="vehicle_wheelbase" value="1.0"/>
+		<arg name="vehicle_width" value="1.0"/>
+		<arg name="vehicle_max_steer_angle_degrees" default="45.0"/>
+		<arg name="max_steer_angle" value="0.78"/>
+
+		<arg name="grid_height" value="249.0"/>
+		<arg name="grid_width" value="187.0"/>
+		<arg name="grid_llx" value="-130"/>
+		<arg name="grid_lly" value="-178"/>
+		<arg name="grid_res" value="1"/>
+	</include>
+</launch>
