@@ -57,7 +57,7 @@ void ElevationGrid::AgeCells(){
 
 }
 
-std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
+std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose){
 
   bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == "segmentation";
   has_segmentation_ = has_segmentation_local || has_segmentation_;
@@ -66,7 +66,7 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
     ClearGrid();
   }
   AgeCells();
-  clearing_method_->Apply(point_cloud);
+  clearing_method_->Apply(point_cloud, current_pose);
 
   // fill the cells with highest and lowest points
   for (int i=0;i<point_cloud.points.size();i++){

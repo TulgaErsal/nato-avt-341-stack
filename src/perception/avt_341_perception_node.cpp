@@ -80,7 +80,7 @@ void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		for(int c = 0; c < point_cloud.channels.size(); c++){
 			point_cloud.channels[c].values = channel_values[c];
 		}
-		grid.AddPoints(point_cloud);
+		grid.AddPoints(point_cloud, current_pose);
 		grid_created = true;
 	}
 }
@@ -126,7 +126,7 @@ void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		for(int c = 0; c < point_cloud.channels.size(); c++){
 			point_cloud.channels[c].values = channel_values[c];
 		}
-		grid.AddPoints(point_cloud);
+		grid.AddPoints(point_cloud, current_pose);
 		grid_created = true;
 	}
 }

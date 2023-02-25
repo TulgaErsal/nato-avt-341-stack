@@ -32,7 +32,7 @@ class ElevationGrid{
      * Returns surface points
      * \param point_cloud PointCloud message
      */
-    std::vector<avt_341::msg::Point32> AddPoints(avt_341::msg::PointCloud &point_cloud);
+    std::vector<avt_341::msg::Point32> AddPoints(avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose);
 
     bool has_segmentation() const { return has_segmentation_; }
 

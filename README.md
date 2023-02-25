@@ -3,6 +3,15 @@ ROS package with autonomy algorithms for the NATO AVT-341.
 
 The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
 
+__Contents:__ 
+- [Requirements](#requirements)
+- [ROS1 Installation](#ros-1-installation)
+- [ROS2 Installation](#ros-2-installation)
+- [Troubleshooting](#troubleshooting)
+- [Running with MAVS](#running-with-mavs)
+- [Funding Acknowledgement](#funding-acknowledgement)
+- [Costmap Clearing Methods](documentation/costmap_clearing.md) 
+
 ## Requirements
 The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22. 
 
