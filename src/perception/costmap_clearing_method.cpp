@@ -42,8 +42,9 @@ namespace perception{
 
 
   RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
-                                                 float visualization_range, bool visualize, float llx, float lly, float res)
-    : node_(node_ref), llx_(llx), lly_(lly), res_(res), CostmapClearingMethod(costmap_cells, visualization_range, visualize){
+                                                 float visualization_range, bool visualize, float llx, float lly, float res, int grid_dilate_x,
+                                                 int grid_dilate_y, float thresh, float clear_method_raytrace_range, const CellObstacleCalculator* cell_obstacle_calculator)
+    : node_(node_ref), llx_(llx), lly_(lly), res_(res), grid_dilate_x_(grid_dilate_x), grid_dilate_y_(grid_dilate_y), thresh_(thresh), raytrace_range_(clear_method_raytrace_range), cell_obstacle_calculator_(cell_obstacle_calculator), CostmapClearingMethod(costmap_cells, visualization_range, visualize){
 
     if(visualize_){
       minmax_vis_publisher_ = node_ref->create_publisher<avt_341::msg::MarkerArray>("avt_341/costmap/voxels",1);
@@ -51,42 +52,82 @@ namespace perception{
   }
 
   void RaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) {
-    const auto pos = current_pose.pose.pose.position;
+    avt_341::msg::Point pos;
+    pos.x = current_pose.pose.pose.position.x;
+    pos.y = current_pose.pose.pose.position.y;
+    pos.z = current_pose.pose.pose.position.z + 2.2513;
     for(const auto & point : point_cloud.points){
-      RaytraceLine(pos, point);
+      const float dx = point.x - pos.x;
+      const float dy = point.y - pos.y;
+      if(dx*dx + dy*dy < raytrace_range_*raytrace_range_){
+        RaytraceLine(pos, point);
+      }
     }
+
+    // Clean up unattached dilated cells
+    int x_0, y_0, x_N, y_N;
+    GetVoxelBounds(current_pose, raytrace_range_, x_0, y_0, x_N, y_N);
+    for(int x = x_0; x < x_N; x++){
+      for(int y = y_0; y < y_N; y++){
+        if(costmap_cells_[x][y].filled() && costmap_cells_[x][y].dilated_val > 0){
+          bool found_obs = false;
+          for(int i = std::max(0, x-grid_dilate_x_); !found_obs && i <= std::min(Nx_-1, x+grid_dilate_x_); i++){
+            for(int j = std::max(0, y-grid_dilate_y_); !found_obs && j <= std::min(Ny_-1, y+grid_dilate_y_); j++){
+//              if(cell_obstacle_calculator_->PastSlopeThreshold(costmap_cells_[i][j]) || abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) > thresh_){
+              if(costmap_cells_[i][j].has_dilated || (costmap_cells_[i][j].filled() && abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) > thresh_)){
+                found_obs = true;
+              }
+            }
+          }
+          if(!found_obs){
+            costmap_cells_[x][y].dilated_val = 0;
+          }
+        } // if dilated_val > 0
+      }
+    }
+
   }
   void RaytraceClearingMethod::RaytraceLine(const avt_341::msg::Point & start, const avt_341::msg::Point32 & end) {
 
   }
 
   void VoxelRaytraceClearingMethod::ClearVoxelAt(int x, int y, int z){
-    float z_val = static_cast<float>(z) * voxel_height_res_ + voxel_height_min_;
-    if(costmap_cells_[x][y].high.val < z_val){
+    int z_i = static_cast<int>((costmap_cells_[x][y].high.val - voxel_height_min_)/voxel_height_res_);
+    if(z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL){
       return;
     }
 
-    int z_i = static_cast<int>((costmap_cells_[x][y].high.val - voxel_height_min_)/voxel_height_res_);
     while(z_i >= z){
       voxel_grid[x*Ny_ + y].set(z_i, false);
       z_i--;
     }
 
     // Find next filled cell
-    int z_min = static_cast<int>((costmap_cells_[x][y].low.val - voxel_height_min_)/voxel_height_res_);
+    int z_min = std::max(0, static_cast<int>((costmap_cells_[x][y].low.val - voxel_height_min_)/voxel_height_res_));
     while(z_i >= z_min && !voxel_grid[x*Ny_ + y].test(z_i)){
       z_i --;
     }
 
-    if(z_i >= z_min){
+    bool was_obstacle = cell_obstacle_calculator_->PastSlopeThreshold(costmap_cells_[x][y]);
+    if(z_i < z_min){
+      // Cell empty
+      costmap_cells_[x][y].high.val = costmap_cells_[x][y].low.val;
+//      costmap_cells_[x][y].reset();
+    }else{
       // Update cell height
       costmap_cells_[x][y].high.val = static_cast<float>(z_i) * voxel_height_res_ + voxel_height_min_;
-    }else{
-      // Cell empty
-      costmap_cells_[x][y].filled = false;
-      costmap_cells_[x][y].obstacle = false;
-      costmap_cells_[x][y].high.val = std::numeric_limits<float>::lowest();
-      costmap_cells_[x][y].low.val = std::numeric_limits<float>::max();
+    }
+
+    // Remove surrounding dilation if cell no longer obstacle
+    if(was_obstacle && !cell_obstacle_calculator_->PastSlopeThreshold(costmap_cells_[x][y])){
+      for(int i = std::max(0, x-grid_dilate_x_); i <= std::min(Nx_-1, x+grid_dilate_x_); i++){
+        for(int j = std::max(0, y-grid_dilate_y_); j <= std::min(Ny_-1, y+grid_dilate_y_); j++){
+          if(costmap_cells_[i][j].filled() && abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) < thresh_){
+            costmap_cells_[i][j].dilated_val = 0;
+          }
+        }
+      }
+      costmap_cells_[x][y].has_dilated = false;
     }
 
   }
@@ -108,14 +149,21 @@ namespace perception{
     if(dx >= dy && dx >= dz){
       int p1 = 2 * dy - dx;
       int p2 = 2 * dz - dx;
-      while (x2 != x1){
+      while (x1 != x2){
         x1 += x_step;
         if (p1 >= 0){
           y1 += y_step;
           p1 -= 2 * dx;
         }
+        if (p2 >= 0){
+          z1 += z_step;
+          p2 -= 2 * dx;
+        }
         p1 += 2 * dy;
         p2 += 2 * dz;
+        if(x1 == x2 && y1 == y2){
+          break;
+        }
         ClearVoxelAt(x1, y1, z1);
       }
     } else if(dy >= dx && dy >= dz){
@@ -133,6 +181,9 @@ namespace perception{
         }
         p1 += 2 * dx;
         p2 += 2 * dz;
+        if(x1 == x2 && y1 == y2){
+          break;
+        }
         ClearVoxelAt(x1, y1, z1);
       }
     }
@@ -151,38 +202,14 @@ namespace perception{
         }
         p1 += 2 * dy;
         p2 += 2 * dx;
+        if(x1 == x2 && y1 == y2){
+          break;
+        }
         ClearVoxelAt(x1, y1, z1);
       }
     }
 
   }
-
-  void RaytraceClearingMethod::Bresenham3D(int off_a, int off_b, int off_c,
-      unsigned int abs_da, unsigned int abs_db, unsigned int abs_dc,
-      int error_b, int error_c, int offset_a, int offset_b, int offset_c, unsigned int &offset,
-      unsigned int &z_mask, unsigned int max_length)
-  {
-    unsigned int end = std::min(max_length, abs_da);
-    for (unsigned int i = 0; i < end; ++i)
-    {
-//      at(offset, z_mask);
-      offset_a += off_a;
-      error_b += abs_db;
-      error_c += abs_dc;
-      if ((unsigned int)error_b >= abs_da)
-      {
-        offset_b += off_b;
-        error_b -= abs_da;
-      }
-      if ((unsigned int)error_c >= abs_da)
-      {
-        offset_c += off_c;
-        error_c -= abs_da;
-      }
-    }
-//    at(offset, z_mask);
-  }
-
 
   avt_341::msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, utils::vec3 color, float alpha, double z_scale) const{
     avt_341::msg::Marker marker;
@@ -206,12 +233,12 @@ namespace perception{
     return marker;
   }
 
-  void RaytraceClearingMethod::GetVoxelBounds(const avt_341::msg::Odometry & odom, int & x_0, int & y_0, int & x_N, int & y_N) const{
-    if(visualization_range_ > 0.0){
-      x_0 = static_cast<int>((odom.pose.pose.position.x - llx_ - visualization_range_)/res_);
-      y_0 = static_cast<int>((odom.pose.pose.position.y - lly_ - visualization_range_)/res_);
-      x_N = x_0 + 2*static_cast<int>(visualization_range_/res_);
-      y_N = y_0 + 2*static_cast<int>(visualization_range_/res_);
+  void RaytraceClearingMethod::GetVoxelBounds(const avt_341::msg::Odometry & odom, float range, int & x_0, int & y_0, int & x_N, int & y_N) const{
+    if(range > 0.0){
+      x_0 = static_cast<int>((odom.pose.pose.position.x - llx_ - range)/res_);
+      y_0 = static_cast<int>((odom.pose.pose.position.y - lly_ - range)/res_);
+      x_N = x_0 + 2*static_cast<int>(range/res_);
+      y_N = y_0 + 2*static_cast<int>(range/res_);
       x_0 = std::min(std::max(0, x_0), Nx_);
       y_0 = std::min(std::max(0, y_0), Ny_);
       x_N = std::min(std::max(0, x_N), Nx_);
@@ -234,7 +261,7 @@ namespace perception{
     const float min_value = std::numeric_limits<float>::lowest() + 1e-5;
 
     int x_0, y_0, x_N, y_N;
-    GetVoxelBounds(odom, x_0, y_0, x_N, y_N);
+    GetVoxelBounds(odom, visualization_range_, x_0, y_0, x_N, y_N);
 
     for(int i = x_0; i < x_N; i++){
       for(int j = y_0; j < y_N; j++){
@@ -262,8 +289,9 @@ namespace perception{
   }
 
   VoxelRaytraceClearingMethod::VoxelRaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
-                                                           float visualization_range, bool visualize, float llx, float lly, float res, float voxel_height_min, float voxel_height_res)
-    : voxel_height_min_(voxel_height_min), voxel_height_res_(voxel_height_res), RaytraceClearingMethod(node_ref, costmap_cells, visualization_range, visualize, llx, lly, res){
+                                                           float visualization_range, bool visualize, float llx, float lly, float res, int grid_dilate_x,
+                                                           int grid_dilate_y, float thresh, float voxel_height_min, float voxel_height_res, float clear_method_raytrace_range, const CellObstacleCalculator* cell_obstacle_calculator)
+    : voxel_height_min_(voxel_height_min), voxel_height_res_(voxel_height_res), RaytraceClearingMethod(node_ref, costmap_cells, visualization_range, visualize, llx, lly, res, grid_dilate_x, grid_dilate_y, thresh, clear_method_raytrace_range, cell_obstacle_calculator){
     voxel_grid = new std::bitset<N_VOXELS_PER_CELL>[Nx_ * Ny_];
 
   }
@@ -288,11 +316,11 @@ namespace perception{
     avt_341::msg::MarkerArray marker_array;
     avt_341::msg::Marker mins_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 0, utils::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
     avt_341::msg::Marker maxes_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 1, utils::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
-    avt_341::msg::Marker voxel_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 2, utils::vec3(0.8, 0.8, 0.8), 0.4f, 1.0);
+    avt_341::msg::Marker voxel_marker = GetMarkerMsg(avt_341::msg::Marker::CUBE_LIST, 2, utils::vec3(0.8, 0.8, 0.8), 0.4f, voxel_height_res_);
     const float max_value = std::numeric_limits<float>::max() - 1e-5;
 
     int x_0, y_0, x_N, y_N;
-    GetVoxelBounds(odom, x_0, y_0, x_N, y_N);
+    GetVoxelBounds(odom, visualization_range_, x_0, y_0, x_N, y_N);
 
     for(int i = x_0; i < x_N; i++){
       for(int j = y_0; j < y_N; j++){
@@ -322,7 +350,7 @@ namespace perception{
               avt_341::msg::Point p2;
               p2.x = x_i;
               p2.y = y_i;
-              p2.z = voxel_height_min_ + (static_cast<float>(z_pos) + 1.0)*voxel_height_res_;
+              p2.z = voxel_height_min_ + (static_cast<float>(z_pos) + 0.5)*voxel_height_res_;
               voxel_marker.points.push_back(p2);
             }
             z_pos += 1;

@@ -3,6 +3,7 @@
 __Contents__: 
 - [Configuration](#configuration)
 - [Debugging Tools](#debugging-tools)
+- [Use Dilation When Raytrace Clearing Selected](#use-dilation-when-raytrace-clearing-selected)
 
 ## Configuration
 
@@ -27,3 +28,6 @@ When `raytrace` or `raytrace_voxel` are selected, set `clear_method_visualize=tr
 ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Min cell value
 ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) Max cell value
 ![#aaaaaa](https://placehold.co/15x15/aaaaaa/aaaaaa.png) Intermediate voxel Cells 
+
+## Use Dilation When Raytrace Clearing Selected
+TODO

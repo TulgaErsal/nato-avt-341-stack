@@ -9,8 +9,9 @@ __Contents:__
 - [ROS2 Installation](#ros-2-installation)
 - [Troubleshooting](#troubleshooting)
 - [Running with MAVS](#running-with-mavs)
+- [Costmap Clearing Methods](documentation/costmap_clearing.md)
 - [Funding Acknowledgement](#funding-acknowledgement)
-- [Costmap Clearing Methods](documentation/costmap_clearing.md) 
+
 
 ## Requirements
 The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22. 

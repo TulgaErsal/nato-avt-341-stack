@@ -63,32 +63,38 @@ private:
 class RaytraceClearingMethod: public CostmapClearingMethod{
 
 public:
-  RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize, float llx, float lly, float res);
+  RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
+                         float visualization_range, bool visualize, float llx, float lly, float res, int grid_dilate_x,
+                         int grid_dilate_y, float thresh, float clear_method_raytrace_range,
+                         const CellObstacleCalculator* cell_obstacle_calculator);
   virtual ~RaytraceClearingMethod() override = default;
   void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
   void Visualize(const avt_341::msg::Odometry & odom) const override;
 
 protected:
-  void GetVoxelBounds(const avt_341::msg::Odometry & odom, int & x_0, int & y_0, int & x_N, int & y_N) const;
+  void GetVoxelBounds(const avt_341::msg::Odometry & odom, float range, int & x_0, int & y_0, int & x_N, int & y_N) const;
   avt_341::msg::Marker GetMarkerMsg(int type, int id, utils::vec3 color, float alpha=1.0, double z_scale=1.0) const;
   virtual void RaytraceLine(const avt_341::msg::Point & start, const avt_341::msg::Point32 & end);
-  void Bresenham3D(int off_a, int off_b, int off_c,
-                   unsigned int abs_da, unsigned int abs_db, unsigned int abs_dc,
-                   int error_b, int error_c, int offset_a, int offset_b, int offset_c, unsigned int &offset,
-                   unsigned int &z_mask, unsigned int max_length = UINT_MAX);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> minmax_vis_publisher_;
   std::shared_ptr<avt_341::node::NodeProxy> node_;
   float llx_;
   float lly_;
   float res_;
+  int grid_dilate_x_;
+  int grid_dilate_y_;
+  float thresh_;
+  float raytrace_range_;
+  const CellObstacleCalculator* cell_obstacle_calculator_;
 };
 
 class VoxelRaytraceClearingMethod: public RaytraceClearingMethod{
 
 public:
   VoxelRaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
-                              float visualization_range, bool visualize, float llx, float lly, float res, float voxel_height_min, float voxel_height_res);
+                              float visualization_range, bool visualize, float llx, float lly, float res, int grid_dilate_x,
+                              int grid_dilate_y, float thresh, float voxel_height_min, float voxel_height_res,
+                              float clear_method_raytrace_range, const CellObstacleCalculator* cell_obstacle_calculator);
   virtual ~VoxelRaytraceClearingMethod() override;
   void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
   void Visualize(const avt_341::msg::Odometry & odom) const override;

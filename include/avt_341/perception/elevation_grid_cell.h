@@ -23,16 +23,14 @@ namespace perception{
     //float high = std::numeric_limits<float>::lowest();
     //float highest = std::numeric_limits<float>::lowest();
     //float second_highest = std::numeric_limits<float>::lowest();
+    constexpr static const float MIN_LIMIT = std::numeric_limits<float>::lowest();
+    constexpr static const float MAX_LIMIT = std::numeric_limits<float>::max();
   public:
     Cell(){
-
-      low.val = std::numeric_limits<float>::max();
-      high.val = std::numeric_limits<float>::lowest();
-      highest.val = std::numeric_limits<float>::lowest();
-      second_highest.val = std::numeric_limits<float>::lowest();
-      height = 0.0f;
-      filled = false;
-      slope = 0.0f;
+      low.val = MAX_LIMIT;
+      high.val = MIN_LIMIT;
+      highest.val = MIN_LIMIT;
+      second_highest.val = MIN_LIMIT;
       obstacle = false;
       has_dilated = false;
       dilated_val = 0;
@@ -51,17 +49,33 @@ namespace perception{
     //high.val = std::numeric_limits<float>::lowest();
     //highest.val = std::numeric_limits<float>::lowest();
     //second_highest.val = std::numeric_limits<float>::lowest();
-    float height; // = 0.0f;
-    bool filled; //  = false;
+    float height() const { return high.val - low.val; }
+    bool filled() const { return low.val < MAX_LIMIT; }
     //float slope_x = 0.0f;
     //float slope_y = 0.0f;
-    float slope; //  = 0.0f;
+    void reset(){
+      low.val = MAX_LIMIT;
+      high.val = MIN_LIMIT;
+      highest.val = MIN_LIMIT;
+      second_highest.val = MIN_LIMIT;
+      has_dilated = false;
+//      dilated_val = 0;
+    }
+
     bool obstacle; //  = false;
     bool has_dilated; //  = false;
     uint8_t dilated_val; //  = 0;
     float dilated_age;
     float terrain; //  = 0.0f;
   };
+
+  class CellObstacleCalculator {
+  public:
+    virtual ~CellObstacleCalculator() = default;
+    virtual bool PastSlopeThreshold(const Cell & cell) const = 0;
+    virtual float Slope(const Cell & cell) const = 0;
+  };
+
 
 } // namespace perception
 } // namespace avt_341

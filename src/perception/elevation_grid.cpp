@@ -47,7 +47,6 @@ Cell empty_cell;
 }
 
 void ElevationGrid::AgeCells(){
-  Cell empty_cell;
   float dt = 0.1f; // typical for lidar
   for (int i=0; i<nx_;i++){
     for (int j=0; j<ny_; j++){
@@ -75,7 +74,7 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
       int yi = (int)floor((point_cloud.points[i].y - lly_)/res_);
       if (xi>=0 && xi<nx_ && yi>=0 &&yi<ny_){
         float h = point_cloud.points[i].z;
-        cells_[xi][yi].filled = true;
+//        cells_[xi][yi].filled = true;
         if (filter_highest_){
           if (h > cells_[xi][yi].highest.val ){
             cells_[xi][yi].second_highest = cells_[xi][yi].highest;
@@ -113,11 +112,11 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
   //find the slopes
   for (int i=0; i<nx_;i++){
     for (int j=0; j<ny_; j++){
-      if (cells_[i][j].filled){
-        cells_[i][j].height = cells_[i][j].high.val - cells_[i][j].low.val;
+      if (cells_[i][j].filled()){
+//        cells_[i][j].height = cells_[i][j].high.val - cells_[i][j].low.val;
         //if (cells_[i][j].height/res_ > thresh_) cells_[i][j].obstacle = true;
-        cells_[i][j].slope = cells_[i][j].height/res_;
-        if(!cells_[i][j].has_dilated && cells_[i][j].slope > thresh_){
+//        cells_[i][j].slope = cells_[i][j].height/res_;
+        if(!cells_[i][j].has_dilated && PastSlopeThreshold(cells_[i][j])){
           cells_[i][j].has_dilated = true;
           cells_to_dilate_x.push_back(i);
           cells_to_dilate_y.push_back(j);
@@ -167,7 +166,7 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
       if (xi>=0 && xi<nx_ && yi>=0 &&yi<ny_){
 
         if (cells_[xi][yi].obstacle){
-          if (point_cloud.points[i].z>(cells_[xi][yi].low.val + hscale*cells_[xi][yi].height)){
+          if (point_cloud.points[i].z>(cells_[xi][yi].low.val + hscale*cells_[xi][yi].height())){
             points.push_back(point_cloud.points[i]);
           }
           else{
@@ -185,16 +184,15 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
 } // method AddPoints
 
 uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
-  if(!cell.filled)
+  if(!cell.filled())
     return 0;
 
-  if(use_elevation_ && cell.high.val > thresh_)
-    return GRID_MAX_VALUE;
-
-  if(!use_elevation_ && cell.slope>thresh_){
-    return static_cast<uint8_t>(std::min(std::max(0.0f, GRID_SLOPE_MULT*cell.slope), static_cast<float>(GRID_MAX_VALUE)));
+  if(use_elevation_){
+    return cell.high.val > thresh_ ? GRID_MAX_VALUE : 0;
+  }else{
+    return PastSlopeThreshold(cell) ? static_cast<uint8_t>(std::min(std::max(0.0f, GRID_SLOPE_MULT*Slope(cell)), static_cast<float>(GRID_MAX_VALUE))) : 0;
   }
-  return 0;
+
 }
 
 avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
@@ -218,6 +216,14 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
       }
   }
   return grid;
+}
+
+bool ElevationGrid::PastSlopeThreshold(const Cell &cell) const {
+  return cell.height()/res_ > thresh_;
+}
+
+float ElevationGrid::Slope(const Cell &cell) const {
+  return cell.height()/res_;
 }
 
 } // namespace perception

@@ -20,11 +20,11 @@
 namespace avt_341{
 namespace perception{
 
-class ElevationGrid{
+class ElevationGrid : public CellObstacleCalculator{
   public:
     ElevationGrid();
 
-    ~ElevationGrid();
+    ~ElevationGrid() override;
 
     /**
      * Add points to be processed 
@@ -54,17 +54,23 @@ class ElevationGrid{
     }
 
     void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, const std::string & clearing_method_type,
-                                  float visualization_range, bool visualize, float voxel_height_min, float voxel_height_res){
+                                  float visualization_range, bool visualize, float voxel_height_min, float voxel_height_res, float clear_method_raytrace_range){
       clearing_method_type_ = CostmapClearingMethod::string_to_clear_type(clearing_method_type);
+      int dsize_x = lround(grid_dilate_x_/res_);
+      int dsize_y = lround(grid_dilate_y_/res_);
       switch(clearing_method_type_){
         case CostmapClearMethodType::Time:
           clearing_method_ = std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize);
           break;
         case CostmapClearMethodType::Raytrace:
-          clearing_method_ = std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, llx_, lly_, res_);
+          clearing_method_ = std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize,
+                                                                      llx_, lly_, res_, dsize_x, dsize_y, thresh_,
+                                                                      clear_method_raytrace_range, this);
           break;
         case CostmapClearMethodType::VoxelRaytrace:
-          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, llx_, lly_, res_, voxel_height_min, voxel_height_res);
+          clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize,
+                                                                           llx_, lly_, res_, dsize_x, dsize_y, thresh_,
+                                                                           voxel_height_min, voxel_height_res, clear_method_raytrace_range, this);
           break;
         default:
           clearing_method_ = std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize);
@@ -75,7 +81,10 @@ class ElevationGrid{
       clearing_method_->Visualize(odom);
     }
 
-    void SetMaxPointAge(float mpa){
+  bool PastSlopeThreshold(const Cell &cell) const override;
+  float Slope(const Cell &cell) const override;
+
+  void SetMaxPointAge(float mpa){
         max_point_age_ = mpa;
     }
 

@@ -58,9 +58,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 22.896251678466797
+      Max Intensity: 22.89189338684082
       Min Color: 0; 0; 0
-      Min Intensity: 0.9802563190460205
+      Min Intensity: 0.9630981087684631
       Name: Lidar
       Position Transformer: XYZ
       Selectable: true
@@ -216,7 +216,7 @@ Visualization Manager:
         Value: /avt_341/waypoints
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: OccupancyGridVoxel
       Namespaces:
         {}
@@ -225,8 +225,8 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/costmap/minmax
-      Value: true
+        Value: /avt_341/costmap/voxels
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -270,16 +270,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 232.42901611328125
+      Distance: 142.7140655517578
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -2.4335641860961914
-        Y: 0.7360347509384155
-        Z: -5.217130184173584
+        X: -37.620338439941406
+        Y: 16.310348510742188
+        Z: 4.528597831726074
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -304,5 +304,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: -1921
+  X: -1914
   Y: -8
