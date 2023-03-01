@@ -127,6 +127,7 @@ namespace avt_341 {
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Matrix3x3.h"
 
+#include "std_msgs/msg/String.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
@@ -190,6 +191,9 @@ namespace avt_341 {
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;
     using MultiArrayDimension = std_msgs::msg::MultiArrayDimension;
+    
+    using String = std_msgs::msg::String;
+    using StringPtr = const std_msgs::msg::String::SharedPtr;
   }
   namespace msg_tf{
     using Matrix3x3 = tf2::Matrix3x3;
