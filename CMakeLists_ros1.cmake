@@ -1,5 +1,5 @@
 project(avt_341)
-
+ 
 cmake_minimum_required(VERSION 3.5)
 
 if($ENV{ROS_DISTRO} STREQUAL "noetic")
@@ -44,6 +44,7 @@ add_message_files(
  FILES
  Sinkage.msg
  Obstacles.msg
+ Communication.msg
 )
 
 generate_messages(
