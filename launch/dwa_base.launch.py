@@ -166,7 +166,8 @@ def generate_launch_description():
                 'use_registered': launch.substitutions.LaunchConfiguration('use_registered'),
                 'display': display_type,
                 'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
-                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar')
+                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
+                'max_point_age': launch.substitutions.LaunchConfiguration('max_point_age')
             }],
         ),
         Node(
