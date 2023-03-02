@@ -22,11 +22,26 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/Communication.h"
+#include "avt_341/FollowerStatus.h"
 
 char message[256] = { 0 };
 bool messages_ready = 0;
 int res = 0;
-char my_name[80] = "AGV1";
+std::string my_name = "AGV1";
+
+struct formation {
+    avt_341::msg::Point follower1;
+    avt_341::msg::Point follower2;
+    avt_341::msg::Point follower3;
+};
+
+std::map<std::string, formation> formations;
+
+struct formation f;
+
+
+
+avt_341::FollowerStatus follower_status_message;
 
 void MessageCallback(avt_341::msg::StringPtr msg) {
     memset(message, 0, 256);
@@ -38,6 +53,36 @@ void MessageCallback(avt_341::msg::StringPtr msg) {
 void ClearMessages() {
     messages_ready = 0;
     bzero(message, 256);
+}
+
+int handleFormationRequest(avt_341::Communication message) {
+    if(strcmp(message.type.c_str(),"FORM")) {
+        return 0;
+    }
+    // create a follower status message
+    follower_status_message.leader_name = message.leader_name;
+    if(!strcmp(message.leader_name.c_str(), my_name.c_str())) {
+            follower_status_message.x_offset = 0;
+            follower_status_message.y_offset = 0;
+            follower_status_message.use_leader = false;
+    } else {
+        formation f = formations[message.formation.c_str()];
+        if(!strcmp(message.follower1_name.c_str(), my_name.c_str())) {
+            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.c_str(), f.follower1.x, f.follower1.y);
+            follower_status_message.x_offset = f.follower1.x;
+            follower_status_message.y_offset = f.follower1.y;
+        } else if (!strcmp(message.follower2_name.c_str(), my_name.c_str())) {
+            follower_status_message.x_offset = f.follower2.x;
+            follower_status_message.y_offset = f.follower2.y;
+        } else if (!strcmp(message.follower3_name.c_str(), my_name.c_str())) {
+            follower_status_message.x_offset = f.follower3.x;
+            follower_status_message.y_offset = f.follower3.y;
+        } else {
+            ROS_INFO("Formation message is not for me.");
+        }
+        follower_status_message.use_leader = true;
+    }
+    return 1;
 }
 
 avt_341::Communication packageMessage(std::vector<std::string> tokens) {
@@ -80,7 +125,58 @@ int main(int argc, char* argv[])
 
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::Communication>("avt_341/recv_comms", 10);
+    auto formation_pub = nh->create_publisher<avt_341::FollowerStatus>("avt_341/follower_status",10);
        
+    f.follower1.x = 0;
+    f.follower1.y = -1;
+    f.follower2.x = 0;
+    f.follower2.y = -2;
+    f.follower3.x = 0;
+    f.follower3.y = -3;
+    formations["LINE"] = f; 
+    f.follower1.x = -1;
+    f.follower1.y = 0;
+    f.follower2.x = -2;
+    f.follower2.y = 0;
+    f.follower3.x = -3;
+    f.follower3.y = 0;
+    formations["COLUMN"] = f; 
+    f.follower1.x = -1;
+    f.follower1.y = 1;
+    f.follower2.x = -2;
+    f.follower2.y = 0;
+    f.follower3.x = -3;
+    f.follower3.y = 1;
+    formations["STAGGER_COL"] = f; 
+    f.follower1.x = -1;
+    f.follower1.y = 1;
+    f.follower2.x = -1;
+    f.follower2.y = -1;
+    f.follower3.x = -2;
+    f.follower3.y = 0;
+    formations["DIAMOND"] = f; 
+    f.follower1.x = -1;
+    f.follower1.y = 1;
+    f.follower2.x = 0;
+    f.follower2.y = -1;
+    f.follower3.x = -1;
+    f.follower3.y = -2;
+    formations["WEDGE"] = f; 
+    f.follower1.x = -1;
+    f.follower1.y = 1;
+    f.follower2.x = -2;
+    f.follower2.y = 2;
+    f.follower3.x = -3;
+    f.follower3.y = 3;
+    formations["ECH_LEFT"] = f; 
+    f.follower1.x = -1;
+    f.follower1.y = -1;
+    f.follower2.x = -2;
+    f.follower2.y = -2;
+    f.follower3.x = -3;
+    f.follower3.y = -3;
+    formations["ECH_RIGHT"] = f; 
+
     int n, sockfd, port, ready;
     fd_set read_fds;
     struct timeval timeout;
@@ -93,6 +189,7 @@ int main(int argc, char* argv[])
     // load parameters
     nh->get_parameter("~host", hostname, std::string("localhost"));
     nh->get_parameter("~port", port, 9000);
+    nh->get_parameter("~name", my_name, std::string("AGV1"));
     
     ROS_INFO("Connecting to host: %s port: %d", hostname.c_str(), port);
     // Create the socket
@@ -154,14 +251,19 @@ int main(int argc, char* argv[])
                 while (token != NULL)
                 {
                     tokens.push_back(token);
-                    printf("token: %s\n", token);
+                    //printf("token: %s\n", token);
                     token = strtok(NULL, ",");
                 }
-
                 
                 // Package the tokens into message struct
                 packed_msg = packageMessage(tokens);
 
+                if(!(strcmp(packed_msg.type.c_str(),"FORM"))) {
+                    if(handleFormationRequest(packed_msg) == 1) {
+                        // publish our formation message
+                        formation_pub->publish(follower_status_message);
+                    }
+                }
                 // Publish the packed_msg
                 msg_pub->publish(packed_msg);
             }                

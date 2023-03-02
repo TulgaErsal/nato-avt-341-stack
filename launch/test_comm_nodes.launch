@@ -14,6 +14,7 @@ on avt_341/recv_comms
     <remap from="avt_341/recv_comms" to="avt_341/veh1_recv_comms"/>
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
+    <param name="name" value="AGV1"/>
 
 </node>
 
@@ -29,6 +30,7 @@ on avt_341/recv_comms
     <remap from="avt_341/recv_comms" to="avt_341/veh2_recv_comms"/>
     <param name="host" value="localhost" />
     <param name="port" value="9000"/>
+    <param name="name" value="AGV2"/>
 </node>
 
 <!-- Launch the comm publisher node -->
