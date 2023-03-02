@@ -26,31 +26,30 @@ int main(int argc, char** argv)
     auto test_comm_pub = nh->create_publisher<std_msgs::String>("avt_341/comm_messages", 100);
     ros::Rate loop_rate(1);
     
-    std::string comms_file = "";
+    std::vector<std::string> comms_list; 
     std::string myid = "vehicle";
-    nh->get_parameter("~comms_file", comms_file, std::string("test.txt"));
+    nh->get_parameter("~comms_list", comms_list, std::vector<std::string>(0));
     nh->get_parameter("~myid", myid, std::string("vehicle"));
-
-    const char* comms[12] = {"vehicle,0,FORM,LINE,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
-             "vehicle,1,ACK,vehicle,0",
-             "vehicle,2,ARRIVE,MISSIONPOINT_A",
-             "vehicle,3,TASK_COMPLETE,vehicle,0",
-             "vehicle,4,SET_OBJECTIVE,MISSIONPOINT_B"};
 
     int count = 0;
     while(ros::ok()) {
         std_msgs::String msg;
-        std::stringstream ss;
-        //ss << "test_node," << count << ",TEST";
-        ss << comms[count];
-        msg.data = ss.str();
-
-        test_comm_pub->publish(msg);
-
+        
+    
+        if(comms_list.size() > 0) {
+            if(count > comms_list.size()-1) {
+                //ROS_INFO("Resetting Comm Count");
+                count = 0;
+            } else {
+                //ROS_INFO("Publishing msg: %d, %s ", count, comms_list[count].c_str());
+                msg.data = comms_list[count].c_str(); 
+                test_comm_pub->publish(msg);
+                //ROS_INFO("Published msg");
+                ++count;
+            }
+        }
         ros::spinOnce();
         loop_rate.sleep();
-        ++count;
-        if(count > 12) count=0;
     }
     return 0;
 }

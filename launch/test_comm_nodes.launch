@@ -7,19 +7,20 @@ messages to the comm server. The messages are
 received by the comm node, processed, and published
 on avt_341/recv_comms 
 -->
-
+  
 <!-- Launch the comm node -->
 <node name="veh1_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
     <remap from="avt_341/comm_messages" to="avt_341/veh1_comm_messages"/>
     <remap from="avt_341/recv_comms" to="avt_341/veh1_recv_comms"/>
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
+
 </node>
 
 <!-- Launch the comm publisher node -->
 <node name="veh1_comm_gen_node" pkg="avt_341" type="avt_341_comm_publisher_node" required="true" output="screen">
     <remap from="avt_341/comm_messages" to="avt_341/veh1_comm_messages"/>
-    <param name="comms_file" value="comms_file.txt"/>
+    <rosparam file="$(find avt_341)/config/veh1_comm_test_strings.yaml" />
 </node>
 
 <!-- Launch a second comm node -->
@@ -33,7 +34,7 @@ on avt_341/recv_comms
 <!-- Launch the comm publisher node -->
 <node name="veh2_comm_gen_node" pkg="avt_341" type="avt_341_comm_publisher_node" required="true" output="screen">
     <remap from="avt_341/comm_messages" to="avt_341/veh2_comm_messages"/>
-    <param name="comms_file" value="comms_file2.txt"/>
+    <rosparam file="$(find avt_341)/config/veh2_comm_test_strings.yaml" />
 </node>
 
 </launch>

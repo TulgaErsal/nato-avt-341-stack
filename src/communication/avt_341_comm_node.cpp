@@ -42,7 +42,6 @@ void ClearMessages() {
 
 avt_341::Communication packageMessage(std::vector<std::string> tokens) {
     avt_341::Communication message;
-    //ROS_INFO("Comm msg: %s %s %s %s %s %s %s", tokens[0].c_str(), tokens[1].c_str(), tokens[2].c_str(), tokens[3].c_str(), tokens[4].c_str(), tokens[5].c_str(), tokens[6].c_str());
     message.sender_name = tokens[0];
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
@@ -118,7 +117,7 @@ int main(int argc, char* argv[])
         // Check for any messages ready to send
         if(messages_ready) {
             strcpy(buffer,message);
-            ROS_INFO("Sending %s to server", buffer);
+            //ROS_INFO("Sending %s to server", buffer);
             n = write(sockfd, buffer, strlen(buffer));
             if(n < 0)
                 ROS_ERROR("Error writing to socket\n");
@@ -126,7 +125,6 @@ int main(int argc, char* argv[])
                 ClearMessages();
                 ROS_DEBUG("Message sent and buffer cleared.\n");
             }
-            ROS_INFO("Sent %s to server", buffer);
         }
 
         bzero(buffer, 256);
@@ -143,7 +141,7 @@ int main(int argc, char* argv[])
             n = read(sockfd, buffer, 256);
             if(n > 0) 
             {
-                ROS_INFO("Read %d bytes: '%s'\n", n, buffer);
+                //ROS_INFO("Read %d bytes: '%s'\n", n, buffer);
                 char* token;
                 std::vector <std::string> tokens;
 
@@ -161,13 +159,11 @@ int main(int argc, char* argv[])
                 }
 
                 
-                ROS_INFO("Packing message");
                 // Package the tokens into message struct
                 packed_msg = packageMessage(tokens);
 
                 // Publish the packed_msg
                 msg_pub->publish(packed_msg);
-                ROS_INFO("Published packed message");
             }                
         } else {
             //ROS_DEBUG("No socket ready to read\n");
