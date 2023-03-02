@@ -45,6 +45,7 @@ add_message_files(
  Sinkage.msg
  Obstacles.msg
  Communication.msg
+ FollowerStatus.msg
 )
 
 generate_messages(
