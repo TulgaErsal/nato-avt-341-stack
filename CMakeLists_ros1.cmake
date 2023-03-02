@@ -205,6 +205,7 @@ target_link_libraries(avt_341_comm_node
 
 add_executable(avt_341_comm_publisher_node
   src/communication/avt_341_comm_publisher_node.cpp
+  src/node/node_proxy.cpp
 )
 target_link_libraries(avt_341_comm_publisher_node
   ${catkin_LIBRARIES}

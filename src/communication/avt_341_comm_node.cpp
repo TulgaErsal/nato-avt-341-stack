@@ -42,17 +42,35 @@ void ClearMessages() {
 
 avt_341::Communication packageMessage(std::vector<std::string> tokens) {
     avt_341::Communication message;
-    message.sender_name = tokens.front();
+    //ROS_INFO("Comm msg: %s %s %s %s %s %s %s", tokens[0].c_str(), tokens[1].c_str(), tokens[2].c_str(), tokens[3].c_str(), tokens[4].c_str(), tokens[5].c_str(), tokens[6].c_str());
+    message.sender_name = tokens[0];
+    message.msg_id = atoi(tokens[1].c_str());
+    message.type = tokens[2];
+    
+    if(!strcmp(tokens[2].c_str(), "FORM")) {
+        message.formation = tokens[3];
+        message.leader_name = tokens[4];
+        message.follower1_name = tokens[5];
+        message.follower2_name = tokens[6];
+        message.follower3_name = tokens[7];
+        message.objective_name = tokens[8];
+        message.desired_speed = tokens[9];
+    } else if(!strcmp(message.type.c_str(), "ACK")) {
+        message.original_sender = tokens[3];
+        message.original_msg_id = tokens[4];
+    } else if(!strcmp(message.type.c_str(), "ARRIVE")) {
+        message.objective_name = tokens[3];
+    } else if(!strcmp(message.type.c_str(), "TASK_COMPLETE")) {
+        message.original_sender = tokens[3];
+        message.original_msg_id = tokens[4];
+    } else if(!strcmp(message.type.c_str(), "SET_OBJECTIVE")) {
+        message.objective_name = tokens[3];
+    }
     return message;
 }
 
 int main(int argc, char* argv[])
 {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: $ rosrun avt_341_comm_node <hostname> <port>");
-        exit(0);
-    }
-
     // Initialize the node
     auto nh = avt_341::node::init_node(argc,argv,"avt_341_comm_node");
     avt_341::node::Rate loop_rate(100.0);
@@ -70,15 +88,19 @@ int main(int argc, char* argv[])
     struct sockaddr_in serv_addr;
     struct hostent *server;
     char buffer[256];
-    char message[256];
+    std::string hostname;
     avt_341::Communication packed_msg;
+
+    // load parameters
+    nh->get_parameter("~host", hostname, std::string("localhost"));
+    nh->get_parameter("~port", port, 9000);
     
+    ROS_INFO("Connecting to host: %s port: %d", hostname.c_str(), port);
     // Create the socket
-    port = atoi(argv[2]);
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 9) 
         ROS_ERROR("Error opening socket\n");
-    server = gethostbyname(argv[1]);
+    server = gethostbyname(hostname.c_str());
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     bcopy((char *)server->h_addr,
@@ -96,7 +118,7 @@ int main(int argc, char* argv[])
         // Check for any messages ready to send
         if(messages_ready) {
             strcpy(buffer,message);
-            ROS_INFO("Sending %s to server\n", buffer);
+            ROS_INFO("Sending %s to server", buffer);
             n = write(sockfd, buffer, strlen(buffer));
             if(n < 0)
                 ROS_ERROR("Error writing to socket\n");
@@ -104,6 +126,7 @@ int main(int argc, char* argv[])
                 ClearMessages();
                 ROS_DEBUG("Message sent and buffer cleared.\n");
             }
+            ROS_INFO("Sent %s to server", buffer);
         }
 
         bzero(buffer, 256);
@@ -120,7 +143,7 @@ int main(int argc, char* argv[])
             n = read(sockfd, buffer, 256);
             if(n > 0) 
             {
-                ROS_DEBUG("Read %d bytes: '%s'\n", n, buffer);
+                ROS_INFO("Read %d bytes: '%s'\n", n, buffer);
                 char* token;
                 std::vector <std::string> tokens;
 
@@ -129,19 +152,22 @@ int main(int argc, char* argv[])
 
                 // Tokenize incoming message
                 token = strtok(buffer, ",");
-                tokens.push_back(token);
+                //tokens.push_back(token);
                 while (token != NULL)
                 {
                     tokens.push_back(token);
-                    printf("%s\n", token);
+                    printf("token: %s\n", token);
                     token = strtok(NULL, ",");
                 }
 
+                
+                ROS_INFO("Packing message");
                 // Package the tokens into message struct
                 packed_msg = packageMessage(tokens);
 
                 // Publish the packed_msg
-                msg_
+                msg_pub->publish(packed_msg);
+                ROS_INFO("Published packed message");
             }                
         } else {
             //ROS_DEBUG("No socket ready to read\n");
@@ -152,21 +178,3 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-
-// handle FORM
-// 0            1         2     3        4              5          6          7          8                 9 
-// <sender_id>, <msg_id>, FORM, <shape>, <leader_name>, <f1_name>, <f2_name>, <f3_name>, <objective_name>, <desired_speed>
-//void handle_form_message() {
-    //      set leader_name = tokens[4]
-    // if I'm the leader
-    //      set use_leader = false
-    //      set x_offset = 0
-    //      set y_offset = 1
-    // if I'm a follower
-    //      set use_leader = true
-    //      if f1_name = my_name {position = 2}
-    //      if f2_name = my_name {position = 3}
-    //      if f3_name = my_name {position = 4}
-    //      get_offset(shape = tokens[3], position)
-
-//}
