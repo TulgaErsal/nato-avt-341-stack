@@ -46,21 +46,23 @@ namespace perception{
                                                  int grid_dilate_y, float thresh, float clear_method_raytrace_range, const CellObstacleCalculator* cell_obstacle_calculator)
     : node_(node_ref), llx_(llx), lly_(lly), res_(res), grid_dilate_x_(grid_dilate_x), grid_dilate_y_(grid_dilate_y), thresh_(thresh), raytrace_range_(clear_method_raytrace_range), cell_obstacle_calculator_(cell_obstacle_calculator), CostmapClearingMethod(costmap_cells, visualization_range, visualize){
 
+    node_->initialize_tf_listener();
     if(visualize_){
       minmax_vis_publisher_ = node_ref->create_publisher<avt_341::msg::MarkerArray>("avt_341/costmap/voxels",1);
     }
   }
 
   void RaytraceClearingMethod::Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) {
-    avt_341::msg::Point pos;
-    pos.x = current_pose.pose.pose.position.x;
-    pos.y = current_pose.pose.pose.position.y;
-    pos.z = current_pose.pose.pose.position.z + 2.2513;
+    avt_341::msg::Point start_pos;
+    auto lidar_transform = node_->lookup_transform("map", "lidar");
+    start_pos.x = lidar_transform.transform.translation.x;
+    start_pos.y = lidar_transform.transform.translation.y;
+    start_pos.z = lidar_transform.transform.translation.z;
     for(const auto & point : point_cloud.points){
-      const float dx = point.x - pos.x;
-      const float dy = point.y - pos.y;
+      const float dx = point.x - start_pos.x;
+      const float dy = point.y - start_pos.y;
       if(dx*dx + dy*dy < raytrace_range_*raytrace_range_){
-        RaytraceLine(pos, point);
+        RaytraceLine(start_pos, point);
       }
     }
 

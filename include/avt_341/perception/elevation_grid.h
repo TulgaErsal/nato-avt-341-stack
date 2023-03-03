@@ -68,6 +68,10 @@ class ElevationGrid : public CellObstacleCalculator{
                                                                       clear_method_raytrace_range, this);
           break;
         case CostmapClearMethodType::VoxelRaytrace:
+          if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
+            node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
+          }
+
           clearing_method_ = std::make_shared<VoxelRaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize,
                                                                            llx_, lly_, res_, dsize_x, dsize_y, thresh_,
                                                                            voxel_height_min, voxel_height_res, clear_method_raytrace_range, this);

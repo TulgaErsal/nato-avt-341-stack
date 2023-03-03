@@ -111,6 +111,13 @@ namespace avt_341 {
                 return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
             }
 
+            void initialize_tf_listener();
+            geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+
+            inline void log_debug(const std::string &msg) { ROS_DEBUG(msg); }
+            inline void log_info(const std::string &msg) { ROS_INFO(msg); }
+            inline void log_warning(const std::string &msg) { ROS_WARN(msg); }
+            inline void log_error(const std::string &msg) { ROS_ERROR(msg); }
             ros::Time get_stamp() const;
             double get_now_seconds() const;
             void spin_some();
@@ -135,6 +142,9 @@ namespace avt_341 {
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 
 namespace avt_341 {
   namespace node {
@@ -246,15 +256,23 @@ namespace avt_341 {
         return std::make_shared<Subscriber<MessageT, CallbackT>>(topic_name, qos, callback, node_);
       }
 
-      rclcpp::Logger get_logger() const;
+      void initialize_tf_listener();
+      geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+
+      inline void log_debug(const std::string &msg) { RCLCPP_DEBUG(node_->get_logger(), msg); }
+      inline void log_info(const std::string &msg) { RCLCPP_INFO(node_->get_logger(), msg); }
+      inline void log_warning(const std::string &msg) { RCLCPP_WARN(node_->get_logger(), msg); }
+      inline void log_error(const std::string &msg) { RCLCPP_ERROR(node_->get_logger(), msg); }
+
       rclcpp::Time get_stamp() const;
-      rclcpp::Duration get_duration(double seconds) const;
       double get_now_seconds() const;
       void spin_some();
 
     private:
       std::shared_ptr<rclcpp::Node> node_;
       bool is_empty_waypoints_;
+      std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+      std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     };
 
     inline std::shared_ptr<NodeProxy> make_shared(const std::string &name) {
