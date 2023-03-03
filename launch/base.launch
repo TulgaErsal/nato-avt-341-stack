@@ -1,12 +1,14 @@
 <launch>
 
-  <param name="/use_sim_time" value="false"/>
+
 
   <!-- General  -->
   <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
+  <arg name="use_lidar_obstacle_detector" default="false" doc="Should we start the Lidar Obstacle Detector node?"/>
   <arg name="auto_launch_rviz" default="true" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
   <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
   <arg name="robot_description_file" doc="URDF robot description file to use"/>
+  <arg name="use_sim_time" default="false" doc="Use sim time instead of wall time."/>  
 
   <!-- Elevation Grid  -->
   <arg name="use_elevation" default="false" doc="Elevation grid - To use elevation or slope value when making occupancy grid based on heightmap."/>
@@ -25,12 +27,7 @@
   <arg name="use_registered" default="true" doc="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."/>
   <arg name="stitch_lidar_points" default="true" doc="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."/>
   <arg name="filter_highest_lidar" default="false" doc="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."/>
-  <arg name="clear_method" default="time" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_voxel."/>
-  <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
-  <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed."/>
-  <arg name="clear_method_raytrace_range" default="50.0" doc="Elevation grid - Maximum range for raytrace clearing."/>
-  <arg name="voxel_height_min" default="0.0" doc="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."/>
-  <arg name="voxel_height_res" default="0.5" doc="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."/>
+  <arg name="points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
 
   <!-- Global Planner  -->
   <arg name="goal_dist" default="5.0" doc="Global planner - Lookahead threshold within which next waypoint selected."/>
@@ -70,6 +67,7 @@
   <arg name="ff_a2" default="0.0" doc="2nd order coeff in the feed-forward model"/>
   <arg name="max_desired_lateral_g" default="0.75" doc="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2" />
 
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
   <rosparam file="$(arg waypoints_file)" />
   <param name="robot_description" command="cat $(arg robot_description_file)" />
 
@@ -91,6 +89,7 @@
 
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
+    <remap from="/avt_341/points" to="$(arg points_topic)"/>
     <param name="use_elevation" value="$(arg use_elevation)" />
     <param name="slope_threshold" value="$(arg slope_threshold)" />
     <param name="grid_height" value="$(arg grid_height)" />
@@ -110,12 +109,6 @@
     <param name="display" value="$(arg display_type)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)"/>
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)"/>
-    <param name="clear_method" value="$(arg clear_method)"/>
-    <param name="clear_method_visualize" value="$(arg clear_method_visualize)"/>
-    <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)"/>
-    <param name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)"/>
-    <param name="voxel_height_min" value="$(arg voxel_height_min)"/>
-    <param name="voxel_height_res" value="$(arg voxel_height_res)"/>
   </node>
 
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
@@ -161,6 +154,19 @@
     <param name="ignore_coll_before_dist" value="$(arg ignore_coll_before_dist)" />
     <param name="display" value="$(arg display_type)" />
   </node>
+
+  <group if="$(eval arg('use_lidar_obstacle_detector'))">
+    <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
+      <!-- Input Topic Names -->
+      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <!-- Output Topic Names -->
+      <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
+      <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
+      <param name="jsk_bboxes_topic"                    value="/avt_341/lidar_detector/jsk_bboxes"/>
+      <!-- Parameters -->
+      <param name="bbox_target_frame"                   value="base_link"/>
+    </node>
+  </group>
 
   <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
   <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz'))">

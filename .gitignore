@@ -37,10 +37,14 @@
 
 # Clion
 .idea
-cmake-build-debug*
+cmake-build-debug
 
 # Visual Studio
 .vs
 out/build
+.project
 
-cmake-build-debug-*/
+# Visual Studio Code
+.vscode/
+
+package.xml
