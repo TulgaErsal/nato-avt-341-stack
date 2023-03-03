@@ -6,6 +6,7 @@ set(REQUIRED_ROS_PACKAGES
   roscpp
   rospy
   std_msgs
+  nav_msgs
   tf
   message_generation
   tf2_ros
@@ -43,11 +44,14 @@ add_message_files(
  FILES
  Sinkage.msg
  Obstacles.msg
+ OccupiedCell.msg
+ OccupiedCells.msg
 )
 
 generate_messages(
   DEPENDENCIES
   std_msgs
+  nav_msgs
 )
 
 
@@ -213,6 +217,14 @@ target_link_libraries(avt_bot_state_publisher_node
    ${catkin_LIBRARIES}
 )
 
+add_executable(avt_341_grid_compression_node
+        src/perception/avt_341_grid_compression_node.cpp
+        src/node/node_proxy.cpp
+        )
+target_link_libraries(avt_341_grid_compression_node
+        ${catkin_LIBRARIES}
+        )
+
 ## lidar_obstacle_detector node
 add_executable(avt_341_lidar_obstacle_detector_node
   ${LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES}
@@ -262,6 +274,7 @@ avt_341_local_planner_node
 avt_341_pf_planner_node
 avt_341_dwa_planner_node
 avt_341_global_path_node
+avt_341_grid_compression_node
 avt_341_lidar_obstacle_detector_node
 avt_341_sim_test_node
 gps_to_enu_node
