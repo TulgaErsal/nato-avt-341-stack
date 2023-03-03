@@ -33,6 +33,8 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 
+#include "avt_341/FollowerStatus.h"
+
 namespace avt_341 {
     namespace msg {
         using PointCloud = sensor_msgs::PointCloud;
@@ -94,6 +96,8 @@ namespace avt_341 {
 
         using String = std_msgs::String;
         using StringPtr = const std_msgs::String::ConstPtr &;
+        using FollowerStatus = avt_341::FollowerStatus;
+        using FollowerStatusPtr = const avt_341::FollowerStatus::ConstPtr &;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;
@@ -131,6 +135,8 @@ namespace avt_341 {
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
+
+//#include "avt_341/msg/follower_status.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -187,6 +193,9 @@ namespace avt_341 {
 
     using Int32 = std_msgs::msg::Int32;
     using Int32Ptr = std_msgs::msg::Int32::SharedPtr;
+
+    //using FollowerStatus = avt_341::FollowerStatus;
+    //using FollowerStatusPtr = avt_341::FollowerStatus::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;
