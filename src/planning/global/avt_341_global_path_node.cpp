@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, MapCallback);
   auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
-  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
+  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("/goal_pose", 10, GoalPoseCallback);
 
   // ctg, 8-19-2021
   // the state values can be
