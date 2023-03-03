@@ -58,6 +58,7 @@ int main(int argc, char **argv){
     status.y_offset = y_offset;
     status.use_leader = !is_leader;
 
+    status_pub->publish(status);
     // odometry message sent to the formation controller
     avt_341::msg::Odometry odom;
     odom.pose.pose.position.x = -x_offset;
@@ -93,7 +94,7 @@ int main(int argc, char **argv){
         }
 
         // publish the status and odometry
-        status_pub->publish(status);
+        //status_pub->publish(status);
         odometry_pub->publish(odom);
 
         n->spin_some();

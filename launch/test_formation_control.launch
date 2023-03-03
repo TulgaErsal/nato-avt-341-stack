@@ -50,6 +50,16 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <param name="y_offset" value="10.0" />
   </node>
 
+<!-- Launch the comm node -->
+<node name="f1_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/f1_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/f1_recv_comms"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower1_status"/>
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="f1"/>
+</node>
+
 
 <!-- __________________ Launch the 2nd follower and the test node for the 2nd follower _____________________________________________-->
   <node name="f2_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
