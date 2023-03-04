@@ -67,26 +67,26 @@ namespace perception{
     }
 
     // Clean up unattached dilated cells
-    int x_0, y_0, x_N, y_N;
-    GetVoxelBounds(current_pose, raytrace_range_, x_0, y_0, x_N, y_N);
-    for(int x = x_0; x < x_N; x++){
-      for(int y = y_0; y < y_N; y++){
-        if(costmap_cells_[x][y].filled() && costmap_cells_[x][y].dilated_val > 0){
-          bool found_obs = false;
-          for(int i = std::max(0, x-grid_dilate_x_); !found_obs && i <= std::min(Nx_-1, x+grid_dilate_x_); i++){
-            for(int j = std::max(0, y-grid_dilate_y_); !found_obs && j <= std::min(Ny_-1, y+grid_dilate_y_); j++){
-//              if(cell_obstacle_calculator_->PastSlopeThreshold(costmap_cells_[i][j]) || abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) > thresh_){
-              if(costmap_cells_[i][j].has_dilated || (costmap_cells_[i][j].filled() && abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) > thresh_)){
-                found_obs = true;
-              }
-            }
-          }
-          if(!found_obs){
-            costmap_cells_[x][y].dilated_val = 0;
-          }
-        } // if dilated_val > 0
-      }
-    }
+//    int x_0, y_0, x_N, y_N;
+//    GetVoxelBounds(current_pose, raytrace_range_, x_0, y_0, x_N, y_N);
+//    for(int x = x_0; x < x_N; x++){
+//      for(int y = y_0; y < y_N; y++){
+//        if(costmap_cells_[x][y].filled() && costmap_cells_[x][y].dilated_val > 0){
+//          bool found_obs = false;
+//          for(int i = std::max(0, x-grid_dilate_x_); !found_obs && i <= std::min(Nx_-1, x+grid_dilate_x_); i++){
+//            for(int j = std::max(0, y-grid_dilate_y_); !found_obs && j <= std::min(Ny_-1, y+grid_dilate_y_); j++){
+////              if(cell_obstacle_calculator_->PastSlopeThreshold(costmap_cells_[i][j]) || abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) > thresh_){
+//              if(costmap_cells_[i][j].has_dilated || (costmap_cells_[i][j].filled() && abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) > thresh_)){
+//                found_obs = true;
+//              }
+//            }
+//          }
+//          if(!found_obs){
+//            costmap_cells_[x][y].dilated_val = 0;
+//          }
+//        } // if dilated_val > 0
+//      }
+//    }
 
   }
   void RaytraceClearingMethod::RaytraceLine(const avt_341::msg::Point & start, const avt_341::msg::Point32 & end) {
@@ -95,7 +95,8 @@ namespace perception{
 
   void VoxelRaytraceClearingMethod::ClearVoxelAt(int x, int y, int z){
     int z_i = static_cast<int>((costmap_cells_[x][y].high.val - voxel_height_min_)/voxel_height_res_);
-    if(z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL){
+    if(!costmap_cells_[x][y].filled() || (z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
+//    if((z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
       return;
     }
 
@@ -124,9 +125,10 @@ namespace perception{
     if(was_obstacle && !cell_obstacle_calculator_->PastSlopeThreshold(costmap_cells_[x][y])){
       for(int i = std::max(0, x-grid_dilate_x_); i <= std::min(Nx_-1, x+grid_dilate_x_); i++){
         for(int j = std::max(0, y-grid_dilate_y_); j <= std::min(Ny_-1, y+grid_dilate_y_); j++){
-          if(costmap_cells_[i][j].filled() && abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) < thresh_){
-            costmap_cells_[i][j].dilated_val = 0;
-          }
+//          if(costmap_cells_[i][j].filled() && abs(costmap_cells_[x][y].high.val - costmap_cells_[i][j].high.val) < thresh_){
+//            costmap_cells_[i][j].dilated_val = 0;
+//          }
+          costmap_cells_[i][j].dilated_val = 0;
         }
       }
       costmap_cells_[x][y].has_dilated = false;
@@ -140,6 +142,9 @@ namespace perception{
     int z1 = static_cast<int>((start.z - voxel_height_min_) / voxel_height_res_);
     int x2 = static_cast<int>((end.x - llx_) / res_);
     int y2 = static_cast<int>((end.y - lly_) / res_);
+    if(x2 < 0 || x2 >= Nx_ || y2 < 0 || y2 >= Ny_){
+      return;
+    }
     int z2 = static_cast<int>((end.z - voxel_height_min_) / voxel_height_res_);
     int dx = std::abs(x2 - x1);
     int dy = std::abs(y2 - y1);

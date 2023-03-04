@@ -49,8 +49,8 @@ namespace perception{
     //high.val = std::numeric_limits<float>::lowest();
     //highest.val = std::numeric_limits<float>::lowest();
     //second_highest.val = std::numeric_limits<float>::lowest();
-    float height() const { return high.val - low.val; }
-    bool filled() const { return low.val < MAX_LIMIT; }
+    inline float height() const { return high.val - low.val; }
+    inline bool filled() const { return low.val < MAX_LIMIT; }
     //float slope_x = 0.0f;
     //float slope_y = 0.0f;
     void reset(){
