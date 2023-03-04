@@ -58,9 +58,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 22.89189338684082
+      Max Intensity: 201.18508911132812
       Min Color: 0; 0; 0
-      Min Intensity: 0.9630981087684631
+      Min Intensity: 189.1201171875
       Name: Lidar
       Position Transformer: XYZ
       Selectable: true
@@ -269,26 +269,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz_default_plugins/Orbit
-      Distance: 142.7140655517578
+      Angle: 0
+      Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: -37.620338439941406
-        Y: 16.310348510742188
-        Z: 4.528597831726074
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0397963523864746
+      Scale: 3.3357105255126953
       Target Frame: map
-      Value: Orbit (rviz_default_plugins)
-      Yaw: 4.74159574508667
+      Value: TopDownOrtho (rviz_default_plugins)
+      X: 161.0332489013672
+      Y: 617.3104858398438
     Saved: ~
 Window Geometry:
   Displays:
@@ -304,5 +299,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: -1914
+  X: -1
   Y: -8

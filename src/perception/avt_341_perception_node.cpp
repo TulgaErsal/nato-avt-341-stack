@@ -161,8 +161,8 @@ int main(int argc, char *argv[]) {
     n->get_parameter("~grid_height", grid_height, 1600.0f);
     grid.SetSize(grid_width,grid_height);
 
-    float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range;
-    bool use_elevation, grid_dilate, clear_method_visualize;
+    float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;
+    bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation;
     std::string clear_method;
 
 	n->get_parameter("~grid_res", grid_res, 1.0f);
@@ -178,12 +178,16 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~grid_dilate_y", grid_dilate_y, 1.0f);
 	n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
 	n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
-	n->get_parameter("~clear_method", clear_method, std::string("raytrace_voxel"));
-	n->get_parameter("~clear_method_raytrace_range", clear_method_raytrace_range, 50.0f);
-	n->get_parameter("~clear_method_visualize", clear_method_visualize, true);
+
+	n->get_parameter("~clear_method", clear_method, std::string("raytrace"));
+	n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
   n->get_parameter("~clear_method_visualize_range", visualization_range, 40.0f);
-  n->get_parameter("~voxel_height_min", voxel_height_min, 150.0f);
-  n->get_parameter("~voxel_height_res", voxel_height_res, 0.2f);
+  n->get_parameter("~clear_method_raytrace_range", clear_method_raytrace_range, 50.0f);
+  n->get_parameter("~clear_method_use_voxels", clear_method_use_voxels, true);
+  n->get_parameter("~clear_method_voxel_height_min", voxel_height_min, 150.0f);
+  n->get_parameter("~clear_method_voxel_height_res", voxel_height_res, 0.2f);
+  n->get_parameter("~clear_method_clear_dilation", clear_method_clear_dilation, true);
+  n->get_parameter("~clear_method_obj_range_filter", clear_method_obj_range_filter, 1.0f);
 
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
@@ -204,7 +208,9 @@ int main(int argc, char *argv[]) {
 	grid.SetStitchPoints(stitch_points);
 	grid.SetFilterHighest(filter_highest_lidar);
 	grid.SetMaxPointAge(max_point_age);
-	grid.SetCostmapClearingMethod(n, clear_method, visualization_range, clear_method_visualize, voxel_height_min, voxel_height_res, clear_method_raytrace_range);
+	grid.SetCostmapClearingMethod(n, clear_method, visualization_range, clear_method_visualize,
+                                clear_method_raytrace_range, clear_method_clear_dilation, clear_method_use_voxels,
+                                voxel_height_min, voxel_height_res, clear_method_obj_range_filter);
 
 	double start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(100.0);

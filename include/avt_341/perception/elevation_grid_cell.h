@@ -53,14 +53,6 @@ namespace perception{
     inline bool filled() const { return low.val < MAX_LIMIT; }
     //float slope_x = 0.0f;
     //float slope_y = 0.0f;
-    void reset(){
-      low.val = MAX_LIMIT;
-      high.val = MIN_LIMIT;
-      highest.val = MIN_LIMIT;
-      second_highest.val = MIN_LIMIT;
-      has_dilated = false;
-//      dilated_val = 0;
-    }
 
     bool obstacle; //  = false;
     bool has_dilated; //  = false;
@@ -74,8 +66,8 @@ namespace perception{
     virtual ~CellObstacleCalculator() = default;
     virtual bool PastSlopeThreshold(const Cell & cell) const = 0;
     virtual float Slope(const Cell & cell) const = 0;
+    virtual void AddOccupancy(const avt_341::msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) = 0;
   };
-
 
 } // namespace perception
 } // namespace avt_341

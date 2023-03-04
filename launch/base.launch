@@ -28,12 +28,16 @@
   <arg name="stitch_lidar_points" default="true" doc="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."/>
   <arg name="filter_highest_lidar" default="false" doc="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."/>
   <arg name="points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
-  <arg name="clear_method" default="time" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_voxel."/>
+
+  <arg name="clear_method" default="time" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_with_filter."/>
   <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
   <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed."/>
   <arg name="clear_method_raytrace_range" default="50.0" doc="Elevation grid - Maximum range for raytrace clearing."/>
-  <arg name="voxel_height_min" default="0.0" doc="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."/>
-  <arg name="voxel_height_res" default="0.5" doc="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."/>
+  <arg name="clear_method_use_voxels" default="true" doc="Elevation grid - If true, uses a voxel representation on the z-axis."/>
+  <arg name="clear_method_voxel_height_min" default="0.0" doc="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."/>
+  <arg name="clear_method_voxel_height_res" default="0.5" doc="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."/>
+  <arg name="clear_method_clear_dilation" default="true" doc="Elevation grid - If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values."/>
+  <arg name="clear_method_obj_range_filter" default="1.0" doc="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_with_filter option."/>
 
   <!-- Global Planner  -->
   <arg name="goal_dist" default="5.0" doc="Global planner - Lookahead threshold within which next waypoint selected."/>
@@ -119,8 +123,11 @@
     <param name="clear_method_visualize" value="$(arg clear_method_visualize)"/>
     <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)"/>
     <param name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)"/>
-    <param name="voxel_height_min" value="$(arg voxel_height_min)"/>
-    <param name="voxel_height_res" value="$(arg voxel_height_res)"/>
+    <param name="clear_method_use_voxels" value="$(arg clear_method_use_voxels)"/>
+    <param name="clear_method_voxel_height_min" value="$(arg clear_method_voxel_height_min)"/>
+    <param name="clear_method_voxel_height_res" value="$(arg clear_method_voxel_height_res)"/>
+    <param name="clear_method_clear_dilation" value="$(arg clear_method_clear_dilation)"/>
+    <param name="clear_method_obj_range_filter" value="$(arg clear_method_obj_range_filter)"/>
   </node>
 
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >

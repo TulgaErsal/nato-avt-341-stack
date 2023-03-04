@@ -16,23 +16,44 @@ enum CostmapClearMethodType
   None,
   Time,
   Raytrace,
-  VoxelRaytrace
+  RaytraceWithFiltering
 };
 
-class CostmapClearingMethod{
+struct RaytraceSettings{
+  float llx;
+  float lly;
+  float res;
+  int grid_dilate_x;
+  int grid_dilate_y;
+  float thresh;
+  float raytrace_range;
+  bool clear_dilation;
+  bool use_voxels;
+  float voxel_height_min;
+  float voxel_height_res;
+
+  RaytraceSettings(float llx, float lly, float res, int gridDilateX, int gridDilateY, float thresh, float raytraceRange,
+                   bool clearDilation, bool useVoxels, float voxelHeightMin, float voxelHeightRes)
+                   : llx(llx), lly(lly), res(res), grid_dilate_x(gridDilateX), grid_dilate_y(gridDilateY), thresh(thresh),
+                   raytrace_range(raytraceRange), clear_dilation(clearDilation), use_voxels(useVoxels),
+                   voxel_height_min(voxelHeightMin), voxel_height_res(voxelHeightRes) {}
+};
+
+class OccupancyClearingMethod{
 
 public:
-  CostmapClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize);
-  virtual ~CostmapClearingMethod() = default;
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize);
+  virtual ~OccupancyClearingMethod() = default;
 
-  virtual void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) = 0;
+  virtual void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) = 0;
   virtual void Visualize(const avt_341::msg::Odometry & odom) const {};
+  virtual void OnOccupancyAdded(const avt_341::msg::Odometry & current_pose) {};
 
   static CostmapClearMethodType string_to_clear_type(const std::string & val) {
     if(val == "none"){ return CostmapClearMethodType::None; }
     if(val == "time"){ return CostmapClearMethodType::Time; }
     if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
-    if(val == "raytrace_voxel"){ return CostmapClearMethodType::VoxelRaytrace; }
+    if(val == "raytrace_with_filter"){ return CostmapClearMethodType::RaytraceWithFiltering; }
     throw std::runtime_error("Unknown costmap clearing type " + val);
   }
 
@@ -41,72 +62,70 @@ protected:
   float visualization_range_;
   int Nx_;
   int Ny_;
-  std::vector< std::vector<Cell>> & costmap_cells_;
+  std::vector< std::vector<Cell>> & cells_;
 
 };
 
-class NullClearingMethod : public CostmapClearingMethod{
+class NullClearingMethod : public OccupancyClearingMethod{
 public:
-  NullClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize);
-  void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
+  NullClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize);
+  void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
 };
 
-class TimedClearingMethod: public CostmapClearingMethod {
+class TimedClearingMethod: public OccupancyClearingMethod {
 
 public:
-  TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize);
-  void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
+  TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize);
+  void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
+  void AgeCells();
 private:
   float max_point_age_;
 };
 
-class RaytraceClearingMethod: public CostmapClearingMethod{
+class RaytraceClearingMethod: public OccupancyClearingMethod{
 
 public:
-  RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
-                         float visualization_range, bool visualize, float llx, float lly, float res, int grid_dilate_x,
-                         int grid_dilate_y, float thresh, float clear_method_raytrace_range,
-                         const CellObstacleCalculator* cell_obstacle_calculator);
-  virtual ~RaytraceClearingMethod() override = default;
-  void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
+  RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
+                         float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool auto_clear_dilation=true);
+  virtual ~RaytraceClearingMethod() override;
+  void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
   void Visualize(const avt_341::msg::Odometry & odom) const override;
 
 protected:
-  void GetVoxelBounds(const avt_341::msg::Odometry & odom, float range, int & x_0, int & y_0, int & x_N, int & y_N) const;
+  void GetGridBounds(const avt_341::msg::Odometry & odom, float range, int & x_0, int & y_0, int & x_N, int & y_N) const;
   avt_341::msg::Marker GetMarkerMsg(int type, int id, utils::vec3 color, float alpha=1.0, double z_scale=1.0) const;
   virtual void RaytraceLine(const avt_341::msg::Point & start, const avt_341::msg::Point32 & end);
+  void RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells);
+  void CleanupUnattachedDilation(const avt_341::msg::Odometry & current_pose, std::vector< std::vector<Cell>> & cells);
+  void ClearVoxelAt(int x, int y, int z);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> minmax_vis_publisher_;
   std::shared_ptr<avt_341::node::NodeProxy> node_;
-  float llx_;
-  float lly_;
-  float res_;
-  int grid_dilate_x_;
-  int grid_dilate_y_;
-  float thresh_;
-  float raytrace_range_;
-  const CellObstacleCalculator* cell_obstacle_calculator_;
-};
-
-class VoxelRaytraceClearingMethod: public RaytraceClearingMethod{
-
-public:
-  VoxelRaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & costmap_cells,
-                              float visualization_range, bool visualize, float llx, float lly, float res, int grid_dilate_x,
-                              int grid_dilate_y, float thresh, float voxel_height_min, float voxel_height_res,
-                              float clear_method_raytrace_range, const CellObstacleCalculator* cell_obstacle_calculator);
-  virtual ~VoxelRaytraceClearingMethod() override;
-  void Apply(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
-  void Visualize(const avt_341::msg::Odometry & odom) const override;
-
-protected:
-  void RaytraceLine(const avt_341::msg::Point & start, const avt_341::msg::Point32 & end) override;
-  void ClearVoxelAt(int x, int y, int z);
+  CellObstacleCalculator* cell_obstacle_calculator_;
+  RaytraceSettings config_;
   const static int N_VOXELS_PER_CELL = 1024;
   std::bitset<N_VOXELS_PER_CELL>* voxel_grid;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> voxel_vis_publisher_;
-  float voxel_height_min_;
-  float voxel_height_res_;
+  bool auto_clear_dilation_;
+};
+
+class RaytraceWithFilteringClearingMethod: public RaytraceClearingMethod{
+
+public:
+  RaytraceWithFilteringClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
+  float visualization_range, bool visualize, RaytraceSettings settings, float obj_range_filter, CellObstacleCalculator* cell_obstacle_calculator);
+
+  void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose) override;
+  void OnOccupancyAdded(const avt_341::msg::Odometry & current_pose) override;
+  void Visualize(const avt_341::msg::Odometry & odom) const override;
+
+protected:
+  float obj_filter_range_;
+  std::vector< std::vector<Cell>> & cells_without_clearing_;
+  std::vector< std::vector<Cell>> cells_with_clearing_;
+  std::vector< std::vector<bool>> occupancy_delta_;
+  utils::vec2 last_position_;
+  std::shared_ptr<avt_341::node::Publisher<avt_341::msg::OccupancyGrid>> occupancy_delta_publisher_;
 };
 
 }

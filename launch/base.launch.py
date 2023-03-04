@@ -70,12 +70,16 @@ def generate_launch_description():
         DeclareLaunchArgument('use_registered', default_value='True', description="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."),
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
+
         DeclareLaunchArgument('clear_method', default_value='time', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_voxel."),
         DeclareLaunchArgument('clear_method_visualize', default_value='False', description="Elevation grid - If true, visualizes costmap clearing method."),
         DeclareLaunchArgument('clear_method_visualize_range', default_value='40.0', description="Elevation grid - Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed."),
         DeclareLaunchArgument('clear_method_raytrace_range', default_value='50.0', description="Elevation grid - Maximum range for raytrace clearing."),
-        DeclareLaunchArgument('voxel_height_min', default_value='0.0', description="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."),
-        DeclareLaunchArgument('voxel_height_res', default_value='0.5', description="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."),
+        DeclareLaunchArgument('clear_method_use_voxels', default_value='True', description="Elevation grid - Maximum range for raytrace clearing."),
+        DeclareLaunchArgument('clear_method_voxel_height_min', default_value='0.0', description="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."),
+        DeclareLaunchArgument('clear_method_voxel_height_res', default_value='0.5', description="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."),
+        DeclareLaunchArgument('clear_method_clear_dilation', default_value='True', description="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."),
+        DeclareLaunchArgument('clear_method_obj_range_filter', default_value='1.0', description="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."),
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
@@ -162,8 +166,11 @@ def generate_launch_description():
         #         'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize'),
         #         'clear_method_visualize_range': launch.substitutions.LaunchConfiguration('clear_method_visualize_range'),
         #         'clear_method_raytrace_range': launch.substitutions.LaunchConfiguration('clear_method_raytrace_range'),
-        #         'voxel_height_min': launch.substitutions.LaunchConfiguration('voxel_height_min'),
-        #         'voxel_height_res': launch.substitutions.LaunchConfiguration('voxel_height_res')
+        #         'clear_method_use_voxels': launch.substitutions.LaunchConfiguration('clear_method_use_voxels'),
+        #         'clear_method_voxel_height_min': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_min'),
+        #         'clear_method_voxel_height_res': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_res'),
+        #         'clear_method_clear_dilation': launch.substitutions.LaunchConfiguration('clear_method_clear_dilation'),
+        #         'clear_method_obj_range_filter': launch.substitutions.LaunchConfiguration('clear_method_obj_range_filter')
         #     }],
         # ),
         Node(
