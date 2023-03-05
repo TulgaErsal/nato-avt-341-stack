@@ -256,10 +256,13 @@ set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
 src/perception/elevation_grid.cpp
+src/perception/point_cloud_generator.cpp
 src/planning/local/spline_path.cpp
 src/planning/local/spline_planner.cpp
 src/planning/local/spline_plotter.cpp
 src/visualization/image_visualizer.cpp
+src/node/node_proxy.cpp
+src/node/clock_publisher.cpp
 )
 
 add_library(avt_341 ${LIB_SOURCES})
