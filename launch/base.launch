@@ -32,7 +32,7 @@
   <!-- Elevation Grid - Clearing Methods -->
   <arg name="clear_method" default="none" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."/>
   <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
-  <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed."/>
+  <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If less than zero, range limit is ignored and all cells are displayed."/>
   <arg name="clear_method_raytrace_range" default="50.0" doc="Elevation grid - Maximum range for raytrace clearing."/>
   <arg name="clear_method_use_voxels" default="true" doc="Elevation grid - If true, uses a voxel representation on the z-axis."/>
   <arg name="clear_method_voxel_height_min" default="0.0" doc="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."/>
