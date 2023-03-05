@@ -1,5 +1,4 @@
 #include "avt_341/perception/costmap_clearing_method.h"
-#include "std_msgs/msg/color_rgba.hpp"
 
 namespace avt_341{
 namespace perception{
@@ -65,6 +64,8 @@ namespace perception{
   // RAYTRACE CLEARING
   // ==================================================================================================================
   // ==================================================================================================================
+
+  const int RaytraceClearingMethod::N_VOXELS_PER_CELL;
 
   RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
                                                  float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool handle_dilation)

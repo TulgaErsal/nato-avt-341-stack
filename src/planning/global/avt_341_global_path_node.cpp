@@ -49,9 +49,10 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
 
 void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
 {
-  avt_341::msg::PathPtr path = std::make_shared<avt_341::msg::Path>();
-  path->poses.push_back(*rcv_goal_pose);
-  WaypointCallback(path);
+  std::cout << "Waypoint received from goal callback." << std::endl;
+  current_waypoints.poses.clear();
+  current_waypoints.poses.push_back(*rcv_goal_pose);
+  waypoints_rcvd = true;
 }
 
 int main(int argc, char *argv[])

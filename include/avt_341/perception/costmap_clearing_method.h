@@ -86,6 +86,8 @@ private:
 class RaytraceClearingMethod: public OccupancyClearingMethod{
 
 public:
+  const static int N_VOXELS_PER_CELL = 1024;
+
   RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
                          float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool handle_dilation=true);
   RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Nx, int Ny,
@@ -107,7 +109,6 @@ protected:
   std::shared_ptr<avt_341::node::NodeProxy> node_;
   CellObstacleCalculator* cell_obstacle_calculator_;
   RaytraceSettings config_;
-  const static int N_VOXELS_PER_CELL = 1024;
   std::bitset<N_VOXELS_PER_CELL>* voxel_grid;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> voxel_vis_publisher_;
   bool handle_dilation_;

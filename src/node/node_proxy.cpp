@@ -23,7 +23,7 @@ void NodeProxy::initialize_tf_listener() {
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
-geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
+geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
   return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
 }
 
