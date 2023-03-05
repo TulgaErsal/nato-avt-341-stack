@@ -40,8 +40,8 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
 	if(desired_global_path_.poses.size() == 0){
 		avt_341::msg::PoseStamped pose;
 		pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset;
-		pose.pose.position.x = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset;
-		pose.pose.position.y = leader_odom.pose.pose.position.z;
+		pose.pose.position.y = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset;
+		pose.pose.position.z = leader_odom.pose.pose.position.z;
 		desired_global_path_.poses.push_back(pose);
 		//ROS_INFO("Global Path: %i X:%g Y:%g Z:%g", numdesired_global_path_Points, desired_global_path_[0], desired_global_path_[1], desired_global_path_[2]);
 		return;
@@ -57,8 +57,8 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
 
 	avt_341::msg::PoseStamped pose;
 	pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset;
-	pose.pose.position.x = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset;
-	pose.pose.position.y = leader_odom.pose.pose.position.z;
+	pose.pose.position.y = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset;
+	pose.pose.position.z = leader_odom.pose.pose.position.z;
 	desired_global_path_.poses.push_back(pose);
 
 	return;
