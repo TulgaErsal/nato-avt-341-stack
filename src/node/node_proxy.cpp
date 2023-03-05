@@ -62,7 +62,12 @@ void NodeProxy::spin_some() {
     }
 
     geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
-      return tf_buffer_->lookupTransform(target_frame, source_frame, tf2::TimePointZero);
+      try {
+        return tf_buffer_->lookupTransform(target_frame, source_frame, tf2::TimePointZero);
+      } catch (const tf2::TransformException & ex) {
+        RCLCPP_WARN(node_->get_logger(), "Could not transform %s to %s: %s", source_frame.c_str(), target_frame.c_str(), ex.what());
+        return geometry_msgs::msg::TransformStamped();
+      }
     }
 
     rclcpp::Time NodeProxy::get_stamp() const {

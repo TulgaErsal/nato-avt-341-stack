@@ -80,7 +80,7 @@ void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		for(int c = 0; c < point_cloud.channels.size(); c++){
 			point_cloud.channels[c].values = channel_values[c];
 		}
-		grid.AddPoints(point_cloud, current_pose);
+		grid.AddPoints(point_cloud);
 		grid_created = true;
 	}
 }
@@ -126,7 +126,7 @@ void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		for(int c = 0; c < point_cloud.channels.size(); c++){
 			point_cloud.channels[c].values = channel_values[c];
 		}
-		grid.AddPoints(point_cloud, current_pose);
+		grid.AddPoints(point_cloud);
 		grid_created = true;
 	}
 }
@@ -157,20 +157,13 @@ int main(int argc, char *argv[]) {
     auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
     float grid_width, grid_height, visualization_range;
-    n->get_parameter("~grid_width", grid_width, 800.0f);
-    n->get_parameter("~grid_height", grid_height, 1600.0f);
-    grid.SetSize(grid_width,grid_height);
-
     float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;
     bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation;
     std::string clear_method;
 
 	n->get_parameter("~grid_res", grid_res, 1.0f);
-	n->get_parameter("~grid_llx", grid_llx, -420.0f);
-	n->get_parameter("~grid_lly", grid_lly, -780.0f);
 	n->get_parameter("~time_register_window", time_register_window, 0.02);
 	n->get_parameter("~warmup_time", warmup_time, 1.0f);
-	n->get_parameter("~slope_threshold", thresh, 0.4f);
 	n->get_parameter("~use_elevation", use_elevation, false);
 	n->get_parameter("~use_registered", use_registered, true);
 	n->get_parameter("~grid_dilate", grid_dilate, true);
@@ -179,15 +172,37 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
 	n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
 
-	n->get_parameter("~clear_method", clear_method, std::string("raytrace"));
-	n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
+//  n->get_parameter("~grid_width", grid_width, 800.0f);
+//  n->get_parameter("~grid_height", grid_height, 1600.0f);
+//	n->get_parameter("~grid_llx", grid_llx, -420.0f);
+//	n->get_parameter("~grid_lly", grid_lly, -780.0f);
+//	n->get_parameter("~slope_threshold", thresh, 0.4f);
+//	n->get_parameter("~clear_method", clear_method, std::string("raytrace"));
+//	n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
+//  n->get_parameter("~clear_method_visualize_range", visualization_range, 40.0f);
+//  n->get_parameter("~clear_method_raytrace_range", clear_method_raytrace_range, 50.0f);
+//  n->get_parameter("~clear_method_use_voxels", clear_method_use_voxels, true);
+//  n->get_parameter("~clear_method_voxel_height_min", voxel_height_min, 150.0f);
+//  n->get_parameter("~clear_method_voxel_height_res", voxel_height_res, 0.2f);
+//  n->get_parameter("~clear_method_clear_dilation", clear_method_clear_dilation, true);
+//  n->get_parameter("~clear_method_obj_range_filter", clear_method_obj_range_filter, 1.0f);
+
+  n->get_parameter("~grid_width", grid_width, 200.0f);
+  n->get_parameter("~grid_height", grid_height, 200.0f);
+  n->get_parameter("~grid_llx", grid_llx, -100.0f);
+  n->get_parameter("~grid_lly", grid_lly, -100.0f);
+  n->get_parameter("~slope_threshold", thresh, 1.0f);
+  n->get_parameter("~clear_method", clear_method, std::string("raytrace_with_filter"));
+  n->get_parameter("~clear_method_visualize", clear_method_visualize, true);
   n->get_parameter("~clear_method_visualize_range", visualization_range, 40.0f);
   n->get_parameter("~clear_method_raytrace_range", clear_method_raytrace_range, 50.0f);
   n->get_parameter("~clear_method_use_voxels", clear_method_use_voxels, true);
-  n->get_parameter("~clear_method_voxel_height_min", voxel_height_min, 150.0f);
-  n->get_parameter("~clear_method_voxel_height_res", voxel_height_res, 0.2f);
-  n->get_parameter("~clear_method_clear_dilation", clear_method_clear_dilation, true);
+  n->get_parameter("~clear_method_voxel_height_min", voxel_height_min, 0.0f);
+  n->get_parameter("~clear_method_voxel_height_res", voxel_height_res, 0.5f);
+  n->get_parameter("~clear_method_clear_dilation", clear_method_clear_dilation, false);
   n->get_parameter("~clear_method_obj_range_filter", clear_method_obj_range_filter, 1.0f);
+
+  grid.SetSize(grid_width,grid_height);
 
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
@@ -230,7 +245,7 @@ int main(int argc, char *argv[]) {
 			}
 
       if(clear_method_visualize && nloops % 20 == 0){
-        grid.Visualize(current_pose);
+        grid.Visualize();
       }
 
 			nloops++;

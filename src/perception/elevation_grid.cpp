@@ -60,6 +60,7 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
       int xi = (int)floor((point_cloud.points[i].x - llx_)/res_);
       int yi = (int)floor((point_cloud.points[i].y - lly_)/res_);
       if (xi>=0 && xi<nx_ && yi>=0 &&yi<ny_){
+        const float original_slope = Slope(cells[xi][yi]);
         float h = point_cloud.points[i].z;
         if (filter_highest_){
           if (h > cells[xi][yi].highest.val ){
@@ -90,12 +91,14 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
         }
 
         // Optional dilation
-        if(dilate && !cells[xi][yi].has_dilated && PastSlopeThreshold(cells[xi][yi])){
-          cells[xi][yi].has_dilated = true;
-          uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * GetGridCellValue( cells[xi][yi]));
-          for (int xii=std::max(0, xi-dsize_x); xii < std::min(xi+dsize_x, nx_-dsize_x); xii++){
-            for (int yii=std::max(0, yi-dsize_y); yii < std::min(yi+dsize_y, ny_-dsize_y); yii++){
-              cells[xii][yii].dilated_val = std::max(grid_val, cells[xii][yii].dilated_val);
+        if(dilate){
+          if( (!cells[xi][yi].has_dilated || Slope(cells[xi][yi]) > original_slope) && PastSlopeThreshold(cells[xi][yi])){
+            cells[xi][yi].has_dilated = true;
+            uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * GetGridCellValue( cells[xi][yi]));
+            for (int xii=std::max(0, xi-dsize_x); xii <= std::min(xi+dsize_x, nx_-1); xii++){
+              for (int yii=std::max(0, yi-dsize_y); yii <= std::min(yi+dsize_y, ny_-1); yii++){
+                cells[xii][yii].dilated_val = std::max(grid_val, cells[xii][yii].dilated_val);
+              }
             }
           }
         }
@@ -105,14 +108,14 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
 
 }
 
-std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose){
+std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
 
   if (!stitch_points_){
     ClearGrid();
   }
-  clearing_method_->ClearOccupancy(point_cloud, current_pose);
+  clearing_method_->ClearOccupancy(point_cloud);
   AddOccupancy(point_cloud, cells_, dilate_);
-  clearing_method_->OnOccupancyAdded(current_pose);
+  clearing_method_->OnOccupancyAdded();
 
   //loop back through the points and remove ground points
   std::vector<avt_341::msg::Point32> points;

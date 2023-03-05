@@ -32,7 +32,7 @@ class ElevationGrid : public CellObstacleCalculator{
      * Returns surface points
      * \param point_cloud PointCloud message
      */
-    std::vector<avt_341::msg::Point32> AddPoints(avt_341::msg::PointCloud &point_cloud, const avt_341::msg::Odometry & current_pose);
+    std::vector<avt_341::msg::Point32> AddPoints(avt_341::msg::PointCloud &point_cloud);
 
     bool has_segmentation() const { return has_segmentation_; }
 
@@ -77,13 +77,14 @@ class ElevationGrid : public CellObstacleCalculator{
             node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
           }
           clearing_method_ = std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, obj_range_filter, this);
+          break;
         default:
           clearing_method_ = std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize);
       }
     }
 
-    void Visualize(const avt_341::msg::Odometry & odom) const{
-      clearing_method_->Visualize(odom);
+    void Visualize() const{
+      clearing_method_->Visualize();
     }
 
   bool PastSlopeThreshold(const Cell &cell) const override;
