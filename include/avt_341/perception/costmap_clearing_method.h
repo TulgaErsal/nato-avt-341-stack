@@ -53,7 +53,7 @@ public:
     if(val == "none"){ return CostmapClearMethodType::None; }
     if(val == "time"){ return CostmapClearMethodType::Time; }
     if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
-    if(val == "raytrace_with_filter"){ return CostmapClearMethodType::RaytraceWithFiltering; }
+    if(val == "raytrace_obs_filter"){ return CostmapClearMethodType::RaytraceWithFiltering; }
     throw std::runtime_error("Unknown costmap clearing type " + val);
   }
 

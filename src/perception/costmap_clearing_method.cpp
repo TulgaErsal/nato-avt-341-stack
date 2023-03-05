@@ -153,6 +153,7 @@ namespace perception{
       for(int j = std::max(0, y - config_.grid_dilate_y); j <= std::min(Ny_ - 1, y + config_.grid_dilate_y); j++){
         if(config_.clear_dilation || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) < config_.thresh)){
           bool found_obs = false;
+          // TODO: can remove extra loops with counts or set tracking dilated cells
           for(int ii = std::max(0, i - config_.grid_dilate_x); !found_obs && ii <= std::min(Nx_ - 1, i + config_.grid_dilate_x); ii++){
             for(int jj = std::max(0, j - config_.grid_dilate_y); !found_obs && jj <= std::min(Ny_ - 1, j + config_.grid_dilate_y); jj++){
               found_obs = cell_obstacle_calculator_->PastSlopeThreshold(cells[ii][jj]);
