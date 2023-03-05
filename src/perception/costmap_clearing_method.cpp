@@ -29,11 +29,10 @@ namespace perception{
   // ==================================================================================================================
 
   TimedClearingMethod::TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize)
-      : OccupancyClearingMethod(cells, cells.size(), cells[0].size(), visualization_range, visualize), max_point_age_(max_point_age){
+      : max_point_age_(max_point_age), OccupancyClearingMethod(cells, cells.size(), cells[0].size(), visualization_range, visualize) {
   }
 
-  void TimedClearingMethod::AgeCells(){
-    float dt = 0.1f; // typical for lidar
+  void TimedClearingMethod::AgeCells(const float dt){
     for (int i=0; i<Nx_;i++){
       for (int j=0; j<Ny_; j++){
         cells_[i][j].AgeCell(dt);
@@ -42,7 +41,11 @@ namespace perception{
   }
 
   void TimedClearingMethod::ClearOccupancy(const avt_341::msg::PointCloud &point_cloud){
-    AgeCells();
+    auto now = node::seconds_from_header(point_cloud.header);
+    if(last_timestamp_ > 0){
+      AgeCells(now - last_timestamp_);
+    }
+    last_timestamp_ = now;
     Cell empty_cell;
     for (int i=0; i<Nx_;i++){
       for (int j=0; j<Ny_; j++){
@@ -50,11 +53,11 @@ namespace perception{
             cells_[i][j].highest.age > max_point_age_ ||
             cells_[i][j].second_highest.age > max_point_age_ ||
             cells_[i][j].high.age > max_point_age_){
+            cells_[i][j]=empty_cell;
+        }
+        if (cells_[i][j].dilated_val > 0 && cells_[i][j].dilated_age > max_point_age_){
           cells_[i][j]=empty_cell;
-      }
-      if (cells_[i][j].dilated_val > 0 && cells_[i][j].dilated_age > max_point_age_){
-        cells_[i][j]=empty_cell;
-      }
+        }
     }
   }
   }

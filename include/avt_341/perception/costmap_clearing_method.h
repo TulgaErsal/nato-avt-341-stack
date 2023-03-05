@@ -77,9 +77,10 @@ class TimedClearingMethod: public OccupancyClearingMethod {
 public:
   TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize);
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
-  void AgeCells();
+  void AgeCells(const float dt);
 private:
   float max_point_age_;
+  double last_timestamp_ = -1.0;
 };
 
 class RaytraceClearingMethod: public OccupancyClearingMethod{
