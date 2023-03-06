@@ -73,6 +73,10 @@ def generate_launch_description():
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
+        DeclareLaunchArgument('debug_visualize', default_value='False', description="Global planner - Enables debug visualization of global planner."),
+        DeclareLaunchArgument('w_distance', default_value='1.0', description="Global planner - Weight for distance cost."),
+        DeclareLaunchArgument('w_occupancy', default_value='1.0', description="Global planner - Weight for occupancy cost."),
+        DeclareLaunchArgument('w_segmentation', default_value='1.0', description="Global planner - Weight for segmentation cost."),
 
         # Local Planner
         DeclareLaunchArgument('num_paths', default_value='21', description="Local planner - Number of candidate paths to be generated."),
@@ -182,6 +186,10 @@ def generate_launch_description():
                 'global_lookahead': 75.0,
                 'shutdown_behavior': 2,
                 'display': display_type,
+                'debug_visualize': launch.substitutions.LaunchConfiguration('debug_visualize'),
+                'w_distance': launch.substitutions.LaunchConfiguration('w_distance'),
+                'w_occupancy': launch.substitutions.LaunchConfiguration('w_occupancy'),
+                'w_segmentation': launch.substitutions.LaunchConfiguration('w_segmentation'),
                 '/waypoints_x': launch.substitutions.LaunchConfiguration('waypoints_x'),
                 '/waypoints_y': launch.substitutions.LaunchConfiguration('waypoints_y'),
                 '/is_empty_waypoints': launch.substitutions.LaunchConfiguration('is_empty_waypoints'),

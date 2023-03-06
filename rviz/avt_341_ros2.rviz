@@ -218,6 +218,60 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /avt_341/waypoints
       Value: true
+    - Alpha: 0.6000000238418579
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 85; 255; 255
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Billboards
+      Line Width: 0.5
+      Name: GlobalPathPreSmooth
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/global_path_pre_smooth
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 255; 0; 4
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.009999999776482582
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.10000000149011612
+      Name: GlobalPathPreFill
+      Offset:
+        X: 0
+        Y: 0
+        Z: 1
+      Pose Color: 255; 0; 0
+      Pose Style: Arrows
+      Radius: 0.029999999329447746
+      Shaft Diameter: 1
+      Shaft Length: 0.800000011920929
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/global_path_pre_fill
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

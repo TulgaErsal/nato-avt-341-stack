@@ -31,6 +31,10 @@
 
   <!-- Global Planner  -->
   <arg name="goal_dist" default="5.0" doc="Global planner - Lookahead threshold within which next waypoint selected."/>
+  <arg name="debug_visualize" default="false" doc="Global planner - Enables debug visualization of global planner."/>
+  <arg name="w_distance" default="1.0" doc="Global planner - Weight for distance cost."/>
+  <arg name="w_occupancy" default="1.0" doc="Global planner - Weight for occupancy cost."/>
+  <arg name="w_segmentation" default="1.0" doc="Global planner - Weight for segmentation cost."/>
 
   <!-- Local Planner  -->
   <arg name="num_paths" default="21" doc="Local planner - Number of candidate paths to be generated."/>
@@ -127,6 +131,10 @@
 
   <node name="global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
     <param name="goal_dist" value="$(arg goal_dist)" />
+    <param name="debug_visualize" value="$(arg debug_visualize)" />
+    <param name="w_distance" value="$(arg w_distance)" />
+    <param name="w_occupancy" value="$(arg w_occupancy)" />
+    <param name="w_segmentation" value="$(arg w_segmentation)" />
     <param name="global_lookahead" value="75.0" />
     <param name="shutdown_behavior" value="2" />
     <param name="display" value="$(arg display_type)" />

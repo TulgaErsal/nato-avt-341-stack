@@ -12,7 +12,10 @@
 namespace avt_341 {
 namespace planning{
 
-Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer){
+const int Astar::EdgeDistanceCost;
+
+Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float w_occupancy, float w_segmentation)
+    : w_distance_(w_distance), w_occupancy_(w_occupancy), w_segmentation_(w_segmentation){
   dfac_ = 0;
   visualizer_ = visualizer;
 }
@@ -53,8 +56,10 @@ void Astar::AllocateMap(int h, int w, int init_val){
 }
 
 void Astar::SetMapValue(int i, int j, int val_height, int val_seg){
-  weights_[FlattenIndex(i,j)]=val_height+val_seg;
-	map_[i][j] = (float)val_height;
+  weights_[FlattenIndex(i,j)] = w_distance_*Astar::EdgeDistanceCost
+                                + w_occupancy_*static_cast<float>(val_height)
+                                + w_segmentation_*static_cast<float>(val_seg);
+  map_[i][j] = (float)val_height;   // only used for obstacles (dilation, line of sight)
 }
 
 bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1){
@@ -131,19 +136,17 @@ bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1){
 }
 
 // For path of length n
-void Astar::PostSmoothing(){
+void Astar::PostSmoothing(std::vector<std::vector<int>> & out_path){
   if (path_.size()>2){
     int k = 0;
-    std::vector<std::vector<int> > t; 
-    t.push_back(path_[0]);
+    out_path.push_back(path_[0]);
     for (int i =1;i<path_.size()-1;i++){
-      if (!LineOfSight(t[k], path_[i+1])){
+      if (!LineOfSight(out_path[k], path_[i+1])){
           k++;
-          t.push_back(path_[i]);
+          out_path.push_back(path_[i]);
       }
     }
-    t.push_back(path_.back());
-    path_ = t;
+    out_path.push_back(path_.back());
   }
 }
 
@@ -152,7 +155,7 @@ float Astar::Heuristic(int i0, int j0, int i1, int j1) {
   //straight line distance
   int x = i1-i0;
   int y = j1-j0;
-  return (float)sqrt(x*x+y*y);
+  return w_distance_*(float)sqrt(x*x+y*y);
 
   //return std::max(std::abs(x),std::abs(y));
   //manhattan distance
@@ -240,24 +243,25 @@ bool Astar::ExtractPath(){
   }
 	
   //smooth path out
-  PostSmoothing();
+  std::vector<std::vector<int>> path_smoothed;
+  PostSmoothing(path_smoothed);
 
   // put the smoothed path in world coordinates
-  std::vector<std::vector<float> > smoothed_path;
-  for (int i=0;i<path_.size();i++){
-		point = IndexToPoint(path_[i]);
-		smoothed_path.push_back(point);
+  path_world_pre_fill_.clear();
+  for (int i=0;i<path_smoothed.size();i++){
+		point = IndexToPoint(path_smoothed[i]);
+    path_world_pre_fill_.push_back(point);
   }
   
-  if (smoothed_path.size()<=0) return false;
+  if (path_world_pre_fill_.size()<=0) return false;
 
   // the smoothed path may have much fewer points. Fill in the missing parts
   std::vector<std::vector<float> > filled_in_path_world;
-  for (int i=0;i<smoothed_path.size()-1;i++){
-    float px = smoothed_path[i][0];
-    float py = smoothed_path[i][1];
-    float dx = smoothed_path[i+1][0]-px;
-    float dy = smoothed_path[i+1][1]-py;
+  for (int i=0;i<path_world_pre_fill_.size()-1;i++){
+    float px = path_world_pre_fill_[i][0];
+    float py = path_world_pre_fill_[i][1];
+    float dx = path_world_pre_fill_[i+1][0]-px;
+    float dy = path_world_pre_fill_[i+1][1]-py;
     double d = sqrt(dx*dx + dy*dy);
     double ltx = map_res_*dx/d;
     double lty = map_res_*dy/d;
@@ -268,8 +272,8 @@ bool Astar::ExtractPath(){
       filled_in_path_world.push_back(point);
       px += ltx;
       py += lty;
-      dx = smoothed_path[i+1][0]-px;
-      dy = smoothed_path[i+1][1]-py;
+      dx = path_world_pre_fill_[i+1][0]-px;
+      dy = path_world_pre_fill_[i+1][1]-py;
       d = sqrt(dx*dx + dy*dy);
     }
   }
