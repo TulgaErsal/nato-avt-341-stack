@@ -221,6 +221,9 @@ add_executable(avt_341_grid_compression_node
         src/perception/avt_341_grid_compression_node.cpp
         src/node/node_proxy.cpp
         )
+add_dependencies(avt_341_grid_compression_node
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        )
 target_link_libraries(avt_341_grid_compression_node
         ${catkin_LIBRARIES}
         )
