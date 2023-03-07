@@ -1,6 +1,3 @@
-//
-// Created by Stefan on 2021-07-28.
-//
 
 #ifndef AVT_341_NODE_PROXY_H
 #define AVT_341_NODE_PROXY_H
@@ -9,6 +6,9 @@
 
 #include "ros/ros.h"
 #include "std_msgs/Header.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+#include "geometry_msgs/TransformStamped.h"
 
 namespace avt_341 {
     namespace node {
@@ -114,12 +114,21 @@ namespace avt_341 {
                 return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
             }
 
+            void initialize_tf_listener();
+            geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+
+            inline void log_debug(const std::string &msg) { ROS_DEBUG("%s", msg.c_str()); }
+            inline void log_info(const std::string &msg) { ROS_INFO("%s", msg.c_str()); }
+            inline void log_warning(const std::string &msg) { ROS_WARN("%s", msg.c_str()); }
+            inline void log_error(const std::string &msg) { ROS_ERROR("%s", msg.c_str()); }
             ros::Time get_stamp() const;
             double get_now_seconds() const;
             void spin_some();
 
         private:
             ros::NodeHandle node_;
+            std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+            std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
         };
 
         inline std::shared_ptr<NodeProxy> make_shared(const std::string &name) {
@@ -138,9 +147,21 @@ namespace avt_341 {
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 
 namespace avt_341 {
   namespace node {
+
+    inline rclcpp::Duration make_duration(float period){
+      return rclcpp::Duration::from_seconds(period);
+    }
+
+    inline rclcpp::Duration make_duration(int32_t sec, int32_t nsec){
+      return rclcpp::Duration(sec, nsec);
+    }
+
     template<
         typename MessageT,
         typename AllocatorT = std::allocator<void>,
@@ -240,7 +261,14 @@ namespace avt_341 {
         return std::make_shared<Subscriber<MessageT, CallbackT>>(topic_name, qos, callback, node_);
       }
 
-      rclcpp::Logger get_logger() const;
+      void initialize_tf_listener();
+      geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+
+      inline void log_debug(const std::string &msg) { RCLCPP_DEBUG(node_->get_logger(), msg); }
+      inline void log_info(const std::string &msg) { RCLCPP_INFO(node_->get_logger(), msg); }
+      inline void log_warning(const std::string &msg) { RCLCPP_WARN(node_->get_logger(), msg); }
+      inline void log_error(const std::string &msg) { RCLCPP_ERROR(node_->get_logger(), msg); }
+
       rclcpp::Time get_stamp() const;
       double get_now_seconds() const;
       void spin_some();
@@ -248,6 +276,8 @@ namespace avt_341 {
     private:
       std::shared_ptr<rclcpp::Node> node_;
       bool is_empty_waypoints_;
+      std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+      std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     };
 
     inline std::shared_ptr<NodeProxy> make_shared(const std::string &name) {

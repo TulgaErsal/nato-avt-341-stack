@@ -29,6 +29,17 @@
   <arg name="filter_highest_lidar" default="false" doc="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."/>
   <arg name="points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
 
+  <!-- Elevation Grid - Clearing Methods -->
+  <arg name="clear_method" default="none" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."/>
+  <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
+  <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If less than zero, range limit is ignored and all cells are displayed."/>
+  <arg name="clear_method_raytrace_range" default="50.0" doc="Elevation grid - Maximum range for raytrace clearing."/>
+  <arg name="clear_method_use_voxels" default="true" doc="Elevation grid - If true, uses a voxel representation on the z-axis."/>
+  <arg name="clear_method_voxel_height_min" default="0.0" doc="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."/>
+  <arg name="clear_method_voxel_height_res" default="0.5" doc="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."/>
+  <arg name="clear_method_immediate_clear_dilation" default="true" doc="Elevation grid - If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values."/>
+  <arg name="clear_method_obs_filter_range" default="1.0" doc="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."/>
+
   <!-- Global Planner  -->
   <arg name="goal_dist" default="5.0" doc="Global planner - Lookahead threshold within which next waypoint selected."/>
   <arg name="debug_visualize" default="false" doc="Global planner - Enables debug visualization of global planner."/>
@@ -116,7 +127,18 @@
     <param name="display" value="$(arg display_type)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)"/>
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)"/>
+    <param name="clear_method" value="$(arg clear_method)"/>
+    <param name="clear_method_visualize" value="$(arg clear_method_visualize)"/>
+    <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)"/>
+    <param name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)"/>
+    <param name="clear_method_use_voxels" value="$(arg clear_method_use_voxels)"/>
+    <param name="clear_method_voxel_height_min" value="$(arg clear_method_voxel_height_min)"/>
+    <param name="clear_method_voxel_height_res" value="$(arg clear_method_voxel_height_res)"/>
+    <param name="clear_method_immediate_clear_dilation" value="$(arg clear_method_immediate_clear_dilation)"/>
+    <param name="clear_method_obs_filter_range" value="$(arg clear_method_obs_filter_range)"/>
   </node>
+
+  <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
 
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
     <param name="vehicle_wheelbase" value="$(arg vehicle_wheelbase)" />

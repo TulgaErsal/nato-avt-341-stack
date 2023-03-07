@@ -45,7 +45,14 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
   // Brute force - overwrite the current global waypoints
   current_waypoints = *rcv_waypoints;
   waypoints_rcvd = true;
+}
 
+void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
+{
+  std::cout << "Waypoint received from goal callback." << std::endl;
+  current_waypoints.poses.clear();
+  current_waypoints.poses.push_back(*rcv_goal_pose);
+  waypoints_rcvd = true;
 }
 
 void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)

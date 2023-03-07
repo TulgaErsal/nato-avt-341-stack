@@ -1,6 +1,3 @@
-//
-// Created by stefan on 2021-08-19.
-//
 
 #ifndef AVT_341_RVIZ_SPLINE_PLOTTER_H
 #define AVT_341_RVIZ_SPLINE_PLOTTER_H
