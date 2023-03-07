@@ -75,7 +75,7 @@ def generate_launch_description():
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
-        DeclareLaunchArgument('debug_visualize', default_value='True', description="Global planner - Enables debug visualization of global planner."),
+        DeclareLaunchArgument('debug_visualize', default_value='False', description="Global planner - Enables debug visualization of global planner."),
         DeclareLaunchArgument('w_distance', default_value='1.0', description="Global planner - Weight for distance cost."),
         DeclareLaunchArgument('w_occupancy', default_value='1.0', description="Global planner - Weight for occupancy cost."),
         DeclareLaunchArgument('w_segmentation', default_value='1.0', description="Global planner - Weight for segmentation cost."),
