@@ -55,14 +55,6 @@ void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
   waypoints_rcvd = true;
 }
 
-void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
-{
-  std::cout << "Waypoint received from goal callback." << std::endl;
-  current_waypoints.poses.clear();
-  current_waypoints.poses.push_back(*rcv_goal_pose);
-  waypoints_rcvd = true;
-}
-
 avt_341::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
   avt_341::msg::Path ros_path;
   ros_path.header.frame_id = "map";
