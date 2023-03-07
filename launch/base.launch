@@ -35,6 +35,9 @@
   <arg name="w_distance" default="1.0" doc="Global planner - Weight for distance cost."/>
   <arg name="w_occupancy" default="1.0" doc="Global planner - Weight for occupancy cost."/>
   <arg name="w_segmentation" default="1.0" doc="Global planner - Weight for segmentation cost."/>
+  <arg name="search_diagonals" default="False" doc="Global planner - If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered."/>
+  <arg name="los_max_iterations" default="1" doc="Global planner - Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges."/>
+  <arg name="los_break_on_first" default="True" doc="Global planner - If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection."/>
 
   <!-- Local Planner  -->
   <arg name="num_paths" default="21" doc="Local planner - Number of candidate paths to be generated."/>
@@ -135,6 +138,9 @@
     <param name="w_distance" value="$(arg w_distance)" />
     <param name="w_occupancy" value="$(arg w_occupancy)" />
     <param name="w_segmentation" value="$(arg w_segmentation)" />
+    <param name="search_diagonals" value="$(arg search_diagonals)" />
+    <param name="los_max_iterations" value="$(arg los_max_iterations)" />
+    <param name="los_break_on_first" value="$(arg los_break_on_first)" />
     <param name="global_lookahead" value="75.0" />
     <param name="shutdown_behavior" value="2" />
     <param name="display" value="$(arg display_type)" />

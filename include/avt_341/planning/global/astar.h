@@ -18,7 +18,8 @@ class Astar {
   static const int EdgeDistanceCost = 1;
 
   /// Constructor
-  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float  w_occupancy, float w_segmentation);
+  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float  w_occupancy,
+        float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first);
 
   /// Destructor
   ~Astar();
@@ -217,7 +218,7 @@ class Astar {
   std::vector<std::vector<float> > path_world_;           // final output path in world coordinates
 
   bool ExtractPath();
-  void PostSmoothing(std::vector<std::vector<int>> & out_path);
+  void PostSmoothing(const std::vector<std::vector<int>> & in_path, std::vector<std::vector<int>> & out_path);
   bool LineOfSight(std::vector<int> p0, std::vector<int> p1);
 
   float llx_,lly_;
@@ -225,6 +226,9 @@ class Astar {
   float w_distance_;
   float w_occupancy_;
   float w_segmentation_;
+  bool search_diagonals_;
+  int los_max_iterations_;
+  bool los_break_on_first_;
 
   std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer_;
 };

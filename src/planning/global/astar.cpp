@@ -14,8 +14,10 @@ namespace planning{
 
 const int Astar::EdgeDistanceCost;
 
-Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float w_occupancy, float w_segmentation)
-    : w_distance_(w_distance), w_occupancy_(w_occupancy), w_segmentation_(w_segmentation){
+Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float w_occupancy,
+             float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first)
+    : w_distance_(w_distance), w_occupancy_(w_occupancy), w_segmentation_(w_segmentation),
+    search_diagonals_(search_diagonals), los_max_iterations_(los_max_iterations), los_break_on_first_(los_break_on_first) {
   dfac_ = 0;
   visualizer_ = visualizer;
 }
@@ -136,17 +138,31 @@ bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1){
 }
 
 // For path of length n
-void Astar::PostSmoothing(std::vector<std::vector<int>> & out_path){
-  if (path_.size()>2){
+void Astar::PostSmoothing(const std::vector<std::vector<int>> & in_path, std::vector<std::vector<int>> & out_path){
+  if (in_path.size()>2){
     int k = 0;
-    out_path.push_back(path_[0]);
-    for (int i =1;i<path_.size()-1;i++){
-      if (!LineOfSight(out_path[k], path_[i+1])){
+    out_path.push_back(in_path[0]);
+    if(los_break_on_first_){
+      for (int i =1;i<in_path.size()-1;i++){
+        if (!LineOfSight(out_path[k], in_path[i+1])){
           k++;
-          out_path.push_back(path_[i]);
+          out_path.push_back(in_path[i]);
+        }
+      }
+      out_path.push_back(in_path.back());
+    }else{
+      // Find last in line of sight
+      while(k < in_path.size()-1){
+        int i = in_path.size()-1;
+        while (i>k+1 && !LineOfSight(in_path[k], in_path[i])){
+          i--;
+        }
+        out_path.push_back(in_path[i]);
+        k = i;
       }
     }
-    out_path.push_back(path_.back());
+  }else{
+    out_path = in_path;
   }
 }
 
@@ -183,8 +199,8 @@ bool Astar::Solve() {
 
   std::priority_queue<AStarCell> nodes_to_visit;
   nodes_to_visit.push(start_node);
-
-  int* nbrs = new int[4];
+  const int N_adj = search_diagonals_ ? 8 : 4;
+  int* nbrs = new int[N_adj];
 
   bool solution_found = false;
   while (!nodes_to_visit.empty()) {
@@ -199,11 +215,21 @@ bool Astar::Solve() {
     nodes_to_visit.pop();
 
     // check bounds and find up to four neighbors
-    nbrs[0] = (cur.idx / width_ > 0) ? (cur.idx - width_) : -1;
-    nbrs[1] = (cur.idx % width_ > 0) ? (cur.idx - 1) : -1;
-    nbrs[2] = (cur.idx / width_ + 1 < height_) ? (cur.idx + width_) : -1;
-    nbrs[3] = (cur.idx % width_ + 1 < width_) ? (cur.idx + 1) : -1;
-    for (int i = 0; i < 4; ++i) {
+    bool has_down = (cur.idx / width_ > 0);
+    bool has_left = (cur.idx % width_ > 0);
+    bool has_up = (cur.idx / width_ + 1 < height_);
+    bool has_right = (cur.idx % width_ + 1 < width_);
+    nbrs[0] = has_down ? (cur.idx - width_) : -1;
+    nbrs[1] = has_left ? (cur.idx - 1) : -1;
+    nbrs[2] = has_up ? (cur.idx + width_) : -1;
+    nbrs[3] = has_right ? (cur.idx + 1) : -1;
+    if(search_diagonals_){
+      nbrs[4] = has_down && has_left ? (cur.idx - width_-1) : -1;
+      nbrs[5] = has_down && has_right ? (cur.idx - width_+1) : -1;
+      nbrs[6] = has_up && has_left ? (cur.idx + width_-1) : -1;
+      nbrs[7] = has_up && has_left ? (cur.idx + 1) : -1;
+    }
+    for (int i = 0; i < N_adj; ++i) {
       if (nbrs[i] >= 0) {
         // the sum of the cost so far and the cost of this move
         float new_cost = costs[cur.idx] + weights_[nbrs[i]];
@@ -244,7 +270,17 @@ bool Astar::ExtractPath(){
 	
   //smooth path out
   std::vector<std::vector<int>> path_smoothed;
-  PostSmoothing(path_smoothed);
+  PostSmoothing(path_, path_smoothed);
+  for(int k = 1; k < los_max_iterations_; k++){
+    std::vector<std::vector<int>> path_smoothed_it;
+    PostSmoothing(path_smoothed, path_smoothed_it);
+    // pre-emptive break if unchanged
+    if(path_smoothed.size() == path_smoothed_it.size()
+      && std::equal(path_smoothed.begin(), path_smoothed.end(), path_smoothed_it.begin())){
+      break;
+    }
+    path_smoothed = path_smoothed_it;
+  }
 
   // put the smoothed path in world coordinates
   path_world_pre_fill_.clear();

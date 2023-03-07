@@ -101,7 +101,8 @@ int main(int argc, char *argv[])
   float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
-  bool debug_visualize = false;
+  bool debug_visualize, search_diagonals, los_break_on_first;
+  int los_max_iterations;
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
@@ -111,7 +112,10 @@ int main(int argc, char *argv[])
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
   n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
-  n->get_parameter("~debug_visualize", debug_visualize, true);
+  n->get_parameter("~debug_visualize", debug_visualize, false);
+  n->get_parameter("~search_diagonals", search_diagonals, false);
+  n->get_parameter("~los_max_iterations", los_max_iterations, 1);
+  n->get_parameter("~los_break_on_first", los_break_on_first, true);
   n->get_parameter("~w_distance", w_distance, 1.0f);
   n->get_parameter("~w_occupancy", w_occupancy, 1.0f);
   n->get_parameter("~w_segmentation", w_segmentation, 1.0f);
@@ -122,7 +126,6 @@ int main(int argc, char *argv[])
   if(debug_visualize){
     global_path_pre_smooth_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_smooth", 10);
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
-    ros_path_los_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_los", 10);
   }
 
   int shutdown_behavior = 1;
@@ -167,7 +170,8 @@ int main(int argc, char *argv[])
   }
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
-  avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation);
+  avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation,
+                                         search_diagonals, los_max_iterations, los_break_on_first);
 
   avt_341::node::Rate r(20.0f); // Hz
   bool shutdown_condition = false;

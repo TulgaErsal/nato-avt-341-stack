@@ -75,6 +75,13 @@ def generate_launch_description():
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
+        DeclareLaunchArgument('debug_visualize', default_value='True', description="Global planner - Enables debug visualization of global planner."),
+        DeclareLaunchArgument('w_distance', default_value='1.0', description="Global planner - Weight for distance cost."),
+        DeclareLaunchArgument('w_occupancy', default_value='1.0', description="Global planner - Weight for occupancy cost."),
+        DeclareLaunchArgument('w_segmentation', default_value='1.0', description="Global planner - Weight for segmentation cost."),
+        DeclareLaunchArgument('search_diagonals', default_value='False', description="Global planner - If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered."),
+        DeclareLaunchArgument('los_max_iterations', default_value='1', description="Global planner - Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges."),
+        DeclareLaunchArgument('los_break_on_first', default_value='True', description="Global planner - If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection."),
 
         # Local Dynamic Window Approach Planner
         DeclareLaunchArgument("dwa_model", default_value="ackermann", description="Motion model for the trajectory prediction - may be 'ackermann' for Ackermann-steered AGVs or 'synchro' for synchro drive robots."),
@@ -196,6 +203,13 @@ def generate_launch_description():
                 'global_lookahead': 75.0,
                 'shutdown_behavior': 2,
                 'display': display_type,
+                'debug_visualize': launch.substitutions.LaunchConfiguration('debug_visualize'),
+                'w_distance': launch.substitutions.LaunchConfiguration('w_distance'),
+                'w_occupancy': launch.substitutions.LaunchConfiguration('w_occupancy'),
+                'w_segmentation': launch.substitutions.LaunchConfiguration('w_segmentation'),
+                'search_diagonals': launch.substitutions.LaunchConfiguration('search_diagonals'),
+                'los_max_iterations': launch.substitutions.LaunchConfiguration('los_max_iterations'),
+                'los_break_on_first': launch.substitutions.LaunchConfiguration('los_break_on_first'),
                 '/waypoints_x': launch.substitutions.LaunchConfiguration('waypoints_x'),
                 '/waypoints_y': launch.substitutions.LaunchConfiguration('waypoints_y'),
                 '/is_empty_waypoints': launch.substitutions.LaunchConfiguration('is_empty_waypoints'),
