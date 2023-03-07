@@ -121,7 +121,6 @@ int main(int argc, char *argv[])
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
-  std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> ros_path_los_pub = nullptr;
   if(debug_visualize){
     global_path_pre_smooth_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_smooth", 10);
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
