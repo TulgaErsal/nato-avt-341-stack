@@ -73,6 +73,17 @@ def generate_launch_description():
         DeclareLaunchArgument('time_register_window', default_value='0.05', description="Maximum window of time between odom and point cloud time stamps"),
         DeclareLaunchArgument('max_point_age', default_value='0.0', description="Lifetime of a point before it is cleared"),
 
+        # Elevation Grid - Clearing Methods
+        DeclareLaunchArgument('clear_method', default_value='none', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."),
+        DeclareLaunchArgument('clear_method_visualize', default_value='False', description="Elevation grid - If true, visualizes costmap clearing method."),
+        DeclareLaunchArgument('clear_method_visualize_range', default_value='40.0', description="Elevation grid - Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed."),
+        DeclareLaunchArgument('clear_method_raytrace_range', default_value='50.0', description="Elevation grid - Maximum range for raytrace clearing."),
+        DeclareLaunchArgument('clear_method_use_voxels', default_value='True', description="Elevation grid - Maximum range for raytrace clearing."),
+        DeclareLaunchArgument('clear_method_voxel_height_min', default_value='0.0', description="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."),
+        DeclareLaunchArgument('clear_method_voxel_height_res', default_value='0.5', description="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."),
+        DeclareLaunchArgument('clear_method_immediate_clear_dilation', default_value='True', description="Elevation grid - If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values."),
+        DeclareLaunchArgument('clear_method_obs_filter_range', default_value='1.0', description="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."),
+
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
 
@@ -166,7 +177,17 @@ def generate_launch_description():
                 'use_registered': launch.substitutions.LaunchConfiguration('use_registered'),
                 'display': display_type,
                 'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
-                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar')
+                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
+
+                'clear_method': launch.substitutions.LaunchConfiguration('clear_method'),
+                'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize'),
+                'clear_method_visualize_range': launch.substitutions.LaunchConfiguration('clear_method_visualize_range'),
+                'clear_method_raytrace_range': launch.substitutions.LaunchConfiguration('clear_method_raytrace_range'),
+                'clear_method_use_voxels': launch.substitutions.LaunchConfiguration('clear_method_use_voxels'),
+                'clear_method_voxel_height_min': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_min'),
+                'clear_method_voxel_height_res': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_res'),
+                'clear_method_immediate_clear_dilation': launch.substitutions.LaunchConfiguration('clear_method_immediate_clear_dilation'),
+                'clear_method_obs_filter_range': launch.substitutions.LaunchConfiguration('clear_method_obs_filter_range')
             }],
         ),
         Node(
