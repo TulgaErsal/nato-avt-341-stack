@@ -175,8 +175,6 @@ def generate_launch_description():
                 'clear_method_voxel_height_res': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_res'),
                 'clear_method_immediate_clear_dilation': launch.substitutions.LaunchConfiguration('clear_method_immediate_clear_dilation'),
                 'clear_method_obs_filter_range': launch.substitutions.LaunchConfiguration('clear_method_obs_filter_range')
-                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar')
-
             }],
         ),
         Node(
