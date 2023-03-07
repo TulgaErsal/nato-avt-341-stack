@@ -70,6 +70,7 @@ def generate_launch_description():
         DeclareLaunchArgument('use_registered', default_value='True', description="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."),
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
+        DeclareLaunchArgument('max_point_age', default_value='0.0', description="Lifetime of a point before it is cleared"),
 
         # Elevation Grid - Clearing Methods
         DeclareLaunchArgument('clear_method', default_value='none', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."),
@@ -163,6 +164,7 @@ def generate_launch_description():
                 'display': display_type,
                 'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
                 'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
+                'max_point_age': launch.substitutions.LaunchConfiguration('max_point_age'),
 
                 'clear_method': launch.substitutions.LaunchConfiguration('clear_method'),
                 'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize'),
@@ -173,6 +175,8 @@ def generate_launch_description():
                 'clear_method_voxel_height_res': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_res'),
                 'clear_method_immediate_clear_dilation': launch.substitutions.LaunchConfiguration('clear_method_immediate_clear_dilation'),
                 'clear_method_obs_filter_range': launch.substitutions.LaunchConfiguration('clear_method_obs_filter_range')
+                'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar')
+
             }],
         ),
         Node(
@@ -241,7 +245,11 @@ def generate_launch_description():
             executable='rviz2',
             name='rviz2',
             condition=launch.conditions.IfCondition(auto_launch_rviz),
-            arguments=["-d", rviz_config_path])
+            arguments=["-d", rviz_config_path]),
+        Node(
+            package='avt_341',
+            executable='avt_341_grid_compression_node',
+            name='grid_compression')
     ])
 
     return launch_description

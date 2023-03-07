@@ -131,6 +131,8 @@
     <param name="clear_method_obs_filter_range" value="$(arg clear_method_obs_filter_range)"/>
   </node>
 
+  <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
+
   <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
     <param name="vehicle_wheelbase" value="$(arg vehicle_wheelbase)" />
     <param name="vehicle_max_steer_angle_degrees" value="$(arg vehicle_max_steer_angle_degrees)" />

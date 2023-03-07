@@ -178,6 +178,7 @@ def generate_launch_description():
                 'display': display_type,
                 'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
                 'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
+                'max_point_age': launch.substitutions.LaunchConfiguration('max_point_age'),
 
                 'clear_method': launch.substitutions.LaunchConfiguration('clear_method'),
                 'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize'),
