@@ -22,7 +22,7 @@
         }
     };
 #else
-    #include "avt_341/msg/occupied_cell.hpp"
+    #include "avt_341/msg/occupied_cells.hpp"
 #endif
 
 avt_341::msg::OccupancyGrid grid;

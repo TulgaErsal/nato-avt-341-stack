@@ -108,6 +108,7 @@ add_executable(avt_341_perception_node
 src/perception/avt_341_perception_node.cpp
 src/perception/elevation_grid.cpp
 src/node/node_proxy.cpp
+src/perception/costmap_clearing_method.cpp
 )
 target_link_libraries(avt_341_perception_node
   ${catkin_LIBRARIES}

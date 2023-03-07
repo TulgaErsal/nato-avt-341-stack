@@ -45,7 +45,14 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
   // Brute force - overwrite the current global waypoints
   current_waypoints = *rcv_waypoints;
   waypoints_rcvd = true;
+}
 
+void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
+{
+  std::cout << "Waypoint received from goal callback." << std::endl;
+  current_waypoints.poses.clear();
+  current_waypoints.poses.push_back(*rcv_goal_pose);
+  waypoints_rcvd = true;
 }
 
 int main(int argc, char *argv[])
@@ -60,6 +67,7 @@ int main(int argc, char *argv[])
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, MapCallback);
   auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
+  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("/goal_pose", 10, GoalPoseCallback);
 
   // ctg, 8-19-2021
   // the state values can be
