@@ -259,7 +259,7 @@ DwaPlanner::EvaluateCostObstacle(DwaTrajectory traj) {
 }
 
 float
-DwaPlanner::EvaluateCostSpeed(DwaTrajectory traj) { return speed_lin_max_ - traj.GetLastState().GetSpeed(); }
+DwaPlanner::EvaluateCostSpeed(DwaTrajectory traj) { return std::max(speed_lin_max_ - traj.GetLastState().GetSpeed(), 0.0f); }
 
 float
 DwaPlanner::EvaluateCostHeading(DwaTrajectory traj) {
@@ -290,13 +290,13 @@ DwaPlanner::EvaluateCostDeviation(DwaTrajectory traj) {
 }
 
 float
-DwaPlanner::EvaluateCostGlobalPath(DwaTrajectory) {
+DwaPlanner::EvaluateCostGlobalPath(DwaTrajectory traj) {
     float cost_path = 0.0f;
 
-    for (int i = 0; i < traj_last_.GetNumberOfStates(); ++i) {
+    for (int i = 0; i < traj.GetNumberOfStates(); ++i) {
         cost_path += global_path_.FindClosestDistance(
-            traj_last_.GetState(i).GetX(),
-            traj_last_.GetState(i).GetY()
+            traj.GetState(i).GetX(),
+            traj.GetState(i).GetY()
         );
     }
 
@@ -328,7 +328,7 @@ DwaPlanner::GetObstacles() {
 			if (cost > thresh_obs_) {
 				float d = std::hypot(
                     state_.GetX() - x,
-                    state_.GetX() - x);
+                    state_.GetY() - y);
 
                 if (d < dis_cutoff) {
 					obs_occ_.Add(x, y);
