@@ -74,6 +74,8 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
  * @param leaderVy Orientation of the leader vehicle 
  */
 void FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
+    float followerHeadingDistLimit_ = 20;
+	
 	float targetSpeed = 0.0f;
 	float leaderXoffset = status.x_offset;
 	float leaderYoffset = status.y_offset;
@@ -92,24 +94,33 @@ void FormationController::CalculateFollowerSpeed(avt_341::msg::Odometry leader_o
 	Vec2d vehicleVx;
 	CalcVehicleRotation(odom,vehicleVx);
 
-	//Calculate the dot product of the vehicle heading vector and the vector to target leader point
-	float dotP = vehicleVx[0]*vec[0] +  vehicleVx[1]*vec[1]; 
-	if(dotP>0){
-		float relativeVel[2];
-		relativeVel[0] = leader_odom.twist.twist.linear.x - odom.twist.twist.linear.x;
-		relativeVel[1] = leader_odom.twist.twist.linear.y - odom.twist.twist.linear.y;
-
-		//Speed along vehicle heading
-		float speedHeading = vehicleVx[0]*relativeVel[0] + vehicleVx[1]*relativeVel[1];
-
-		targetSpeed = dotP * follower_dist_gain_ + speedHeading;
-		if(targetSpeed < 0.0f)targetSpeed = 0.0f;
-	}
-	else{
-		targetSpeed = 0.0f; 
-	}
-
+	//Calculate the distance to target leader point
+	float dist = sqrt(vec[0]*vec[0] + vec[1]*vec[1]);
 	
+	//Calculate the dot product of the vehicle heading vector and the vector to target leader point
+	float dotP = vehicleVx[0]*vec[0] +  vehicleVx[1]*vec[1];
+
+	float leaderVel[2];
+	leaderVel[0] = leader_odom.twist.twist.linear.x;
+	leaderVel[1] = leader_odom.twist.twist.linear.y;
+
+	//Speed along vehicle heading
+	float speedHeading = vehicleVx[0]*leaderVel[0] + vehicleVx[1]*leaderVel[1];
+	
+    //If distance between vehicles is less than followerHeadingDistLimit_ meters, the vehicles are too close and distance cannot be used.
+	if(dist < followerHeadingDistLimit_){
+	        if(dotP > 0){
+		         targetSpeed = dotP * follower_dist_gain_ + speedHeading;
+		         if(targetSpeed < 0.0f)targetSpeed = 0.0f;
+	            }
+	        else{
+		         targetSpeed = 0.0f; //Follower Vehicle is heading in the wrong direction. So stop.
+	            }
+	    }
+	else{
+	     targetSpeed = dist * follower_dist_gain_ + speedHeading;
+	    }
+
 	desired_speed_ = targetSpeed;
 }
 
@@ -150,6 +161,7 @@ void FormationController::Update(avt_341::msg::Odometry leader_odom, avt_341::ms
 	CalcLeaderRotation(leader_odom, leaderVx, leaderVy);
 
 	GenerateLeaderPath(leader_odom, status, leaderVy);
+	desired_global_path_.header.frame_id = "map";
 
 	CalculateFollowerSpeed(leader_odom, odom, status, leaderVx, leaderVy);
 }
