@@ -1,0 +1,32 @@
+{
+    "messages": [
+        {
+            "message": "CGV1,1,FORM,LINE,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "1.0"
+        },
+        {
+            "message": "CGV1,1,FORM,COLUMN,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "5.0"
+        },
+        {
+            "message": "CGV1,1,FORM,STAGGER_COL,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "5.0"
+        },
+        {
+            "message": "CGV1,1,FORM,DIAMOND,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "5.0"
+        },
+        {
+            "message": "CGV1,1,FORM,WEDGE,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "5.0"
+        },
+        {
+            "message": "CGV1,1,FORM,ECH_LEFT,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "5.0"
+        },
+        {
+            "message": "CGV1,1,FORM,ECH_RIGHT,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "delay": "5.0"
+        }
+    ]
+}
