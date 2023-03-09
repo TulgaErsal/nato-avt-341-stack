@@ -14,8 +14,12 @@ namespace planning{
  */
 class Astar {
  public:
+
+  static const int EdgeDistanceCost = 1;
+
   /// Constructor
-  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer);
+  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float  w_occupancy,
+        float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first);
 
   /// Destructor
   ~Astar();
@@ -98,7 +102,15 @@ class Astar {
    * Solve the A* map. Returns true if a path was found.
    */
   bool Solve();
- 
+
+  std::vector<std::vector<float> > GetPathWorldPreSmoothing(){
+    std::vector<std::vector<float>> path_world_pre_smoothing;
+    std::transform(path_.begin(), path_.end(), std::back_inserter(path_world_pre_smoothing),
+                   [this](const std::vector<int> & p){ return IndexToPoint(p); }) ;
+    return path_world_pre_smoothing;
+  }
+  std::vector<std::vector<float> > *GetPathWorldPreFill() { return &path_world_pre_fill_; }
+
   /// Return a list of indices specifying the current path.
   std::vector<std::vector<int> > GetPath(){return path_;}
 
@@ -176,7 +188,7 @@ class Astar {
   float Heuristic(int i0, int j0, int i1, int j1);
 
   /// Flattened occupancy grid
-  std::vector<int> weights_;
+  std::vector<float> weights_;
 
 	/// unflattened occupancy grid
 	std::vector<std::vector<float> > map_;
@@ -201,15 +213,22 @@ class Astar {
   std::vector<int> paths_;
 
   //std::vector<MapIndex> path_;
-	std::vector<std::vector<int> > path_;
-	std::vector<std::vector<float> > path_world_;
+  std::vector<std::vector<int> > path_;                   // raw path before smoothing by line of sight processing
+  std::vector<std::vector<float> > path_world_pre_fill_;  // path world (smoothed) before filled in
+  std::vector<std::vector<float> > path_world_;           // final output path in world coordinates
 
   bool ExtractPath();
-  void PostSmoothing();
+  void PostSmoothing(const std::vector<std::vector<int>> & in_path, std::vector<std::vector<int>> & out_path);
   bool LineOfSight(std::vector<int> p0, std::vector<int> p1);
 
   float llx_,lly_;
   float map_res_;
+  float w_distance_;
+  float w_occupancy_;
+  float w_segmentation_;
+  bool search_diagonals_;
+  int los_max_iterations_;
+  bool los_break_on_first_;
 
   std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer_;
 };
