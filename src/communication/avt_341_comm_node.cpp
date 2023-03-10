@@ -60,6 +60,7 @@ int handleFormationRequest(avt_341::Communication message) {
     // create a follower status message
     follower_status_message.leader_name = message.leader_name;
     if(!strcmp(message.leader_name.c_str(), my_name.c_str())) {
+            ROS_INFO("%s taking Lead Position", my_name.c_str());
             follower_status_message.x_offset = 0;
             follower_status_message.y_offset = 0;
             follower_status_message.use_leader = false;
@@ -78,7 +79,7 @@ int handleFormationRequest(avt_341::Communication message) {
             follower_status_message.x_offset = f.follower3.x * vehicle_scale;
             follower_status_message.y_offset = f.follower3.y * vehicle_scale;
         } else {
-            ROS_INFO("Formation message is not for me.");
+            ROS_INFO("%s: Formation message is not for me.", my_name.c_str());
         }
         follower_status_message.use_leader = true;
     }

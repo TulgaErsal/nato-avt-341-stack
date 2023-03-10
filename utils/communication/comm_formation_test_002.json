@@ -1,11 +1,12 @@
 {
+    "documentation": "Demonstrates leader switching as formations change.",
     "messages": [
         {
             "message": "CGV1,1,FORM,LINE,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
             "delay": "1.0"
         },
         {
-            "message": "CGV1,1,FORM,COLUMN,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "message": "CGV1,1,FORM,COLUMN,AGV2,AGV1,CGV1,CGV2,MISSIONPOINT_A,4",
             "delay": "10.0"
         },
         {
@@ -13,7 +14,7 @@
             "delay": "10.0"
         },
         {
-            "message": "CGV1,1,FORM,DIAMOND,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "message": "CGV1,1,FORM,DIAMOND,AGV2,AGV1,CGV1,CGV2,MISSIONPOINT_A,4",
             "delay": "10.0"
         },
         {
@@ -21,7 +22,7 @@
             "delay": "10.0"
         },
         {
-            "message": "CGV1,1,FORM,ECH_LEFT,AGV1,AGV2,CGV1,CGV2,MISSIONPOINT_A,4",
+            "message": "CGV1,1,FORM,ECH_LEFT,AGV2,AGV1,CGV1,CGV2,MISSIONPOINT_A,4",
             "delay": "10.0"
         },
         {
