@@ -26,8 +26,11 @@
 
 char message[256] = { 0 };
 bool messages_ready = 0;
+bool odom_rcvd = false;
 int res = 0;
 avt_341::msg::String my_name;
+avt_341::msg::String leader_name;
+avt_341::msg::Odometry leader_odom;
 float vehicle_scale = 1;
 
 struct formation {
@@ -48,6 +51,15 @@ void MessageCallback(avt_341::msg::StringPtr msg) {
     ROS_INFO("Comm Node has received message '%s' to broadcast to the network.", message);
 }
 
+void VehOdomCallback(avt_341::msg::OdometryPtr msg) {
+    // grab leader odom to forward
+    if(!strcmp(msg->header.frame_id.c_str(), leader_name.data.c_str())) {
+        //ROS_INFO("Odom: %s Leader: %s", msg->header.frame_id.c_str(), leader_name.data.c_str());
+        leader_odom = *msg;
+        odom_rcvd = true;
+    }
+}
+
 void ClearMessages() {
     messages_ready = 0;
     bzero(message, 256);
@@ -59,6 +71,7 @@ int handleFormationRequest(avt_341::Communication message) {
     }
     // create a follower status message
     follower_status_message.leader_name = message.leader_name;
+    leader_name.data = message.leader_name;
     if(!strcmp(message.leader_name.c_str(), my_name.data.c_str())) {
             ROS_INFO("%s taking Lead Position", my_name.data.c_str());
             follower_status_message.x_offset = 0;
@@ -124,10 +137,15 @@ int main(int argc, char* argv[])
     // Set up subscriptions
     // Subscribe to avt_341/comm_messages to catch messages that should be relayed to the network
     auto msg_sub = nh->create_subscription<avt_341::msg::String>("avt_341/comm_messages", 1, MessageCallback);
+    auto veh1_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/veh1_odometry", 10, VehOdomCallback);
+    auto veh2_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/follower1_odometry", 10, VehOdomCallback);
+    auto veh3_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/follower2_odometry", 10, VehOdomCallback);
+    auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/follower3_odometry", 10, VehOdomCallback);
 
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::Communication>("avt_341/recv_comms", 10);
     auto formation_pub = nh->create_publisher<avt_341::FollowerStatus>("avt_341/follower_status",10);
+    auto leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
        
     f.follower1.x = 0;
     f.follower1.y = -1;
@@ -214,6 +232,9 @@ int main(int argc, char* argv[])
     while (ros::ok()) {
         bzero(buffer, 256);
 
+        if(odom_rcvd) {
+            leader_pub->publish(leader_odom);
+        }
         // Check for any messages ready to send
         if(messages_ready) {
             strcpy(buffer,message);

@@ -13,6 +13,7 @@
 // this node subscribes to them
 avt_341::msg::Path path;
 avt_341::msg::Float64 desired_speed;
+avt_341::msg::String my_name;
 bool path_rcvd = false;
 bool speed_rcvd = false;
 
@@ -52,6 +53,8 @@ int main(int argc, char **argv){
     float leader_speed = 5.0f;
     n->get_parameter("~leader_speed", leader_speed, 5.0f);
 
+    n->get_parameter("~name", my_name.data, std::string("AGV1"));
+
     // Status message sent to the formation controller
     avt_341::msg::FollowerStatus status;
     status.x_offset = x_offset;
@@ -61,6 +64,7 @@ int main(int argc, char **argv){
     status_pub->publish(status);
     // odometry message sent to the formation controller
     avt_341::msg::Odometry odom;
+    odom.header.frame_id = my_name.data;
     odom.pose.pose.position.x = -x_offset;
     odom.pose.pose.position.y = y_offset;
     odom.pose.pose.position.z = 0.0f;
