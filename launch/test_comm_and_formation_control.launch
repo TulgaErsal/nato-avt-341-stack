@@ -30,9 +30,11 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
   </node>
 
 <!-- Launch the comm node -->
-  <node name="l_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
-    <remap from="avt_341/comm_messages" to="avt_341/l_comm_messages"/>
-    <remap from="avt_341/recv_comms" to="avt_341/l_recv_comms"/>
+  <node name="veh1_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/veh1_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/veh1_recv_comms"/>
+    <remap from="avt_341/follower_status" to="avt_341/veh1_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/veh1_leader_odometry"/>
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
     <param name="name" value="AGV1"/>
@@ -65,9 +67,10 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
 
 <!-- Launch the comm node -->
   <node name="f1_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
-    <remap from="avt_341/comm_messages" to="avt_341/f1_comm_messages"/>
-    <remap from="avt_341/recv_comms" to="avt_341/f1_recv_comms"/>
+    <remap from="avt_341/comm_messages" to="avt_341/follower1_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/follower1_recv_comms"/>
     <remap from="avt_341/follower_status" to="avt_341/follower1_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/follower1_leader_odometry"/>
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
     <param name="name" value="AGV2"/>
@@ -104,6 +107,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/comm_messages" to="avt_341/f2_comm_messages"/>
     <remap from="avt_341/recv_comms" to="avt_341/f2_recv_comms"/>
     <remap from="avt_341/follower_status" to="avt_341/follower2_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/follower2_leader_odometry"/>
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
     <param name="name" value="CGV1"/>
@@ -140,6 +144,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/comm_messages" to="avt_341/f3_comm_messages"/>
     <remap from="avt_341/recv_comms" to="avt_341/f3_recv_comms"/>
     <remap from="avt_341/follower_status" to="avt_341/follower3_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/follower3_leader_odometry"/>
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
     <param name="name" value="CGV2"/>

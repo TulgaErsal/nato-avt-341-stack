@@ -233,6 +233,7 @@ int main(int argc, char* argv[])
         bzero(buffer, 256);
 
         if(odom_rcvd) {
+            //ROS_INFO("Publishing %s as leader", leader_odom.header.frame_id.c_str());
             leader_pub->publish(leader_odom);
         }
         // Check for any messages ready to send
