@@ -13,6 +13,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/global_path" to="avt_341/leader_global_path"/>
     <remap from="avt_341/desired_speed" to="avt_341/leader_desired_speed"/> 
     <param name="is_leader" value="true" />
+    <param name="name" value="AGV1"/>
   </node>
 
   <node name="l_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
@@ -46,6 +47,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <param name="is_leader" value="false" />
     <param name="follower_dist_gain" value="1.0" />
     <param name="global_path_point_dist" value="1.0" />
+    <param name="name" value="AGV2"/>
   </node>
 
   <node name="f1_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
@@ -80,6 +82,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <param name="is_leader" value="false" />
     <param name="follower_dist_gain" value="1.0" />
     <param name="global_path_point_dist" value="1.0" />
+    <param name="name" value="CGV1"/>
   </node>
 
   <node name="f2_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
@@ -114,6 +117,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <param name="is_leader" value="false" />
     <param name="follower_dist_gain" value="1.0" />
     <param name="global_path_point_dist" value="1.0" />
+    <param name="name" value="CGV2"/>
   </node>
 
   <node name="f3_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >

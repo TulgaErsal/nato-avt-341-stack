@@ -18,7 +18,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <vector>
-#include <string>
+
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/Communication.h"
@@ -27,7 +27,7 @@
 char message[256] = { 0 };
 bool messages_ready = 0;
 int res = 0;
-std::string my_name = "AGV1";
+avt_341::msg::String my_name;
 float vehicle_scale = 1;
 
 struct formation {
@@ -59,27 +59,28 @@ int handleFormationRequest(avt_341::Communication message) {
     }
     // create a follower status message
     follower_status_message.leader_name = message.leader_name;
-    if(!strcmp(message.leader_name.c_str(), my_name.c_str())) {
-            ROS_INFO("%s taking Lead Position", my_name.c_str());
+    if(!strcmp(message.leader_name.c_str(), my_name.data.c_str())) {
+            ROS_INFO("%s taking Lead Position", my_name.data.c_str());
             follower_status_message.x_offset = 0;
             follower_status_message.y_offset = 0;
             follower_status_message.use_leader = false;
     } else {
         formation f = formations[message.formation.c_str()];
-        if(!strcmp(message.follower1_name.c_str(), my_name.c_str())) {
-            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.c_str(), f.follower1.x * vehicle_scale, f.follower1.y * vehicle_scale);
+        if(!strcmp(message.follower1_name.c_str(), my_name.data.c_str())) {
+            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.data.c_str(), f.follower1.x * vehicle_scale, f.follower1.y * vehicle_scale);
             follower_status_message.x_offset = f.follower1.x * vehicle_scale;
             follower_status_message.y_offset = f.follower1.y * vehicle_scale;
-        } else if (!strcmp(message.follower2_name.c_str(), my_name.c_str())) {
-            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.c_str(), f.follower2.x * vehicle_scale, f.follower2.y * vehicle_scale);
+        } else if (!strcmp(message.follower2_name.c_str(), my_name.data.c_str())) {
+            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.data.c_str(), f.follower2.x * vehicle_scale, f.follower2.y * vehicle_scale);
             follower_status_message.x_offset = f.follower2.x * vehicle_scale;
             follower_status_message.y_offset = f.follower2.y * vehicle_scale;
-        } else if (!strcmp(message.follower3_name.c_str(), my_name.c_str())) {
-            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.c_str(), f.follower3.x * vehicle_scale, f.follower3.y * vehicle_scale);
+        } else if (!strcmp(message.follower3_name.c_str(), my_name.data.c_str())) {
+            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.data.c_str(), f.follower3.x * vehicle_scale, f.follower3.y * vehicle_scale);
             follower_status_message.x_offset = f.follower3.x * vehicle_scale;
             follower_status_message.y_offset = f.follower3.y * vehicle_scale;
         } else {
-            ROS_INFO("%s: Formation message is not for me.", my_name.c_str());
+            ROS_INFO("%s: Formation message is not for me.", my_name.data.c_str());
+            return 0;
         }
         follower_status_message.use_leader = true;
     }
@@ -190,7 +191,7 @@ int main(int argc, char* argv[])
     // load parameters
     nh->get_parameter("~host", hostname, std::string("localhost"));
     nh->get_parameter("~port", port, 9000);
-    nh->get_parameter("~name", my_name, std::string("AGV1"));
+    nh->get_parameter("~name", my_name.data, std::string("AGV1"));
     nh->get_parameter("~scale", vehicle_scale, 1.0f);
     
     ROS_INFO("Connecting to host: %s port: %d", hostname.c_str(), port);

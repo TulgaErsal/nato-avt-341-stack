@@ -8,6 +8,7 @@
 avt_341::msg::Odometry odom;
 avt_341::msg::Odometry ldr_odom;
 avt_341::msg::FollowerStatus status;
+avt_341::msg::String my_name;
 bool odom_rcvd = false;
 bool ldr_odom_rcvd = false;
 bool status_rcvd = false;
@@ -55,6 +56,8 @@ int main(int argc, char **argv){
     float path_point_dist = 1.0f;
     n->get_parameter("~global_path_point_dist", path_point_dist, 1.0f);
 
+    n->get_parameter("~name", my_name.data, std::string("AGV1"));
+
     // create the controller and set the parameters loaded from the launch file
     avt_341::mission::FormationController controller;
     controller.SetGlobalPathPointsDist(path_point_dist);
@@ -66,13 +69,28 @@ int main(int argc, char **argv){
     // start the loop
     while(avt_341::node::ok()){
 
+        // Update leader status
+        if(status_rcvd) {
+            if(!is_leader) {
+                if(!status.use_leader) {
+                    is_leader = true;
+                    ROS_INFO("%s is now the leader", my_name.data.c_str());    
+                }
+            } else {
+                if(status.use_leader) {
+                    is_leader = false;
+                    ROS_INFO("%s is no longer the leader", my_name.data.c_str());
+                }
+            }
+        }
+
         if ( (odom_rcvd && ldr_odom_rcvd && status_rcvd && !is_leader) ){
             // update the controller IF all the required messages have been received
             controller.Update(ldr_odom, odom, status);
             // publish the controller state
             speed_pub->publish(controller.GetSpeed());
             path_pub->publish(controller.GetPath());
-        }
+        } 
 
         n->spin_some();
         loop_rate.sleep();
