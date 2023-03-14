@@ -102,11 +102,6 @@ To run an example simulation with MAVS, first [install and build MAVS](https://m
 
 Next, install and build the [MAVS-ROS package](https://github.com/CGoodin/mavs_ros) (for ROS1) or the [MAVS-ROS2](https://github.com/CGoodin/mavs-ros2) package (for ROS2).
 
-Next, clone the example MAVS simulation package.
-```bash
-git clone https://github.com/CGoodin/mavs_avt_example.git
-```
-
 To test in ROS-1:
 ```bash
 roslaunch avt_341 mavs_example.launch
