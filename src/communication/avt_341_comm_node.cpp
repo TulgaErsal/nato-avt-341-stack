@@ -54,7 +54,7 @@ void MessageCallback(avt_341::msg::StringPtr msg) {
 void VehOdomCallback(avt_341::msg::OdometryPtr msg) {
     // grab leader odom to forward
     if(!strcmp(msg->header.frame_id.c_str(), leader_name.data.c_str())) {
-        //ROS_INFO("Odom: %s Leader: %s", msg->header.frame_id.c_str(), leader_name.data.c_str());
+        //ROS_INFO("%s Odom: %s Leader: %s", my_name.data.c_str(), msg->header.frame_id.c_str(), leader_name.data.c_str());
         leader_odom = *msg;
         odom_rcvd = true;
     }
@@ -71,12 +71,13 @@ int handleFormationRequest(avt_341::Communication message) {
     }
     // create a follower status message
     follower_status_message.leader_name = message.leader_name;
-    leader_name.data = message.leader_name;
+    
     if(!strcmp(message.leader_name.c_str(), my_name.data.c_str())) {
             ROS_INFO("%s taking Lead Position", my_name.data.c_str());
             follower_status_message.x_offset = 0;
             follower_status_message.y_offset = 0;
             follower_status_message.use_leader = false;
+            leader_name.data = message.leader_name;
     } else {
         formation f = formations[message.formation.c_str()];
         if(!strcmp(message.follower1_name.c_str(), my_name.data.c_str())) {
@@ -96,6 +97,8 @@ int handleFormationRequest(avt_341::Communication message) {
             return 0;
         }
         follower_status_message.use_leader = true;
+        leader_name.data = message.leader_name;
+        ROS_INFO("%s setting %s as leader", my_name.data.c_str(), leader_name.data.c_str());
     }
     return 1;
 }
@@ -233,7 +236,7 @@ int main(int argc, char* argv[])
         bzero(buffer, 256);
 
         if(odom_rcvd) {
-            //ROS_INFO("Publishing %s as leader", leader_odom.header.frame_id.c_str());
+            //ROS_INFO("%s Publishing %s as leader", my_name.data.c_str(), leader_odom.header.frame_id.c_str());
             leader_pub->publish(leader_odom);
         }
         // Check for any messages ready to send

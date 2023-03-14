@@ -12,6 +12,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/follower_status" to="avt_341/veh1_status"/> 
     <remap from="avt_341/global_path" to="avt_341/veh1_global_path"/>
     <remap from="avt_341/desired_speed" to="avt_341/veh1_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/veh1_leader_odometry"/>
     <param name="is_leader" value="true" />
     <param name="name" value="AGV1"/>
   </node>
@@ -47,6 +48,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
     <remap from="avt_341/global_path" to="avt_341/follower1_global_path"/>
     <remap from="avt_341/desired_speed" to="avt_341/follower1_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/follower1_leader_odometry"/>
     <param name="is_leader" value="false" />
     <param name="follower_dist_gain" value="1.0" />
     <param name="global_path_point_dist" value="1.0" />
@@ -84,6 +86,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
     <remap from="avt_341/global_path" to="avt_341/follower2_global_path"/>
     <remap from="avt_341/desired_speed" to="avt_341/follower2_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/follower2_leader_odometry"/>
     <param name="is_leader" value="false" />
     <param name="follower_dist_gain" value="1.0" />
     <param name="global_path_point_dist" value="1.0" />
@@ -121,6 +124,7 @@ The follower nodes will subscribe to the "leader_odometry" topic and their own o
     <remap from="avt_341/follower_status" to="avt_341/follower3_status"/> 
     <remap from="avt_341/global_path" to="avt_341/follower3_global_path"/>
     <remap from="avt_341/desired_speed" to="avt_341/follower3_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/follower3_leader_odometry"/>
     <param name="is_leader" value="false" />
     <param name="follower_dist_gain" value="1.0" />
     <param name="global_path_point_dist" value="1.0" />
