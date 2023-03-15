@@ -12,32 +12,32 @@
 
 <!-- VEHICLE 1 -->
   <group if="$(eval env('ROS_DISTRO') =='noetic')">
-    <node name="v1_robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
-      <remap from="joint_states" to="v1_joint_states" />
+    <node name="robot_state_publisher001" pkg="robot_state_publisher" type="robot_state_publisher">
+      <remap from="joint_states" to="joint_states001" />
     </node>
   </group>
   <group if="$(eval env('ROS_DISTRO') =='melodic')">
-    <node name="v1_robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
-      <remap from="joint_states" to="v1_joint_states" />
+    <node name="robot_state_publisher001" pkg="robot_state_publisher" type="robot_state_publisher">
+      <remap from="joint_states" to="joint_states001" />
     </node>
   </group>
   <group if="$(eval env('ROS_DISTRO') =='lunar')">
-    <node name="v1_robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <remap from="joint_states" to="v1_joint_states" />
+    <node name="robot_state_publisher001" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="joint_states" to="joint_states001" />
     </node>
   </group>
   <group if="$(eval env('ROS_DISTRO') =='kinetic')">
-    <node name="v1_robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <remap from="joint_states" to="v1_joint_states" />
+    <node name="robot_state_publisher001" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="joint_states" to="joint_states001" />
     </node>
   </group>
 
-  <node pkg="tf"  name="v1_static_transform_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10">
+  <node pkg="tf"  name="static_transform_publisher001" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10">
 
   </node>
-  <node name="v1_state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node">
-    <remap from="avt_341/odometry" to="avt_341/v1_odometry" />
-    <remap from="joint_states" to="v1_joint_states" />
+  <node name="state_publisher001" pkg="avt_341" type="avt_bot_state_publisher_node">
+    <remap from="avt_341/odometry" to="avt_341/odometry001" />
+    <remap from="joint_states" to="joint_states001" />
   </node>
 
 <!-- Required on vehicle, not in simulation -->
@@ -49,12 +49,42 @@
   <!--republish the mrak speed message as a float64 -->
   <!-- </node> -->
 
+  <!-- Formation algorithms  -->
+  <node name="formation_control_node001" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/odometry001"/> 
+    <remap from="avt_341/follower_status" to="avt_341/status001"/> 
+    <remap from="avt_341/global_path" to="avt_341/global_path001"/>
+    <remap from="avt_341/desired_speed" to="avt_341/desired_speed001"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
+
+    <param name="is_leader" value="true" />
+    <param name="name" value="AGV1"/>
+  </node>
+
+  <!-- Communications algorithms  -->
+  <node name="comm_node001" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/comm_messages001"/>
+    <remap from="avt_341/recv_comms" to="avt_341/recv_comms001"/>
+    <remap from="avt_341/follower_status" to="avt_341/status001"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
+    <remap from="avt_341/veh1_odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/follower1_odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/follower2_odometry" to="avt_341/odometry003" />
+    <remap from="avt_341/follower3_odometry" to="avt_341/odometry004" />
+
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="AGV1"/>
+    <param name="scale" value="20.0"/>
+  </node>
+
   <!-- Lidar perception algorithms  -->
-  <node name="v1_perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
-    <remap from="avt_341/points" to="avt_341/v1_points" />
-    <remap from="avt_341/odometry" to="avt_341/v1_odometry" />
-    <remap from="avt_341/occupancy_grid" to="avt_341/v1_occupancy_grid" />
-    <remap from="avt_341/segmentation_grid" to="avt_341/v1_segmentation_grid" />
+  <node name="perception_node001" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
+    <remap from="avt_341/points" to="avt_341/points001" />
+    <remap from="avt_341/odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/occupancy_grid" to="avt_341/occupancy_grid001" />
+    <remap from="avt_341/segmentation_grid" to="avt_341/segmentation_grid001" />
+
     <param name="use_elevation" value="false" />
     <param name="slope_threshold" value="2.5" />
     <param name="grid_height" value="120.0" />
@@ -73,14 +103,14 @@
     <param name="max_point_age" value="0.0"/> -->
   </node>
 
-  <node name="v1_vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
-    <remap from="avt_341/cmd_vel" to="avt_341/v1_cmd_vel" />
-    <remap from="avt_341/local_path" to="avt_341/v1_local_path" />
-    <remap from="avt_341/odometry" to="avt_341/v1_odometry" />
-    <remap from="avt_341/state" to="avt_341/v1_state" />
-    <remap from="mrzr_velocity" to="v1_mrzr_velocity" />
-    <remap from="avt_341/desired_speed" to="avt_341/v1_desired_speed" />
-    <remap from="avt_341/control_next_waypoint" to="avt_341/v1_control_next_waypoint" />
+  <node name="vehicle_control_node001" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
+    <remap from="avt_341/cmd_vel" to="avt_341/cmd_vel001" />
+    <remap from="avt_341/local_path" to="avt_341/local_path001" />
+    <remap from="avt_341/odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/state" to="avt_341/state001" />
+    <remap from="mrzr_velocity" to="mrzr_velocity001" />
+    <remap from="avt_341/desired_speed" to="avt_341/desired_speed001" />
+    <remap from="avt_341/control_next_waypoint" to="avt_341/control_next_waypoint001" />
 
     <param name="vehicle_wheelbase" value="2.72" />
     <param name="vehicle_max_steer_angle_degrees" value="35.0" />
@@ -105,16 +135,16 @@
   </node>
   -->
 
-  <node name="v1_global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
-    <remap from="avt_341/global_path" to="avt_341/v1_global_path" />
-    <remap from="avt_341/waypoints" to="avt_341/v1_waypoints" />
-    <remap from="avt_341/current_waypoint" to="avt_341/v1_current_waypoint" />
-    <remap from="avt_341/distance_to_current_waypoint" to="avt_341/v1_distance_to_current_waypoint" />
-    <remap from="avt_341/odometry" to="avt_341/v1_odometry" />
-    <remap from="avt_341/occupancy_grid" to="avt_341/v1_occupancy_grid" />
-    <remap from="avt_341/segmentation_grid" to="avt_341/v1_segmentation_grid" />
-    <remap from="avt_341/new_waypoints" to="avt_341/v1_new_waypoints" />
-    <remap from="avt_341/state" to="avt_341/v1_state" />
+  <node name="global_path_node001" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
+    <remap from="avt_341/global_path" to="avt_341/global_path001" />
+    <remap from="avt_341/waypoints" to="avt_341/waypoints001" />
+    <remap from="avt_341/current_waypoint" to="avt_341/current_waypoint001" />
+    <remap from="avt_341/distance_to_current_waypoint" to="avt_341/distance_to_current_waypoint001" />
+    <remap from="avt_341/odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/occupancy_grid" to="avt_341/occupancy_grid001" />
+    <remap from="avt_341/segmentation_grid" to="avt_341/segmentation_grid001" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints001" />
+    <remap from="avt_341/state" to="avt_341/state001" />
 
     <param name="goal_dist" value="8.0" />
     <param name="global_lookahead" value="75.0" />
@@ -122,13 +152,14 @@
     <param name="display" value="$(arg display)" />
   </node>
 
-  <node name="v1_local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))">
-    <remap from="avt_341/local_path" to="avt_341/v1_local_path" />
-    <remap from="avt_341/odometry" to="avt_341/v1_odometry" />
-    <remap from="avt_341/occupancy_grid" to="avt_341/v1_occupancy_grid" />
-    <remap from="avt_341/segmentation_grid" to="avt_341/v1_segmentation_grid" />
-    <remap from="avt_341/global_path" to="avt_341/v1_global_path" />
-    <remap from="avt_341/waypoints" to="avt_341/v1_waypoints" />
+  <node name="local_planner_node001" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))">
+    <remap from="avt_341/local_path" to="avt_341/local_path001" />
+    <remap from="avt_341/odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/occupancy_grid" to="avt_341/occupancy_grid001" />
+    <remap from="avt_341/segmentation_grid" to="avt_341/segmentation_grid001" />
+    <remap from="avt_341/global_path" to="avt_341/global_path001" />
+    <remap from="avt_341/waypoints" to="avt_341/waypoints001" />
+    <remap from="avt_341/candidate_paths" to="avt_341/candidate_paths001" />
 
     <param name="path_look_ahead" value="20.0" />
     <param name="vehicle_width" value="3.0" />
@@ -147,13 +178,15 @@
     <param name="display" value="$(arg display)" />
   </node>
 
-  <node name="v1_mavs_vehcicle_node" pkg="mavs_ros" type="mavs_vehicle_node" output="screen" required="true" >
-    <remap from= "mavs_ros/cmd_vel" to="avt_341/v1_cmd_vel"/> 
-    <remap from= "mavs_ros/odometry" to="avt_341/v1_odometry"/> 
+  <node name="mavs_vehicle_node001" pkg="mavs_ros" type="mavs_vehicle_node" output="screen" required="true" >
+    <remap from= "mavs_ros/cmd_vel" to="avt_341/cmd_vel001"/> 
+    <remap from= "mavs_ros/odometry" to="avt_341/odometry001" />
+    <remap from= "mavs_ros/odometry_true" to="mavs_ros/odometry_true001"/>
+    <remap from= "mavs_ros/anim_poses" to="mavs_ros/anim_poses001"/>  
 
     <param name= "rp3d_vehicle_file" value="$(arg vehicle_file_arg)" />
-    <param name= "debug_camera" value="true" />
-    <param name= "Initial_X_Position" value = "-50.0"/>
+    <param name= "debug_camera" value="false" />
+    <param name= "Initial_X_Position" value = "-75.0"/>
     <param name= "Initial_Y_Position" value = "0.0"/>
     <param name= "Initial_Heading" value = "0.0"/>
     <param name= "scene_file" value="$(arg scene_file_arg)"/>
@@ -162,10 +195,12 @@
     <param name= "publish_imu" value="true" />
     <param name= "imu_input_file" value = "$(find mavs_ros)/config/mavs_imu_inputs.json" />
     <param name= "use_human_driver" value="false" />
+    <param name= "vehicle_id" value="vehicle1" />
   </node>
 
-  <node name="v1_mavs_sensors_node" pkg="mavs_ros" type="mavs_sensors_node" output="screen" required="true" >
-    <remap from= "mavs_ros/point_cloud2" to="avt_341/v1_points"/> 
+  <node name="mavs_sensors_node001" pkg="mavs_ros" type="mavs_sensors_node" output="screen" required="true" >
+    <remap from= "mavs_ros/point_cloud2" to="avt_341/points001"/> 
+    <remap from= "mavs_ros/odometry_true" to="mavs_ros/odometry_true001" />
 
     <param name= "use_lidar" value="true" />
     <param name= "display_lidar" value="true" />
@@ -174,37 +209,57 @@
     <param name= "lidar_type" value = "OS1"/>
     <param name= "blanking_dist" value="5.0" />
     <param name= "scene_file" value="$(arg scene_file_arg)"/>
+    <param name= "num_vehicles" value="2" />
+  </node>
+
+  <node name="mavs_camera_node001" pkg="mavs_ros" type="mavs_camera_node" output="screen" required="true" >
+    <remap from= "mavs_ros/odometry_true" to="mavs_ros/odometry_true001"/>  
+    <remap from= "mavs_ros/cmd_vel" to="avt_341/cmd_vel001"/>  
+
+    <param name= "rp3d_vehicle_file" value="$(arg vehicle_file_arg)" />
+    <param name= "scene_file" value="$(arg scene_file_arg)"/>
+    <param name= "display_image" value="true" />
+    <param name= "num_vehicles" value="2" />
+    <param name= "off_x" value="-10.0" />
+    <param name= "off_y" value="0.0" />
+    <param name= "off_z" value="2.5" />
+    <param name= "num_horizontal_pix" value="384" />
+    <param name= "num_vertical_pix" value="256" />
+    <param name= "horizontal_pixdim" value="0.00525" />
+    <param name= "vertical_pixdim" value="0.0035" />
+    <param name= "focal_length" value="0.0035" />
+    <param name= "publish_driving_commands" value="false" />
   </node>
 <!-- END VEHICLE 1 -->
 
 <!-- VEHICLE 2 -->
   <group if="$(eval env('ROS_DISTRO') =='noetic')">
-    <node name="v2_robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
-      <remap from="joint_states" to="v2_joint_states" />
+    <node name="robot_state_publisher002" pkg="robot_state_publisher" type="robot_state_publisher">
+      <remap from="joint_states" to="joint_states002" />
     </node>
   </group>
   <group if="$(eval env('ROS_DISTRO') =='melodic')">
-    <node name="v2_robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
-      <remap from="joint_states" to="v2_joint_states" />
+    <node name="robot_state_publisher002" pkg="robot_state_publisher" type="robot_state_publisher">
+      <remap from="joint_states" to="joint_states002" />
     </node>
   </group>
   <group if="$(eval env('ROS_DISTRO') =='lunar')">
-    <node name="v2_robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <remap from="joint_states" to="v2_joint_states" />
+    <node name="robot_state_publisher002" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="joint_states" to="joint_states002" />
     </node>
   </group>
   <group if="$(eval env('ROS_DISTRO') =='kinetic')">
-    <node name="v2_robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <remap from="joint_states" to="v2_joint_states" />
+    <node name="robot_state_publisher002" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="joint_states" to="joint_states002" />
     </node>
   </group>
 
-  <node pkg="tf"  name="v2_static_transform_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10">
+  <node pkg="tf"  name="static_transform_publisher002" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10">
 
   </node>
-  <node name="v2_state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node">
-    <remap from="avt_341/odometry" to="avt_341/v2_odometry" />
-    <remap from="joint_states" to="v2_joint_states" />
+  <node name="state_publisher002" pkg="avt_341" type="avt_bot_state_publisher_node">
+    <remap from="avt_341/odometry" to="avt_341/odometry002" />
+    <remap from="joint_states" to="joint_states002" />
   </node>
 
 <!-- Required on vehicle, not in simulation -->
@@ -216,12 +271,41 @@
   <!--republish the mrak speed message as a float64 -->
   <!-- </node> -->
 
+ <!-- Formation algorithms  -->
+  <node name="formation_control_node002" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/odometry002"/> 
+    <remap from="avt_341/follower_status" to="avt_341/status002"/> 
+    <remap from="avt_341/global_path" to="avt_341/global_path002"/>
+    <remap from="avt_341/desired_speed" to="avt_341/desired_speed002"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry002"/>
+
+    <param name="is_leader" value="true" />
+    <param name="name" value="AGV2"/>
+  </node>
+
+  <!-- Communications algorithms  -->
+  <node name="comm_node002" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/comm_messages002"/>
+    <remap from="avt_341/recv_comms" to="avt_341/recv_comms002"/>
+    <remap from="avt_341/follower_status" to="avt_341/status002"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry002"/>
+    <remap from="avt_341/veh1_odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/follower1_odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/follower2_odometry" to="avt_341/odometry003" />
+    <remap from="avt_341/follower3_odometry" to="avt_341/odometry004" />
+    
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="AGV2"/>
+    <param name="scale" value="20.0"/>
+  </node>
+
   <!-- Lidar perception algorithms  -->
-  <node name="v2_perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
-    <remap from="avt_341/points" to="avt_341/v2_points" />
-    <remap from="avt_341/odometry" to="avt_341/v2_odometry" />
-    <remap from="avt_341/occupancy_grid" to="avt_341/v2_occupancy_grid" />
-    <remap from="avt_341/segmentation_grid" to="avt_341/v2_segmentation_grid" />
+  <node name="perception_node002" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
+    <remap from="avt_341/points" to="avt_341/points002" />
+    <remap from="avt_341/odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/occupancy_grid" to="avt_341/occupancy_grid002" />
+    <remap from="avt_341/segmentation_grid" to="avt_341/segmentation_grid002" />
 
     <param name="use_elevation" value="false" />
     <param name="slope_threshold" value="2.5" />
@@ -241,14 +325,14 @@
     <param name="max_point_age" value="0.0"/> -->
   </node>
 
-  <node name="v2_vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
-    <remap from="avt_341/cmd_vel" to="avt_341/v2_cmd_vel" />
-    <remap from="avt_341/local_path" to="avt_341/v2_local_path" />
-    <remap from="avt_341/odometry" to="avt_341/v2_odometry" />
-    <remap from="avt_341/state" to="avt_341/v2_state" />
-    <remap from="mrzr_velocity" to="v2_mrzr_velocity" />
-    <remap from="avt_341/desired_speed" to="avt_341/v2_desired_speed" />
-    <remap from="avt_341/control_next_waypoint" to="avt_341/v2_control_next_waypoint" />
+  <node name="vehicle_control_node002" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
+    <remap from="avt_341/cmd_vel" to="avt_341/cmd_vel002" />
+    <remap from="avt_341/local_path" to="avt_341/local_path002" />
+    <remap from="avt_341/odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/state" to="avt_341/state002" />
+    <remap from="mrzr_velocity" to="mrzr_velocity002" />
+    <remap from="avt_341/desired_speed" to="avt_341/desired_speed002" />
+    <remap from="avt_341/control_next_waypoint" to="avt_341/control_next_waypoint002" />
 
     <param name="vehicle_wheelbase" value="2.72" />
     <param name="vehicle_max_steer_angle_degrees" value="35.0" />
@@ -273,16 +357,16 @@
   </node>
   -->
 
-  <node name="v2_global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
-    <remap from="avt_341/global_path" to="avt_341/v2_global_path" />
-    <remap from="avt_341/waypoints" to="avt_341/v2_waypoints" />
-    <remap from="avt_341/current_waypoint" to="avt_341/v2_current_waypoint" />
-    <remap from="avt_341/distance_to_current_waypoint" to="avt_341/v2_distance_to_current_waypoint" />
-    <remap from="avt_341/odometry" to="avt_341/v2_odometry" />
-    <remap from="avt_341/occupancy_grid" to="avt_341/v2_occupancy_grid" />
-    <remap from="avt_341/segmentation_grid" to="avt_341/v2_segmentation_grid" />
-    <remap from="avt_341/new_waypoints" to="avt_341/v2_new_waypoints" />
-    <remap from="avt_341/state" to="avt_341/v2_state" />
+  <node name="global_path_node002" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
+    <remap from="avt_341/global_path" to="avt_341/global_path002" />
+    <remap from="avt_341/waypoints" to="avt_341/waypoints002" />
+    <remap from="avt_341/current_waypoint" to="avt_341/current_waypoint002" />
+    <remap from="avt_341/distance_to_current_waypoint" to="avt_341/distance_to_current_waypoint002" />
+    <remap from="avt_341/odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/occupancy_grid" to="avt_341/occupancy_grid002" />
+    <remap from="avt_341/segmentation_grid" to="avt_341/segmentation_grid002" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints002" />
+    <remap from="avt_341/state" to="avt_341/state002" />
 
     <param name="goal_dist" value="8.0" />
     <param name="global_lookahead" value="75.0" />
@@ -290,13 +374,14 @@
     <param name="display" value="$(arg display)" />
   </node>
 
-  <node name="v2_local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))">
-    <remap from="avt_341/local_path" to="avt_341/v2_local_path" />
-    <remap from="avt_341/odometry" to="avt_341/v2_odometry" />
-    <remap from="avt_341/occupancy_grid" to="avt_341/v2_occupancy_grid" />
-    <remap from="avt_341/segmentation_grid" to="avt_341/v2_segmentation_grid" />
-    <remap from="avt_341/global_path" to="avt_341/v2_global_path" />
-    <remap from="avt_341/waypoints" to="avt_341/v2_waypoints" />
+  <node name="local_planner_node002" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))">
+    <remap from="avt_341/local_path" to="avt_341/local_path002" />
+    <remap from="avt_341/odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/occupancy_grid" to="avt_341/occupancy_grid002" />
+    <remap from="avt_341/segmentation_grid" to="avt_341/segmentation_grid002" />
+    <remap from="avt_341/global_path" to="avt_341/global_path002" />
+    <remap from="avt_341/waypoints" to="avt_341/waypoints002" />
+    <remap from="avt_341/candidate_paths" to="avt_341/candidate_paths002" />
 
     <param name="path_look_ahead" value="20.0" />
     <param name="vehicle_width" value="3.0" />
@@ -315,13 +400,15 @@
     <param name="display" value="$(arg display)" />
   </node>
 
-  <node name="v2_mavs_vehcicle_node" pkg="mavs_ros" type="mavs_vehicle_node" output="screen" required="true" >
-    <remap from= "mavs_ros/cmd_vel" to="avt_341/v2_cmd_vel"/> 
-    <remap from= "mavs_ros/odometry" to="avt_341/v2_odometry"/> 
+  <node name="mavs_vehicle_node002" pkg="mavs_ros" type="mavs_vehicle_node" output="screen" required="true" >
+    <remap from= "mavs_ros/cmd_vel" to="avt_341/cmd_vel002"/> 
+    <remap from= "mavs_ros/odometry" to="avt_341/odometry002" />
+    <remap from= "mavs_ros/odometry_true" to="mavs_ros/odometry_true002"/> 
+    <remap from= "mavs_ros/anim_poses" to="mavs_ros/anim_poses002"/> 
 
     <param name= "rp3d_vehicle_file" value="$(arg vehicle_file_arg)" />
-    <param name= "debug_camera" value="true" />
-    <param name= "Initial_X_Position" value = "-50.0"/>
+    <param name= "debug_camera" value="false" />
+    <param name= "Initial_X_Position" value = "-75.0"/>
     <param name= "Initial_Y_Position" value = "10.0"/>
     <param name= "Initial_Heading" value = "0.0"/>
     <param name= "scene_file" value="$(arg scene_file_arg)"/>
@@ -330,10 +417,12 @@
     <param name= "publish_imu" value="true" />
     <param name= "imu_input_file" value = "$(find mavs_ros)/config/mavs_imu_inputs.json" />
     <param name= "use_human_driver" value="false" />
+    <param name= "vehicle_id" value="vehicle2" />
   </node>
 
-  <node name="v2_mavs_sensors_node" pkg="mavs_ros" type="mavs_sensors_node" output="screen" required="true" >
-    <remap from= "mavs_ros/point_cloud2" to="avt_341/v2_points"/> 
+  <node name="mavs_sensors_node002" pkg="mavs_ros" type="mavs_sensors_node" output="screen" required="true" >
+    <remap from= "mavs_ros/point_cloud2" to="avt_341/points002"/> 
+    <remap from= "mavs_ros/odometry_true" to="mavs_ros/odometry_true002" />
 
     <param name= "use_lidar" value="true" />
     <param name= "display_lidar" value="true" />
@@ -342,6 +431,27 @@
     <param name= "lidar_type" value = "OS1"/>
     <param name= "blanking_dist" value="5.0" />
     <param name= "scene_file" value="$(arg scene_file_arg)"/>
+    <param name="num_vehicles" value="2" />
+  </node>
+
+  
+  <node name="mavs_camera_node002" pkg="mavs_ros" type="mavs_camera_node" output="screen" required="true" >
+    <remap from= "mavs_ros/odometry_true" to="mavs_ros/odometry_true002"/>  
+    <remap from= "mavs_ros/cmd_vel" to="avt_341/cmd_vel002"/>  
+
+    <param name= "rp3d_vehicle_file" value="$(arg vehicle_file_arg)" />
+    <param name= "scene_file" value="$(arg scene_file_arg)"/>
+    <param name= "display_image" value="true" />
+    <param name= "num_vehicles" value="2" />
+    <param name= "off_x" value="-10.0" />
+    <param name= "off_y" value="0.0" />
+    <param name= "off_z" value="2.5" />
+    <param name= "num_horizontal_pix" value="384" />
+    <param name= "num_vertical_pix" value="256" />
+    <param name= "horizontal_pixdim" value="0.00525" />
+    <param name= "vertical_pixdim" value="0.0035" />
+    <param name= "focal_length" value="0.0035" />
+    <param name= "publish_driving_commands" value="false" />
   </node>
 <!-- END VEHICLE 2 -->
 
