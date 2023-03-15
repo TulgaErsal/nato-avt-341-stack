@@ -2,7 +2,7 @@
     "documentation":"Demonstrates splitting into two groups then reforming.",
     "messages": [
         {
-            "message": "CGV1,1,FORM,COLUMN,AGV2,AGV1,NIL,NIL,MISSIONPOINT_A,4",
+            "message": "CGV1,1,FORM,COLUMN,AGV1,AGV2,AGV3,NIL,MISSIONPOINT_A,4",
             "delay": "1.0"
         }
     ]

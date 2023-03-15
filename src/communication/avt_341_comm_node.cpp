@@ -53,8 +53,8 @@ void MessageCallback(avt_341::msg::StringPtr msg) {
 
 void VehOdomCallback(avt_341::msg::OdometryPtr msg) {
     // grab leader odom to forward
-    if(!strcmp(msg->header.frame_id.c_str(), leader_name.data.c_str())) {
-        //ROS_INFO("%s Odom: %s Leader: %s", my_name.data.c_str(), msg->header.frame_id.c_str(), leader_name.data.c_str());
+    if(!strcmp(msg->child_frame_id.c_str(), leader_name.data.c_str())) {
+        //ROS_INFO("%s : %s received odometry from the leader: %s Leader: %s", ros::this_node::getName().c_str(), my_name.data.c_str(), msg->child_frame_id.c_str(), leader_name.data.c_str());
         leader_odom = *msg;
         odom_rcvd = true;
     }
@@ -73,7 +73,7 @@ int handleFormationRequest(avt_341::Communication message) {
     follower_status_message.leader_name = message.leader_name;
     
     if(!strcmp(message.leader_name.c_str(), my_name.data.c_str())) {
-            ROS_INFO("%s taking Lead Position", my_name.data.c_str());
+            ROS_INFO("%s %s taking Lead Position", ros::this_node::getName().c_str(), my_name.data.c_str());
             follower_status_message.x_offset = 0;
             follower_status_message.y_offset = 0;
             follower_status_message.use_leader = false;
@@ -81,24 +81,24 @@ int handleFormationRequest(avt_341::Communication message) {
     } else {
         formation f = formations[message.formation.c_str()];
         if(!strcmp(message.follower1_name.c_str(), my_name.data.c_str())) {
-            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.data.c_str(), f.follower1.x * vehicle_scale, f.follower1.y * vehicle_scale);
+            ROS_INFO("%s %s Setting x,y offset: %f, %f", ros::this_node::getName().c_str(), my_name.data.c_str(), f.follower1.x * vehicle_scale, f.follower1.y * vehicle_scale);
             follower_status_message.x_offset = f.follower1.x * vehicle_scale;
             follower_status_message.y_offset = f.follower1.y * vehicle_scale;
         } else if (!strcmp(message.follower2_name.c_str(), my_name.data.c_str())) {
-            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.data.c_str(), f.follower2.x * vehicle_scale, f.follower2.y * vehicle_scale);
+            ROS_INFO("%s %s Setting x,y offset: %f, %f", ros::this_node::getName().c_str(), my_name.data.c_str(), f.follower2.x * vehicle_scale, f.follower2.y * vehicle_scale);
             follower_status_message.x_offset = f.follower2.x * vehicle_scale;
             follower_status_message.y_offset = f.follower2.y * vehicle_scale;
         } else if (!strcmp(message.follower3_name.c_str(), my_name.data.c_str())) {
-            ROS_INFO("%s Setting x,y offset: %f, %f", my_name.data.c_str(), f.follower3.x * vehicle_scale, f.follower3.y * vehicle_scale);
+            ROS_INFO("%s %s Setting x,y offset: %f, %f", ros::this_node::getName().c_str(), my_name.data.c_str(), f.follower3.x * vehicle_scale, f.follower3.y * vehicle_scale);
             follower_status_message.x_offset = f.follower3.x * vehicle_scale;
             follower_status_message.y_offset = f.follower3.y * vehicle_scale;
         } else {
-            ROS_INFO("%s: Formation message is not for me.", my_name.data.c_str());
+            ROS_INFO("%s %s: Formation message is not for me.", ros::this_node::getName().c_str(), my_name.data.c_str());
             return 0;
         }
         follower_status_message.use_leader = true;
         leader_name.data = message.leader_name;
-        ROS_INFO("%s setting %s as leader", my_name.data.c_str(), leader_name.data.c_str());
+        ROS_INFO("%s %s setting %s as leader", ros::this_node::getName().c_str(), my_name.data.c_str(), leader_name.data.c_str());
     }
     return 1;
 }
@@ -236,7 +236,7 @@ int main(int argc, char* argv[])
         bzero(buffer, 256);
 
         if(odom_rcvd) {
-            //ROS_INFO("%s Publishing %s as leader", my_name.data.c_str(), leader_odom.header.frame_id.c_str());
+            //ROS_INFO("%s %s Publishing odom of leader %s", ros::this_node::getName().c_str(), my_name.data.c_str(), leader_odom.child_frame_id.c_str());
             leader_pub->publish(leader_odom);
         }
         // Check for any messages ready to send

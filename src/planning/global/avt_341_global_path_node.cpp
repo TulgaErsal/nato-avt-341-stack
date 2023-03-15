@@ -23,6 +23,7 @@ avt_341::msg::OccupancyGrid current_grid;
 avt_341::msg::OccupancyGrid segmentation_grid;
 avt_341::msg::Path current_waypoints;
 bool waypoints_rcvd = false;
+bool use_global_planner = true;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -48,6 +49,10 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
 
 }
 
+void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
+  use_global_planner = (bool)rcv_gptoggle->data;
+}
+
 int main(int argc, char *argv[])
 {
   auto n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
@@ -60,6 +65,7 @@ int main(int argc, char *argv[])
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, MapCallback);
   auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
+  auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -134,110 +140,118 @@ int main(int argc, char *argv[])
   int nl = 0;
   int current_waypoint = 0;
   int shutdown_count = 0;
+  int last_toggle_state = use_global_planner;
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
     state_pub->publish(state);
-    if (waypoints_rcvd) {
-      // process a new set of waypoints
-      // TODO: find closest point along path -  we probably don't want to reverse back to start point if we're past it.
-      current_waypoint = 0;
-      goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
-      goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
-      std::cout << "New waypoints! Updated goal " << goal[0] << ", " << goal[1] << std::endl;
-      waypoints_rcvd = false;
-      state.data = 0;  // go active
-      state_pub->publish(state);
+    if(use_global_planner != last_toggle_state) 
+    {
+      ROS_INFO("%s Global Path: toggle %d", ros::this_node::getName().c_str(), (int)use_global_planner);
+      last_toggle_state = use_global_planner;
     }
-
-    if (odom_rcvd && state.data != -1){ // data received and not in startup mode
-      std::vector<float> pos;
-      pos.push_back(odom.pose.pose.position.x);
-      pos.push_back(odom.pose.pose.position.y);
-
-      std::vector<std::vector<float>> path = astar_planner.PlanPath(&current_grid, &segmentation_grid, goal, pos);
-
-      avt_341::msg::Path ros_path;
-      //ros_path.header.frame_id = "odom";
-      ros_path.header.frame_id = "map";
-      ros_path.poses.clear();
-      for (int32_t i = 0; i < path.size(); i++){
-        avt_341::msg::PoseStamped pose;
-        pose.pose.position.x = static_cast<float>(path[i][0]);
-        pose.pose.position.y = static_cast<float>(path[i][1]);
-        pose.pose.position.z = 0.0f;
-        pose.pose.orientation.w = 1.0f;
-        pose.pose.orientation.x = 0.0f;
-        pose.pose.orientation.y = 0.0f;
-        pose.pose.orientation.z = 0.0f;
-        ros_path.poses.push_back(pose);
+    if(use_global_planner) {
+      
+      if (waypoints_rcvd) {
+        // process a new set of waypoints
+        // TODO: find closest point along path -  we probably don't want to reverse back to start point if we're past it.
+        current_waypoint = 0;
+        goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
+        goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
+        std::cout << "New waypoints! Updated goal " << goal[0] << ", " << goal[1] << std::endl;
+        waypoints_rcvd = false;
+        state.data = 0;  // go active
+        state_pub->publish(state);
       }
-      // ctg 8/19/21
-      // if not on the last waypoint, add a straight path to the next waypoint to the global path
-      // this helps the local planner make smooth transitions between waypoints
-      if (ros_path.poses.size()>1) {
-        int cp =current_waypoint;
-        while (cp<current_waypoints.poses.size()-1){
+
+      if (odom_rcvd && state.data != -1){ // data received and not in startup mode
+        std::vector<float> pos;
+        pos.push_back(odom.pose.pose.position.x);
+        pos.push_back(odom.pose.pose.position.y);
+
+        std::vector<std::vector<float>> path = astar_planner.PlanPath(&current_grid, &segmentation_grid, goal, pos);
+        
+        avt_341::msg::Path ros_path;
+        //ros_path.header.frame_id = "odom";
+        ros_path.header.frame_id = "map";
+        ros_path.poses.clear();
+        for (int32_t i = 0; i < path.size(); i++){
           avt_341::msg::PoseStamped pose;
-          pose.pose.position.x = static_cast<float>(current_waypoints.poses[cp+1].pose.position.x);
-          pose.pose.position.y = static_cast<float>(current_waypoints.poses[cp+1].pose.position.y);
+          pose.pose.position.x = static_cast<float>(path[i][0]);
+          pose.pose.position.y = static_cast<float>(path[i][1]);
           pose.pose.position.z = 0.0f;
           pose.pose.orientation.w = 1.0f;
           pose.pose.orientation.x = 0.0f;
           pose.pose.orientation.y = 0.0f;
           pose.pose.orientation.z = 0.0f;
           ros_path.poses.push_back(pose);
-          cp++;
         }
-      }
+        // ctg 8/19/21
+        // if not on the last waypoint, add a straight path to the next waypoint to the global path
+        // this helps the local planner make smooth transitions between waypoints
+        if (ros_path.poses.size()>1) {
+          int cp =current_waypoint;
+          while (cp<current_waypoints.poses.size()-1){
+            avt_341::msg::PoseStamped pose;
+            pose.pose.position.x = static_cast<float>(current_waypoints.poses[cp+1].pose.position.x);
+            pose.pose.position.y = static_cast<float>(current_waypoints.poses[cp+1].pose.position.y);
+            pose.pose.position.z = 0.0f;
+            pose.pose.orientation.w = 1.0f;
+            pose.pose.orientation.x = 0.0f;
+            pose.pose.orientation.y = 0.0f;
+            pose.pose.orientation.z = 0.0f;
+            ros_path.poses.push_back(pose);
+            cp++;
+          }
+        }
 
-      ros_path.header.stamp = n->get_stamp();
-      avt_341::node::set_seq(ros_path.header, nl);
+        ros_path.header.stamp = n->get_stamp();
+        avt_341::node::set_seq(ros_path.header, nl);
 
-      for (int i = 0; i < ros_path.poses.size(); i++){
-        ros_path.poses[i].header = ros_path.header;
-      }
+        for (int i = 0; i < ros_path.poses.size(); i++){
+          ros_path.poses[i].header = ros_path.header;
+        }
+        //std::cout << ros::this_node::getName().c_str() << " Global Path: publishing a path" << std::endl;
+        path_pub->publish(ros_path);
+        waypoint_pub->publish(current_waypoints);
 
-      path_pub->publish(ros_path);
-      waypoint_pub->publish(current_waypoints);
 
-
-      // check the progression along the path
-      float dx = goal[0] - odom.pose.pose.position.x;
-      float dy = goal[1] - odom.pose.pose.position.y;
-      double d = sqrt(dx * dx + dy * dy);
-      avt_341::msg::Float64 dist_to_goal;
-      dist_to_goal.data = d;
-      avt_341::msg::Int32 curr_wp;
-      curr_wp.data = current_waypoint;
-      current_waypoint_pub->publish(curr_wp);
-      dist_to_current_waypoint_pub->publish(dist_to_goal);
-      if (nl % 20 == 0){ //update every second
-        std::cout << "Distance to goal " << current_waypoint<<" = " << d << std::endl;
-      }
-      if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
-        if (d<goal_dist || shutdown_condition){   // reached the goal
-          shutdown_condition = true;
-          state.data = shutdown_behavior; // request shutdown behavior
+        // check the progression along the path
+        float dx = goal[0] - odom.pose.pose.position.x;
+        float dy = goal[1] - odom.pose.pose.position.y;
+        double d = sqrt(dx * dx + dy * dy);
+        avt_341::msg::Float64 dist_to_goal;
+        dist_to_goal.data = d;
+        avt_341::msg::Int32 curr_wp;
+        curr_wp.data = current_waypoint;
+        current_waypoint_pub->publish(curr_wp);
+        dist_to_current_waypoint_pub->publish(dist_to_goal);
+        if (nl % 20 == 0){ //update every second
+          std::cout << ros::this_node::getName() << " Global Path: Distance to goal " << current_waypoint<<" = " << d << std::endl;
+        }
+        if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
+          if (d<goal_dist || shutdown_condition){   // reached the goal
+            shutdown_condition = true;
+            state.data = shutdown_behavior; // request shutdown behavior
+            state_pub->publish(state);
+            shutdown_count++;
+            if (shutdown_count>10) break;
+          }
+        }
+        else{     // intermediate waypoint
+          if (d<goal_dist){   // reached the waypoint
+            current_waypoint++;
+            goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
+            goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
+          }
+          state.data = 0;         // request active behavior
           state_pub->publish(state);
-          shutdown_count++;
-          if (shutdown_count>10) break;
         }
-      }
-      else{     // intermediate waypoint
-        if (d<goal_dist){   // reached the waypoint
-          current_waypoint++;
-          goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
-          goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
-        }
-        state.data = 0;         // request active behavior
-        state_pub->publish(state);
-      }
-    } // if odom_recvd
-    //else if(state.data != -1){  // not in startup
-    //  state.data = 1;       // request smooth stop but don't shutdown (waiting for odom data)
-    //  state_pub->publish(state);
-    //}
-
+      } // if odom_recvd
+      //else if(state.data != -1){  // not in startup
+      //  state.data = 1;       // request smooth stop but don't shutdown (waiting for odom data)
+      //  state_pub->publish(state);
+      //}
+    }
     n->spin_some();
     r.sleep();
     nl++;
