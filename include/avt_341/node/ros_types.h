@@ -33,6 +33,7 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 
+#include "avt_341/Communication.h"
 #include "avt_341/FollowerStatus.h"
 
 namespace avt_341 {
@@ -98,6 +99,9 @@ namespace avt_341 {
         using StringPtr = const std_msgs::String::ConstPtr &;
         using FollowerStatus = avt_341::FollowerStatus;
         using FollowerStatusPtr = const avt_341::FollowerStatus::ConstPtr &;
+        
+        using Communication = avt_341::Communication;
+        using CommunicationPtr = const avt_341::Communication::ConstPtr &;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;

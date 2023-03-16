@@ -62,12 +62,18 @@
     <param name="name" value="AGV1"/>
   </node>
 
+  <!-- Mission management -->
+  <node name="mission_manager001" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
+    <remap from="avt_341/recv_comms" to="avt_341/recv_comms001" />
+    
+    <param name="name" value="AGV1" />
+  </node>
+
   <!-- Communications algorithms  -->
   <node name="comm_node001" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
     <remap from="avt_341/comm_messages" to="avt_341/comm_messages001"/>
     <remap from="avt_341/follower_status" to="avt_341/status001"/>
     <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
-
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms001"/>
     <remap from="avt_341/veh1_odometry" to="avt_341/odometry001" />
     <remap from="avt_341/follower1_odometry" to="avt_341/odometry002" />
@@ -287,6 +293,13 @@
 
     <param name="is_leader" value="true" />
     <param name="name" value="AGV2"/>
+  </node>
+
+  <!-- Mission management -->
+  <node name="mission_manager002" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
+    <remap from="avt_341/recv_comms" to="avt_341/recv_comms002" />
+    
+    <param name="name" value="AGV2" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -517,6 +530,13 @@
     <param name="name" value="AGV3"/>
   </node>
 
+  <!-- Mission management -->
+  <node name="mission_manager003" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
+    <remap from="avt_341/recv_comms" to="avt_341/recv_comms003" />
+    
+    <param name="name" value="AGV3" />
+  </node>
+
   <!-- Communications algorithms  -->
   <node name="comm_node003" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
     <remap from="avt_341/comm_messages" to="avt_341/comm_messages003"/>
@@ -723,6 +743,13 @@
 
     <param name="is_leader" value="true" />
     <param name="name" value="AGV4"/>
+  </node>
+
+  <!-- Mission management -->
+  <node name="mission_manager004" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
+    <remap from="avt_341/recv_comms" to="avt_341/recv_comms004" />
+
+    <param name="name" value="AGV4" />
   </node>
 
   <!-- Communications algorithms  -->

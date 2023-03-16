@@ -101,6 +101,17 @@ target_link_libraries(gps_spoof_node
   ${catkin_LIBRARIES}
 )
 
+
+add_executable(avt_341_mission_manager_node
+  src/mission/mission_manager_node.cpp
+  src/mission/mission_manager.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(avt_341_mission_manager_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(avt_341_mission_manager_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(avt_341_formation_control_node
   src/mission/formation_control_node.cpp
   src/mission/formation_controller.cpp
@@ -296,6 +307,7 @@ speed_control_test_node
 avt_bot_state_publisher_node
 avt_341_comm_node
 avt_341_comm_publisher_node
+avt_341_mission_manager_node
 avt_341_formation_control_node
 avt_341_test_formation_control_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
