@@ -7,6 +7,7 @@ avt_341::msg::Communication rcvd_msg;
 bool message_rcvd = false;
 
 avt_341::msg::String my_name;
+std::string mission_definition_filename;
 
 void CommunicationCallback(avt_341::msg::CommunicationPtr msg) {
     ROS_INFO("%s Mission Manager received communication", ros::this_node::getName().c_str()); 
@@ -28,15 +29,22 @@ int main(int argc, char **argv) {
     
     // load the parameters
     nh->get_parameter("~name", my_name.data, std::string("AGV1"));
+    nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
 
     // create the controller and set the parameters loaded from the launch file
     avt_341::mission::MissionManager mgr;
+    std::cout << "Load Mission" << std::endl;
+    mgr.loadMissionDefinition(mission_definition_filename);
 
     // start the loop
     while(avt_341::node::ok()){
         if(message_rcvd) {
             ROS_INFO("%s Handling message", ros::this_node::getName().c_str());
             message_rcvd = false;
+
+            if(rcvd_msg.type == "MOVETO") {
+                mgr.handleMoveTo(rcvd_msg);
+            }
         }
 
         nh->spin_some();

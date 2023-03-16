@@ -67,6 +67,7 @@
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms001" />
     
     <param name="name" value="AGV1" />
+    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -300,6 +301,7 @@
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms002" />
     
     <param name="name" value="AGV2" />
+    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -535,6 +537,7 @@
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms003" />
     
     <param name="name" value="AGV3" />
+    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -750,6 +753,7 @@
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms004" />
 
     <param name="name" value="AGV4" />
+    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
   </node>
 
   <!-- Communications algorithms  -->

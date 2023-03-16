@@ -127,6 +127,8 @@ avt_341::Communication packageMessage(std::vector<std::string> tokens) {
         message.original_msg_id = tokens[4];
     } else if(!strcmp(message.type.c_str(), "SET_OBJECTIVE")) {
         message.objective_name = tokens[3];
+    } else if(message.type == "MOVETO") {
+        message.objective_name = tokens[3];
     }
     return message;
 }
