@@ -52,7 +52,7 @@
   <!-- Formation algorithms  -->
   <node name="formation_control_node001" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
     <remap from="avt_341/odometry" to="avt_341/odometry001"/> 
-    <remap from="avt_341/follower_status" to="avt_341/status001"/> 
+    <remap from="avt_341/follower_status" to="avt_341/follower_status001"/> 
     <remap from="avt_341/global_path" to="avt_341/global_path001"/>
     <remap from="avt_341/desired_speed" to="avt_341/desired_speed001"/> 
     <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
@@ -60,31 +60,32 @@
 
     <param name="is_leader" value="true" />
     <param name="name" value="AGV1"/>
+    <param name="follow_scale" value="3.0"/>
   </node>
 
   <!-- Mission management -->
   <node name="mission_manager001" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms001" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints001" />
+    <remap from="avt_341/follower_status" to="avt_341/follower_status001"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
+    <remap from="avt_341/veh1_odometry" to="avt_341/odometry001" />
+    <remap from="avt_341/veh2_odometry" to="avt_341/odometry002" />
+    <remap from="avt_341/veh3_odometry" to="avt_341/odometry003" />
+    <remap from="avt_341/veh4_odometry" to="avt_341/odometry004" />
     
     <param name="name" value="AGV1" />
-    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
+    <param name="mission_definition_file" value="$(find avt_341)/config/mavs_forester_test_points.csv" />
   </node>
 
   <!-- Communications algorithms  -->
   <node name="comm_node001" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
     <remap from="avt_341/comm_messages" to="avt_341/comm_messages001"/>
-    <remap from="avt_341/follower_status" to="avt_341/status001"/>
-    <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms001"/>
-    <remap from="avt_341/veh1_odometry" to="avt_341/odometry001" />
-    <remap from="avt_341/follower1_odometry" to="avt_341/odometry002" />
-    <remap from="avt_341/follower2_odometry" to="avt_341/odometry003" />
-    <remap from="avt_341/follower3_odometry" to="avt_341/odometry004" />
 
     <param name="host" value="localhost"/>
     <param name="port" value="9000"/>
     <param name="name" value="AGV1"/>
-    <param name="scale" value="3.0"/>
   </node>
 
   <!-- Lidar perception algorithms  -->

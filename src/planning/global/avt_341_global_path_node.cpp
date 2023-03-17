@@ -42,11 +42,10 @@ void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
 
 void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
 {
-  std::cout << "Waypoints received!" << std::endl;
   // Brute force - overwrite the current global waypoints
   current_waypoints = *rcv_waypoints;
   waypoints_rcvd = true;
-
+  std::cout << current_waypoints.poses.size() << " waypoint(s) received! " << current_waypoints.poses[0].pose.position.x << ", " << current_waypoints.poses[0].pose.position.y <<  std::endl;
 }
 
 void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
@@ -226,7 +225,7 @@ int main(int argc, char *argv[])
         current_waypoint_pub->publish(curr_wp);
         dist_to_current_waypoint_pub->publish(dist_to_goal);
         if (nl % 20 == 0){ //update every second
-          std::cout << ros::this_node::getName() << " Global Path: Distance to goal " << current_waypoint<<" = " << d << std::endl;
+          std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal " << current_waypoint<<" = " << d << std::endl;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
           if (d<goal_dist || shutdown_condition){   // reached the goal

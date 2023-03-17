@@ -6,6 +6,7 @@
   <arg name="scene_file_arg" default="/mavs/data/scenes/forester_scene_empty.json" /> 
   <arg name="vehicle_file_arg" default="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
   <arg name="num_vehicles_arg" default="4" />
+  <arg name="mission_file_arg" default="$(find avt_341)/config/mavs_forester_test_points.csv" />
   <rosparam file="$(find avt_341)/config/group_waypoints.yaml" />
 
   <param name="robot_description" command="cat $(find avt_341)/config/avt_bot.urdf" />
@@ -65,9 +66,10 @@
   <!-- Mission management -->
   <node name="mission_manager001" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms001" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints001" />
     
     <param name="name" value="AGV1" />
-    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
+    <param name="mission_definition_file" value="$(arg mission_file_arg)" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -299,9 +301,10 @@
   <!-- Mission management -->
   <node name="mission_manager002" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms002" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints002" />
     
     <param name="name" value="AGV2" />
-    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
+    <param name="mission_definition_file" value="$(arg mission_file_arg)" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -535,9 +538,10 @@
   <!-- Mission management -->
   <node name="mission_manager003" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms003" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints003" />
     
     <param name="name" value="AGV3" />
-    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
+    <param name="mission_definition_file" value="$(arg mission_file_arg)" />
   </node>
 
   <!-- Communications algorithms  -->
@@ -751,9 +755,10 @@
   <!-- Mission management -->
   <node name="mission_manager004" pkg="avt_341" type="avt_341_mission_manager_node" required="true" output="screen">
     <remap from="avt_341/recv_comms" to="avt_341/recv_comms004" />
+    <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints004" />
 
     <param name="name" value="AGV4" />
-    <param name="mission_definition_file" value="$(find avt_341)/config/mission_points.csv" />
+    <param name="mission_definition_file" value="$(arg mission_file_arg)" />
   </node>
 
   <!-- Communications algorithms  -->
