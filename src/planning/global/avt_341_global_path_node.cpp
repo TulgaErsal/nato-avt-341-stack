@@ -24,6 +24,8 @@ avt_341::msg::OccupancyGrid segmentation_grid;
 avt_341::msg::Path current_waypoints;
 bool waypoints_rcvd = false;
 bool use_global_planner = true;
+int nav_command;
+bool nav_command_rcvd = false;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -52,6 +54,11 @@ void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
   use_global_planner = (bool)rcv_gptoggle->data;
 }
 
+void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand) {
+  nav_command = rcv_navcommand->data;
+  nav_command_rcvd = true;
+}
+
 int main(int argc, char *argv[])
 {
   auto n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
@@ -65,6 +72,7 @@ int main(int argc, char *argv[])
   auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
+  auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -139,14 +147,25 @@ int main(int argc, char *argv[])
   int nl = 0;
   int current_waypoint = 0;
   int shutdown_count = 0;
-  int last_toggle_state = use_global_planner;
+  int last_gptoggle_state = use_global_planner;
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
-    state_pub->publish(state);
-    if(use_global_planner != last_toggle_state) 
+    if(nav_command_rcvd) {
+	  if(nav_command == 1 && (state.data == -1) || state.data == 1) {
+	    // startup/idling - go active
+		state.data = 0;
+		shutdown_condition = false;
+		state_pub->publish(state); 
+		nav_command_rcvd = false;
+		std::cout << "Set state to " << state.data << " and shutdown condition to " << shutdown_condition << std::endl;
+	  }
+	} else {
+	    state_pub->publish(state);
+	}
+    if(use_global_planner != last_gptoggle_state) 
     {
       ROS_INFO("%s Global Path: toggle %d", ros::this_node::getName().c_str(), (int)use_global_planner);
-      last_toggle_state = use_global_planner;
+      last_gptoggle_state = use_global_planner;
     }
     if(use_global_planner) {
       
@@ -158,8 +177,10 @@ int main(int argc, char *argv[])
         goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
         std::cout << "New waypoints! Updated goal " << goal[0] << ", " << goal[1] << std::endl;
         waypoints_rcvd = false;
+		/* Maintaining current state - if we're idle, we'll need an explicit GO command 
         state.data = 0;  // go active
         state_pub->publish(state);
+		*/
       }
 
       if (odom_rcvd && state.data != -1){ // data received and not in startup mode
@@ -213,7 +234,6 @@ int main(int argc, char *argv[])
         path_pub->publish(ros_path);
         waypoint_pub->publish(current_waypoints);
 
-
         // check the progression along the path
         float dx = goal[0] - odom.pose.pose.position.x;
         float dy = goal[1] - odom.pose.pose.position.y;
@@ -225,16 +245,24 @@ int main(int argc, char *argv[])
         current_waypoint_pub->publish(curr_wp);
         dist_to_current_waypoint_pub->publish(dist_to_goal);
         if (nl % 20 == 0){ //update every second
-          std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal " << current_waypoint<<" = " << d << std::endl;
+          std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
+		  //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
           if (d<goal_dist || shutdown_condition){   // reached the goal
             shutdown_condition = true;
             state.data = shutdown_behavior; // request shutdown behavior
             state_pub->publish(state);
-            shutdown_count++;
-            if (shutdown_count>10) break;
-          }
+			//std::cout << "Shutdown " << shutdown_behavior << std::endl;
+			if(state.data != 1) {
+                shutdown_count++;
+            	if (shutdown_count>10)
+				{
+					std::cout << "Shutting down" << std::endl;
+					break;
+				}
+			}
+		  }
         }
         else{     // intermediate waypoint
           if (d<goal_dist){   // reached the waypoint
@@ -242,6 +270,9 @@ int main(int argc, char *argv[])
             goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
             goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
           }
+		  if(state.data != 0) {
+		  	std::cout << "Why are we here? Current state: " << state.data << std::endl;
+		  }
           state.data = 0;         // request active behavior
           state_pub->publish(state);
         }

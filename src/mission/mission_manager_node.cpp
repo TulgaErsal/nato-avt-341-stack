@@ -45,6 +45,7 @@ int main(int argc, char **argv) {
     auto waypoint_pub = nh->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
     auto follower_status_pub = nh->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
     auto leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
+	auto navcommand_pub = nh->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
 
     // create the manager
     avt_341::mission::MissionManager mgr;
@@ -77,7 +78,10 @@ int main(int argc, char **argv) {
             } else if(rcvd_msg.type == "MOVETO") {
                 mgr.handleMoveTo(rcvd_msg);
                 if(mgr.path_msg_updated) {
+					avt_341::msg::Int32 go_command;
+					go_command.data = 1;
                     waypoint_pub->publish(mgr.path_msg);
+					navcommand_pub->publish(go_command);
                     mgr.path_msg_updated = false;
                 }
             }

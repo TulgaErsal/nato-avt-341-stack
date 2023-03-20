@@ -219,8 +219,13 @@ int main(int argc, char *argv[]){
     }
     else if (current_run_state==-1 || current_run_state==1){
       // bring to a smooth stop and wait / idle
+	  // std::cout << " Setting desired speed to 0 " << std::endl;
       controller.SetDesiredSpeed(0.0f);
-      dc = controller.GetDcFromTraj(control_msg, goal);
+      //dc = controller.GetDcFromTraj(control_msg, goal);
+	  // Current controller is overshooting - changing to hard stop.
+	  dc.linear.x = 0.0f;
+	  dc.linear.y = 1.0f;
+	  dc.angular.z = 0.0f;
     }
     else if (current_run_state==3){
       // bring to a hard stop and shut down
@@ -251,6 +256,8 @@ int main(int argc, char *argv[]){
     dc_pub->publish(dc);
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;
+
+	//std::cout << "Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
 
     // break the loop when an end state is reached
     if (time_to_quit)break;
