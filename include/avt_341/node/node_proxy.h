@@ -264,10 +264,10 @@ namespace avt_341 {
       void initialize_tf_listener();
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
 
-      inline void log_debug(const std::string &msg) { RCLCPP_DEBUG(node_->get_logger(), msg); }
-      inline void log_info(const std::string &msg) { RCLCPP_INFO(node_->get_logger(), msg); }
-      inline void log_warning(const std::string &msg) { RCLCPP_WARN(node_->get_logger(), msg); }
-      inline void log_error(const std::string &msg) { RCLCPP_ERROR(node_->get_logger(), msg); }
+      inline void log_debug(const std::string &msg) { RCLCPP_DEBUG(node_->get_logger(), msg.c_str()); }
+      inline void log_info(const std::string &msg) { RCLCPP_INFO(node_->get_logger(), msg.c_str()); }
+      inline void log_warning(const std::string &msg) { RCLCPP_WARN(node_->get_logger(), msg.c_str()); }
+      inline void log_error(const std::string &msg) { RCLCPP_ERROR(node_->get_logger(), msg.c_str()); }
 
       rclcpp::Time get_stamp() const;
       double get_now_seconds() const;
