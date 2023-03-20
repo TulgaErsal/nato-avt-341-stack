@@ -75,6 +75,15 @@ link_directories(
   ${PCL_LIBRARY_DIRS}
 )
 
+add_executable(test_target_detection_node
+  src/perception/test_target_detection_node.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(test_target_detection_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(test_target_detection_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(path_manager_node
   src/planning/global/path_manager_node.cpp
   src/node/node_proxy.cpp
@@ -291,6 +300,7 @@ catkin_package(INCLUDE_DIRS include
 #############
 
 install(TARGETS
+test_target_detection_node
 avt_341_perception_node
 avt_341_map_publisher_node
 avt_341_control_node

@@ -7,6 +7,9 @@
   <arg name="vehicle_file_arg" default="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
   <arg name="num_vehicles_arg" default="1" />
   <!-- <rosparam file="$(find avt_341)/config/group_waypoints.yaml" /> -->
+  <rosparam param="targets_name">["uav", "mrzr", "truck", "M113"]</rosparam>
+  <rosparam param="targets_x">[5.0, 10.0, 30.0, 100.0]</rosparam>
+  <rosparam param="targets_y">[-5.0, 5.0, -5.0, 5.0]</rosparam>
 
   <param name="robot_description" command="cat $(find avt_341)/config/avt_bot.urdf" />
 
@@ -48,6 +51,14 @@
   <!-- <node name="mrzr_speed_republish_node" pkg="mrzr_speed_tuning" type="mrzr_speed_republish_node" required="true" output="screen" > -->
   <!--republish the mrak speed message as a float64 -->
   <!-- </node> -->
+
+  <!-- Test Target Detection -->
+  <node name="test_target_detection_node001" pkg="avt_341" type="test_target_detection_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/odometry001" />
+	<remap from="avt_341/target_contacts" to="avt_341/target_contacts001" />
+
+	<param name="detection_range" value="10.0" />
+  </node>
 
   <!-- Formation algorithms  -->
   <node name="formation_control_node001" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
