@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 	// Subscriptions
     auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
 	// Publishers
-    auto detect_pub = n->create_publisher<avt_341::msg::Point>("avt_341/target_contacts", 1);
+    auto detect_pub = n->create_publisher<avt_341::msg::Path>("avt_341/target_contacts", 1);
 
 	// handle parameters
 	double detection_range = 10.0f;
@@ -45,22 +45,33 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("/targets_x", target_x, std::vector<double>(0));                                                                 
     n->get_parameter("/targets_y", target_y, std::vector<double>(0));
 
-	avt_341::msg::Point32 target_pt; 
+	avt_341::msg::Point32 target_pt;
+	avt_341::msg::Path targets_pt; 
+	avt_341::msg::PoseStamped pose;
 
 	avt_341::node::Rate rate(10.0);
 	while (avt_341::node::ok()){
+		ros::Time timestamp = ros::Time::now();
+		targets_pt.poses.clear();
+		targets_pt.header.stamp = timestamp;
 
 		// loop through the list of targets 
 		for(int i = 0; i < target_name.size(); i++) {
 			// if distance from robot to the target is less than detection_range, signal detection
-			target_pt.x = target_x[i];
-			target_pt.y = target_y[i];
+			target_pt.x = pose.pose.position.x = target_x[i];
+			target_pt.y = pose.pose.position.y = target_y[i];
+
 			if(CalcDistanceSquaredToTarget(current_pose.pose.pose.position, target_pt) < detection_range_squared) {
 				// Signal detection
-				std::cout << "Target " << target_name[i] << " detected at " << target_x[i] << ", " << target_y[i] << std::endl;
-				detect_pub->publish(current_pose.pose.pose.position);
+				//std::cout << "Target " << target_name[i] << " detected at " << target_x[i] << ", " << target_y[i] << std::endl;
+				pose.header.stamp = timestamp;
+				pose.header.frame_id = target_name[i];
+				targets_pt.poses.push_back(pose);
 			}
 		}
+		//std::cout << "Publishing " << targets_pt.poses.size() << " Targets as Path" << std::endl;
+
+		detect_pub->publish(targets_pt);
 		n->spin_some();
 		rate.sleep();
 	}

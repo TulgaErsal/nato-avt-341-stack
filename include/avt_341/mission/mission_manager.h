@@ -26,6 +26,16 @@ struct Formation {
     avt_341::msg::Point follower2;
     avt_341::msg::Point follower3;
 };
+
+struct Contact {
+	// storage for contact information
+	// timestamp, position, class/name, investigated
+	ros::Time timestamp;
+	std::string name;
+	float x, y;
+	bool investigated;
+	bool investigating;
+};
     
 /// Class for formation control
 class MissionManager{
@@ -38,7 +48,12 @@ class MissionManager{
 
     Pose getPose(std::string posename);
 
+	// internal messages
+	void handleContacts(avt_341::msg::Path);
+
+	// external messages
     void handleMoveTo(avt_341::msg::Communication);
+	void handleMoveTo(float x, float y);
     void handleFormationRequest(avt_341::msg::Communication);
     void handleAcknowledge(avt_341::msg::Communication);
     void handleArrive(avt_341::msg::Communication);
@@ -50,6 +65,9 @@ class MissionManager{
     std::string leader_name;
     bool is_leader;
     float follow_scale;
+	float same_object_distance_threshold_sq;
+	avt_341::msg::Odometry odometry;
+	int nav_state; 
 
     // Messages
     bool path_msg_updated;
@@ -62,9 +80,13 @@ class MissionManager{
 
     std::vector<Pose> mission_data;
     std::map<std::string, Formation> formations;
+	std::vector<Contact> mission_contacts;
+	bool investigating_contact;	// probably temporary 
 
     // Methods
-
+	auto getContact(std::string name, float x, float y); 
+	void addContact(std::string name, float x, float y);
+	bool close(float x, float y, float n_x, float n_y);
 }; // class mission manager
 
 } // namespace mission

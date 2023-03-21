@@ -1,7 +1,7 @@
 <launch>
   <param name="/use_sim_time" value="false"/>
   <arg name="display" default="rviz"/>
-  <arg name="auto_launch_rviz" default="true"/>
+  <arg name="auto_launch_rviz" default="false"/>
   <arg name="use_mpc" default="false" doc="Local planner - Use MPC local planner instead of road centerline constrained splines."/>
   <arg name="scene_file_arg" default="/mavs/data/scenes/forester_scene_empty.json" /> 
   <arg name="vehicle_file_arg" default="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
@@ -80,11 +80,15 @@
     <remap from="avt_341/new_waypoints" to="avt_341/new_waypoints001" />
     <remap from="avt_341/follower_status" to="avt_341/follower_status001"/>
 	<remap from="avt_341/nav_command_state" to="avt_341/nav_command_state001" />
+	<remap from="avt_341/odometry" to="avt_341/odometry001" />
     <remap from="avt_341/leader_odometry" to="avt_341/leader_odometry001"/>
     <remap from="avt_341/veh1_odometry" to="avt_341/odometry001" />
     <remap from="avt_341/veh2_odometry" to="avt_341/odometry002" />
     <remap from="avt_341/veh3_odometry" to="avt_341/odometry003" />
     <remap from="avt_341/veh4_odometry" to="avt_341/odometry004" />
+	<remap from="avt_341/target_contacts" to="avt_341/target_contacts001" />
+	<remap from="avt_341/comm_messages" to="avt_341/comm_messages001" />
+	<remap from="avt_341/state" to="avt_341/state001" />
     
     <param name="name" value="AGV1" />
     <param name="mission_definition_file" value="$(find avt_341)/config/mavs_forester_test_points.csv" />

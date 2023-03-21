@@ -5,12 +5,12 @@
 namespace avt_341 {
 namespace mission {
 
-
-
 MissionManager::MissionManager(){
     
     my_name = "";
     leader_name = "";
+	is_leader = true;
+	nav_state = -1;
 
     path_msg_updated = false;
     follower_status_msg_updated = false;
@@ -126,7 +126,74 @@ Pose MissionManager::getPose(std::string posename) {
     return *result;
 }
 
+auto MissionManager::getContact(std::string name, float x, float y) {
+	auto result = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
+	            [&](const auto& e) {return (e.name == name && close(e.x, e.y, x, y)); });
+	/*
+	if(result != mission_contacts.end()) {
+		std::cout << "Result: " << (*result).name << std::endl;
+	} else {
+		std::cout << "Not found" << std::endl;
+	}
+	*/
+	return result;
+
+}
+
+void MissionManager::addContact(std::string name, float in_x, float in_y) {
+	Contact new_contact;
+	new_contact.name = name;
+	new_contact.x = in_x;
+	new_contact.y = in_y;
+	mission_contacts.push_back(new_contact);
+}
+
+bool MissionManager::close(float old_x, float old_y, float new_x, float new_y) {
+	float distance_sq = ((old_x - new_x)*(old_x - new_x)) + ((old_y - new_y)*(old_y - new_y));
+	if(distance_sq < same_object_distance_threshold_sq) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 // Message Handlers
+void MissionManager::handleContacts(avt_341::msg::Path contacts) {
+	// check if contacts are already in the contact database
+	for(auto item: contacts.poses) {
+		// check if contact is in database 
+		auto it = getContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
+		if(it != mission_contacts.end()) {
+			// already in the list
+			std::cout << item.header.frame_id << " is in the list." << std::endl;
+		} else {
+			// new contact
+			std::cout << item.header.frame_id << " is a new contact." << std::endl;
+			// Add it to the contacts
+			addContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
+		}
+	}
+	// are we already investigating a contact?
+	if(!investigating_contact) {
+		// is this a target of interest? 
+		// if so, order follower to moveto overwatch position 
+		// move to a point near the TOI
+		for(auto item: mission_contacts) {
+			// review our contacts
+			if(item.investigating == false && !investigating_contact) {
+				// we have not done anything for this contact
+				std::cout << " Requesting move to " << item.name << " at " << item.x << ", " << item.y << std::endl;
+				handleMoveTo(item.x, item.y);
+				item.investigating = true;
+				investigating_contact = true;
+				// set a subgoal to encircle the TOI
+				// set a subgoal to return to the goal
+				// ignore the identification subgoal for now
+			}
+		}
+	}
+}
+
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
     follower_status_message.leader_name = msg.leader_name;
 
@@ -176,6 +243,29 @@ void MissionManager::handleTaskComplete(avt_341::msg::Communication msg) {
     // If tracking, mark complete
 
 
+}
+
+void MissionManager::handleMoveTo(float x, float y) {
+	// only applies if I'm leader, 
+	if(is_leader) {
+		// create Path element (single point)
+        std::cout << "Moving to : " << x << ", " << y << std::endl;
+		avt_341::msg::PoseStamped pose;
+		pose.pose.position.x = x;
+		pose.pose.position.y = y;
+		pose.pose.position.z = 0;
+		pose.pose.orientation.w = 1;
+		pose.pose.orientation.x = 0;
+		pose.pose.orientation.y = 0;
+		pose.pose.orientation.z = 0;
+	
+		if(path_msg_updated == true) {
+			std::cout << my_name << " Warning: Overwriting path message" << std::endl;
+		}
+		path_msg.poses.clear();
+		path_msg.poses.push_back(pose);
+		path_msg_updated = true;
+    }
 }
 
 void MissionManager::handleMoveTo(avt_341::msg::Communication msg) {

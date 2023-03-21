@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
   auto current_waypoint_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/current_waypoint", 10);
   auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
+
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, MapCallback);
   auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
@@ -250,6 +251,8 @@ int main(int argc, char *argv[])
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		  //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
           if (d<goal_dist || shutdown_condition){   // reached the goal
+		  	// send arrival notification
+
             shutdown_condition = true;
             state.data = shutdown_behavior; // request shutdown behavior
             state_pub->publish(state);
