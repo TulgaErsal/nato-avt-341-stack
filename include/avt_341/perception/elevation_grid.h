@@ -14,70 +14,17 @@
 #include <limits>
 #include <string>
 #include "avt_341/node/ros_types.h"
+#include "avt_341/perception/elevation_grid_cell.h"
+#include "avt_341/perception/costmap_clearing_method.h"
 
 namespace avt_341{
 namespace perception{
 
-class ElevAge{
-  public:
-    ElevAge(){
-        val = 0.0f;
-        age = 0.0f;
-    }
-    float val;
-    float age;
-};
-
-class Cell{
-    //float low = std::numeric_limits<float>::max();
-    //float high = std::numeric_limits<float>::lowest();
-    //float highest = std::numeric_limits<float>::lowest();
-    //float second_highest = std::numeric_limits<float>::lowest();
-    public:
-    Cell(){
-
-        low.val = std::numeric_limits<float>::max();
-        high.val = std::numeric_limits<float>::lowest();
-        highest.val = std::numeric_limits<float>::lowest();
-        second_highest.val = std::numeric_limits<float>::lowest();
-        height = 0.0f;
-        filled = false;
-        slope = 0.0f;
-        obstacle = false;
-        has_dilated = false;
-        dilated_val = 0;
-        terrain = 0.0f;
-        dilated_age = 0.0f;
-    }
-    void AgeCell(float dt){
-        low.age += dt;
-        high.age += dt;
-        highest.age += dt;
-        second_highest.age += dt;
-        dilated_age += dt;
-    }
-    ElevAge low,high,highest,second_highest;
-    //low.val = std::numeric_limits<float>::max();
-    //high.val = std::numeric_limits<float>::lowest();
-    //highest.val = std::numeric_limits<float>::lowest();
-    //second_highest.val = std::numeric_limits<float>::lowest();
-    float height; // = 0.0f;
-    bool filled; //  = false;
-    //float slope_x = 0.0f;
-    //float slope_y = 0.0f;
-    float slope; //  = 0.0f;
-    bool obstacle; //  = false;
-    bool has_dilated; //  = false;
-    uint8_t dilated_val; //  = 0;
-    float dilated_age;
-    float terrain; //  = 0.0f;
-};
-
-class ElevationGrid{
+class ElevationGrid : public CellObstacleCalculator{
   public:
     ElevationGrid();
 
-    ~ElevationGrid();
+    ~ElevationGrid() override;
 
     /**
      * Add points to be processed 
@@ -106,7 +53,45 @@ class ElevationGrid{
         ResizeGrid();
     }
 
-    void SetMaxPointAge(float mpa){
+    void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, const std::string & clearing_method_type,
+                                  float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
+                                  bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter){
+      auto clear_type = OccupancyClearingMethod::string_to_clear_type(clearing_method_type);
+      int dsize_x = lround(grid_dilate_x_/res_);
+      int dsize_y = lround(grid_dilate_y_/res_);
+      RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, clear_method_raytrace_range,
+                                         clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res);
+
+      switch(clear_type){
+        case CostmapClearMethodType::Time:
+          clearing_method_ = std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize);
+          break;
+        case CostmapClearMethodType::Raytrace:
+          if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
+            node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
+          }
+          clearing_method_ = std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
+          break;
+        case CostmapClearMethodType::RaytraceWithFiltering:
+          if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
+            node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
+          }
+          clearing_method_ = std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, obj_range_filter, this);
+          break;
+        default:
+          clearing_method_ = std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize);
+      }
+    }
+
+    void Visualize() const{
+      clearing_method_->Visualize();
+    }
+
+  bool PastSlopeThreshold(const Cell &cell) const override;
+  float Slope(const Cell &cell) const override;
+  void AddOccupancy(const avt_341::msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) override;
+
+  void SetMaxPointAge(float mpa){
         max_point_age_ = mpa;
     }
 
@@ -146,8 +131,6 @@ class ElevationGrid{
   private:
     uint8_t GetGridCellValue(const Cell & cell) const;
     void ResizeGrid();
-    void FillImage();
-    void AgeCells();
     std::vector< std::vector<Cell> > cells_;
     float width_;
     float height_;
@@ -168,6 +151,8 @@ class ElevationGrid{
     const float GRID_SLOPE_MULT = 50.0f;
     bool has_segmentation_ = false;
     float max_point_age_;
+    std::shared_ptr<OccupancyClearingMethod> clearing_method_ = nullptr;
+
 };
 
 } // namespace perception

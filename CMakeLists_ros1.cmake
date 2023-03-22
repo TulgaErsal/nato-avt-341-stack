@@ -6,6 +6,7 @@ set(REQUIRED_ROS_PACKAGES
   roscpp
   rospy
   std_msgs
+  nav_msgs
   tf
   message_generation
   tf2_ros
@@ -45,11 +46,14 @@ add_message_files(
  Obstacles.msg
  Communication.msg
  FollowerStatus.msg
+ OccupiedCell.msg
+ OccupiedCells.msg
 )
 
 generate_messages(
   DEPENDENCIES
   std_msgs
+  nav_msgs
 )
 
 
@@ -144,6 +148,7 @@ add_executable(avt_341_perception_node
 src/perception/avt_341_perception_node.cpp
 src/perception/elevation_grid.cpp
 src/node/node_proxy.cpp
+src/perception/costmap_clearing_method.cpp
 )
 target_link_libraries(avt_341_perception_node
   ${catkin_LIBRARIES}
@@ -210,6 +215,16 @@ target_link_libraries(avt_341_pf_planner_node
   X11
 )
 
+add_executable(avt_341_dwa_planner_node
+  src/planning/local/avt_341_dwa_planner_node.cpp
+  src/planning/local/dwa_planner.cpp
+  src/node/node_proxy.cpp
+  src/visualization/image_visualizer.cpp
+)
+target_link_libraries(avt_341_dwa_planner_node
+  ${catkin_LIBRARIES}
+  X11
+)
 
 add_executable(avt_341_global_path_node
   src/planning/global/avt_341_global_path_node.cpp
@@ -240,6 +255,19 @@ target_link_libraries(avt_bot_state_publisher_node
    ${catkin_LIBRARIES}
 )
 
+
+add_executable(avt_341_grid_compression_node
+        src/perception/avt_341_grid_compression_node.cpp
+        src/node/node_proxy.cpp
+        )
+add_dependencies(avt_341_grid_compression_node
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        )
+target_link_libraries(avt_341_grid_compression_node
+        ${catkin_LIBRARIES}
+        )
+
+
 add_executable(avt_341_comm_node
   src/communication/avt_341_comm_node.cpp
   src/node/node_proxy.cpp
@@ -256,10 +284,10 @@ target_link_libraries(avt_341_comm_publisher_node
   ${catkin_LIBRARIES}
 )
 
-# lidar_obstacle_detector node
-#add_executable(avt_341_lidar_obstacle_detector_node
-#   ${LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES}
-#)
+## lidar_obstacle_detector node
+add_executable(avt_341_lidar_obstacle_detector_node
+  ${LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES}
+)
 #add_dependencies(avt_341_lidar_obstacle_detector_node 
 #  ${${PROJECT_NAME}_EXPORTED_TARGETS}
 #  ${catkin_EXPORTED_TARGETS}
@@ -307,8 +335,10 @@ avt_341_control_node
 avt_341_speed_control_node
 avt_341_local_planner_node
 avt_341_pf_planner_node
+avt_341_dwa_planner_node
 avt_341_global_path_node
-#avt_341_lidar_obstacle_detector_node
+avt_341_grid_compression_node
+avt_341_lidar_obstacle_detector_node
 avt_341_sim_test_node
 gps_to_enu_node
 gps_spoof_node

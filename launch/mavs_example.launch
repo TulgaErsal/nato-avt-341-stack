@@ -106,6 +106,8 @@
     <param name="display" value="$(arg display)" />
   </node>
 
+  <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
+
   <include file="$(find mavs_ros)/launch/mavs_sim.launch">
     <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
     <arg name="point_cloud_topic_arg" default="avt_341/points" />

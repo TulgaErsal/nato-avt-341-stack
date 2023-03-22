@@ -1,6 +1,3 @@
-//
-// Created by Stefan on 2021-07-28.
-//
 
 #ifndef AVT_341_ROS_TYPES_H
 #define AVT_341_ROS_TYPES_H

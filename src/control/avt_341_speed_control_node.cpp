@@ -75,6 +75,7 @@ int main(int argc, char *argv[]){
 	std::string display;
   float vehicle_max_steer_angle_degrees;
   n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
+  n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0f);
   n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0f);
   n->get_parameter("~time_to_max_throttle", time_to_max_throttle, 3.0f);
   n->get_parameter("~ff_a0", ff_a0, 0.0402f);
@@ -168,7 +169,7 @@ int main(int argc, char *argv[]){
     }
 
     // publish the driving command
-    dc.angular.z = std::min(-1.0f,std::max(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees));
+    dc.angular.z = std::max(-1.0f,std::min(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees));
     dc_pub->publish(dc);
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;

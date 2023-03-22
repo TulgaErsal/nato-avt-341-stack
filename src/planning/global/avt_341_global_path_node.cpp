@@ -42,6 +42,7 @@ void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
     segmentation_grid = *rcv_grid;
 }
 
+// From mission planner
 void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
 {
   // Brute force - overwrite the current global waypoints
@@ -59,6 +60,31 @@ void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand) {
   nav_command_rcvd = true;
 }
 
+void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
+{
+  std::cout << "Waypoint received from goal callback." << std::endl;
+  current_waypoints.poses.clear();
+  current_waypoints.poses.push_back(*rcv_goal_pose);
+  waypoints_rcvd = true;
+}
+
+avt_341::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
+  avt_341::msg::Path ros_path;
+  ros_path.header.frame_id = "map";
+  for (const auto & p: path){
+    avt_341::msg::PoseStamped pose;
+    pose.pose.position.x = p[0];
+    pose.pose.position.y = p[1];
+    pose.pose.position.z = 0.0f;
+    pose.pose.orientation.w = 1.0f;
+    pose.pose.orientation.x = 0.0f;
+    pose.pose.orientation.y = 0.0f;
+    pose.pose.orientation.z = 0.0f;
+    ros_path.poses.push_back(pose);
+  }
+  return ros_path;
+}
+
 int main(int argc, char *argv[])
 {
   auto n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
@@ -74,6 +100,7 @@ int main(int argc, char *argv[])
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
+  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("/goal_pose", 10, GoalPoseCallback);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -86,9 +113,11 @@ int main(int argc, char *argv[])
   avt_341::msg::Int32 state;
   state.data = -1; // start up state
 
-  float goal_dist, global_lookahead;
+  float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
+  bool debug_visualize, search_diagonals, los_break_on_first;
+  int los_max_iterations;
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
@@ -98,7 +127,21 @@ int main(int argc, char *argv[])
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
   n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
-  
+  n->get_parameter("~debug_visualize", debug_visualize, false);
+  n->get_parameter("~search_diagonals", search_diagonals, false);
+  n->get_parameter("~los_max_iterations", los_max_iterations, 1);
+  n->get_parameter("~los_break_on_first", los_break_on_first, true);
+  n->get_parameter("~w_distance", w_distance, 1.0f);
+  n->get_parameter("~w_occupancy", w_occupancy, 1.0f);
+  n->get_parameter("~w_segmentation", w_segmentation, 1.0f);
+
+  std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
+  std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
+  if(debug_visualize){
+    global_path_pre_smooth_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_smooth", 10);
+    global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
+  }
+
   int shutdown_behavior = 1;
   n->get_parameter("~shutdown_behavior", shutdown_behavior, 1);
   if (shutdown_behavior>3 || shutdown_behavior<1)shutdown_behavior = 1;
@@ -141,7 +184,8 @@ int main(int argc, char *argv[])
   }
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
-  avt_341::planning::Astar astar_planner(visualizer);
+  avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation,
+                                         search_diagonals, los_max_iterations, los_break_on_first);
 
   avt_341::node::Rate r(20.0f); // Hz
   bool shutdown_condition = false;
@@ -152,20 +196,20 @@ int main(int argc, char *argv[])
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
     if(nav_command_rcvd) {
-	  if(nav_command == 1 && (state.data == -1) || state.data == 1) {
+	    if(nav_command == 1 && (state.data == -1) || state.data == 1) {
 	    // startup/idling - go active
-		state.data = 0;
-		shutdown_condition = false;
-		state_pub->publish(state); 
-		nav_command_rcvd = false;
-		std::cout << "Set state to " << state.data << " and shutdown condition to " << shutdown_condition << std::endl;
-	  }
-	} else {
+		  state.data = 0;
+		  shutdown_condition = false;
+		  state_pub->publish(state); 
+		  nav_command_rcvd = false;
+		  std::cout << "Set state to " << state.data << " and shutdown condition to " << shutdown_condition << std::endl;
+	    }
+	  } else {
 	    state_pub->publish(state);
-	}
+	  }
     if(use_global_planner != last_gptoggle_state) 
     {
-      ROS_INFO("%s Global Path: toggle %d", ros::this_node::getName().c_str(), (int)use_global_planner);
+      std::cout << ros::this_node::getName() << "Global Path: toggle " << use_global_planner << std::endl;
       last_gptoggle_state = use_global_planner;
     }
     if(use_global_planner) {
@@ -190,22 +234,8 @@ int main(int argc, char *argv[])
         pos.push_back(odom.pose.pose.position.y);
 
         std::vector<std::vector<float>> path = astar_planner.PlanPath(&current_grid, &segmentation_grid, goal, pos);
-        
-        avt_341::msg::Path ros_path;
-        //ros_path.header.frame_id = "odom";
-        ros_path.header.frame_id = "map";
-        ros_path.poses.clear();
-        for (int32_t i = 0; i < path.size(); i++){
-          avt_341::msg::PoseStamped pose;
-          pose.pose.position.x = static_cast<float>(path[i][0]);
-          pose.pose.position.y = static_cast<float>(path[i][1]);
-          pose.pose.position.z = 0.0f;
-          pose.pose.orientation.w = 1.0f;
-          pose.pose.orientation.x = 0.0f;
-          pose.pose.orientation.y = 0.0f;
-          pose.pose.orientation.z = 0.0f;
-          ros_path.poses.push_back(pose);
-        }
+
+        avt_341::msg::Path ros_path = ToROSPath(path);
         // ctg 8/19/21
         // if not on the last waypoint, add a straight path to the next waypoint to the global path
         // this helps the local planner make smooth transitions between waypoints
@@ -231,9 +261,21 @@ int main(int argc, char *argv[])
         for (int i = 0; i < ros_path.poses.size(); i++){
           ros_path.poses[i].header = ros_path.header;
         }
-        //std::cout << ros::this_node::getName().c_str() << " Global Path: publishing a path" << std::endl;
+
         path_pub->publish(ros_path);
         waypoint_pub->publish(current_waypoints);
+
+        if(debug_visualize){
+          auto path_pre_smoothing = astar_planner.GetPathWorldPreSmoothing();
+          auto ros_path_pre_smoothing = ToROSPath(path_pre_smoothing);
+          ros_path_pre_smoothing.header.stamp = n->get_stamp();
+          global_path_pre_smooth_pub->publish(ros_path_pre_smoothing);
+
+          auto path_pre_fill = astar_planner.GetPathWorldPreFill();
+          auto ros_path_pre_fill = ToROSPath(*path_pre_fill);
+          ros_path_pre_fill.header.stamp = n->get_stamp();
+          global_path_pre_fill_pub->publish(ros_path_pre_fill);
+        }
 
         // check the progression along the path
         float dx = goal[0] - odom.pose.pose.position.x;
@@ -249,23 +291,22 @@ int main(int argc, char *argv[])
           std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
-		  //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
+		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
           if (d<goal_dist || shutdown_condition){   // reached the goal
-		  	// send arrival notification
-
+		  	    // send arrival notification
             shutdown_condition = true;
             state.data = shutdown_behavior; // request shutdown behavior
             state_pub->publish(state);
-			//std::cout << "Shutdown " << shutdown_behavior << std::endl;
-			if(state.data != 1) {
-                shutdown_count++;
+			      //std::cout << "Shutdown " << shutdown_behavior << std::endl;
+			      if(state.data != 1) {
+              shutdown_count++;
             	if (shutdown_count>10)
-				{
-					std::cout << "Shutting down" << std::endl;
-					break;
-				}
-			}
-		  }
+				      {
+					      std::cout << "Shutting down" << std::endl;
+					      break;
+				      }
+			      }
+		      }
         }
         else{     // intermediate waypoint
           if (d<goal_dist){   // reached the waypoint
@@ -273,9 +314,9 @@ int main(int argc, char *argv[])
             goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
             goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
           }
-		  if(state.data != 0) {
-		  	std::cout << "Why are we here? Current state: " << state.data << std::endl;
-		  }
+		      if(state.data != 0) {
+		  	    std::cout << "Why are we here? Current state: " << state.data << std::endl;
+		      }
           state.data = 0;         // request active behavior
           state_pub->publish(state);
         }

@@ -3,6 +3,16 @@ ROS package with autonomy algorithms for the NATO AVT-341.
 
 The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
 
+__Contents:__ 
+- [Requirements](#requirements)
+- [ROS1 Installation](#ros-1-installation)
+- [ROS2 Installation](#ros-2-installation)
+- [Troubleshooting](#troubleshooting)
+- [Running with MAVS](#running-with-mavs)
+- [Costmap Clearing Methods](documentation/costmap_clearing.md)
+- [Funding Acknowledgement](#funding-acknowledgement)
+
+
 ## Requirements
 The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22. 
 
@@ -91,11 +101,6 @@ sudo apt-get install ros-kinetic-pcl-ros
 To run an example simulation with MAVS, first [install and build MAVS](https://mavs-documentation.readthedocs.io/en/latest/MavsBuildInstructions/).
 
 Next, install and build the [MAVS-ROS package](https://github.com/CGoodin/mavs_ros) (for ROS1) or the [MAVS-ROS2](https://github.com/CGoodin/mavs-ros2) package (for ROS2).
-
-Next, clone the example MAVS simulation package.
-```bash
-git clone https://github.com/CGoodin/mavs_avt_example.git
-```
 
 To test in ROS-1:
 ```bash

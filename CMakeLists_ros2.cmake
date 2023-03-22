@@ -15,8 +15,14 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
-#find_package(builtin_interfaces REQUIRED)
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/OccupiedCell.msg"
+  "msg/OccupiedCells.msg"
+  DEPENDENCIES std_msgs nav_msgs
+ )
+ament_export_dependencies(rosidl_default_runtime)
 
 if (WIN32 OR WIN64)
 set (link_libs
@@ -58,7 +64,7 @@ add_executable(avt_341_perception_node
         src/perception/avt_341_perception_node.cpp
         src/perception/elevation_grid.cpp
         src/node/node_proxy.cpp
-        )
+        src/perception/costmap_clearing_method.cpp)
 ament_target_dependencies(avt_341_perception_node ${dependencies})
 
 add_executable(avt_341_map_publisher_node
@@ -116,6 +122,17 @@ target_link_libraries(avt_341_pf_planner_node
 ${link_libs}
       )
 
+add_executable(avt_341_dwa_planner_node 
+      src/planning/local/avt_341_dwa_planner_node.cpp 
+      src/planning/local/dwa_planner.cpp
+      src/node/node_proxy.cpp
+      src/visualization/image_visualizer.cpp
+    )
+ament_target_dependencies(avt_341_dwa_planner_node ${dependencies} )
+target_link_libraries(avt_341_dwa_planner_node
+${link_libs}
+    )
+
 add_executable(avt_341_global_path_node
         src/planning/global/avt_341_global_path_node.cpp
         src/planning/global/astar.cpp
@@ -167,6 +184,14 @@ ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
 
 
+add_executable(avt_341_grid_compression_node
+        src/perception/avt_341_grid_compression_node.cpp
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(avt_341_grid_compression_node ${dependencies})
+
+rosidl_target_interfaces(avt_341_grid_compression_node
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime
@@ -213,12 +238,14 @@ install(TARGETS
         avt_341_speed_control_node
         avt_341_local_planner_node
         avt_341_pf_planner_node
+        avt_341_dwa_planner_node
         avt_341_global_path_node
         avt_341_sim_test_node
         avt_bot_state_publisher_node
         speed_control_test_node
         #avt_341_test_formation_control_node
         #avt_341_formation_control_node
+        avt_341_grid_compression_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
