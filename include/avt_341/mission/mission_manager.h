@@ -50,6 +50,7 @@ class MissionManager{
 
 	// internal messages
 	void handleContacts(avt_341::msg::Path);
+    void handleArrival();
 
 	// external messages
     void handleMoveTo(avt_341::msg::Communication);
@@ -68,6 +69,8 @@ class MissionManager{
 	float same_object_distance_threshold_sq;
 	avt_341::msg::Odometry odometry;
 	int nav_state; 
+    bool goal_changed;
+    bool arrival_announced;
 
     // Messages
     bool path_msg_updated;
@@ -75,6 +78,9 @@ class MissionManager{
 
     bool follower_status_msg_updated;
     avt_341::msg::FollowerStatus follower_status_message;
+
+    bool comm_msg_updated;
+    avt_341::msg::String comm_msg;
 
   private:
 

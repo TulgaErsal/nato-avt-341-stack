@@ -120,21 +120,33 @@ int main(int argc, char **argv) {
             }
         }
 
-		// Internal notifications
+        // Outgoing internal notifications
+        if(mgr.goal_changed) {
+            if(mgr.path_msg_updated) {
+                avt_341::msg::Int32 go_command;
+                go_command.data = 1;
+                waypoint_pub->publish(mgr.path_msg);
+                navcommand_pub->publish(go_command);
+                mgr.path_msg_updated = false;
+                mgr.goal_changed = false;
+            }
+        }
+		// Incoming internal notifications
 		// Update navigation state
 		if(nav_state_rcvd) {
 			// store the state in manager
 			mgr.nav_state = nav_state.data;
 			nav_state_rcvd = false;
 
-			// only handling is ARRIVAL messages - assume state = 1 means we've arrived
-			if(mgr.nav_state == 1) {
-				std::ostringstream stream;
-				stream << mgr.my_name << ",1,ARRIVE,TEMP_NAME";
-				avt_341::msg::String msg;
-				msg.data = stream.str();
-				communication_pub->publish(msg);
-			}
+            if(mgr.nav_state == 1) {
+			    // handle ARRIVAL messages - assume state = 1 means we've arrived
+                mgr.handleArrival();
+                if(mgr.comm_msg_updated) {
+                    communication_pub->publish(mgr.comm_msg);
+                    mgr.comm_msg_updated = false;
+                }
+            }
+			
 		}
 		// Update our own odometry
 		if(odom_rcvd) {

@@ -18,6 +18,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <vector>
+#include <sstream>
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
@@ -85,7 +86,7 @@ int main(int argc, char* argv[])
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::Communication>("avt_341/recv_comms", 10);
 
-    int n, sockfd, port, ready;
+    int n, sockfd, port, ready, msg_count = 0;
     fd_set read_fds;
     struct timeval timeout;
     struct sockaddr_in serv_addr;
@@ -121,8 +122,13 @@ int main(int argc, char* argv[])
 
         // Check for any messages ready to send
         if(messages_ready) {
-            strcpy(buffer,message);
-            //ROS_INFO("Sending %s to server", buffer);
+            // append name and message
+            std::ostringstream stream;
+            stream << my_name << "," << msg_count << "," << message;
+            msg_count++;
+            
+            strcpy(buffer,stream.str().c_str());
+            
             n = write(sockfd, buffer, strlen(buffer));
             if(n < 0)
                 ROS_ERROR("Error writing to socket\n");

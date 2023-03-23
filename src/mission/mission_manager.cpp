@@ -14,6 +14,9 @@ MissionManager::MissionManager(){
 
     path_msg_updated = false;
     follower_status_msg_updated = false;
+    comm_msg_updated = false;
+    arrival_announced = true;
+    goal_changed = false;
 
     follow_scale = 1.0;
 
@@ -165,7 +168,7 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 		auto it = getContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
 		if(it != mission_contacts.end()) {
 			// already in the list
-			std::cout << item.header.frame_id << " is in the list." << std::endl;
+			//std::cout << item.header.frame_id << " is in the list." << std::endl;
 		} else {
 			// new contact
 			std::cout << item.header.frame_id << " is a new contact." << std::endl;
@@ -245,6 +248,17 @@ void MissionManager::handleTaskComplete(avt_341::msg::Communication msg) {
 
 }
 
+void MissionManager::handleArrival() {
+    if(arrival_announced == false) {
+		std::ostringstream stream;
+		stream << my_name << "ARRIVE,TEMP_NAME";
+        comm_msg.data = stream.str();
+        arrival_announced = true;
+	} else if(nav_state == 0 && arrival_announced == true) {
+        arrival_announced = false;
+    }
+}
+
 void MissionManager::handleMoveTo(float x, float y) {
 	// only applies if I'm leader, 
 	if(is_leader) {
@@ -265,6 +279,7 @@ void MissionManager::handleMoveTo(float x, float y) {
 		path_msg.poses.clear();
 		path_msg.poses.push_back(pose);
 		path_msg_updated = true;
+        goal_changed = true;
     }
 }
 

@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
         current_waypoint_pub->publish(curr_wp);
         dist_to_current_waypoint_pub->publish(dist_to_goal);
         if (nl % 20 == 0){ //update every second
-          std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
+          std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal (" << goal[0] << ", " << goal[1] << ") for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
