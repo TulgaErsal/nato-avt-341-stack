@@ -2,6 +2,7 @@ string sender_name
 int16 msg_id
 string type
 string formation
+string receiver_name
 string leader_name
 string follower1_name
 string follower2_name

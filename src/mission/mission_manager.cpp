@@ -157,14 +157,12 @@ Task* MissionManager::getTask() {
 bool MissionManager::setTask(Task* task) {
     // if no active task, put it on the list
     task_list.push_back(task); 
-    std::cout << "Added task to task_list" << std::endl;
-
     if(active_task == NULL || !busy) {
-        std::cout << "Making task active" << std::endl;
+        std::cout << "Added task to task_list. Making new task active." << std::endl;
         active_task = task;
         active_task->init();
     } else {
-        std::cout << "Current task has priority. Not making active." << std::endl;
+        std::cout << "Added task to task_list. Current task has priority. New task not active." << std::endl;
     }
     return true;
 }
@@ -192,13 +190,13 @@ void MissionManager::updateTasks() {
                 active_task->init();
             } else {
                 // get the next list off the task_list
-                auto it = getNextTask();
+                auto it = getNextTask();        // TODO: Need to consider if an old task has expired 
                 if(it != task_list.end()) {
                     std::cout << "Grabbing the next task off the queue" << std::endl;
                     active_task = *it;
-                    active_task->init();    // we need to init - may need a resume
+                    active_task->init();    // TODO: we need to init, may need a resume 
                 } else {
-                    std::cout << "No tasks on the queue. Going idle." << std::endl;
+                    //std::cout << "No tasks on the queue. Going idle." << std::endl;
                 }
             }
         }
@@ -265,10 +263,10 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 		auto it = getContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
 		if(it != mission_contacts.end()) {
 			// already in the list
-			std::cout << item.header.frame_id << " is in the list. Investigating: " << it->investigating << ", " << it->investigated << std::endl;
+			//std::cout << item.header.frame_id << " is in the list. Investigating: " << it->investigating << ", " << it->investigated << std::endl;
 		} else {
 			// new contact
-			std::cout << item.header.frame_id << " is a new contact." << std::endl;
+			std::cout << "New contact: " << item.header.frame_id << " at " << item.pose.position.x << ", " << item.pose.position.y << std::endl;
 			// Add it to the contacts
 			addContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
 		}

@@ -87,7 +87,6 @@ void MoveTo::init() {
 }
 
 void MoveTo::run() {
-    std::cout << "Move To Task " << name << " is running" << std::endl;
     // get current position
     // calculate distance from goal
     if(mgr->previous_nav_state == 0 && mgr->nav_state == 1) 
@@ -100,25 +99,22 @@ void MoveTo::run() {
 }
 
 bool MoveTo::is_done() {
-    if(arrived) {
-        std::cout << "Move To Task: " << name << " vehicle has arrived at goal" << goal.pose.position.x << ", " << goal.pose.position.y << std::endl;
-    } else {
-        std::cout << "Move to Task " << name << " has not arrived at goal " << goal.pose.position.x << ", " << goal.pose.position.y << std::endl;
-    }
     return arrived;
 }
 
 void MoveTo::on_done() {
     std::cout << "Move To Task " << name << " is completed" << std::endl;
+
+    // announce arrival
     std::ostringstream stream;
     stream << "ARRIVE," << name;
-    
     if(mgr->comm_msg_updated) {
         std::cout << "WARNING Overwriting comm_msg " << mgr->comm_msg.data << " with " << stream.str() << std::endl;
     }
     mgr->comm_msg.data = stream.str();
     mgr->comm_msg_updated = true;
 
+    // update contact investigation status
     if(goal_type == CONTACT) {
         if(contact != NULL) {
             contact->investigated = true;
@@ -126,9 +122,7 @@ void MoveTo::on_done() {
     }
 
     completed = true;
-    if(set_busy) {
-        mgr->busy = false;
-    }
+    mgr->busy = false;
 }
 
 } // mission 

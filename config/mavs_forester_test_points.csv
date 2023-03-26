@@ -1,6 +1,6 @@
 name,pos_x,pos_y,pos_z,rot_x,rot_y,rot_z,rot_w
 MissionPoint_A,0.0,0.0,0.0,0,0,0,1
-MissionPoint_B,100.0,0.0,0.0,0,0,0,1
+MissionPoint_B,140.0,0.0,0.0,0,0,0,1
 MissionPoint_C,100.0,-100.0,0.0,0,0,0,1
 MissionPoint_D,0.0,-100.0,0.0,0,0,0,1
 MissionPoint_E,-100.0,-100.0,0.0,0,0,0,1
@@ -9,3 +9,7 @@ MissionPoint_G,-100.0,100.0,0.0,0,0,0,1
 MissionPoint_H,0.0,100.0,0.0,0,0,0,1
 MissionPoint_I,100.0,100.0,0.0,0,0,0,1
 MissionPoint_J,10.0,0.0,0,0,0,1
+uav_OW,-100,25,0,0,0,0,1
+mrzr_OW,10,50,0,0,0,0,1
+truck_OW,80,30,0,0,0,0,1
+M113_OW,140,0,0,0,0,0,1

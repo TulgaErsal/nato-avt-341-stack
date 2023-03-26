@@ -35,7 +35,7 @@ void MessageCallback(avt_341::msg::StringPtr msg) {
     memset(message, 0, 256);
     strcpy(message, msg->data.c_str());
     messages_ready = 1;
-    ROS_INFO("Comm Node has received message '%s' to broadcast to the network.", message);
+    std::cout << "Comm Node has received message " << message << " to broadcast to the network.";
 }
 
 void ClearMessages() {
@@ -49,7 +49,7 @@ avt_341::Communication packageMessage(std::vector<std::string> tokens) {
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
     
-    if(!strcmp(tokens[2].c_str(), "FORM")) {
+    if(message.type == "FORM") {
         message.formation = tokens[3];
         message.leader_name = tokens[4];
         message.follower1_name = tokens[5];
@@ -57,18 +57,20 @@ avt_341::Communication packageMessage(std::vector<std::string> tokens) {
         message.follower3_name = tokens[7];
         message.objective_name = tokens[8];
         message.desired_speed = tokens[9];
-    } else if(!strcmp(message.type.c_str(), "ACK")) {
+    } else if(message.type == "ACK") {
         message.original_sender = tokens[3];
         message.original_msg_id = tokens[4];
-    } else if(!strcmp(message.type.c_str(), "ARRIVE")) {
+    } else if(message.type == "ARRIVE") {
         message.objective_name = tokens[3];
-    } else if(!strcmp(message.type.c_str(), "TASK_COMPLETE")) {
+    } else if(message.type == "TASK_COMPLETE") {
         message.original_sender = tokens[3];
         message.original_msg_id = tokens[4];
-    } else if(!strcmp(message.type.c_str(), "SET_OBJECTIVE")) {
+    } else if(message.type == "SET_OBJECTIVE") {
         message.objective_name = tokens[3];
     } else if(message.type == "MOVETO") {
         message.objective_name = tokens[3];
+    } else if(message.type == "SHUTDOWN") {
+        message.receiver_name = tokens[3];
     }
     return message;
 }

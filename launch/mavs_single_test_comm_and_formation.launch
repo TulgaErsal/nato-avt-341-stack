@@ -3,13 +3,13 @@
   <arg name="display" default="rviz"/>
   <arg name="auto_launch_rviz" default="false"/>
   <arg name="use_mpc" default="false" doc="Local planner - Use MPC local planner instead of road centerline constrained splines."/>
-  <arg name="scene_file_arg" default="/mavs/data/scenes/forester_scene_empty.json" /> 
+  <arg name="scene_file_arg" default="/cavs/projects/nato/AVT341/autonomy/nato/forester_scene_empty.json" /> 
   <arg name="vehicle_file_arg" default="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
   <arg name="num_vehicles_arg" default="1" />
   <!-- <rosparam file="$(find avt_341)/config/group_waypoints.yaml" /> -->
   <rosparam param="targets_name">["uav", "mrzr", "truck", "M113"]</rosparam>
-  <rosparam param="targets_x">[5.0, 10.0, 30.0, 100.0]</rosparam>
-  <rosparam param="targets_y">[-5.0, 5.0, -5.0, 5.0]</rosparam>
+  <rosparam param="targets_x">[-100.0, 20.0, 70.0, 100.0]</rosparam>
+  <rosparam param="targets_y">[-25.0, 30.0, 50.0, -50.0]</rosparam>
 
   <param name="robot_description" command="cat $(find avt_341)/config/avt_bot.urdf" />
 
@@ -57,7 +57,7 @@
     <remap from="avt_341/odometry" to="avt_341/odometry001" />
 	<remap from="avt_341/target_contacts" to="avt_341/target_contacts001" />
 
-	<param name="detection_range" value="10.0" />
+	<param name="detection_range" value="50.0" />
   </node>
 
   <!-- Formation algorithms  -->
@@ -214,7 +214,7 @@
 
     <param name= "rp3d_vehicle_file" value="$(arg vehicle_file_arg)" />
     <param name= "debug_camera" value="false" />
-    <param name= "Initial_X_Position" value = "-10.0"/>
+    <param name= "Initial_X_Position" value = "-140.0"/>
     <param name= "Initial_Y_Position" value = "0.0"/>
     <param name= "Initial_Heading" value = "0.0"/>
     <param name= "scene_file" value="$(arg scene_file_arg)"/>

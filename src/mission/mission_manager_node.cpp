@@ -108,6 +108,11 @@ int main(int argc, char **argv) {
                 leader_name = mgr.follower_status_message.leader_name;
             } else if(rcvd_msg.type == "MOVETO") {
                 mgr.handleMoveTo(rcvd_msg);
+            } else if(rcvd_msg.type == "SHUTDOWN") {
+                if(rcvd_msg.receiver_name == mgr.my_name) {
+                    std::cout << mgr.my_name << " is shutting down" << std::endl;
+                    break;
+                }
             }
         }
 
