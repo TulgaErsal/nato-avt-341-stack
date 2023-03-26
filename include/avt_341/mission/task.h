@@ -1,3 +1,5 @@
+#ifndef AVT_341_TASK_H
+#define AVT_341_TASK_H
 /**
 * \class Task
 *
@@ -13,41 +15,81 @@
 #include <string>
 // local includes
 #include "avt_341/node/ros_types.h"
+#include "avt_341/mission/mission_manager.h"
 
 namespace avt_341 {
 namespace mission {
 
+class MissionManager;
+struct Contact;
+
 class Task {
 public:
-    void init() {
-        std::cout << "Task initialized" << std::endl;
-    }
-    void run() {
-        std::cout << "Task is running" << std::endl;
-    }
-    void update() {
-        std::cout << "Task updated" << std::endl;
-    }
-    void on_done() {
-        std::cout << "Task completed" << std::endl;
-    }
+    virtual void init() = 0; 
+    virtual void run() = 0;
+    virtual bool is_done() { return true; }
+    virtual void on_done() = 0;
+    Task* next_task;
+    MissionManager* mgr;
+    bool completed;
 }; // class Task
 
-class MoveToPositionTask : public Task {
+class MoveTo : public Task {
 public:
-    void init() {
-        std::cout << "MoveToPositionTask initialized" << std::endl;
-    }
-    void run() {
-        std::cout << "MoveToPositionTask is running" << std::endl;
-    }
-    void update() {
-        std::cout << "MoveToPositionTask updated" << std::endl;
-    }
-    void on_done() {
-        std::cout << "MoveToPositionTask completed" << std::endl;
-    }
-}; // class MoveToPositionTask
+    static const int NONE = 0;
+    static const int POSE = 1;
+    static const int MISSION_POINT = 2;
+    static const int CONTACT = 3;
+    static const int ACTOR = 4;
+
+    MoveTo(MissionManager* manager);
+    void init() override;
+    void run() override;
+    bool is_done() override;
+    void on_done() override;
+
+    bool setGoalByPose(float x, float y, float z, float rot_w, float rot_x, float rot_y, float rot_z);
+    bool setGoalByMissionPoint(std::string name);
+
+    // goal = position and orientation
+    avt_341::msg::PoseStamped goal;
+    int goal_type; 
+    std::string name;
+    bool set_busy;
+    bool arrived;
+    Contact * contact;
+}; // class MoveTo
+
+class WaitUntil : public Task {
+public:
+    WaitUntil();
+    void init() override;
+    void run() override;
+    bool is_done() override;
+    void on_done() override;
+}; // class WaitUntil
+
+class Encircle : public Task {
+public:
+    Encircle();
+    void init() override;
+    void run() override;
+    bool is_done() override;
+    void on_done() override;
+}; // class Encircle
+
+class Follow : public Task {
+public:
+    Follow();
+    void init() override;
+    void run() override;
+    bool is_done() override;
+    void on_done() override;
+}; // class Follow
+
 
 } // namespace mission
 } // namespace avt_341
+
+
+#endif //AVT_341_TASK_H

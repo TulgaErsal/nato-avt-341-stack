@@ -124,7 +124,8 @@ int main(int argc, char* argv[])
         if(messages_ready) {
             // append name and message
             std::ostringstream stream;
-            stream << my_name << "," << msg_count << "," << message;
+            stream << my_name.data << "," << msg_count << "," << message;
+            std::cout << stream.str() << std::endl;
             msg_count++;
             
             strcpy(buffer,stream.str().c_str());

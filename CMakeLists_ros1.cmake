@@ -118,6 +118,10 @@ target_link_libraries(gps_spoof_node
 add_executable(avt_341_mission_manager_node
   src/mission/mission_manager_node.cpp
   src/mission/mission_manager.cpp
+  src/mission/task_encircle.cpp
+  src/mission/task_follow.cpp
+  src/mission/task_moveto.cpp
+  src/mission/task_wait_until.cpp
   src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_mission_manager_node ${catkin_EXPORTED_TARGETS})

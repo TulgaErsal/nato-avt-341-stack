@@ -17,6 +17,7 @@ bool contacts_rcvd = false;
 
 avt_341::msg::Int32 nav_state;
 bool nav_state_rcvd = false;
+int previous_nav_state = -1;
 
 std::string leader_name;
 std::string mission_definition_filename;
@@ -93,7 +94,8 @@ int main(int argc, char **argv) {
     
     std::cout << "Load Mission" << std::endl;
     mgr.loadMissionDefinition(mission_definition_filename);
-
+    std::cout << "Starting Mission Manager Loop" << std::endl;
+    
     // start the loop
     while(avt_341::node::ok()){
 		// Handle external notifications
@@ -103,50 +105,18 @@ int main(int argc, char **argv) {
 
             if(rcvd_msg.type == "FORM") {
                 mgr.handleFormationRequest(rcvd_msg);
-                if(mgr.follower_status_msg_updated) {
-                    leader_name = mgr.follower_status_message.leader_name;
-                    follower_status_pub->publish(mgr.follower_status_message);
-                    mgr.follower_status_msg_updated = false;
-                }
+                leader_name = mgr.follower_status_message.leader_name;
             } else if(rcvd_msg.type == "MOVETO") {
                 mgr.handleMoveTo(rcvd_msg);
-                if(mgr.path_msg_updated) {
-					avt_341::msg::Int32 go_command;
-					go_command.data = 1;
-                    waypoint_pub->publish(mgr.path_msg);
-					navcommand_pub->publish(go_command);
-                    mgr.path_msg_updated = false;
-                }
             }
         }
 
-        // Outgoing internal notifications
-        if(mgr.goal_changed) {
-            if(mgr.path_msg_updated) {
-                avt_341::msg::Int32 go_command;
-                go_command.data = 1;
-                waypoint_pub->publish(mgr.path_msg);
-                navcommand_pub->publish(go_command);
-                mgr.path_msg_updated = false;
-                mgr.goal_changed = false;
-            }
-        }
-		// Incoming internal notifications
-		// Update navigation state
+        // Incoming internal notifications
+		// Monitor navigation state
 		if(nav_state_rcvd) {
-			// store the state in manager
+			// Update navigation state in manager
 			mgr.nav_state = nav_state.data;
 			nav_state_rcvd = false;
-
-            if(mgr.nav_state == 1) {
-			    // handle ARRIVAL messages - assume state = 1 means we've arrived
-                mgr.handleArrival();
-                if(mgr.comm_msg_updated) {
-                    communication_pub->publish(mgr.comm_msg);
-                    mgr.comm_msg_updated = false;
-                }
-            }
-			
 		}
 		// Update our own odometry
 		if(odom_rcvd) {
@@ -154,21 +124,49 @@ int main(int argc, char **argv) {
 			mgr.odometry = odom;
 			odom_rcvd = false;
 		}
-		// Forward leader odometry to formation control
-        if(leader_odom_rcvd) {
-            //std::cout << ros::this_node::getName() << " is publishing odometry of the leader " << mgr.leader_name << std::endl;
-            leader_pub->publish(leader_odom); 
-			leader_odom_rcvd = false;
-        }
+		
 		// Handle detection of potential targets of interest
 		if(contacts_rcvd) {
 			//std::cout << ros::this_node::getName() << " handling " << contacts.poses.size() << " contacts" << std::endl;
-			if(mgr.nav_state != -1) {
+			if(mgr.nav_state != -1) {       // avoid premature detection of contacts
 				contacts_rcvd = false;
 				mgr.handleContacts(contacts); 
 			}
 		}
 
+        // update tasks
+        mgr.updateTasks();
+
+        // post-update tasks
+        mgr.postUpdateTasks();
+
+        // Send Messages
+
+        // Publish external communication messages (sent to comm node and forwarded to the comm server)
+        // TODO: we could potentially have more than one of these
+        if(mgr.comm_msg_updated) {
+            communication_pub->publish(mgr.comm_msg);
+            mgr.comm_msg_updated = false;
+        }
+        if(mgr.follower_status_msg_updated) {
+            follower_status_pub->publish(mgr.follower_status_message);
+            mgr.follower_status_msg_updated = false;
+        }
+        if(mgr.path_msg_updated) {	
+            waypoint_pub->publish(mgr.path_msg);
+		    mgr.path_msg_updated = false;
+        }
+        if(mgr.nav_msg_updated) {
+			navcommand_pub->publish(mgr.nav_msg);
+            mgr.nav_msg_updated = false;
+        }
+        // Forward leader odometry to formation control
+        if(leader_odom_rcvd) {
+            //std::cout << ros::this_node::getName() << " is publishing odometry of the leader " << mgr.leader_name << std::endl;
+            leader_pub->publish(leader_odom); 
+			leader_odom_rcvd = false;
+        }
+        
         nh->spin_some();
         loop_rate.sleep();
     }

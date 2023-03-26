@@ -16,9 +16,15 @@ MissionManager::MissionManager(){
     follower_status_msg_updated = false;
     comm_msg_updated = false;
     arrival_announced = true;
-    goal_changed = false;
 
     follow_scale = 1.0;
+
+    active_task = NULL;
+    mission_tasks.clear();
+    mission_data.clear();
+    task_list.clear();
+    completed_tasks.clear();
+    mission_contacts.clear();
 
     // initialize formation data
     struct Formation f;     
@@ -73,6 +79,18 @@ MissionManager::MissionManager(){
     formations["ECH_RIGHT"] = f; 
 }
 
+MissionManager::~MissionManager() {
+    // Clean up the memory allocated to tasks
+    for(auto task : task_list) {
+        delete task;
+    }
+    for(auto task: completed_tasks) {
+        delete task;
+    }
+    task_list.clear();
+    completed_tasks.clear();
+}
+
 std::vector<std::string> getLine(std::istream& stream) {
     std::vector<std::string> result;
     std::string line;
@@ -89,9 +107,7 @@ std::vector<std::string> getLine(std::istream& stream) {
 int MissionManager::loadMissionDefinition(std::string filename) {
     std::string line;
     std::vector<std::string> contents;
-    Pose position;
-
-    //std::cout << "Loading mission " << filename << std::endl;
+    MissionPoint missionPt;
 
     // Load the mission from file
     std::ifstream infile(filename);
@@ -103,15 +119,15 @@ int MissionManager::loadMissionDefinition(std::string filename) {
             //std::cout << line << std::endl;
             contents = getLine(iss);
             if(!contents.empty() && strcmp(contents[0].c_str(),"name")) {
-                position.name = contents[0];
-                position.pos_x = std::strtod(contents[1].c_str(), NULL);
-                position.pos_y = std::strtod(contents[2].c_str(), NULL);
-                position.pos_z = std::strtod(contents[3].c_str(), NULL);
-                position.rot_x = std::strtod(contents[4].c_str(), NULL);
-                position.rot_y = std::strtod(contents[5].c_str(), NULL);
-                position.rot_z = std::strtod(contents[6].c_str(), NULL);
-                position.rot_w = std::strtod(contents[7].c_str(), NULL);
-                mission_data.push_back(position);
+                missionPt.name = contents[0];
+                missionPt.pos_x = std::strtod(contents[1].c_str(), NULL);
+                missionPt.pos_y = std::strtod(contents[2].c_str(), NULL);
+                missionPt.pos_z = std::strtod(contents[3].c_str(), NULL);
+                missionPt.rot_x = std::strtod(contents[4].c_str(), NULL);
+                missionPt.rot_y = std::strtod(contents[5].c_str(), NULL);
+                missionPt.rot_z = std::strtod(contents[6].c_str(), NULL);
+                missionPt.rot_w = std::strtod(contents[7].c_str(), NULL);
+                mission_data.push_back(missionPt);
                 //std::cout << "Pose: " << position.name << " " << position.pos_x << " " << position.rot_w << std::endl;
             } else {
                 std::cout << "Empty" << std::endl;
@@ -122,25 +138,100 @@ int MissionManager::loadMissionDefinition(std::string filename) {
     }
 }
 
-Pose MissionManager::getPose(std::string posename) {
-    auto result = std::find_if(std::begin(mission_data), std::end(mission_data), 
-                [&](const auto& e) {return e.name == posename; });
-    std::cout << "Result: " << (*result).name << std::endl;
-    return *result;
+bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string name) {
+    auto it = std::find_if(std::begin(mission_data), std::end(mission_data), 
+                [&](const auto& e) {return e.name == name; });
+    if(it == mission_data.end()) {
+        std::cout << "MissionPoint " << name << " not found in Mission Data" << std::endl;
+        return false;
+    } 
+    std::cout << "MissionPoint " << name << " found in Mission Data" << std::endl;
+    mission_point = *it;
+    return true;
 }
 
-auto MissionManager::getContact(std::string name, float x, float y) {
-	auto result = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
-	            [&](const auto& e) {return (e.name == name && close(e.x, e.y, x, y)); });
-	/*
-	if(result != mission_contacts.end()) {
-		std::cout << "Result: " << (*result).name << std::endl;
-	} else {
-		std::cout << "Not found" << std::endl;
-	}
-	*/
-	return result;
+Task* MissionManager::getTask() {
+    return active_task;
+}
 
+bool MissionManager::setTask(Task* task) {
+    // if no active task, put it on the list
+    task_list.push_back(task); 
+    std::cout << "Added task to task_list" << std::endl;
+
+    if(active_task == NULL || !busy) {
+        std::cout << "Making task active" << std::endl;
+        active_task = task;
+        active_task->init();
+    } else {
+        std::cout << "Current task has priority. Not making active." << std::endl;
+    }
+    return true;
+}
+
+auto MissionManager::getNextTask() {
+	auto it = std::find_if(std::begin(task_list), std::end(task_list),
+	            [&](const auto& e) {return (e->completed == false); });
+	return it;
+}
+
+void MissionManager::updateTasks() {
+    if(active_task != NULL) {
+        if(!active_task->completed) {
+            if(!active_task->is_done()) {
+                active_task->run();
+                if(active_task->is_done()) {
+                    active_task->on_done();
+                }
+            }
+        } else {
+            completed_tasks.push_back(active_task); 
+            if(active_task->next_task != NULL) {
+                std::cout << "Moving to next task in the sequence" << std::endl;
+                active_task = active_task->next_task; 
+                active_task->init();
+            } else {
+                // get the next list off the task_list
+                auto it = getNextTask();
+                if(it != task_list.end()) {
+                    std::cout << "Grabbing the next task off the queue" << std::endl;
+                    active_task = *it;
+                    active_task->init();    // we need to init - may need a resume
+                } else {
+                    std::cout << "No tasks on the queue. Going idle." << std::endl;
+                }
+            }
+        }
+    }
+}
+
+void MissionManager::postUpdateTasks() {
+    previous_nav_state = nav_state;
+}
+
+// Contact Management
+auto MissionManager::getContact(std::string name, float x, float y) {
+	auto it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
+	            [&](const auto& e) {return (e.name == name && close(e.x, e.y, x, y)); });
+	return it;
+}
+
+auto MissionManager::getClosestNewContact(float veh_x, float veh_y) {
+    auto it = std::min_element(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& a, const Contact& b) {
+        if((a.investigating || a.investigated) && (b.investigating || b.investigated)) {
+            return false;
+        }
+        if(a.investigating || a.investigated) {
+            return false; // Contact b is closer
+        }
+        if(b.investigating || b.investigated) {
+            return true; // Contact a is closer
+        }
+        double da = distance_sq(veh_x, veh_y, a.x, a.y);
+        double db = distance_sq(veh_x, veh_y, b.x, b.y);
+        return da < db; 
+    });
+    return it;
 }
 
 void MissionManager::addContact(std::string name, float in_x, float in_y) {
@@ -148,12 +239,18 @@ void MissionManager::addContact(std::string name, float in_x, float in_y) {
 	new_contact.name = name;
 	new_contact.x = in_x;
 	new_contact.y = in_y;
+    new_contact.investigating = false;
+    new_contact.investigated = false;
+    new_contact.is_new = true;
 	mission_contacts.push_back(new_contact);
 }
 
+float MissionManager::distance_sq(float x1, float y1, float x2, float y2) {
+    return ((x1 - x2)*(x1 - x2)) + ((y1 - y2)*(y1 - y2));
+}
+
 bool MissionManager::close(float old_x, float old_y, float new_x, float new_y) {
-	float distance_sq = ((old_x - new_x)*(old_x - new_x)) + ((old_y - new_y)*(old_y - new_y));
-	if(distance_sq < same_object_distance_threshold_sq) {
+	if(distance_sq(old_x, old_y, new_x, new_y) < same_object_distance_threshold_sq) {
 		return true;
 	} else {
 		return false;
@@ -168,7 +265,7 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 		auto it = getContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
 		if(it != mission_contacts.end()) {
 			// already in the list
-			//std::cout << item.header.frame_id << " is in the list." << std::endl;
+			std::cout << item.header.frame_id << " is in the list. Investigating: " << it->investigating << ", " << it->investigated << std::endl;
 		} else {
 			// new contact
 			std::cout << item.header.frame_id << " is a new contact." << std::endl;
@@ -176,25 +273,31 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 			addContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
 		}
 	}
-	// are we already investigating a contact?
-	if(!investigating_contact) {
-		// is this a target of interest? 
-		// if so, order follower to moveto overwatch position 
-		// move to a point near the TOI
-		for(auto item: mission_contacts) {
-			// review our contacts
-			if(item.investigating == false && !investigating_contact) {
-				// we have not done anything for this contact
-				std::cout << " Requesting move to " << item.name << " at " << item.x << ", " << item.y << std::endl;
-				handleMoveTo(item.x, item.y);
-				item.investigating = true;
-				investigating_contact = true;
-				// set a subgoal to encircle the TOI
-				// set a subgoal to return to the goal
-				// ignore the identification subgoal for now
-			}
-		}
-	}
+	
+    // TODO: need to check if this is a target of interest, currently assuming contacts are
+    // move to a point near the TOI
+    auto it = getClosestNewContact(odometry.pose.pose.position.x, odometry.pose.pose.position.y); 
+    if(it != mission_contacts.end()) {
+        // found a new contact
+        Contact contact = *it;
+        if(it->investigating == false) {
+            std::cout << " Requesting move to " << contact.name << " at " << contact.x << ", " << contact.y << std::endl;
+            //handleMoveTo(contact.x, contact.y);
+            MoveTo* investigateTask = new MoveTo(this);
+            bool ret = investigateTask->setGoalByPose(contact.x, contact.y, 0.0, 1.0, 0.0, 0.0, 0.0);
+            investigateTask->set_busy = true;   // set as a priority, uninterruptable task
+            investigateTask->contact = &(*it);
+            investigateTask->contact->investigating = true;
+            investigateTask->goal_type = MoveTo::CONTACT;
+            setTask(investigateTask);
+            
+            //investigateTask->nextTask = new Encircle();
+            // set a subgoal to encircle the TOI
+            // set a subgoal to return to the goal
+            // ignore the identification subgoal for now
+            // follower should go to OVERWATCH position
+        }
+    }
 }
 
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
@@ -248,64 +351,12 @@ void MissionManager::handleTaskComplete(avt_341::msg::Communication msg) {
 
 }
 
-void MissionManager::handleArrival() {
-    if(arrival_announced == false) {
-		std::ostringstream stream;
-		stream << my_name << "ARRIVE,TEMP_NAME";
-        comm_msg.data = stream.str();
-        arrival_announced = true;
-	} else if(nav_state == 0 && arrival_announced == true) {
-        arrival_announced = false;
-    }
-}
-
-void MissionManager::handleMoveTo(float x, float y) {
-	// only applies if I'm leader, 
-	if(is_leader) {
-		// create Path element (single point)
-        std::cout << "Moving to : " << x << ", " << y << std::endl;
-		avt_341::msg::PoseStamped pose;
-		pose.pose.position.x = x;
-		pose.pose.position.y = y;
-		pose.pose.position.z = 0;
-		pose.pose.orientation.w = 1;
-		pose.pose.orientation.x = 0;
-		pose.pose.orientation.y = 0;
-		pose.pose.orientation.z = 0;
-	
-		if(path_msg_updated == true) {
-			std::cout << my_name << " Warning: Overwriting path message" << std::endl;
-		}
-		path_msg.poses.clear();
-		path_msg.poses.push_back(pose);
-		path_msg_updated = true;
-        goal_changed = true;
-    }
-}
-
 void MissionManager::handleMoveTo(avt_341::msg::Communication msg) {
     // only applies if I'm the leader, otherwise decline
     if(is_leader) {
-        Pose objective = getPose(msg.objective_name);
-        std::cout << "Moving to " << objective.name << ": " << objective.pos_x << ", " << objective.pos_y << std::endl;
-
-        // Create Path element (single point)
-        avt_341::msg::PoseStamped pose;
-        pose.pose.position.x = objective.pos_x;
-        pose.pose.position.y = objective.pos_y;
-        pose.pose.position.z = objective.pos_z;
-        pose.pose.orientation.w = objective.rot_w;
-        pose.pose.orientation.x = objective.rot_x;
-        pose.pose.orientation.y = objective.rot_y;
-        pose.pose.orientation.z = objective.rot_z;
-
-        // Publish to /avt_341/new_waypoints
-        if(path_msg_updated == true) {
-            std::cout << my_name << " Warning: Overwriting path message" << std::endl;
-        }
-        path_msg.poses.clear();
-        path_msg.poses.push_back(pose);
-        path_msg_updated = true;
+        MoveTo* moveTask = new MoveTo(this);
+        bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
+        setTask(moveTask);
     } else {
         std::cout << my_name << " Mission Manager: ignoring MoveTo b/c currently following a leader" << std::endl;
     }
