@@ -9,9 +9,9 @@
   <arg name="mission_file_arg" default="$(find avt_341)/config/mavs_forester_test_points.csv" />
   
   <!-- Target location definitions for simulated detector -->
-  <rosparam param="targets_name">["uav", "mrzr", "truck", "M113"]</rosparam>
-  <rosparam param="targets_x">[-100.0, 20.0, 70.0, 100.0]</rosparam>
-  <rosparam param="targets_y">[-25.0, 30.0, 50.0, -50.0]</rosparam>
+  <rosparam param="targets_name">[]</rosparam>
+  <rosparam param="targets_x">[]</rosparam>
+  <rosparam param="targets_y">[]</rosparam>
 
   <param name="robot_description" command="cat $(find avt_341)/config/avt_bot.urdf" />
 
