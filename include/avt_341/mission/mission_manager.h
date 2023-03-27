@@ -78,6 +78,7 @@ class MissionManager{
 	float same_object_distance_threshold_sq;
 	avt_341::msg::Odometry odometry;
 	int previous_nav_state, nav_state; 
+    float desired_speed;
     bool goal_changed;
     bool arrival_announced;
 	bool busy;	// probably temporary 
@@ -101,6 +102,9 @@ class MissionManager{
 
     bool nav_msg_updated;
     avt_341::msg::Int32 nav_msg;
+
+    bool speed_msg_updated;
+    avt_341::msg::Float64 speed_msg;
 
   private:
 

@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
     auto leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 	auto navcommand_pub = nh->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
 	auto communication_pub = nh->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100); 
+    auto speed_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
 
     // create the manager
     avt_341::mission::MissionManager mgr;
@@ -160,6 +161,10 @@ int main(int argc, char **argv) {
         if(mgr.path_msg_updated) {	
             waypoint_pub->publish(mgr.path_msg);
 		    mgr.path_msg_updated = false;
+        }
+        if(mgr.speed_msg_updated) {
+            speed_pub->publish(mgr.speed_msg);
+            mgr.speed_msg_updated = false;
         }
         if(mgr.nav_msg_updated) {
 			navcommand_pub->publish(mgr.nav_msg);

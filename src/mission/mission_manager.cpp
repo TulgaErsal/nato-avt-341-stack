@@ -15,6 +15,9 @@ MissionManager::MissionManager(){
     path_msg_updated = false;
     follower_status_msg_updated = false;
     comm_msg_updated = false;
+    speed_msg_updated = false;
+    nav_msg_updated = false;
+    
     arrival_announced = true;
 
     follow_scale = 1.0;
@@ -377,6 +380,12 @@ void MissionManager::handleHold(avt_341::msg::Communication msg) {
 void MissionManager::handleSetSpeed(avt_341::msg::Communication msg) {
     // handle updated speed
     std::cout << "Setting desired speed to " << msg.desired_speed << std::endl;
+    if(speed_msg_updated == true) {
+        std::cout << my_name << " Warning: Overwriting desired speed message" << std::endl;
+    }
+    desired_speed = std::stof(msg.desired_speed);
+    speed_msg.data = desired_speed;
+    speed_msg_updated = true;
 }
 
 } // namespace mission
