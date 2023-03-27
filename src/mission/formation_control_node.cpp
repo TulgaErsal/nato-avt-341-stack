@@ -71,7 +71,7 @@ int main(int argc, char **argv){
     // start the loop
     while(avt_341::node::ok()){
 
-        // Update leader status
+        // Update leader status - gp_toggle should probably be in manager. Leaving it here for now as it would break Tamer's work. 
         if(status_rcvd) {
             // if not currently leader and status is not telling me to use the leader, I'm the leader
             if(!is_leader) {
@@ -97,20 +97,21 @@ int main(int argc, char **argv){
         }
 
 
-        ROS_INFO("%s Formation Control: Message status: odom %d, ldr odom %d, status %d, is_leader %d", ros::this_node::getName().c_str(), odom_rcvd, ldr_odom_rcvd, status_rcvd, is_leader); 
+        //ROS_INFO("%s Formation Control: Message status: odom %d, ldr odom %d, status %d, is_leader %d", ros::this_node::getName().c_str(), odom_rcvd, ldr_odom_rcvd, status_rcvd, is_leader); 
         if ( (odom_rcvd && ldr_odom_rcvd && status_rcvd && !is_leader) ){
             //ROS_INFO("%s Formation Control: Updating follower controller.", ros::this_node::getName().c_str());
             // update the controller IF all the required messages have been received
             controller.Update(ldr_odom, odom, status);
             // publish the controller state
-            ROS_INFO("%s Formation Control: Publishing speed and path %0.2f", ros::this_node::getName().c_str(), controller.GetSpeed().data);
+            //ROS_INFO("%s Formation Control: Publishing speed and path %0.2f", ros::this_node::getName().c_str(), controller.GetSpeed().data);
                 
             if(controller.GetSpeed().data > 10.0) {
                 avt_341::msg::Float64 spd;
                 spd.data = 10.0;
-            //    speed_pub->publish(spd);
+                speed_pub->publish(spd);
+            } else {
+                speed_pub->publish(controller.GetSpeed());
             }
-            speed_pub->publish(controller.GetSpeed());
             path_pub->publish(controller.GetPath());
         } 
 

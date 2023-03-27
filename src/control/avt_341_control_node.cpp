@@ -176,7 +176,7 @@ int main(int argc, char *argv[]){
   float current_throttle_value = 0.0f;
   avt_341::node::Rate r(rate);
   avt_341::utils::vec2 goal;
-
+  int nl = 0;
   while (avt_341::node::ok()){
     avt_341::msg::Twist dc;
     bool time_to_quit = false;
@@ -200,11 +200,9 @@ int main(int argc, char *argv[]){
       dc = controller.GetDcFromTraj(control_msg, goal);
       dc.linear.x = 0.0f;
       dc.angular.z = 0.0f;
-
     }
     else if (current_run_state==0){    // active running state
       double max_curvature = GetMaxCurvature(control_msg);
-      
       double lateral_g_force = ((vel*vel)*max_curvature)/9.806;
       float desired_velocity = vehicle_speed;
       if (lateral_g_force>max_desired_lateral_g){
@@ -219,13 +217,13 @@ int main(int argc, char *argv[]){
     }
     else if (current_run_state==-1 || current_run_state==1){
       // bring to a smooth stop and wait / idle
-	  // std::cout << " Setting desired speed to 0 " << std::endl;
+	    // std::cout << " Setting desired speed to 0 " << std::endl;
       controller.SetDesiredSpeed(0.0f);
       //dc = controller.GetDcFromTraj(control_msg, goal);
-	  // Current controller is overshooting - changing to hard stop.
-	  dc.linear.x = 0.0f;
-	  dc.linear.y = 1.0f;
-	  dc.angular.z = 0.0f;
+	    // Current controller is overshooting - changing to hard stop.
+	    dc.linear.x = 0.0f;
+	    dc.linear.y = 1.0f;
+	    dc.angular.z = 0.0f;
     }
     else if (current_run_state==3){
       // bring to a hard stop and shut down
@@ -234,6 +232,7 @@ int main(int argc, char *argv[]){
       dc.angular.z = 0.0f;
       time_to_quit = true;
     }
+
     if (!skid_steered){
       // check braking and throttle
       if (dc.linear.y!=0.0){
@@ -243,7 +242,7 @@ int main(int argc, char *argv[]){
           if (dc.linear.y<-1.0)dc.linear.y = -1.0;
           if (dc.linear.y>0.0)dc.linear.y = 0.0;
         }
-        // make sure the throttle is zero when braking
+      // make sure the throttle is zero when braking
         dc.linear.x = 0.0f;
       }
       // apply the throttle ramp up
@@ -257,10 +256,12 @@ int main(int argc, char *argv[]){
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;
 
-	//std::cout << "Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
-
+    if (nl % int(rate) == 0){ //update every second
+      std::cout << ros::this_node::getName() << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
+    }
+      
     // break the loop when an end state is reached
-    if (time_to_quit)break;
+    if (time_to_quit) break;
     
     if(display_rviz){
       avt_341::msg::PointStamped next_waypoint_msg;
@@ -273,7 +274,7 @@ int main(int argc, char *argv[]){
     }
 
     n->spin_some();
-
+    nl++;
     r.sleep();
   }
 

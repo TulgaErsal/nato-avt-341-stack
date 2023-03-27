@@ -6,8 +6,11 @@ namespace avt_341 {
 namespace mission {
 
 // Encircle
-Encircle::Encircle() {
-
+Encircle::Encircle(MissionManager* manager) {
+    mgr = manager;
+    next_task = NULL;
+    set_busy = false;
+    completed = false;
 }
 
 void Encircle::init() {
@@ -19,8 +22,7 @@ void Encircle::run() {
 }
 
 bool Encircle::is_done() {
-    std::cout << "Encircle Task is complete" << std::endl;
-    return true;
+    return false;
 }
 
 void Encircle::on_done() {

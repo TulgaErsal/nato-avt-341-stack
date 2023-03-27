@@ -6,8 +6,11 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-WaitUntil::WaitUntil() {
-
+WaitUntil::WaitUntil(MissionManager * manager) {
+    mgr = manager;
+    next_task = NULL;
+    set_busy = false;
+    completed = false;
 }
 
 void WaitUntil::init() {
@@ -19,8 +22,7 @@ void WaitUntil::run() {
 }
 
 bool WaitUntil::is_done() {
-    std::cout << "Wait Until Task is complete" << std::endl;
-    return true;
+    return false;
 }
 
 void WaitUntil::on_done() {

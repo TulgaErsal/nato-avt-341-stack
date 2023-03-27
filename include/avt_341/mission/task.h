@@ -31,6 +31,7 @@ public:
     virtual void on_done() = 0;
     Task* next_task;
     MissionManager* mgr;
+    bool set_busy;
     bool completed;
 }; // class Task
 
@@ -55,14 +56,13 @@ public:
     avt_341::msg::PoseStamped goal;
     int goal_type; 
     std::string name;
-    bool set_busy;
     bool arrived;
     Contact * contact;
 }; // class MoveTo
 
 class WaitUntil : public Task {
 public:
-    WaitUntil();
+    WaitUntil(MissionManager* manager);
     void init() override;
     void run() override;
     bool is_done() override;
@@ -71,7 +71,7 @@ public:
 
 class Encircle : public Task {
 public:
-    Encircle();
+    Encircle(MissionManager* manager);
     void init() override;
     void run() override;
     bool is_done() override;
@@ -80,7 +80,7 @@ public:
 
 class Follow : public Task {
 public:
-    Follow();
+    Follow(MissionManager* manager);
     void init() override;
     void run() override;
     bool is_done() override;

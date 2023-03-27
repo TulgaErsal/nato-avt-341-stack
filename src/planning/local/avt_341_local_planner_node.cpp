@@ -110,7 +110,7 @@ int main(int argc, char *argv[]){
   while (avt_341::node::ok()){
     double start_secs = n->get_now_seconds();
     if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
-
+      //std::cout << ros::this_node::getName() << " Running Local planner " << global_path.poses.size() << std::endl;
       std::vector<avt_341::utils::vec2> path_points;
       if (use_global_path){
         for (int i = 0; i < global_path.poses.size(); i++){
@@ -220,13 +220,13 @@ int main(int argc, char *argv[]){
     }
     else {
       if (global_path.poses.size() <= 0){
-        //std::cout << "Local planner did not run because global path not recieved " << std::endl;
+        //std::cout << ros::this_node::getName() << " Local planner did not run because global path not recieved " << std::endl;
       }
       else if (!odom_rcvd){
-        //std::cout << "Local planner did not run because vehicle odometry not recieved." << std::endl;
+        //std::cout << ros::this_node::getName() << " Local planner did not run because vehicle odometry not recieved." << std::endl;
       }
       else if (grid.data.size() <= 0){
-        //std::cout << "Local planner did not run because occupancy grid not recieved." << std::endl;
+        //std::cout << ros::this_node::getName() << " Local planner did not run because occupancy grid not recieved." << std::endl;
       }
     }
     new_grid_rcvd = false;

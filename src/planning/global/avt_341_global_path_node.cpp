@@ -24,7 +24,7 @@ avt_341::msg::OccupancyGrid segmentation_grid;
 avt_341::msg::Path current_waypoints;
 bool waypoints_rcvd = false;
 bool use_global_planner = true;
-int nav_command;
+int nav_command = 0;
 bool nav_command_rcvd = false;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
@@ -52,6 +52,7 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
 }
 
 void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
+  std::cout << " GP set to " << rcv_gptoggle->data;
   use_global_planner = (bool)rcv_gptoggle->data;
 }
 
@@ -195,25 +196,28 @@ int main(int argc, char *argv[])
   int last_gptoggle_state = use_global_planner;
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
+    // Handle Go command
     if(nav_command_rcvd) {
 	    if(nav_command == 1 && (state.data == -1) || state.data == 1) {
-	    // startup/idling - go active
-		  state.data = 0;
-		  shutdown_condition = false;
-		  state_pub->publish(state); 
-		  nav_command_rcvd = false;
-		  std::cout << "Set state to " << state.data << " and shutdown condition to " << shutdown_condition << std::endl;
+        // startup/idling - go active
+        state.data = 0;
+        shutdown_condition = false;
+        state_pub->publish(state); 
+        nav_command_rcvd = false;
+        nav_command = 0;
+        std::cout << ros::this_node::getName() << " Set state to " << state.data << " and shutdown condition to " << shutdown_condition << std::endl;
 	    }
 	  } else {
 	    state_pub->publish(state);
 	  }
+
     if(use_global_planner != last_gptoggle_state) 
     {
-      std::cout << ros::this_node::getName() << "Global Path: toggle " << use_global_planner << std::endl;
+      std::cout << ros::this_node::getName() << " Global Path: toggle " << use_global_planner << std::endl;
       last_gptoggle_state = use_global_planner;
     }
+
     if(use_global_planner) {
-      
       if (waypoints_rcvd) {
         // process a new set of waypoints
         // TODO: find closest point along path -  we probably don't want to reverse back to start point if we're past it.
@@ -228,7 +232,7 @@ int main(int argc, char *argv[])
 		*/
       }
 
-      if (odom_rcvd && state.data != -1){ // data received and not in startup mode
+      if (odom_rcvd && state.data != -1 && current_waypoints.poses.size() > 0){ // data received and not in startup mode
         std::vector<float> pos;
         pos.push_back(odom.pose.pose.position.x);
         pos.push_back(odom.pose.pose.position.y);
@@ -326,6 +330,7 @@ int main(int argc, char *argv[])
       //  state_pub->publish(state);
       //}
     }
+    
     n->spin_some();
     r.sleep();
     nl++;

@@ -312,6 +312,10 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
         follower_status_message.use_leader = false;
         follower_status_msg_updated = true;
         leader_name = msg.leader_name;
+
+        // handle objective
+        handleMoveTo(msg);
+
     } else {
         Formation f = formations[msg.formation.c_str()];
         if(msg.follower1_name == my_name) {
@@ -330,8 +334,13 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
         follower_status_message.use_leader = true;
         follower_status_msg_updated = true;
         leader_name = msg.leader_name;
-        std::cout << my_name << " setting " << leader_name << " as leader." << std::endl;
+
+        Follow* followTask = new Follow(this);
+        setTask(followTask);
     }
+    
+    // handle set speed
+    handleSetSpeed(msg); 
 }
 
 void MissionManager::handleAcknowledge(avt_341::msg::Communication msg) {
@@ -367,7 +376,7 @@ void MissionManager::handleHold(avt_341::msg::Communication msg) {
 
 void MissionManager::handleSetSpeed(avt_341::msg::Communication msg) {
     // handle updated speed
-
+    std::cout << "Setting desired speed to " << msg.desired_speed << std::endl;
 }
 
 } // namespace mission

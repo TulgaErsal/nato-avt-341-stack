@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 
             if(rcvd_msg.type == "FORM") {
                 mgr.handleFormationRequest(rcvd_msg);
-                leader_name = mgr.follower_status_message.leader_name;
+                leader_name = mgr.leader_name;
             } else if(rcvd_msg.type == "MOVETO") {
                 mgr.handleMoveTo(rcvd_msg);
             } else if(rcvd_msg.type == "SHUTDOWN") {

@@ -1,5 +1,5 @@
 name,pos_x,pos_y,pos_z,rot_x,rot_y,rot_z,rot_w
-MissionPoint_A,0.0,0.0,0.0,0,0,0,1
+MISSIONPOINT_A,0.0,0.0,0.0,0,0,0,1
 MissionPoint_B,140.0,0.0,0.0,0,0,0,1
 MissionPoint_C,100.0,-100.0,0.0,0,0,0,1
 MissionPoint_D,0.0,-100.0,0.0,0,0,0,1
