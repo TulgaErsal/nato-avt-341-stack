@@ -8,8 +8,10 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-MoveTo::MoveTo(MissionManager* manager) {
+MoveTo::MoveTo(MissionManager* manager, std::string sender, int id) {
     mgr = manager;
+    sender_name = sender;
+    msg_id = id;
     next_task = NULL;
     goal_type = 0;
     arrived = false;

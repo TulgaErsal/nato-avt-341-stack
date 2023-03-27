@@ -192,6 +192,15 @@ void MissionManager::updateTasks() {
                 active_task = active_task->next_task; 
                 active_task->init();
             } else {
+                // send COMPLETE msg
+                std::ostringstream stream;
+                stream << "TASK_COMPLETE," << active_task->sender_name << "," << active_task->msg_id;
+                if(comm_msg_updated) {
+                    std::cout << "WARNING Overwriting comm_msg " << comm_msg.data << " with " << stream.str() << std::endl;
+                }
+                comm_msg.data = stream.str();
+                comm_msg_updated = true;
+
                 // get the next list off the task_list
                 auto it = getNextTask();        // TODO: Need to consider if an old task has expired 
                 if(it != task_list.end()) {
@@ -200,6 +209,7 @@ void MissionManager::updateTasks() {
                     active_task->init();    // TODO: we need to init, may need a resume 
                 } else {
                     //std::cout << "No tasks on the queue. Going idle." << std::endl;
+                    active_task = NULL;
                 }
             }
         }
@@ -284,7 +294,7 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
         if(it->investigating == false) {
             std::cout << " Requesting move to " << contact.name << " at " << contact.x << ", " << contact.y << std::endl;
             //handleMoveTo(contact.x, contact.y);
-            MoveTo* investigateTask = new MoveTo(this);
+            MoveTo* investigateTask = new MoveTo(this, my_name, -1);
             bool ret = investigateTask->setGoalByPose(contact.x, contact.y, 0.0, 1.0, 0.0, 0.0, 0.0);
             investigateTask->set_busy = true;   // set as a priority, uninterruptable task
             investigateTask->contact = &(*it);
@@ -338,7 +348,7 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
         follower_status_msg_updated = true;
         leader_name = msg.leader_name;
 
-        Follow* followTask = new Follow(this);
+        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id);
         setTask(followTask);
     }
     
@@ -364,7 +374,7 @@ void MissionManager::handleTaskComplete(avt_341::msg::Communication msg) {
 void MissionManager::handleMoveTo(avt_341::msg::Communication msg) {
     // only applies if I'm the leader, otherwise decline
     if(is_leader) {
-        MoveTo* moveTask = new MoveTo(this);
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id);
         bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
         setTask(moveTask);
     } else {

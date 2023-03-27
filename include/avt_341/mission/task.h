@@ -29,6 +29,8 @@ public:
     virtual void run() = 0;
     virtual bool is_done() { return true; }
     virtual void on_done() = 0;
+    std::string sender_name;
+    int msg_id;
     Task* next_task;
     MissionManager* mgr;
     bool set_busy;
@@ -43,7 +45,7 @@ public:
     static const int CONTACT = 3;
     static const int ACTOR = 4;
 
-    MoveTo(MissionManager* manager);
+    MoveTo(MissionManager* manager, std::string sender, int msg_id);
     void init() override;
     void run() override;
     bool is_done() override;
@@ -62,7 +64,7 @@ public:
 
 class WaitUntil : public Task {
 public:
-    WaitUntil(MissionManager* manager);
+    WaitUntil(MissionManager* manager, std::string sender, int msg_id);
     void init() override;
     void run() override;
     bool is_done() override;
@@ -71,7 +73,7 @@ public:
 
 class Encircle : public Task {
 public:
-    Encircle(MissionManager* manager);
+    Encircle(MissionManager* manager, std::string sender, int msg_id);
     void init() override;
     void run() override;
     bool is_done() override;
@@ -80,7 +82,7 @@ public:
 
 class Follow : public Task {
 public:
-    Follow(MissionManager* manager);
+    Follow(MissionManager* manager, std::string sender, int msg_id);
     void init() override;
     void run() override;
     bool is_done() override;

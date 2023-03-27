@@ -6,8 +6,10 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-WaitUntil::WaitUntil(MissionManager * manager) {
+WaitUntil::WaitUntil(MissionManager * manager, std::string sender, int id) {
     mgr = manager;
+    sender_name = sender;
+    msg_id = id;
     next_task = NULL;
     set_busy = false;
     completed = false;
