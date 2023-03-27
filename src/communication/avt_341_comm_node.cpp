@@ -49,6 +49,7 @@ avt_341::Communication packageMessage(std::vector<std::string> tokens) {
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
     
+    // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>
     if(message.type == "FORM") {
         message.formation = tokens[3];
         message.leader_name = tokens[4];
@@ -57,21 +58,36 @@ avt_341::Communication packageMessage(std::vector<std::string> tokens) {
         message.follower3_name = tokens[7];
         message.objective_name = tokens[8];
         message.desired_speed = tokens[9];
-    } else if(message.type == "ACK") {
+    } 
+    // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
+    else if(message.type == "ACK") {          
         message.original_sender = tokens[3];
         message.original_msg_id = tokens[4];
-    } else if(message.type == "ARRIVE") {
+    } 
+    // <sender>,<msg_id>,ARRIVE,<objective>
+    else if(message.type == "ARRIVE") {
         message.objective_name = tokens[3];
-    } else if(message.type == "TASK_COMPLETE") {
+    } 
+    // <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
+    else if(message.type == "TASK_COMPLETE") {
         message.original_sender = tokens[3];
         message.original_msg_id = tokens[4];
-    } else if(message.type == "SET_OBJECTIVE") {
-        message.objective_name = tokens[3];
-    } else if(message.type == "MOVETO") {
-        message.objective_name = tokens[3];
-    } else if(message.type == "SHUTDOWN") {
+    } 
+    // <sender>,<msg_id>,MOVETO,<receiver>,<objective>
+    else if(message.type == "MOVETO") {
+        message.receiver_name = tokens[3];
+        message.objective_name = tokens[4];
+    } 
+    // <sender>,<msg_id>,SHUTDOWN,<receiver>
+    else if(message.type == "SHUTDOWN") {
         message.receiver_name = tokens[3];
     }
+    // <sender>,<msg_id>,SET_SPEED,<receiver>,<speed>
+    else if(message.type == "SET_SPEED") {
+        message.receiver_name = tokens[3];
+        message.desired_speed = tokens[4];
+    }
+    
     return message;
 }
 

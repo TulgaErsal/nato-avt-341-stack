@@ -2,8 +2,17 @@
     "documentation":"Demonstrates splitting into two groups then reforming.",
     "messages": [
         {
-            "message": "CGV1,1,FORM,COLUMN,AGV1,AGV2,AGV3,AGV4,MissionPoint_B,4",
+            "message": "AGV1,1,FORM,COLUMN,AGV3,AGV4,NIL,NIL,MissionPoint_J,4",
             "delay": "1.0"
+        },
+        {
+            "message": "AGV1,2,FORM,COLUMN,AGV1,AGV2,NIL,NIL,MissionPoint_A,4",
+            "delay": "1.0"
+        },
+        {
+            "message": "AGV1,3,MOVETO,AGV3,MissionPoint_B,4",
+            "delay": "10.0"
         }
+
     ]
 }

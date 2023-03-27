@@ -107,6 +107,12 @@ int main(int argc, char **argv) {
             if(rcvd_msg.type == "FORM") {
                 mgr.handleFormationRequest(rcvd_msg);
                 leader_name = mgr.leader_name;
+            } else if(rcvd_msg.type == "ACK") {
+                mgr.handleAcknowledge(rcvd_msg);
+            } else if(rcvd_msg.type == "ARRIVE") {
+                mgr.handleArrive(rcvd_msg);
+            } else if(rcvd_msg.type == "TASK_COMPLETE") {
+                mgr.handleTaskComplete(rcvd_msg);
             } else if(rcvd_msg.type == "MOVETO") {
                 mgr.handleMoveTo(rcvd_msg);
             } else if(rcvd_msg.type == "SHUTDOWN") {
@@ -114,7 +120,9 @@ int main(int argc, char **argv) {
                     std::cout << mgr.my_name << " is shutting down" << std::endl;
                     break;
                 }
-            }
+            } else if(rcvd_msg.type == "SET_SPEED") {
+                mgr.handleSetSpeed(rcvd_msg);
+            } 
         }
 
         // Incoming internal notifications

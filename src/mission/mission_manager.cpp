@@ -327,6 +327,7 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
         leader_name = msg.leader_name;
 
         // handle objective
+        msg.receiver_name = my_name;
         handleMoveTo(msg);
 
     } else {
@@ -357,28 +358,38 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
 }
 
 void MissionManager::handleAcknowledge(avt_341::msg::Communication msg) {
-
+    // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
+    if(msg.original_sender == my_name) {
+        std::cout << my_name << ": " << msg.sender_name << " acknowledged my msg #" << msg.original_msg_id << std::endl;
+    }
 }
 
+// <sender>,<msg_id>,ARRIVE,<objective>
 void MissionManager::handleArrive(avt_341::msg::Communication msg) {
     // If tracking, update mission tracker
-
+    
 }
 
+// <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
 void MissionManager::handleTaskComplete(avt_341::msg::Communication msg) {
     // If tracking, mark complete
-
-
+    if(msg.original_sender == my_name) {
+        std::cout << my_name << ": " << msg.sender_name << " has completed the assigned task from my msg #" << msg.original_msg_id << std::endl;
+    }
 }
 
 void MissionManager::handleMoveTo(avt_341::msg::Communication msg) {
     // only applies if I'm the leader, otherwise decline
-    if(is_leader) {
-        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id);
-        bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
-        setTask(moveTask);
+    if(msg.receiver_name == my_name) {
+        if(is_leader) {
+            MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id);
+            bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
+            setTask(moveTask);
+        } else {
+            std::cout << my_name << " Mission Manager: ignoring MoveTo b/c currently following a leader" << std::endl;
+        }
     } else {
-        std::cout << my_name << " Mission Manager: ignoring MoveTo b/c currently following a leader" << std::endl;
+        std::cout << my_name << " Mission Manager: ignoring MoveTo (not for me)." << std::endl;
     }
 }
 
