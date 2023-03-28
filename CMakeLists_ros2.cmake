@@ -300,9 +300,10 @@ install(TARGETS
         avt_bot_state_publisher_node
         speed_control_test_node
         avt_341_comm_node
-		avt_341_comm_publisher_node
-		avt_341_mission_manager_node
-		avt_341_test_formation_control_node
+	avt_341_comm_publisher_node
+	avt_341_mission_manager_node
+	avt_341_test_formation_control_node
+        test_target_detection_node
         avt_341_formation_control_node
         avt_341_grid_compression_node
         EXPORT export_${PROJECT_NAME}
