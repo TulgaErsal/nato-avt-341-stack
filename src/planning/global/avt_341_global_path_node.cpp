@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
         state_pub->publish(state); 
         nav_command_rcvd = false;
         nav_command = 0;
-        std::cout << ros::this_node::getName() << " Set state to " << state.data << " and shutdown condition to " << shutdown_condition << std::endl;
+		//n->log_info("Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
 	    }
 	  } else {
 	    state_pub->publish(state);
@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
 
     if(use_global_planner != last_gptoggle_state) 
     {
-      std::cout << ros::this_node::getName() << " Global Path: toggle " << use_global_planner << std::endl;
+	  //n->log_info("set global path use to toggle value %d", use_global_planner;
       last_gptoggle_state = use_global_planner;
     }
 
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
         current_waypoint_pub->publish(curr_wp);
         dist_to_current_waypoint_pub->publish(dist_to_goal);
         if (nl % 20 == 0){ //update every second
-          std::cout << ros::this_node::getName() << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal (" << goal[0] << ", " << goal[1] << ") for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
+          std::cout << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal (" << goal[0] << ", " << goal[1] << ") for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;

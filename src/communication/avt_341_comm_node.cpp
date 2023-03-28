@@ -10,7 +10,6 @@
  * \date 2/19/2023
  */
 
-#include <ros/ros.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -22,8 +21,6 @@
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-#include "avt_341/Communication.h"
-#include "avt_341/FollowerStatus.h"
 
 char message[256] = { 0 };
 bool messages_ready = 0;
@@ -43,8 +40,8 @@ void ClearMessages() {
     bzero(message, 256);
 }
 
-avt_341::Communication packageMessage(std::vector<std::string> tokens) {
-    avt_341::Communication message;
+avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
+    avt_341::msg::Communication message;
     message.sender_name = tokens[0];
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
@@ -102,7 +99,7 @@ int main(int argc, char* argv[])
     auto msg_sub = nh->create_subscription<avt_341::msg::String>("avt_341/comm_messages", 1, MessageCallback);
 
     // Set up publishers
-    auto msg_pub = nh->create_publisher<avt_341::Communication>("avt_341/recv_comms", 10);
+    auto msg_pub = nh->create_publisher<avt_341::msg::Communication>("avt_341/recv_comms", 10);
 
     int n, sockfd, port, ready, msg_count = 0;
     fd_set read_fds;
@@ -111,18 +108,18 @@ int main(int argc, char* argv[])
     struct hostent *server;
     char buffer[256];
     std::string hostname;
-    avt_341::Communication packed_msg;
+    avt_341::msg::Communication packed_msg;
 
     // load parameters
     nh->get_parameter("~host", hostname, std::string("localhost"));
     nh->get_parameter("~port", port, 9000);
     nh->get_parameter("~name", my_name.data, std::string("AGV1"));
     
-    ROS_INFO("Connecting to host: %s port: %d", hostname.c_str(), port);
+//    nh->log_info("Connecting to host: %s port: %d", hostname.c_str(), port);
     // Create the socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 9) 
-        ROS_ERROR("Error opening socket\n");
+        nh->log_error("Error opening socket\n");
     server = gethostbyname(hostname.c_str());
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -133,9 +130,9 @@ int main(int argc, char* argv[])
 
     // connect to the server
     if (connect(sockfd,(struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-        ROS_INFO("Error connecting to the server\n");
+        nh->log_info("Error connecting to the server\n");
     
-    while (ros::ok()) {
+    while (avt_341::node::ok()) {
         bzero(buffer, 256);
 
         // Check for any messages ready to send
@@ -150,10 +147,10 @@ int main(int argc, char* argv[])
             
             n = write(sockfd, buffer, strlen(buffer));
             if(n < 0)
-                ROS_ERROR("Error writing to socket\n");
+                nh->log_error("Error writing to socket\n");
             else {
                 ClearMessages();
-                ROS_DEBUG("Message sent and buffer cleared.\n");
+                nh->log_debug("Message sent and buffer cleared.\n");
             }
         }
 
@@ -171,7 +168,7 @@ int main(int argc, char* argv[])
             n = read(sockfd, buffer, 256);
             if(n > 0) 
             {
-                //ROS_INFO("Read %d bytes: '%s'\n", n, buffer);
+                //nh->log_info("Read %d bytes: '%s'\n", n, buffer);
                 char* token;
                 std::vector <std::string> tokens;
 
@@ -195,7 +192,7 @@ int main(int argc, char* argv[])
                 msg_pub->publish(packed_msg);
             }                
         } else {
-            //ROS_DEBUG("No socket ready to read\n");
+            //nh->log_debug("No socket ready to read\n");
         }      
         nh->spin_some();
         loop_rate.sleep();

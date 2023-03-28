@@ -15,7 +15,7 @@
 // c++ includes
 #include <string>
 #include <chrono>
-#include <unordered_map>
+#include <map>
 // local includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/mission/task.h"
@@ -39,7 +39,7 @@ struct Formation {
 struct Contact {
 	// storage for contact information
 	// timestamp, position, class/name, investigated
-	ros::Time timestamp;
+	avt_341::msg::PoseStamped pose;
 	std::string name;
 	float x, y;
 	bool investigated;

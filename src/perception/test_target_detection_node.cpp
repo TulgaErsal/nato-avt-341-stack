@@ -51,9 +51,8 @@ int main(int argc, char *argv[]) {
 
 	avt_341::node::Rate rate(10.0);
 	while (avt_341::node::ok()){
-		ros::Time timestamp = ros::Time::now();
 		targets_pt.poses.clear();
-		targets_pt.header.stamp = timestamp;
+		targets_pt.header.stamp = n->get_stamp();
 
 		// loop through the list of targets 
 		for(int i = 0; i < target_name.size(); i++) {
@@ -64,7 +63,7 @@ int main(int argc, char *argv[]) {
 			if(CalcDistanceSquaredToTarget(current_pose.pose.pose.position, target_pt) < detection_range_squared) {
 				// Signal detection
 				//std::cout << "Target " << target_name[i] << " detected at " << target_x[i] << ", " << target_y[i] << std::endl;
-				pose.header.stamp = timestamp;
+				pose.header.stamp = n->get_stamp();
 				pose.header.frame_id = target_name[i];
 				targets_pt.poses.push_back(pose);
 			}

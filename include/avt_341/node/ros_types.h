@@ -94,6 +94,7 @@ namespace avt_341 {
 
         using String = std_msgs::String;
         using StringPtr = const std_msgs::String::ConstPtr &;
+
         using FollowerStatus = avt_341::FollowerStatus;
         using FollowerStatusPtr = const avt_341::FollowerStatus::ConstPtr &;
         
@@ -132,12 +133,13 @@ namespace avt_341 {
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Matrix3x3.h"
 
-#include "std_msgs/msg/String.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
 
-//#include "avt_341/msg/follower_status.hpp"
+#include "avt_341/msg/communication.hpp"
+#include "avt_341/msg/follower_status.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -195,8 +197,11 @@ namespace avt_341 {
     using Int32 = std_msgs::msg::Int32;
     using Int32Ptr = std_msgs::msg::Int32::SharedPtr;
 
-    //using FollowerStatus = avt_341::FollowerStatus;
-    //using FollowerStatusPtr = avt_341::FollowerStatus::SharedPtr;
+    using FollowerStatus = avt_341::msg::FollowerStatus;
+    using FollowerStatusPtr = avt_341::msg::FollowerStatus::SharedPtr;
+
+	using Communication = avt_341::msg::Communication;
+    using CommunicationPtr = avt_341::msg::Communication::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;

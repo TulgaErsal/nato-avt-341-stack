@@ -1,6 +1,7 @@
 // clas definition
 #include "avt_341/mission/mission_manager.h"
 #include <fstream>
+#include <iostream>
 
 namespace avt_341 {
 namespace mission {

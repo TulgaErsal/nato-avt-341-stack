@@ -154,6 +154,8 @@ namespace avt_341 {
 namespace avt_341 {
   namespace node {
 
+	using Duration = rclcpp::Duration;
+
     inline rclcpp::Duration make_duration(float period){
       return rclcpp::Duration::from_seconds(period);
     }

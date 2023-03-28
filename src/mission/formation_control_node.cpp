@@ -79,9 +79,9 @@ int main(int argc, char **argv){
                     is_leader = true;
                     gp_toggle.data = 1; 
                     gptoggle_pub->publish(gp_toggle);
-                    ROS_INFO("%s Formation Control: %s is now the leader", ros::this_node::getName().c_str(), my_name.data.c_str());    
+                    //n->log_info("%s Formation Control: %s is now the leader", my_name.data.c_str(), my_name.data.c_str());    
                 } else {
-                    //ROS_INFO("%s Formation Control: %s is Following %s", ros::this_node::getName().c_str(), my_name.data.c_str(), status.leader_name.c_str());
+                    //n->log_info("%s Formation Control: %s is Following %s", my_name.data.c_str(), my_name.data.c_str(), status.leader_name.c_str());
                 }
             } else {
                 // if I am the leader and status is telling me to use the leader, I'm the follower
@@ -89,21 +89,21 @@ int main(int argc, char **argv){
                     is_leader = false;
                     gp_toggle.data = 0; 
                     gptoggle_pub->publish(gp_toggle);
-                    ROS_INFO("%s Formation Control: %s is no longer the leader", ros::this_node::getName().c_str(), my_name.data.c_str());
+                    //n->log_info("%s Formation Control: %s is no longer the leader", my_name.data.c_str(), my_name.data.c_str());
                 } else {
-                    //ROS_INFO("%s Formation Control: %s is still the leader", ros::this_node::getName().c_str(), my_name.data.c_str());
+                    //n->log_info("%s Formation Control: %s is still the leader", my_name.data.c_str(), my_name.data.c_str());
                 }
             }
         }
 
 
-        //ROS_INFO("%s Formation Control: Message status: odom %d, ldr odom %d, status %d, is_leader %d", ros::this_node::getName().c_str(), odom_rcvd, ldr_odom_rcvd, status_rcvd, is_leader); 
+        //n->log_info("%s Formation Control: Message status: odom %d, ldr odom %d, status %d, is_leader %d", my_name.data.c_str(), odom_rcvd, ldr_odom_rcvd, status_rcvd, is_leader); 
         if ( (odom_rcvd && ldr_odom_rcvd && status_rcvd && !is_leader) ){
-            //ROS_INFO("%s Formation Control: Updating follower controller.", ros::this_node::getName().c_str());
+            //n->log_info("%s Formation Control: Updating follower controller.", my_name.data.c_str());
             // update the controller IF all the required messages have been received
             controller.Update(ldr_odom, odom, status);
             // publish the controller state
-            //ROS_INFO("%s Formation Control: Publishing speed and path %0.2f", ros::this_node::getName().c_str(), controller.GetSpeed().data);
+            //n->log_info("%s Formation Control: Publishing speed and path %0.2f", my_name.data.c_str(), controller.GetSpeed().data);
                 
             if(controller.GetSpeed().data > 10.0) {
                 avt_341::msg::Float64 spd;

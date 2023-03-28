@@ -25,7 +25,7 @@ float sodist_threshold;
 
 // Receive updates from comms
 void CommunicationCallback(avt_341::msg::CommunicationPtr msg) {
-    std::cout << ros::this_node::getName() << " Mission Manager received communication" << std::endl;
+    std::cout << " Mission Manager received communication" << std::endl;
     rcvd_msg = *msg;
     message_rcvd = true;
 }
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
     while(avt_341::node::ok()){
 		// Handle external notifications
         if(message_rcvd) {
-            std::cout << ros::this_node::getName() << " handling message" << std::endl;
+            std::cout << mgr.my_name << " handling message" << std::endl;
             message_rcvd = false;
 
             if(rcvd_msg.type == "FORM") {

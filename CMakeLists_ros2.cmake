@@ -63,12 +63,15 @@ add_executable(test_target_detection_node
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(test_target_detection_node ${dependencies})
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(test_target_detection_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(path_manager_node
 	src/planning/global/path_manager_node.cpp
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(path_manager_node ${dependencies})
+target_link_libraries(path_manager_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_mission_manager_node
 	src/mission/mission_manager_node.cpp
@@ -80,6 +83,7 @@ add_executable(avt_341_mission_manager_node
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_mission_manager_node ${dependencies})
+target_link_libraries(avt_341_mission_manager_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_formation_control_node
 	src/mission/formation_control_node.cpp
@@ -87,24 +91,28 @@ add_executable(avt_341_formation_control_node
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_formation_control_node ${dependencies})
+target_link_libraries(avt_341_formation_control_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_test_formation_control_node
 	src/mission/test_formation_control_node.cpp
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_test_formation_control_node ${dependencies})
+target_link_libraries(avt_341_test_formation_control_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_comm_node
 	src/communication/avt_341_comm_node.cpp
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_comm_node ${dependencies})
+target_link_libraries(avt_341_comm_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_comm_publisher_node
 	src/communication/avt_341_comm_publisher_node.cpp
 	src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_comm_publisher_node ${dependencies})
+target_link_libraries(avt_341_comm_publisher_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_perception_node
         src/perception/avt_341_perception_node.cpp
@@ -112,6 +120,7 @@ add_executable(avt_341_perception_node
         src/node/node_proxy.cpp
         src/perception/costmap_clearing_method.cpp)
 ament_target_dependencies(avt_341_perception_node ${dependencies})
+target_link_libraries(avt_341_perception_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_map_publisher_node
         src/perception/avt_341_map_publisher_node.cpp
@@ -120,6 +129,7 @@ add_executable(avt_341_map_publisher_node
 ament_target_dependencies(avt_341_map_publisher_node
         ${dependencies}
         )
+target_link_libraries(avt_341_map_publisher_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_control_node
         src/control/avt_341_control_node.cpp
@@ -128,6 +138,7 @@ add_executable(avt_341_control_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_control_node ${dependencies})
+target_link_libraries(avt_341_control_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_speed_control_node
         src/control/avt_341_speed_control_node.cpp
@@ -135,12 +146,14 @@ add_executable(avt_341_speed_control_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_speed_control_node ${dependencies})
+target_link_libraries(avt_341_speed_control_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(speed_control_test_node
         src/control/speed_control_test_node.cpp
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(speed_control_test_node ${dependencies})
+target_link_libraries(speed_control_test_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_local_planner_node
         src/planning/local/avt_341_local_planner_node.cpp
@@ -152,9 +165,7 @@ add_executable(avt_341_local_planner_node
         src/planning/local/rviz_spline_plotter.cpp
         )
 ament_target_dependencies(avt_341_local_planner_node ${dependencies} OpenCV)
-target_link_libraries(avt_341_local_planner_node
-        ${link_libs}
-        )
+target_link_libraries(avt_341_local_planner_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_pf_planner_node 
         src/planning/local/avt_341_pf_planner_node.cpp 
@@ -163,9 +174,7 @@ add_executable(avt_341_pf_planner_node
         src/visualization/image_visualizer.cpp
       )
 ament_target_dependencies(avt_341_pf_planner_node ${dependencies} )
-target_link_libraries(avt_341_pf_planner_node
-${link_libs}
-      )
+target_link_libraries(avt_341_pf_planner_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_341_dwa_planner_node 
       src/planning/local/avt_341_dwa_planner_node.cpp 
@@ -175,6 +184,7 @@ add_executable(avt_341_dwa_planner_node
     )
 ament_target_dependencies(avt_341_dwa_planner_node ${dependencies} )
 target_link_libraries(avt_341_dwa_planner_node
+${cpp_typesupport_target} 
 ${link_libs}
     )
 
@@ -186,6 +196,7 @@ add_executable(avt_341_global_path_node
         )
 ament_target_dependencies(avt_341_global_path_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_global_path_node
+${cpp_typesupport_target} 
 ${link_libs}
         )
 
@@ -196,12 +207,14 @@ add_executable(avt_341_sim_test_node
         src/perception/point_cloud_generator.cpp
         )
 ament_target_dependencies(avt_341_sim_test_node ${dependencies})
+target_link_libraries(avt_341_sim_test_node ${cpp_typesupport_target} ${link_libs}) 
 
 add_executable(avt_bot_state_publisher_node
         src/control/avt_bot_state_publisher.cpp
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
+target_link_libraries(avt_341_control_node ${cpp_typesupport_target} ${link_libs}) 
 
 
 
@@ -234,9 +247,7 @@ add_executable(avt_341_grid_compression_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_grid_compression_node ${dependencies})
-
-rosidl_target_interfaces(avt_341_grid_compression_node
-  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(avt_341_grid_compression_node ${cpp_typesupport_target} ${link_libs}) 
 
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime

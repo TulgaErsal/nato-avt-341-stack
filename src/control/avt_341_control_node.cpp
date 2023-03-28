@@ -257,7 +257,7 @@ int main(int argc, char *argv[]){
     current_throttle_value = dc.linear.x;
 
     if (nl % int(rate) == 0){ //update every second
-      std::cout << ros::this_node::getName() << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
+      std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
     }
       
     // break the loop when an end state is reached

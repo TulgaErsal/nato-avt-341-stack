@@ -1,6 +1,7 @@
 // clas definition
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 #include "avt_341/mission/task.h"
 
