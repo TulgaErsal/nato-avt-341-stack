@@ -20,6 +20,10 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/OccupiedCell.msg"
   "msg/OccupiedCells.msg"
+  "msg/Sinkage.msg"
+  "msg/Obstacles.msg"
+  "msg/Communication.msg"
+  "msg/FollowerStatus.msg"
   DEPENDENCIES std_msgs nav_msgs
  )
 ament_export_dependencies(rosidl_default_runtime)
@@ -46,12 +50,6 @@ set(dependencies
         tf2_ros
         )
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-        "msg/FollowerStatus.msg"
-        #DEPENDENCIES std_msgs builtin_interfaces
-)
-ament_export_dependencies(rosidl_default_runtime)
-
 ###########
 ## Build ##
 ###########
@@ -59,6 +57,54 @@ include_directories(
         include
         ${OpenCV_INCLUDE_DIRS}
 )
+
+add_executable(test_target_detection_node
+	src/perception/test_target_detection_node.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(test_target_detection_node ${dependencies})
+
+add_executable(path_manager_node
+	src/planning/global/path_manager_node.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(path_manager_node ${dependencies})
+
+add_executable(avt_341_mission_manager_node
+	src/mission/mission_manager_node.cpp
+	src/mission/mission_manager.cpp
+	src/mission/task_encircle.cpp
+	src/mission/task_follow.cpp
+	src/mission/task_moveto.cpp
+	src/mission/task_wait_until.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_mission_manager_node ${dependencies})
+
+add_executable(avt_341_formation_control_node
+	src/mission/formation_control_node.cpp
+	src/mission/formation_controller.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_formation_control_node ${dependencies})
+
+add_executable(avt_341_test_formation_control_node
+	src/mission/test_formation_control_node.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_test_formation_control_node ${dependencies})
+
+add_executable(avt_341_comm_node
+	src/communication/avt_341_comm_node.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_comm_node ${dependencies})
+
+add_executable(avt_341_comm_publisher_node
+	src/communication/avt_341_comm_publisher_node.cpp
+	src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_comm_publisher_node ${dependencies})
 
 add_executable(avt_341_perception_node
         src/perception/avt_341_perception_node.cpp
@@ -74,7 +120,6 @@ add_executable(avt_341_map_publisher_node
 ament_target_dependencies(avt_341_map_publisher_node
         ${dependencies}
         )
-
 
 add_executable(avt_341_control_node
         src/control/avt_341_control_node.cpp
@@ -243,8 +288,11 @@ install(TARGETS
         avt_341_sim_test_node
         avt_bot_state_publisher_node
         speed_control_test_node
-        #avt_341_test_formation_control_node
-        #avt_341_formation_control_node
+        avt_341_comm_node
+		avt_341_comm_publisher_node
+		avt_341_mission_manager_node
+		avt_341_test_formation_control_node
+        avt_341_formation_control_node
         avt_341_grid_compression_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
