@@ -158,6 +158,12 @@ add_executable(avt_341_grid_compression_node
         )
 ament_target_dependencies(avt_341_grid_compression_node ${dependencies})
 
+add_executable(avt_341_global_segmentation_grid_node
+        src/perception/avt_341_global_segmentation_grid_node.cpp
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
+
 rosidl_target_interfaces(avt_341_grid_compression_node
   ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
@@ -212,6 +218,7 @@ install(TARGETS
         avt_bot_state_publisher_node
         speed_control_test_node
         avt_341_grid_compression_node
+        avt_341_global_segmentation_grid_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
