@@ -8,7 +8,7 @@ MissionPoint_F,-100.0,0.0,0.0,0,0,0,1
 MissionPoint_G,-100.0,100.0,0.0,0,0,0,1
 MissionPoint_H,0.0,100.0,0.0,0,0,0,1
 MissionPoint_I,100.0,100.0,0.0,0,0,0,1
-MissionPoint_J,10.0,0.0,0,0,0,1
+MissionPoint_J,10.0,0.0,0.0,0,0,0,1
 uav_OW,-100,25,0,0,0,0,1
 mrzr_OW,10,50,0,0,0,0,1
 truck_OW,80,30,0,0,0,0,1
