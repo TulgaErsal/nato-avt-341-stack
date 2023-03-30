@@ -2,7 +2,7 @@
 
 __Contents__: 
 - [Configuration](#configuration)
-- [Raytrace Clearing - LiDAR TF Transform](#ray-tracing-lidar-tf-transform)
+- [Raytrace Clearing - LiDAR TF Transform](#raytrace-clearing-lidar-tf-transform)
 - [Raytrace Clearing - Voxel Representation](#raytrace-clearing-voxel-representation)
 - [Sample Launch File Parameters](#sample-launch-file-parameters)
 
