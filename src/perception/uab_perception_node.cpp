@@ -60,6 +60,12 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
     mwArray pcData(1, std::size(pc.data), mxUINT8_CLASS);
     pcData.SetData(&pc.data[0], std::size(pc.data));
 
+    //pointcloud properties
+    mwArray pcWidth(pc.width);
+    mwArray pcHeight(pc.height);
+    mwArray pcPointStep(pc.point_step);
+    mwArray pcRowStep(pc.row_step);
+
     //raw image
     mwArray imgData(1, std::size(img.data), mxUINT8_CLASS);
     imgData.SetData(&img.data[0], std::size(img.data));
@@ -68,8 +74,8 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
     {
         std::cout << "all messages received, calling matlab" << std::endl;
         mwArray costmap;
-        perception_wrapper(1, costmap, imgData, pcData, x, y, z, qw, qx, qy, qz);
-
+        perception_wrapper(1, costmap, imgData, pcData, pcHeight, pcWidth, pcPointStep, pcRowStep, x, y, z, qw, qx, qy, qz);
+        
         costmap.GetData(costs.data(), costs.size());
         std::vector<double> costVec(std::begin(costs), std::end(costs));
         return costVec;
@@ -78,6 +84,7 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
     {
         std::cerr << "Failed to execute Matlab perception_wrapper. " << e.what() << std::endl;
     }
+    
     return {};
 }
 

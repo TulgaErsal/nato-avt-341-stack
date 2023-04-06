@@ -17,7 +17,7 @@ def generate_launch_description():
     waypoints_file = os.path.join(
         avt_341_package_dir,
         'config',
-        'single_tile_waypoints.yaml'
+        'krc_waypoints.yaml'
     )
     avt_341_dir = get_package_share_directory('avt_341')
     base_launch = launch.actions.IncludeLaunchDescription(
@@ -26,11 +26,11 @@ def generate_launch_description():
                           'robot_description': robot_desc,
                           'use_sim_time': 'False',
                           'goal_dist': '7.0',
-                          'path_look_ahead': '15.0',
-                          'grid_width': '255.0',
-                          'grid_height': '80.0',
-                          'grid_llx': '-250.0',
-                          'grid_lly': '-40.0',
+                          'path_look_ahead': '30.0',
+                          'grid_width': '985.5',
+                          'grid_height': '1848.0',
+                          'grid_llx': '-400.0',
+                          'grid_lly': '-1000.0',
                           'grid_res': '0.5',
                           'w_c': '0.2', # comfort
                           'w_s': '0.2', # static safety
@@ -38,12 +38,12 @@ def generate_launch_description():
                           'w_r': '0.2', # path deviation
                           'w_t': '1.0', # terrain (undocumented)
                           'stitch_lidar_points': 'False',
-                          'use_registered': 'False',
+                          'vehicle_speed': '3.0',
+                          'vehicle_width': '1.6',
+                          'max_steer_angle': '0.8',
+                          'max_desired_lateral_g': '3000.0',
+                          'shutdown_behavior': '1',
                           'slope_threshold': '1.5',
-                          'vehicle_width': '5.0',
-                          'steering_coefficient': '15.0',
-                          'vehicle_max_steer_angle_degrees': '38.7',
-                          'vehicle_wheelbase': '3.3',
                           'cull_lidar': 'True',
                           'cull_lidar_dist': '50.0',
                           'cost_vis': 'all'}.items()
