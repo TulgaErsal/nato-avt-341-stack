@@ -53,14 +53,37 @@ DwaPlanner::Plan() {
     DwaWindow window = EvaluateDynamicWindow();
 
     // Collect the speeds_lin/yaw rates.
-    std::vector<float> speeds_lin = GetInterval(window.speed_min_, window.speed_max_, speed_lin_steps_);
-    std::vector<float> speeds_ang = GetInterval(window.speed_ang_min_, window.speed_ang_max_, speed_ang_steps_);
+    std::vector<float> speeds_win_lin = GetInterval(window.speed_min_, window.speed_max_, speed_lin_steps_);
+    std::vector<float> speeds_win_ang = GetInterval(window.speed_ang_min_, window.speed_ang_max_, speed_ang_steps_);
 
     // Add a zero angular speed state to preserve the current heading.
     // Keep the angular speed vector sorted to allow for easier debugging.
-    if (!(std::find(speeds_ang.begin(), speeds_ang.end(), 0.0f) != speeds_ang.end())) {
-        speeds_ang.insert(speeds_ang.begin() + FindClosest(speeds_ang, 0.0f), 0.0f);
+    if (!(std::find(speeds_win_ang.begin(), speeds_win_ang.end(), 0.0f) != speeds_win_ang.end())) {
+        speeds_win_ang.insert(speeds_win_ang.begin() + FindClosest(speeds_win_ang, 0.0f), 0.0f);
     }
+
+    std::vector<float> speeds_lin, speeds_ang;
+
+    // Filter out trajectories which exceed the maximum lateral acceleration.
+    if (model_ == "ackermann") {
+        for (int i = 0; i < (int)speeds_win_lin.size(); ++i) {
+            for (int j = 0; j < (int)speeds_win_ang.size(); ++j) {
+                // Compute the lateral acceleration for a kinematic bicycle
+                // model.
+                // NOTE: Recall the angular speed variable does not hold
+                // an angular speed, but rather a steering angle in the
+                // Ackermann motion model for this planner.
+                if (!(std::abs((speeds_win_lin[i] * speeds_win_lin[i]) / (wheelbase_ / std::tan(speeds_win_ang[j]))) > lat_accel_max_)) {
+                    speeds_lin.push_back(speeds_win_lin[i]);
+                    speeds_ang.push_back(speeds_win_ang[j]);
+                }
+            }
+        }
+    } else {
+        speeds_lin = speeds_win_lin;
+        speeds_ang = speeds_win_ang;
+    }
+
 
     int obs_size = obs_occ_.GetNumberOfObstacles();
 

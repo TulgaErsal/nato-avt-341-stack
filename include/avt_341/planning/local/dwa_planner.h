@@ -278,6 +278,8 @@ class DwaPlanner {
 
         void SetWindowAngularAccelerationMax(float ang_accel_max) { ang_accel_max_ = ang_accel_max; }
 
+        void SetLateralAccelerationMax(float lat_accel_max) { lat_accel_max_ = lat_accel_max; }
+
         void SetWindowTimeStepMin(float time_step_min) { time_step_min_ = time_step_min; }
 
         void SetWindowTimeSpanMin(float time_span_min) { time_span_min_ = time_span_min; }
@@ -424,6 +426,7 @@ class DwaPlanner {
         float speed_ang_max_;
         int speed_ang_steps_;
         float ang_accel_max_;
+        float lat_accel_max_;
         float time_step_;
         float time_step_min_;
         float time_span_;

@@ -189,6 +189,7 @@ main(int argc, char* argv[]) {
     float speed_ang_max; node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58f);
     int speed_ang_steps; node->get_parameter("~dwa_speed_ang_steps", speed_ang_steps, 40);
     float ang_accel_max; node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0f);
+    float lat_accel_max; node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81f);
     std::string horizon; node->get_parameter("~dwa_horizon", horizon, std::string("adaptive"));
     float time_span_min; node->get_parameter("~dwa_time_span_min", time_span_min, 2.5f);
     float time_span_max; node->get_parameter("~dwa_time_span_max", time_span_max, 10.0f);
@@ -220,6 +221,7 @@ main(int argc, char* argv[]) {
     planner.SetWindowAngularSpeedSteps(speed_ang_steps);
     planner.SetWindowAccelerationMax(accel_max);
     planner.SetWindowAngularAccelerationMax(ang_accel_max);
+    planner.SetLateralAccelerationMax(lat_accel_max);
     planner.SetWindowTimeStepMin(time_step_min);
     planner.SetWindowTimeSpanMin(time_span_min);
     planner.SetWindowTimeSpanMax(time_span_max);
