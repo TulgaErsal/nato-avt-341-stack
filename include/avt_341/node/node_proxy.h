@@ -9,6 +9,7 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "sensor_msgs/PointCloud2.h"
 
 namespace avt_341 {
     namespace node {
@@ -116,6 +117,7 @@ namespace avt_341 {
 
             void initialize_tf_listener();
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+            bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
             inline void log_debug(const std::string &msg) { ROS_DEBUG("%s", msg.c_str()); }
             inline void log_info(const std::string &msg) { ROS_INFO("%s", msg.c_str()); }
@@ -150,6 +152,7 @@ namespace avt_341 {
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
 namespace avt_341 {
   namespace node {
@@ -263,6 +266,7 @@ namespace avt_341 {
 
       void initialize_tf_listener();
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+      bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
 
       inline void log_debug(const std::string &msg) { RCLCPP_DEBUG(node_->get_logger(), msg.c_str()); }
       inline void log_info(const std::string &msg) { RCLCPP_INFO(node_->get_logger(), msg.c_str()); }

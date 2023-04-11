@@ -20,6 +20,7 @@ float overhead_clearance = 100.0f;
 double time_register_window = 0.02;
 bool cull_lidar_points = false;
 float cull_lidar_points_dist_sqr = 10000.0f;
+std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
 
 double CalcLidarPointToRobotDistanceSquared(const avt_341::msg::Point& odom_pose, const avt_341::msg::Point32& point)
 {
@@ -44,8 +45,18 @@ double GetPoseToUse(avt_341::msg::Odometry & pose_to_use, avt_341::msg::PointClo
 void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 	// assumes point cloud is already registered to odom frame
 	avt_341::msg::PointCloud point_cloud;
-	
-  bool converted = sensor_msgs::convertPointCloud2ToPointCloud(*rcv_cloud,point_cloud);
+
+  bool converted = false;
+  if(rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map"){
+    avt_341::msg::PointCloud2 out_cloud;
+    if(!n->transform_cloud(*rcv_cloud, out_cloud, "map")){
+      return;
+    }
+    converted = sensor_msgs::convertPointCloud2ToPointCloud(out_cloud, point_cloud);
+  }else{
+    converted = sensor_msgs::convertPointCloud2ToPointCloud(*rcv_cloud, point_cloud);
+  }
+
 	if (converted && odom_rcvd){
 		std::vector<avt_341::msg::Point32> points;
 		std::vector<std::vector<float>> channel_values;
@@ -152,7 +163,7 @@ int main(int argc, char *argv[]) {
 
 	grid_created = false;
 
-	auto n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
+  n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
 	auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",2,PointCloudCallback);
     auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
     auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
