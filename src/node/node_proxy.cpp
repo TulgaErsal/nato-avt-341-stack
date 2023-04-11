@@ -33,8 +33,8 @@ geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &t
   return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
 }
 
-bool NodeProxy::transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame){
-   out_cloud = tf_buffer_->transform(in_cloud, target_frame);
+bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame){
+   out_cloud = in_cloud;
    return true;
 }
 
