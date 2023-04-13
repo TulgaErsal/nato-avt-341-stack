@@ -44,7 +44,7 @@ def generate_launch_description():
                           'stitch_lidar_points': 'False',
                           'use_registered': 'False',
                           'cost_vis': 'all',
-                          'w_t': '0.5', # terrain weight for local planner
+                          'w_t': '0.2', # terrain weight for local planner
                           }.items()
     )
 
