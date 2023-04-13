@@ -1,4 +1,5 @@
 #include "avt_341/planning/local/dwa_planner.h"
+#include "avt_341/avt_341_utils.h"
 
 namespace avt_341 {
 namespace planning {
@@ -65,31 +66,38 @@ DwaPlanner::Plan() {
     std::vector<float> speeds_lin, speeds_ang;
 
     // Filter out trajectories which exceed the maximum lateral acceleration.
-    if (model_ == "ackermann") {
-        for (int i = 0; i < (int)speeds_win_lin.size(); ++i) {
-            for (int j = 0; j < (int)speeds_win_ang.size(); ++j) {
-                // Compute the lateral acceleration for a kinematic bicycle
-                // model.
-                // NOTE: Recall the angular speed variable does not hold
-                // an angular speed, but rather a steering angle in the
-                // Ackermann motion model for this planner.
-                if (!(std::abs((speeds_win_lin[i] * speeds_win_lin[i]) / (wheelbase_ / std::tan(speeds_win_ang[j]))) > lat_accel_max_)) {
-                    speeds_lin.push_back(speeds_win_lin[i]);
-                    speeds_ang.push_back(speeds_win_ang[j]);
-                }
+    bool not_ackermann = model_ != "ackermann";
+    std::vector<utils::ivec2> search_actions;
+    //if (model_ == "ackermann") {
+    for (int i = 0; i < (int)speeds_win_lin.size(); ++i) {
+        for (int j = 0; j < (int)speeds_win_ang.size(); ++j) {
+            // Compute the lateral acceleration for a kinematic bicycle
+            // model.
+            // NOTE: Recall the angular speed variable does not hold
+            // an angular speed, but rather a steering angle in the
+            // Ackermann motion model for this planner.
+            if (not_ackermann || !(std::abs((speeds_win_lin[i] * speeds_win_lin[i]) / (wheelbase_ / std::tan(speeds_win_ang[j]))) > lat_accel_max_)) {
+                //speeds_ang.push_back(speeds_win_ang[j]);
+                //speeds_lin.push_back(speeds_win_lin[i]);
+                search_actions.push_back(utils::ivec2(i, j));
             }
         }
-    } else {
-        speeds_lin = speeds_win_lin;
-        speeds_ang = speeds_win_ang;
     }
+    //}
+    // else {
+    //    search_actions.push_back(utils::ivec2(i, j));
+
+    //    speeds_lin = speeds_win_lin;
+    //    speeds_ang = speeds_win_ang;
+    //}
 
 
     int obs_size = obs_occ_.GetNumberOfObstacles();
 
-    int speeds_lin_size = (int)speeds_lin.size();
-    int speeds_ang_size = (int)speeds_ang.size();
-    int window_size = speeds_lin_size * speeds_ang_size;
+    //int speeds_lin_size = (int)speeds_lin.size();
+    //int speeds_ang_size = (int)speeds_ang.size();
+    //int window_size = speeds_lin_size * speeds_ang_size;
+    int window_size = (int)search_actions.size();
 
     auto cost_speed = DwaCost(window_size);
     auto cost_obs = DwaCost(window_size);
@@ -100,26 +108,30 @@ DwaPlanner::Plan() {
     auto cost_dev = DwaCost(window_size);
 
     // Iterate through the speed/yaw rate pairs in the dynamic window
-    #pragma omp parallel for schedule(static) collapse(2)
-    for (int i = 0; i < speeds_lin_size; ++i) {
-        for (int j = 0; j < speeds_ang_size; ++j) {
-            // Compute flattened index for the window
-            int k = i * speeds_ang_size + j;
+    #pragma omp parallel for schedule(static)
+    //for (int i = 0; i < speeds_lin_size; ++i) {
+    //    for (int j = 0; j < speeds_ang_size; ++j) {
+    for (int k = 0; k < (int)search_actions.size(); k++) {
 
-            // Compute the predicted trajectory for this speed/yaw rate pair by integrating the motion model.
-            DwaTrajectory traj = PredictTrajectory(speeds_lin[i], speeds_ang[j]);
+        int i = search_actions[k].x;
+        int j = search_actions[k].y;
+        // Compute flattened index for the window
+        //int k = i * speeds_ang_size + j;
 
-            // Evaluate the cost terms
-            cost_goal.Add(k, EvaluateCostGoal(traj));
-            cost_head.Add(k, EvaluateCostHeading(traj));
-            if (obs_size > 0) cost_obs.Add(k, EvaluateCostObstacle(traj));
-            cost_speed.Add(k, EvaluateCostSpeed(traj));
+        // Compute the predicted trajectory for this speed/yaw rate pair by integrating the motion model.
+        DwaTrajectory traj = PredictTrajectory(speeds_win_lin[i], speeds_win_ang[j]);
 
-            // Evaluate the optional cost terms
-            // If at least one planning step was performed, use it to penalise deviations from the current path.
-            if (use_global_path_) cost_path.Add(k, EvaluateCostGlobalPath(traj));
-            if (has_plan_) cost_dev.Add(k, EvaluateCostDeviation(traj));
-        }
+        // Evaluate the cost terms
+        cost_goal.Add(k, EvaluateCostGoal(traj));
+        cost_head.Add(k, EvaluateCostHeading(traj));
+        if (obs_size > 0) cost_obs.Add(k, EvaluateCostObstacle(traj));
+        cost_speed.Add(k, EvaluateCostSpeed(traj));
+
+        // Evaluate the optional cost terms
+        // If at least one planning step was performed, use it to penalise deviations from the current path.
+        if (use_global_path_) cost_path.Add(k, EvaluateCostGlobalPath(traj));
+        if (has_plan_) cost_dev.Add(k, EvaluateCostDeviation(traj));
+        //}
     }
 
     // Normalise the cost terms.
@@ -156,11 +168,13 @@ DwaPlanner::Plan() {
 
     // Compute and store the optimal trajectory and longitudinal speed.
     // NOTE: While we already computed this trajectory before, it is more efficient to compute one more trajectory than to manage all candidate trajectories in memory.
-    int i_min = std::round(k_min / speeds_ang_size);
-    int j_min = k_min % speeds_ang_size;
-    traj_best_ = PredictTrajectory(speeds_lin[i_min], speeds_ang[j_min]);
-    speed_lin_best_ = speeds_lin[i_min];
-    speed_ang_best_ = speeds_ang[j_min];
+    int i_min = search_actions[k_min].x;
+    int j_min = search_actions[k_min].y;
+    //int i_min = std::round(k_min / speeds_ang_size);
+    //int j_min = k_min % speeds_ang_size;
+    traj_best_ = PredictTrajectory(speeds_win_lin[i_min], speeds_win_ang[j_min]);
+    speed_lin_best_ = speeds_win_lin[i_min];
+    speed_ang_best_ = speeds_win_ang[j_min];
 
     // Mark the planner as executed at least once and save the optimal path to penalise deviations in future planning steps.
     has_plan_ = true;
@@ -175,7 +189,7 @@ DwaPlanner::Plan() {
                 << "\n\tLSMAX:\t"<< window.speed_max_
                 << "\n\tYRMIN:\t"<< window.speed_ang_min_
                 << "\n\tYRMAX:\t"<< window.speed_ang_max_
-            << "\nOptimal control >> LS: " << speeds_lin[i_min] << " YR: " << speeds_ang[j_min]
+            << "\nOptimal control >> LS: " << speeds_win_lin[i_min] << " YR: " << speeds_win_ang[j_min]
             << "\n\nNumber of obstacles: " << obs_size
             << "\nCosts:\n\tName (Weight) [Cost] {Normalised cost}\n\t=====================================\n\tGoal cost:\t("
             << std::setprecision(2) << w_cost_goal_ << ") ["
