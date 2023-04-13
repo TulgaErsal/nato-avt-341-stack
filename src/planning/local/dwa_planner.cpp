@@ -100,7 +100,7 @@ DwaPlanner::Plan() {
     auto cost_dev = DwaCost(window_size);
 
     // Iterate through the speed/yaw rate pairs in the dynamic window
-    #pragma omp parallel for schedule(static, 1) collapse(2)
+    #pragma omp parallel for schedule(static) collapse(2)
     for (int i = 0; i < speeds_lin_size; ++i) {
         for (int j = 0; j < speeds_ang_size; ++j) {
             // Compute flattened index for the window
@@ -261,7 +261,7 @@ DwaPlanner::EvaluateCostObstacle(DwaTrajectory traj) {
     // Initialise the minimum distance to an obstacle to a very large value.
     float d_min = std::numeric_limits<float>::infinity();
 
-    #pragma omp parallel for schedule(static, 1) collapse(2)
+    #pragma omp parallel for schedule(static) collapse(2)
     for (int j = 0; j < traj.GetNumberOfStates(); j++) {
         for (int i = 0; i < obs_occ_.GetNumberOfObstacles(); ++i) {
             float d = obs_occ_.GetDistance(i, traj.GetState(j).GetX(), traj.GetState(j).GetY());
@@ -331,10 +331,14 @@ DwaPlanner::GetObstacles() {
     // Clear the previous obstacle list.
     obs_occ_.Clear();
 
-    // The cutoff distance is selected based on the maximum travel distance throughout the window (with a constant bias term equal to the collision radius).
-    float dis_cutoff = collision_radius_ + 0.75f * (speed_lin_max_ * time_span_ + 0.5 * accel_max_ * time_span_ * time_span_);
+    float dis_cutoff = search_radius_;
+    if (obs_search_ == "adaptive")
+    {
+        // The cutoff distance is selected based on the maximum travel distance throughout the window (with a constant bias term equal to the collision radius).
+        dis_cutoff = collision_radius_ + 0.75f * (speed_lin_max_ * time_span_ + 0.5 * accel_max_ * time_span_ * time_span_);
+    }
 
-    #pragma omp parallel for schedule(static, 1) collapse(2)
+    #pragma omp parallel for schedule(static) collapse(2)
 	for (int i = 0; i < grid_occ_width_; ++i) {
         for (int j = 0; j < grid_occ_height_; ++j) {
             float x = grid_occ_origin_x_ + (i + 0.5f) * grid_occ_res_;

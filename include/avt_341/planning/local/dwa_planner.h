@@ -308,6 +308,17 @@ class DwaPlanner {
 
         void SetCollisionRadius(float collision_radius) { collision_radius_ = collision_radius; }
 
+        void SetObstacleSearch(std::string obs_search) {
+            // Search modality defaults to adaptive when providing a wrong parameter.
+            if ((obs_search != "adaptive") || (obs_search != "fixed")) {
+                obs_search_ = "adaptive";
+            } else {
+                obs_search_ = obs_search;
+            }
+        }
+
+        void SetObstacleSearchRadius(float search_radius) { search_radius_ = search_radius; }
+
         void
         SetGoal(float x, float y) {
             goal_x_ = x;
@@ -436,6 +447,8 @@ class DwaPlanner {
         float time_span_gain_;
         int thresh_obs_;
         float collision_radius_;
+        std::string obs_search_;
+        float search_radius_;
         float goal_x_;
         float goal_y_;
         float grid_occ_width_;

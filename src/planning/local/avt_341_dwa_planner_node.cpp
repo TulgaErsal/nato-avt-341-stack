@@ -200,6 +200,8 @@ main(int argc, char* argv[]) {
     float w_cost_head; node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001f);
     int thresh_obs; node->get_parameter("~dwa_thresh_obs", thresh_obs, 0);
     float collision_radius; node->get_parameter("~dwa_collision_radius", collision_radius, 2.25f);
+    std::string obs_search; node->get_parameter("~dwa_obs_search", obs_search, std::string("fixed"));
+    float search_radius; node->get_parameter("~dwa_search_radius", search_radius, 10.0f);
     float w_cost_obs; node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5f);
     float w_cost_speed; node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0f);
     bool use_global_path; node->get_parameter("~dwa_use_global_path", use_global_path, false);
@@ -235,6 +237,8 @@ main(int argc, char* argv[]) {
     planner.SetCostDeviationWeight(w_cost_dev);
     planner.SetObstacleThreshold(thresh_obs);
     planner.SetCollisionRadius(collision_radius);
+    planner.SetObstacleSearch(obs_search);
+    planner.SetObstacleSearchRadius(search_radius);
     planner.SetVehicleWheelbase(wheelbase);
     planner.SetUseSegmentation(use_segmentation);
     planner.SetUseGlobalPath(use_global_path);
