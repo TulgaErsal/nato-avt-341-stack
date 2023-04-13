@@ -24,29 +24,28 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(avt_341_dir, 'launch', 'uab_perception.launch.py')),
         launch_arguments={'waypoints_file': waypoints_file,
                           'robot_description': robot_desc,
-                          'use_sim_time': 'False',
-                          'goal_dist': '7.0',
-                          'path_look_ahead': '30.0',
                           'grid_width': '985.5',
                           'grid_height': '1848.0',
                           'grid_llx': '-400.0',
                           'grid_lly': '-1000.0',
                           'grid_res': '0.5',
-                          'w_c': '0.2', # comfort
-                          'w_s': '0.2', # static safety
-                          'w_d': '0.2', # dynamic safety
-                          'w_r': '0.2', # path deviation
-                          'w_t': '1.0', # terrain (undocumented)
-                          'stitch_lidar_points': 'False',
+                          'grid_dilate': 'True',
+                          'grid_dilate_x': '1.0',
+                          'grid_dilate_y': '1.0',
+                          'max_point_age': '1.0', # todo: swap to ray trace grid clearing
+                          'slope_threshold': '0.4',
+                          'path_look_ahead': '15.0',
                           'vehicle_speed': '3.0',
+                          'goal_dist': '2.0',
                           'vehicle_width': '1.6',
                           'max_steer_angle': '0.8',
                           'max_desired_lateral_g': '3000.0',
                           'shutdown_behavior': '1',
-                          'slope_threshold': '1.5',
-                          'cull_lidar': 'True',
-                          'cull_lidar_dist': '50.0',
-                          'cost_vis': 'all'}.items()
+                          'stitch_lidar_points': 'False',
+                          'use_registered': 'False',
+                          'cost_vis': 'all',
+                          'w_t': '0.5', # terrain weight for local planner
+                          }.items()
     )
 
     launch_description = LaunchDescription([

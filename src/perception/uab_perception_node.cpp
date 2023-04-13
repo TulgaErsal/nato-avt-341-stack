@@ -45,7 +45,7 @@ bool allMsgsReceived()
 * GetCostmapFromMatlab packages up all the data from ROS (odometry, pointcloud, and image), calls
 * the semantic segmentation model in Matlab, and populates an array of cost values based on traversability
 */
-std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
+std::vector<double> GetCostmapFromMatlab(std::vector<double> costs, float grid_llx, float grid_lly)
 {
     //odometry
     mwArray x(current_pose.pose.pose.position.x);
@@ -70,11 +70,20 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
     mwArray imgData(1, std::size(img.data), mxUINT8_CLASS);
     imgData.SetData(&img.data[0], std::size(img.data));
 
+    //lower left corner grid offset in meters (x/east direction)
+    mwArray llx(grid_llx);
+
+    //lower right corner grid offset in meters (y/north direction)
+    mwArray lly(grid_lly);
+
+    //disable Matlab debug windows
+    mwArray debug(false);
+
     try
     {
         std::cout << "all messages received, calling matlab" << std::endl;
         mwArray costmap;
-        perception_wrapper(1, costmap, imgData, pcData, pcHeight, pcWidth, pcPointStep, pcRowStep, x, y, z, qw, qx, qy, qz);
+        perception_wrapper(1, costmap, imgData, pcData, pcHeight, pcWidth, pcPointStep, pcRowStep, x, y, z, qw, qx, qy, qz, llx, lly, debug);
         
         costmap.GetData(costs.data(), costs.size());
         std::vector<double> costVec(std::begin(costs), std::end(costs));
@@ -91,8 +100,8 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs)
 void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
                         float width,
                         float height,
-                        float startX,
-                        float startY,
+                        float grid_llx,
+                        float grid_lly,
                         float res,
                         std::vector<double> data)
 {
@@ -100,8 +109,8 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.info.resolution = res;
     grid.info.height = height;
     grid.info.width = width;
-    grid.info.origin.position.x = startX;
-    grid.info.origin.position.y = startY;
+    grid.info.origin.position.x = grid_llx;
+    grid.info.origin.position.y = grid_lly;
     grid.info.origin.orientation.w = 1.0;
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
@@ -137,10 +146,10 @@ int main(int argc, char *argv[])
     node->get_parameter("~grid_width", width, 100.0f);
     float height;
     node->get_parameter("~grid_height", height, 100.0f);
-    float startX;
-    node->get_parameter("~grid_llx", startX, 0.0f);
-    float startY;
-    node->get_parameter("~grid_lly", startY, 0.0f);
+    float grid_llx;
+    node->get_parameter("~grid_llx", grid_llx, 0.0f);
+    float grid_lly;
+    node->get_parameter("~grid_lly", grid_lly, 0.0f);
     float res;
     node->get_parameter("~grid_res", res, 1.0f);
     width = width/res;
@@ -174,10 +183,10 @@ int main(int argc, char *argv[])
         else
         {
             std::vector<double> costs(width * height);
-            std::vector<double> costmap = GetCostmapFromMatlab(costs);
+            std::vector<double> costmap = GetCostmapFromMatlab(costs, grid_llx, grid_lly);
             
             avt_341::msg::OccupancyGrid grid;
-            BuildOccupancyGrid(grid, width, height, startX, startY, res, costmap);
+            BuildOccupancyGrid(grid, width, height, grid_llx, grid_lly, res, costmap);
             seg_grid_pub->publish(grid);
         }
         node->spin_some();

@@ -1,6 +1,6 @@
 //
 // MATLAB Compiler: 8.4 (R2022a)
-// Date: Thu Apr  6 14:46:06 2023
+// Date: Thu Apr 13 12:59:11 2023
 // Arguments:
 // "-B""macro_default""-W""cpplib:perception_wrapper,all,version=1.0""-T""link:l
 // ib""-d""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\perception_wrapper_P
@@ -98,7 +98,7 @@ bool MW_CALL_CONV mlxPerception_wrapper(int nlhs, mxArray *plhs[], int nrhs, mxA
 
 #endif
 
-extern LIB_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& costNow, const mwArray& rawImage, const mwArray& rawLidar, const mwArray& lidarHeight, const mwArray& lidarWidth, const mwArray& lidarPointStep, const mwArray& lidarRowStep, const mwArray& pose_point_x, const mwArray& pose_point_y, const mwArray& pose_point_z, const mwArray& pose_quat_w, const mwArray& pose_quat_x, const mwArray& pose_quat_y, const mwArray& pose_quat_z);
+extern LIB_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& costNow, const mwArray& rawImage, const mwArray& rawLidar, const mwArray& lidarHeight, const mwArray& lidarWidth, const mwArray& lidarPointStep, const mwArray& lidarRowStep, const mwArray& pose_point_x, const mwArray& pose_point_y, const mwArray& pose_point_z, const mwArray& pose_quat_w, const mwArray& pose_quat_x, const mwArray& pose_quat_y, const mwArray& pose_quat_z, const mwArray& grid_llx, const mwArray& grid_lly, const mwArray& debug);
 
 /* C++ INTERFACE -- WRAPPERS FOR USER-DEFINED MATLAB FUNCTIONS -- END */
 #endif
