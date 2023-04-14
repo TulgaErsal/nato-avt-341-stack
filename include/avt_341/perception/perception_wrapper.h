@@ -1,25 +1,24 @@
 //
 // MATLAB Compiler: 8.4 (R2022a)
-// Date: Wed Dec 21 15:27:19 2022
+// Date: Thu Apr 13 12:59:11 2023
 // Arguments:
 // "-B""macro_default""-W""cpplib:perception_wrapper,all,version=1.0""-T""link:l
 // ib""-d""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\perception_wrapper_P
 // C2\for_testing""-v""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\percepti
 // on_wrapper.m""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\augmentIma
-// geAndLabel.m""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\dataColorM
-// ap.m""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\dataPixelLabelIDs.
-// m""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\Deeplab_Node.mlx""-a"
-// "C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\dlnet10.mat""-a""C:\Users\a
-// vmi\Documents\Code\AVMI\PerceptionDemo\ex_PerceptionAlgorithm.m""-a""C:\Users
-// \avmi\Documents\Code\AVMI\PerceptionDemo\generateDatastores.mlx""-a""C:\Users
-// \avmi\Documents\Code\AVMI\PerceptionDemo\generateDeeplabV3.mlx""-a""C:\Users\
-// avmi\Documents\Code\AVMI\PerceptionDemo\generateDLN.mlx""-a""C:\Users\avmi\Do
-// cuments\Code\AVMI\PerceptionDemo\netTraff_adam_cls4_mbs128_150x240_8core.mat"
-// "-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\netTraff_adam_cls5_rugd
-// _fixed.mat""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\partitionRUG
-// DData.mlx""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\perception_wr
-// apper.m""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\pixelLabelColor
-// bar.m"
+// geAndLabel.m""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\calibratio
+// n
+// images""-a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\dataColorMap.m""
+// -a""C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\dataPixelLabelIDs.m""-a"
+// "C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\Deeplab_Node.mlx""-a""C:\Us
+// ers\avmi\Documents\Code\AVMI\PerceptionDemo\dlnet_RUGD_singleTile.mat""-a""C:
+// \Users\avmi\Documents\Code\AVMI\PerceptionDemo\ex_PerceptionAlgorithm.m""-a""
+// C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\generateDatastores.mlx""-a""
+// C:\Users\avmi\Documents\Code\AVMI\PerceptionDemo\generateDeeplabV3.mlx""-a""C
+// :\Users\avmi\Documents\Code\AVMI\PerceptionDemo\generateDLN.mlx""-a""C:\Users
+// \avmi\Documents\Code\AVMI\PerceptionDemo\partitionRUGDData.mlx""-a""C:\Users\
+// avmi\Documents\Code\AVMI\PerceptionDemo\perception_wrapper.m""-a""C:\Users\av
+// mi\Documents\Code\AVMI\PerceptionDemo\pixelLabelColorbar.m"
 //
 
 #ifndef perception_wrapper_h
@@ -99,7 +98,7 @@ bool MW_CALL_CONV mlxPerception_wrapper(int nlhs, mxArray *plhs[], int nrhs, mxA
 
 #endif
 
-extern LIB_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& costNow, const mwArray& rawImage, const mwArray& rawLidar, const mwArray& pose_point_x, const mwArray& pose_point_y, const mwArray& pose_point_z, const mwArray& pose_quat_w, const mwArray& pose_quat_x, const mwArray& pose_quat_y, const mwArray& pose_quat_z);
+extern LIB_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& costNow, const mwArray& rawImage, const mwArray& rawLidar, const mwArray& lidarHeight, const mwArray& lidarWidth, const mwArray& lidarPointStep, const mwArray& lidarRowStep, const mwArray& pose_point_x, const mwArray& pose_point_y, const mwArray& pose_point_z, const mwArray& pose_quat_w, const mwArray& pose_quat_x, const mwArray& pose_quat_y, const mwArray& pose_quat_z, const mwArray& grid_llx, const mwArray& grid_lly, const mwArray& debug);
 
 /* C++ INTERFACE -- WRAPPERS FOR USER-DEFINED MATLAB FUNCTIONS -- END */
 #endif
