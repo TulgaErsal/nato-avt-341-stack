@@ -34,6 +34,7 @@
 # custom
 *mavs_config.txt
 *__pycache__
+*KRC_CP06_Scaled_Transposed.csv
 
 # Clion
 .idea
