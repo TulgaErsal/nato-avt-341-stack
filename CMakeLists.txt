@@ -19,8 +19,21 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll")
    # do nothing
 else()
 file(DOWNLOAD
-  https://drive.google.com/uc?export=download&id=1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ALgDtsyupXZiPm3DJaloDSGQrRXG:1675708587711
+  https://drive.google.com/uc?export=download&id=1ja__aZx6afy5bY16SlEfobFQtDtP-3X6&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ANzk5s6La1ierbYFY2fWj8PXnCNZ:1681522058224
   ${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll
+  SHOW_PROGRESS
+)
+endif()
+
+###################################
+## download the offline cost map ##
+###################################
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config/KRC_CP06_Scaled_Transposed.csv")
+   # do nothing
+else()
+file(DOWNLOAD
+  https://drive.google.com/uc?export=download&id=1j_LEJl1xSeoTjgZRY5cXHq2fikBY70GD&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ANzk5s6La1ierbYFY2fWj8PXnCNZ:1681522058224
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/KRC_CP06_Scaled_Transposed.csv
   SHOW_PROGRESS
 )
 endif()
