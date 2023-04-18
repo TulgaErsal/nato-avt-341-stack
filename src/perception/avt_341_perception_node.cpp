@@ -7,6 +7,14 @@
 // ros includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+
+#ifdef ROS_1
+#include "sensor_msgs/point_cloud_conversion.h"
+#else
+#define SENSOR_MSGS_SKIP_WARNING
+#include "sensor_msgs/point_cloud_conversion.hpp"
+#endif
+
 // avt_341 includes
 #include "avt_341/perception/elevation_grid.h"
 

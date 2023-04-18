@@ -8,7 +8,6 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
-#include "sensor_msgs/point_cloud_conversion.h"
 
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Point32.h"
@@ -103,7 +102,6 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
-#include "sensor_msgs/point_cloud_conversion.hpp"
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/point32.hpp"
