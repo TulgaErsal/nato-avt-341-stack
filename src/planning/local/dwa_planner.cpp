@@ -1,5 +1,4 @@
 #include "avt_341/planning/local/dwa_planner.h"
-#include "avt_341/avt_341_utils.h"
 
 namespace avt_341 {
 namespace planning {
@@ -63,12 +62,9 @@ DwaPlanner::Plan() {
         speeds_win_ang.insert(speeds_win_ang.begin() + FindClosest(speeds_win_ang, 0.0f), 0.0f);
     }
 
-    std::vector<float> speeds_lin, speeds_ang;
-
     // Filter out trajectories which exceed the maximum lateral acceleration.
     bool not_ackermann = model_ != "ackermann";
     std::vector<utils::ivec2> search_actions;
-    //if (model_ == "ackermann") {
     for (int i = 0; i < (int)speeds_win_lin.size(); ++i) {
         for (int j = 0; j < (int)speeds_win_ang.size(); ++j) {
             // Compute the lateral acceleration for a kinematic bicycle
@@ -77,26 +73,12 @@ DwaPlanner::Plan() {
             // an angular speed, but rather a steering angle in the
             // Ackermann motion model for this planner.
             if (not_ackermann || !(std::abs((speeds_win_lin[i] * speeds_win_lin[i]) / (wheelbase_ / std::tan(speeds_win_ang[j]))) > lat_accel_max_)) {
-                //speeds_ang.push_back(speeds_win_ang[j]);
-                //speeds_lin.push_back(speeds_win_lin[i]);
                 search_actions.push_back(utils::ivec2(i, j));
             }
         }
     }
-    //}
-    // else {
-    //    search_actions.push_back(utils::ivec2(i, j));
-
-    //    speeds_lin = speeds_win_lin;
-    //    speeds_ang = speeds_win_ang;
-    //}
-
 
     int obs_size = obs_occ_.GetNumberOfObstacles();
-
-    //int speeds_lin_size = (int)speeds_lin.size();
-    //int speeds_ang_size = (int)speeds_ang.size();
-    //int window_size = speeds_lin_size * speeds_ang_size;
     int window_size = (int)search_actions.size();
 
     auto cost_speed = DwaCost(window_size);
@@ -109,14 +91,9 @@ DwaPlanner::Plan() {
 
     // Iterate through the speed/yaw rate pairs in the dynamic window
     #pragma omp parallel for schedule(static)
-    //for (int i = 0; i < speeds_lin_size; ++i) {
-    //    for (int j = 0; j < speeds_ang_size; ++j) {
     for (int k = 0; k < (int)search_actions.size(); k++) {
-
         int i = search_actions[k].x;
         int j = search_actions[k].y;
-        // Compute flattened index for the window
-        //int k = i * speeds_ang_size + j;
 
         // Compute the predicted trajectory for this speed/yaw rate pair by integrating the motion model.
         DwaTrajectory traj = PredictTrajectory(speeds_win_lin[i], speeds_win_ang[j]);
@@ -131,7 +108,6 @@ DwaPlanner::Plan() {
         // If at least one planning step was performed, use it to penalise deviations from the current path.
         if (use_global_path_) cost_path.Add(k, EvaluateCostGlobalPath(traj));
         if (has_plan_) cost_dev.Add(k, EvaluateCostDeviation(traj));
-        //}
     }
 
     // Normalise the cost terms.
@@ -170,8 +146,6 @@ DwaPlanner::Plan() {
     // NOTE: While we already computed this trajectory before, it is more efficient to compute one more trajectory than to manage all candidate trajectories in memory.
     int i_min = search_actions[k_min].x;
     int j_min = search_actions[k_min].y;
-    //int i_min = std::round(k_min / speeds_ang_size);
-    //int j_min = k_min % speeds_ang_size;
     traj_best_ = PredictTrajectory(speeds_win_lin[i_min], speeds_win_ang[j_min]);
     speed_lin_best_ = speeds_win_lin[i_min];
     speed_ang_best_ = speeds_win_ang[j_min];
