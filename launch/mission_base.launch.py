@@ -118,7 +118,6 @@ def generate_launch_description():
         DeclareLaunchArgument('throttle_kp', default_value='0.1129', description="Throttle PID Control - proportional coeff for the PID speed controller"),
         DeclareLaunchArgument('throttle_ki', default_value='0.0', description="Throttle PID Control - integral coeff for the PID speed controller"),
         DeclareLaunchArgument('throttle_kd', default_value='0.0', description="Throttle PID Control - derivative coeff for the PID speed controller"),
-
         DeclareLaunchArgument('time_to_max_brake', default_value='4.0', description="Time in seconds to go from 0 to maximum braking"),
         DeclareLaunchArgument('time_to_max_throttle', default_value='3.0', description="Time in seconds to go from 0 to maximum throttle"),
         DeclareLaunchArgument('use_feed_forward', default_value='false', description="Set to true to use the feed-forward model in the PID throttle control"),
@@ -127,10 +126,14 @@ def generate_launch_description():
         DeclareLaunchArgument('ff_a2', default_value='0.0', description="2nd order coeff in the feed-forward model"),
         DeclareLaunchArgument('max_desired_lateral_g', default_value='0.75', description="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2"),
 
+		# Target Detection Test Node
         DeclareLaunchArgument('detection_range', default_value='50.0', description="Target Detection - distance at which simulated contacts are detected"),
 
+		# Formation Control Node
+		DeclareLaunchArgument('is_leader', default_value='True', description='Formation Control - is the vehicle the leader?'),
         DeclareLaunchArgument('follow_scale', default_value='3.0', description="Formation Control - Scales distance between vehicles in formation"),
 
+		# Mission Manager Node
         DeclareLaunchArgument('mission_definition_file', default_value=os.path.join(get_package_share_directory('avt_341'), 'config', 'mavs_forester_test_points.csv'), description="Mission Manager - file describing mission reference points"),
 
         DeclareLaunchArgument('host', default_value='localhost', description="Communication Node - Hostname of the communication server"),
