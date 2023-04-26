@@ -29,7 +29,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid, std::vector<double> d
     int c = 0;
     for (double val : data)
     {
-        grid.data[c++] = val * 50;
+        grid.data[c++] = 100 - val;
     }
 }
 
@@ -64,7 +64,7 @@ std::vector<double> GetCostMapFromTif(std::string path)
 int main(int argc, char *argv[])
 {
     auto node = avt_341::node::init_node(argc, argv, "avt_341_global_grid_publisher_node");
-    auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/global_segmentation_grid", 1);
+    auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
     std::string globalGridCSVPath = "";
     std::string defaultPath = "";
