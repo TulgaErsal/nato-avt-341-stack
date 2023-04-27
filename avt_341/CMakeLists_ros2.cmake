@@ -38,7 +38,7 @@ set(dependencies
         nav_msgs
         geometry_msgs
         visualization_msgs
-		avt_341_msgs
+        avt_341_msgs
         std_msgs
         tf2_ros
         tf2_sensor_msgs
@@ -53,50 +53,50 @@ include_directories(
 )
 
 add_executable(test_target_detection_node
-	src/perception/test_target_detection_node.cpp
-	src/node/node_proxy.cpp
+    src/perception/test_target_detection_node.cpp
+    src/node/node_proxy.cpp
 )
 ament_target_dependencies(test_target_detection_node ${dependencies})
 
 add_executable(path_manager_node
-	src/planning/global/path_manager_node.cpp
-	src/node/node_proxy.cpp
+    src/planning/global/path_manager_node.cpp
+    src/node/node_proxy.cpp
 )
 ament_target_dependencies(path_manager_node ${dependencies})
 
 add_executable(avt_341_mission_manager_node
-	src/mission/mission_manager_node.cpp
-	src/mission/mission_manager.cpp
-	src/mission/task_encircle.cpp
-	src/mission/task_follow.cpp
-	src/mission/task_moveto.cpp
-	src/mission/task_wait_until.cpp
-	src/node/node_proxy.cpp
+    src/mission/mission_manager_node.cpp
+    src/mission/mission_manager.cpp
+    src/mission/task_encircle.cpp
+    src/mission/task_follow.cpp
+    src/mission/task_moveto.cpp
+    src/mission/task_wait_until.cpp
+    src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_mission_manager_node ${dependencies})
 
 add_executable(avt_341_formation_control_node
-	src/mission/formation_control_node.cpp
-	src/mission/formation_controller.cpp
-	src/node/node_proxy.cpp
+    src/mission/formation_control_node.cpp
+    src/mission/formation_controller.cpp
+    src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_formation_control_node ${dependencies})
 
 add_executable(avt_341_test_formation_control_node
-	src/mission/test_formation_control_node.cpp
-	src/node/node_proxy.cpp
+    src/mission/test_formation_control_node.cpp
+    src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_test_formation_control_node ${dependencies})
 
 #add_executable(avt_341_comm_node
-#	src/communication/avt_341_comm_node.cpp
-#	src/node/node_proxy.cpp
+#    src/communication/avt_341_comm_node.cpp
+#    src/node/node_proxy.cpp
 #)
 #ament_target_dependencies(avt_341_comm_node ${dependencies})
 #
 #add_executable(avt_341_comm_publisher_node
-#	src/communication/avt_341_comm_publisher_node.cpp
-#	src/node/node_proxy.cpp
+#    src/communication/avt_341_comm_publisher_node.cpp
+#    src/node/node_proxy.cpp
 #)
 #ament_target_dependencies(avt_341_comm_publisher_node ${dependencies})
 
@@ -147,8 +147,8 @@ add_executable(avt_341_local_planner_node
         )
 ament_target_dependencies(avt_341_local_planner_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_local_planner_node
-		${link_libs}
-		)
+        ${link_libs}
+        )
 
 add_executable(avt_341_pf_planner_node 
         src/planning/local/avt_341_pf_planner_node.cpp 
@@ -158,8 +158,8 @@ add_executable(avt_341_pf_planner_node
       )
 ament_target_dependencies(avt_341_pf_planner_node ${dependencies} )
 target_link_libraries(avt_341_pf_planner_node
-		${link_libs}
-		)
+        ${link_libs}
+        )
 
 add_executable(avt_341_dwa_planner_node 
       src/planning/local/avt_341_dwa_planner_node.cpp 
@@ -177,8 +177,8 @@ add_executable(avt_341_global_path_node
         )
 ament_target_dependencies(avt_341_global_path_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_global_path_node
-		${link_libs}
-		)
+        ${link_libs}
+        )
 
 add_executable(avt_341_sim_test_node
         src/simulation/avt_341_sim_test_node.cpp
@@ -276,10 +276,10 @@ install(TARGETS
         avt_341_sim_test_node
         avt_bot_state_publisher_node
         speed_control_test_node
-#        avt_341_comm_node
-#	avt_341_comm_publisher_node
-	avt_341_mission_manager_node
-	avt_341_test_formation_control_node
+#       avt_341_comm_node
+#       avt_341_comm_publisher_node
+        avt_341_mission_manager_node
+        avt_341_test_formation_control_node
         test_target_detection_node
         avt_341_formation_control_node
         avt_341_grid_compression_node
