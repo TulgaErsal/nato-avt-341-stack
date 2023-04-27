@@ -189,6 +189,7 @@ main(int argc, char* argv[]) {
     float speed_ang_max; node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58f);
     int speed_ang_steps; node->get_parameter("~dwa_speed_ang_steps", speed_ang_steps, 40);
     float ang_accel_max; node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0f);
+    float lat_accel_max; node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81f);
     std::string horizon; node->get_parameter("~dwa_horizon", horizon, std::string("adaptive"));
     float time_span_min; node->get_parameter("~dwa_time_span_min", time_span_min, 2.5f);
     float time_span_max; node->get_parameter("~dwa_time_span_max", time_span_max, 10.0f);
@@ -199,6 +200,8 @@ main(int argc, char* argv[]) {
     float w_cost_head; node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001f);
     int thresh_obs; node->get_parameter("~dwa_thresh_obs", thresh_obs, 0);
     float collision_radius; node->get_parameter("~dwa_collision_radius", collision_radius, 2.25f);
+    std::string obs_search; node->get_parameter("~dwa_obs_search", obs_search, std::string("fixed"));
+    float search_radius; node->get_parameter("~dwa_search_radius", search_radius, 10.0f);
     float w_cost_obs; node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5f);
     float w_cost_speed; node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0f);
     bool use_global_path; node->get_parameter("~dwa_use_global_path", use_global_path, false);
@@ -220,6 +223,7 @@ main(int argc, char* argv[]) {
     planner.SetWindowAngularSpeedSteps(speed_ang_steps);
     planner.SetWindowAccelerationMax(accel_max);
     planner.SetWindowAngularAccelerationMax(ang_accel_max);
+    planner.SetLateralAccelerationMax(lat_accel_max);
     planner.SetWindowTimeStepMin(time_step_min);
     planner.SetWindowTimeSpanMin(time_span_min);
     planner.SetWindowTimeSpanMax(time_span_max);
@@ -233,6 +237,8 @@ main(int argc, char* argv[]) {
     planner.SetCostDeviationWeight(w_cost_dev);
     planner.SetObstacleThreshold(thresh_obs);
     planner.SetCollisionRadius(collision_radius);
+    planner.SetObstacleSearch(obs_search);
+    planner.SetObstacleSearchRadius(search_radius);
     planner.SetVehicleWheelbase(wheelbase);
     planner.SetUseSegmentation(use_segmentation);
     planner.SetUseGlobalPath(use_global_path);

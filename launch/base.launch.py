@@ -128,6 +128,9 @@ def generate_launch_description():
         DeclareLaunchArgument('ff_a2', default_value='0.0', description="2nd order coeff in the feed-forward model"),
         DeclareLaunchArgument('max_desired_lateral_g', default_value='0.75', description="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2"),
 
+        # Global Segmentation Grid
+        DeclareLaunchArgument('global_grid_csv_path', default_value=os.path.join(get_package_share_directory('avt_341'), 'config', 'KRC_CP06_Scaled_Transposed.csv'), description="Path to CSV containing KRC global segmentation grid."),
+
         OpaqueFunction(function=evaluate_waypoint_parameters),
 
         Node(
@@ -261,7 +264,12 @@ def generate_launch_description():
         Node(
             package='avt_341',
             executable='avt_341_grid_compression_node',
-            name='grid_compression')
+            name='grid_compression'),
+        Node(
+            package='avt_341',
+            executable='avt_341_global_segmentation_grid_node',
+            name='avt_341_global_segmentation_grid_node',
+            output='screen'),
     ])
 
     return launch_description

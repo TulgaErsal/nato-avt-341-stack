@@ -15,6 +15,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -48,6 +49,7 @@ set(dependencies
         visualization_msgs
         std_msgs
         tf2_ros
+        tf2_sensor_msgs
         )
 
 ###########
@@ -214,9 +216,7 @@ add_executable(avt_bot_state_publisher_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
-target_link_libraries(avt_341_control_node ${cpp_typesupport_target} ${link_libs}) 
-
-
+target_link_libraries(avt_bot_state_publisher_node ${cpp_typesupport_target} ${link_libs}) 
 
 
 # # formation control stuff using custom messages
@@ -240,14 +240,20 @@ target_link_libraries(avt_341_control_node ${cpp_typesupport_target} ${link_libs
 # ament_target_dependencies(avt_341_test_formation_control_node ${dependencies} )
 # target_link_libraries(avt_341_test_formation_control_node ${link_libs} ${cpp_typesupport_target})
 
-
-
 add_executable(avt_341_grid_compression_node
         src/perception/avt_341_grid_compression_node.cpp
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_grid_compression_node ${dependencies})
-target_link_libraries(avt_341_grid_compression_node ${cpp_typesupport_target} ${link_libs}) 
+
+add_executable(avt_341_global_segmentation_grid_node
+        src/perception/avt_341_global_segmentation_grid_node.cpp
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
+
+rosidl_target_interfaces(avt_341_grid_compression_node
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime
@@ -306,7 +312,9 @@ install(TARGETS
         test_target_detection_node
         avt_341_formation_control_node
         avt_341_grid_compression_node
+        avt_341_global_segmentation_grid_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
+                                                                                                                           

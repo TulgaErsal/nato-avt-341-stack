@@ -18,6 +18,7 @@
 #define DWA_PLANNER_H
 
 #include "avt_341/node/ros_types.h"
+#include "avt_341/avt_341_utils.h"
 #include <algorithm>
 #include <vector>
 #include <iomanip>
@@ -278,6 +279,8 @@ class DwaPlanner {
 
         void SetWindowAngularAccelerationMax(float ang_accel_max) { ang_accel_max_ = ang_accel_max; }
 
+        void SetLateralAccelerationMax(float lat_accel_max) { lat_accel_max_ = lat_accel_max; }
+
         void SetWindowTimeStepMin(float time_step_min) { time_step_min_ = time_step_min; }
 
         void SetWindowTimeSpanMin(float time_span_min) { time_span_min_ = time_span_min; }
@@ -305,6 +308,17 @@ class DwaPlanner {
         void SetObstacleThreshold(int thresh_obs) { thresh_obs_ = thresh_obs; }
 
         void SetCollisionRadius(float collision_radius) { collision_radius_ = collision_radius; }
+
+        void SetObstacleSearch(std::string obs_search) {
+            // Search modality defaults to adaptive when providing a wrong parameter.
+            if ((obs_search != "adaptive") || (obs_search != "fixed")) {
+                obs_search_ = "adaptive";
+            } else {
+                obs_search_ = obs_search;
+            }
+        }
+
+        void SetObstacleSearchRadius(float search_radius) { search_radius_ = search_radius; }
 
         void
         SetGoal(float x, float y) {
@@ -424,6 +438,7 @@ class DwaPlanner {
         float speed_ang_max_;
         int speed_ang_steps_;
         float ang_accel_max_;
+        float lat_accel_max_;
         float time_step_;
         float time_step_min_;
         float time_span_;
@@ -433,6 +448,8 @@ class DwaPlanner {
         float time_span_gain_;
         int thresh_obs_;
         float collision_radius_;
+        std::string obs_search_;
+        float search_radius_;
         float goal_x_;
         float goal_y_;
         float grid_occ_width_;

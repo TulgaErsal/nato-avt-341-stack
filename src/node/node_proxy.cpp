@@ -1,5 +1,11 @@
 #include "avt_341/node/node_proxy.h"
 
+#ifdef ROS_1
+
+#else
+#include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+#endif
+
 namespace avt_341 {
 namespace node {
 
@@ -25,6 +31,11 @@ void NodeProxy::initialize_tf_listener() {
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
   return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
+}
+
+bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame){
+   out_cloud = in_cloud;
+   return true;
 }
 
 double NodeProxy::get_now_seconds() const {
@@ -67,6 +78,17 @@ void NodeProxy::spin_some() {
       } catch (const tf2::TransformException & ex) {
         RCLCPP_WARN(node_->get_logger(), "Could not transform %s to %s: %s", source_frame.c_str(), target_frame.c_str(), ex.what());
         return geometry_msgs::msg::TransformStamped();
+      }
+    }
+
+    bool NodeProxy::transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame){
+      try {
+//        tf_buffer_->transform(in_cloud, out_cloud, target_frame, tf2::durationFromSec(0.2));
+        tf2::doTransform(in_cloud, out_cloud, lookup_transform(target_frame, in_cloud.header.frame_id));
+        return true;
+      } catch (const tf2::TransformException & ex) {
+        RCLCPP_WARN(node_->get_logger(), "Could not transform cloud %s to %s: %s", in_cloud.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+        return false;
       }
     }
 
