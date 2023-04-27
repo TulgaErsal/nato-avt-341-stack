@@ -96,17 +96,17 @@ namespace avt_341 {
         using String = std_msgs::String;
         using StringPtr = const std_msgs::String::ConstPtr &;
 
-        using FollowerStatus = avt_341::FollowerStatus;
-        using FollowerStatusPtr = const avt_341::FollowerStatus::ConstPtr &;
+        using FollowerStatus = avt_341_msgs::FollowerStatus;
+        using FollowerStatusPtr = const avt_341_msgs::FollowerStatus::ConstPtr &;
         
-        using Communication = avt_341::Communication;
-        using CommunicationPtr = const avt_341::Communication::ConstPtr &;
+        using Communication = avt_341_msgs::Communication;
+        using CommunicationPtr = const avt_341_msgs::Communication::ConstPtr &;
 
-        using OccupiedCell = avt_341::OccupiedCell;
-        using OccupiedCellPtr = const avt_341::OccupiedCell::ConstPtr &;
+        using OccupiedCell = avt_341_msgs::OccupiedCell;
+        using OccupiedCellPtr = const avt_341_msgs::OccupiedCell::ConstPtr &;
 
-        using OccupiedCells = avt_341::OccupiedCells;
-        using OccupiedCellsPtr = const avt_341::OccupiedCells::ConstPtr &;
+        using OccupiedCells = avt_341_msgs::OccupiedCells;
+        using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;

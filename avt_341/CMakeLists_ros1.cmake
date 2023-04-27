@@ -239,14 +239,13 @@ target_link_libraries(avt_bot_state_publisher_node
    ${catkin_LIBRARIES}
 )
 
-
 add_executable(avt_341_grid_compression_node
         src/perception/avt_341_grid_compression_node.cpp
         src/node/node_proxy.cpp
         )
-add_dependencies(avt_341_grid_compression_node
-        ${${PROJECT_NAME}_EXPORTED_TARGETS}
-        )
+#add_dependencies(avt_341_grid_compression_node
+#        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+#        )
 target_link_libraries(avt_341_grid_compression_node
         ${catkin_LIBRARIES}
         )
@@ -362,3 +361,4 @@ install(DIRECTORY rviz/
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz
         FILES_MATCHING PATTERN "*.rviz"
         )
+
