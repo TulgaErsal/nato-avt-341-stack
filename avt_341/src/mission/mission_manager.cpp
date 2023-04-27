@@ -2,6 +2,7 @@
 #include "avt_341/mission/mission_manager.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 namespace avt_341 {
 namespace mission {

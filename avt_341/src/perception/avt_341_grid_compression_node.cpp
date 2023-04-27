@@ -13,18 +13,6 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 
-#ifdef ROS_1
-    #include "avt_341/OccupiedCells.h"
-    namespace avt_341{
-        namespace msg {
-            using OccupiedCells = avt_341::OccupiedCells;
-            using OccupiedCell = avt_341::OccupiedCell;
-        }
-    };
-#else
-    #include "avt_341/msg/occupied_cells.hpp"
-#endif
-
 avt_341::msg::OccupancyGrid grid;
 
 void OccupancyGridCallback(avt_341::msg::OccupancyGridPtr rcv_grid)

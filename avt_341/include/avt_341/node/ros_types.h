@@ -29,8 +29,10 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 
-#include "avt_341/Communication.h"
-#include "avt_341/FollowerStatus.h"
+#include "avt_341_msgs/Communication.h"
+#include "avt_341_msgs/FollowerStatus.h"
+#include "avt_341_msgs/OccupiedCell.h"
+#include "avt_341_msgs/OccupiedCells.h"
 
 namespace avt_341 {
     namespace msg {
@@ -99,6 +101,12 @@ namespace avt_341 {
         
         using Communication = avt_341::Communication;
         using CommunicationPtr = const avt_341::Communication::ConstPtr &;
+
+        using OccupiedCell = avt_341::OccupiedCell;
+        using OccupiedCellPtr = const avt_341::OccupiedCell::ConstPtr &;
+
+        using OccupiedCells = avt_341::OccupiedCells;
+        using OccupiedCellsPtr = const avt_341::OccupiedCells::ConstPtr &;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;
@@ -136,8 +144,10 @@ namespace avt_341 {
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
 
-#include "avt_341/msg/communication.hpp"
-#include "avt_341/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/occupied_cell.hpp"
+#include "avt_341_msgs/msg/occupied_cells.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -195,11 +205,17 @@ namespace avt_341 {
     using Int32 = std_msgs::msg::Int32;
     using Int32Ptr = std_msgs::msg::Int32::SharedPtr;
 
-    using FollowerStatus = avt_341::msg::FollowerStatus;
-    using FollowerStatusPtr = avt_341::msg::FollowerStatus::SharedPtr;
+    using FollowerStatus = avt_341_msgs::msg::FollowerStatus;
+    using FollowerStatusPtr = avt_341_msgs::msg::FollowerStatus::SharedPtr;
 
-	using Communication = avt_341::msg::Communication;
-    using CommunicationPtr = avt_341::msg::Communication::SharedPtr;
+    using Communication = avt_341_msgs::msg::Communication;
+    using CommunicationPtr = avt_341_msgs::msg::Communication::SharedPtr;
+
+    using OccupiedCell = avt_341_msgs::msg::OccupiedCell;
+    using OccupiedCellPtr = avt_341_msgs::msg::OccupiedCell::SharedPtr;
+
+    using OccupiedCells = avt_341_msgs::msg::OccupiedCells;
+    using OccupiedCellsPtr = avt_341_msgs::msg::OccupiedCells::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;

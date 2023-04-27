@@ -12,7 +12,8 @@ set(REQUIRED_ROS_PACKAGES
   tf2_ros
   tf2_geometry_msgs
   dynamic_reconfigure
-  jsk_recognition_msgs    
+  jsk_recognition_msgs
+  avt_341_msgs
 )
 
 if($ENV{ROS_DISTRO} STREQUAL "noetic" OR $ENV{ROS_DISTRO} STREQUAL "melodic")
