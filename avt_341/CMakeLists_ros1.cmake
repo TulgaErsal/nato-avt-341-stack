@@ -12,7 +12,8 @@ set(REQUIRED_ROS_PACKAGES
   tf2_ros
   tf2_geometry_msgs
   dynamic_reconfigure
-  jsk_recognition_msgs    
+  jsk_recognition_msgs
+  avt_341_msgs
 )
 
 if($ENV{ROS_DISTRO} STREQUAL "noetic" OR $ENV{ROS_DISTRO} STREQUAL "melodic")
@@ -35,27 +36,6 @@ add_definitions(${PCL_DEFINITIONS})
 #generate_dynamic_reconfigure_options(
 #  config/lidar_obstacle_detector.cfg
 #)
-
-#########################
-## add custom messages ##
-#########################
-
-add_message_files(
- FILES
- Sinkage.msg
- Obstacles.msg
- Communication.msg
- FollowerStatus.msg
- OccupiedCell.msg
- OccupiedCells.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  nav_msgs
-)
-
 
 ###################################
 ## catkin specific configuration ##

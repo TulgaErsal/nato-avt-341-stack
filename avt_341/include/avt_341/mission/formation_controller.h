@@ -42,7 +42,7 @@ class FormationController{
 	avt_341::msg::Path GetPath(){return desired_global_path_; }
 
 	/// Get the current desired speed in m/s
-	avt_341::msg::Float64 GetSpeed(){avt_341::msg::Float64 ds; ds.data = desired_speed_; }
+	avt_341::msg::Float64 GetSpeed(){avt_341::msg::Float64 ds; ds.data = desired_speed_; return ds; }
 
   private:
 
