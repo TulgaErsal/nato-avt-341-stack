@@ -37,27 +37,6 @@ add_definitions(${PCL_DEFINITIONS})
 #  config/lidar_obstacle_detector.cfg
 #)
 
-#########################
-## add custom messages ##
-#########################
-
-add_message_files(
- FILES
- Sinkage.msg
- Obstacles.msg
- Communication.msg
- FollowerStatus.msg
- OccupiedCell.msg
- OccupiedCells.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  nav_msgs
-)
-
-
 ###################################
 ## catkin specific configuration ##
 ###################################
