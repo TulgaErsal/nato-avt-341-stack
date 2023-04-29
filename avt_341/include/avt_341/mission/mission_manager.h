@@ -18,7 +18,11 @@
 #include <map>
 // local includes
 #include "avt_341/node/ros_types.h"
+#include "avt_341/node/node_proxy.h"
 #include "avt_341/mission/task.h"
+#include "avt_341/mission/formation_utils.h"
+#include "avt_341/mission/formation_definition.h"
+#include "avt_341/mission/formation_speed_control.h"
 
 namespace avt_341 {
 namespace mission {
@@ -30,20 +34,14 @@ struct MissionPoint {
     double pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, rot_w;
 };
 
-struct Formation {
-    avt_341::msg::Point follower1;
-    avt_341::msg::Point follower2;
-    avt_341::msg::Point follower3;
-};
-
 struct Contact {
-	// storage for contact information
-	// timestamp, position, class/name, investigated
-	avt_341::msg::PoseStamped pose;
-	std::string name;
-	float x, y;
-	bool investigated;
-	bool investigating;
+    // storage for contact information
+    // timestamp, position, class/name, investigated
+    avt_341::msg::PoseStamped pose;
+    std::string name;
+    float x, y;
+    bool investigated;
+    bool investigating;
     bool is_new;
 };
     
@@ -51,60 +49,47 @@ struct Contact {
 class MissionManager{
 
   public:
-	/// Construct a formation controller
-	MissionManager();
+    /// Construct a formation controller
+    MissionManager(FormationDefinition & formation_definition, std::shared_ptr<node::NodeProxy> node_proxy);
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
 
     bool getMissionPoint(MissionPoint& mission_point, std::string posename);
 
-	// internal messages
-	void handleContacts(avt_341::msg::Path);
+    // internal messages
+    void handleContacts(avt_341::msg::Path);
 
-	// external messages
-    void handleMoveTo(avt_341::msg::Communication);
+    // external messages
+    void handleMoveTo(const avt_341::msg::Communication &);
     void handleFormationRequest(avt_341::msg::Communication);
-    void handleAcknowledge(avt_341::msg::Communication);
-    void handleArrive(avt_341::msg::Communication);
-    void handleTaskComplete(avt_341::msg::Communication);
-    void handleHold(avt_341::msg::Communication);
-    void handleSetSpeed(avt_341::msg::Communication);
+    void handleAcknowledge(const avt_341::msg::Communication &);
+    void handleArrive(const avt_341::msg::Communication &);
+    void handleTaskComplete(const avt_341::msg::Communication &);
+    void handleHold(const avt_341::msg::Communication &);
+    void handleSetSpeed(const avt_341::msg::Communication &);
 
     std::string my_name;
-    std::string leader_name;
-    bool is_leader;
-    float follow_scale;
-	float same_object_distance_threshold_sq;
-	avt_341::msg::Odometry odometry;
-	int previous_nav_state, nav_state; 
+    float same_object_distance_threshold_sq;
+    avt_341::msg::Odometry odometry;
+    int previous_nav_state, nav_state;
     float desired_speed;
     bool goal_changed;
     bool arrival_announced;
-	bool busy;	// probably temporary 
+    bool busy;	// probably temporary
 
     // Task management
     Task* getTask();
-    auto getNextTask();
+    Task* getNextTask();
     void updateTasks();
     void postUpdateTasks();
-    bool setTask(Task * task);
+    bool setActiveTask(Task * task);
+    bool addTask(Task * task);
+    void publishPath(avt_341::msg::Path& path);
+    void publishNavStateCmd(int state);
+    void publishCommStr(const std::string & msg_data);
 
-    // Messages
-    bool path_msg_updated;
-    avt_341::msg::Path path_msg;
-
-    bool follower_status_msg_updated;
-    avt_341::msg::FollowerStatus follower_status_message;
-
-    bool comm_msg_updated;
-    avt_341::msg::String comm_msg;
-
-    bool nav_msg_updated;
-    avt_341::msg::Int32 nav_msg;
-
-    bool speed_msg_updated;
-    avt_341::msg::Float64 speed_msg;
+    FormationDefinition & formation_def;
 
   private:
 
@@ -113,16 +98,22 @@ class MissionManager{
     std::vector<Task*> mission_tasks;
     std::vector<Task*> task_list;
     std::vector<Task*> completed_tasks;
-    std::map<std::string, Formation> formations;
-	std::vector<Contact> mission_contacts;
+    std::vector<Contact> mission_contacts;
+    std::shared_ptr<node::NodeProxy> node_proxy_;
 
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> communication_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
 
     // Methods
-	auto getContact(std::string name, float x, float y); 
+    auto getContact(std::string name, float x, float y);
     auto getClosestNewContact(float veh_x, float veh_y);
-	void addContact(std::string name, float x, float y);
-	bool close(float x, float y, float n_x, float n_y);
+    void addContact(std::string name, float x, float y);
+    bool close(float x, float y, float n_x, float n_y);
     float distance_sq(float x1, float y1, float x2, float y2);
+
 }; // class mission manager
 
 } // namespace mission

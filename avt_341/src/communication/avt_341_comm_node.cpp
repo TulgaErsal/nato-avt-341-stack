@@ -10,38 +10,30 @@
  * \date 2/19/2023
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#include <algorithm>
 #include <vector>
 #include <sstream>
+#include <queue>
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include "avt_341/communication/tcp_socket_proxy.h"
 
+std::queue<std::string> pending_msgs;
 char message[256] = { 0 };
-bool messages_ready = 0;
-int res = 0;
-avt_341::msg::String my_name;
-avt_341::msg::String leader_name;
+std::string my_name;
+std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 
 void MessageCallback(avt_341::msg::StringPtr msg) {
-    memset(message, 0, 256);
-    strcpy(message, msg->data.c_str());
-    messages_ready = 1;
-    std::cout << "Comm Node has received message " << message << " to broadcast to the network.";
-}
-
-void ClearMessages() {
-    messages_ready = 0;
-    bzero(message, 256);
+    pending_msgs.push(msg->data);
+    nh->log_info("Received %s to broadcast.", msg->data.c_str());
 }
 
 avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     avt_341::msg::Communication message;
+    if(tokens.size() < 3){
+        return message;
+    }
     message.sender_name = tokens[0];
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
@@ -88,10 +80,23 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     return message;
 }
 
+std::vector<std::string> tokenize_msg(std::string input){
+    std::vector<std::string> tokens;
+    size_t pos = 0;
+    std::string token;
+    while ((pos = input.find(",")) != std::string::npos) {
+        token = input.substr(0, pos);
+        tokens.push_back(token);
+        input.erase(0, pos + 1);
+    }
+    tokens.push_back(input);
+    return tokens;
+}
+
 int main(int argc, char* argv[])
 {
     // Initialize the node
-    auto nh = avt_341::node::init_node(argc,argv,"avt_341_comm_node");
+    nh = avt_341::node::init_node(argc,argv,"avt_341_comm_node");
     avt_341::node::Rate loop_rate(100.0);
 
     // Set up subscriptions
@@ -101,11 +106,8 @@ int main(int argc, char* argv[])
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::msg::Communication>("avt_341/recv_comms", 10);
 
-    int n, sockfd, port, ready, msg_count = 0;
-    fd_set read_fds;
-    struct timeval timeout;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+    int port, msg_count = 0;
+    bool disable_socket_comms, broadcast_internal, add_name_id_to_msg;
     char buffer[256];
     std::string hostname;
     avt_341::msg::Communication packed_msg;
@@ -113,87 +115,72 @@ int main(int argc, char* argv[])
     // load parameters
     nh->get_parameter("~host", hostname, std::string("localhost"));
     nh->get_parameter("~port", port, 9000);
-    nh->get_parameter("~name", my_name.data, std::string("AGV1"));
-    
-//    nh->log_info("Connecting to host: %s port: %d", hostname.c_str(), port);
+    nh->get_parameter("~name", my_name, std::string("AGV1"));
+    nh->get_parameter("~disable_socket_comms", disable_socket_comms, false);
+    nh->get_parameter("~broadcast_internal", broadcast_internal, false);
+    nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, true);
+
+    nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_internal: %d",
+                 hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_internal);
+
     // Create the socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 9) 
-        nh->log_error("Error opening socket\n");
-    server = gethostbyname(hostname.c_str());
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr,
-        (char *)&serv_addr.sin_addr.s_addr,
-        server->h_length);
-    serv_addr.sin_port = htons(port);
+    std::shared_ptr<avt_341::communication::TcpSocketClientBase> client = nullptr;
+    if(disable_socket_comms){
+        client = std::make_shared<avt_341::communication::NullTcpSocketClient>();
+    }else{
+        client = std::make_shared<avt_341::communication::TcpSocketClient>(hostname, port);
+    }
+    broadcast_internal |= disable_socket_comms;
 
     // connect to the server
-    if (connect(sockfd,(struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    if(!client->connect())
         nh->log_info("Error connecting to the server\n");
-    
+
     while (avt_341::node::ok()) {
-        bzero(buffer, 256);
+        std::fill(std::begin(buffer), std::end(buffer), '\0');
 
         // Check for any messages ready to send
-        if(messages_ready) {
+        while(!pending_msgs.empty()) {
+
+            std::string next_msg = pending_msgs.front();
+            pending_msgs.pop();
+
+            if(broadcast_internal){
+                auto comm_msg = packageMessage(tokenize_msg(next_msg));
+                if(!comm_msg.type.empty()){
+                    msg_pub->publish(comm_msg);
+                }
+            }
+
             // append name and message
-            std::ostringstream stream;
-            stream << my_name.data << "," << msg_count << "," << message;
-            std::cout << stream.str() << std::endl;
-            msg_count++;
-            
-            strcpy(buffer,stream.str().c_str());
-            
-            n = write(sockfd, buffer, strlen(buffer));
+            if(add_name_id_to_msg){
+                std::ostringstream stream;
+                stream << my_name << "," << msg_count++ << "," << next_msg;
+                next_msg = stream.str();
+            }
+
+            nh->log_info("Broadcasting %s", next_msg.c_str());
+
+            strcpy(buffer, next_msg.c_str());
+            int n = client->write(buffer, strlen(buffer));
             if(n < 0)
                 nh->log_error("Error writing to socket\n");
             else {
-                ClearMessages();
                 nh->log_debug("Message sent and buffer cleared.\n");
             }
         }
 
-        bzero(buffer, 256);
+        std::fill(std::begin(buffer), std::end(buffer), '\0');
 
-        FD_ZERO(&read_fds);
-        FD_SET(sockfd, &read_fds);
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 0;
+        // read the socket
+        if(client->read_available(buffer, 256) > 0)
+        {
+            std::string buffer_str = std::string(buffer);
+            nh->log_info("Read %s", buffer_str.c_str());
+            packed_msg = packageMessage(tokenize_msg(buffer_str));
+            msg_pub->publish(packed_msg);
+        }
 
-        // check for message from the server
-        ready = select(sockfd + 1, &read_fds, NULL, NULL, &timeout);
-        if(ready > 0 && FD_ISSET(sockfd, &read_fds)) {
-            // read the socket
-            n = read(sockfd, buffer, 256);
-            if(n > 0) 
-            {
-                //nh->log_info("Read %d bytes: '%s'\n", n, buffer);
-                char* token;
-                std::vector <std::string> tokens;
-
-                // parse the message, then send appropriate messages on to other ROS nodes
-                strcpy(message, buffer);
-
-                // Tokenize incoming message
-                token = strtok(buffer, ",");
-                //tokens.push_back(token);
-                while (token != NULL)
-                {
-                    tokens.push_back(token);
-                    //printf("token: %s\n", token);
-                    token = strtok(NULL, ",");
-                }
-                
-                // Package the tokens into message struct
-                packed_msg = packageMessage(tokens);
-
-                // Publish the packed_msg
-                msg_pub->publish(packed_msg);
-            }                
-        } else {
-            //nh->log_debug("No socket ready to read\n");
-        }      
         nh->spin_some();
         loop_rate.sleep();
     }

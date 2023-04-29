@@ -13,6 +13,7 @@
 
 // c++ includes
 #include <string>
+#include <sstream>
 // local includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/mission/mission_manager.h"
@@ -35,6 +36,7 @@ public:
     MissionManager* mgr;
     bool set_busy;
     bool completed;
+    virtual std::string description() const { return "Task"; }
 }; // class Task
 
 class MoveTo : public Task {
@@ -60,6 +62,8 @@ public:
     std::string name;
     bool arrived;
     Contact * contact;
+
+    std::string description() const override;
 }; // class MoveTo
 
 class WaitUntil : public Task {
@@ -69,6 +73,9 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
+    std::string description() const override{
+      return "TASK-WAIT_UNTIL";
+    }
 }; // class WaitUntil
 
 class Encircle : public Task {
@@ -78,6 +85,9 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
+    std::string description() const override{
+      return "TASK-ENCIRCLE";
+    }
 }; // class Encircle
 
 class Follow : public Task {
@@ -87,6 +97,7 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
+    std::string description() const override;
 }; // class Follow
 
 

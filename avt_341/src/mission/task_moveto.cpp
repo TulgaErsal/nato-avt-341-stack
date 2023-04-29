@@ -63,26 +63,13 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
 }
 
 void MoveTo::init() {
-    std::cout << "Move To Task initialized" << std::endl;
 
-    // send waypoints to global planner
-    if(mgr->path_msg_updated == true) {
-        std::cout << mgr->my_name << " WARNING Overwriting path_msg" << std::endl;
-    }
-    mgr->path_msg.poses.clear();
-    mgr->path_msg.poses.push_back(goal);
-    mgr->path_msg_updated = true;
+    avt_341::msg::Path path_msg;
+    path_msg.poses.clear();
+    path_msg.poses.push_back(goal);
+    mgr->publishPath(path_msg);
 
-    // send go command to global planner
-    if(mgr->nav_state != 0) {
-        if(mgr->nav_msg_updated == true) {
-            if(mgr->nav_msg.data != 1) {
-                std::cout << mgr->my_name << "WARNING Overwriting nav_msg " << mgr->nav_msg.data << " with 1" << std::endl;
-            }
-        }
-        mgr->nav_msg.data = 1;
-        mgr->nav_msg_updated = true;
-    }
+    mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
 
     if(set_busy) {
         mgr->busy = true;
@@ -106,26 +93,27 @@ bool MoveTo::is_done() {
 }
 
 void MoveTo::on_done() {
-    std::cout << "Move To Task " << name << " is completed" << std::endl;
 
     // announce arrival
     std::ostringstream stream;
     stream << "ARRIVE," << name;
-    if(mgr->comm_msg_updated) {
-        std::cout << "WARNING Overwriting comm_msg " << mgr->comm_msg.data << " with " << stream.str() << std::endl;
-    }
-    mgr->comm_msg.data = stream.str();
-    mgr->comm_msg_updated = true;
+    mgr->publishCommStr(stream.str());
 
     // update contact investigation status
     if(goal_type == CONTACT) {
-        if(contact != NULL) {
+        if(contact != nullptr) {
             contact->investigated = true;
         }
     }
 
     completed = true;
     mgr->busy = false;
+}
+
+std::string MoveTo::description() const {
+  std::ostringstream stream;
+  stream << "TASK-MOVE_TO: goal_type=" << goal_type << ", name=" << name;
+  return stream.str();
 }
 
 } // mission 

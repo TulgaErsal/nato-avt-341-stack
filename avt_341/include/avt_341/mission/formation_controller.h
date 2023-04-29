@@ -8,11 +8,15 @@
 *
 * \date 8/31/2020
 */
+
+#ifndef AVT_341_FORMATION_CONTROLLER_H
+#define AVT_341_FORMATION_CONTROLLER_H
+
 // c++ includes
 #include <string>
 // local includes
 #include "avt_341/node/ros_types.h"
-
+#include "avt_341/mission/formation_utils.h"
 
 namespace avt_341 {
 namespace mission {
@@ -38,6 +42,8 @@ class FormationController{
 	/// Set the follower dist gain. This controls how aggressively the vehicle closes ground, equavilent to the "P" in PID
 	void SetFollowerDistGain(float gain){follower_dist_gain_ = gain;}
 
+  void SetUseBreadcrumbs(float gain){follower_dist_gain_ = gain;}
+
 	/// Get the current desired global path
 	avt_341::msg::Path GetPath(){return desired_global_path_; }
 
@@ -47,9 +53,9 @@ class FormationController{
   private:
 
 	// Method to generate global path based on formation
-	void  GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVy);
+  void GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
-	// Method to calculate desired speed based on formation
+  // Method to calculate desired speed based on formation
 	void CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
 	// control parameters
@@ -62,12 +68,11 @@ class FormationController{
 	float desired_speed_;
 
 	// utility functions and intermediate calculations
-	void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R);
-	void NormalizeVec2D(Vec2d &v);
-	void CalcLeaderRotation(avt_341::msg::Odometry leader_odom, Vec2d &leaderVx, Vec2d &leaderVy);
 	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);
 
 }; // class formation controller
 
 } // namespace mission
 } // namespace avt_341
+
+#endif //AVT_341_FORMATION_CONTROLLER_H

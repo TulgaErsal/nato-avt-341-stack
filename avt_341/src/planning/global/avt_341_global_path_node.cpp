@@ -26,6 +26,8 @@ bool waypoints_rcvd = false;
 bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
+bool verbose_gp_log = false;
+std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -48,11 +50,13 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
   // Brute force - overwrite the current global waypoints
   current_waypoints = *rcv_waypoints;
   waypoints_rcvd = true;
-  std::cout << current_waypoints.poses.size() << " waypoint(s) received! " << current_waypoints.poses[0].pose.position.x << ", " << current_waypoints.poses[0].pose.position.y <<  std::endl;
+  if(verbose_gp_log){
+    n->log_info("%d waypoint(s) received! %.2f, %.2f", current_waypoints.poses.size(), current_waypoints.poses[0].pose.position.x, current_waypoints.poses[0].pose.position.y);
+  }
 }
 
 void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
-  std::cout << " GP set to " << rcv_gptoggle->data;
+  n->log_info("GP set to %d", rcv_gptoggle->data);
   use_global_planner = (bool)rcv_gptoggle->data;
 }
 
@@ -63,7 +67,9 @@ void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand) {
 
 void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
 {
-  std::cout << "Waypoint received from goal callback." << std::endl;
+  if(verbose_gp_log){
+    n->log_info("Setting goal (%.2f, %.2f)", rcv_goal_pose->pose.position.x, rcv_goal_pose->pose.position.y);
+  }
   current_waypoints.poses.clear();
   current_waypoints.poses.push_back(*rcv_goal_pose);
   waypoints_rcvd = true;
@@ -88,7 +94,7 @@ avt_341::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
 
 int main(int argc, char *argv[])
 {
-  auto n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
+  n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
@@ -101,7 +107,7 @@ int main(int argc, char *argv[])
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
-  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("/goal_pose", 10, GoalPoseCallback);
+  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -112,12 +118,12 @@ int main(int argc, char *argv[])
   // 3 - bring to an immediate stop (hard braking) and shut down
   auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
   avt_341::msg::Int32 state;
-  state.data = -1; // start up state
+  state.data = avt_341::utils::NavStackState::NotInit; // start up state
 
   float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
-  bool debug_visualize, search_diagonals, los_break_on_first;
+  bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint;
   int los_max_iterations;
 
   std::vector<float> goal;
@@ -135,6 +141,8 @@ int main(int argc, char *argv[])
   n->get_parameter("~w_distance", w_distance, 1.0f);
   n->get_parameter("~w_occupancy", w_occupancy, 1.0f);
   n->get_parameter("~w_segmentation", w_segmentation, 1.0f);
+  n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
+  n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -143,8 +151,8 @@ int main(int argc, char *argv[])
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
   }
 
-  int shutdown_behavior = 1;
-  n->get_parameter("~shutdown_behavior", shutdown_behavior, 1);
+  int shutdown_behavior = avt_341::utils::NavStackState::Stopped;
+  n->get_parameter("~shutdown_behavior", shutdown_behavior, shutdown_behavior);
   if (shutdown_behavior>3 || shutdown_behavior<1)shutdown_behavior = 1;
 
   if (waypoints_x_list.size() != waypoints_y_list.size())
@@ -160,12 +168,11 @@ int main(int argc, char *argv[])
   int num_waypoints = std::min(waypoints_x_list.size(), waypoints_y_list.size());
 
   // Initialize current waypoints with the data from the waypoint yaml params
+  current_waypoints.poses.clear();
+  current_waypoints.header.frame_id = "map";
   if (num_waypoints > 0)
   {
     //nav_msgs::Path loaded_waypoints;
-    current_waypoints.poses.clear();
-    //current_waypoints.header.frame_id = "odom";
-    current_waypoints.header.frame_id = "map";
     for (int32_t i=0;i<num_waypoints;i++){
       avt_341::msg::PoseStamped pose;
       pose.pose.position.x = static_cast<float>(waypoints_x_list[i]);
@@ -180,7 +187,7 @@ int main(int argc, char *argv[])
       // Initialize goal to first waypoint
     goal[0] = waypoints_x_list[0];
     goal[1] = waypoints_y_list[0];
-    state.data = 0; // go active
+    state.data = avt_341::utils::NavStackState::Active; // go active
     state_pub->publish(state);
   }
 
@@ -198,13 +205,14 @@ int main(int argc, char *argv[])
   while (avt_341::node::ok()){
     // Handle Go command
     if(nav_command_rcvd) {
-	    if(nav_command == 1 && (state.data == -1) || state.data == 1) {
+	    if(nav_command == avt_341::utils::NavStateCmd::GoActive
+      && (state.data == avt_341::utils::NavStackState::NotInit) || state.data == avt_341::utils::NavStackState::Stopped) {
         // startup/idling - go active
-        state.data = 0;
+        state.data = avt_341::utils::NavStackState::Active;
         shutdown_condition = false;
-        state_pub->publish(state); 
+        state_pub->publish(state);
         nav_command_rcvd = false;
-        nav_command = 0;
+        nav_command = avt_341::utils::NavStateCmd::GoInactive;
 		//n->log_info("Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
 	    }
 	  } else {
@@ -224,15 +232,19 @@ int main(int argc, char *argv[])
         current_waypoint = 0;
         goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
         goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
-        std::cout << "New waypoints! Updated goal " << goal[0] << ", " << goal[1] << std::endl;
+        if(verbose_gp_log){
+          n->log_info("New waypoints! Updated goal %f, %f", goal[0], goal[1]);
+        }
         waypoints_rcvd = false;
-		/* Maintaining current state - if we're idle, we'll need an explicit GO command 
-        state.data = 0;  // go active
-        state_pub->publish(state);
-		*/
+        shutdown_condition = false;
+        // Maintaining current state - if we're idle, we'll need an explicit GO command unless auto_active option
+        if(auto_active_on_new_waypoint){
+          state.data = avt_341::utils::NavStackState::Active;  // go active
+          state_pub->publish(state);
+        }
       }
 
-      if (odom_rcvd && state.data != -1 && current_waypoints.poses.size() > 0){ // data received and not in startup mode
+      if (odom_rcvd && state.data != avt_341::utils::NavStackState::NotInit && current_waypoints.poses.size() > 0){ // data received and not in startup mode
         std::vector<float> pos;
         pos.push_back(odom.pose.pose.position.x);
         pos.push_back(odom.pose.pose.position.y);
@@ -291,8 +303,9 @@ int main(int argc, char *argv[])
         curr_wp.data = current_waypoint;
         current_waypoint_pub->publish(curr_wp);
         dist_to_current_waypoint_pub->publish(dist_to_goal);
-        if (nl % 20 == 0){ //update every second
-          std::cout << " Global Path: Pos " << odom.pose.pose.position.x << ", " << odom.pose.pose.position.y << " Distance to goal (" << goal[0] << ", " << goal[1] << ") for " << current_waypoint << " of " << current_waypoints.poses.size() - 1 << " = " << d << std::endl;
+        if (nl % 20 == 0 && verbose_gp_log){ //update every second
+          n->log_info("Global Path: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f",
+                      odom.pose.pose.position.x, odom.pose.pose.position.y, goal[0], goal[1], current_waypoint, current_waypoints.poses.size() - 1, d);
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
@@ -302,7 +315,7 @@ int main(int argc, char *argv[])
             state.data = shutdown_behavior; // request shutdown behavior
             state_pub->publish(state);
 			      //std::cout << "Shutdown " << shutdown_behavior << std::endl;
-			      if(state.data != 1) {
+			      if(state.data != avt_341::utils::NavStackState::Stopped) {
               shutdown_count++;
             	if (shutdown_count>10)
 				      {
@@ -318,10 +331,10 @@ int main(int argc, char *argv[])
             goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
             goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
           }
-		      if(state.data != 0) {
+		      if(state.data != avt_341::utils::NavStackState::Active) {
 		  	    std::cout << "Why are we here? Current state: " << state.data << std::endl;
 		      }
-          state.data = 0;         // request active behavior
+          state.data = avt_341::utils::NavStackState::Active;         // request active behavior
           state_pub->publish(state);
         }
       } // if odom_recvd
@@ -330,7 +343,7 @@ int main(int argc, char *argv[])
       //  state_pub->publish(state);
       //}
     }
-    
+
     n->spin_some();
     r.sleep();
     nl++;

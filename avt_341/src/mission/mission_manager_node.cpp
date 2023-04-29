@@ -2,32 +2,27 @@
 #include "avt_341/node/node_proxy.h"
 // local includes
 #include "avt_341/mission/mission_manager.h"
+#include <queue>
 
-avt_341::msg::Communication rcvd_msg;
-bool message_rcvd = false;
+std::queue<avt_341::msg::Communication> comm_msgs;
 
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
 
-avt_341::msg::Odometry leader_odom;
-bool leader_odom_rcvd = false;
-
-avt_341::msg::Path contacts;
-bool contacts_rcvd = false;
-
 avt_341::msg::Int32 nav_state;
 bool nav_state_rcvd = false;
-int previous_nav_state = -1;
 
-std::string leader_name;
 std::string mission_definition_filename;
 float sodist_threshold;
 
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
+std::shared_ptr<avt_341::mission::MissionManager> mgr;
+
+std::map<std::string, avt_341::msg::Odometry> formation_poses;
+
 // Receive updates from comms
 void CommunicationCallback(avt_341::msg::CommunicationPtr msg) {
-    std::cout << " Mission Manager received communication" << std::endl;
-    rcvd_msg = *msg;
-    message_rcvd = true;
+    comm_msgs.push(*msg);
 }
 
 void EgoOdometryCallback(avt_341::msg::OdometryPtr msg) {
@@ -38,18 +33,26 @@ void EgoOdometryCallback(avt_341::msg::OdometryPtr msg) {
 
 // Receive updated odometry information
 void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
-    // std::cout << ros::this_node::getName() << " Mission Manager received odometry" << std::endl;
-    if(msg->child_frame_id == leader_name) {
-        leader_odom = *msg;
-        leader_odom_rcvd = true;
+    // Ensure same case as leader_name
+    std::string child_frame_id = msg->child_frame_id;
+    const std::string leader_name = mgr->formation_def.followedVehicle();
+    std::transform(child_frame_id.begin(), child_frame_id.end(), child_frame_id.begin(), std::toupper);
+
+    std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
+    formation_poses[veh_name] = *msg;
+
+    if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
+      leader_pub->publish(*msg);
     }
 }
 
 // Receive information on target contacts
 void TargetContactsCallback(avt_341::msg::PathPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
-	contacts = *msg;
-	contacts_rcvd = true;
+  // Handle detection of potential targets of interest
+  if(mgr->nav_state != avt_341::utils::NavStackState::NotInit) {       // avoid premature detection of contacts
+    mgr->handleContacts(*msg);
+  }
 }
 
 // Receive information on navigation state (-1 startup, 0 active, 1 stopping, 2 shutdown, 3 shutdown hard)
@@ -65,126 +68,109 @@ int main(int argc, char **argv) {
     auto nh = avt_341::node::init_node(argc, argv, "mission_manager");
     avt_341::node::Rate loop_rate(10);
 
+    // load the parameters
+    avt_341::mission::FormationSpeedControlParams fsc_params{};
+    avt_341::mission::FormationDefinition formation_def{};
+    std::string fsc_type;
+    std::vector<std::string> veh_namespaces;
+
+    nh->get_parameter("~name", formation_def.my_name, std::string("AGV1"));
+    nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
+    nh->get_parameter("~follow_scale_x", formation_def.follow_scale_x, 1.0f);
+    nh->get_parameter("~follow_scale_y", formation_def.follow_scale_y, 1.0f);
+    nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
+
+    nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
+    nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
+    nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
+    nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
+    nh->get_parameter("~formation_debug_visualize", fsc_params.debug_visualize, false);
+    nh->get_parameter("~offsets_from_leader", formation_def.offsets_from_leader, true);
+    nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
+    nh->get_parameter("~follower_dot_threshold", fsc_params.follower_dot_threshold, 0.0);
+    nh->get_parameter("~num_vehicles", formation_def.num_vehicles, 4);
+    nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
+    nh->get_parameter("~veh_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
+
+    bool use_slow_down_speed_control = fsc_type == FormationSpeedControlType::SLOW_DOWN_LEADER;
+
+    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_def, nh);
+    mgr->same_object_distance_threshold_sq = sodist_threshold * sodist_threshold;
+
+    avt_341::mission::FormationSpeedController speedController(formation_def, fsc_params, nh);
+
+    nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
+    mgr->loadMissionDefinition(mission_definition_filename);
+
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/recv_comms", 10, CommunicationCallback);
-	auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
-	auto nav_state_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/state", 10, NavStateCallback);
-	auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
-    auto veh1_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/veh1_odometry", 10, VehicleOdometryCallback);
-    auto veh2_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/veh2_odometry", 10, VehicleOdometryCallback);
-    auto veh3_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/veh3_odometry", 10, VehicleOdometryCallback);
-    auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/veh4_odometry", 10, VehicleOdometryCallback);
+    auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
+    auto nav_state_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/state", 10, NavStateCallback);
+    auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
+    auto veh1_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[0] + "/avt_341/odometry", 10, VehicleOdometryCallback);
+    auto veh2_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[1] + "/avt_341/odometry", 10, VehicleOdometryCallback);
+    auto veh3_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[2] + "/avt_341/odometry", 10, VehicleOdometryCallback);
+    auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback);
 
-    // create the publishers, each vehicle publishes a path and a desired speed
-    auto waypoint_pub = nh->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
-    auto follower_status_pub = nh->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
-    auto leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
-	auto navcommand_pub = nh->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
-	auto communication_pub = nh->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100); 
-    auto speed_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
+    auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
+    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
-    // create the manager
-    avt_341::mission::MissionManager mgr;
-
-    // load the parameters
-    nh->get_parameter("~name", mgr.my_name, std::string("AGV1"));
-    nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
-    nh->get_parameter("~follow_scale", mgr.follow_scale, 1.0f);
-	nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
-	mgr.same_object_distance_threshold_sq = sodist_threshold * sodist_threshold;
-    
-    std::cout << "Load Mission" << std::endl;
-    mgr.loadMissionDefinition(mission_definition_filename);
-    std::cout << "Starting Mission Manager Loop" << std::endl;
-    
     // start the loop
     while(avt_341::node::ok()){
-		// Handle external notifications
-        if(message_rcvd) {
-            std::cout << mgr.my_name << " handling message" << std::endl;
-            message_rcvd = false;
+    // Handle external notifications
+        while(!comm_msgs.empty()){
+            auto rcvd_msg = comm_msgs.front();
+            comm_msgs.pop();
+            nh->log_info("%s handling message: %s", mgr->my_name.c_str(), rcvd_msg.type.c_str());
 
             if(rcvd_msg.type == "FORM") {
-                mgr.handleFormationRequest(rcvd_msg);
-                leader_name = mgr.leader_name;
+                mgr->handleFormationRequest(rcvd_msg);
             } else if(rcvd_msg.type == "ACK") {
-                mgr.handleAcknowledge(rcvd_msg);
+                mgr->handleAcknowledge(rcvd_msg);
             } else if(rcvd_msg.type == "ARRIVE") {
-                mgr.handleArrive(rcvd_msg);
+                mgr->handleArrive(rcvd_msg);
             } else if(rcvd_msg.type == "TASK_COMPLETE") {
-                mgr.handleTaskComplete(rcvd_msg);
+                mgr->handleTaskComplete(rcvd_msg);
             } else if(rcvd_msg.type == "MOVETO") {
-                mgr.handleMoveTo(rcvd_msg);
+                mgr->handleMoveTo(rcvd_msg);
             } else if(rcvd_msg.type == "SHUTDOWN") {
-                if(rcvd_msg.receiver_name == mgr.my_name) {
-                    std::cout << mgr.my_name << " is shutting down" << std::endl;
+                if(rcvd_msg.receiver_name == mgr->my_name) {
+                    std::cout << mgr->my_name << " is shutting down" << std::endl;
                     break;
                 }
             } else if(rcvd_msg.type == "SET_SPEED") {
-                mgr.handleSetSpeed(rcvd_msg);
-            } 
+                mgr->handleSetSpeed(rcvd_msg);
+            } else{
+              nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
+            }
         }
 
         // Incoming internal notifications
-		// Monitor navigation state
-		if(nav_state_rcvd) {
-			// Update navigation state in manager
-			mgr.nav_state = nav_state.data;
-			nav_state_rcvd = false;
-		}
-		// Update our own odometry
-		if(odom_rcvd) {
-			//std::cout << "Updated own odometry" << std::endl;
-			mgr.odometry = odom;
-			odom_rcvd = false;
-		}
-		
-		// Handle detection of potential targets of interest
-		if(contacts_rcvd) {
-			//std::cout << ros::this_node::getName() << " handling " << contacts.poses.size() << " contacts" << std::endl;
-			if(mgr.nav_state != -1) {       // avoid premature detection of contacts
-				contacts_rcvd = false;
-				mgr.handleContacts(contacts); 
-			}
-		}
+        // Monitor navigation state
+        if(nav_state_rcvd) {
+            // Update navigation state in manager
+            mgr->nav_state = nav_state.data;
+            nav_state_rcvd = false;
+        }
+        // Update our own odometry
+        if(odom_rcvd) {
+            //std::cout << "Updated own odometry" << std::endl;
+            mgr->odometry = odom;
+            odom_rcvd = false;
+        }
 
         // update tasks
-        mgr.updateTasks();
+        mgr->updateTasks();
 
         // post-update tasks
-        mgr.postUpdateTasks();
+        mgr->postUpdateTasks();
 
-        // Send Messages
+        if(!formation_def.leaderName().empty() && use_slow_down_speed_control){
+            avt_341::msg::Float64 speed_msg;
+            speed_msg.data = speedController.getSpeedFactor(formation_poses);
+            speed_factor_pub->publish(speed_msg);
+        }
 
-        // Publish external communication messages (sent to comm node and forwarded to the comm server)
-        // TODO: we could potentially have more than one of these
-        if(mgr.comm_msg_updated) {
-            communication_pub->publish(mgr.comm_msg);
-            mgr.comm_msg_updated = false;
-        }
-        if(mgr.follower_status_msg_updated) {
-            follower_status_pub->publish(mgr.follower_status_message);
-            mgr.follower_status_msg_updated = false;
-        }
-        if(mgr.path_msg_updated) {	
-            waypoint_pub->publish(mgr.path_msg);
-		    mgr.path_msg_updated = false;
-        }
-        if(mgr.speed_msg_updated) {
-            speed_pub->publish(mgr.speed_msg);
-            mgr.speed_msg_updated = false;
-        }
-        if(mgr.nav_msg_updated) {
-			navcommand_pub->publish(mgr.nav_msg);
-            mgr.nav_msg_updated = false;
-        }
-        // Forward leader odometry to formation control
-        if(leader_odom_rcvd) {
-            //std::cout << ros::this_node::getName() << " is publishing odometry of the leader " << mgr.leader_name << std::endl;
-            leader_pub->publish(leader_odom); 
-			leader_odom_rcvd = false;
-        }
-        
         nh->spin_some();
         loop_rate.sleep();
     }

@@ -15,6 +15,19 @@
 namespace avt_341 {
 namespace utils {
 
+enum NavStackState : int {
+  NotInit = -1,
+  Active = 0,
+  Stopped = 1,
+  Shutdown = 2,
+  HardShutdown = 3
+};
+
+enum NavStateCmd : int {
+  GoInactive = 0,
+  GoActive = 1
+};
+
 struct vec2{
 	vec2(){
 		x = 0.0f;
@@ -28,6 +41,14 @@ struct vec2{
 	vec2 operator-(const vec2& b) { return vec2(this->x - b.x, this->y - b.y); }
 	vec2 operator*(const float s) { return vec2(s*this->x, s*this->y); }
 	vec2 operator/(const float s) { return vec2(this->x/s, this->y/s); }
+  void normalize() {
+    float mag = sqrt(x*x + y*y);
+    x /= mag;
+    y /= mag;
+  }
+  float mag() {
+    return sqrt(x*x + y*y);
+  }
 	float x;
 	float y;
 };

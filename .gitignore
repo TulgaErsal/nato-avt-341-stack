@@ -49,3 +49,4 @@ out/build
 .vscode/
 
 package.xml
+config/KRC_CP*.csv
