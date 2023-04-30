@@ -140,7 +140,7 @@ namespace avt_341 {
             }
 
             inline const char* get_name() const{ return ros::this_node::getName().c_str(); }
-            inline const char* get_namespace() const{ return ros::this_node::getNamespace(); }
+            inline const char* get_namespace() const{ return ros::this_node::getNamespace().c_str(); }
             ros::Time get_stamp() const;
             double get_now_seconds() const;
             void spin_some();

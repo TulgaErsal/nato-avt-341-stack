@@ -25,11 +25,13 @@ namespace avt_341 {
 
 #ifdef __linux__
 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <cstring>
 
 #else
 
@@ -58,8 +60,8 @@ namespace avt_341 {
       int sockfd_;
       fd_set read_fds_;
       struct timeval timeout_;
-      struct sockaddr_in serv_addr_;
-      struct hostent *server_;
+      //struct sockaddr_in serv_addr_;
+      //struct hostent *server_;
 #else
       void read_handler(boost::system::error_code ec);
       boost::asio::io_service io_service_;

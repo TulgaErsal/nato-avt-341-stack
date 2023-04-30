@@ -12,25 +12,41 @@ TcpSocketClient::TcpSocketClient(const std::string & ip_address, int port)
 
 
 bool TcpSocketClient::connect(){
-    std::cout << "Connecting to host:" << hostname.c_str() << "port: " << port << std::endl;
-    // Create the socket
-    sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd_ < 9)
-        std::cout << "Error opening socket" << std::endl
-    server = gethostbyname(hostname.c_str());
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr,
-        (char *)&serv_addr.sin_addr.s_addr,
-        server->h_length);
-    serv_addr.sin_port = htons(port);
+  std::cout << "TcpSocketClient::connect() attempting to connect to " << ip_address_ << ":" << port_ << std::endl;
 
-    // connect to the server
-    return connect(sockfd_,(struct sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0;
+  struct addrinfo hints, *result;
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  
+  std::string port = std::to_string(port_);
+
+  getaddrinfo(ip_address_.c_str(), port.c_str(), &hints, &result);
+
+  // Create the socket
+  sockfd_ = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+  if (sockfd_ == -1)
+  {
+    std::cout << "Error opening socket" << std::endl;
+    return 0;
+  }
+  
+  //server_ = gethostbyname(ip_address_.c_str());
+  //std::memset(((char *) &serv_addr_), 0, (sizeof(serv_addr_)));
+  //serv_addr_.sin_family = AF_INET;
+  //std::memmove(((char *)server_->h_addr),
+  //    ((char *)&serv_addr_.sin_addr.s_addr),
+  //    server_->h_length);
+  //serv_addr_.sin_port = htons(port_);
+
+  // connect to the server
+  //return connect(sockfd_,(struct sockaddr *)&serv_addr_, sizeof(serv_addr_)) >= 0;
+  return ::connect(sockfd_, result->ai_addr, result->ai_addrlen) >= 0;
 }
 
 int TcpSocketClient::write(const char *buffer, const int size){
-  return write(sockfd_, buffer, size);
+  //return ::write(sockfd_, buffer, size);
+  return send(sockfd_, buffer, size, 0);
 }
 
 int TcpSocketClient::read_available(char *buffer, const int size){
@@ -43,7 +59,7 @@ int TcpSocketClient::read_available(char *buffer, const int size){
   int ready = select(sockfd_ + 1, &read_fds_, NULL, NULL, &timeout_);
   if(ready > 0 && FD_ISSET(sockfd_, &read_fds_)) {
       // read the socket
-      return read(sockfd_, buffer, size);
+      return recv(sockfd_, buffer, size, 0);
   }
   return -1;
 }

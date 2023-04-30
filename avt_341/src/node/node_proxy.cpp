@@ -38,7 +38,7 @@ bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, senso
    return true;
 }
 
-void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::Transform &target_pose) {
+void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose) {
   // TODO: Only currently used for debugging. Used to visualize formation target positions.
 }
 
