@@ -36,7 +36,7 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     // Ensure same case as leader_name
     std::string child_frame_id = msg->child_frame_id;
     const std::string leader_name = mgr->formation_def.followedVehicle();
-    std::transform(child_frame_id.begin(), child_frame_id.end(), child_frame_id.begin(), static_cast<int(*)(int)>(std::toupper));
+    std::transform(child_frame_id.begin(), child_frame_id.end(), child_frame_id.begin(), [](unsigned char c){ return std::toupper(c); });
 
     std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
     formation_poses[veh_name] = *msg;
