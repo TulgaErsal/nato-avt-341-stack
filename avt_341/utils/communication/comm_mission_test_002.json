@@ -1,0 +1,17 @@
+{
+    "documentation":"Demonstrates splitting into two groups then reforming.",
+    "messages": [
+        {
+            "message": "CGV1,1,MOVETO,MissionPoint_C",
+            "delay": "1.0"
+        },
+        {
+            "message": "CGV1,1,MOVETO,MissionPoint_C",
+            "delay": "10.0"
+        },
+        {
+            "message": "CGV1,1,MOVETO,MissionPoint_E",
+            "delay": "10.0"
+        }
+    ]
+}

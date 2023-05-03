@@ -1,0 +1,14 @@
+string sender_name
+int16 msg_id
+string type
+string formation
+string receiver_name
+string leader_name
+string follower1_name
+string follower2_name
+string follower3_name
+string original_sender
+string original_msg_id
+string original_command
+string objective_name
+string desired_speed

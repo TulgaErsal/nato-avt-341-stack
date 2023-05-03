@@ -1,0 +1,9 @@
+{
+    "documentation":"Instructions for Segment 1.01 Departure phase. Tells team to form a line at Mission Point A and move at 4 m/s.",
+    "messages": [
+        {
+            "message": "CGV1,1,FORM,LINE,AGV1,CGV1,CGV2,AGV2,MissionPoint_A,4",
+            "delay": "1.0"
+        }
+    ]
+}
