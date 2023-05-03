@@ -11,10 +11,6 @@
  * \date 2/19/2023
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 

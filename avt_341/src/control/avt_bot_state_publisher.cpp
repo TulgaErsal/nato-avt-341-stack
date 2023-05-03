@@ -84,16 +84,24 @@ int main(int argc, char** argv) {
 
 nav_msgs::msg::Odometry odometry;
 geometry_msgs::msg::Pose &pose = odometry.pose.pose;
+bool odom_received = false;
 void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr rcv_odom){
-  std::cout<<"State publisher recieved odometry "<<std::endl;
-  odometry = *(rcv_odom.get());
+  odometry = *rcv_odom;
+  odom_received = true;
 }
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_state_publisher");
   auto joint_pub = n->create_publisher<sensor_msgs::msg::JointState>("joint_states", 1);
-  auto odom_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",100, OdometryCallback);
+  auto odom_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
+
+  std::string frame_prefix;
+  bool publish_map_to_odom;
+  n->declare_parameter("frame_prefix", std::string(""));
+  n->get_parameter("frame_prefix", frame_prefix);
+  n->declare_parameter("publish_map_to_odom", false);
+  n->get_parameter("publish_map_to_odom", publish_map_to_odom);
 
   tf2_ros::TransformBroadcaster broadcaster(n);
 
@@ -101,43 +109,48 @@ int main(int argc, char** argv) {
   geometry_msgs::msg::TransformStamped odom_trans;
   sensor_msgs::msg::JointState joint_state;
   odom_trans.header.frame_id = "odom";
-  odom_trans.child_frame_id = "base_link";
+  odom_trans.child_frame_id = frame_prefix + "base_link";
 
   // set up parent and child frames
   geometry_msgs::msg::TransformStamped tf_map_to_odom;
   tf_map_to_odom.header.frame_id = std::string("map");
   tf_map_to_odom.child_frame_id = std::string("odom");
 
-  rclcpp::Rate loop_rate(100.0);
+  rclcpp::Rate loop_rate(50.0);
   while (rclcpp::ok()) {
-    //update joint_state
-    joint_state.header.stamp = odometry.header.stamp;
-    joint_state.name.resize(3);
-    joint_state.position.resize(3);
-    joint_state.name[0] ="lidar_joint";
-    joint_state.position[0] = 0.0;
+    if(odom_received) {
+      //update joint_state
+      joint_state.header.stamp = odometry.header.stamp;
+      joint_state.name.resize(3);
+      joint_state.position.resize(3);
+      joint_state.name[0] = "lidar_joint";
+      joint_state.position[0] = 0.0;
 
-    odom_trans.header.stamp = odometry.header.stamp;
-    odom_trans.transform.translation.x = pose.position.x;
-    odom_trans.transform.translation.y = pose.position.y;
-    odom_trans.transform.translation.z = pose.position.z;
-    odom_trans.transform.rotation = pose.orientation;
+      odom_trans.header.stamp = odometry.header.stamp;
+      odom_trans.transform.translation.x = pose.position.x;
+      odom_trans.transform.translation.y = pose.position.y;
+      odom_trans.transform.translation.z = pose.position.z;
+      odom_trans.transform.rotation = pose.orientation;
 
-    //send the joint state and transform
-    joint_pub->publish(joint_state);
-    broadcaster.sendTransform(odom_trans);
+      //send the joint state and transform
+      joint_pub->publish(joint_state);
+      broadcaster.sendTransform(odom_trans);
 
-    // map to odom broadcast transform
-    tf_map_to_odom.header.stamp = odometry.header.stamp;
-    tf_map_to_odom.transform.translation.x = 0.0;
-    tf_map_to_odom.transform.translation.y = 0.0;
-    tf_map_to_odom.transform.translation.z = 0.0;
-    tf_map_to_odom.transform.rotation.x = 0.0;
-    tf_map_to_odom.transform.rotation.y = 0.0;
-    tf_map_to_odom.transform.rotation.z = 0.0;
-    tf_map_to_odom.transform.rotation.w = 1.0;
+      if (publish_map_to_odom) {
+        // map to odom broadcast transform
+        tf_map_to_odom.header.stamp = odometry.header.stamp;
+        tf_map_to_odom.transform.translation.x = 0.0;
+        tf_map_to_odom.transform.translation.y = 0.0;
+        tf_map_to_odom.transform.translation.z = 0.0;
+        tf_map_to_odom.transform.rotation.x = 0.0;
+        tf_map_to_odom.transform.rotation.y = 0.0;
+        tf_map_to_odom.transform.rotation.z = 0.0;
+        tf_map_to_odom.transform.rotation.w = 1.0;
 
-    broadcaster.sendTransform(tf_map_to_odom);
+        broadcaster.sendTransform(tf_map_to_odom);
+      }
+      odom_received = false;
+    }
 
     // This will adjust as needed per iteration
     rclcpp::spin_some(n);

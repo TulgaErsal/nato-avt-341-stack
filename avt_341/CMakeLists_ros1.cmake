@@ -102,6 +102,9 @@ add_executable(avt_341_mission_manager_node
   src/mission/task_follow.cpp
   src/mission/task_moveto.cpp
   src/mission/task_wait_until.cpp
+  src/mission/formation_utils.cpp
+  src/mission/formation_definition.cpp
+  src/mission/formation_speed_control.cpp
   src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_mission_manager_node ${catkin_EXPORTED_TARGETS})
@@ -112,6 +115,7 @@ target_link_libraries(avt_341_mission_manager_node
 add_executable(avt_341_formation_control_node
   src/mission/formation_control_node.cpp
   src/mission/formation_controller.cpp
+  src/mission/formation_utils.cpp
   src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_formation_control_node ${catkin_EXPORTED_TARGETS})
@@ -253,6 +257,7 @@ target_link_libraries(avt_341_grid_compression_node
 
 add_executable(avt_341_comm_node
   src/communication/avt_341_comm_node.cpp
+  src/communication/tcp_socket_proxy.cpp
   src/node/node_proxy.cpp
 )
 target_link_libraries(avt_341_comm_node

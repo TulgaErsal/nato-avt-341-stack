@@ -28,7 +28,7 @@ def communication_server():
 	# add server_socket to list of connections
 	SOCKET_LIST.append(server_socket)
 
-	print "Communication Server started on port " + str(PORT)
+	print("Communication Server started on port " + str(PORT))
 
 	quit = False
 	while(not quit):
@@ -37,33 +37,34 @@ def communication_server():
 
 		for sock in ready_to_read:
 			# new connection
+			addr = None
 			if sock == server_socket:
 				sockfd, addr = server_socket.accept()
 				SOCKET_LIST.append(sockfd)
-				print "Communication Server: Client (%s %s) connected" % addr
-				
+				print("Communication Server: Client (%s) connected" % str(addr))
+
 			# message received
-			else: 
+			else:
 				# process data from client
 				try:
-					# receiving data 
+					# receiving data
 					data = sock.recv(RECV_BUFFER)
 					if data:
 						# received something
 						#message = '[' + str(sock.getpeername()) + '] ' + data
 						message = data
 						broadcast(server_socket, sock, message)
-						print "Communication Server broadcasting: " + str(message)
+						print("Communication Server broadcasting: " + str(message))
 					else:
 						# broken socket
 						if sock in SOCKET_LIST:
 							SOCKET_LIST.remove(sock)
-							print "Communication Server kicking " + str(sock.getpeername())
+							print("Communication Server kicking " + str(sock.getpeername()))
 				# exception
 				except:
-					print "Communication Server: Client (%s, %s) is offline\n" % addr
+					print("Communication Server: Client (%s) is offline\n" % str(addr))
 					continue
-	print "Communication Server shutting down."				
+	print("Communication Server shutting down.")
 	server_socket.close()
 
 # broadcast chat messages to all connected clients

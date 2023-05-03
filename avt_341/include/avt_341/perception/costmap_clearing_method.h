@@ -48,6 +48,7 @@ public:
   virtual void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) = 0;
   virtual void Visualize() const {};
   virtual void OnOccupancyAdded() {};
+  virtual void Reset() {};
 
   static CostmapClearMethodType string_to_clear_type(const std::string & val) {
     if(val == "none"){ return CostmapClearMethodType::None; }
@@ -104,9 +105,11 @@ protected:
   void RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells);
   void CleanupUnattachedDilation(const avt_341::msg::Point & origin, std::vector< std::vector<Cell>> & cells);
   void ClearVoxelAt(int x, int y, int z);
+  void Reset() override;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> minmax_vis_publisher_;
   std::shared_ptr<avt_341::node::NodeProxy> node_;
+  std::string lidar_frame_;
   CellObstacleCalculator* cell_obstacle_calculator_;
   RaytraceSettings config_;
   std::bitset<N_VOXELS_PER_CELL>* voxel_grid;
@@ -123,6 +126,7 @@ public:
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
   void OnOccupancyAdded() override;
   void Visualize() const override;
+  void Reset() override;
 
 protected:
   float obj_filter_range_;

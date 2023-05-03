@@ -17,18 +17,7 @@ Follow::Follow(MissionManager* manager, std::string sender, int id) {
 }
 
 void Follow::init() {
-    std::cout << mgr->my_name << " setting " << mgr->leader_name << " as leader." << std::endl;
-
-    // send go command to global planner
-    if(mgr->nav_state != 0) {
-        if(mgr->nav_msg_updated == true) {
-            if(mgr->nav_msg.data != 1) {
-                std::cout << mgr->my_name << "WARNING Overwriting nav_msg " << mgr->nav_msg.data << " with 1" << std::endl;
-            }
-        }
-        mgr->nav_msg.data = 1;
-        mgr->nav_msg_updated = true;
-    }
+    mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
 
     if(set_busy) {
         mgr->busy = true;
@@ -45,6 +34,12 @@ bool Follow::is_done() {
 
 void Follow::on_done() {
     std::cout << mgr->my_name << " Follow Task is completed" << std::endl;
+}
+
+std::string Follow::description() const {
+    std::ostringstream stream;
+    stream << "TASK-FOLLOW leader " << mgr->formation_def.followedVehicle();
+    return stream.str();
 }
 
 } // mission 

@@ -10,6 +10,8 @@
 #include "tf2_ros/buffer.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "geometry_msgs/PoseStamped.h"
+#include <stdarg.h>
 
 namespace avt_341 {
     namespace node {
@@ -117,12 +119,28 @@ namespace avt_341 {
 
             void initialize_tf_listener();
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+            void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
+
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
-            inline void log_debug(const std::string &msg) { ROS_DEBUG("%s", msg.c_str()); }
-            inline void log_info(const std::string &msg) { ROS_INFO("%s", msg.c_str()); }
-            inline void log_warning(const std::string &msg) { ROS_WARN("%s", msg.c_str()); }
-            inline void log_error(const std::string &msg) { ROS_ERROR("%s", msg.c_str()); }
+            template<typename... Args> inline void log_debug(const char * format, Args... args){
+              ROS_DEBUG(format, args...);
+            }
+
+            template<typename... Args> inline void log_info(const char * format, Args... args){
+              ROS_INFO(format, args...);
+            }
+
+            template<typename... Args> inline void log_warning(const char * format, Args... args){
+              ROS_WARN(format, args...);
+            }
+
+            template<typename... Args> inline void log_error(const char * format, Args... args){
+              ROS_ERROR(format, args...);
+            }
+
+            inline const char* get_name() const{ return ros::this_node::getName().c_str(); }
+            inline const char* get_namespace() const{ return ros::this_node::getNamespace().c_str(); }
             ros::Time get_stamp() const;
             double get_now_seconds() const;
             void spin_some();
@@ -151,6 +169,9 @@ namespace avt_341 {
 #include "std_msgs/msg/header.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_broadcaster.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include <stdarg.h>
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 
@@ -268,12 +289,31 @@ namespace avt_341 {
 
       void initialize_tf_listener();
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+      void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
+
+      template<typename... Args> inline void log_debug(const char * format, Args... args){
+        RCLCPP_DEBUG(node_->get_logger(), format, args...);
+      }
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
 
-      inline void log_debug(const std::string &msg) { RCLCPP_DEBUG(node_->get_logger(), msg.c_str()); }
-      inline void log_info(const std::string &msg) { RCLCPP_INFO(node_->get_logger(), msg.c_str()); }
-      inline void log_warning(const std::string &msg) { RCLCPP_WARN(node_->get_logger(), msg.c_str()); }
-      inline void log_error(const std::string &msg) { RCLCPP_ERROR(node_->get_logger(), msg.c_str()); }
+      template<typename... Args> inline void log_info(const char * format, Args... args){
+        RCLCPP_INFO(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_warning(const char * format, Args... args){
+        RCLCPP_WARN(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_error(const char * format, Args... args){
+        RCLCPP_ERROR(node_->get_logger(), format, args...);
+      }
+
+      inline const char* get_name() const{ return node_->get_name(); }
+      inline const char* get_namespace() const{ return node_->get_namespace(); }
+
+      std::shared_ptr<rclcpp::Node> get_raw_node() const{
+        return node_;
+      }
 
       rclcpp::Time get_stamp() const;
       double get_now_seconds() const;
@@ -283,6 +323,7 @@ namespace avt_341 {
       std::shared_ptr<rclcpp::Node> node_;
       bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+      std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
       std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     };
 

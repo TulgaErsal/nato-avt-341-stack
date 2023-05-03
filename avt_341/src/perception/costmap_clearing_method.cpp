@@ -77,6 +77,9 @@ namespace perception{
       : node_(node_ref), config_(settings), cell_obstacle_calculator_(cell_obstacle_calculator), handle_dilation_(handle_dilation), OccupancyClearingMethod(cells, Nx, Ny, visualization_range, visualize){
 
     node_->initialize_tf_listener();
+    std::string node_ns = std::string(node_->get_namespace());
+    node_ns = node_ns.empty() || node_ns == "/" ? "" : (node_ns.substr(1, node_ns.size() - 1) + "/"); // Remove leading slash + add slash at end (/)
+    lidar_frame_ =  node_ns + "lidar";
     if(visualize_){
       minmax_vis_publisher_ = node_ref->create_publisher<avt_341::msg::MarkerArray>("avt_341/occupancy_grid/voxels",1);
     }
@@ -115,7 +118,7 @@ namespace perception{
 
   avt_341::msg::Point RaytraceClearingMethod::GetSensorOrigin() const{
     avt_341::msg::Point origin;
-    auto lidar_transform = node_->lookup_transform("map", "lidar");
+    auto lidar_transform = node_->lookup_transform("map", lidar_frame_);
     origin.x = lidar_transform.transform.translation.x;
     origin.y = lidar_transform.transform.translation.y;
     origin.z = lidar_transform.transform.translation.z;
@@ -382,6 +385,17 @@ namespace perception{
     minmax_vis_publisher_->publish(marker_array);
   }
 
+  void RaytraceClearingMethod::Reset(){
+    OccupancyClearingMethod::Reset();
+    for(int i = 0; i < Nx_; i++){
+      for(int j = 0; j < Ny_; j++){
+        if(config_.use_voxels){
+          voxel_grid[i*Ny_ + j].reset();
+        }
+      }
+    }
+  }
+
   // RAYTRACE CLEARING WITH OBSTACLE DISTANCE FILTERING
   // ==================================================================================================================
   // ==================================================================================================================
@@ -468,6 +482,25 @@ namespace perception{
       }
     }
     occupancy_delta_publisher_->publish(occupancy_grid);
+  }
+
+  void RaytraceWithFilteringClearingMethod::Reset(){
+    RaytraceClearingMethod::Reset();
+
+    Cell empty_cell;
+    for(int i = 0; i < Nx_; i++){
+      for(int j = 0; j < Ny_; j++){
+        cells_with_clearing_[i][j] = empty_cell;
+      }
+    }
+
+    for(auto & row : occupancy_delta_){
+      for(auto && elem : row){
+        elem = false;
+      }
+    }
+
+    last_position_ = utils::vec2(0.0, 0.0);
   }
 
   }

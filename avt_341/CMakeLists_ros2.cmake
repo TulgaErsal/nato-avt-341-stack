@@ -71,6 +71,9 @@ add_executable(avt_341_mission_manager_node
     src/mission/task_follow.cpp
     src/mission/task_moveto.cpp
     src/mission/task_wait_until.cpp
+    src/mission/formation_utils.cpp
+    src/mission/formation_definition.cpp
+    src/mission/formation_speed_control.cpp
     src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_mission_manager_node ${dependencies})
@@ -78,6 +81,7 @@ ament_target_dependencies(avt_341_mission_manager_node ${dependencies})
 add_executable(avt_341_formation_control_node
     src/mission/formation_control_node.cpp
     src/mission/formation_controller.cpp
+    src/mission/formation_utils.cpp
     src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_formation_control_node ${dependencies})
@@ -88,17 +92,24 @@ add_executable(avt_341_test_formation_control_node
 )
 ament_target_dependencies(avt_341_test_formation_control_node ${dependencies})
 
-#add_executable(avt_341_comm_node
-#    src/communication/avt_341_comm_node.cpp
-#    src/node/node_proxy.cpp
-#)
-#ament_target_dependencies(avt_341_comm_node ${dependencies})
-#
-#add_executable(avt_341_comm_publisher_node
-#    src/communication/avt_341_comm_publisher_node.cpp
-#    src/node/node_proxy.cpp
-#)
-#ament_target_dependencies(avt_341_comm_publisher_node ${dependencies})
+add_executable(avt_341_comm_node
+    src/communication/avt_341_comm_node.cpp
+    src/communication/tcp_socket_proxy.cpp
+    src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_comm_node ${dependencies})
+
+IF (WIN32 OR WIN64)
+    find_package(Boost REQUIRED)
+    include_directories(${Boost_INCLUDE_DIRS})
+    target_link_directories(avt_341_comm_node PRIVATE $ENV{BOOST_LIBRARYDIR})
+endif()
+
+add_executable(avt_341_comm_publisher_node
+    src/communication/avt_341_comm_publisher_node.cpp
+    src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_comm_publisher_node ${dependencies})
 
 add_executable(avt_341_perception_node
         src/perception/avt_341_perception_node.cpp
@@ -194,26 +205,6 @@ add_executable(avt_bot_state_publisher_node
         )
 ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
 
-
-# # formation control stuff using custom messages
-# # see: https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Single-Package-Define-And-Use-Interface.html#use-an-interface-from-the-same-package
-# rosidl_get_typesupport_target(cpp_typesupport_target
-#   ${PROJECT_NAME} "rosidl_typesupport_cpp")
-
-# add_executable(avt_341_formation_control_node
-#   src/mission/formation_control_node.cpp
-#   src/mission/formation_controller.cpp
-#   src/node/node_proxy.cpp
-# )
-
-# ament_target_dependencies(avt_341_formation_control_node ${dependencies} )
-
-# add_executable(avt_341_test_formation_control_node
-#   src/mission/test_formation_control_node.cpp
-#   src/node/node_proxy.cpp
-# )
-# ament_target_dependencies(avt_341_test_formation_control_node ${dependencies} )
-
 add_executable(avt_341_grid_compression_node
         src/perception/avt_341_grid_compression_node.cpp
         src/node/node_proxy.cpp
@@ -276,10 +267,11 @@ install(TARGETS
         avt_341_sim_test_node
         avt_bot_state_publisher_node
         speed_control_test_node
-#       avt_341_comm_node
-#       avt_341_comm_publisher_node
+        avt_341_comm_node
+        avt_341_comm_publisher_node
         avt_341_mission_manager_node
         avt_341_test_formation_control_node
+        avt_341_global_segmentation_grid_node
         test_target_detection_node
         avt_341_formation_control_node
         avt_341_grid_compression_node

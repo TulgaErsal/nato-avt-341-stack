@@ -13,16 +13,18 @@
 // avt - ros includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include "avt_341/avt_341_utils.h"
 //avt_341 includes
 #include "avt_341/control/pid_controller.h"
 
 
 avt_341::msg::Odometry state;
-int current_run_state = -1;   // startup state
+int current_run_state = avt_341::utils::NavStackState::NotInit;   // startup state
 bool shutdown_condition = false;
 double mrzr_speedometer = 0.0;
 bool speedometer_rcvd = false;
 float desired_speed = 0.0f;
+float desired_speed_factor = 1.0f;
 float desired_steer_radians = 0.0f;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_state) {
@@ -38,13 +40,17 @@ void DesiredSpeedCallback(avt_341::msg::Float64Ptr rcv_des_speed) {
 	desired_speed = rcv_des_speed->data;
 }
 
+void DesiredSpeedFactorCallback(avt_341::msg::Float64Ptr speed_factor_msg) {
+  desired_speed_factor = speed_factor_msg->data;
+}
+
 void DesiredSteerCallback(avt_341::msg::Float64Ptr rcv_des_steer) {
 	desired_steer_radians = rcv_des_steer->data;
 }
 
 void StateCallback(avt_341::msg::Int32Ptr rcv_state){
   current_run_state = rcv_state->data;
-  if (current_run_state==2)shutdown_condition = true;
+  if (current_run_state==avt_341::utils::NavStackState::Shutdown)shutdown_condition = true;
 }
 
 int main(int argc, char *argv[]){
@@ -59,6 +65,7 @@ int main(int argc, char *argv[]){
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",1,SpeedCallback);
 
   auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
+  auto desired_speed_factor_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed_factor",1,DesiredSpeedFactorCallback);
 
   auto desired_steer_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/cmd_steer",1,DesiredSteerCallback);
 
@@ -133,16 +140,16 @@ int main(int argc, char *argv[]){
       dc.angular.z = 0.0f;
 
     }
-    else if (current_run_state==0){    // active running state
-      controller.SetSetpoint(desired_speed);
+    else if (current_run_state==avt_341::utils::NavStackState::Active){    // active running state
+      controller.SetSetpoint(desired_speed_factor*desired_speed);
       dc.linear.x = controller.GetControlVariable(vel,dt);
     }
-    else if (current_run_state==-1 || current_run_state==1){
+    else if (current_run_state==avt_341::utils::NavStackState::NotInit || current_run_state==avt_341::utils::NavStackState::Stopped){
       // bring to a smooth stop and wait / idle
       controller.SetSetpoint(0.0f);
        dc.linear.x = controller.GetControlVariable(vel,dt);
     }
-    else if (current_run_state==3){
+    else if (current_run_state==avt_341::utils::NavStackState::HardShutdown){
       // bring to a hard stop and shut down
       dc.linear.x = 0.0f;
       dc.linear.y = 1.0f;
@@ -153,7 +160,7 @@ int main(int argc, char *argv[]){
     // apply the throttle scaling coefficient
     dc.linear.x *= throttle_coeff;
     // check braking and throttle
-    if (dc.linear.y!=0.0){
+    if (std::abs(dc.linear.y) > 1e-5){
       // apply the ramp up to the brake
       if (current_brake_value>dc.linear.y){
         dc.linear.y = current_brake_value - brake_step;
