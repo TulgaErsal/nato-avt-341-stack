@@ -88,6 +88,7 @@ class MissionManager{
     void publishPath(avt_341::msg::Path& path);
     void publishNavStateCmd(int state);
     void publishCommStr(const std::string & msg_data);
+    void MissionManager::reset();
 
     FormationDefinition & formation_def;
 

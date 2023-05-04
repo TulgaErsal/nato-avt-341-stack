@@ -22,7 +22,7 @@ public:
 
   avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx);
   avt_341::msg::FollowerStatus commToFollowerStatus(const avt_341::msg::Communication & comm_msg, const std::string &veh_name, int &out_idx);
-  bool update(const avt_341::msg::Communication &comm_msg);
+  bool update(avt_341::msg::Communication &comm_msg);
   FormationOffsets getOffsets(const std::string &formation);
 
   inline bool isLeader() const { return leaderName() == my_name; }

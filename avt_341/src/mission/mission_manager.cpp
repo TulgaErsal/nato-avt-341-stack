@@ -32,14 +32,7 @@ MissionManager::MissionManager(FormationDefinition & formation_definition, std::
 
 MissionManager::~MissionManager() {
     // Clean up the memory allocated to tasks
-    for(auto task : task_list) {
-        delete task;
-    }
-    for(auto task: completed_tasks) {
-        delete task;
-    }
-    task_list.clear();
-    completed_tasks.clear();
+    reset();
 }
 
 std::vector<std::string> getLine(std::istream& stream) {
@@ -232,6 +225,20 @@ bool MissionManager::close(float old_x, float old_y, float new_x, float new_y) {
 	}
 }
 
+void MissionManager::reset(){
+  active_task = nullptr;
+  busy = false;
+
+  for(auto task : task_list) {
+    delete task;
+  }
+  for(auto task: completed_tasks) {
+    delete task;
+  }
+  task_list.clear();
+  completed_tasks.clear();
+}
+
 // Message Handlers
 void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 	// check if contacts are already in the contact database
@@ -293,7 +300,9 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
         addTask(followTask);
     }
 
-    follower_status_pub->publish(formation_def.formation_status);
+    if(!formation_def.formationAtGoal()){
+      follower_status_pub->publish(formation_def.formation_status);
+    }
     // handle set speed
     handleSetSpeed(msg);
 }

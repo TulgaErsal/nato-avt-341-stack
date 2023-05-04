@@ -19,6 +19,7 @@ std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
 std::shared_ptr<avt_341::mission::MissionManager> mgr;
 
 std::map<std::string, avt_341::msg::Odometry> formation_poses;
+std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 
 // Receive updates from comms
 void CommunicationCallback(avt_341::msg::CommunicationPtr msg) {
@@ -62,10 +63,15 @@ void NavStateCallback(avt_341::msg::Int32Ptr msg) {
 	nav_state_rcvd = true;
 }
 
+void ResetCallback(avt_341::msg::Int32Ptr msg){
+  nh->log_info("Resetting node");
+  mgr->reset();
+}
+
 int main(int argc, char **argv) {
 
     // initialize the node
-    auto nh = avt_341::node::init_node(argc, argv, "mission_manager");
+    nh = avt_341::node::init_node(argc, argv, "mission_manager");
     avt_341::node::Rate loop_rate(10);
 
     // load the parameters
@@ -111,6 +117,7 @@ int main(int argc, char **argv) {
     auto veh2_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[1] + "/avt_341/odometry", 10, VehicleOdometryCallback);
     auto veh3_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[2] + "/avt_341/odometry", 10, VehicleOdometryCallback);
     auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback);
+    auto reset_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);

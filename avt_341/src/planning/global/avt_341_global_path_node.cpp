@@ -98,6 +98,7 @@ avt_341::msg::Int32 state;
 int current_waypoint = 0;
 
 void Reset(){
+  n->log_info("Resetting node");
   state.data = avt_341::utils::NavStackState::NotInit; // start up state
   current_waypoint = 0;
   odom_rcvd = false;
@@ -125,6 +126,7 @@ int main(int argc, char *argv[])
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
   auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
+//  auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -134,6 +136,7 @@ int main(int argc, char *argv[])
   // 2 - bring to a smooth stop and shut down
   // 3 - bring to an immediate stop (hard braking) and shut down
   auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
+  state.data = avt_341::utils::NavStackState::NotInit;
 
   float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   std::vector<double> waypoints_x_list, waypoints_y_list;

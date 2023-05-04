@@ -26,6 +26,13 @@ FormationOffsets FormationDefinition::getOffsets(const std::string &formation) {
     f.follower3.x = 0;
     f.follower3.y = -3;
     offsets_map_["LINE"] = f;
+    f.follower1.x = 0;
+    f.follower1.y = 1;
+    f.follower2.x = 0;
+    f.follower2.y = 2;
+    f.follower3.x = 0;
+    f.follower3.y = 3;
+    offsets_map_["LINE_LEFT"] = f;
     f.follower1.x = -1;
     f.follower1.y = 0;
     f.follower2.x = offsets_from_leader ? -2 : -1;
@@ -108,10 +115,14 @@ avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const avt
   return follower_status_msg;
 }
 
-bool FormationDefinition::update(const avt_341::msg::Communication &comm_msg){
+bool FormationDefinition::update(avt_341::msg::Communication &comm_msg){
 
   int veh_idx = -1;
-  formation_status = commToFollowerStatus(comm_msg, my_name, veh_idx);
+  size_t substr_pos = comm_msg.formation.find("_AT_GOAL");
+  bool formation_at_goal_in = substr_pos != std::string::npos;
+  comm_msg.formation = comm_msg.formation.substr(0, substr_pos);
+
+  auto formation_status_in = commToFollowerStatus(comm_msg, my_name, veh_idx);
   if(veh_idx < 0){
     // my_name not found in message
     return false;
@@ -119,9 +130,8 @@ bool FormationDefinition::update(const avt_341::msg::Communication &comm_msg){
 
   my_index_ = veh_idx;
   current_formation_msg_ = comm_msg;
-  size_t substr_pos = comm_msg.formation.find("_AT_GOAL");
-  formation_at_goal_ = substr_pos != std::string::npos;
-  current_formation_msg_.formation = comm_msg.formation.substr(0, substr_pos);
+  formation_status = formation_status_in;
+  formation_at_goal_ = formation_at_goal_in;
 
   std::string leader_name = leaderName();
   auto formation_vehicle_names_temp = std::vector<std::string>{leader_name, comm_msg.follower1_name, comm_msg.follower2_name, comm_msg.follower3_name};

@@ -361,10 +361,7 @@ def generate_launch_description():
                         'throttle_ki': launch.substitutions.LaunchConfiguration('throttle_ki'),
                         'throttle_kd': launch.substitutions.LaunchConfiguration('throttle_kd'),
                         'time_to_max_brake': launch.substitutions.LaunchConfiguration('time_to_max_brake'),
-                        'max_desired_lateral_g': launch.substitutions.LaunchConfiguration('max_desired_lateral_g'),
-                        'anti_windup_method': launch.substitutions.LaunchConfiguration('anti_windup_method'),
-                        'pid_output_max': launch.substitutions.LaunchConfiguration('pid_output_max'),
-                        'pid_output_min': launch.substitutions.LaunchConfiguration('pid_output_min'),
+                        'max_desired_lateral_g': launch.substitutions.LaunchConfiguration('max_desired_lateral_g')
                     }],
                 ),
                 Node(
@@ -387,6 +384,9 @@ def generate_launch_description():
                         'ff_a2': launch.substitutions.LaunchConfiguration('ff_a2'),
                         'time_to_max_brake': launch.substitutions.LaunchConfiguration('time_to_max_brake'),
                         'max_desired_lateral_g': launch.substitutions.LaunchConfiguration('max_desired_lateral_g'),
+                        'anti_windup_method': launch.substitutions.LaunchConfiguration('anti_windup_method'),
+                        'pid_output_max': launch.substitutions.LaunchConfiguration('pid_output_max'),
+                        'pid_output_min': launch.substitutions.LaunchConfiguration('pid_output_min'),
                     }],
                 ),
                 Node(

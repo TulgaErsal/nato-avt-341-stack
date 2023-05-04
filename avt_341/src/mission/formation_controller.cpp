@@ -155,5 +155,14 @@ void FormationController::Update(avt_341::msg::Odometry leader_odom, avt_341::ms
 	CalculateFollowerSpeed(leader_odom, odom, status, leaderVx, leaderVy);
 }
 
+void FormationController::ClearDesiredGlobalPath(){
+  desired_global_path_.poses.clear();
+  leader_path_history_.poses.clear();
+}
+
+void FormationController::Reset(){
+  ClearDesiredGlobalPath();
+}
+
 } // namespace mission
 } // namespace avt_341

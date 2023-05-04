@@ -82,6 +82,13 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
 
   double speed_factor = 1.0;
 
+  if(formation_def_.formationAtGoal()){
+    if (fsc_params_.debug_visualize) {
+      visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_], formation_poses[my_name_].pose.pose.position);
+    }
+    return speed_factor;
+  }
+
   // Calculate speed factor if at least one vehicle out of formation
   // ==========================================================================================
   if ((is_column || !self_out_of_formation) && !out_formation_veh.empty() && out_formation_veh[0] != my_name_) {
