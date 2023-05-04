@@ -123,7 +123,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
         //default Matlab OG value is 0.5 for some reason.
         //there is no terrain value of 0.5, so we can assume that's just the default value.
         val = (double)((int)(val * 100)) / 100;
-        if (val == MATLAB_COSTMAP_DEFAULT_VAL) val = 0;
+        if (val == MATLAB_COSTMAP_DEFAULT_VAL) val = 100;
 
         //scale up cost from Matlab (0..1 -> 0..100)
         val *= 100;
