@@ -10,7 +10,7 @@ typedef float TQuat[4];
 
 void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R);
 void NormalizeVec2D(Vec2d &v);
-void OdomToForwardRightVectors(const avt_341::msg::Odometry & odom, Vec2d &vx, Vec2d &vy);
+void PoseToForwardRightVectors(const avt_341::msg::Pose & pose, Vec2d &vx, Vec2d &vy);
 
 inline double PosePlanarDistance(const avt_341::msg::Point & p1, const avt_341::msg::Point & p2){
   double dx = p1.x - p2.x;

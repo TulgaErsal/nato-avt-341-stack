@@ -15,7 +15,7 @@ FormationSpeedController::FormationSpeedController(FormationDefinition & formati
 
 avt_341::msg::PoseStamped FormationSpeedController::getFollowerTargetPose(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status){
   Vec2d leaderVx, leaderVy;
-  OdomToForwardRightVectors(leader_odom, leaderVx, leaderVy);
+  PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
   double leaderYoffset = status.y_offset;
   double leaderXoffset = status.x_offset;
   avt_341::msg::PoseStamped target_pose;

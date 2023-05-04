@@ -19,13 +19,13 @@ void NormalizeVec2D(Vec2d &v) {
   v[1] *= l;
 }
 
-void OdomToForwardRightVectors(const avt_341::msg::Odometry & odom, Vec2d &vx, Vec2d &vy) {
+void PoseToForwardRightVectors(const avt_341::msg::Pose & pose, Vec2d &vx, Vec2d &vy) {
   Matrix3x3 leaderRotMatrix;
   TQuat q;
-  q[0] = odom.pose.pose.orientation.x;
-  q[1] = odom.pose.pose.orientation.y;
-  q[2] = odom.pose.pose.orientation.z;
-  q[3] = odom.pose.pose.orientation.w;
+  q[0] = pose.orientation.x;
+  q[1] = pose.orientation.y;
+  q[2] = pose.orientation.z;
+  q[3] = pose.orientation.w;
   ConvertQuaternionToRotMat(q, leaderRotMatrix);
   vx[0] = 0.5 * (leaderRotMatrix[0][0] + leaderRotMatrix[1][1]); //average cos
   vx[1] = 0.5 * (-leaderRotMatrix[0][1] + leaderRotMatrix[1][0]); //average sin

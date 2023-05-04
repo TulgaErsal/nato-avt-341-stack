@@ -47,7 +47,7 @@ public:
     static const int CONTACT = 3;
     static const int ACTOR = 4;
 
-    MoveTo(MissionManager* manager, std::string sender, int msg_id);
+    MoveTo(MissionManager* manager, std::string sender, int msg_id, double x_offset = 0.0, double y_offset = 0.0);
     void init() override;
     void run() override;
     bool is_done() override;
@@ -64,6 +64,10 @@ public:
     Contact * contact;
 
     std::string description() const override;
+private:
+    void applyOffset();
+    double x_offset_;
+    double y_offset_;
 }; // class MoveTo
 
 class WaitUntil : public Task {
@@ -80,14 +84,21 @@ public:
 
 class Encircle : public Task {
 public:
-    Encircle(MissionManager* manager, std::string sender, int msg_id);
+    Encircle(MissionManager* manager, std::string sender, int msg_id, const avt_341::msg::PoseStamped & target,
+             const avt_341::msg::PoseStamped & current_pose, double radius=15.0, double angular_range_degrees=180.0, bool is_cw = true, double goal_threshold=5.0);
     void init() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
-    std::string description() const override{
-      return "TASK-ENCIRCLE";
-    }
+    std::string description() const override;
+private:
+  bool arrived;
+  avt_341::msg::PoseStamped target_;
+  avt_341::msg::PoseStamped current_pose_;
+  double radius_;
+  double angular_range_degrees_;
+  bool is_cw_;
+  double goal_threshold_;
 }; // class Encircle
 
 class Follow : public Task {

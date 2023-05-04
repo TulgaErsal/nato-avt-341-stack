@@ -74,25 +74,29 @@ FormationOffsets FormationDefinition::getOffsets(const std::string &formation) {
 }
 
 
-avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const std::string & veh_name, int & out_idx){
+avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const std::string & veh_name, int & out_idx) {
+  return commToFollowerStatus(current_formation_msg_, veh_name, out_idx);
+}
+
+avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const avt_341::msg::Communication & comm_msg, const std::string & veh_name, int & out_idx){
   avt_341::msg::FollowerStatus follower_status_msg;
-  follower_status_msg.leader_name = current_formation_msg_.leader_name;
-  if(current_formation_msg_.leader_name == veh_name){
+  follower_status_msg.leader_name = comm_msg.leader_name;
+  if(comm_msg.leader_name == veh_name){
     follower_status_msg.x_offset = 0.0;
     follower_status_msg.y_offset = 0.0;
     follower_status_msg.use_leader = false;
     out_idx = 0;
   }else{
-    FormationOffsets f = getOffsets(current_formation_msg_.formation);
-    if(current_formation_msg_.follower1_name == veh_name) {
+    FormationOffsets f = getOffsets(comm_msg.formation);
+    if(comm_msg.follower1_name == veh_name) {
       follower_status_msg.x_offset = f.follower1.x * follow_scale_x;
       follower_status_msg.y_offset = f.follower1.y * follow_scale_y;
       out_idx = 1;
-    } else if (current_formation_msg_.follower2_name == veh_name) {
+    } else if (comm_msg.follower2_name == veh_name) {
       follower_status_msg.x_offset = f.follower2.x * follow_scale_x;
       follower_status_msg.y_offset = f.follower2.y * follow_scale_y;
       out_idx = 2;
-    } else if (current_formation_msg_.follower3_name == veh_name) {
+    } else if (comm_msg.follower3_name == veh_name) {
       follower_status_msg.x_offset = f.follower3.x * follow_scale_x;
       follower_status_msg.y_offset = f.follower3.y * follow_scale_y;
       out_idx = 3;
@@ -104,10 +108,20 @@ avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const std
   return follower_status_msg;
 }
 
-avt_341::msg::FollowerStatus FormationDefinition::update(const avt_341::msg::Communication &comm_msg){
-  current_formation_msg_ = comm_msg;
+bool FormationDefinition::update(const avt_341::msg::Communication &comm_msg){
 
-  avt_341::msg::FollowerStatus formation_status = commToFollowerStatus(my_name, my_index_);
+  int veh_idx = -1;
+  formation_status = commToFollowerStatus(comm_msg, my_name, veh_idx);
+  if(veh_idx < 0){
+    // my_name not found in message
+    return false;
+  }
+
+  my_index_ = veh_idx;
+  current_formation_msg_ = comm_msg;
+  size_t substr_pos = comm_msg.formation.find("_AT_GOAL");
+  formation_at_goal_ = substr_pos != std::string::npos;
+  current_formation_msg_.formation = comm_msg.formation.substr(0, substr_pos);
 
   std::string leader_name = leaderName();
   auto formation_vehicle_names_temp = std::vector<std::string>{leader_name, comm_msg.follower1_name, comm_msg.follower2_name, comm_msg.follower3_name};
@@ -119,7 +133,7 @@ avt_341::msg::FollowerStatus FormationDefinition::update(const avt_341::msg::Com
     followed_vehicle_ = formation_vehicle_names_[my_index_ - 1];
   }
 
-  return formation_status;
+  return true;
 }
 
 }

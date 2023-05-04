@@ -27,6 +27,8 @@ bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
 bool verbose_gp_log = false;
+bool shutdown_condition = false;
+
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
@@ -92,6 +94,21 @@ avt_341::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
   return ros_path;
 }
 
+avt_341::msg::Int32 state;
+int current_waypoint = 0;
+
+void Reset(){
+  state.data = avt_341::utils::NavStackState::NotInit; // start up state
+  current_waypoint = 0;
+  odom_rcvd = false;
+  shutdown_condition = false;
+  current_waypoints.poses.clear();
+}
+
+void ResetCallback(avt_341::msg::Int32Ptr msg){
+  Reset();
+}
+
 int main(int argc, char *argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
@@ -117,8 +134,6 @@ int main(int argc, char *argv[])
   // 2 - bring to a smooth stop and shut down
   // 3 - bring to an immediate stop (hard braking) and shut down
   auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
-  avt_341::msg::Int32 state;
-  state.data = avt_341::utils::NavStackState::NotInit; // start up state
 
   float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   std::vector<double> waypoints_x_list, waypoints_y_list;
@@ -166,6 +181,7 @@ int main(int argc, char *argv[])
   }
 
   int num_waypoints = std::min(waypoints_x_list.size(), waypoints_y_list.size());
+  Reset();
 
   // Initialize current waypoints with the data from the waypoint yaml params
   current_waypoints.poses.clear();
@@ -196,9 +212,7 @@ int main(int argc, char *argv[])
                                          search_diagonals, los_max_iterations, los_break_on_first);
 
   avt_341::node::Rate r(20.0f); // Hz
-  bool shutdown_condition = false;
   int nl = 0;
-  int current_waypoint = 0;
   int shutdown_count = 0;
   int last_gptoggle_state = use_global_planner;
   //while (avt_341::node::ok() && !goal_reached){

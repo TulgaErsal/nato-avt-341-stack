@@ -61,7 +61,7 @@ class MissionManager{
     void handleContacts(avt_341::msg::Path);
 
     // external messages
-    void handleMoveTo(const avt_341::msg::Communication &);
+    void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0);
     void handleFormationRequest(avt_341::msg::Communication);
     void handleAcknowledge(const avt_341::msg::Communication &);
     void handleArrive(const avt_341::msg::Communication &);

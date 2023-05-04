@@ -23,6 +23,11 @@ DwaPlanner::EvaluateDynamicWindow() {
 }
 
 void
+DwaPlanner::Reset() {
+  traj_best_.Reset();
+}
+
+void
 DwaPlanner::Plan() {
     // Update the obstacles collection based on the latest occupancy data.
     GetObstacles();

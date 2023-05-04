@@ -42,7 +42,7 @@ class FormationController{
 	/// Set the follower dist gain. This controls how aggressively the vehicle closes ground, equavilent to the "P" in PID
 	void SetFollowerDistGain(float gain){follower_dist_gain_ = gain;}
 
-  void SetUseBreadcrumbs(float gain){follower_dist_gain_ = gain;}
+  void SetXOffsetOnPath(bool x_offset_on_path){x_offset_on_path_ = x_offset_on_path;}
 
 	/// Get the current desired global path
 	avt_341::msg::Path GetPath(){return desired_global_path_; }
@@ -66,6 +66,7 @@ class FormationController{
 	// outputs / messages published
 	avt_341::msg::Path desired_global_path_;
 	float desired_speed_;
+  bool x_offset_on_path_;
 
 	// utility functions and intermediate calculations
 	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);

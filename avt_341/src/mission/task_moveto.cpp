@@ -4,12 +4,15 @@
 #include <iostream>
 
 #include "avt_341/mission/task.h"
+#include "avt_341/avt_341_utils.h"
+#include "avt_341/mission/formation_utils.h"
 
 namespace avt_341 {
 namespace mission {
 
 // MoveTo
-MoveTo::MoveTo(MissionManager* manager, std::string sender, int id) {
+MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_offset, double y_offset)
+: x_offset_(x_offset), y_offset_(y_offset) {
     mgr = manager;
     sender_name = sender;
     msg_id = id;
@@ -36,10 +39,20 @@ bool MoveTo::setGoalByPose(float x, float y, float z, float rot_x, float rot_y, 
     goal.pose.orientation.y = rot_y;
     goal.pose.orientation.z = rot_z;
     goal.pose.orientation.w = rot_w;
+
+    applyOffset();
+
     std::ostringstream stream;
     stream << "POSE_" << x << "_" << y;
     name = stream.str();
     return true;
+}
+
+void MoveTo::applyOffset(){
+  Vec2d vx, vy;
+  PoseToForwardRightVectors(goal.pose, vx, vy);
+  goal.pose.position.x = goal.pose.position.x + vx[0]*x_offset_ + vy[0]*y_offset_;
+  goal.pose.position.y = goal.pose.position.y + vx[1]*x_offset_ + vy[1]*y_offset_;
 }
 
 bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
@@ -54,6 +67,9 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
         goal.pose.orientation.y = target.rot_y;
         goal.pose.orientation.z = target.rot_z;
         goal.pose.orientation.w = target.rot_w;
+
+        applyOffset();
+
         name = mp_name;
         return true;
     } else {
@@ -79,7 +95,8 @@ void MoveTo::init() {
 void MoveTo::run() {
     // get current position
     // calculate distance from goal
-    if(mgr->previous_nav_state == 0 && mgr->nav_state == 1) 
+    if(mgr->previous_nav_state == avt_341::utils::NavStackState::Active
+    && mgr->nav_state == avt_341::utils::NavStackState::Stopped)
     {
         // we've reached a goal and are stopping
         // TODO: Check distance b/c we could be stopping for _any_ reason
@@ -112,7 +129,7 @@ void MoveTo::on_done() {
 
 std::string MoveTo::description() const {
   std::ostringstream stream;
-  stream << "TASK-MOVE_TO: goal_type=" << goal_type << ", name=" << name;
+  stream << "TASK-MOVE_TO: goal_type=" << goal_type << ", name=" << name << ", x_off=" << x_offset_ << ", y_off=" << y_offset_;
   return stream.str();
 }
 

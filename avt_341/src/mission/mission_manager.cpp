@@ -16,7 +16,7 @@ MissionManager::MissionManager(FormationDefinition & formation_definition, std::
 
     arrival_announced = true;
 
-    active_task = NULL;
+    active_task = nullptr;
     mission_tasks.clear();
     mission_data.clear();
     task_list.clear();
@@ -80,12 +80,10 @@ int MissionManager::loadMissionDefinition(std::string filename) {
                 missionPt.rot_w = std::strtod(contents[7].c_str(), NULL);
                 mission_data.push_back(missionPt);
                 //std::cout << "Pose: " << position.name << " " << position.pos_x << " " << position.rot_w << std::endl;
-            } else {
-                std::cout << "Empty" << std::endl;
             }
         }    
     } else {
-        std::cout << "Error reading mission definition " << filename << std::endl;
+        node_proxy_->log_info("Error reading mission definition %s", filename.c_str());
     }
     return 0;
 }
@@ -245,7 +243,7 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 			//std::cout << item.header.frame_id << " is in the list. Investigating: " << it->investigating << ", " << it->investigated << std::endl;
 		} else {
 			// new contact
-			std::cout << "New contact: " << item.header.frame_id << " at " << item.pose.position.x << ", " << item.pose.position.y << std::endl;
+      node_proxy_->log_info("New contact: %s at (%.2f, %.2f)", item.header.frame_id.c_str(), item.pose.position.x, item.pose.position.y);
 			// Add it to the contacts
 			addContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
 		}
@@ -258,7 +256,7 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
         // found a new contact
         Contact contact = *it;
         if(!it->investigating) {
-            std::cout << " Requesting move to " << contact.name << " at " << contact.x << ", " << contact.y << std::endl;
+            node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.x, contact.y);
             //handleMoveTo(contact.x, contact.y);
             MoveTo* investigateTask = new MoveTo(this, my_name, -1);
             bool ret = investigateTask->setGoalByPose(contact.x, contact.y, 0.0, 1.0, 0.0, 0.0, 0.0);
@@ -279,18 +277,23 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
 
-    auto formation_status = formation_def.update(msg);
+    bool valid_msg = formation_def.update(msg);
 
-    if(formation_def.isLeader()){
+    if(!valid_msg){
+      node_proxy_->log_info("Ignoring formation request. Not for me.");
+      return;
+    }
+
+    if(formation_def.isLeader() || formation_def.formationAtGoal()){
         // handle objective
         msg.receiver_name = my_name;
-        handleMoveTo(msg);
-    } else if(formation_status.use_leader) {
+        handleMoveTo(msg, formation_def.formation_status.x_offset, formation_def.formation_status.y_offset);
+    } else if(formation_def.isFollowing()) {
         Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id);
         addTask(followTask);
     }
 
-    follower_status_pub->publish(formation_status);
+    follower_status_pub->publish(formation_def.formation_status);
     // handle set speed
     handleSetSpeed(msg);
 }
@@ -298,7 +301,7 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
 void MissionManager::handleAcknowledge(const avt_341::msg::Communication & msg) {
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
     if(msg.original_sender == my_name) {
-        std::cout << my_name << ": " << msg.sender_name << " acknowledged my msg #" << msg.original_msg_id << std::endl;
+        node_proxy_->log_info("%s acknowledged my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
     }
 }
 
@@ -312,15 +315,15 @@ void MissionManager::handleArrive(const avt_341::msg::Communication & msg) {
 void MissionManager::handleTaskComplete(const avt_341::msg::Communication & msg) {
     // If tracking, mark complete
     if(msg.original_sender == my_name) {
-        std::cout << my_name << ": " << msg.sender_name << " has completed the assigned task from my msg #" << msg.original_msg_id << std::endl;
+        node_proxy_->log_info("%s has completed the assigned task from my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
     }
 }
 
-void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg) {
+void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, double x_offset, double y_offset) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        if(formation_def.isLeader()) {
-            MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id);
+        if(!formation_def.isFollowing()) {
+            MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, x_offset, y_offset);
             bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
             addTask(moveTask);
         } else {

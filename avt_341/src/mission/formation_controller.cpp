@@ -125,7 +125,7 @@ void FormationController::Update(avt_341::msg::Odometry leader_odom, avt_341::ms
 
 	Vec2d leaderVx, leaderVy;
 
-  OdomToForwardRightVectors(leader_odom, leaderVx, leaderVy);
+  PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
 
   GenerateLeaderPath(leader_odom, status, leaderVx, leaderVy);
 	desired_global_path_.header.frame_id = "map";

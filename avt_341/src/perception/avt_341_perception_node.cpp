@@ -21,6 +21,7 @@
 avt_341::perception::ElevationGrid grid;
 avt_341::msg::Odometry current_pose;
 bool grid_created = false;
+double start_time = 0.0;
 bool odom_rcvd = false;
 std::vector<avt_341::msg::Odometry> current_pose_list;
 bool use_registered = true;
@@ -105,6 +106,20 @@ void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 	}
 }
 
+void ResetNode(){
+  if(n == nullptr){
+    return;
+  }
+  n->log_info("Resetting node");
+  grid.Reset();
+  grid_created = false;
+  start_time = n->get_now_seconds();
+}
+
+void ResetCallback(avt_341::msg::Int32Ptr msg){
+  ResetNode();
+}
+
 void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 	avt_341::msg::PointCloud point_cloud;
 	
@@ -174,6 +189,7 @@ int main(int argc, char *argv[]) {
   n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
 	auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",2,PointCloudCallback);
     auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
+    auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
     auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
     auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
@@ -233,8 +249,8 @@ int main(int argc, char *argv[]) {
                                 clear_method_raytrace_range, clear_method_clear_dilation, clear_method_use_voxels,
                                 voxel_height_min, voxel_height_res, clear_method_obj_range_filter);
 
-	double start_time = n->get_now_seconds();
-	avt_341::node::Rate rate(100.0);
+  ResetNode();
+  avt_341::node::Rate rate(100.0);
   int nloops = 0;
 	while (avt_341::node::ok()){
 		double elapsed_time = (n->get_now_seconds()-start_time);

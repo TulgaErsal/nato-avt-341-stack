@@ -5,15 +5,30 @@
 
 namespace avt_341 {
 namespace control{
-  
-PidController::PidController(){
+
+const std::string AntiWindupMethod::ResetOnSetpoint = "reset_on_setpoint";
+const std::string AntiWindupMethod::OutputClamping = "output_clamping";
+const std::string AntiWindupMethod::Disabled = "disabled";
+
+
+PidController::PidController()
+: PidController::PidController(AntiWindupMethod::ResetOnSetpoint, 0.0, 0.0){
+}
+
+void PidController::Reset(){
+  integral_ = 0.0;
+}
+
+PidController::PidController(const std::string & anti_windup_method, double output_min, double output_max)
+: output_min_(output_min), output_max_(output_max){
   kp_ = 0.3;
   ki_ = 0.0;
   kd_ = 0.05;
   setpoint_ = 0.0;
   previous_error_ = 0.0;
   integral_ = 0.0;
-  overshoot_limiter_ = true;
+  overshoot_limiter_ = anti_windup_method == AntiWindupMethod::ResetOnSetpoint;
+  output_clamping_ = anti_windup_method == AntiWindupMethod::OutputClamping;
   crossed_setpoint_ = false;
   stay_positive_ = false;
   ff_a2_ = 0.0;
@@ -59,7 +74,16 @@ double PidController::GetControlVariable(double measured_value, double dt){
   double derivative = (error - previous_error_)/dt;
   //double output = kp_*error + ki*integral_ + kd_*derivative;
   //output += kp_*error + ki*integral_ + kd_*derivative;
-  output += kp*error + ki*integral_ + kd_*derivative;
+
+  double p_val = kp*error;
+  double d_val = kd_*derivative;
+  double i_val = ki*integral_;
+
+  if(output_clamping_){
+    i_val= std::min(std::max(i_val, output_min_ - 0.2*(p_val+d_val)), output_max_-0.2*(p_val+d_val));
+  }
+
+  output += p_val + i_val + d_val;
 
   if (stay_positive_){
     output = 0.5f*(1.0f+output);
