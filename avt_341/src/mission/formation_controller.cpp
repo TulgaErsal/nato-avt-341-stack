@@ -24,19 +24,22 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
   if(!(bool)status.use_leader) return;
 
   double leaderYoffset = status.y_offset;
-  double leaderXoffset = status.x_offset;
+  double leaderXoffset = x_offset_on_path_? 0.0 : status.x_offset;
 
   avt_341::msg::PoseStamped target_pose;
   target_pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset + leaderVx[0]*leaderXoffset;
   target_pose.pose.position.y = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset + leaderVx[1]*leaderXoffset;
   target_pose.pose.position.z = leader_odom.pose.pose.position.z;
 
-  if(desired_global_path_.poses.empty()){
-    desired_global_path_.poses.push_back(target_pose);
+  // If x_offset_on_path, need to keep track of leader path history and only add to desired global path once past x_offset
+  auto & target_path = x_offset_on_path_ ? leader_path_history_ : desired_global_path_;
+
+  if(target_path.poses.empty()){
+    target_path.poses.push_back(target_pose);
     return;
   }
 
-  const auto & last_pose = desired_global_path_.poses.back();
+  const auto & last_pose = target_path.poses.back();
   double dx = target_pose.pose.position.x - last_pose.pose.position.x;
   double dy = target_pose.pose.position.y - last_pose.pose.position.y;
   double dz = target_pose.pose.position.z - last_pose.pose.position.z;
@@ -44,7 +47,26 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
   double dist2 = dx*dx + dy*dy + dz*dz;
   if(dist2 < gpp2_) return;
 
-  desired_global_path_.poses.push_back(target_pose);
+  target_path.poses.push_back(target_pose);
+
+  // Extra logic if x_offset_on_path_. Add points to desired_global_path_ from leader_path_history_ that are path x_offset in path distance.
+  if(x_offset_on_path_){
+    double s_length = 0;
+    int cutoff_index = -1;
+    for(int i = 1; i < leader_path_history_.poses.size(); i++){
+      double dx_i = leader_path_history_.poses[i].pose.position.x - leader_path_history_.poses[i-1].pose.position.x;
+      double dy_i = leader_path_history_.poses[i].pose.position.y - leader_path_history_.poses[i-1].pose.position.y;
+      s_length += sqrt(dy_i*dy_i + dx_i*dx_i);
+      if(s_length > status.x_offset){
+        cutoff_index = i;
+      }
+    }
+    while(cutoff_index > 0 && leader_path_history_.poses.size() > cutoff_index){
+      desired_global_path_.poses.push_back(leader_path_history_.poses.back());
+      leader_path_history_.poses.pop_back();
+    }
+  }
+
 }
 
 /**

@@ -65,6 +65,7 @@ class FormationController{
 
 	// outputs / messages published
 	avt_341::msg::Path desired_global_path_;
+	avt_341::msg::Path leader_path_history_;
 	float desired_speed_;
   bool x_offset_on_path_;
 
