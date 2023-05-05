@@ -11,7 +11,7 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_offset, double y_offset)
+MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_offset, double y_offset, int priority_in)
 : x_offset_(x_offset), y_offset_(y_offset) {
     mgr = manager;
     sender_name = sender;
@@ -19,6 +19,7 @@ MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_off
     next_task = NULL;
     goal_type = 0;
     arrived = false;
+    priority = priority_in;
     name="TEMP_NAME";
     goal.pose.position.x = 0.0;
     goal.pose.position.y = 0.0;

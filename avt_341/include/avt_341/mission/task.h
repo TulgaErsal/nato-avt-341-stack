@@ -32,6 +32,7 @@ public:
     virtual void on_done() = 0;
     std::string sender_name;
     int msg_id;
+    int priority = 0;
     Task* next_task;
     MissionManager* mgr;
     bool set_busy;
@@ -47,7 +48,7 @@ public:
     static const int CONTACT = 3;
     static const int ACTOR = 4;
 
-    MoveTo(MissionManager* manager, std::string sender, int msg_id, double x_offset = 0.0, double y_offset = 0.0);
+    MoveTo(MissionManager* manager, std::string sender, int msg_id, double x_offset = 0.0, double y_offset = 0.0, int priority_in = 0);
     void init() override;
     void run() override;
     bool is_done() override;

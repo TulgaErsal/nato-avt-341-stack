@@ -105,7 +105,7 @@ bool MissionManager::addTask(Task* task) {
 }
 
 bool MissionManager::setActiveTask(Task* task){
-    if(busy && active_task != nullptr && !active_task->completed){
+    if(active_task != nullptr && task != nullptr && !active_task->completed && task->priority <= active_task->priority){
         node_proxy_->log_info("SKIPPED SINCE BUSY %s", task->description().c_str());
         return false;
     }
@@ -122,7 +122,7 @@ bool MissionManager::setActiveTask(Task* task){
 
 Task* MissionManager::getNextTask() {
     auto it = std::find_if(std::begin(task_list), std::end(task_list),
-                           [&](const auto& e) {return (e->completed == false); });
+                           [&](const auto& e) {return !e->completed; });
     return it != task_list.end() ? *it : nullptr;
 }
 
@@ -159,6 +159,8 @@ void MissionManager::updateTasks() {
                 setActiveTask(active_task->next_task);
             } else {
                 // send COMPLETE msg
+                node_proxy_->log_info("    > TASK COMPLETE: %s", active_task->description().c_str());
+
                 std::ostringstream stream;
                 stream << "TASK_COMPLETE," << active_task->sender_name << "," << active_task->msg_id;
                 avt_341::msg::String comm_msg;
@@ -265,7 +267,7 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
         if(!it->investigating) {
             node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.x, contact.y);
             //handleMoveTo(contact.x, contact.y);
-            MoveTo* investigateTask = new MoveTo(this, my_name, -1);
+            MoveTo* investigateTask = new MoveTo(this, my_name, -1, 0.0, 0.0, 1);
             bool ret = investigateTask->setGoalByPose(contact.x, contact.y, 0.0, 1.0, 0.0, 0.0, 0.0);
             investigateTask->set_busy = true;   // set as a priority, uninterruptable task
             investigateTask->contact = &(*it);
