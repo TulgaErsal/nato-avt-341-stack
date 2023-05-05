@@ -5,6 +5,7 @@
 #include <queue>
 
 std::queue<avt_341::msg::Communication> comm_msgs;
+std::queue<avt_341::msg::PoseStamped> reached_goals;
 
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
@@ -63,9 +64,13 @@ void NavStateCallback(avt_341::msg::Int32Ptr msg) {
 	nav_state_rcvd = true;
 }
 
+bool reset_called = false;
 void ResetCallback(avt_341::msg::Int32Ptr msg){
-  nh->log_info("Resetting node");
-  mgr->reset();
+  reset_called = true;
+}
+
+void GoalReachedCallback(avt_341::msg::PoseStampedPtr msg){
+  reached_goals.push(*msg);
 }
 
 int main(int argc, char **argv) {
@@ -118,6 +123,7 @@ int main(int argc, char **argv) {
     auto veh3_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[2] + "/avt_341/odometry", 10, VehicleOdometryCallback);
     auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback);
     auto reset_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+    auto goal_reached_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10, GoalReachedCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
@@ -125,6 +131,19 @@ int main(int argc, char **argv) {
     // start the loop
     while(avt_341::node::ok()){
     // Handle external notifications
+
+        if(reset_called){
+          nh->log_info("Resetting node");
+          mgr->reset();
+          reset_called = false;
+        }
+
+        while(!reached_goals.empty()){
+            auto goal = reached_goals.front();
+            reached_goals.pop();
+            mgr->onGoalReached(goal);
+        }
+
         while(!comm_msgs.empty()){
             auto rcvd_msg = comm_msgs.front();
             comm_msgs.pop();
@@ -147,7 +166,16 @@ int main(int argc, char **argv) {
                 }
             } else if(rcvd_msg.type == "SET_SPEED") {
                 mgr->handleSetSpeed(rcvd_msg);
-            } else{
+            } else if(rcvd_msg.type == "CANCEL") {
+                if(rcvd_msg.receiver_name == mgr->my_name){
+                    mgr->cancelTask(rcvd_msg.target_msg_id);
+                }
+            } else if(rcvd_msg.type == "CANCEL_ALL"){
+                if(rcvd_msg.receiver_name == mgr->my_name){
+                    mgr->resetTaskList();
+                }
+            }
+            else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
             }
         }

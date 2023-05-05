@@ -71,7 +71,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /agv4/avt_341/points
+        Value: /cgv2/avt_341/points
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -88,13 +88,13 @@ Visualization Manager:
           Value: true
         agv2/lidar:
           Value: false
-        agv3/base_link:
+        cgv1/base_link:
           Value: true
-        agv3/lidar:
+        cgv1/lidar:
           Value: false
-        agv4/base_link:
+        cgv2/base_link:
           Value: true
-        agv4/lidar:
+        cgv2/lidar:
           Value: false
         map:
           Value: true
@@ -114,11 +114,11 @@ Visualization Manager:
             agv2/base_link:
               agv2/lidar:
                 {}
-            agv3/base_link:
-              agv3/lidar:
+            cgv1/base_link:
+              cgv1/lidar:
                 {}
-            agv4/base_link:
-              agv4/lidar:
+            cgv2/base_link:
+              cgv2/lidar:
                 {}
       Update Interval: 0
       Value: true
@@ -199,13 +199,13 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /agv4/avt_341/occupancy_grid
+        Value: /cgv2/avt_341/occupancy_grid
       Update Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /agv4/avt_341/occupancy_grid_updates
+        Value: /cgv2/avt_341/occupancy_grid_updates
       Use Timestamp: false
       Value: true
     - Alpha: 0
@@ -481,7 +481,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv3/robot_description
+            Value: /cgv1/robot_description
           Enabled: true
           Links:
             All Links Enabled: true
@@ -500,7 +500,7 @@ Visualization Manager:
               Show Trail: false
               Value: true
           Name: RobotModel_3
-          TF Prefix: agv3
+          TF Prefix: cgv1
           Update Interval: 0
           Value: true
           Visual Enabled: true
@@ -529,7 +529,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv3/avt_341/global_path
+            Value: /cgv1/avt_341/global_path
           Value: true
         - Alpha: 1
           Buffer Length: 1
@@ -556,7 +556,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv3/avt_341/local_path
+            Value: /cgv1/avt_341/local_path
           Value: true
         - Class: rviz_default_plugins/Marker
           Enabled: true
@@ -568,10 +568,10 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv3/avt_341/formation_visualize
+            Value: /cgv1/avt_341/formation_visualize
           Value: true
       Enabled: true
-      Name: agv3
+      Name: cgv1
     - Class: rviz_common/Group
       Displays:
         - Alpha: 1
@@ -584,7 +584,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv4/robot_description
+            Value: /cgv2/robot_description
           Enabled: true
           Links:
             All Links Enabled: true
@@ -603,7 +603,7 @@ Visualization Manager:
               Show Trail: false
               Value: true
           Name: RobotModel_4
-          TF Prefix: agv4
+          TF Prefix: cgv2
           Update Interval: 0
           Value: true
           Visual Enabled: true
@@ -632,7 +632,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv4/avt_341/global_path
+            Value: /cgv2/avt_341/global_path
           Value: true
         - Alpha: 1
           Buffer Length: 1
@@ -659,7 +659,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv4/avt_341/local_path
+            Value: /cgv2/avt_341/local_path
           Value: true
         - Class: rviz_default_plugins/Marker
           Enabled: true
@@ -671,10 +671,10 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /agv4/avt_341/formation_visualize
+            Value: /cgv2/avt_341/formation_visualize
           Value: true
       Enabled: true
-      Name: agv4
+      Name: cgv2
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

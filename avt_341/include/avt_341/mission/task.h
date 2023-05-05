@@ -26,18 +26,19 @@ struct Contact;
 
 class Task {
 public:
-    virtual void init() = 0; 
+    virtual void init() = 0;
     virtual void run() = 0;
     virtual bool is_done() { return true; }
     virtual void on_done() = 0;
     std::string sender_name;
     int msg_id;
-    int priority = 0;
-    Task* next_task;
     MissionManager* mgr;
+    bool has_init = false;
     bool set_busy;
     bool completed;
     virtual std::string description() const { return "Task"; }
+    virtual void onGoalReached(const avt_341::msg::PoseStamped & pose){};
+    virtual void preempted() {}
 }; // class Task
 
 class MoveTo : public Task {
@@ -48,11 +49,12 @@ public:
     static const int CONTACT = 3;
     static const int ACTOR = 4;
 
-    MoveTo(MissionManager* manager, std::string sender, int msg_id, double x_offset = 0.0, double y_offset = 0.0, int priority_in = 0);
+    MoveTo(MissionManager* manager, std::string sender, int msg_id, double x_offset = 0.0, double y_offset = 0.0);
     void init() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
+    void onGoalReached(const avt_341::msg::PoseStamped & pose) override;
 
     bool setGoalByPose(float x, float y, float z, float rot_w, float rot_x, float rot_y, float rot_z);
     bool setGoalByMissionPoint(std::string name);
@@ -63,6 +65,7 @@ public:
     std::string name;
     bool arrived;
     Contact * contact;
+    virtual void preempted() override;
 
     std::string description() const override;
 private:

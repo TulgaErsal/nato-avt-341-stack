@@ -37,7 +37,8 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     message.sender_name = tokens[0];
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
-    
+    message.priority_type = "Q";
+
     // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>
     if(message.type == "FORM") {
         message.formation = tokens[3];
@@ -47,6 +48,9 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
         message.follower3_name = tokens[7];
         message.objective_name = tokens[8];
         message.desired_speed = tokens[9];
+        if(tokens.size() > 10) {
+            message.priority_type = tokens[10];
+        }
     } 
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
     else if(message.type == "ACK") {          
@@ -66,6 +70,9 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     else if(message.type == "MOVETO") {
         message.receiver_name = tokens[3];
         message.objective_name = tokens[4];
+        if(tokens.size() > 5) {
+          message.priority_type = tokens[5];
+        }
     } 
     // <sender>,<msg_id>,SHUTDOWN,<receiver>
     else if(message.type == "SHUTDOWN") {
@@ -75,6 +82,13 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     else if(message.type == "SET_SPEED") {
         message.receiver_name = tokens[3];
         message.desired_speed = tokens[4];
+    }
+    else if(message.type == "CANCEL") {
+      message.receiver_name = tokens[3];
+      message.target_msg_id = atoi(tokens[4].c_str());
+    }
+    else if(message.type == "CANCEL_ALL") {
+      message.receiver_name = tokens[3];
     }
     
     return message;

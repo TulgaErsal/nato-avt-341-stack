@@ -35,6 +35,9 @@ public:
   inline int formationIndex() const { return my_index_; }
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
 
+  bool selfInFormation(const avt_341::msg::Communication &comm_msg);
+  bool vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name);
+
   std::string my_name;
   float follow_scale_x;
   float follow_scale_y;

@@ -11,12 +11,15 @@ WaitUntil::WaitUntil(MissionManager * manager, std::string sender, int id) {
     mgr = manager;
     sender_name = sender;
     msg_id = id;
-    next_task = NULL;
     set_busy = false;
     completed = false;
 }
 
 void WaitUntil::init() {
+    if(has_init){
+      return;
+    }
+    has_init = true;
     std::cout << "Wait Until Task initialized" << std::endl;
 }
 

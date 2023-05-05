@@ -59,6 +59,7 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
       s_length += sqrt(dy_i*dy_i + dx_i*dx_i);
       if(s_length > status.x_offset){
         cutoff_index = i;
+        break;
       }
     }
     while(cutoff_index > 0 && leader_path_history_.poses.size() > cutoff_index){

@@ -12,3 +12,5 @@ string original_msg_id
 string original_command
 string objective_name
 string desired_speed
+string priority_type
+int16 target_msg_id

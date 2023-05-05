@@ -11,12 +11,16 @@ Follow::Follow(MissionManager* manager, std::string sender, int id) {
     mgr = manager;
     sender_name = sender;
     msg_id = id;
-    next_task = NULL;
     set_busy = false;
     completed = false;
 }
 
 void Follow::init() {
+    if(has_init){
+      return;
+    }
+    has_init = true;
+
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
 
     if(set_busy) {

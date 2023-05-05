@@ -23,11 +23,25 @@
 #include "avt_341/mission/formation_utils.h"
 #include "avt_341/mission/formation_definition.h"
 #include "avt_341/mission/formation_speed_control.h"
+#include <deque>
 
 namespace avt_341 {
 namespace mission {
 
 class Task;
+
+class PriorityType{
+public:
+  static const std::string QUEUE;
+  static const std::string QUEUE_SHORT;
+  static const std::string PREEMPT;
+  static const std::string PREEMPT_SHORT;
+  static const std::string CANCEL_ALL_PREVIOUS;
+  static const std::string CANCEL_ALL_PREVIOUS_SHORT;
+  inline static bool isQueue(const std::string &type) { return type.empty() || type == QUEUE || type == QUEUE_SHORT; }
+  inline static bool isPreempt(const std::string &type) { return type == PREEMPT || type == PREEMPT_SHORT; }
+  inline static bool isCancelAllPrevious(const std::string &type) { return type == CANCEL_ALL_PREVIOUS || type == CANCEL_ALL_PREVIOUS_SHORT; }
+};
 
 struct MissionPoint {
     std::string name;
@@ -72,33 +86,31 @@ class MissionManager{
     std::string my_name;
     float same_object_distance_threshold_sq;
     avt_341::msg::Odometry odometry;
-    int previous_nav_state, nav_state;
+    int nav_state;
     float desired_speed;
     bool goal_changed;
     bool arrival_announced;
     bool busy;	// probably temporary
 
     // Task management
-    Task* getTask();
-    Task* getNextTask();
     void updateTasks();
     void postUpdateTasks();
-    bool setActiveTask(Task * task);
-    bool addTask(Task * task);
+    bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(avt_341::msg::Path& path);
     void publishNavStateCmd(int state);
     void publishCommStr(const std::string & msg_data);
-    void MissionManager::reset();
+    void reset();
+    void resetTaskList();
+    void cancelTask(int task_id);
+    void onGoalReached(const avt_341::msg::PoseStamped & pose);
 
     FormationDefinition & formation_def;
 
   private:
+    Task* currentTask();
 
     std::vector<MissionPoint> mission_data;
-    Task * active_task;
-    std::vector<Task*> mission_tasks;
-    std::vector<Task*> task_list;
-    std::vector<Task*> completed_tasks;
+    std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
 
@@ -114,6 +126,7 @@ class MissionManager{
     void addContact(std::string name, float x, float y);
     bool close(float x, float y, float n_x, float n_y);
     float distance_sq(float x1, float y1, float x2, float y2);
+    void publishTaskCompletion(Task * task);
 
 }; // class mission manager
 

@@ -15,13 +15,17 @@ Encircle::Encircle(MissionManager* manager, std::string sender, int id, const av
     mgr = manager;
     sender_name = sender;
     msg_id = id;
-    next_task = nullptr;
     set_busy = false;
     completed = false;
     arrived = false;
 }
 
 void Encircle::init() {
+
+  if(has_init){
+    return;
+  }
+  has_init = true;
 
   avt_341::msg::Path path_msg;
 

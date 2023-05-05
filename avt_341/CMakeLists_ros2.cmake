@@ -32,6 +32,10 @@ X11
 )
 endif()
 
+if($ENV{ROS_DISTRO} STREQUAL "humble")
+add_definitions(-DROS_HUMBLE)
+endif()
+
 set(dependencies
         rclcpp
         sensor_msgs

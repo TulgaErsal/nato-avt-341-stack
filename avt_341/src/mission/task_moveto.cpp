@@ -11,15 +11,13 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_offset, double y_offset, int priority_in)
+MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_offset, double y_offset)
 : x_offset_(x_offset), y_offset_(y_offset) {
     mgr = manager;
     sender_name = sender;
     msg_id = id;
-    next_task = NULL;
     goal_type = 0;
     arrived = false;
-    priority = priority_in;
     name="TEMP_NAME";
     goal.pose.position.x = 0.0;
     goal.pose.position.y = 0.0;
@@ -80,6 +78,10 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
 }
 
 void MoveTo::init() {
+    if(has_init){
+      return;
+    }
+    has_init = true;
 
     avt_341::msg::Path path_msg;
     path_msg.poses.clear();
@@ -94,16 +96,7 @@ void MoveTo::init() {
 }
 
 void MoveTo::run() {
-    // get current position
-    // calculate distance from goal
-    if(mgr->previous_nav_state == avt_341::utils::NavStackState::Active
-    && mgr->nav_state == avt_341::utils::NavStackState::Stopped)
-    {
-        // we've reached a goal and are stopping
-        // TODO: Check distance b/c we could be stopping for _any_ reason
-        std::cout << mgr->my_name << " detected change in nav_state from active to stopping - assuming arriving at goal" << std::endl;
-        arrived = true;
-    }
+  // Nothing to do per timestep but wait for goal to be reached
 }
 
 bool MoveTo::is_done() {
@@ -128,10 +121,19 @@ void MoveTo::on_done() {
     mgr->busy = false;
 }
 
+void MoveTo::preempted(){
+  has_init = false;
+}
+
 std::string MoveTo::description() const {
   std::ostringstream stream;
   stream << "TASK-MOVE_TO: goal_type=" << goal_type << ", name=" << name << ", x_off=" << x_offset_ << ", y_off=" << y_offset_;
   return stream.str();
+}
+
+void MoveTo::onGoalReached(const avt_341::msg::PoseStamped & pose){
+  const double abs_error = std::abs(goal.pose.position.x - pose.pose.position.x + goal.pose.position.y - pose.pose.position.y);
+  arrived = arrived || abs_error < 1.0;
 }
 
 } // mission 

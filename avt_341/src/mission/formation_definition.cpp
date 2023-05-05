@@ -115,23 +115,25 @@ avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const avt
   return follower_status_msg;
 }
 
+bool FormationDefinition::selfInFormation(const avt_341::msg::Communication &comm_msg){
+  return vehicleInFormation(comm_msg, my_name);
+}
+
+bool FormationDefinition::vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name){
+  return comm_msg.leader_name == vehicle_name || comm_msg.follower1_name == vehicle_name
+  || comm_msg.follower2_name == vehicle_name || comm_msg.follower3_name == vehicle_name;
+}
+
 bool FormationDefinition::update(avt_341::msg::Communication &comm_msg){
 
-  int veh_idx = -1;
-  size_t substr_pos = comm_msg.formation.find("_AT_GOAL");
-  bool formation_at_goal_in = substr_pos != std::string::npos;
-  comm_msg.formation = comm_msg.formation.substr(0, substr_pos);
-
-  auto formation_status_in = commToFollowerStatus(comm_msg, my_name, veh_idx);
-  if(veh_idx < 0){
-    // my_name not found in message
-    return false;
-  }
-
-  my_index_ = veh_idx;
   current_formation_msg_ = comm_msg;
-  formation_status = formation_status_in;
-  formation_at_goal_ = formation_at_goal_in;
+  formation_status = commToFollowerStatus(comm_msg, my_name, my_index_);
+  size_t substr_pos = comm_msg.formation.find("_AT_GOAL");
+  formation_at_goal_ = substr_pos != std::string::npos;
+
+  if(formation_at_goal_){
+    comm_msg.formation = comm_msg.formation.substr(0, substr_pos);
+  }
 
   std::string leader_name = leaderName();
   auto formation_vehicle_names_temp = std::vector<std::string>{leader_name, comm_msg.follower1_name, comm_msg.follower2_name, comm_msg.follower3_name};

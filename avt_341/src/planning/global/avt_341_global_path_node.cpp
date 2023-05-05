@@ -106,8 +106,9 @@ void Reset(){
   current_waypoints.poses.clear();
 }
 
+bool reset_called = false;
 void ResetCallback(avt_341::msg::Int32Ptr msg){
-  Reset();
+  reset_called = true;
 }
 
 int main(int argc, char *argv[])
@@ -118,6 +119,7 @@ int main(int argc, char *argv[])
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
   auto current_waypoint_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/current_waypoint", 10);
   auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
+  auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, MapCallback);
@@ -126,7 +128,7 @@ int main(int argc, char *argv[])
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
   auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
-//  auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+  auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -220,6 +222,15 @@ int main(int argc, char *argv[])
   int last_gptoggle_state = use_global_planner;
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
+
+    if(reset_called){
+      Reset();
+      reset_called = false;
+      n->spin_some();
+      r.sleep();
+      continue;
+    }
+
     // Handle Go command
     if(nav_command_rcvd) {
 	    if(nav_command == avt_341::utils::NavStateCmd::GoActive
@@ -331,6 +342,9 @@ int main(int argc, char *argv[])
             shutdown_condition = true;
             state.data = shutdown_behavior; // request shutdown behavior
             state_pub->publish(state);
+
+            goal_reached_pub->publish(current_waypoints.poses[current_waypoint]);
+
 			      //std::cout << "Shutdown " << shutdown_behavior << std::endl;
 			      if(state.data != avt_341::utils::NavStackState::Stopped) {
               shutdown_count++;
@@ -344,6 +358,8 @@ int main(int argc, char *argv[])
         }
         else{     // intermediate waypoint
           if (d<goal_dist){   // reached the waypoint
+            goal_reached_pub->publish(current_waypoints.poses[current_waypoint]);
+
             current_waypoint++;
             goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
             goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
