@@ -17,6 +17,7 @@
 // local includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/mission/mission_manager.h"
+#include "avt_341/mission/formation_definition.h"
 
 namespace avt_341 {
 namespace mission {
@@ -26,19 +27,29 @@ struct Contact;
 
 class Task {
 public:
-    virtual void init() = 0;
+    Task(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def = nullptr);
+    virtual ~Task();
+
+    virtual void init();
     virtual void run() = 0;
     virtual bool is_done() { return true; }
     virtual void on_done() = 0;
-    std::string sender_name;
-    int msg_id;
-    MissionManager* mgr;
-    bool has_init = false;
-    bool set_busy;
-    bool completed;
     virtual std::string description() const { return "Task"; }
     virtual void onGoalReached(const avt_341::msg::PoseStamped & pose){};
     virtual void preempted() {}
+
+    bool hasFormation() const;
+
+    std::string sender_name;
+    int msg_id;
+    bool init_done;
+    FormationDefinition* getFormationDef() const { return formation_def_; }
+
+protected:
+  virtual void init_() = 0;
+  MissionManager* mgr;
+  FormationDefinition* formation_def_;
+
 }; // class Task
 
 class MoveTo : public Task {
@@ -49,11 +60,12 @@ public:
     static const int CONTACT = 3;
     static const int ACTOR = 4;
 
-    MoveTo(MissionManager* manager, std::string sender, int msg_id, double x_offset = 0.0, double y_offset = 0.0);
-    void init() override;
+    MoveTo(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr, double x_offset = 0.0, double y_offset = 0.0);
+    void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
+    void preempted() override;
     void onGoalReached(const avt_341::msg::PoseStamped & pose) override;
 
     bool setGoalByPose(float x, float y, float z, float rot_w, float rot_x, float rot_y, float rot_z);
@@ -65,7 +77,6 @@ public:
     std::string name;
     bool arrived;
     Contact * contact;
-    virtual void preempted() override;
 
     std::string description() const override;
 private:
@@ -77,7 +88,7 @@ private:
 class WaitUntil : public Task {
 public:
     WaitUntil(MissionManager* manager, std::string sender, int msg_id);
-    void init() override;
+    void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
@@ -90,7 +101,7 @@ class Encircle : public Task {
 public:
     Encircle(MissionManager* manager, std::string sender, int msg_id, const avt_341::msg::PoseStamped & target,
              const avt_341::msg::PoseStamped & current_pose, double radius=15.0, double angular_range_degrees=180.0, bool is_cw = true, double goal_threshold=5.0);
-    void init() override;
+    void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
@@ -107,11 +118,12 @@ private:
 
 class Follow : public Task {
 public:
-    Follow(MissionManager* manager, std::string sender, int msg_id);
-    void init() override;
+    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr);
+    void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
+    void preempted() override;
     std::string description() const override;
 }; // class Follow
 

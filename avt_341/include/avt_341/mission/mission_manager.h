@@ -43,11 +43,6 @@ public:
   inline static bool isCancelAllPrevious(const std::string &type) { return type == CANCEL_ALL_PREVIOUS || type == CANCEL_ALL_PREVIOUS_SHORT; }
 };
 
-struct MissionPoint {
-    std::string name;
-    double pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, rot_w;
-};
-
 struct Contact {
     // storage for contact information
     // timestamp, position, class/name, investigated
@@ -64,7 +59,7 @@ class MissionManager{
 
   public:
     /// Construct a formation controller
-    MissionManager(FormationDefinition & formation_definition, std::shared_ptr<node::NodeProxy> node_proxy);
+    MissionManager(const FormationParameters & formation_params, std::shared_ptr<node::NodeProxy> node_proxy);
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
@@ -75,7 +70,7 @@ class MissionManager{
     void handleContacts(avt_341::msg::Path);
 
     // external messages
-    void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0);
+    void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
     void handleFormationRequest(avt_341::msg::Communication);
     void handleAcknowledge(const avt_341::msg::Communication &);
     void handleArrive(const avt_341::msg::Communication &);
@@ -90,7 +85,6 @@ class MissionManager{
     float desired_speed;
     bool goal_changed;
     bool arrival_announced;
-    bool busy;	// probably temporary
 
     // Task management
     void updateTasks();
@@ -98,17 +92,19 @@ class MissionManager{
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(avt_341::msg::Path& path);
     void publishNavStateCmd(int state);
+    void publishGpToggle(int state);
     void publishCommStr(const std::string & msg_data);
+    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
     void reset();
-    void resetTaskList();
-    void cancelTask(int task_id);
+    void resetTaskList(bool send_completion_msg);
+    void handleCancelTask(const avt_341::msg::Communication & msg);
+    void handleCancelAllTask(const avt_341::msg::Communication & msg);
+    void cancelTask(int task_id,bool send_completion_msg);
     void onGoalReached(const avt_341::msg::PoseStamped & pose);
-
-    FormationDefinition & formation_def;
-
-  private:
     Task* currentTask();
 
+  private:
+    const FormationParameters & formation_params;
     std::vector<MissionPoint> mission_data;
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
@@ -117,6 +113,7 @@ class MissionManager{
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> gp_toggle_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> communication_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
 
@@ -127,6 +124,7 @@ class MissionManager{
     bool close(float x, float y, float n_x, float n_y);
     float distance_sq(float x1, float y1, float x2, float y2);
     void publishTaskCompletion(Task * task);
+    void publishTaskCompletion(const std::string & sender_name, int msg_id);
 
 }; // class mission manager
 

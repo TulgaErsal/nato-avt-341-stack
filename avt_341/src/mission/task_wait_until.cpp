@@ -7,19 +7,11 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-WaitUntil::WaitUntil(MissionManager * manager, std::string sender, int id) {
-    mgr = manager;
-    sender_name = sender;
-    msg_id = id;
-    set_busy = false;
-    completed = false;
+WaitUntil::WaitUntil(MissionManager * manager, std::string sender, int id)
+: Task(manager, sender, id) {
 }
 
-void WaitUntil::init() {
-    if(has_init){
-      return;
-    }
-    has_init = true;
+void WaitUntil::init_() {
     std::cout << "Wait Until Task initialized" << std::endl;
 }
 

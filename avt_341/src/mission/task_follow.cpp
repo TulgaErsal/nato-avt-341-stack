@@ -7,29 +7,25 @@ namespace avt_341 {
 namespace mission {
 
 // Follow
-Follow::Follow(MissionManager* manager, std::string sender, int id) {
-    mgr = manager;
-    sender_name = sender;
-    msg_id = id;
-    set_busy = false;
-    completed = false;
+Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def)
+: Task(manager, sender, id, formation_def) {
 }
 
-void Follow::init() {
-    if(has_init){
-      return;
-    }
-    has_init = true;
-
+void Follow::init_() {
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
 
-    if(set_busy) {
-        mgr->busy = true;
+    if(!formation_def_->formationAtGoal()){
+      mgr->publishFormationStatus(formation_def_->formation_status);
     }
 }
 
 void Follow::run() {
     //std::cout << mgr->my_name << " Follow Task is running" << std::endl;
+}
+
+void Follow::preempted(){
+  init_done = false;
+  mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoInactive);
 }
 
 bool Follow::is_done() {
@@ -42,7 +38,7 @@ void Follow::on_done() {
 
 std::string Follow::description() const {
     std::ostringstream stream;
-    stream << "TASK-FOLLOW leader " << mgr->formation_def.followedVehicle();
+    stream << "TASK-FOLLOW leader " << formation_def_->followedVehicle();
     return stream.str();
 }
 

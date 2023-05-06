@@ -11,21 +11,12 @@ namespace mission {
 Encircle::Encircle(MissionManager* manager, std::string sender, int id, const avt_341::msg::PoseStamped & target,
                    const avt_341::msg::PoseStamped & current_pose, double radius, double angular_range_degrees, bool is_cw,
                    double goal_threshold)
-                   : target_(target), current_pose_(current_pose), radius_(radius), angular_range_degrees_(angular_range_degrees), is_cw_(is_cw), goal_threshold_(goal_threshold) {
-    mgr = manager;
-    sender_name = sender;
-    msg_id = id;
-    set_busy = false;
-    completed = false;
+                   : Task(manager, sender, id), target_(target), current_pose_(current_pose), radius_(radius),
+                   angular_range_degrees_(angular_range_degrees), is_cw_(is_cw), goal_threshold_(goal_threshold) {
     arrived = false;
 }
 
-void Encircle::init() {
-
-  if(has_init){
-    return;
-  }
-  has_init = true;
+void Encircle::init_() {
 
   avt_341::msg::Path path_msg;
 
@@ -46,9 +37,6 @@ void Encircle::init() {
   mgr->publishPath(path_msg);
   mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoInactive);
 
-  if(set_busy) {
-    mgr->busy = true;
-  }
 }
 
 void Encircle::run() {
@@ -62,8 +50,6 @@ bool Encircle::is_done() {
 }
 
 void Encircle::on_done() {
-  completed = true;
-  mgr->busy = false;
 }
 
 std::string Encircle::description() const {

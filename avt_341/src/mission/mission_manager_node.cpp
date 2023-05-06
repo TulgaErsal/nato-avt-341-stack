@@ -37,7 +37,12 @@ void EgoOdometryCallback(avt_341::msg::OdometryPtr msg) {
 void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     // Ensure same case as leader_name
     std::string child_frame_id = msg->child_frame_id;
-    const std::string leader_name = mgr->formation_def.followedVehicle();
+    avt_341::mission::Task* current_task = mgr->currentTask();
+    if(current_task == nullptr || !current_task->hasFormation()){
+      return;
+    }
+
+    const std::string leader_name = current_task->getFormationDef()->followedVehicle();
     std::transform(child_frame_id.begin(), child_frame_id.end(), child_frame_id.begin(), [](unsigned char c){ return std::toupper(c); });
 
     std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
@@ -81,14 +86,14 @@ int main(int argc, char **argv) {
 
     // load the parameters
     avt_341::mission::FormationSpeedControlParams fsc_params{};
-    avt_341::mission::FormationDefinition formation_def{};
+    avt_341::mission::FormationParameters formation_params;
     std::string fsc_type;
     std::vector<std::string> veh_namespaces;
 
-    nh->get_parameter("~name", formation_def.my_name, std::string("AGV1"));
+    nh->get_parameter("~name", formation_params.my_name, std::string("AGV1"));
     nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
-    nh->get_parameter("~follow_scale_x", formation_def.follow_scale_x, 1.0f);
-    nh->get_parameter("~follow_scale_y", formation_def.follow_scale_y, 1.0f);
+    nh->get_parameter("~follow_scale_x", formation_params.follow_scale_x, 1.0f);
+    nh->get_parameter("~follow_scale_y", formation_params.follow_scale_y, 1.0f);
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
 
     nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
@@ -96,19 +101,18 @@ int main(int argc, char **argv) {
     nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
     nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
     nh->get_parameter("~formation_debug_visualize", fsc_params.debug_visualize, false);
-    nh->get_parameter("~offsets_from_leader", formation_def.offsets_from_leader, true);
+    nh->get_parameter("~offsets_from_leader", formation_params.offsets_from_leader, true);
     nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
     nh->get_parameter("~follower_dot_threshold", fsc_params.follower_dot_threshold, 0.0);
-    nh->get_parameter("~num_vehicles", formation_def.num_vehicles, 4);
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~veh_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
     bool use_slow_down_speed_control = fsc_type == FormationSpeedControlType::SLOW_DOWN_LEADER;
 
-    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_def, nh);
+    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, nh);
     mgr->same_object_distance_threshold_sq = sodist_threshold * sodist_threshold;
 
-    avt_341::mission::FormationSpeedController speedController(formation_def, fsc_params, nh);
+    avt_341::mission::FormationSpeedController speedController(formation_params.my_name, fsc_params, nh);
 
     nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
     mgr->loadMissionDefinition(mission_definition_filename);
@@ -168,11 +172,11 @@ int main(int argc, char **argv) {
                 mgr->handleSetSpeed(rcvd_msg);
             } else if(rcvd_msg.type == "CANCEL") {
                 if(rcvd_msg.receiver_name == mgr->my_name){
-                    mgr->cancelTask(rcvd_msg.target_msg_id);
+                    mgr->handleCancelTask(rcvd_msg);
                 }
             } else if(rcvd_msg.type == "CANCEL_ALL"){
                 if(rcvd_msg.receiver_name == mgr->my_name){
-                    mgr->resetTaskList();
+                    mgr->handleCancelAllTask(rcvd_msg);
                 }
             }
             else{
@@ -200,9 +204,10 @@ int main(int argc, char **argv) {
         // post-update tasks
         mgr->postUpdateTasks();
 
-        if(!formation_def.leaderName().empty() && use_slow_down_speed_control){
+        avt_341::mission::Task* task = mgr->currentTask();
+        if(task!= nullptr && use_slow_down_speed_control){
             avt_341::msg::Float64 speed_msg;
-            speed_msg.data = speedController.getSpeedFactor(formation_poses);
+            speed_msg.data = speedController.getSpeedFactor(task->getFormationDef(), formation_poses);
             speed_factor_pub->publish(speed_msg);
         }
         

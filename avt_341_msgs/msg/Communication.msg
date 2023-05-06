@@ -13,4 +13,6 @@ string original_command
 string objective_name
 string desired_speed
 string priority_type
+float64 x_scale
+float64 y_scale
 int16 target_msg_id

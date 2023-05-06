@@ -14,10 +14,10 @@ const std::string PriorityType::PREEMPT_SHORT = "P";
 const std::string PriorityType::CANCEL_ALL_PREVIOUS = "CANCEL_ALL";
 const std::string PriorityType::CANCEL_ALL_PREVIOUS_SHORT = "C";
 
-MissionManager::MissionManager(FormationDefinition & formation_definition, std::shared_ptr<node::NodeProxy> node_proxy)
-: formation_def(formation_definition), node_proxy_(node_proxy){
+MissionManager::MissionManager(const FormationParameters & formation_params, std::shared_ptr<node::NodeProxy> node_proxy)
+: formation_params(formation_params), node_proxy_(node_proxy){
 
-    my_name = formation_def.my_name;
+    my_name = formation_params.my_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
 
     arrival_announced = true;
@@ -30,6 +30,7 @@ MissionManager::MissionManager(FormationDefinition & formation_definition, std::
     follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100);
+    gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
 }
 
@@ -101,7 +102,7 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     // if no active task, put it on the list
 
     if(PriorityType::isCancelAllPrevious(priority_type)){
-      resetTaskList();
+      resetTaskList(true);
     }
 
     bool is_preempt = PriorityType::isPreempt(priority_type);
@@ -125,6 +126,12 @@ void MissionManager::publishPath(avt_341::msg::Path& path){
     waypoint_pub->publish(path);
 }
 
+void MissionManager::publishGpToggle(int state){
+  avt_341::msg::Int32 nav_msg;
+  nav_msg.data = state;
+  gp_toggle_pub->publish(nav_msg);
+}
+
 void MissionManager::publishNavStateCmd(int state){
     avt_341::msg::Int32 nav_msg;
     nav_msg.data = state;
@@ -138,19 +145,26 @@ void MissionManager::publishCommStr(const std::string & msg_data){
 }
 
 void MissionManager::publishTaskCompletion(Task * task){
+  publishTaskCompletion(task->sender_name, task->msg_id);
+}
+
+void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
+  follower_status_pub->publish(status_msg);
+}
+
+void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   std::ostringstream stream;
-  stream << "TASK_COMPLETE," << task->sender_name << "," << task->msg_id;
+  stream << "TASK_COMPLETE," << sender_name << "," << msg_id;
   avt_341::msg::String comm_msg;
   comm_msg.data = stream.str();
   communication_pub->publish(comm_msg);
-
 }
 
 void MissionManager::updateTasks() {
     Task* active_task = currentTask();
     if(active_task != nullptr) {
 
-        if(!active_task->has_init){
+        if(!active_task->init_done){
           active_task->init();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
         }
@@ -221,24 +235,28 @@ bool MissionManager::close(float old_x, float old_y, float new_x, float new_y) {
 	}
 }
 
-void MissionManager::resetTaskList() {
+void MissionManager::resetTaskList(bool send_completion_msg) {
   node_proxy_->log_info("%s CANCEL_ALL: Clearing task list of size %d.",  my_name.c_str(), task_list.size());
   for(auto task : task_list) {
-    delete task;
+    cancelTask(task->msg_id, send_completion_msg);
   }
   task_list.clear();
 }
 
 void MissionManager::reset(){
-  resetTaskList();
+  resetTaskList(false);
 }
 
-void MissionManager::cancelTask(int task_id){
+void MissionManager::cancelTask(int task_id, bool send_completion_msg){
   auto it = std::find_if(std::begin(task_list), std::end(task_list),
                          [task_id](const auto& e) {return e->msg_id == task_id; });
   if(it != task_list.end()){
     Task* task = *it;
+    task->preempted();
     node_proxy_->log_info("%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
+    if(send_completion_msg){
+      publishTaskCompletion(task);
+    }
     task_list.erase(it);
     delete task;
   }
@@ -272,7 +290,6 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
             //handleMoveTo(contact.x, contact.y);
             MoveTo* investigateTask = new MoveTo(this, my_name, -1);
             bool ret = investigateTask->setGoalByPose(contact.x, contact.y, 0.0, 1.0, 0.0, 0.0, 0.0);
-            investigateTask->set_busy = true;   // set as a priority, uninterruptable task
             investigateTask->contact = &(*it);
             investigateTask->contact->investigating = true;
             investigateTask->goal_type = MoveTo::CONTACT;
@@ -289,25 +306,26 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
 
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
 
-    if(!formation_def.selfInFormation(msg)){
+    if(!FormationDefinition::vehicleInFormation(msg, my_name)){
       node_proxy_->log_info("Ignoring formation request. Not for me.");
       return;
     }
 
-    formation_def.update(msg);
-
-    if(formation_def.isLeader() || formation_def.formationAtGoal()){
+    MissionPoint mp;
+    if(!getMissionPoint(mp, msg.objective_name)){
+      node_proxy_->log_warning("Could not find mission point %s associated with formation.", msg.objective_name.c_str());
+      return;
+    }
+    auto formation_def = new FormationDefinition(msg, mp, formation_params);
+    if(formation_def->isLeader() || formation_def->formationAtGoal()){
         // handle objective
         msg.receiver_name = my_name;
-        handleMoveTo(msg, formation_def.formation_status.x_offset, formation_def.formation_status.y_offset);
-    } else if(formation_def.isFollowing()) {
-        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id);
+        handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def);
+    } else if(formation_def->isFollowing()) {
+        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def);
         addTask(followTask, msg.priority_type);
     }
 
-    if(!formation_def.formationAtGoal()){
-      follower_status_pub->publish(formation_def.formation_status);
-    }
     // handle set speed
     handleSetSpeed(msg);
 }
@@ -333,16 +351,12 @@ void MissionManager::handleTaskComplete(const avt_341::msg::Communication & msg)
     }
 }
 
-void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, double x_offset, double y_offset) {
+void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        if(!formation_def.isFollowing()) {
-            MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, x_offset, y_offset);
-            bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
-            addTask(moveTask, msg.priority_type);
-        } else {
-            node_proxy_->log_info("Ignoring MoveTo b/c currently following a leader");
-        }
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset, y_offset);
+        bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
+        addTask(moveTask, msg.priority_type);
     } else {
         node_proxy_->log_info("Ignoring MoveTo (not for me)");
     }
@@ -367,6 +381,16 @@ void MissionManager::onGoalReached(const avt_341::msg::PoseStamped & pose){
   if(task != nullptr){
     task->onGoalReached(pose);
   }
+}
+
+void MissionManager::handleCancelTask(const avt_341::msg::Communication & msg){
+  cancelTask(msg.target_msg_id, true);
+  publishTaskCompletion(msg.sender_name, msg.msg_id);
+}
+
+void MissionManager::handleCancelAllTask(const avt_341::msg::Communication & msg){
+  resetTaskList(true);
+  publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
 } // namespace mission

@@ -53,18 +53,21 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
   if(x_offset_on_path_){
     double s_length = 0;
     int cutoff_index = -1;
-    for(int i = 1; i < leader_path_history_.poses.size(); i++){
-      double dx_i = leader_path_history_.poses[i].pose.position.x - leader_path_history_.poses[i-1].pose.position.x;
-      double dy_i = leader_path_history_.poses[i].pose.position.y - leader_path_history_.poses[i-1].pose.position.y;
+    for(int i = leader_path_history_.poses.size()-2; i > 0; i--){
+      double dx_i = leader_path_history_.poses[i].pose.position.x - leader_path_history_.poses[i+1].pose.position.x;
+      double dy_i = leader_path_history_.poses[i].pose.position.y - leader_path_history_.poses[i+1].pose.position.y;
       s_length += sqrt(dy_i*dy_i + dx_i*dx_i);
       if(s_length > status.x_offset){
         cutoff_index = i;
         break;
       }
     }
-    while(cutoff_index > 0 && leader_path_history_.poses.size() > cutoff_index){
-      desired_global_path_.poses.push_back(leader_path_history_.poses.back());
-      leader_path_history_.poses.pop_back();
+    if(cutoff_index > -1){
+      for(int i = 0; i < cutoff_index; i++){
+        desired_global_path_.poses.push_back(leader_path_history_.poses[i]);
+      }
+      leader_path_history_.poses = std::vector<avt_341::msg::PoseStamped>(leader_path_history_.poses.begin()+cutoff_index,
+                                                                          leader_path_history_.poses.end());
     }
   }
 

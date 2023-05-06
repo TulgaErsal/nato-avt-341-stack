@@ -48,8 +48,17 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
         message.follower3_name = tokens[7];
         message.objective_name = tokens[8];
         message.desired_speed = tokens[9];
-        if(tokens.size() > 10) {
+        message.x_scale = -1.0;
+        message.y_scale = -1.0;
+
+        if(tokens.size() == 11) {
             message.priority_type = tokens[10];
+        }else if(tokens.size() > 11) {
+            message.x_scale = std::stod(tokens[10]);
+            message.y_scale = std::stod(tokens[11]);
+            if(tokens.size() > 12){
+                message.priority_type = tokens[12];
+            }
         }
     } 
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
@@ -115,7 +124,7 @@ int main(int argc, char* argv[])
 
     // Set up subscriptions
     // Subscribe to avt_341/comm_messages to catch messages that should be relayed to the network
-    auto msg_sub = nh->create_subscription<avt_341::msg::String>("avt_341/comm_messages", 1, MessageCallback);
+    auto msg_sub = nh->create_subscription<avt_341::msg::String>("avt_341/comm_messages", 10, MessageCallback);
 
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::msg::Communication>("avt_341/recv_comms", 10);

@@ -11,11 +11,8 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_offset, double y_offset)
-: x_offset_(x_offset), y_offset_(y_offset) {
-    mgr = manager;
-    sender_name = sender;
-    msg_id = id;
+MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def, double x_offset, double y_offset)
+: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset) {
     goal_type = 0;
     arrived = false;
     name="TEMP_NAME";
@@ -26,7 +23,6 @@ MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, double x_off
     goal.pose.orientation.y = 0.0;
     goal.pose.orientation.z = 0.0;
     goal.pose.orientation.w = 1.0;
-    set_busy = false;
 }
 
 bool MoveTo::setGoalByPose(float x, float y, float z, float rot_x, float rot_y, float rot_z, float rot_w) {
@@ -77,22 +73,18 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
     }
 }
 
-void MoveTo::init() {
-    if(has_init){
-      return;
-    }
-    has_init = true;
-
+void MoveTo::init_() {
     avt_341::msg::Path path_msg;
     path_msg.poses.clear();
     path_msg.poses.push_back(goal);
     mgr->publishPath(path_msg);
-
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
+    mgr->publishGpToggle(1);
 
-    if(set_busy) {
-        mgr->busy = true;
+    if(formation_def_ != nullptr && !formation_def_->formationAtGoal()){
+      mgr->publishFormationStatus(formation_def_->formation_status);
     }
+
 }
 
 void MoveTo::run() {
@@ -117,12 +109,11 @@ void MoveTo::on_done() {
         }
     }
 
-    completed = true;
-    mgr->busy = false;
 }
 
 void MoveTo::preempted(){
-  has_init = false;
+  init_done = false;
+  mgr->publishGpToggle(0);
 }
 
 std::string MoveTo::description() const {

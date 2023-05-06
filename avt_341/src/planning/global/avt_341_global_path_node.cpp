@@ -219,7 +219,6 @@ int main(int argc, char *argv[])
   avt_341::node::Rate r(20.0f); // Hz
   int nl = 0;
   int shutdown_count = 0;
-  int last_gptoggle_state = use_global_planner;
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
 
@@ -246,12 +245,6 @@ int main(int argc, char *argv[])
 	  } else {
 	    state_pub->publish(state);
 	  }
-
-    if(use_global_planner != last_gptoggle_state) 
-    {
-	  //n->log_info("set global path use to toggle value %d", use_global_planner;
-      last_gptoggle_state = use_global_planner;
-    }
 
     if(use_global_planner) {
       if (waypoints_rcvd) {
@@ -375,6 +368,13 @@ int main(int argc, char *argv[])
       //  state.data = 1;       // request smooth stop but don't shutdown (waiting for odom data)
       //  state_pub->publish(state);
       //}
+    }else{
+      avt_341::msg::Path ros_path;
+      ros_path.header.frame_id = "map";
+      ros_path.header.stamp = n->get_stamp();
+      path_pub->publish(ros_path);
+      state.data = avt_341::utils::NavStackState::Stopped;
+      state_pub->publish(state);
     }
 
     n->spin_some();
