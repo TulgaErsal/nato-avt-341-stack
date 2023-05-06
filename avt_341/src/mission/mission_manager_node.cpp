@@ -151,7 +151,10 @@ int main(int argc, char **argv) {
         while(!comm_msgs.empty()){
             auto rcvd_msg = comm_msgs.front();
             comm_msgs.pop();
-            nh->log_info("%s handling message: %s", mgr->my_name.c_str(), rcvd_msg.type.c_str());
+            if(!mgr->isMsgForSelf(rcvd_msg)){
+              continue;
+            }
+            nh->log_info("%s handling message: type=%s, id=%d", mgr->my_name.c_str(), rcvd_msg.type.c_str(), rcvd_msg.msg_id);
 
             if(rcvd_msg.type == "FORM") {
                 mgr->handleFormationRequest(rcvd_msg);

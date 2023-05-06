@@ -92,7 +92,7 @@ bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string na
         node_proxy_->log_info("Missing Mission Point %s", name.c_str());
         return false;
     }
-    node_proxy_->log_info("Found Mission Point %s = (%.2f, %.2f, %.2f) found", name.c_str(), it->pos_x, it->pos_y, it->pos_z);
+//    node_proxy_->log_info("Found Mission Point %s = (%.2f, %.2f, %.2f) found", name.c_str(), it->pos_x, it->pos_y, it->pos_z);
     mission_point = *it;
     return true;
 }
@@ -302,6 +302,10 @@ void MissionManager::handleContacts(avt_341::msg::Path contacts) {
             // follower should go to OVERWATCH position
         }
     }
+}
+
+bool MissionManager::isMsgForSelf(const avt_341::msg::Communication & msg) {
+  return msg.type == "FORM" && FormationDefinition::vehicleInFormation(msg, my_name) || msg.receiver_name == my_name;
 }
 
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {

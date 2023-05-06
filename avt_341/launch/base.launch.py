@@ -281,6 +281,8 @@ def generate_launch_description():
         DeclareLaunchArgument('disable_socket_comms', default_value='False', description="Communication Node - If true disables tcp socket communication."),
         DeclareLaunchArgument('broadcast_internal', default_value='False', description="Communication Node - If true, echos received messages from comm_messages topic subscription."),
         DeclareLaunchArgument('add_name_id_to_msg', default_value='True', description="Communication Node - If true, adds vehicle name and message count to broadcast messages."),
+        DeclareLaunchArgument('verbose_comm_log', default_value='False', description="Communication Node - If true, comm node includes verbose logging."),
+
     ]
     vehicle_node_list = []
     for idx in range(MAX_VEHICLES):
@@ -547,7 +549,8 @@ def generate_launch_description():
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
                             'disable_socket_comms': launch.substitutions.LaunchConfiguration('disable_socket_comms'),
                             'broadcast_internal': launch.substitutions.LaunchConfiguration('broadcast_internal'),
-                            'add_name_id_to_msg': launch.substitutions.LaunchConfiguration('add_name_id_to_msg')
+                            'add_name_id_to_msg': launch.substitutions.LaunchConfiguration('add_name_id_to_msg'),
+                            'verbose_comm_log': launch.substitutions.LaunchConfiguration('verbose_comm_log')
                         }]
                     )
                 ])

@@ -23,10 +23,13 @@ std::queue<std::string> pending_msgs;
 char message[256] = { 0 };
 std::string my_name;
 std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
+bool verbose_comm_log = false;
 
 void MessageCallback(avt_341::msg::StringPtr msg) {
     pending_msgs.push(msg->data);
-    nh->log_info("Received %s to broadcast.", msg->data.c_str());
+    if(verbose_comm_log){
+      nh->log_info("Received %s to broadcast.", msg->data.c_str());
+    }
 }
 
 avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
@@ -142,6 +145,7 @@ int main(int argc, char* argv[])
     nh->get_parameter("~disable_socket_comms", disable_socket_comms, false);
     nh->get_parameter("~broadcast_internal", broadcast_internal, false);
     nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, true);
+    nh->get_parameter("~verbose_comm_log", verbose_comm_log, true);
 
     nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_internal: %d",
                  hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_internal);
@@ -182,7 +186,9 @@ int main(int argc, char* argv[])
                 next_msg = stream.str();
             }
 
-            nh->log_info("Broadcasting %s", next_msg.c_str());
+            if(verbose_comm_log){
+              nh->log_info("Broadcasting %s", next_msg.c_str());
+            }
 
             strcpy(buffer, next_msg.c_str());
             int n = client->write(buffer, strlen(buffer));
@@ -199,7 +205,9 @@ int main(int argc, char* argv[])
         if(client->read_available(buffer, 256) > 0)
         {
             std::string buffer_str = std::string(buffer);
-            nh->log_info("Read %s", buffer_str.c_str());
+            if(verbose_comm_log){
+              nh->log_info("Read %s", buffer_str.c_str());
+            }
             packed_msg = packageMessage(tokenize_msg(buffer_str));
             msg_pub->publish(packed_msg);
         }
