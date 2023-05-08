@@ -109,8 +109,8 @@ int main(int argc, char *argv[]){
   controller.SetKp(throttle_kp);
   controller.SetKi(throttle_ki);
   controller.SetKd(throttle_kd);
+  controller.SetUseFeedForward(use_feed_forward);
   if (use_feed_forward){
-    controller.SetUseFeedForward(true);
     controller.SetForwardModelParams(ff_a0, ff_a1, ff_a2);
   }
 

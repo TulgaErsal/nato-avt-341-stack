@@ -44,6 +44,8 @@ class FormationController{
 
   void SetXOffsetOnPath(bool x_offset_on_path){x_offset_on_path_ = x_offset_on_path;}
 
+	void SetFormationPruneGP(bool prune){prune_global_path_ = prune;}
+
   void ClearDesiredGlobalPath();
 
 	/// Get the current desired global path
@@ -56,7 +58,8 @@ class FormationController{
   private:
 
 	// Method to generate global path based on formation
-  void GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
+  void GenerateLeaderPath(const avt_341::msg::Odometry & leader_odom, const avt_341::msg::Odometry & odom,
+													avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
   // Method to calculate desired speed based on formation
 	void CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
@@ -71,6 +74,7 @@ class FormationController{
 	avt_341::msg::Path leader_path_history_;
 	float desired_speed_;
   bool x_offset_on_path_;
+	bool prune_global_path_;
 
 	// utility functions and intermediate calculations
 	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);

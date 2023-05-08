@@ -20,7 +20,8 @@ FormationController::FormationController(){
  * @param status Message containing desired offsets for this vehicle
  * @param leaderVy y (left) norm vector in coordiante frame of leader
  */
-void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
+void FormationController::GenerateLeaderPath(const avt_341::msg::Odometry & leader_odom, const avt_341::msg::Odometry & odom,
+                                             avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
   if(!(bool)status.use_leader) return;
 
   double leaderYoffset = status.y_offset;
@@ -69,6 +70,25 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
       }
       leader_path_history_.poses = std::vector<avt_341::msg::PoseStamped>(leader_path_history_.poses.begin()+cutoff_index,
                                                                           leader_path_history_.poses.end());
+    }
+  }
+
+  if(prune_global_path_){
+    // Remove all poses before closest location in desired_global_path_
+    double min_dist2 = 1e10;
+    int min_index = -1;
+    for(int i = 0; i < desired_global_path_.poses.size(); i++){
+      double dx_i = desired_global_path_.poses[i].pose.position.x - odom.pose.pose.position.x;
+      double dy_i = desired_global_path_.poses[i].pose.position.y - odom.pose.pose.position.y;
+      double dist2_i = dx_i*dx_i + dy_i*dy_i;
+      if(dist2_i < min_dist2){
+        min_dist2 = dist2_i;
+        min_index = i;
+      }
+    }
+    if(min_index > 0){
+      desired_global_path_.poses = std::vector<avt_341::msg::PoseStamped>(desired_global_path_.poses.begin()+min_index,
+                                                                          desired_global_path_.poses.end());
     }
   }
 
@@ -154,7 +174,7 @@ void FormationController::Update(avt_341::msg::Odometry leader_odom, avt_341::ms
 
   PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
 
-  GenerateLeaderPath(leader_odom, status, leaderVx, leaderVy);
+  GenerateLeaderPath(leader_odom, odom, status, leaderVx, leaderVy);
 	desired_global_path_.header.frame_id = "map";
 
 	CalculateFollowerSpeed(leader_odom, odom, status, leaderVx, leaderVy);

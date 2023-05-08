@@ -53,15 +53,19 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
         message.desired_speed = tokens[9];
         message.x_scale = -1.0;
         message.y_scale = -1.0;
+        message.x_offset = 0.0;
+        message.y_offset = 0.0;
+        message.distance = 0.0;
 
         if(tokens.size() == 11) {
             message.priority_type = tokens[10];
         }else if(tokens.size() > 11) {
             message.x_scale = std::stod(tokens[10]);
             message.y_scale = std::stod(tokens[11]);
-            if(tokens.size() > 12){
-                message.priority_type = tokens[12];
-            }
+            message.x_offset = std::stod(tokens[12]);
+            message.y_offset = std::stod(tokens[13]);
+            message.distance = std::stod(tokens[14]);
+            message.priority_type = tokens[15];
         }
     } 
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
@@ -82,8 +86,16 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     else if(message.type == "MOVETO") {
         message.receiver_name = tokens[3];
         message.objective_name = tokens[4];
-        if(tokens.size() > 5) {
+        message.x_offset = 0.0;
+        message.y_offset = 0.0;
+        message.distance = 0.0;
+        if(tokens.size() == 6) {
           message.priority_type = tokens[5];
+        }else if(tokens.size() > 6){
+          message.x_offset = std::stod(tokens[5]);
+          message.y_offset = std::stod(tokens[6]);
+          message.distance = std::stod(tokens[7]);
+          message.priority_type = tokens[8];
         }
     } 
     // <sender>,<msg_id>,SHUTDOWN,<receiver>

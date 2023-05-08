@@ -84,6 +84,7 @@ public:
     std::string description() const override;
 private:
     bool setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
+    void applyApproachDistance();
     void applyOffset();
     double x_offset_;
     double y_offset_;

@@ -261,6 +261,8 @@ def generate_launch_description():
         DeclareLaunchArgument('mission_definition_file', default_value=os.path.join(get_package_share_directory('avt_341'), 'config', 'mission_points.csv'), description="Mission Manager - file describing mission reference points"),
         DeclareLaunchArgument('fsc_type', default_value='slow_down_leader', description="Mission Manager - Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'."),
         DeclareLaunchArgument('x_offset_on_path', default_value='False', description="Mission Manager - If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader."),
+        DeclareLaunchArgument('formation_prune_gp', default_value='True', description="Mission Manager - If true prunes the formation controller generated follower global path to the closer point."),
+
 
         DeclareLaunchArgument('oof_threshold', default_value='15.0', description="Mission Manager - Distance threshold after which vehicle considered out of formation."),
         DeclareLaunchArgument('oof_const_term', default_value='0.3', description="Mission Manager - Initial speed factor subtraction if past threshold"),
@@ -520,7 +522,8 @@ def generate_launch_description():
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
                             'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
                             'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type'),
-                            'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path')
+                            'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
+                            'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
                         }]
                     ),
                     Node(

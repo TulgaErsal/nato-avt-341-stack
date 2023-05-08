@@ -356,10 +356,10 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
       node_proxy_->log_warning("Could not find mission point %s associated with formation.", msg.objective_name.c_str());
       return;
     }
+    msg.receiver_name = my_name;
     auto formation_def = new FormationDefinition(msg, mp, formation_params);
     if(formation_def->isLeader() || formation_def->formationAtGoal()){
         // handle objective
-        msg.receiver_name = my_name;
         handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def);
     } else if(formation_def->isFollowing()) {
         Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def);
@@ -395,7 +395,7 @@ void MissionManager::handleTaskComplete(const avt_341::msg::Communication & msg)
 void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset, y_offset);
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.x_offset, y_offset+msg.y_offset, msg.distance);
         bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {

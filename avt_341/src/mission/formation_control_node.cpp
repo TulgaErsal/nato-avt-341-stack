@@ -77,22 +77,27 @@ int main(int argc, char **argv){
 
     // another parameter of the formation controller
     float path_point_dist = 1.0f;
-    bool use_breadcrumbs, x_offset_on_path;
+    bool use_breadcrumbs, x_offset_on_path, formation_prune_gp;
     std::string fsc_type;
     n->get_parameter("~global_path_point_dist", path_point_dist, 1.0f);
     n->get_parameter("~use_leader_breadcrumbs", use_breadcrumbs, true);
     n->get_parameter("~name", my_name.data, std::string("AGV1"));
     n->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     n->get_parameter("~x_offset_on_path", x_offset_on_path, false);
+    n->get_parameter("~formation_prune_gp", formation_prune_gp, false);
 
     bool is_speed_up_follower = fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER;
     auto speed_pub = is_speed_up_follower ? n->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10) : nullptr;
+
+    n->log_info("Formation Controller:\n  fsc_type=%s\n  use_leader_breadcrumbs=%d\n  x_offset_on_path=%d\n  formation_prune_gp=%d", fsc_type.c_str(), use_breadcrumbs, x_offset_on_path, formation_prune_gp);
+
 
     // create the controller and set the parameters loaded from the launch file
     avt_341::mission::FormationController controller;
     controller.SetGlobalPathPointsDist(path_point_dist);
     controller.SetFollowerDistGain(dist_gain);
     controller.SetXOffsetOnPath(x_offset_on_path);
+    controller.SetFormationPruneGP(formation_prune_gp);
 
     // set the node loop ratre to 10 Hz
     avt_341::node::Rate loop_rate(10);

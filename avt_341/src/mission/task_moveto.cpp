@@ -65,17 +65,21 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
     }
 }
 
+void MoveTo::applyApproachDistance(){
+  if(d_approach_ > 0.0){
+    avt_341::msg::Pose current_pose = mgr->odometry.pose.pose;
+    auto unit_vect = avt_341::utils::vec2(goal.pose.position.x - current_pose.position.x, goal.pose.position.y - current_pose.position.y);
+    unit_vect.normalize();
+    target_pose.pose.position.x = goal.pose.position.x - unit_vect.x*d_approach_;
+    target_pose.pose.position.y = goal.pose.position.y - unit_vect.y*d_approach_;
+  }
+
+}
+
 void MoveTo::init_() {
     target_pose = goal;
 
-    if(d_approach_ > 0.0){
-      avt_341::msg::Pose current_pose = mgr->odometry.pose.pose;
-      auto unit_vect = avt_341::utils::vec2(goal.pose.position.x - current_pose.position.x, goal.pose.position.y - current_pose.position.y);
-      unit_vect.normalize();
-      target_pose.pose.position.x -= unit_vect.x*d_approach_;
-      target_pose.pose.position.y -= unit_vect.y*d_approach_;
-    }
-
+    applyApproachDistance();
     mgr->publishGoal(target_pose);
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
@@ -95,9 +99,12 @@ void MoveTo::init_() {
 }
 
 void MoveTo::run() {
-  // Keep publishing to gp if did not receive callback yet
-  if(PosePlanarDistance(mgr->current_gp_goal.pose.position, target_pose.pose.position) < 1.0){
-      mgr->publishGoal(target_pose);
+  // Need to recalculate if approach distance set or keep publishing to gp if did not receive callback yet
+  if(d_approach_ > 0.0){
+    applyApproachDistance();
+    mgr->publishGoal(target_pose);
+  }else if (PosePlanarDistance(mgr->current_gp_goal.pose.position, target_pose.pose.position) > 1.0){
+    mgr->publishGoal(target_pose);
   }
   // Nothing to do per timestep but wait for goal to be reached
 }
