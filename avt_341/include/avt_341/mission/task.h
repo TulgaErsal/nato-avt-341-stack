@@ -36,13 +36,14 @@ public:
     virtual void on_done() = 0;
     virtual std::string description() const { return "Task"; }
     virtual void onGoalReached(const avt_341::msg::PoseStamped & pose){};
-    virtual void preempted() {}
+    virtual void onPreempt() {}
 
     bool hasFormation() const;
 
     std::string sender_name;
     int msg_id;
     bool init_done;
+    bool is_preemptable;
     FormationDefinition* getFormationDef() const { return formation_def_; }
 
 protected:
@@ -54,53 +55,60 @@ protected:
 
 class MoveTo : public Task {
 public:
-    static const int NONE = 0;
-    static const int POSE = 1;
-    static const int MISSION_POINT = 2;
-    static const int CONTACT = 3;
-    static const int ACTOR = 4;
+    static const std::string NONE;
+    static const std::string POSE;
+    static const std::string MISSION_POINT;
+    static const std::string CONTACT;
+    static const std::string ACTOR;
 
-    MoveTo(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr, double x_offset = 0.0, double y_offset = 0.0);
+    MoveTo(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr,
+           double x_offset = 0.0, double y_offset = 0.0, double d_approach=0.0);
     void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
-    void preempted() override;
+    void onPreempt() override;
     void onGoalReached(const avt_341::msg::PoseStamped & pose) override;
 
-    bool setGoalByPose(float x, float y, float z, float rot_w, float rot_x, float rot_y, float rot_z);
+    bool setGoalByContact(const Contact & contact);
+    bool setGoalByPose(const avt_341::msg::PoseStamped & pose);
     bool setGoalByMissionPoint(std::string name);
 
     // goal = position and orientation
     avt_341::msg::PoseStamped goal;
-    int goal_type; 
+    avt_341::msg::PoseStamped target_pose;
+    std::string goal_type;
     std::string name;
-    bool arrived;
-    Contact * contact;
+    bool arrived = false;
 
     std::string description() const override;
 private:
+    bool setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
     void applyOffset();
     double x_offset_;
     double y_offset_;
+    double d_approach_;
 }; // class MoveTo
 
-class WaitUntil : public Task {
+class WaitUntilComplete : public Task {
 public:
-    WaitUntil(MissionManager* manager, std::string sender, int msg_id);
+    WaitUntilComplete(MissionManager * manager, const std::string & sender, int msg_id, const std::string & target_veh, int target_msg_id);
     void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
-    std::string description() const override{
-      return "TASK-WAIT_UNTIL";
-    }
+    std::string description() const override;
+private:
+  std::string target_veh_;
+  int target_msg_id_;
 }; // class WaitUntil
 
 class Encircle : public Task {
 public:
-    Encircle(MissionManager* manager, std::string sender, int msg_id, const avt_341::msg::PoseStamped & target,
-             const avt_341::msg::PoseStamped & current_pose, double radius=15.0, double angular_range_degrees=180.0, bool is_cw = true, double goal_threshold=5.0);
+    Encircle(MissionManager* manager, const std::string & sender, int msg_id, const avt_341::msg::PoseStamped & target,
+           const ToiParameters & params);
+    Encircle(MissionManager* manager, const std::string & sender, int msg_id, const avt_341::msg::PoseStamped & target,
+             double radius=15.0, double angular_range_degrees=180.0, bool is_cw = true, double goal_threshold=5.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -109,11 +117,11 @@ public:
 private:
   bool arrived;
   avt_341::msg::PoseStamped target_;
-  avt_341::msg::PoseStamped current_pose_;
   double radius_;
   double angular_range_degrees_;
   bool is_cw_;
   double goal_threshold_;
+  avt_341::msg::Path circle_path_;
 }; // class Encircle
 
 class Follow : public Task {
@@ -123,7 +131,7 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
-    void preempted() override;
+    void onPreempt() override;
     std::string description() const override;
 }; // class Follow
 

@@ -25,6 +25,14 @@ struct FormationParameters{
   bool offsets_from_leader;
 };
 
+struct ToiParameters{
+  float approach_dist;
+  float encircle_radius;
+  float encircle_degrees;
+  bool encircle_cw;
+  float goal_threshold;
+};
+
 class FormationDefinition {
 
 public:

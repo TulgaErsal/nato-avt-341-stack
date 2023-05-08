@@ -145,7 +145,7 @@ double FormationSpeedController::getSpeedFactor(const FormationDefinition* forma
     const float dir_mag = my_dir.mag();
     my_dir.normalize();
 
-    heading_filter_on = utils::dot(my_dir, followed_dir) < fsc_params_.follower_dot_threshold;
+    heading_filter_on = dir_mag < fsc_params_.follower_dot_range && utils::dot(my_dir, followed_dir) < fsc_params_.follower_dot_threshold;
     follower_dist_break_on = dir_mag < fsc_params_.follower_dist_break;
     if(heading_filter_on || follower_dist_break_on) {
       speed_factor = 0.0;

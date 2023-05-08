@@ -104,6 +104,7 @@ int main(int argc, char **argv){
 
         if(reset_called){
           n->log_info("Resetting node");
+          status_rcvd = false;
           controller.Reset();
           reset_called = false;
         }

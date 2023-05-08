@@ -58,8 +58,11 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
 }
 
 void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
-  n->log_info("GP set to %d", rcv_gptoggle->data);
-  use_global_planner = (bool)rcv_gptoggle->data;
+  bool set_val = (bool)rcv_gptoggle->data;
+  if(use_global_planner != set_val){
+    n->log_info("GP set to %d", rcv_gptoggle->data);
+  }
+  use_global_planner = set_val;
 }
 
 void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand) {
@@ -117,7 +120,7 @@ int main(int argc, char *argv[])
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
-  auto current_waypoint_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/current_waypoint", 10);
+  auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
   auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
   auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
 
@@ -202,6 +205,7 @@ int main(int argc, char *argv[])
       pose.pose.orientation.w = 1.0f;
       pose.pose.orientation.x = 0.0f;
       pose.pose.orientation.y = 0.0f;
+      pose.pose.orientation.y = 0.0f;
       pose.pose.orientation.z = 0.0f;
       current_waypoints.poses.push_back(pose);
     }
@@ -224,6 +228,15 @@ int main(int argc, char *argv[])
 
     if(reset_called){
       Reset();
+
+      avt_341::msg::Path ros_path;
+      ros_path.poses.clear();
+      ros_path.header.frame_id = "map";
+      ros_path.header.stamp = n->get_stamp();
+      path_pub->publish(ros_path);
+      state.data = avt_341::utils::NavStackState::NotInit;
+      state_pub->publish(state);
+
       reset_called = false;
       n->spin_some();
       r.sleep();
@@ -242,7 +255,7 @@ int main(int argc, char *argv[])
         nav_command = avt_341::utils::NavStateCmd::GoInactive;
 		//n->log_info("Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
 	    }
-	  } else {
+	  } else if(use_global_planner){
 	    state_pub->publish(state);
 	  }
 
@@ -320,9 +333,11 @@ int main(int argc, char *argv[])
         double d = sqrt(dx * dx + dy * dy);
         avt_341::msg::Float64 dist_to_goal;
         dist_to_goal.data = d;
-        avt_341::msg::Int32 curr_wp;
-        curr_wp.data = current_waypoint;
-        current_waypoint_pub->publish(curr_wp);
+
+        if(current_waypoint < current_waypoints.poses.size()){
+          current_waypoint_pub->publish(current_waypoints.poses[current_waypoint]);
+        }
+
         dist_to_current_waypoint_pub->publish(dist_to_goal);
         if (nl % 20 == 0 && verbose_gp_log){ //update every second
           n->log_info("Global Path: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f",
@@ -369,11 +384,11 @@ int main(int argc, char *argv[])
       //  state_pub->publish(state);
       //}
     }else{
-      avt_341::msg::Path ros_path;
-      ros_path.header.frame_id = "map";
-      ros_path.header.stamp = n->get_stamp();
-      path_pub->publish(ros_path);
-      state.data = avt_341::utils::NavStackState::Stopped;
+//      avt_341::msg::Path ros_path;
+//      ros_path.header.frame_id = "map";
+//      ros_path.header.stamp = n->get_stamp();
+//      path_pub->publish(ros_path);
+      state.data = avt_341::utils::NavStackState::Active;
       state_pub->publish(state);
     }
 

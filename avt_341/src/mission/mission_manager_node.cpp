@@ -6,6 +6,7 @@
 
 std::queue<avt_341::msg::Communication> comm_msgs;
 std::queue<avt_341::msg::PoseStamped> reached_goals;
+std::queue<avt_341::msg::Path> contacts;
 
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
@@ -58,7 +59,7 @@ void TargetContactsCallback(avt_341::msg::PathPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
   // Handle detection of potential targets of interest
   if(mgr->nav_state != avt_341::utils::NavStackState::NotInit) {       // avoid premature detection of contacts
-    mgr->handleContacts(*msg);
+    contacts.push(*msg);
   }
 }
 
@@ -78,6 +79,13 @@ void GoalReachedCallback(avt_341::msg::PoseStampedPtr msg){
   reached_goals.push(*msg);
 }
 
+bool current_goal_rcvd = false;
+avt_341::msg::PoseStamped gp_goal_rcvd;
+void CurrentGoalCallback(avt_341::msg::PoseStampedPtr msg){
+  gp_goal_rcvd = *msg;
+  current_goal_rcvd = true;
+}
+
 int main(int argc, char **argv) {
 
     // initialize the node
@@ -87,6 +95,7 @@ int main(int argc, char **argv) {
     // load the parameters
     avt_341::mission::FormationSpeedControlParams fsc_params{};
     avt_341::mission::FormationParameters formation_params;
+    avt_341::mission::ToiParameters toi_params;
     std::string fsc_type;
     std::vector<std::string> veh_namespaces;
 
@@ -104,13 +113,20 @@ int main(int argc, char **argv) {
     nh->get_parameter("~offsets_from_leader", formation_params.offsets_from_leader, true);
     nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
     nh->get_parameter("~follower_dot_threshold", fsc_params.follower_dot_threshold, 0.0);
+    nh->get_parameter("~follower_dot_range", fsc_params.follower_dot_range, 30.0);
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~veh_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
+    nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
+    nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
+    nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
+    nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
+    nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
+
     bool use_slow_down_speed_control = fsc_type == FormationSpeedControlType::SLOW_DOWN_LEADER;
 
-    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, nh);
-    mgr->same_object_distance_threshold_sq = sodist_threshold * sodist_threshold;
+    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh);
+    mgr->sodist_threshold = sodist_threshold;
 
     avt_341::mission::FormationSpeedController speedController(formation_params.my_name, fsc_params, nh);
 
@@ -128,6 +144,7 @@ int main(int argc, char **argv) {
     auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback);
     auto reset_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10, GoalReachedCallback);
+    auto current_waypoint_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CurrentGoalCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
@@ -142,6 +159,11 @@ int main(int argc, char **argv) {
           reset_called = false;
         }
 
+        if(current_goal_rcvd){
+          mgr->current_gp_goal = gp_goal_rcvd;
+          current_goal_rcvd = false;
+        }
+
         while(!reached_goals.empty()){
             auto goal = reached_goals.front();
             reached_goals.pop();
@@ -154,7 +176,9 @@ int main(int argc, char **argv) {
             if(!mgr->isMsgForSelf(rcvd_msg)){
               continue;
             }
-            nh->log_info("%s handling message: type=%s, id=%d", mgr->my_name.c_str(), rcvd_msg.type.c_str(), rcvd_msg.msg_id);
+            if(rcvd_msg.type != "TASK_COMPLETE"){
+                nh->log_info("%s handling message: type=%s, id=%d", mgr->my_name.c_str(), rcvd_msg.type.c_str(), rcvd_msg.msg_id);
+            }
 
             if(rcvd_msg.type == "FORM") {
                 mgr->handleFormationRequest(rcvd_msg);
@@ -185,6 +209,12 @@ int main(int argc, char **argv) {
             else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
             }
+        }
+
+        while(!contacts.empty()){
+          auto rcvd_msg = contacts.front();
+          contacts.pop();
+          mgr->handleContacts(rcvd_msg);
         }
 
         // Incoming internal notifications

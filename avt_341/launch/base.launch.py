@@ -108,6 +108,7 @@ def generate_launch_description():
 
     rviz_config_single_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_ros2.rviz')
     rviz_config_multi_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_multi_vehicle_ros2.rviz')
+    rviz_config_two_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_two_vehicle_ros2.rviz')
 
     robot_desc_list = [LaunchConfiguration('robot_description'), LaunchConfiguration('robot_description_veh2'),
                        LaunchConfiguration('robot_description_veh3'), LaunchConfiguration('robot_description_veh4')]
@@ -269,7 +270,13 @@ def generate_launch_description():
         DeclareLaunchArgument('offsets_from_leader', default_value='True', description="Mission Manager - If true, formation offsets calculated from lead vehicle. If false, offsets calculated from next vehicle in column formation."),
         DeclareLaunchArgument('follower_dist_break', default_value='10.0', description="Mission Manager - If follower global path distance is less than this amount, follower waits."),
         DeclareLaunchArgument('follower_dot_threshold', default_value='0.0', description="Mission Manager - Heading dot product threshold of heading vectors of follower and lead vehicle below which follower vehicle waits."),
-        DeclareLaunchArgument('vehicle_namespaces', default_value="['agv1', 'agv2', 'agv3', 'agv4']", description="Mission Manager - Vehicle namespaces to listen to for odometry callbacks."),
+        DeclareLaunchArgument('follower_dot_range', default_value='30.0', description="Mission Manager - Range within which to apply heading dot product filter."),
+        DeclareLaunchArgument('vehicle_namespaces', default_value="['agv1', 'agv2', 'cgv1', 'cgv2']", description="Mission Manager - Vehicle namespaces to listen to for odometry callbacks."),
+
+        DeclareLaunchArgument('toi_approach_dist', default_value='15.0', description="Mission Manager - Approach distance to target of interest before encircling."),
+        DeclareLaunchArgument('toi_encircle_radius', default_value='10.0', description="Mission Manager - Encircle radius around target of interest."),
+        DeclareLaunchArgument('toi_encircle_degrees', default_value='180.0', description="Mission Manager - Encircle degrees around target of interest."),
+        DeclareLaunchArgument('toi_encircle_cw', default_value='True', description="Mission Manager - If encircle should be in clock-wise (cw) direction around target of interest."),
 
         # Formation Control
         DeclareLaunchArgument('use_leader_breadcrumbs', default_value='True', description="Formation Control - If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). "
@@ -536,6 +543,11 @@ def generate_launch_description():
                             'follower_dist_break': launch.substitutions.LaunchConfiguration('follower_dist_break'),
                             'follower_dot_threshold': launch.substitutions.LaunchConfiguration('follower_dot_threshold'),
                             'veh_namespaces': launch.substitutions.LaunchConfiguration('vehicle_namespaces'),
+                            'toi_approach_dist': launch.substitutions.LaunchConfiguration('toi_approach_dist'),
+                            'toi_encircle_radius': launch.substitutions.LaunchConfiguration('toi_encircle_radius'),
+                            'toi_encircle_degrees': launch.substitutions.LaunchConfiguration('toi_encircle_degrees'),
+                            'toi_encircle_cw': launch.substitutions.LaunchConfiguration('toi_encircle_cw'),
+                            'toi_goal_threshold': launch.substitutions.LaunchConfiguration('goal_dist'),
                         }]
                     ),
                     Node(
@@ -574,8 +586,10 @@ def generate_launch_description():
             name='rviz2',
             condition=IfCondition(auto_launch_rviz),
             arguments=["-d", TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
-                                                 false_val=TextSubstitution(text=rviz_config_single_vehicle),
-                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))]
+                                                 false_val=TernarySubstitution(true_val=TextSubstitution(text=rviz_config_two_vehicle),
+                                                                               false_val=TextSubstitution(text=rviz_config_single_vehicle),
+                                                                               condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1']))),
+                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 2'])))]
         )
     ])
 

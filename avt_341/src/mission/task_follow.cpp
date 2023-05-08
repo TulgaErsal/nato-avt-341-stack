@@ -23,7 +23,7 @@ void Follow::run() {
     //std::cout << mgr->my_name << " Follow Task is running" << std::endl;
 }
 
-void Follow::preempted(){
+void Follow::onPreempt(){
   init_done = false;
   mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoInactive);
 }
@@ -38,7 +38,7 @@ void Follow::on_done() {
 
 std::string Follow::description() const {
     std::ostringstream stream;
-    stream << "TASK-FOLLOW leader " << formation_def_->followedVehicle();
+    stream << "ID " << msg_id << " FOLLOW " << formation_def_->followedVehicle();
     return stream.str();
 }
 

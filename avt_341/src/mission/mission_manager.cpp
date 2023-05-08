@@ -1,7 +1,6 @@
 // clas definition
 #include "avt_341/mission/mission_manager.h"
 #include <fstream>
-#include <iostream>
 #include <sstream>
 
 namespace avt_341 {
@@ -14,8 +13,8 @@ const std::string PriorityType::PREEMPT_SHORT = "P";
 const std::string PriorityType::CANCEL_ALL_PREVIOUS = "CANCEL_ALL";
 const std::string PriorityType::CANCEL_ALL_PREVIOUS_SHORT = "C";
 
-MissionManager::MissionManager(const FormationParameters & formation_params, std::shared_ptr<node::NodeProxy> node_proxy)
-: formation_params(formation_params), node_proxy_(node_proxy){
+MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy)
+: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy){
 
     my_name = formation_params.my_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
@@ -27,6 +26,7 @@ MissionManager::MissionManager(const FormationParameters & formation_params, std
     mission_contacts.clear();
 
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
+    gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
     follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100);
@@ -82,6 +82,15 @@ int MissionManager::loadMissionDefinition(std::string filename) {
     } else {
         node_proxy_->log_info("Error reading mission definition %s", filename.c_str());
     }
+
+    // Find overwatch positions, assume starting with SP_
+    overwatch_positions.clear();
+    for(const auto & mp : mission_data){
+      if(mp.name.rfind("SP_", 0) == 0){
+        overwatch_positions.push_back(mp);
+      }
+    }
+
     return 0;
 }
 
@@ -107,11 +116,19 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
 
     bool is_preempt = PriorityType::isPreempt(priority_type);
     if(is_preempt) {
-      Task* active_task = currentTask();
-      if(active_task != nullptr){
-        active_task->preempted();
+      Task* preempted_task = currentTask();
+      if(preempted_task == nullptr || preempted_task->is_preemptable){
+        task_list.push_front(task);
+      }else{
+        // Insert at front before first preemptable task
+        auto it = std::find_if(task_list.begin(), task_list.end(), [&](Task* t){return t->is_preemptable;});
+        preempted_task = *it;
+        task_list.insert(it, task);
       }
-      task_list.push_front(task);
+
+      if(preempted_task != nullptr){
+        preempted_task->onPreempt();
+      }
       node_proxy_->log_info("%s PREEMPT %s", my_name.c_str(), task->description().c_str());
     }else{
       task_list.push_back(task);
@@ -120,10 +137,19 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     return true;
 }
 
+void MissionManager::publishGoal(avt_341::msg::PoseStamped & target_pose){
+    avt_341::msg::Path goal_msg;
+    goal_msg.poses.clear();
+    goal_msg.poses.push_back(target_pose);
+    goal_msg.header.stamp = node_proxy_->get_stamp();
+    goal_msg.header.frame_id = "map";
+    waypoint_pub->publish(goal_msg);
+}
+
 void MissionManager::publishPath(avt_341::msg::Path& path){
-    path.header.stamp = node_proxy_->get_stamp();
-    path.header.frame_id = "map";
-    waypoint_pub->publish(path);
+  path.header.stamp = node_proxy_->get_stamp();
+  path.header.frame_id = "map";
+  gp_path_pub->publish(path);
 }
 
 void MissionManager::publishGpToggle(int state){
@@ -154,7 +180,8 @@ void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & statu
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   std::ostringstream stream;
-  stream << "TASK_COMPLETE," << sender_name << "," << msg_id;
+  // TODO: Replace in future, shouldn't be inserting sender_name and msg_id at front and only works if comm_node parameter add_name_id_to_msg=false set
+  stream << sender_name << "," << msg_id << "," << "TASK_COMPLETE," << sender_name << "," << msg_id;
   avt_341::msg::String comm_msg;
   comm_msg.data = stream.str();
   communication_pub->publish(comm_msg);
@@ -188,13 +215,13 @@ void MissionManager::postUpdateTasks() {
 }
 
 // Contact Management
-auto MissionManager::getContact(std::string name, float x, float y) {
-	auto it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
-	            [&](const auto& e) {return (e.name == name && close(e.x, e.y, x, y)); });
-	return it;
+bool MissionManager::hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose) {
+	std::vector<Contact>::iterator it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
+	            [&](const Contact& e) {return (e.name == name && IsClose(e.pose.pose, pose.pose, sodist_threshold)); });
+  return it != mission_contacts.end();
 }
 
-auto MissionManager::getClosestNewContact(float veh_x, float veh_y) {
+auto MissionManager::getClosestNewContact() {
     auto it = std::min_element(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& a, const Contact& b) {
         if((a.investigating || a.investigated) && (b.investigating || b.investigated)) {
             return false;
@@ -205,34 +232,21 @@ auto MissionManager::getClosestNewContact(float veh_x, float veh_y) {
         if(b.investigating || b.investigated) {
             return true; // Contact a is closer
         }
-        double da = distance_sq(veh_x, veh_y, a.x, a.y);
-        double db = distance_sq(veh_x, veh_y, b.x, b.y);
-        return da < db; 
+        double da = PosePlanarDistanceSq(odometry.pose.pose.position, a.pose.pose.position);
+        double db = PosePlanarDistanceSq(odometry.pose.pose.position, b.pose.pose.position);
+        return da < db;
     });
     return it;
 }
 
-void MissionManager::addContact(std::string name, float in_x, float in_y) {
-	Contact new_contact;
-	new_contact.name = name;
-	new_contact.x = in_x;
-	new_contact.y = in_y;
-    new_contact.investigating = false;
-    new_contact.investigated = false;
-    new_contact.is_new = true;
-	mission_contacts.push_back(new_contact);
-}
-
-float MissionManager::distance_sq(float x1, float y1, float x2, float y2) {
-    return ((x1 - x2)*(x1 - x2)) + ((y1 - y2)*(y1 - y2));
-}
-
-bool MissionManager::close(float old_x, float old_y, float new_x, float new_y) {
-	if(distance_sq(old_x, old_y, new_x, new_y) < same_object_distance_threshold_sq) {
-		return true;
-	} else {
-		return false;
-	}
+void MissionManager::addContact(const std::string & name, const avt_341::msg::PoseStamped & pose) {
+  Contact new_contact;
+  new_contact.name = name;
+  new_contact.pose = pose;
+  new_contact.investigating = false;
+  new_contact.investigated = false;
+  new_contact.is_new = true;
+  mission_contacts.push_back(new_contact);
 }
 
 void MissionManager::resetTaskList(bool send_completion_msg) {
@@ -245,6 +259,10 @@ void MissionManager::resetTaskList(bool send_completion_msg) {
 
 void MissionManager::reset(){
   resetTaskList(false);
+  obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
+  task_completions_.clear();
+  current_gp_goal = avt_341::msg::PoseStamped();
+  mission_contacts.clear();
 }
 
 void MissionManager::cancelTask(int task_id, bool send_completion_msg){
@@ -252,7 +270,7 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
                          [task_id](const auto& e) {return e->msg_id == task_id; });
   if(it != task_list.end()){
     Task* task = *it;
-    task->preempted();
+    task->onPreempt();
     node_proxy_->log_info("%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
     if(send_completion_msg){
       publishTaskCompletion(task);
@@ -264,48 +282,66 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
 
 // Message Handlers
 void MissionManager::handleContacts(avt_341::msg::Path contacts) {
-	// check if contacts are already in the contact database
-	for(auto item: contacts.poses) {
-		// check if contact is in database 
-		auto it = getContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
-		if(it != mission_contacts.end()) {
-			// already in the list
-			//std::cout << item.header.frame_id << " is in the list. Investigating: " << it->investigating << ", " << it->investigated << std::endl;
-		} else {
-			// new contact
-      node_proxy_->log_info("New contact: %s at (%.2f, %.2f)", item.header.frame_id.c_str(), item.pose.position.x, item.pose.position.y);
-			// Add it to the contacts
-			addContact(item.header.frame_id, item.pose.position.x, item.pose.position.y);
-		}
-	}
-	
-    // TODO: need to check if this is a target of interest, currently assuming contacts are
-    // move to a point near the TOI
-    auto it = getClosestNewContact(odometry.pose.pose.position.x, odometry.pose.pose.position.y); 
-    if(it != mission_contacts.end()) {
-        // found a new contact
-        Contact contact = *it;
-        if(!it->investigating) {
-            node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.x, contact.y);
-            //handleMoveTo(contact.x, contact.y);
-            MoveTo* investigateTask = new MoveTo(this, my_name, -1);
-            bool ret = investigateTask->setGoalByPose(contact.x, contact.y, 0.0, 1.0, 0.0, 0.0, 0.0);
-            investigateTask->contact = &(*it);
-            investigateTask->contact->investigating = true;
-            investigateTask->goal_type = MoveTo::CONTACT;
-            addTask(investigateTask, PriorityType::PREEMPT);
-            
-            //investigateTask->nextTask = new Encircle();
-            // set a subgoal to encircle the TOI
-            // set a subgoal to return to the goal
-            // ignore the identification subgoal for now
-            // follower should go to OVERWATCH position
+
+    for(const auto& pose: contacts.poses) {
+        if(!hasContact(pose.header.frame_id, pose)) {
+            addContact(pose.header.frame_id, pose);
+            Contact & contact = mission_contacts.back();
+
+
+            if(my_name == INVESTIGATING_AGV){
+
+                node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
+
+                auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
+                investigateTask->setGoalByContact(contact);
+                investigateTask->is_preemptable = false;
+                addTask(investigateTask, PriorityType::PREEMPT);
+
+                auto encircleTask = new Encircle(this, my_name, obj_detection_cnt--, contact.pose, toi_params_);
+                encircleTask->is_preemptable = false;
+                addTask(encircleTask, PriorityType::PREEMPT);
+
+            }else if(my_name == OVERWATCH_AGV){
+
+              MissionPoint mp = getClosestOverwatch();
+              if(!mp.name.empty()){
+                node_proxy_->log_info("Moving to overwatch %s at (%.2f, %.2f)", mp.name.c_str(), mp.pos_x, mp.pos_y);
+
+                auto overwatchTask = new MoveTo(this, my_name, -1);
+                overwatchTask->setGoalByMissionPoint(mp.name);
+                overwatchTask->is_preemptable = false;
+                addTask(overwatchTask, PriorityType::PREEMPT);
+
+                auto waitTask = new WaitUntilComplete(this, my_name, -1, INVESTIGATING_AGV, obj_detection_cnt--);
+                waitTask->is_preemptable = false;
+                addTask(waitTask, PriorityType::PREEMPT);
+              }else{
+                node_proxy_->log_info("No overwatch found to investigate contact %s", contact.name.c_str());
+              }
+            }
+
         }
     }
 }
 
+MissionPoint MissionManager::getClosestOverwatch(){
+  MissionPoint mp_out;
+  double min_dist_sq = std::numeric_limits<double>::max();
+  for(auto & mp : overwatch_positions){
+    double dx = odometry.pose.pose.position.x - mp.pos_x;
+    double dy = odometry.pose.pose.position.y - mp.pos_y;
+    double dist_sq = dx*dx + dy*dy;
+    if(dist_sq < min_dist_sq){
+      min_dist_sq = dist_sq;
+      mp_out = mp;
+    }
+  }
+  return mp_out;
+}
+
 bool MissionManager::isMsgForSelf(const avt_341::msg::Communication & msg) {
-  return msg.type == "FORM" && FormationDefinition::vehicleInFormation(msg, my_name) || msg.receiver_name == my_name;
+  return msg.type == "TASK_COMPLETE" || (msg.type == "FORM" && FormationDefinition::vehicleInFormation(msg, my_name)) || msg.receiver_name == my_name;
 }
 
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
@@ -350,9 +386,10 @@ void MissionManager::handleArrive(const avt_341::msg::Communication & msg) {
 // <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
 void MissionManager::handleTaskComplete(const avt_341::msg::Communication & msg) {
     // If tracking, mark complete
-    if(msg.original_sender == my_name) {
-        node_proxy_->log_info("%s has completed the assigned task from my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
-    }
+//    if(msg.original_sender == my_name) {
+//        node_proxy_->log_info("%s has completed the assigned task from my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
+//    }
+    task_completions_.push_back(msg);
 }
 
 void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
@@ -395,6 +432,11 @@ void MissionManager::handleCancelTask(const avt_341::msg::Communication & msg){
 void MissionManager::handleCancelAllTask(const avt_341::msg::Communication & msg){
   resetTaskList(true);
   publishTaskCompletion(msg.sender_name, msg.msg_id);
+}
+
+bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id){
+  return std::find_if(task_completions_.begin(), task_completions_.end(),
+                   [&](const avt_341::msg::Communication & comm){return comm.sender_name == target_veh && comm.msg_id == target_msg_id;}) != task_completions_.end();
 }
 
 } // namespace mission

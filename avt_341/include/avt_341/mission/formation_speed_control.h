@@ -18,6 +18,7 @@ struct FormationSpeedControlParams {
   bool debug_visualize;
   double follower_dist_break;
   double follower_dot_threshold;
+  double follower_dot_range;
 };
 
 class FormationSpeedController {

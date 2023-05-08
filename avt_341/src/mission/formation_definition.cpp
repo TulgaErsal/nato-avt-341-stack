@@ -30,9 +30,9 @@ FormationDefinition::FormationDefinition(const FormationParameters & params_in) 
   offsets_map_["LINE_CENTER"] = f;
   f.follower1.x = -1;
   f.follower1.y = 0;
-  f.follower2.x = params.offsets_from_leader ? -2 : -1;
+  f.follower2.x = -2;
   f.follower2.y = 0;
-  f.follower3.x = params.offsets_from_leader ? -3 : -1;
+  f.follower3.x = -3;
   f.follower3.y = 0;
   offsets_map_["COLUMN"] = f;
   f.follower1.x = -1;
@@ -80,7 +80,12 @@ FormationDefinition::FormationDefinition(avt_341::msg::Communication &comm_msg, 
 
 
 FormationOffsets FormationDefinition::getOffsets(const std::string &formation) const {
-  return offsets_map_.at(formation);
+  FormationOffsets offsets = offsets_map_.at(formation);
+  if(!params.offsets_from_leader && formation == "COLUMN"){
+    offsets.follower2.x = offsets.follower1.x;
+    offsets.follower3.x = offsets.follower1.x;
+  }
+  return offsets;
 }
 
 

@@ -34,6 +34,10 @@ void PoseToForwardRightVectors(const avt_341::msg::Pose & pose, Vec2d &vx, Vec2d
   vy[1] = -vx[0];
 }
 
+bool IsClose(const avt_341::msg::Pose & p1, const avt_341::msg::Pose & p2, double threshold){
+  return PosePlanarDistanceSq(p1.position, p2.position) < threshold * threshold;
+}
+
 const std::string FormationSpeedControlType::SLOW_DOWN_LEADER = "slow_down_leader";
 const std::string FormationSpeedControlType::SPEED_UP_FOLLOWER = "speed_up_follower";
 const std::string FormationSpeedControlType::NONE = "none";
