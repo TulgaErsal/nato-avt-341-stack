@@ -32,12 +32,13 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
   target_pose.pose.position.z = leader_odom.pose.pose.position.z;
 
   // If x_offset_on_path, need to keep track of leader path history and only add to desired global path once past x_offset
-  auto & target_path = x_offset_on_path_ ? leader_path_history_ : desired_global_path_;
-
-  if(target_path.poses.empty()){
-    target_path.poses.push_back(target_pose);
+  if(desired_global_path_.poses.empty()){
+    desired_global_path_.poses.push_back(target_pose);
+    leader_path_history_.poses.push_back(target_pose);
     return;
   }
+
+  auto & target_path = x_offset_on_path_ ? leader_path_history_ : desired_global_path_;
 
   const auto & last_pose = target_path.poses.back();
   double dx = target_pose.pose.position.x - last_pose.pose.position.x;
@@ -57,7 +58,7 @@ void FormationController::GenerateLeaderPath(avt_341::msg::Odometry leader_odom,
       double dx_i = leader_path_history_.poses[i].pose.position.x - leader_path_history_.poses[i+1].pose.position.x;
       double dy_i = leader_path_history_.poses[i].pose.position.y - leader_path_history_.poses[i+1].pose.position.y;
       s_length += sqrt(dy_i*dy_i + dx_i*dx_i);
-      if(s_length > status.x_offset){
+      if(s_length > abs(status.x_offset)){
         cutoff_index = i;
         break;
       }
