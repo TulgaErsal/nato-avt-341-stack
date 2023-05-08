@@ -81,7 +81,7 @@ FormationDefinition::FormationDefinition(avt_341::msg::Communication &comm_msg, 
 
 FormationOffsets FormationDefinition::getOffsets(const std::string &formation) const {
   FormationOffsets offsets = offsets_map_.at(formation);
-  if(!params.offsets_from_leader && formation == "COLUMN"){
+  if(!params.offsets_from_leader && formation == "COLUMN" && !formation_at_goal_){
     offsets.follower2.x = offsets.follower1.x;
     offsets.follower3.x = offsets.follower1.x;
   }
