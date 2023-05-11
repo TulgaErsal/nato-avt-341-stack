@@ -66,6 +66,10 @@ std::string Encircle::description() const {
   return stream.str();
 }
 
+avt_341::msg::PoseStamped Encircle::terminalPose() const{
+  return circle_path_.poses.back();
+}
+
 
 } // mission 
 } // avt_341

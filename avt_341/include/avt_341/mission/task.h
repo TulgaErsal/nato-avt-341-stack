@@ -45,6 +45,8 @@ public:
     bool init_done;
     bool is_preemptable;
     FormationDefinition* getFormationDef() const { return formation_def_; }
+    virtual avt_341::msg::PoseStamped terminalPose() const;
+
 
 protected:
   virtual void init_() = 0;
@@ -73,6 +75,7 @@ public:
     bool setGoalByContact(const Contact & contact);
     bool setGoalByPose(const avt_341::msg::PoseStamped & pose);
     bool setGoalByMissionPoint(std::string name);
+    avt_341::msg::PoseStamped terminalPose() const override;
 
     // goal = position and orientation
     avt_341::msg::PoseStamped goal;
@@ -115,6 +118,8 @@ public:
     bool is_done() override;
     void on_done() override;
     std::string description() const override;
+    avt_341::msg::PoseStamped terminalPose() const override;
+
 private:
   bool arrived;
   avt_341::msg::PoseStamped target_;

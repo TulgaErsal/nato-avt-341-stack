@@ -27,7 +27,7 @@ public:
 
   FormationSpeedController(const std::string & my_name, const FormationSpeedControlParams &params, std::shared_ptr<avt_341::node::NodeProxy> node_proxy);
 
-  double getSpeedFactor(const FormationDefinition* formation_def, std::map<std::string, avt_341::msg::Odometry> & formation_poses);
+  double getSpeedFactor(const FormationDefinition* formation_def, const avt_341::msg::PoseStamped & terminal_pose, std::map<std::string, avt_341::msg::Odometry> & formation_poses);
   void visualizeSpeedIndicators(double speed_factor, double delta_pos, const avt_341::msg::PoseStamped &target_pose,
                                 const avt_341::msg::Point &current_pos, bool heading_filter_on, bool follower_dist_break_on);
 

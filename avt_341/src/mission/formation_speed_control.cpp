@@ -29,9 +29,15 @@ avt_341::msg::PoseStamped FormationSpeedController::getFollowerTargetPose(avt_34
   return target_pose;
 }
 
-double FormationSpeedController::getSpeedFactor(const FormationDefinition* formation_def, std::map<std::string, avt_341::msg::Odometry> & formation_poses) {
+double FormationSpeedController::getSpeedFactor(const FormationDefinition* formation_def, const avt_341::msg::PoseStamped & terminal_pose, std::map<std::string, avt_341::msg::Odometry> & formation_poses) {
 
   if(formation_def == nullptr || !formation_def->has_formation()){
+    if(formation_poses.find(my_name_) == formation_poses.end()){
+      return 1.0;
+    }
+    auto & current_pos = formation_poses[my_name_].pose.pose.position;
+    double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
+    visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
     return 1.0;
   }
 

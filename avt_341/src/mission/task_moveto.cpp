@@ -136,5 +136,9 @@ void MoveTo::onGoalReached(const avt_341::msg::PoseStamped & pose){
   arrived = arrived || abs_error < 1.0;
 }
 
+avt_341::msg::PoseStamped MoveTo::terminalPose() const{
+  return target_pose;
+}
+
 } // mission 
 } // avt_341
