@@ -35,7 +35,7 @@ double FormationSpeedController::getSpeedFactor(const FormationDefinition* forma
     if(formation_poses.find(my_name_) == formation_poses.end()){
       return 1.0;
     }
-    auto & current_pos = formation_poses[my_name_].pose.pose.position;
+    auto current_pos = formation_poses[my_name_].pose.pose.position;
     double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
     visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
     return 1.0;

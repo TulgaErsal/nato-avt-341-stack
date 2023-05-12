@@ -39,15 +39,16 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     // Ensure same case as leader_name
     std::string child_frame_id = msg->child_frame_id;
     avt_341::mission::Task* current_task = mgr->currentTask();
+
+    std::transform(child_frame_id.begin(), child_frame_id.end(), child_frame_id.begin(), [](unsigned char c){ return std::toupper(c); });
+    std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
+    formation_poses[veh_name] = *msg;
+
     if(current_task == nullptr || !current_task->hasFormation()){
       return;
     }
 
     const std::string leader_name = current_task->getFormationDef()->followedVehicle();
-    std::transform(child_frame_id.begin(), child_frame_id.end(), child_frame_id.begin(), [](unsigned char c){ return std::toupper(c); });
-
-    std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
-    formation_poses[veh_name] = *msg;
 
     if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
       leader_pub->publish(*msg);
@@ -238,7 +239,7 @@ int main(int argc, char **argv) {
         mgr->postUpdateTasks();
 
         avt_341::mission::Task* task = mgr->currentTask();
-        if(task!= nullptr && use_slow_down_speed_control){
+        if(task != nullptr && use_slow_down_speed_control){
             avt_341::msg::Float64 speed_msg;
             speed_msg.data = speedController.getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses);
             speed_factor_pub->publish(speed_msg);

@@ -67,6 +67,9 @@ std::string Encircle::description() const {
 }
 
 avt_341::msg::PoseStamped Encircle::terminalPose() const{
+  if(circle_path_.poses.empty()){
+    return Task::terminalPose();
+  }
   return circle_path_.poses.back();
 }
 
