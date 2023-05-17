@@ -122,7 +122,6 @@ void MoveTo::on_done() {
 
 void MoveTo::onPreempt(){
   init_done = false;
-  mgr->publishGpToggle(0);
 }
 
 std::string MoveTo::description() const {

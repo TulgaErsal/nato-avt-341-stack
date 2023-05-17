@@ -181,9 +181,9 @@ void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & statu
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   std::ostringstream stream;
   if(add_name_id_to_msg_){
-    stream << "TASK_COMPLETE," << sender_name << "," << msg_id;
-  }else{
     stream << sender_name << "," << msg_id << "," << "TASK_COMPLETE," << sender_name << "," << msg_id;
+  }else{
+    stream << "TASK_COMPLETE," << sender_name << "," << msg_id;
   }
   avt_341::msg::String comm_msg;
   comm_msg.data = stream.str();

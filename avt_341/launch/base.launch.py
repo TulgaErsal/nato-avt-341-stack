@@ -52,7 +52,9 @@ class Invert(Substitution):
         return 'Invert(%s)' % (self.__sub_val.describe())
 
     def perform(self, context: launch.LaunchContext):
-        return not self.__sub_val.perform(context)
+        val = self.__sub_val.perform(context).lower()
+        is_true = val in ['true', '1']
+        return str(not is_true)
 
 
 class Concat(Substitution):

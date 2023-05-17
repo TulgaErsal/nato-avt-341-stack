@@ -163,8 +163,8 @@ int main(int argc, char* argv[])
     nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, true);
     nh->get_parameter("~verbose_comm_log", verbose_comm_log, true);
 
-    nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_internal: %d",
-                 hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_internal);
+    nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_internal: %d, add_name_id_to_msg: %d",
+                 hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_internal, add_name_id_to_msg);
 
     // Create the socket
     std::shared_ptr<avt_341::communication::TcpSocketClientBase> client = nullptr;
