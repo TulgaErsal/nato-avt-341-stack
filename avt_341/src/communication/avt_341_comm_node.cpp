@@ -114,6 +114,10 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     else if(message.type == "CANCEL_ALL") {
       message.receiver_name = tokens[3];
     }
+    else if(message.type == "OVERWATCH") {
+      message.receiver_name = tokens[3];
+      message.target_msg_id = atoi(tokens[4].c_str());
+    }
     
     return message;
 }

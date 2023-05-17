@@ -58,7 +58,7 @@ class MissionManager{
 
   public:
     /// Construct a formation controller
-    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy);
+    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy, bool add_name_id_to_msg);
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
@@ -66,7 +66,7 @@ class MissionManager{
     bool getMissionPoint(MissionPoint& mission_point, std::string posename);
 
     // internal messages
-    void handleContacts(avt_341::msg::Path);
+    void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
 
     // external messages
     void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
@@ -77,6 +77,7 @@ class MissionManager{
     void handleTaskComplete(const avt_341::msg::Communication &);
     void handleHold(const avt_341::msg::Communication &);
     void handleSetSpeed(const avt_341::msg::Communication &);
+    void handleOverwatch(const avt_341::msg::Communication &);
 
     std::string my_name;
     double sodist_threshold;
@@ -107,11 +108,6 @@ class MissionManager{
     avt_341::msg::PoseStamped current_gp_goal;
 
   private:
-    // TODO: Remove later: Hardcoded value for who does investigation and overwatch
-    // ==============================================================================
-    const std::string INVESTIGATING_AGV = "AGV1";
-    const std::string OVERWATCH_AGV = "AGV2";
-    // ==============================================================================
 
     const FormationParameters & formation_params;
     const ToiParameters & toi_params_;
@@ -120,6 +116,7 @@ class MissionManager{
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
+    bool add_name_id_to_msg_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<avt_341::msg::Communication> task_completions_;

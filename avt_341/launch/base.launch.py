@@ -43,7 +43,19 @@ class ToUpper(Substitution):
         return self.__sub_val.perform(context).upper()
 
 
-class Concate(Substitution):
+class Invert(Substitution):
+
+    def __init__(self, sub_val: SomeSubstitutionsType):
+        self.__sub_val = sub_val
+
+    def describe(self):
+        return 'Invert(%s)' % (self.__sub_val.describe())
+
+    def perform(self, context: launch.LaunchContext):
+        return not self.__sub_val.perform(context)
+
+
+class Concat(Substitution):
 
         def __init__(self, sub_val: SomeSubstitutionsType, concat_val):
             self.__sub_val = sub_val
@@ -306,7 +318,7 @@ def generate_launch_description():
                     name='robot_state_publisher',
                     output='screen',
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
-                                 'frame_prefix': TernarySubstitution(Concate(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
+                                 'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))}]
                 ),
@@ -314,7 +326,7 @@ def generate_launch_description():
                     package='avt_341',
                     executable='avt_bot_state_publisher_node',
                     name='state_publisher',
-                    parameters=[{'frame_prefix': TernarySubstitution(Concate(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
+                    parameters=[{'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))}]
                 ),
@@ -551,6 +563,7 @@ def generate_launch_description():
                             'toi_encircle_degrees': launch.substitutions.LaunchConfiguration('toi_encircle_degrees'),
                             'toi_encircle_cw': launch.substitutions.LaunchConfiguration('toi_encircle_cw'),
                             'toi_goal_threshold': launch.substitutions.LaunchConfiguration('goal_dist'),
+                            'add_name_id_to_msg': Invert(launch.substitutions.LaunchConfiguration('add_name_id_to_msg')),
                         }]
                     ),
                     Node(

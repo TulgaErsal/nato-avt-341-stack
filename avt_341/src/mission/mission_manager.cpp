@@ -13,8 +13,8 @@ const std::string PriorityType::PREEMPT_SHORT = "P";
 const std::string PriorityType::CANCEL_ALL_PREVIOUS = "CANCEL_ALL";
 const std::string PriorityType::CANCEL_ALL_PREVIOUS_SHORT = "C";
 
-MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy)
-: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy){
+MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy, bool add_name_id_to_msg)
+: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy), add_name_id_to_msg_(add_name_id_to_msg){
 
     my_name = formation_params.my_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
@@ -180,8 +180,11 @@ void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & statu
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   std::ostringstream stream;
-  // TODO: Replace in future, shouldn't be inserting sender_name and msg_id at front and only works if comm_node parameter add_name_id_to_msg=false set
-  stream << sender_name << "," << msg_id << "," << "TASK_COMPLETE," << sender_name << "," << msg_id;
+  if(add_name_id_to_msg_){
+    stream << "TASK_COMPLETE," << sender_name << "," << msg_id;
+  }else{
+    stream << sender_name << "," << msg_id << "," << "TASK_COMPLETE," << sender_name << "," << msg_id;
+  }
   avt_341::msg::String comm_msg;
   comm_msg.data = stream.str();
   communication_pub->publish(comm_msg);
@@ -281,48 +284,67 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
 }
 
 // Message Handlers
-void MissionManager::handleContacts(avt_341::msg::Path contacts) {
+void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
 
     for(const auto& pose: contacts.poses) {
         if(!hasContact(pose.header.frame_id, pose)) {
             addContact(pose.header.frame_id, pose);
             Contact & contact = mission_contacts.back();
 
+            node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
+            auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
+            investigateTask->setGoalByContact(contact);
+            investigateTask->is_preemptable = false;
+            addTask(investigateTask, PriorityType::PREEMPT);
 
-            if(my_name == INVESTIGATING_AGV){
+            const int encircle_task_id = obj_detection_cnt--;
+            auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
+            encircleTask->is_preemptable = false;
+            addTask(encircleTask, PriorityType::PREEMPT);
 
-                node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
-
-                auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
-                investigateTask->setGoalByContact(contact);
-                investigateTask->is_preemptable = false;
-                addTask(investigateTask, PriorityType::PREEMPT);
-
-                auto encircleTask = new Encircle(this, my_name, obj_detection_cnt--, contact.pose, toi_params_);
-                encircleTask->is_preemptable = false;
-                addTask(encircleTask, PriorityType::PREEMPT);
-
-            }else if(my_name == OVERWATCH_AGV){
-
-              MissionPoint mp = getClosestOverwatch();
-              if(!mp.name.empty()){
-                node_proxy_->log_info("Moving to overwatch %s at (%.2f, %.2f)", mp.name.c_str(), mp.pos_x, mp.pos_y);
-
-                auto overwatchTask = new MoveTo(this, my_name, -1);
-                overwatchTask->setGoalByMissionPoint(mp.name);
-                overwatchTask->is_preemptable = false;
-                addTask(overwatchTask, PriorityType::PREEMPT);
-
-                auto waitTask = new WaitUntilComplete(this, my_name, -1, INVESTIGATING_AGV, obj_detection_cnt--);
-                waitTask->is_preemptable = false;
-                addTask(waitTask, PriorityType::PREEMPT);
-              }else{
-                node_proxy_->log_info("No overwatch found to investigate contact %s", contact.name.c_str());
-              }
+            // Get closest vehicle from vehh_poses
+            double min_dist = std::numeric_limits<double>::max();
+            std::string overwatch_veh;
+            for(const auto& veh_pose: veh_poses) {
+                if(veh_pose.first == my_name){
+                    continue;
+                }
+                double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
+                if(dist < min_dist) {
+                    min_dist = dist;
+                    overwatch_veh = veh_pose.first;
+                }
             }
 
+            if(overwatch_veh.empty()){
+                node_proxy_->log_info("Could not find overwatch vehicle");
+            }else{
+                std::ostringstream stream;
+                stream << my_name << "," << -1 << "," << "OVERWATCH," << overwatch_veh << "," << encircle_task_id;
+                publishCommStr(stream.str());
+            }
         }
     }
+}
+
+void MissionManager::handleOverwatch(const avt_341::msg::Communication & msg){
+
+  MissionPoint mp = getClosestOverwatch();
+  if(!mp.name.empty()){
+    node_proxy_->log_info("Moving to overwatch %s at (%.2f, %.2f)", mp.name.c_str(), mp.pos_x, mp.pos_y);
+
+    auto overwatchTask = new MoveTo(this, my_name, -1);
+    overwatchTask->setGoalByMissionPoint(mp.name);
+    overwatchTask->is_preemptable = false;
+    addTask(overwatchTask, PriorityType::PREEMPT);
+
+    auto waitTask = new WaitUntilComplete(this, my_name, -1, msg.sender_name, msg.target_msg_id);
+    waitTask->is_preemptable = false;
+    addTask(waitTask, PriorityType::PREEMPT);
+  }else{
+    node_proxy_->log_info("No overwatch found to investigate contact");
+  }
+
 }
 
 MissionPoint MissionManager::getClosestOverwatch(){

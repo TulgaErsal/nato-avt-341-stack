@@ -118,15 +118,17 @@ int main(int argc, char **argv) {
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~veh_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
+    bool add_name_id_to_msg;
     nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
     nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
     nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
     nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
+    nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, false);
 
     bool use_slow_down_speed_control = fsc_type == FormationSpeedControlType::SLOW_DOWN_LEADER;
 
-    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh);
+    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, add_name_id_to_msg);
     mgr->sodist_threshold = sodist_threshold;
 
     avt_341::mission::FormationSpeedController speedController(formation_params.my_name, fsc_params, nh);
@@ -192,20 +194,16 @@ int main(int argc, char **argv) {
             } else if(rcvd_msg.type == "MOVETO") {
                 mgr->handleMoveTo(rcvd_msg);
             } else if(rcvd_msg.type == "SHUTDOWN") {
-                if(rcvd_msg.receiver_name == mgr->my_name) {
-                    std::cout << mgr->my_name << " is shutting down" << std::endl;
-                    break;
-                }
+                std::cout << mgr->my_name << " is shutting down" << std::endl;
+                break;
             } else if(rcvd_msg.type == "SET_SPEED") {
                 mgr->handleSetSpeed(rcvd_msg);
             } else if(rcvd_msg.type == "CANCEL") {
-                if(rcvd_msg.receiver_name == mgr->my_name){
-                    mgr->handleCancelTask(rcvd_msg);
-                }
+                mgr->handleCancelTask(rcvd_msg);
             } else if(rcvd_msg.type == "CANCEL_ALL"){
-                if(rcvd_msg.receiver_name == mgr->my_name){
-                    mgr->handleCancelAllTask(rcvd_msg);
-                }
+                mgr->handleCancelAllTask(rcvd_msg);
+            } else if(rcvd_msg.type == "OVERWATCH"){
+                mgr->handleOverwatch(rcvd_msg);
             }
             else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
@@ -215,7 +213,7 @@ int main(int argc, char **argv) {
         while(!contacts.empty()){
           auto rcvd_msg = contacts.front();
           contacts.pop();
-          mgr->handleContacts(rcvd_msg);
+          mgr->handleContacts(rcvd_msg, formation_poses);
         }
 
         // Incoming internal notifications
