@@ -51,7 +51,8 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     const std::string leader_name = current_task->getFormationDef()->followedVehicle();
 
     if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
-      leader_pub->publish(*msg);
+      mgr->leader_odometry = *msg;
+//      leader_pub->publish(*msg);
     }
 }
 
@@ -104,7 +105,13 @@ int main(int argc, char **argv) {
     nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
     nh->get_parameter("~follow_scale_x", formation_params.follow_scale_x, 1.0f);
     nh->get_parameter("~follow_scale_y", formation_params.follow_scale_y, 1.0f);
+    nh->get_parameter("~global_path_point_dist", formation_params.global_path_points_dist, 1.0f);
+    nh->get_parameter("~use_leader_breadcrumbs", formation_params.use_breadcrumbs, true);
+    nh->get_parameter("~x_offset_on_path", formation_params.x_offset_on_path, false);
+    nh->get_parameter("~formation_prune_gp", formation_params.prune_global_path, false);
+    nh->get_parameter("~follow_goal_threshold", formation_params.follow_goal_threshold, 10.0f);
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
+
 
     nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
     nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
@@ -150,7 +157,7 @@ int main(int argc, char **argv) {
     auto current_waypoint_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CurrentGoalCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
-    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
+//    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
     // start the loop
     while(avt_341::node::ok()){

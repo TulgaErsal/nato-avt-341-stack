@@ -13,6 +13,7 @@ string original_command
 string objective_name
 string desired_speed
 string priority_type
+string termination_method
 float64 x_scale
 float64 y_scale
 float64 x_offset

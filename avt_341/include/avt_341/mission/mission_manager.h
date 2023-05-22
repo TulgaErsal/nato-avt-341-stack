@@ -82,6 +82,7 @@ class MissionManager{
     std::string my_name;
     double sodist_threshold;
     avt_341::msg::Odometry odometry;
+    avt_341::msg::Odometry leader_odometry;
     int nav_state;
     float desired_speed;
     bool goal_changed;
@@ -91,19 +92,22 @@ class MissionManager{
     void updateTasks();
     void postUpdateTasks();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
-    void publishPath(avt_341::msg::Path& path);
-    void publishGoal(avt_341::msg::PoseStamped & target_pose);
+    void publishPath(const avt_341::msg::Path& path);
+    void publishGoal(const avt_341::msg::PoseStamped & target_pose);
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
     void publishCommStr(const std::string & msg_data);
-    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
+    void publishArrival(const std::string & sender_name, const std::string & objective);
+//    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
     void reset();
     void resetTaskList(bool send_completion_msg);
     void handleCancelTask(const avt_341::msg::Communication & msg);
     void handleCancelAllTask(const avt_341::msg::Communication & msg);
     void cancelTask(int task_id,bool send_completion_msg);
     void onGoalReached(const avt_341::msg::PoseStamped & pose);
-    bool hasCompletedTask(const std::string & target_veh, int target_msg_id);
+    bool hasCompletedTask(const std::string & target_veh, int target_msg_id) const;
+    bool hasArrival(const std::string & target_veh, const std::string & objective) const;
+
     Task* currentTask();
     avt_341::msg::PoseStamped current_gp_goal;
 
@@ -120,9 +124,9 @@ class MissionManager{
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<avt_341::msg::Communication> task_completions_;
+    std::vector<avt_341::msg::Communication> arrivals_;
 
-
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
+//    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> gp_path_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;

@@ -23,6 +23,11 @@ struct FormationParameters{
   float follow_scale_x;
   float follow_scale_y;
   bool offsets_from_leader;
+  float follow_goal_threshold;
+  float global_path_points_dist;
+  bool use_breadcrumbs;
+  bool x_offset_on_path;
+  bool prune_global_path;
 };
 
 struct ToiParameters{
@@ -51,6 +56,7 @@ public:
   inline bool has_formation() const { return !current_formation_msg_.formation.empty(); }
   inline std::string leaderName() const { return current_formation_msg_.leader_name; }
   inline std::string followedVehicle() const { return followed_vehicle_; }
+  inline std::string terminationMethod() const { return current_formation_msg_.termination_method; }
   inline std::vector<std::string> orderedVehicles() const { return formation_vehicle_names_; }
   inline int formationIndex() const { return my_index_; }
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }

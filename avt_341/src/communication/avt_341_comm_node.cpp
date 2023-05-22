@@ -65,7 +65,8 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
             message.x_offset = std::stod(tokens[12]);
             message.y_offset = std::stod(tokens[13]);
             message.distance = std::stod(tokens[14]);
-            message.priority_type = tokens[15];
+            message.termination_method = tokens[15];
+            message.priority_type = tokens[16];
         }
     } 
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>

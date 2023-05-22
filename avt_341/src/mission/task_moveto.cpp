@@ -21,6 +21,7 @@ MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, FormationDef
                double x_offset, double y_offset, double d_approach)
 : Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), d_approach_(d_approach) {
     setGoalInternal(avt_341::msg::PoseStamped(), "", MoveTo::NONE);
+    terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
 }
 
 bool MoveTo::setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type){
@@ -84,17 +85,17 @@ void MoveTo::init_() {
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 
-    if(formation_def_ == nullptr){
-      // TODO: Need to publish formation def with is_leader to turn off formation_controller from auto-publishing path...
-      // TODO: Should find better way to disable formation controller, maybe just put it's logic in FollowTask, since only place it is relevant
-      avt_341::msg::FollowerStatus fs;
-      fs.use_leader = false;
-      mgr->publishFormationStatus(fs);
-    }
-
-    if(formation_def_ != nullptr && !formation_def_->formationAtGoal()){
-      mgr->publishFormationStatus(formation_def_->formation_status);
-    }
+//    if(formation_def_ == nullptr){
+//      // TODO: Need to publish formation def with is_leader to turn off formation_controller from auto-publishing path...
+//      // TODO: Should find better way to disable formation controller, maybe just put it's logic in FollowTask, since only place it is relevant
+//      avt_341::msg::FollowerStatus fs;
+//      fs.use_leader = false;
+//      mgr->publishFormationStatus(fs);
+//    }
+//
+//    if(formation_def_ != nullptr && !formation_def_->formationAtGoal()){
+//      mgr->publishFormationStatus(formation_def_->formation_status);
+//    }
 
 }
 
@@ -110,6 +111,13 @@ void MoveTo::run() {
 }
 
 bool MoveTo::is_done() {
+    if(terminate_on_all_arrived_){
+      bool all_arrived = true;
+      for(const auto & veh : formation_def_->orderedVehicles()){
+        all_arrived = all_arrived && mgr->hasArrival(veh, "TASK_" + std::to_string(msg_id));
+      }
+      return all_arrived;
+    }
     return arrived;
 }
 
@@ -131,8 +139,11 @@ std::string MoveTo::description() const {
 }
 
 void MoveTo::onGoalReached(const avt_341::msg::PoseStamped & pose){
-  const double abs_error = std::abs(target_pose.pose.position.x - pose.pose.position.x + target_pose.pose.position.y - pose.pose.position.y);
-  arrived = arrived || abs_error < 1.0;
+  bool goal_reached = std::abs(target_pose.pose.position.x - pose.pose.position.x + target_pose.pose.position.y - pose.pose.position.y) < 1.0;
+  if(!arrived && goal_reached){
+    mgr->publishArrival(mgr->my_name, "TASK_" + std::to_string(msg_id));
+  }
+  arrived = arrived || goal_reached;
 }
 
 avt_341::msg::PoseStamped MoveTo::terminalPose() const{

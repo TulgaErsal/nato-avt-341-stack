@@ -276,7 +276,7 @@ def generate_launch_description():
         DeclareLaunchArgument('fsc_type', default_value='slow_down_leader', description="Mission Manager - Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'."),
         DeclareLaunchArgument('x_offset_on_path', default_value='False', description="Mission Manager - If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader."),
         DeclareLaunchArgument('formation_prune_gp', default_value='True', description="Mission Manager - If true prunes the formation controller generated follower global path to the closer point."),
-
+        DeclareLaunchArgument('follow_goal_threshold', default_value='10.0', description="Mission Manager - Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal."),
 
         DeclareLaunchArgument('oof_threshold', default_value='15.0', description="Mission Manager - Distance threshold after which vehicle considered out of formation."),
         DeclareLaunchArgument('oof_const_term', default_value='0.3', description="Mission Manager - Initial speed factor subtraction if past threshold"),
@@ -526,20 +526,20 @@ def generate_launch_description():
                     executable='avt_341_grid_compression_node',
                     name='grid_compression'),
                 GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])), actions=[
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_formation_control_node',
-                        name='formation_control_node',
-                        output='screen',
-                        parameters=[{
-                            'is_leader': idx == 0,
-                            'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                            'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
-                            'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type'),
-                            'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
-                            'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
-                        }]
-                    ),
+                    # Node(
+                    #     package='avt_341',
+                    #     executable='avt_341_formation_control_node',
+                    #     name='formation_control_node',
+                    #     output='screen',
+                    #     parameters=[{
+                    #         'is_leader': idx == 0,
+                    #         'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
+                    #         'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
+                    #         'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type'),
+                    #         'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
+                    #         'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
+                    #     }]
+                    # ),
                     Node(
                         package='avt_341',
                         executable='avt_341_mission_manager_node',
@@ -566,6 +566,9 @@ def generate_launch_description():
                             'toi_encircle_cw': launch.substitutions.LaunchConfiguration('toi_encircle_cw'),
                             'toi_goal_threshold': launch.substitutions.LaunchConfiguration('goal_dist'),
                             'add_name_id_to_msg': Invert(launch.substitutions.LaunchConfiguration('add_name_id_to_msg')),
+                            'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
+                            'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
+                            'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
                         }]
                     ),
                     Node(

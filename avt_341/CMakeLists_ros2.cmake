@@ -79,6 +79,7 @@ add_executable(avt_341_mission_manager_node
     src/mission/formation_utils.cpp
     src/mission/formation_definition.cpp
     src/mission/formation_speed_control.cpp
+    src/mission/formation_path_generator.cpp
     src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_mission_manager_node ${dependencies})

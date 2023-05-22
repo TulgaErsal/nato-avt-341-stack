@@ -18,6 +18,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/mission/mission_manager.h"
 #include "avt_341/mission/formation_definition.h"
+#include "avt_341/mission/formation_path_generator.h"
 
 namespace avt_341 {
 namespace mission {
@@ -44,6 +45,7 @@ public:
     int msg_id;
     bool init_done;
     bool is_preemptable;
+    bool arrived = false;
     FormationDefinition* getFormationDef() const { return formation_def_; }
     virtual avt_341::msg::PoseStamped terminalPose() const;
 
@@ -82,8 +84,7 @@ public:
     avt_341::msg::PoseStamped target_pose;
     std::string goal_type;
     std::string name;
-    bool arrived = false;
-
+    bool terminate_on_all_arrived_;
     std::string description() const override;
 private:
     bool setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
@@ -132,13 +133,19 @@ private:
 
 class Follow : public Task {
 public:
-    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr);
+    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def);
     void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
     void onPreempt() override;
     std::string description() const override;
+    avt_341::msg::PoseStamped terminalPose() const override;
+
+private:
+  bool terminate_on_leader_arrived_;
+  bool terminate_on_all_arrived_;
+  avt_341::mission::FormationPathGenerator path_generator_;
 }; // class Follow
 
 

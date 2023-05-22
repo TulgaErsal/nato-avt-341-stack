@@ -27,7 +27,7 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
 
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
     gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
-    follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
+//    follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
@@ -137,7 +137,7 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     return true;
 }
 
-void MissionManager::publishGoal(avt_341::msg::PoseStamped & target_pose){
+void MissionManager::publishGoal(const avt_341::msg::PoseStamped & target_pose){
     avt_341::msg::Path goal_msg;
     goal_msg.poses.clear();
     goal_msg.poses.push_back(target_pose);
@@ -146,9 +146,11 @@ void MissionManager::publishGoal(avt_341::msg::PoseStamped & target_pose){
     waypoint_pub->publish(goal_msg);
 }
 
-void MissionManager::publishPath(avt_341::msg::Path& path){
-  path.header.stamp = node_proxy_->get_stamp();
-  path.header.frame_id = "map";
+void MissionManager::publishPath(const avt_341::msg::Path& path){
+  avt_341::msg::Path path_msg;
+  path_msg.header.stamp = node_proxy_->get_stamp();
+  path_msg.header.frame_id = "map";
+  path_msg.poses = path.poses;
   gp_path_pub->publish(path);
 }
 
@@ -174,9 +176,9 @@ void MissionManager::publishTaskCompletion(Task * task){
   publishTaskCompletion(task->sender_name, task->msg_id);
 }
 
-void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
-  follower_status_pub->publish(status_msg);
-}
+//void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
+//  follower_status_pub->publish(status_msg);
+//}
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   std::ostringstream stream;
@@ -363,7 +365,7 @@ MissionPoint MissionManager::getClosestOverwatch(){
 }
 
 bool MissionManager::isMsgForSelf(const avt_341::msg::Communication & msg) {
-  return msg.type == "TASK_COMPLETE" || (msg.type == "FORM" && FormationDefinition::vehicleInFormation(msg, my_name)) || msg.receiver_name == my_name;
+  return msg.type == "TASK_COMPLETE" || msg.type == "ARRIVE" || (msg.type == "FORM" && FormationDefinition::vehicleInFormation(msg, my_name)) || msg.receiver_name == my_name;
 }
 
 void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
@@ -402,7 +404,7 @@ void MissionManager::handleAcknowledge(const avt_341::msg::Communication & msg) 
 // <sender>,<msg_id>,ARRIVE,<objective>
 void MissionManager::handleArrive(const avt_341::msg::Communication & msg) {
     // If tracking, update mission tracker
-    
+    arrivals_.push_back(msg);
 }
 
 // <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
@@ -456,9 +458,26 @@ void MissionManager::handleCancelAllTask(const avt_341::msg::Communication & msg
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
-bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id){
+bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id) const{
   return std::find_if(task_completions_.begin(), task_completions_.end(),
                    [&](const avt_341::msg::Communication & comm){return comm.sender_name == target_veh && comm.msg_id == target_msg_id;}) != task_completions_.end();
+}
+
+void MissionManager::publishArrival(const std::string & sender_name, const std::string & objective){
+  std::ostringstream stream;
+  if(add_name_id_to_msg_){
+    stream << sender_name << ",-1," << "ARRIVE," << objective;
+  }else{
+    stream << "ARRIVE," << sender_name << "," << objective;
+  }
+  avt_341::msg::String comm_msg;
+  comm_msg.data = stream.str();
+  communication_pub->publish(comm_msg);
+}
+
+bool MissionManager::hasArrival(const std::string & target_veh, const std::string & objective) const{
+  return std::find_if(arrivals_.begin(), arrivals_.end(),
+                      [&](const avt_341::msg::Communication & comm){return comm.sender_name == target_veh && comm.objective_name == objective;}) != arrivals_.end();
 }
 
 } // namespace mission
