@@ -43,8 +43,37 @@ def generate_launch_description():
                           'shutdown_behavior': '1',
                           'stitch_lidar_points': 'False',
                           'use_registered': 'False',
+                        #   'w_segmentation': '1.0', # terrain weight for global planner
+                        #   'w_occupancy': '1.0',
+                        #   'w_distance': '1.0',
+                          'debug_visualize': 'True', # global planner debugging
+                          
+                        #   spine planner params
                           'cost_vis': 'all',
-                          'w_t': '0.2', # terrain weight for local planner
+                          'w_t': '0.5', # terrain weight for local planner
+                          'w_d': '0.5',
+                          'w_s': '0.5',
+                          'w_r': '0.5',
+                          'w_c': '0.5',
+                          
+                        #   DWA planner params
+                        #   'dwa_speed_lin_min': '4.0',
+                        #   'dwa_speed_lin_max': '10.0',
+                        #   'dwa_accel_max': '4.0',
+                        #   'dwa_speed_ang_min': '-0.785',
+                        #   'dwa_speed_ang_max': '0.785',
+                        #   'dwa_ang_accel_max': '10.0',
+                        #   'dwa_time_span_min': '4.2',
+                        #   'dwa_time_span_max': '10.0',
+                        #   'dwa_time_span_var': '4.5',
+                        #   'dwa_time_span_gain': '1.1',
+                        #   'dwa_w_cost_goal': '1.0',
+                        #   'dwa_w_cost_obs': '1.5',
+                        #   'dwa_w_cost_speed': '1.0',
+                        #   'dwa_w_cost_dev': '0.2',
+                        #   'dwa_use_global_path': 'True',
+                        #   'dwa_w_cost_path': '0.4',
+                        #   'dwa_collision_radius': '1.5',
                           }.items()
     )
 
