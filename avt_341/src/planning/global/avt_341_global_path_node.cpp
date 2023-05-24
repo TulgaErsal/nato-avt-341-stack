@@ -205,7 +205,6 @@ int main(int argc, char *argv[])
       pose.pose.orientation.w = 1.0f;
       pose.pose.orientation.x = 0.0f;
       pose.pose.orientation.y = 0.0f;
-      pose.pose.orientation.y = 0.0f;
       pose.pose.orientation.z = 0.0f;
       current_waypoints.poses.push_back(pose);
     }
@@ -384,10 +383,6 @@ int main(int argc, char *argv[])
       //  state_pub->publish(state);
       //}
     }else{
-//      avt_341::msg::Path ros_path;
-//      ros_path.header.frame_id = "map";
-//      ros_path.header.stamp = n->get_stamp();
-//      path_pub->publish(ros_path);
       state.data = avt_341::utils::NavStackState::Active;
       state_pub->publish(state);
     }
