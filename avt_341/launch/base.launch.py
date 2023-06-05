@@ -31,6 +31,61 @@ class TernarySubstitution(Substitution):
             return self.__false_val.perform(context)
 
 
+class ToUpper(Substitution):
+
+    def __init__(self, sub_val: SomeSubstitutionsType):
+        self.__sub_val = sub_val
+
+    def describe(self):
+        return 'ToUpper(%s)' % (self.__sub_val.describe())
+
+    def perform(self, context: launch.LaunchContext):
+        return self.__sub_val.perform(context).upper()
+
+
+class Invert(Substitution):
+
+    def __init__(self, sub_val: SomeSubstitutionsType):
+        self.__sub_val = sub_val
+
+    def describe(self):
+        return 'Invert(%s)' % (self.__sub_val.describe())
+
+    def perform(self, context: launch.LaunchContext):
+        val = self.__sub_val.perform(context).lower()
+        is_true = val in ['true', '1']
+        return str(not is_true)
+
+
+class Concat(Substitution):
+
+        def __init__(self, sub_val: SomeSubstitutionsType, concat_val):
+            self.__sub_val = sub_val
+            self.__concat_val = concat_val
+
+        def describe(self):
+            return 'StringConcate(%s %s)' % (self.__sub_val.describe(), self.__concat_val)
+
+        def perform(self, context: launch.LaunchContext):
+            return self.__sub_val.perform(context) + self.__concat_val
+
+
+class ArrayIndexSubstitution(Substitution):
+
+    def __init__(self, sub_val: SomeSubstitutionsType, idx: int):
+        self.__sub_val = sub_val
+        self.__idx = idx
+
+    def describe(self):
+        return 'ArrayIndexSubstitution(%s %d)' % (self.__sub_val.describe(), self.__idx)
+
+    def perform(self, context: launch.LaunchContext):
+        array_val = self.__sub_val.perform(context)
+        # array_val is current a string, need to parse
+        array_val = array_val.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
+        return array_val[self.__idx]
+
+
 def evaluate_waypoint_parameters(context, *args, **kwargs):
     waypoints_file_path = LaunchConfiguration('waypoints_file').perform(context)
     waypoints_x = "[ ]"
@@ -67,9 +122,10 @@ def generate_launch_description():
 
     rviz_config_single_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_ros2.rviz')
     rviz_config_multi_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_multi_vehicle_ros2.rviz')
+    rviz_config_two_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_two_vehicle_ros2.rviz')
 
-    robot_desc_list = [LaunchConfiguration('robot_description'), LaunchConfiguration('robot_description_agv2'),
-                       LaunchConfiguration('robot_description_agv3'), LaunchConfiguration('robot_description_agv4')]
+    robot_desc_list = [LaunchConfiguration('robot_description'), LaunchConfiguration('robot_description_veh2'),
+                       LaunchConfiguration('robot_description_veh3'), LaunchConfiguration('robot_description_veh4')]
 
     arg_list = [
         DeclareLaunchArgument('use_sim_time', default_value='False'),
@@ -77,9 +133,9 @@ def generate_launch_description():
         DeclareLaunchArgument('display_type', default_value='rviz', description="Type of display method to use. Values = [rviz, image]"),
         DeclareLaunchArgument('waypoints_file', default_value=os.path.join(get_package_share_directory('avt_341'), 'config', 'no_waypoints.yaml'), description="Path to waypoint file to use"),
         DeclareLaunchArgument('robot_description', description="URDF robot description contents"),
-        DeclareLaunchArgument('robot_description_agv2', description="URDF robot description contents for agv2", default_value=""),
-        DeclareLaunchArgument('robot_description_agv3', description="URDF robot description contents for agv3", default_value=""),
-        DeclareLaunchArgument('robot_description_agv4', description="URDF robot description contents for agv4", default_value=""),
+        DeclareLaunchArgument('robot_description_veh2', description="URDF robot description contents for vehicle 2", default_value=""),
+        DeclareLaunchArgument('robot_description_veh3', description="URDF robot description contents for vehicle 3", default_value=""),
+        DeclareLaunchArgument('robot_description_veh4', description="URDF robot description contents for vehicle 4", default_value=""),
         DeclareLaunchArgument('num_vehicles', default_value='1', description="Number of vehicles controlled by navigation stack."),
         DeclareLaunchArgument('namespace_single_vehicle', default_value='False', description="If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)."),
 
@@ -204,7 +260,9 @@ def generate_launch_description():
         DeclareLaunchArgument('ff_a1', default_value='0.0321', description="1st order coeff in the feed-forward model"),
         DeclareLaunchArgument('ff_a2', default_value='0.0', description="2nd order coeff in the feed-forward model"),
         DeclareLaunchArgument('max_desired_lateral_g', default_value='0.75', description="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2"),
-        DeclareLaunchArgument('turn_off_velocity_overshoot_corrector', default_value='False', description="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2"),
+        DeclareLaunchArgument('anti_windup_method', default_value='disabled', description="PID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'"),
+        DeclareLaunchArgument('pid_output_max', default_value='1.0', description="Max value for PID output. Only active when anti_windup_method = 'output_clamping'"),
+        DeclareLaunchArgument('pid_output_min', default_value='0.0', description="Min value for PID output. Only active when anti_windup_method = 'output_clamping'"),
 
         # Global Segmentation Grid
         DeclareLaunchArgument('global_grid_csv_path', default_value=os.path.join(get_package_share_directory('avt_341'), 'config', 'KRC_CP06_Scaled_Transposed.csv'), description="Path to CSV containing KRC global segmentation grid."),
@@ -216,6 +274,9 @@ def generate_launch_description():
         DeclareLaunchArgument('follow_scale_y', default_value='10.0', description="Mission Manager - Y Scale distance between vehicles in formation in vehicle coordinates"),
         DeclareLaunchArgument('mission_definition_file', default_value=os.path.join(get_package_share_directory('avt_341'), 'config', 'mission_points.csv'), description="Mission Manager - file describing mission reference points"),
         DeclareLaunchArgument('fsc_type', default_value='slow_down_leader', description="Mission Manager - Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'."),
+        DeclareLaunchArgument('x_offset_on_path', default_value='False', description="Mission Manager - If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader."),
+        DeclareLaunchArgument('formation_prune_gp', default_value='True', description="Mission Manager - If true prunes the formation controller generated follower global path to the closer point."),
+        DeclareLaunchArgument('follow_goal_threshold', default_value='10.0', description="Mission Manager - Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal."),
 
         DeclareLaunchArgument('oof_threshold', default_value='15.0', description="Mission Manager - Distance threshold after which vehicle considered out of formation."),
         DeclareLaunchArgument('oof_const_term', default_value='0.3', description="Mission Manager - Initial speed factor subtraction if past threshold"),
@@ -225,7 +286,13 @@ def generate_launch_description():
         DeclareLaunchArgument('offsets_from_leader', default_value='True', description="Mission Manager - If true, formation offsets calculated from lead vehicle. If false, offsets calculated from next vehicle in column formation."),
         DeclareLaunchArgument('follower_dist_break', default_value='10.0', description="Mission Manager - If follower global path distance is less than this amount, follower waits."),
         DeclareLaunchArgument('follower_dot_threshold', default_value='0.0', description="Mission Manager - Heading dot product threshold of heading vectors of follower and lead vehicle below which follower vehicle waits."),
-        DeclareLaunchArgument('veh_namespaces', default_value="['agv1', 'agv2', 'agv3', 'agv4']", description="Mission Manager - Vehicle namespaces to listen to for odometry callbacks."),
+        DeclareLaunchArgument('follower_dot_range', default_value='30.0', description="Mission Manager - Range within which to apply heading dot product filter."),
+        DeclareLaunchArgument('vehicle_namespaces', default_value="['agv1', 'agv2', 'cgv1', 'cgv2']", description="Mission Manager - Vehicle namespaces to listen to for odometry callbacks."),
+
+        DeclareLaunchArgument('toi_approach_dist', default_value='15.0', description="Mission Manager - Approach distance to target of interest before encircling."),
+        DeclareLaunchArgument('toi_encircle_radius', default_value='10.0', description="Mission Manager - Encircle radius around target of interest."),
+        DeclareLaunchArgument('toi_encircle_degrees', default_value='180.0', description="Mission Manager - Encircle degrees around target of interest."),
+        DeclareLaunchArgument('toi_encircle_cw', default_value='True', description="Mission Manager - If encircle should be in clock-wise (cw) direction around target of interest."),
 
         # Formation Control
         DeclareLaunchArgument('use_leader_breadcrumbs', default_value='True', description="Formation Control - If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). "
@@ -237,6 +304,8 @@ def generate_launch_description():
         DeclareLaunchArgument('disable_socket_comms', default_value='False', description="Communication Node - If true disables tcp socket communication."),
         DeclareLaunchArgument('broadcast_internal', default_value='False', description="Communication Node - If true, echos received messages from comm_messages topic subscription."),
         DeclareLaunchArgument('add_name_id_to_msg', default_value='True', description="Communication Node - If true, adds vehicle name and message count to broadcast messages."),
+        DeclareLaunchArgument('verbose_comm_log', default_value='False', description="Communication Node - If true, comm node includes verbose logging."),
+
     ]
     vehicle_node_list = []
     for idx in range(MAX_VEHICLES):
@@ -244,21 +313,23 @@ def generate_launch_description():
             GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > %d' % idx])), actions=[
                 PushRosNamespace(
                     condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])),
-                    namespace='agv%d' % (idx+1)),
+                    namespace=ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
                 Node(
                     package='robot_state_publisher',
                     executable='robot_state_publisher',
                     name='robot_state_publisher',
                     output='screen',
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
-                                 'frame_prefix': TernarySubstitution(TextSubstitution(text='agv%d/' % (idx+1)), TextSubstitution(text=''),
+                                 'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
+                                                                     TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))}]
                 ),
                 Node(
                     package='avt_341',
                     executable='avt_bot_state_publisher_node',
                     name='state_publisher',
-                    parameters=[{'frame_prefix': TernarySubstitution(TextSubstitution(text='agv%d/' % (idx+1)), TextSubstitution(text=''),
+                    parameters=[{'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
+                                                                     TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))}]
                 ),
                 Node(
@@ -315,8 +386,7 @@ def generate_launch_description():
                         'throttle_ki': launch.substitutions.LaunchConfiguration('throttle_ki'),
                         'throttle_kd': launch.substitutions.LaunchConfiguration('throttle_kd'),
                         'time_to_max_brake': launch.substitutions.LaunchConfiguration('time_to_max_brake'),
-                        'max_desired_lateral_g': launch.substitutions.LaunchConfiguration('max_desired_lateral_g'),
-                        'turn_off_velocity_overshoot_corrector': launch.substitutions.LaunchConfiguration('turn_off_velocity_overshoot_corrector'),
+                        'max_desired_lateral_g': launch.substitutions.LaunchConfiguration('max_desired_lateral_g')
                     }],
                 ),
                 Node(
@@ -339,6 +409,9 @@ def generate_launch_description():
                         'ff_a2': launch.substitutions.LaunchConfiguration('ff_a2'),
                         'time_to_max_brake': launch.substitutions.LaunchConfiguration('time_to_max_brake'),
                         'max_desired_lateral_g': launch.substitutions.LaunchConfiguration('max_desired_lateral_g'),
+                        'anti_windup_method': launch.substitutions.LaunchConfiguration('anti_windup_method'),
+                        'pid_output_max': launch.substitutions.LaunchConfiguration('pid_output_max'),
+                        'pid_output_min': launch.substitutions.LaunchConfiguration('pid_output_min'),
                     }],
                 ),
                 Node(
@@ -453,25 +526,27 @@ def generate_launch_description():
                     executable='avt_341_grid_compression_node',
                     name='grid_compression'),
                 GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])), actions=[
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_formation_control_node',
-                        name='formation_control_node',
-                        output='screen',
-                        parameters=[{
-                            'is_leader': idx == 0,
-                            'name': "AGV%d" % (idx+1),
-                            'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
-                            'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type')
-                        }]
-                    ),
+                    # Node(
+                    #     package='avt_341',
+                    #     executable='avt_341_formation_control_node',
+                    #     name='formation_control_node',
+                    #     output='screen',
+                    #     parameters=[{
+                    #         'is_leader': idx == 0,
+                    #         'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
+                    #         'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
+                    #         'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type'),
+                    #         'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
+                    #         'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
+                    #     }]
+                    # ),
                     Node(
                         package='avt_341',
                         executable='avt_341_mission_manager_node',
                         name='mission_manager_node',
                         output='screen',
                         parameters=[{
-                            'name': "AGV%d" % (idx+1),
+                            'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
                             'mission_definition_file': launch.substitutions.LaunchConfiguration('mission_definition_file'),
                             'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type'),
                             'follow_scale_x': launch.substitutions.LaunchConfiguration('follow_scale_x'),
@@ -484,8 +559,16 @@ def generate_launch_description():
                             'offsets_from_leader': launch.substitutions.LaunchConfiguration('offsets_from_leader'),
                             'follower_dist_break': launch.substitutions.LaunchConfiguration('follower_dist_break'),
                             'follower_dot_threshold': launch.substitutions.LaunchConfiguration('follower_dot_threshold'),
-                            'veh_namespaces': launch.substitutions.LaunchConfiguration('veh_namespaces'),
-                            'num_vehicles': launch.substitutions.LaunchConfiguration('num_vehicles')
+                            'veh_namespaces': launch.substitutions.LaunchConfiguration('vehicle_namespaces'),
+                            'toi_approach_dist': launch.substitutions.LaunchConfiguration('toi_approach_dist'),
+                            'toi_encircle_radius': launch.substitutions.LaunchConfiguration('toi_encircle_radius'),
+                            'toi_encircle_degrees': launch.substitutions.LaunchConfiguration('toi_encircle_degrees'),
+                            'toi_encircle_cw': launch.substitutions.LaunchConfiguration('toi_encircle_cw'),
+                            'toi_goal_threshold': launch.substitutions.LaunchConfiguration('goal_dist'),
+                            'add_name_id_to_msg': Invert(launch.substitutions.LaunchConfiguration('add_name_id_to_msg')),
+                            'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
+                            'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
+                            'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
                         }]
                     ),
                     Node(
@@ -496,10 +579,11 @@ def generate_launch_description():
                         parameters=[{
                             'host': launch.substitutions.LaunchConfiguration('host'),
                             'port': launch.substitutions.LaunchConfiguration('port'),
-                            'name': "AGV%d" % (idx+1),
+                            'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
                             'disable_socket_comms': launch.substitutions.LaunchConfiguration('disable_socket_comms'),
                             'broadcast_internal': launch.substitutions.LaunchConfiguration('broadcast_internal'),
-                            'add_name_id_to_msg': launch.substitutions.LaunchConfiguration('add_name_id_to_msg')
+                            'add_name_id_to_msg': launch.substitutions.LaunchConfiguration('add_name_id_to_msg'),
+                            'verbose_comm_log': launch.substitutions.LaunchConfiguration('verbose_comm_log')
                         }]
                     )
                 ])
@@ -523,8 +607,10 @@ def generate_launch_description():
             name='rviz2',
             condition=IfCondition(auto_launch_rviz),
             arguments=["-d", TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
-                                                 false_val=TextSubstitution(text=rviz_config_single_vehicle),
-                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))]
+                                                 false_val=TernarySubstitution(true_val=TextSubstitution(text=rviz_config_two_vehicle),
+                                                                               false_val=TextSubstitution(text=rviz_config_single_vehicle),
+                                                                               condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1']))),
+                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 2'])))]
         )
     ])
 

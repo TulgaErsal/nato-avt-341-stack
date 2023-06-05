@@ -7,29 +7,27 @@ namespace avt_341 {
 namespace mission {
 
 // MoveTo
-WaitUntil::WaitUntil(MissionManager * manager, std::string sender, int id) {
-    mgr = manager;
-    sender_name = sender;
-    msg_id = id;
-    next_task = NULL;
-    set_busy = false;
-    completed = false;
+WaitUntilComplete::WaitUntilComplete(MissionManager * manager, const std::string & sender, int msg_id, const std::string & target_veh, int target_msg_id)
+: Task(manager, sender, msg_id), target_veh_(target_veh), target_msg_id_(target_msg_id) {
 }
 
-void WaitUntil::init() {
-    std::cout << "Wait Until Task initialized" << std::endl;
+void WaitUntilComplete::init_() {
 }
 
-void WaitUntil::run() {
-    std::cout << "Wait Until Task is running" << std::endl;
+void WaitUntilComplete::run() {
 }
 
-bool WaitUntil::is_done() {
-    return false;
+bool WaitUntilComplete::is_done() {
+    return mgr->hasCompletedTask(target_veh_, target_msg_id_);
 }
 
-void WaitUntil::on_done() {
-    std::cout << "Wait Until Task is completed" << std::endl;
+void WaitUntilComplete::on_done() {
+}
+
+std::string WaitUntilComplete::description() const{
+  std::ostringstream stream;
+  stream << "ID " << msg_id << " WAIT_UNTIL_COMPLETE: " << target_veh_ << " " << target_msg_id_;
+  return stream.str();
 }
 
 } // mission 

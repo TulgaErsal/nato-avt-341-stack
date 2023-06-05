@@ -3,10 +3,10 @@
 namespace avt_341 {
 namespace mission {
 
-FormationSpeedController::FormationSpeedController(FormationDefinition & formation_def,
+FormationSpeedController::FormationSpeedController(const std::string & my_name,
                                                    const FormationSpeedControlParams & params,
                                                    std::shared_ptr<avt_341::node::NodeProxy> node_proxy)
-                         : my_name_(formation_def.my_name), formation_def_(formation_def), fsc_params_(params), node_proxy_(node_proxy) {
+                         : my_name_(my_name), fsc_params_(params), node_proxy_(node_proxy) {
 
   if(fsc_params_.debug_visualize){
     marker_pub_ = node_proxy_->create_publisher<avt_341::msg::Marker>("avt_341/formation_visualize", 1);
@@ -15,7 +15,7 @@ FormationSpeedController::FormationSpeedController(FormationDefinition & formati
 
 avt_341::msg::PoseStamped FormationSpeedController::getFollowerTargetPose(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status){
   Vec2d leaderVx, leaderVy;
-  OdomToForwardRightVectors(leader_odom, leaderVx, leaderVy);
+  PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
   double leaderYoffset = status.y_offset;
   double leaderXoffset = status.x_offset;
   avt_341::msg::PoseStamped target_pose;
@@ -29,10 +29,21 @@ avt_341::msg::PoseStamped FormationSpeedController::getFollowerTargetPose(avt_34
   return target_pose;
 }
 
-double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::msg::Odometry> & formation_poses) {
+double FormationSpeedController::getSpeedFactor(const FormationDefinition* formation_def, const avt_341::msg::PoseStamped & terminal_pose, std::map<std::string, avt_341::msg::Odometry> & formation_poses) {
+
+  if(formation_def == nullptr || !formation_def->has_formation()){
+    if(formation_poses.find(my_name_) == formation_poses.end()){
+      return 1.0;
+    }
+    auto current_pos = formation_poses[my_name_].pose.pose.position;
+    double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
+    visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
+    return 1.0;
+  }
+
   if (formation_poses.find(my_name_) == formation_poses.end()) {
-    std::cout << "FormationSpeedController::getSpeedFactor: my_name_ not found in formation_poses " << my_name_ << std::endl;
-    return 0.0;
+    std::cout << "FormationSpeedController " <<  my_name_ << " not found in formation_poses " << std::endl;
+    return 1.0;
   }
 
   // loop through formation_poses, get pose target
@@ -41,13 +52,13 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
   std::map<std::string, avt_341::msg::PoseStamped> target_poses;
 
   int first_oof_idx = -1;
-  const std::string leader_name = formation_def_.leaderName();
-  bool is_leader = formation_def_.isLeader();
-  bool is_column = formation_def_.isColumn();
+  const std::string leader_name = formation_def->leaderName();
+  bool is_leader = formation_def->isLeader();
+  bool is_column = formation_def->isColumn();
   bool self_out_of_formation = false;
-  int my_index = formation_def_.formationIndex();
-  std::string followed_vehicle = formation_def_.followedVehicle();
-  std::vector<std::string> formation_vehicle_names = formation_def_.orderedVehicles();
+  int my_index = formation_def->formationIndex();
+  std::string followed_vehicle = formation_def->followedVehicle();
+  std::vector<std::string> formation_vehicle_names = formation_def->orderedVehicles();
 
   // Populate target_poses, out_formation_veh, first_oof_idx, delta_pos_map
   // ==========================================================================================
@@ -55,9 +66,9 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
     // if not leader
     if (veh_name != leader_name) {
       int veh_index;
-      const auto formation_status = formation_def_.commToFollowerStatus(veh_name, veh_index);
+      const auto formation_status = formation_def->commToFollowerStatus(veh_name, veh_index);
       std::string followed_vehicle_i;
-      if (formation_def_.offsets_from_leader || veh_index == 0 || !is_column) {
+      if (formation_def->params.offsets_from_leader || veh_index == 0 || !is_column) {
         followed_vehicle_i = leader_name;
       } else {
         followed_vehicle_i = formation_vehicle_names[veh_index - 1];
@@ -80,14 +91,25 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
     }
   }
 
+  target_poses[leader_name] = formation_def->goal;
+  delta_pos_map[leader_name] = PosePlanarDistance(target_poses[leader_name].pose.position, formation_poses[leader_name].pose.pose.position);
+
   double speed_factor = 1.0;
+
+  if(formation_def->formationAtGoal()){
+    if (fsc_params_.debug_visualize) {
+      visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_],
+                               formation_poses[my_name_].pose.pose.position, false, false);
+    }
+    return speed_factor;
+  }
 
   // Calculate speed factor if at least one vehicle out of formation
   // ==========================================================================================
   if ((is_column || !self_out_of_formation) && !out_formation_veh.empty() && out_formation_veh[0] != my_name_) {
     std::string first_oof = out_formation_veh[0];
 
-    if (formation_def_.offsets_from_leader) {
+    if (formation_def->params.offsets_from_leader) {
       double distance_to_self = PosePlanarDistance(formation_poses[first_oof].pose.pose.position,
                                                    formation_poses[my_name_].pose.pose.position);
       // speed control IF: In formation or own vehicle close to first out of formation vehicle
@@ -111,6 +133,8 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
 
   // Dot product heading filter
   // ==========================================================================================
+  bool heading_filter_on = false;
+  bool follower_dist_break_on = false;
   if(!is_leader && followed_vehicle != leader_name){
     utils::vec2 followed_dir;
     auto followed_target_pos = target_poses[followed_vehicle].pose.position;
@@ -127,13 +151,16 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
     const float dir_mag = my_dir.mag();
     my_dir.normalize();
 
-    if(utils::dot(my_dir, followed_dir) < fsc_params_.follower_dot_threshold || dir_mag < fsc_params_.follower_dist_break) {
+    heading_filter_on = dir_mag < fsc_params_.follower_dot_range && utils::dot(my_dir, followed_dir) < fsc_params_.follower_dot_threshold;
+    follower_dist_break_on = dir_mag < fsc_params_.follower_dist_break;
+    if(heading_filter_on || follower_dist_break_on) {
       speed_factor = 0.0;
     }
   }
 
   if (fsc_params_.debug_visualize) {
-    visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_], formation_poses[my_name_].pose.pose.position);
+    visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_],
+                             formation_poses[my_name_].pose.pose.position, heading_filter_on, follower_dist_break_on);
   }
 
   return speed_factor;
@@ -141,7 +168,8 @@ double FormationSpeedController::getSpeedFactor(std::map<std::string, avt_341::m
 
 void FormationSpeedController::visualizeSpeedIndicators(double speed_factor, double delta_pos,
                                                         const avt_341::msg::PoseStamped &target_pose,
-                                                        const avt_341::msg::Point &current_pos) {
+                                                        const avt_341::msg::Point &current_pos,
+                                                        bool heading_filter_on, bool follower_dist_break_on) {
 
   std::string str1 = "map";
   std::string str2 = my_name_ + "_target";
@@ -172,6 +200,14 @@ void FormationSpeedController::visualizeSpeedIndicators(double speed_factor, dou
   out.precision(2);
   out << std::fixed;
   out << "(" << delta_pos << ", " << speed_factor << ")";
+
+  if(heading_filter_on) {
+    out << " [H]";
+  }
+
+  if(follower_dist_break_on) {
+    out << (heading_filter_on ? " " : "") << "[D]";
+  }
 
   marker.text = out.str();
   marker.pose.position.x = current_pos.x;

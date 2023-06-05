@@ -10,12 +10,17 @@ typedef float TQuat[4];
 
 void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R);
 void NormalizeVec2D(Vec2d &v);
-void OdomToForwardRightVectors(const avt_341::msg::Odometry & odom, Vec2d &vx, Vec2d &vy);
+void PoseToForwardRightVectors(const avt_341::msg::Pose & pose, Vec2d &vx, Vec2d &vy);
+bool IsClose(const avt_341::msg::Pose & p1, const avt_341::msg::Pose & p2, double threshold);
 
-inline double PosePlanarDistance(const avt_341::msg::Point & p1, const avt_341::msg::Point & p2){
+inline double PosePlanarDistanceSq(const avt_341::msg::Point & p1, const avt_341::msg::Point & p2){
   double dx = p1.x - p2.x;
   double dy = p1.y - p2.y;
-  return sqrt(dx*dx + dy*dy);
+  return dx*dx + dy*dy;
+}
+
+inline double PosePlanarDistance(const avt_341::msg::Point & p1, const avt_341::msg::Point & p2) {
+  return sqrt(PosePlanarDistanceSq(p1, p2));
 }
 
 class FormationSpeedControlType {

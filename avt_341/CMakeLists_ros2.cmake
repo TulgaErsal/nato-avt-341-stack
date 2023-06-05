@@ -32,6 +32,10 @@ X11
 )
 endif()
 
+if($ENV{ROS_DISTRO} STREQUAL "humble")
+add_definitions(-DROS_HUMBLE)
+endif()
+
 set(dependencies
         rclcpp
         sensor_msgs
@@ -67,6 +71,7 @@ ament_target_dependencies(path_manager_node ${dependencies})
 add_executable(avt_341_mission_manager_node
     src/mission/mission_manager_node.cpp
     src/mission/mission_manager.cpp
+    src/mission/task.cpp
     src/mission/task_encircle.cpp
     src/mission/task_follow.cpp
     src/mission/task_moveto.cpp
@@ -74,6 +79,7 @@ add_executable(avt_341_mission_manager_node
     src/mission/formation_utils.cpp
     src/mission/formation_definition.cpp
     src/mission/formation_speed_control.cpp
+    src/mission/formation_path_generator.cpp
     src/node/node_proxy.cpp
 )
 ament_target_dependencies(avt_341_mission_manager_node ${dependencies})

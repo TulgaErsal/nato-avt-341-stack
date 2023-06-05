@@ -3,7 +3,11 @@
 #ifdef ROS_1
 
 #else
-#include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+  #ifdef ROS_HUMBLE
+  #include "tf2_sensor_msgs/tf2_sensor_msgs.hpp"
+  #else
+  #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+  #endif
 #endif
 
 namespace avt_341 {

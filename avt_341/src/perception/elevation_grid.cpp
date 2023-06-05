@@ -188,5 +188,10 @@ float ElevationGrid::Slope(const Cell &cell) const {
   return cell.height()/res_;
 }
 
+void ElevationGrid::Reset(){
+  ClearGrid();
+  clearing_method_->Reset();
+}
+
 } // namespace perception
 } //namespace avt_341

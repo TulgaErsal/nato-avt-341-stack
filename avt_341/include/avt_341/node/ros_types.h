@@ -63,6 +63,8 @@ namespace avt_341 {
         using PoseStamped = geometry_msgs::PoseStamped;
         using PoseStampedPtr = const geometry_msgs::PoseStamped::ConstPtr &;
 
+        using Pose = geometry_msgs::Pose;
+
         using PointStamped = geometry_msgs::PointStamped;
         using PointStampedPtr = const geometry_msgs::PointStamped::ConstPtr &;
 
@@ -180,6 +182,8 @@ namespace avt_341 {
 
     using PoseStamped = geometry_msgs::msg::PoseStamped;
     using PoseStampedPtr = geometry_msgs::msg::PoseStamped::SharedPtr;
+
+    using Pose = geometry_msgs::msg::Pose;
 
     using PointStamped = geometry_msgs::msg::PointStamped;
     using PointStampedPtr = const geometry_msgs::msg::PointStamped::SharedPtr;

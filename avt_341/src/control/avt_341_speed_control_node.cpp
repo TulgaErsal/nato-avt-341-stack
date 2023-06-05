@@ -53,6 +53,11 @@ void StateCallback(avt_341::msg::Int32Ptr rcv_state){
   if (current_run_state==avt_341::utils::NavStackState::Shutdown)shutdown_condition = true;
 }
 
+bool reset_called = false;
+void ResetCallback(avt_341::msg::Int32Ptr msg){
+  reset_called = true;
+}
+
 int main(int argc, char *argv[]){
   auto n = avt_341::node::init_node(argc,argv,"avt_341_control_node");
 
@@ -68,8 +73,7 @@ int main(int argc, char *argv[]){
   auto desired_speed_factor_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed_factor",1,DesiredSpeedFactorCallback);
 
   auto desired_steer_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/cmd_steer",1,DesiredSteerCallback);
-
-  avt_341::control::PidController controller;
+  auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
 
   // The PID params are tuned with this value in mind
   // so it's not a good idea to change it
@@ -79,8 +83,9 @@ int main(int argc, char *argv[]){
   bool use_feed_forward;
 	float throttle_coeff, time_to_max_brake;
   float throttle_kp, throttle_ki, throttle_kd;
-	std::string display;
+	std::string display, anti_windup_method;
   float vehicle_max_steer_angle_degrees;
+  double output_max, output_min;
   n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
   n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0f);
   n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0f);
@@ -92,21 +97,23 @@ int main(int argc, char *argv[]){
   n->get_parameter("~throttle_kp", throttle_kp, 0.462f);
   n->get_parameter("~throttle_ki", throttle_ki, 0.222f);
   n->get_parameter("~throttle_kd", throttle_kd, 0.24f);
+  n->get_parameter("~pid_output_max", output_max, 1.0);
+  n->get_parameter("~pid_output_min", output_min, 0.0);
+  n->get_parameter("~anti_windup_method", anti_windup_method, avt_341::control::AntiWindupMethod::ResetOnSetpoint);
   n->get_parameter("~display", display, std::string("none"));
-  bool turn_off_velocity_overshoot_corrector;
-  n->get_parameter("~turn_off_velocity_overshoot_corrector", turn_off_velocity_overshoot_corrector, false);
+
+  avt_341::control::PidController controller(anti_windup_method, output_min, output_max);
+
+  n->log_info("PID Values:\n  kp=%.2f\n  ki=%.2f\n  kd=%.2f\n  anti_windup_method=%s", throttle_kp, throttle_ki, throttle_kd, anti_windup_method.c_str());
 
   controller.SetKp(throttle_kp);
   controller.SetKi(throttle_ki);
   controller.SetKd(throttle_kd);
+  controller.SetUseFeedForward(use_feed_forward);
   if (use_feed_forward){
-    controller.SetUseFeedForward(true);
     controller.SetForwardModelParams(ff_a0, ff_a1, ff_a2);
   }
-  
-  if (turn_off_velocity_overshoot_corrector){
-    controller.SetOvershootLimiter(false);
-  }
+
 
   bool display_rviz = display == "rviz";
   auto next_waypoint_pub = display_rviz ? n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1) : nullptr;
@@ -122,6 +129,11 @@ int main(int argc, char *argv[]){
   while (avt_341::node::ok()){
     avt_341::msg::Twist dc;
     bool time_to_quit = false;
+
+    if(reset_called){
+      controller.Reset();
+      reset_called = false;
+    }
 
     // tell the controller the current vehicle state
     float vel = 0.0f;

@@ -127,6 +127,7 @@ class ElevationGrid : public CellObstacleCalculator{
         grid_dilate_proportion_ = grid_dilate_proportion;
     }
 
+    void Reset();
 
   private:
     uint8_t GetGridCellValue(const Cell & cell) const;

@@ -15,8 +15,17 @@
 namespace avt_341 {
 namespace control{
 
+class AntiWindupMethod{
+public:
+  const static std::string ResetOnSetpoint;
+  const static std::string OutputClamping;
+  const static std::string Disabled;
+};
+
+
 class PidController{
  public:
+  PidController(const std::string & anti_windup_method, double output_min, double output_max);
   PidController();
 
   ~PidController();
@@ -32,7 +41,8 @@ class PidController{
   void SetKd(double kd){kd_ = kd;}
 
   void SetOvershootLimiter(bool osl){ overshoot_limiter_ = osl; }
-  
+  void Reset();
+
   void SetStayPositive(bool sp){ stay_positive_ = sp; }
 
   void SetUseFeedForward(bool uff){ use_feed_forward_ = uff; }
@@ -51,6 +61,7 @@ class PidController{
   double previous_error_;
   double integral_;
   bool overshoot_limiter_;
+  bool output_clamping_;
   bool crossed_setpoint_;
   bool stay_positive_;
 
@@ -60,6 +71,8 @@ class PidController{
   double ff_a2_;
   double ff_a0_;
   std::ofstream fout_;
+  double output_min_;
+  double output_max_;
 };
 
 } // namespace control

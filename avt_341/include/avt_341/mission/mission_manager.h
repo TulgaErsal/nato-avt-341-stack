@@ -23,15 +23,24 @@
 #include "avt_341/mission/formation_utils.h"
 #include "avt_341/mission/formation_definition.h"
 #include "avt_341/mission/formation_speed_control.h"
+#include <deque>
 
 namespace avt_341 {
 namespace mission {
 
 class Task;
 
-struct MissionPoint {
-    std::string name;
-    double pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, rot_w;
+class PriorityType{
+public:
+  static const std::string QUEUE;
+  static const std::string QUEUE_SHORT;
+  static const std::string PREEMPT;
+  static const std::string PREEMPT_SHORT;
+  static const std::string CANCEL_ALL_PREVIOUS;
+  static const std::string CANCEL_ALL_PREVIOUS_SHORT;
+  inline static bool isQueue(const std::string &type) { return type.empty() || type == QUEUE || type == QUEUE_SHORT; }
+  inline static bool isPreempt(const std::string &type) { return type == PREEMPT || type == PREEMPT_SHORT; }
+  inline static bool isCancelAllPrevious(const std::string &type) { return type == CANCEL_ALL_PREVIOUS || type == CANCEL_ALL_PREVIOUS_SHORT; }
 };
 
 struct Contact {
@@ -39,7 +48,6 @@ struct Contact {
     // timestamp, position, class/name, investigated
     avt_341::msg::PoseStamped pose;
     std::string name;
-    float x, y;
     bool investigated;
     bool investigating;
     bool is_new;
@@ -50,7 +58,7 @@ class MissionManager{
 
   public:
     /// Construct a formation controller
-    MissionManager(FormationDefinition & formation_definition, std::shared_ptr<node::NodeProxy> node_proxy);
+    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy, bool add_name_id_to_msg);
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
@@ -58,61 +66,81 @@ class MissionManager{
     bool getMissionPoint(MissionPoint& mission_point, std::string posename);
 
     // internal messages
-    void handleContacts(avt_341::msg::Path);
+    void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
 
     // external messages
-    void handleMoveTo(const avt_341::msg::Communication &);
+    void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
+    bool isMsgForSelf(const avt_341::msg::Communication & msg);
     void handleFormationRequest(avt_341::msg::Communication);
     void handleAcknowledge(const avt_341::msg::Communication &);
     void handleArrive(const avt_341::msg::Communication &);
     void handleTaskComplete(const avt_341::msg::Communication &);
     void handleHold(const avt_341::msg::Communication &);
     void handleSetSpeed(const avt_341::msg::Communication &);
+    void handleOverwatch(const avt_341::msg::Communication &);
 
     std::string my_name;
-    float same_object_distance_threshold_sq;
+    double sodist_threshold;
     avt_341::msg::Odometry odometry;
-    int previous_nav_state, nav_state;
+    avt_341::msg::Odometry leader_odometry;
+    int nav_state;
     float desired_speed;
     bool goal_changed;
     bool arrival_announced;
-    bool busy;	// probably temporary
 
     // Task management
-    Task* getTask();
-    Task* getNextTask();
     void updateTasks();
     void postUpdateTasks();
-    bool setActiveTask(Task * task);
-    bool addTask(Task * task);
-    void publishPath(avt_341::msg::Path& path);
+    bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
+    void publishPath(const avt_341::msg::Path& path);
+    void publishGoal(const avt_341::msg::PoseStamped & target_pose);
     void publishNavStateCmd(int state);
+    void publishGpToggle(int state);
     void publishCommStr(const std::string & msg_data);
+    void publishArrival(const std::string & sender_name, const std::string & objective);
+//    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
+    void reset();
+    void resetTaskList(bool send_completion_msg);
+    void handleCancelTask(const avt_341::msg::Communication & msg);
+    void handleCancelAllTask(const avt_341::msg::Communication & msg);
+    void cancelTask(int task_id,bool send_completion_msg);
+    void onGoalReached(const avt_341::msg::PoseStamped & pose);
+    bool hasCompletedTask(const std::string & target_veh, int target_msg_id) const;
+    bool hasArrival(const std::string & target_veh, const std::string & objective) const;
 
-    FormationDefinition & formation_def;
+    Task* currentTask();
+    avt_341::msg::PoseStamped current_gp_goal;
 
   private:
 
+    const FormationParameters & formation_params;
+    const ToiParameters & toi_params_;
     std::vector<MissionPoint> mission_data;
-    Task * active_task;
-    std::vector<Task*> mission_tasks;
-    std::vector<Task*> task_list;
-    std::vector<Task*> completed_tasks;
+    std::vector<MissionPoint> overwatch_positions;
+    std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
+    bool add_name_id_to_msg_;
 
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
+    int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
+    std::vector<avt_341::msg::Communication> task_completions_;
+    std::vector<avt_341::msg::Communication> arrivals_;
+
+//    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> gp_path_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> gp_toggle_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> communication_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
 
     // Methods
-    auto getContact(std::string name, float x, float y);
-    auto getClosestNewContact(float veh_x, float veh_y);
-    void addContact(std::string name, float x, float y);
-    bool close(float x, float y, float n_x, float n_y);
-    float distance_sq(float x1, float y1, float x2, float y2);
+    bool hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
+    auto getClosestNewContact();
+    MissionPoint getClosestOverwatch();
+    void addContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
+    void publishTaskCompletion(Task * task);
+    void publishTaskCompletion(const std::string & sender_name, int msg_id);
 
 }; // class mission manager
 

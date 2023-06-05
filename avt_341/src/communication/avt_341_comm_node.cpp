@@ -23,10 +23,13 @@ std::queue<std::string> pending_msgs;
 char message[256] = { 0 };
 std::string my_name;
 std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
+bool verbose_comm_log = false;
 
 void MessageCallback(avt_341::msg::StringPtr msg) {
     pending_msgs.push(msg->data);
-    nh->log_info("Received %s to broadcast.", msg->data.c_str());
+    if(verbose_comm_log){
+      nh->log_info("Received %s to broadcast.", msg->data.c_str());
+    }
 }
 
 avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
@@ -37,7 +40,8 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     message.sender_name = tokens[0];
     message.msg_id = atoi(tokens[1].c_str());
     message.type = tokens[2];
-    
+    message.priority_type = "Q";
+
     // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>
     if(message.type == "FORM") {
         message.formation = tokens[3];
@@ -47,6 +51,23 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
         message.follower3_name = tokens[7];
         message.objective_name = tokens[8];
         message.desired_speed = tokens[9];
+        message.x_scale = -1.0;
+        message.y_scale = -1.0;
+        message.x_offset = 0.0;
+        message.y_offset = 0.0;
+        message.distance = 0.0;
+
+        if(tokens.size() == 11) {
+            message.priority_type = tokens[10];
+        }else if(tokens.size() > 11) {
+            message.x_scale = std::stod(tokens[10]);
+            message.y_scale = std::stod(tokens[11]);
+            message.x_offset = std::stod(tokens[12]);
+            message.y_offset = std::stod(tokens[13]);
+            message.distance = std::stod(tokens[14]);
+            message.termination_method = tokens[15];
+            message.priority_type = tokens[16];
+        }
     } 
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
     else if(message.type == "ACK") {          
@@ -66,6 +87,17 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     else if(message.type == "MOVETO") {
         message.receiver_name = tokens[3];
         message.objective_name = tokens[4];
+        message.x_offset = 0.0;
+        message.y_offset = 0.0;
+        message.distance = 0.0;
+        if(tokens.size() == 6) {
+          message.priority_type = tokens[5];
+        }else if(tokens.size() > 6){
+          message.x_offset = std::stod(tokens[5]);
+          message.y_offset = std::stod(tokens[6]);
+          message.distance = std::stod(tokens[7]);
+          message.priority_type = tokens[8];
+        }
     } 
     // <sender>,<msg_id>,SHUTDOWN,<receiver>
     else if(message.type == "SHUTDOWN") {
@@ -75,6 +107,17 @@ avt_341::msg::Communication packageMessage(std::vector<std::string> tokens) {
     else if(message.type == "SET_SPEED") {
         message.receiver_name = tokens[3];
         message.desired_speed = tokens[4];
+    }
+    else if(message.type == "CANCEL") {
+      message.receiver_name = tokens[3];
+      message.target_msg_id = atoi(tokens[4].c_str());
+    }
+    else if(message.type == "CANCEL_ALL") {
+      message.receiver_name = tokens[3];
+    }
+    else if(message.type == "OVERWATCH") {
+      message.receiver_name = tokens[3];
+      message.target_msg_id = atoi(tokens[4].c_str());
     }
     
     return message;
@@ -101,7 +144,7 @@ int main(int argc, char* argv[])
 
     // Set up subscriptions
     // Subscribe to avt_341/comm_messages to catch messages that should be relayed to the network
-    auto msg_sub = nh->create_subscription<avt_341::msg::String>("avt_341/comm_messages", 1, MessageCallback);
+    auto msg_sub = nh->create_subscription<avt_341::msg::String>("avt_341/comm_messages", 10, MessageCallback);
 
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::msg::Communication>("avt_341/recv_comms", 10);
@@ -119,9 +162,10 @@ int main(int argc, char* argv[])
     nh->get_parameter("~disable_socket_comms", disable_socket_comms, false);
     nh->get_parameter("~broadcast_internal", broadcast_internal, false);
     nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, true);
+    nh->get_parameter("~verbose_comm_log", verbose_comm_log, true);
 
-    nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_internal: %d",
-                 hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_internal);
+    nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_internal: %d, add_name_id_to_msg: %d",
+                 hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_internal, add_name_id_to_msg);
 
     // Create the socket
     std::shared_ptr<avt_341::communication::TcpSocketClientBase> client = nullptr;
@@ -159,7 +203,9 @@ int main(int argc, char* argv[])
                 next_msg = stream.str();
             }
 
-            nh->log_info("Broadcasting %s", next_msg.c_str());
+            if(verbose_comm_log){
+              nh->log_info("Broadcasting %s", next_msg.c_str());
+            }
 
             strcpy(buffer, next_msg.c_str());
             int n = client->write(buffer, strlen(buffer));
@@ -176,7 +222,9 @@ int main(int argc, char* argv[])
         if(client->read_available(buffer, 256) > 0)
         {
             std::string buffer_str = std::string(buffer);
-            nh->log_info("Read %s", buffer_str.c_str());
+            if(verbose_comm_log){
+              nh->log_info("Read %s", buffer_str.c_str());
+            }
             packed_msg = packageMessage(tokenize_msg(buffer_str));
             msg_pub->publish(packed_msg);
         }

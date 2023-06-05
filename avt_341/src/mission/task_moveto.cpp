@@ -4,116 +4,150 @@
 #include <iostream>
 
 #include "avt_341/mission/task.h"
+#include "avt_341/avt_341_utils.h"
+#include "avt_341/mission/formation_utils.h"
 
 namespace avt_341 {
 namespace mission {
 
+const std::string MoveTo::NONE = "NONE";
+const std::string MoveTo::POSE = "POSE";
+const std::string MoveTo::MISSION_POINT = "MISSION_POINT";
+const std::string MoveTo::CONTACT = "CONTACT";
+const std::string MoveTo::ACTOR = "ACTOR";
+
 // MoveTo
-MoveTo::MoveTo(MissionManager* manager, std::string sender, int id) {
-    mgr = manager;
-    sender_name = sender;
-    msg_id = id;
-    next_task = NULL;
-    goal_type = 0;
-    arrived = false;
-    name="TEMP_NAME";
-    goal.pose.position.x = 0.0;
-    goal.pose.position.y = 0.0;
-    goal.pose.position.z = 0.0;
-    goal.pose.orientation.x = 0.0;
-    goal.pose.orientation.y = 0.0;
-    goal.pose.orientation.z = 0.0;
-    goal.pose.orientation.w = 1.0;
-    set_busy = false;
+MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def,
+               double x_offset, double y_offset, double d_approach)
+: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), d_approach_(d_approach) {
+    setGoalInternal(avt_341::msg::PoseStamped(), "", MoveTo::NONE);
+    terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
 }
 
-bool MoveTo::setGoalByPose(float x, float y, float z, float rot_x, float rot_y, float rot_z, float rot_w) {
-    goal_type = POSE;
-    goal.pose.position.x = x;
-    goal.pose.position.y = y;
-    goal.pose.position.z = z;
-    goal.pose.orientation.x = rot_x;
-    goal.pose.orientation.y = rot_y;
-    goal.pose.orientation.z = rot_z;
-    goal.pose.orientation.w = rot_w;
-    std::ostringstream stream;
-    stream << "POSE_" << x << "_" << y;
-    name = stream.str();
-    return true;
+bool MoveTo::setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type){
+  goal_type = pose_type;
+  name = name_in;
+  goal = pose;
+  arrived = false;
+  applyOffset();
+  return true;
+}
+
+void MoveTo::applyOffset(){
+  Vec2d vx, vy;
+  PoseToForwardRightVectors(goal.pose, vx, vy);
+  goal.pose.position.x = goal.pose.position.x + vx[0]*x_offset_ + vy[0]*y_offset_;
+  goal.pose.position.y = goal.pose.position.y + vx[1]*x_offset_ + vy[1]*y_offset_;
+}
+
+bool MoveTo::setGoalByContact(const Contact & contact) {
+  return setGoalInternal(contact.pose, contact.name, MoveTo::CONTACT);
+}
+
+bool MoveTo::setGoalByPose(const avt_341::msg::PoseStamped & pose) {
+  return setGoalInternal(pose, "pose", MoveTo::POSE);
 }
 
 bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
-    goal_type = MISSION_POINT;
     MissionPoint target;
-    bool validPoint = mgr->getMissionPoint(target, mp_name);
-    if(validPoint) {
-        goal.pose.position.x = target.pos_x;
-        goal.pose.position.y = target.pos_y;
-        goal.pose.position.z = target.pos_z;
-        goal.pose.orientation.x = target.rot_x;
-        goal.pose.orientation.y = target.rot_y;
-        goal.pose.orientation.z = target.rot_z;
-        goal.pose.orientation.w = target.rot_w;
-        name = mp_name;
-        return true;
+    if(mgr->getMissionPoint(target, mp_name)) {
+        avt_341::msg::PoseStamped pose;
+        pose.pose.position.x = target.pos_x;
+        pose.pose.position.y = target.pos_y;
+        pose.pose.position.z = target.pos_z;
+        pose.pose.orientation.x = target.rot_x;
+        pose.pose.orientation.y = target.rot_y;
+        pose.pose.orientation.z = target.rot_z;
+        pose.pose.orientation.w = target.rot_w;
+        return setGoalInternal(pose, mp_name, MoveTo::MISSION_POINT);
     } else {
         std::cout << "Pose " << mp_name << " not found in mission data!" << std::endl;
         return false;
     }
 }
 
-void MoveTo::init() {
+void MoveTo::applyApproachDistance(){
+  if(d_approach_ > 0.0){
+    avt_341::msg::Pose current_pose = mgr->odometry.pose.pose;
+    auto unit_vect = avt_341::utils::vec2(goal.pose.position.x - current_pose.position.x, goal.pose.position.y - current_pose.position.y);
+    unit_vect.normalize();
+    target_pose.pose.position.x = goal.pose.position.x - unit_vect.x*d_approach_;
+    target_pose.pose.position.y = goal.pose.position.y - unit_vect.y*d_approach_;
+  }
 
-    avt_341::msg::Path path_msg;
-    path_msg.poses.clear();
-    path_msg.poses.push_back(goal);
-    mgr->publishPath(path_msg);
+}
 
+void MoveTo::init_() {
+    target_pose = goal;
+
+    applyApproachDistance();
+    mgr->publishGoal(target_pose);
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
+    mgr->publishGpToggle(1);
 
-    if(set_busy) {
-        mgr->busy = true;
-    }
+//    if(formation_def_ == nullptr){
+//      // TODO: Need to publish formation def with is_leader to turn off formation_controller from auto-publishing path...
+//      // TODO: Should find better way to disable formation controller, maybe just put it's logic in FollowTask, since only place it is relevant
+//      avt_341::msg::FollowerStatus fs;
+//      fs.use_leader = false;
+//      mgr->publishFormationStatus(fs);
+//    }
+//
+//    if(formation_def_ != nullptr && !formation_def_->formationAtGoal()){
+//      mgr->publishFormationStatus(formation_def_->formation_status);
+//    }
+
 }
 
 void MoveTo::run() {
-    // get current position
-    // calculate distance from goal
-    if(mgr->previous_nav_state == 0 && mgr->nav_state == 1) 
-    {
-        // we've reached a goal and are stopping
-        // TODO: Check distance b/c we could be stopping for _any_ reason
-        std::cout << mgr->my_name << " detected change in nav_state from active to stopping - assuming arriving at goal" << std::endl;
-        arrived = true;
-    }
+  // Need to recalculate if approach distance set or keep publishing to gp if did not receive callback yet
+  if(d_approach_ > 0.0){
+    applyApproachDistance();
+    mgr->publishGoal(target_pose);
+  }else if (PosePlanarDistance(mgr->current_gp_goal.pose.position, target_pose.pose.position) > 1.0){
+    mgr->publishGoal(target_pose);
+  }
+  // Nothing to do per timestep but wait for goal to be reached
 }
 
 bool MoveTo::is_done() {
+    if(terminate_on_all_arrived_){
+      bool all_arrived = true;
+      for(const auto & veh : formation_def_->orderedVehicles()){
+        all_arrived = all_arrived && mgr->hasArrival(veh, "TASK_" + std::to_string(msg_id));
+      }
+      return all_arrived;
+    }
     return arrived;
 }
 
 void MoveTo::on_done() {
-
     // announce arrival
     std::ostringstream stream;
     stream << "ARRIVE," << name;
     mgr->publishCommStr(stream.str());
+}
 
-    // update contact investigation status
-    if(goal_type == CONTACT) {
-        if(contact != nullptr) {
-            contact->investigated = true;
-        }
-    }
-
-    completed = true;
-    mgr->busy = false;
+void MoveTo::onPreempt(){
+  init_done = false;
 }
 
 std::string MoveTo::description() const {
   std::ostringstream stream;
-  stream << "TASK-MOVE_TO: goal_type=" << goal_type << ", name=" << name;
+  stream << "ID " << msg_id << " MOVE_TO: " << goal_type << " " << name << " (" << goal.pose.position.x << "," << goal.pose.position.y << ") " << "off=(" << x_offset_ << "," << y_offset_ << ")" << " d=" << d_approach_;
   return stream.str();
+}
+
+void MoveTo::onGoalReached(const avt_341::msg::PoseStamped & pose){
+  bool goal_reached = std::abs(target_pose.pose.position.x - pose.pose.position.x + target_pose.pose.position.y - pose.pose.position.y) < 1.0;
+  if(!arrived && goal_reached){
+    mgr->publishArrival(mgr->my_name, "TASK_" + std::to_string(msg_id));
+  }
+  arrived = arrived || goal_reached;
+}
+
+avt_341::msg::PoseStamped MoveTo::terminalPose() const{
+  return target_pose;
 }
 
 } // mission 

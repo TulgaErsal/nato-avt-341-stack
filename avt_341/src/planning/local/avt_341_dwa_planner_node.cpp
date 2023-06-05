@@ -28,6 +28,7 @@ bool rcvd_odom = false;
 bool rcvd_grid_occ = false;
 bool rcvd_grid_seg = false;
 bool rcvd_path = false;
+bool reset_called = false;
 
 // Initialise ROS node parameters.
 unsigned int loop_count = 0;
@@ -161,6 +162,10 @@ UpdateGrids(avt_341::planning::DwaPlanner& planner) {
     }
 }
 
+void ResetCallback(avt_341::msg::Int32Ptr msg){
+  reset_called = true;
+}
+
 int
 main(int argc, char* argv[]) {
     // Initialize ROS node.
@@ -172,6 +177,7 @@ main(int argc, char* argv[]) {
     auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, CallbackGridSegmentation);
     auto sub_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, CallbackPath);
     auto sub_waypoints = node->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, CallbackWaypoints);
+    auto reset_sub = node->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
 
     // Create node publishers.
     auto pub_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
@@ -272,6 +278,11 @@ main(int argc, char* argv[]) {
             avt_341::msg::Float64 msg_ctrl_steer;
             msg_ctrl_steer.data = steer;
             pub_ctrl_steer->publish(msg_ctrl_steer);
+        }
+
+        if(reset_called){
+          planner.Reset();
+          reset_called = false;
         }
 
         // Advance the sequence counter.

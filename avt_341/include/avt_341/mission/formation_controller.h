@@ -42,18 +42,24 @@ class FormationController{
 	/// Set the follower dist gain. This controls how aggressively the vehicle closes ground, equavilent to the "P" in PID
 	void SetFollowerDistGain(float gain){follower_dist_gain_ = gain;}
 
-  void SetUseBreadcrumbs(float gain){follower_dist_gain_ = gain;}
+  void SetXOffsetOnPath(bool x_offset_on_path){x_offset_on_path_ = x_offset_on_path;}
+
+	void SetFormationPruneGP(bool prune){prune_global_path_ = prune;}
+
+  void ClearDesiredGlobalPath();
 
 	/// Get the current desired global path
 	avt_341::msg::Path GetPath(){return desired_global_path_; }
 
 	/// Get the current desired speed in m/s
 	avt_341::msg::Float64 GetSpeed(){avt_341::msg::Float64 ds; ds.data = desired_speed_; return ds; }
+  void Reset();
 
   private:
 
 	// Method to generate global path based on formation
-  void GenerateLeaderPath(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
+  void GenerateLeaderPath(const avt_341::msg::Odometry & leader_odom, const avt_341::msg::Odometry & odom,
+													avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
   // Method to calculate desired speed based on formation
 	void CalculateFollowerSpeed(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
@@ -65,7 +71,10 @@ class FormationController{
 
 	// outputs / messages published
 	avt_341::msg::Path desired_global_path_;
+	avt_341::msg::Path leader_path_history_;
 	float desired_speed_;
+  bool x_offset_on_path_;
+	bool prune_global_path_;
 
 	// utility functions and intermediate calculations
 	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);

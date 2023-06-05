@@ -13,31 +13,60 @@ struct FormationOffsets {
   avt_341::msg::Point follower3;
 };
 
-class FormationDefinition {
+struct MissionPoint {
+  std::string name;
+  double pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, rot_w;
+};
 
-public:
-
-
-  FormationDefinition(const std::string &my_name_in, float follow_scale_x_in, float follow_scale_y_in, bool offsets_from_leader_in, int num_vehicles_in);
-  FormationDefinition();
-
-  avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx);
-  avt_341::msg::FollowerStatus update(const avt_341::msg::Communication &comm_msg);
-  FormationOffsets getOffsets(const std::string &formation);
-
-  inline bool isLeader() const { return leaderName() == my_name; }
-  inline std::string formationType() const { return current_formation_msg_.formation; }
-  inline std::string leaderName() const { return current_formation_msg_.leader_name; }
-  inline std::string followedVehicle() const { return followed_vehicle_; }
-  inline std::vector<std::string> orderedVehicles() const { return formation_vehicle_names_; }
-  inline int formationIndex() const { return my_index_; }
-  inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
-
+struct FormationParameters{
   std::string my_name;
   float follow_scale_x;
   float follow_scale_y;
   bool offsets_from_leader;
-  int num_vehicles;
+  float follow_goal_threshold;
+  float global_path_points_dist;
+  bool use_breadcrumbs;
+  bool x_offset_on_path;
+  bool prune_global_path;
+};
+
+struct ToiParameters{
+  float approach_dist;
+  float encircle_radius;
+  float encircle_degrees;
+  bool encircle_cw;
+  float goal_threshold;
+};
+
+class FormationDefinition {
+
+public:
+
+  FormationDefinition::FormationDefinition(const FormationParameters & params_in);
+  FormationDefinition(avt_341::msg::Communication &comm_msg, const MissionPoint & mp, const FormationParameters &params_in);
+
+  avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
+  avt_341::msg::FollowerStatus commToFollowerStatus(const avt_341::msg::Communication & comm_msg, const std::string &veh_name, int &out_idx) const;
+  bool update(avt_341::msg::Communication &comm_msg, const MissionPoint & mp);
+  FormationOffsets getOffsets(const std::string &formation) const;
+
+  inline bool isLeader() const { return leaderName() == params.my_name; }
+  inline bool isFollowing() const { return formation_status.use_leader && !formationAtGoal(); }
+  inline bool formationAtGoal() const { return formation_at_goal_; }
+  inline bool has_formation() const { return !current_formation_msg_.formation.empty(); }
+  inline std::string leaderName() const { return current_formation_msg_.leader_name; }
+  inline std::string followedVehicle() const { return followed_vehicle_; }
+  inline std::string terminationMethod() const { return current_formation_msg_.termination_method; }
+  inline std::vector<std::string> orderedVehicles() const { return formation_vehicle_names_; }
+  inline int formationIndex() const { return my_index_; }
+  inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
+
+  bool selfInFormation(const avt_341::msg::Communication &comm_msg);
+  static bool vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name);
+
+  avt_341::msg::FollowerStatus formation_status;
+  avt_341::msg::PoseStamped goal;
+  const FormationParameters &params;
 
 private:
 
@@ -47,6 +76,7 @@ private:
   avt_341::msg::Communication current_formation_msg_;
   std::string followed_vehicle_;
   int my_index_;
+  bool formation_at_goal_;
 };
 
 }

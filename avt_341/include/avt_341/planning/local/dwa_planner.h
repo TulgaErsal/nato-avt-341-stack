@@ -158,6 +158,8 @@ class DwaTrajectory {
             return msg_path;
         }
 
+      void Reset(){ states_.clear(); }
+
     private:
 
         std::vector<DwaState> states_;
@@ -368,6 +370,8 @@ class DwaPlanner {
         void SetUseSegmentation(bool use_segmentation) { use_segmentation_ = use_segmentation; }
 
         void SetVehicleWheelbase(float wheelbase) { wheelbase_ = wheelbase; }
+
+        void Reset();
 
     private:
         void GetObstacles();
