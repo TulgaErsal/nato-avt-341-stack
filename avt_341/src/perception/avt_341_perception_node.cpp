@@ -29,6 +29,7 @@ float overhead_clearance = 100.0f;
 double time_register_window = 0.02;
 bool cull_lidar_points = false;
 float cull_lidar_points_dist_sqr = 10000.0f;
+float cull_lidar_points_dist_min_sqr = 0.0f;
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
 
 double CalcLidarPointToRobotDistanceSquared(const avt_341::msg::Point& odom_pose, const avt_341::msg::Point32& point)
@@ -84,7 +85,8 @@ void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 				{
 					avt_341::msg::Odometry pose_to_use;
 					GetPoseToUse(pose_to_use, rcv_cloud);
-					add_point = CalcLidarPointToRobotDistanceSquared(pose_to_use.pose.pose.position, tp) < cull_lidar_points_dist_sqr;
+          const double point_dist = CalcLidarPointToRobotDistanceSquared(pose_to_use.pose.pose.position, tp);
+          add_point = cull_lidar_points_dist_min_sqr < point_dist && point_dist < cull_lidar_points_dist_sqr;
 				}
 				if(add_point){
 					points.push_back(tp);
@@ -146,8 +148,9 @@ void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 				tp.x = vp.x();
 				tp.y = vp.y();
 				tp.z = vp.z();
+        const double point_dist = CalcLidarPointToRobotDistanceSquared(pose_to_use.pose.pose.position, tp);
 				if ( (tp.z-current_pose.pose.pose.position.z)<overhead_clearance &&
-             		(!cull_lidar_points || CalcLidarPointToRobotDistanceSquared(pose_to_use.pose.pose.position, tp) < cull_lidar_points_dist_sqr)){
+            (!cull_lidar_points || (cull_lidar_points_dist_min_sqr < point_dist && point_dist < cull_lidar_points_dist_sqr))){
 					points.push_back(tp);
 					for(int c = 0; c < point_cloud.channels.size(); c++){
 						channel_values[c].push_back(point_cloud.channels[c].values[p]);
@@ -232,10 +235,12 @@ int main(int argc, char *argv[]) {
 	n->get_parameter("~max_point_age",max_point_age,5.0f);
 	bool filter_highest_lidar;
 	n->get_parameter("~filter_highest_lidar", filter_highest_lidar, false);
-    float cull_lidar_points_dist;
-    n->get_parameter("~cull_lidar", cull_lidar_points, false);
-    n->get_parameter("~cull_lidar_dist", cull_lidar_points_dist, 100.0f);
-    cull_lidar_points_dist_sqr = cull_lidar_points_dist * cull_lidar_points_dist;
+  float cull_lidar_points_dist, cull_lidar_points_dist_min;
+  n->get_parameter("~cull_lidar", cull_lidar_points, false);
+  n->get_parameter("~cull_lidar_dist", cull_lidar_points_dist, 100.0f);
+  n->get_parameter("~cull_lidar_dist_min", cull_lidar_points_dist_min, 0.0f);
+  cull_lidar_points_dist_sqr = cull_lidar_points_dist * cull_lidar_points_dist;
+  cull_lidar_points_dist_min_sqr = cull_lidar_points_dist_min * cull_lidar_points_dist_min;
 
 	grid.SetSlopeThreshold(thresh);
 	grid.SetRes(grid_res);
