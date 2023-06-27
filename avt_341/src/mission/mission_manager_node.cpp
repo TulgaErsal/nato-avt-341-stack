@@ -147,10 +147,10 @@ int main(int argc, char **argv) {
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
-    auto veh1_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[0] + "/avt_341/odometry", 10, VehicleOdometryCallback);
-    auto veh2_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[1] + "/avt_341/odometry", 10, VehicleOdometryCallback);
-    auto veh3_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[2] + "/avt_341/odometry", 10, VehicleOdometryCallback);
-    auto veh4_sub = nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback);
+    auto veh1_sub = !veh_namespaces.empty() ? nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[0] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
+    auto veh2_sub = veh_namespaces.size() > 1 ?  nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[1] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
+    auto veh3_sub = veh_namespaces.size() > 2 ? nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[2] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
+    auto veh4_sub = veh_namespaces.size() > 3 ? nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
     auto reset_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10, GoalReachedCallback);
     auto current_waypoint_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CurrentGoalCallback);
