@@ -52,7 +52,8 @@ namespace avt_341 {
                                                                    const avt_341::msg::PoseStamped &terminal_pose,
                                                                    std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
 
-      if (formation_def == nullptr || !formation_def->has_formation() || formation_poses.find(my_name_) == formation_poses.end()) {
+      if (formation_def == nullptr || !formation_def->has_formation() ||
+        formation_poses.find(my_name_) == formation_poses.end() || formation_def->isLeader()) {
         return 1.0;
       }
 
