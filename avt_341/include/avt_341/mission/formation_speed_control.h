@@ -8,40 +8,78 @@
 #include "avt_341/mission/formation_definition.h"
 
 namespace avt_341 {
-namespace mission {
+  namespace mission {
 
-struct FormationSpeedControlParams {
-  double oof_threshold;
-  double oof_const_term;
-  double oof_lin_slope;
-  double oof_mult;
-  bool debug_visualize;
-  double follower_dist_break;
-  double follower_dot_threshold;
-  double follower_dot_range;
-};
+    struct FormationSpeedControlParams {
+      double oof_threshold;
+      double oof_const_term;
+      double oof_lin_slope;
+      double oof_mult;
+      double max_speed_factor;
+      bool debug_visualize;
+      double follower_dist_break;
+      double follower_dot_threshold;
+      double follower_dot_range;
+    };
 
-class FormationSpeedController {
+    class FormationSpeedController {
 
-public:
+    public:
+      explicit FormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
 
-  FormationSpeedController(const std::string & my_name, const FormationSpeedControlParams &params, std::shared_ptr<avt_341::node::NodeProxy> node_proxy);
+      virtual double
+      getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
+                     std::map<std::string, avt_341::msg::Odometry> &formation_poses) = 0;
 
-  double getSpeedFactor(const FormationDefinition* formation_def, const avt_341::msg::PoseStamped & terminal_pose, std::map<std::string, avt_341::msg::Odometry> & formation_poses);
-  void visualizeSpeedIndicators(double speed_factor, double delta_pos, const avt_341::msg::PoseStamped &target_pose,
-                                const avt_341::msg::Point &current_pos, bool heading_filter_on, bool follower_dist_break_on);
+    protected:
+      const FormationSpeedControlParams & fsc_params_;
+      std::string my_name_;
 
-private:
-  avt_341::msg::PoseStamped getFollowerTargetPose(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status);
+      avt_341::msg::PoseStamped
+      getFollowerTargetPose(avt_341::msg::Odometry leader_odom, avt_341::msg::FollowerStatus status);
+    };
 
-  std::string my_name_;
-  FormationSpeedControlParams fsc_params_;
-  std::shared_ptr<avt_341::node::NodeProxy> node_proxy_;
-  std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Marker>> marker_pub_ = nullptr;
+    class NullFormationSpeedController : public FormationSpeedController {
+    public:
+      explicit NullFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
 
-};
+      double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+    };
 
-}
+    class SlowLeaderFormationSpeedController : public FormationSpeedController {
+
+    public:
+      SlowLeaderFormationSpeedController(const std::string &my_name, const FormationSpeedControlParams &params,
+                                         std::shared_ptr<avt_341::node::NodeProxy> node_proxy);
+
+      double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+
+      void visualizeSpeedIndicators(double speed_factor, double delta_pos, const avt_341::msg::PoseStamped &target_pose,
+                                    const avt_341::msg::Point &current_pos, bool heading_filter_on,
+                                    bool follower_dist_break_on);
+
+    private:
+      std::shared_ptr<avt_341::node::NodeProxy> node_proxy_;
+      std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Marker>> marker_pub_ = nullptr;
+    };
+
+    class SpeedUpFollowerFormationSpeedController : public FormationSpeedController {
+
+    public:
+      explicit SpeedUpFollowerFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
+
+      double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+    };
+
+    std::shared_ptr<FormationSpeedController>
+    createFormationSpeedController(const std::string &fsc_type, const std::string &veh_name,
+                                   const FormationSpeedControlParams &params,
+                                   std::shared_ptr<avt_341::node::NodeProxy> node_proxy);
+
+  }
 }
 
 #endif //AVT_341_FORMATION_SPEED_CONTROL_H

@@ -114,6 +114,7 @@ int main(int argc, char **argv) {
 
 
     nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
+    nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
     nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
     nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
     nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
@@ -133,12 +134,10 @@ int main(int argc, char **argv) {
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
     nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, false);
 
-    bool use_slow_down_speed_control = fsc_type == FormationSpeedControlType::SLOW_DOWN_LEADER;
-
     mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, add_name_id_to_msg);
     mgr->sodist_threshold = sodist_threshold;
 
-    avt_341::mission::FormationSpeedController speedController(formation_params.my_name, fsc_params, nh);
+    std::shared_ptr<avt_341::mission::FormationSpeedController> speedController = avt_341::mission::createFormationSpeedController(fsc_type, formation_params.my_name, fsc_params, nh);
 
     nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
     mgr->loadMissionDefinition(mission_definition_filename);
@@ -244,9 +243,9 @@ int main(int argc, char **argv) {
         mgr->postUpdateTasks();
 
         avt_341::mission::Task* task = mgr->currentTask();
-        if(task != nullptr && use_slow_down_speed_control){
+        if(task != nullptr){
             avt_341::msg::Float64 speed_msg;
-            speed_msg.data = speedController.getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses);
+            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses);
             speed_factor_pub->publish(speed_msg);
         }
         
