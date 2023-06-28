@@ -73,8 +73,10 @@ void NavStateCallback(avt_341::msg::Int32Ptr msg) {
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::Int32Ptr msg){
-  reset_called = true;
+void ResetCallback(avt_341::msg::StringPtr msg){
+  if(msg->data.find(avt_341::node::NodeType::Mission) != std::string::npos){
+    reset_called = true;
+  }
 }
 
 void GoalReachedCallback(avt_341::msg::PoseStampedPtr msg){
@@ -151,11 +153,12 @@ int main(int argc, char **argv) {
     auto veh2_sub = veh_namespaces.size() > 1 ?  nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[1] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
     auto veh3_sub = veh_namespaces.size() > 2 ? nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[2] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
     auto veh4_sub = veh_namespaces.size() > 3 ? nh->create_subscription<avt_341::msg::Odometry>("/" + veh_namespaces[3] + "/avt_341/odometry", 10, VehicleOdometryCallback) : nullptr;
-    auto reset_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+    auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10, GoalReachedCallback);
     auto current_waypoint_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CurrentGoalCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
+    auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 //    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
     // start the loop
@@ -165,6 +168,9 @@ int main(int argc, char **argv) {
         if(reset_called){
           nh->log_info("Resetting node");
           mgr->reset();
+          avt_341::msg::String reset_ack_msg;
+          reset_ack_msg.data = avt_341::node::NodeType::Mission;
+          reset_ack_pub->publish(reset_ack_msg);
           reset_called = false;
         }
 

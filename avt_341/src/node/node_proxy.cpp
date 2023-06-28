@@ -135,6 +135,11 @@ void NodeProxy::spin_some() {
 
 #endif
 
+const std::string NodeType::LocalPlanner = "local_planner";
+const std::string NodeType::GlobalPlanner = "global_planner";
+const std::string NodeType::Control = "control";
+const std::string NodeType::Perception = "perception";
+const std::string NodeType::Mission = "mission";
 
 } // namespace node
 } // namespace avt_341

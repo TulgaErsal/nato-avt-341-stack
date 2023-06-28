@@ -110,8 +110,10 @@ void Reset(){
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::Int32Ptr msg){
-  reset_called = true;
+void ResetCallback(avt_341::msg::StringPtr msg){
+  if(msg->data.find(avt_341::node::NodeType::GlobalPlanner) != std::string::npos){
+    reset_called = true;
+  }
 }
 
 int main(int argc, char *argv[])
@@ -131,7 +133,8 @@ int main(int argc, char *argv[])
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
   auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
-  auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
   // ctg, 8-19-2021
   // the state values can be
@@ -235,6 +238,10 @@ int main(int argc, char *argv[])
       path_pub->publish(ros_path);
       state.data = avt_341::utils::NavStackState::NotInit;
       state_pub->publish(state);
+
+      avt_341::msg::String reset_ack_msg;
+      reset_ack_msg.data = avt_341::node::NodeType::GlobalPlanner;
+      reset_ack_pub->publish(reset_ack_msg);
 
       reset_called = false;
       n->spin_some();

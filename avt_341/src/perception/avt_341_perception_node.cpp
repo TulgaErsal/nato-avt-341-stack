@@ -115,11 +115,13 @@ void ResetNode(){
   n->log_info("Resetting node");
   grid.Reset();
   grid_created = false;
-  start_time = n->get_now_seconds();
 }
 
-void ResetCallback(avt_341::msg::Int32Ptr msg){
-  ResetNode();
+bool reset_called = false;
+void ResetCallback(avt_341::msg::StringPtr msg){
+  if(msg->data.find(avt_341::node::NodeType::Perception) != std::string::npos){
+    reset_called = true;
+  }
 }
 
 void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
@@ -187,23 +189,24 @@ void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom){
 
 int main(int argc, char *argv[]) {
 
-	grid_created = false;
+  grid_created = false;
 
   n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
-	auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",2,PointCloudCallback);
-    auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
-    auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
-    auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
-    auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
+  auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",2,PointCloudCallback);
+  auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
+  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
+  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+  auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
-    float grid_width, grid_height, visualization_range;
-    n->get_parameter("~grid_width", grid_width, 200.0f);
-    n->get_parameter("~grid_height", grid_height, 200.0f);
-    grid.SetSize(grid_width,grid_height);
+  float grid_width, grid_height, visualization_range;
+  n->get_parameter("~grid_width", grid_width, 200.0f);
+  n->get_parameter("~grid_height", grid_height, 200.0f);
+  grid.SetSize(grid_width,grid_height);
 
-    float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;
-    bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation;
-    std::string clear_method;
+  float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;
+  bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation;
+  std::string clear_method;
 
   n->get_parameter("~grid_res", grid_res, 1.0f);
   n->get_parameter("~grid_llx", grid_llx, -100.0f);
@@ -255,6 +258,7 @@ int main(int argc, char *argv[]) {
                                 voxel_height_min, voxel_height_res, clear_method_obj_range_filter);
 
   ResetNode();
+  start_time = n->get_now_seconds();
   avt_341::node::Rate rate(100.0);
   int nloops = 0;
 	while (avt_341::node::ok()){
@@ -273,6 +277,14 @@ int main(int argc, char *argv[]) {
 
       if(clear_method_visualize && nloops % 20 == 0){
         grid.Visualize();
+      }
+
+      if(reset_called){
+        ResetNode();
+        avt_341::msg::String reset_ack_msg;
+        reset_ack_msg.data = avt_341::node::NodeType::Perception;
+        reset_ack_pub->publish(reset_ack_msg);
+        reset_called = false;
       }
 
 			nloops++;

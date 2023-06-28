@@ -44,7 +44,7 @@ void StatusCallback(avt_341::msg::FollowerStatusPtr rcv_status){
     }
 }
 
-void ResetCallback(avt_341::msg::Int32Ptr msg){
+void ResetCallback(avt_341::msg::StringPtr msg){
   reset_called = true;
 }
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv){
     auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
     auto gptoggle_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
     auto goal_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10);
-    auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+    auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
 
     avt_341::msg::Int32 gp_toggle;
 

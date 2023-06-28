@@ -110,6 +110,10 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
 
 std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
 
+  if(is_resetting_){
+    return std::vector<avt_341::msg::Point32>();
+  }
+
   if (!stitch_points_){
     ClearGrid();
   }
@@ -188,9 +192,24 @@ float ElevationGrid::Slope(const Cell &cell) const {
   return cell.height()/res_;
 }
 
+bool ElevationGrid::HasData() const{
+  return std::any_of(cells_.begin(), cells_.end(), [](const std::vector<Cell> &row){
+    return std::any_of(row.begin(), row.end(), [](const Cell &cell){
+      return cell.filled();
+    });
+  });
+}
+
 void ElevationGrid::Reset(){
-  ClearGrid();
-  clearing_method_->Reset();
+  is_resetting_ = true;
+
+  while(HasData()){
+    ClearGrid();
+    clearing_method_->Reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+
+  is_resetting_ = false;
 }
 
 } // namespace perception

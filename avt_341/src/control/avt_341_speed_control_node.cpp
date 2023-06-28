@@ -54,8 +54,10 @@ void StateCallback(avt_341::msg::Int32Ptr rcv_state){
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::Int32Ptr msg){
-  reset_called = true;
+void ResetCallback(avt_341::msg::StringPtr msg){
+  if(msg->data.find(avt_341::node::NodeType::Control) != std::string::npos){
+    reset_called = true;
+  }
 }
 
 int main(int argc, char *argv[]){
@@ -73,7 +75,8 @@ int main(int argc, char *argv[]){
   auto desired_speed_factor_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed_factor",1,DesiredSpeedFactorCallback);
 
   auto desired_steer_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/cmd_steer",1,DesiredSteerCallback);
-  auto reset_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
   // The PID params are tuned with this value in mind
   // so it's not a good idea to change it
@@ -132,6 +135,9 @@ int main(int argc, char *argv[]){
 
     if(reset_called){
       controller.Reset();
+      avt_341::msg::String reset_ack_msg;
+      reset_ack_msg.data = avt_341::node::NodeType::Control;
+      reset_ack_pub->publish(reset_ack_msg);
       reset_called = false;
     }
 

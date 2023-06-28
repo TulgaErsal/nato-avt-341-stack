@@ -128,6 +128,7 @@ class ElevationGrid : public CellObstacleCalculator{
     }
 
     void Reset();
+    bool HasData() const;
 
   private:
     uint8_t GetGridCellValue(const Cell & cell) const;
@@ -152,6 +153,7 @@ class ElevationGrid : public CellObstacleCalculator{
     const float GRID_SLOPE_MULT = 50.0f;
     bool has_segmentation_ = false;
     float max_point_age_;
+    bool is_resetting_ = false;
     std::shared_ptr<OccupancyClearingMethod> clearing_method_ = nullptr;
 
 };

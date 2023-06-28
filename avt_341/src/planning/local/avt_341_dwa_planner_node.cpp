@@ -162,8 +162,10 @@ UpdateGrids(avt_341::planning::DwaPlanner& planner) {
     }
 }
 
-void ResetCallback(avt_341::msg::Int32Ptr msg){
-  reset_called = true;
+void ResetCallback(avt_341::msg::StringPtr msg){
+  if(msg->data.find(avt_341::node::NodeType::LocalPlanner) != std::string::npos){
+    reset_called = true;
+  }
 }
 
 int
@@ -177,7 +179,8 @@ main(int argc, char* argv[]) {
     auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, CallbackGridSegmentation);
     auto sub_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, CallbackPath);
     auto sub_waypoints = node->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, CallbackWaypoints);
-    auto reset_sub = node->create_subscription<avt_341::msg::Int32>("avt_341/reset", 10, ResetCallback);
+    auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
+    auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
     // Create node publishers.
     auto pub_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
@@ -282,6 +285,9 @@ main(int argc, char* argv[]) {
 
         if(reset_called){
           planner.Reset();
+          avt_341::msg::String reset_ack_msg;
+          reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
+          reset_ack_pub->publish(reset_ack_msg);
           reset_called = false;
         }
 
