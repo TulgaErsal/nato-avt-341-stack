@@ -116,17 +116,24 @@ namespace perception{
     }
   }
 
+  avt_341::msg::Point RaytraceClearingMethod::TfTransformToPoint(const geometry_msgs::msg::TransformStamped & transform) const{
+    avt_341::msg::Point point;
+    point.x = transform.transform.translation.x;
+    point.y = transform.transform.translation.y;
+    point.z = transform.transform.translation.z;
+    return point;
+  }
+
   avt_341::msg::Point RaytraceClearingMethod::GetSensorOrigin() const{
-    avt_341::msg::Point origin;
-    auto lidar_transform = node_->lookup_transform("map", lidar_frame_);
-    origin.x = lidar_transform.transform.translation.x;
-    origin.y = lidar_transform.transform.translation.y;
-    origin.z = lidar_transform.transform.translation.z;
-    return origin;
+    return TfTransformToPoint(node_->lookup_transform("map", lidar_frame_));
+  }
+
+  avt_341::msg::Point RaytraceClearingMethod::GetSensorOrigin(const avt_341::msg::Time & stamp) const{
+    return TfTransformToPoint(node_->lookup_transform("map", lidar_frame_, stamp));
   }
 
   void RaytraceClearingMethod::ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) {
-    avt_341::msg::Point origin = GetSensorOrigin();
+    avt_341::msg::Point origin = GetSensorOrigin(point_cloud.header.stamp);
     for(const auto & point : point_cloud.points){
       const float dx = point.x - origin.x;
       const float dy = point.y - origin.y;
@@ -422,7 +429,7 @@ namespace perception{
     cell_obstacle_calculator_->AddOccupancy(point_cloud, cells_with_clearing_, false);
   }
 
-  void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(){
+  void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud){
     avt_341::msg::Point origin = GetSensorOrigin();
     int x_0, y_0, x_N, y_N;
     GetGridBounds(origin, config_.raytrace_range, x_0, y_0, x_N, y_N);

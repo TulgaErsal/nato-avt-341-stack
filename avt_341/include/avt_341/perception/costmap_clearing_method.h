@@ -31,12 +31,13 @@ struct RaytraceSettings{
   bool use_voxels;
   float voxel_height_min;
   float voxel_height_res;
+  float obj_range_filter;
 
   RaytraceSettings(float llx, float lly, float res, int gridDilateX, int gridDilateY, float thresh, float raytraceRange,
-                   bool clearDilation, bool useVoxels, float voxelHeightMin, float voxelHeightRes)
+                   bool clearDilation, bool useVoxels, float voxelHeightMin, float voxelHeightRes, float obj_range_filter)
                    : llx(llx), lly(lly), res(res), grid_dilate_x(gridDilateX), grid_dilate_y(gridDilateY), thresh(thresh),
                    raytrace_range(raytraceRange), clear_dilation(clearDilation), use_voxels(useVoxels),
-                   voxel_height_min(voxelHeightMin), voxel_height_res(voxelHeightRes) {}
+                   voxel_height_min(voxelHeightMin), voxel_height_res(voxelHeightRes), obj_range_filter(obj_range_filter) {}
 };
 
 class OccupancyClearingMethod{
@@ -45,9 +46,26 @@ public:
   OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, int Nx, int Ny, float visualization_range, bool visualize);
   virtual ~OccupancyClearingMethod() = default;
 
+  /**
+  * Clear occupancy for the given point cloud.
+  * @param point_cloud Point cloud being processed.
+  */
   virtual void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) = 0;
+
+  /**
+  * Invokes any visualization that clearing method may have.
+  */
   virtual void Visualize() const {};
-  virtual void OnOccupancyAdded() {};
+
+  /**
+   * Called after occupancy has beed added to the costmap for the input point cloud.
+   * @param point_cloud Point cloud that has been processed.
+   */
+  virtual void OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud) {};
+
+  /**
+   * Resets the clearing method's local state.
+   */
   virtual void Reset() {};
 
   static CostmapClearMethodType string_to_clear_type(const std::string & val) {
@@ -98,6 +116,8 @@ public:
   void Visualize() const override;
 
 protected:
+  avt_341::msg::Point TfTransformToPoint(const geometry_msgs::msg::TransformStamped & transform) const;
+  avt_341::msg::Point GetSensorOrigin(const avt_341::msg::Time & stamp) const;
   avt_341::msg::Point GetSensorOrigin() const;
   void GetGridBounds(const avt_341::msg::Point & origin, float range, int & x_0, int & y_0, int & x_N, int & y_N) const;
   avt_341::msg::Marker GetMarkerMsg(int type, int id, utils::vec3 color, float alpha=1.0, double z_scale=1.0) const;
@@ -124,7 +144,7 @@ public:
   float visualization_range, bool visualize, RaytraceSettings settings, float obj_range_filter, CellObstacleCalculator* cell_obstacle_calculator);
 
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
-  void OnOccupancyAdded() override;
+  void OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud) override;
   void Visualize() const override;
   void Reset() override;
 
