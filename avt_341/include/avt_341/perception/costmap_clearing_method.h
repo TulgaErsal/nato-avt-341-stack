@@ -56,9 +56,9 @@ struct RaytraceSettings{
 class OccupancyClearingMethod{
 
 public:
-  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells);
-  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize);
-  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, int Nx, int Ny, float visualization_range, bool visualize);
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, int Nx, int Ny, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   virtual ~OccupancyClearingMethod() = default;
 
   /**
@@ -84,24 +84,27 @@ public:
   virtual void Reset() {};
 
 protected:
+  void RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells);
+
   bool visualize_;
   float visualization_range_;
   int Nx_;
   int Ny_;
   std::vector< std::vector<Cell>> & cells_;
-
+  CellObstacleCalculator* cell_obstacle_calculator_;
+  RaytraceSettings config_;
 };
 
 class NullClearingMethod : public OccupancyClearingMethod{
 public:
-  NullClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize);
+  NullClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
 };
 
 class TimedClearingMethod: public OccupancyClearingMethod {
 
 public:
-  TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize);
+  TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
   void AgeCells(const float dt);
 private:
@@ -115,9 +118,9 @@ public:
   const static int N_VOXELS_PER_CELL = 1024;
 
   RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
-                         float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool handle_dilation=true);
+                         float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator, bool handle_dilation=true);
   RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Nx, int Ny,
-                         float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool handle_dilation=true);
+                         float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculatorr, bool handle_dilation=true);
   virtual ~RaytraceClearingMethod() override;
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
   void Visualize() const override;
@@ -129,7 +132,6 @@ protected:
   void GetGridBounds(const avt_341::msg::Point & origin, float range, int & x_0, int & y_0, int & x_N, int & y_N) const;
   avt_341::msg::Marker GetMarkerMsg(int type, int id, utils::vec3 color, float alpha=1.0, double z_scale=1.0) const;
   virtual void RaytraceLine(const avt_341::msg::Point & start, const avt_341::msg::Point32 & end);
-  void RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells);
   void CleanupUnattachedDilation(const avt_341::msg::Point & origin, std::vector< std::vector<Cell>> & cells);
   void ClearVoxelAt(int x, int y, int z);
   void Reset() override;
@@ -137,8 +139,6 @@ protected:
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> minmax_vis_publisher_;
   std::shared_ptr<avt_341::node::NodeProxy> node_;
   std::string lidar_frame_;
-  CellObstacleCalculator* cell_obstacle_calculator_;
-  RaytraceSettings config_;
   std::bitset<N_VOXELS_PER_CELL>* voxel_grid;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> voxel_vis_publisher_;
   bool handle_dilation_;
@@ -148,7 +148,7 @@ class RaytraceWithFilteringClearingMethod: public RaytraceClearingMethod{
 
 public:
   RaytraceWithFilteringClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
-  float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator);
+  float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
 
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
   void OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud) override;
@@ -172,14 +172,13 @@ struct TimedNoObsData {
 class TimedNoObsClearingMethod: public OccupancyClearingMethod {
 public:
   TimedNoObsClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range,
-                           bool visualize, const TimedNoObsClearingSettings & config, CellObstacleCalculator* cell_obstacle_calculator);
+                           bool visualize, const TimedNoObsClearingSettings & time_config, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
   void Reset() override;
 private:
   std::vector< std::vector<Cell>> timed_cells_;
   std::vector< std::vector<TimedNoObsData>> timed_cells_data;
-  CellObstacleCalculator* cell_obstacle_calculator_;
-  const TimedNoObsClearingSettings & config_;
+  TimedNoObsClearingSettings time_config_;
 };
 
 }

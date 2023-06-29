@@ -37,12 +37,12 @@ pf:
 # ======================================================================================================================
 dwa:
   model: 'ackermann'                    # Motion model for the trajectory prediction - may be 'ackermann' for Ackermann-steered AGVs or 'synchro' for synchro drive robots.
-  dwa_wheelbase: 2.72                   # AGV wheelbase. Used for trajectory prediction for the Ackermann motion model.
-  dwa_speed_lin_min: 0.15               # Minimum value for the linear variable (longitudinal speed for all models) in the prediction window.
-  dwa_speed_lin_max: 4.0                # Maximum value for the linear variable (longitudinal speed for all models) in the prediction window.
-  dwa_speed_lin_steps: 10               # Number of intervals to partition the linear variable range into. Higher values allow for finer control, but significantly impact performance.
-  dwa_accel_max: 3.0                    # Maximum rate of change of the linear variable (longitudinal speed).
-  dwa_speed_ang_min: -0.58              # Minimum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window.
+  wheelbase: 2.72                       # AGV wheelbase. Used for trajectory prediction for the Ackermann motion model.
+  speed_lin_min: 0.15                   # Minimum value for the linear variable (longitudinal speed for all models) in the prediction window.
+  speed_lin_max: 4.0                    # Maximum value for the linear variable (longitudinal speed for all models) in the prediction window.
+  speed_lin_steps: 10                   # Number of intervals to partition the linear variable range into. Higher values allow for finer control, but significantly impact performance.
+  accel_max: 3.0                        # Maximum rate of change of the linear variable (longitudinal speed).
+  speed_ang_min: -0.58                  # Minimum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window.
   speed_ang_max: 0.58                   # Maximum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window.
   speed_ang_steps: 40                   # Number of intervals to partition the angular variable range into. Higher values allow for finer control, but significantly impact performance.
   ang_accel_max: 4.0                    # Maximum rate of change of the angular variable (yaw acceleration for synchro drive, steering rate for Ackermann)

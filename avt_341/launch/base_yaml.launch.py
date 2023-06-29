@@ -114,6 +114,9 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
     ]
 
 
+PYTHON_EVAL_STR = '$Python:'
+
+
 def generate_launch_description():
 
     MAX_VEHICLES = 4
@@ -129,19 +132,22 @@ def generate_launch_description():
                        LaunchConfiguration('robot_description_veh3'), LaunchConfiguration('robot_description_veh4')]
 
     param_dir = os.path.join(get_package_share_directory('avt_341'), 'config', 'parameters')
-    param_files = {f.rstrip('.yaml'): os.path.join(param_dir, f) for f in os.listdir(param_dir)}
+    param_files = {f[:-len('.yaml')]: os.path.join(param_dir, f) for f in os.listdir(param_dir) if f.endswith('.yaml')}
     params = {}
     for k, v in param_files.items():
         with open(v) as f:
             params[k] = yaml.load(f, Loader=yaml.FullLoader)
-            for ki, vi in params[k].items():
+            keys_list = list(params[k].keys())
+            for ki in keys_list:
+                vi = params[k][ki]
                 if type(vi) is dict:
                     for kii, vii in vi.items():
                         params[k]['_'.join([ki, kii])] = vii
                     del params[k][ki]
             for ki, vi in params[k].items():
-                if vi.startswith('$Python:'):
-                    params[k][ki] = exec(vi.strip('$Python:'))
+                if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
+                    python_str = vi[len(PYTHON_EVAL_STR):]
+                    params[k][ki] = eval(python_str)
 
     arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
 
@@ -177,7 +183,7 @@ def generate_launch_description():
                     output='screen',
                     parameters=[
                         {'display': display_type},
-                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception']}],
+                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
                 ),
                 Node(
                     package='avt_341',
@@ -185,7 +191,7 @@ def generate_launch_description():
                     name='vehicle_control_node',
                     output='screen',
                     condition=LaunchConfigurationNotEquals('local_planner_method', 'dwa'),
-                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control']}],
+                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control'].keys()}],
                 ),
                 Node(
                     package='avt_341',
@@ -193,7 +199,7 @@ def generate_launch_description():
                     name='vehicle_control_node',
                     output='screen',
                     condition=LaunchConfigurationEquals('local_planner_method', 'dwa'),
-                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control']}],
+                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control'].keys()}],
                 ),
                 Node(
                     package='avt_341',
@@ -207,7 +213,7 @@ def generate_launch_description():
                             '/waypoints_y': launch.substitutions.LaunchConfiguration('waypoints_y'),
                             '/is_empty_waypoints': launch.substitutions.LaunchConfiguration('is_empty_waypoints'),
                         },
-                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['global_planner']}],
+                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['global_planner'].keys()}],
                 ),
                 Node(
                     package='avt_341',
@@ -217,7 +223,7 @@ def generate_launch_description():
                     condition=LaunchConfigurationEquals('local_planner_method', 'rcc'),
                     parameters=[
                         {'display': display_type},
-                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner']}
+                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner'].keys()}
                     ],
                 ),
                 Node(
@@ -226,7 +232,7 @@ def generate_launch_description():
                     name='local_dwa_planner_node',
                     output='screen',
                     condition=LaunchConfigurationEquals('local_planner_method', 'dwa'),
-                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner']}],
+                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner'].keys()}],
                 ),
                 Node(
                     package='avt_341',
@@ -236,7 +242,7 @@ def generate_launch_description():
                     condition=LaunchConfigurationEquals('local_planner_method', 'pf'),
                     parameters=[
                         {'display': display_type},
-                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner']}
+                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner'].keys()}
                     ],
                 ),
                 Node(
@@ -253,14 +259,14 @@ def generate_launch_description():
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
                             'veh_namespaces': launch.substitutions.LaunchConfiguration('vehicle_namespaces'),
                             },
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager']}]
+                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager'].keys()}]
                     ),
                     Node(
                         package='avt_341',
                         executable='avt_341_comm_node',
                         name='comm_node',
                         output='screen',
-                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['socket_comms']}]
+                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['socket_comms'].keys()}]
                     )
                 ])
             ])

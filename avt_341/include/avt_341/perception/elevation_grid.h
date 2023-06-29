@@ -52,7 +52,7 @@ class ElevationGrid : public CellObstacleCalculator{
     }
 
     std::shared_ptr<OccupancyClearingMethod> CreateClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref,
-                                                                  const std::string & clear_method_type,
+                                                                  std::string clear_method_type,
                                                                   const RaytraceSettings & raytrace_settings,
                                                                   const TimedNoObsClearingSettings & timed_clear_settings,
                                                                   float visualization_range, bool visualize);

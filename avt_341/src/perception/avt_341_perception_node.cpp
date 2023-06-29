@@ -192,6 +192,7 @@ int main(int argc, char *argv[]) {
   grid_created = false;
 
   n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
+  n->initialize_tf_listener();
   auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",2,PointCloudCallback);
   auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
   auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
