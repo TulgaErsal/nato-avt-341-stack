@@ -154,7 +154,7 @@ namespace perception{
       }
     }
 
-    if(handle_dilation_ && !config_.clear_dilation){
+    if(handle_dilation_ && !config_.immediate_clear_dilation){
       CleanupUnattachedDilation(origin, cells_);
     }
 
@@ -173,7 +173,8 @@ namespace perception{
     cells[x][y].has_dilated = false;
     for(int i = std::max(0, x - config_.grid_dilate_x); i <= std::min(Nx_ - 1, x + config_.grid_dilate_x); i++){
       for(int j = std::max(0, y - config_.grid_dilate_y); j <= std::min(Ny_ - 1, y + config_.grid_dilate_y); j++){
-        if(config_.clear_dilation || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) < config_.thresh)){
+        if(cells[i][j].dilated_val > 0
+        && (config_.immediate_clear_dilation || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) < config_.thresh))){
           bool found_obs = false;
           // TODO: can remove extra loops with counts or set tracking dilated cells
           for(int ii = std::max(0, i - config_.grid_dilate_x); !found_obs && ii <= std::min(Nx_ - 1, i + config_.grid_dilate_x); ii++){
@@ -552,14 +553,14 @@ namespace perception{
         if(cell_obstacle_calculator_->PastSlopeThreshold(timed_cells_[xi][yi])) {
           timed_cells_data[xi][yi].num_samples = 0;
           timed_cells_data[xi][yi].obs_time = node::seconds_from_header(point_cloud.header);
-          timed_cells_[xi][yi].high.val = timed_cells_[xi][yi].low.val;
+          timed_cells_[xi][yi].ResetHeight();
         }else if(cell_obstacle_calculator_->PastSlopeThreshold(cells_[xi][yi])){
           timed_cells_data[xi][yi].num_samples += 1;
-          if(timed_cells_data[xi][yi].num_samples > time_config_.sample_threshold
+          if(timed_cells_data[xi][yi].num_samples >= time_config_.sample_threshold
             && node::seconds_from_header(point_cloud.header) - timed_cells_data[xi][yi].obs_time > time_config_.time_threshold)
           {
-            cells_[xi][yi].high.val = cells_[xi][yi].low.val;
-            timed_cells_[xi][yi] = cells_[xi][yi];
+            cells_[xi][yi].ResetHeight();
+            timed_cells_[xi][yi].ResetHeight();
             RemoveDilationAtCell(xi, yi, cells_);
             timed_cells_data[xi][yi].num_samples = 0;
             timed_cells_data[xi][yi].obs_time = std::numeric_limits<float>::max();

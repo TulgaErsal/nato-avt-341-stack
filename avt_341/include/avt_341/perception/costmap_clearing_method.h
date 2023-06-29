@@ -40,17 +40,17 @@ struct RaytraceSettings{
   int grid_dilate_y;
   float thresh;
   float raytrace_range;
-  bool clear_dilation;
+  bool immediate_clear_dilation;
   bool use_voxels;
   float voxel_height_min;
   float voxel_height_res;
   float obj_range_filter;
 
   RaytraceSettings(float llx, float lly, float res, int gridDilateX, int gridDilateY, float thresh, float raytraceRange,
-                   bool clearDilation, bool useVoxels, float voxelHeightMin, float voxelHeightRes, float obj_range_filter)
+                   bool immediateClearDilation, bool useVoxels, float voxelHeightMin, float voxelHeightRes, float obj_range_filter)
                    : llx(llx), lly(lly), res(res), grid_dilate_x(gridDilateX), grid_dilate_y(gridDilateY), thresh(thresh),
-                   raytrace_range(raytraceRange), clear_dilation(clearDilation), use_voxels(useVoxels),
-                   voxel_height_min(voxelHeightMin), voxel_height_res(voxelHeightRes), obj_range_filter(obj_range_filter) {}
+                     raytrace_range(raytraceRange), immediate_clear_dilation(immediateClearDilation), use_voxels(useVoxels),
+                     voxel_height_min(voxelHeightMin), voxel_height_res(voxelHeightRes), obj_range_filter(obj_range_filter) {}
 };
 
 class OccupancyClearingMethod{
