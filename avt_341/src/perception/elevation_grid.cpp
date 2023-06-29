@@ -108,10 +108,10 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
 
 }
 
-std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
+void ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
 
   if(is_resetting_){
-    return std::vector<avt_341::msg::Point32>();
+    return;
   }
 
   if (!stitch_points_){
@@ -125,33 +125,7 @@ std::vector<avt_341::msg::Point32> ElevationGrid::AddPoints(avt_341::msg::PointC
     cm->OnOccupancyAdded(point_cloud);
   }
 
-  //loop back through the points and remove ground points
-  std::vector<avt_341::msg::Point32> points;
-  std::vector<avt_341::msg::Point32> surface_points;
-  float hscale = 0.2f;
-  for (int i=0;i<point_cloud.points.size();i++){
-    if (!(point_cloud.points[i].x==0.0 && point_cloud.points[i].y==0.0)){
-      int xi = (int)floor((point_cloud.points[i].x - llx_)/res_);
-      int yi = (int)floor((point_cloud.points[i].y - lly_)/res_); 
-      if (xi>=0 && xi<nx_ && yi>=0 &&yi<ny_){
-
-        if (cells_[xi][yi].obstacle){
-          if (point_cloud.points[i].z>(cells_[xi][yi].low.val + hscale*cells_[xi][yi].height())){
-            points.push_back(point_cloud.points[i]);
-          }
-          else{
-            surface_points.push_back(point_cloud.points[i]);
-          }
-        }
-        else{
-          surface_points.push_back(point_cloud.points[i]);
-        }
-      }
-    }
-  }
-  point_cloud.points = points;
-  return surface_points;
-} // method AddPoints
+}
 
 uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
   if(!cell.filled())
@@ -220,37 +194,42 @@ void ElevationGrid::Reset(){
 
 std::shared_ptr<OccupancyClearingMethod> ElevationGrid::CreateClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref,
                                                                              const std::string & clear_method_type,
-                                                                             const RaytraceSettings & raytrace_settings, float visualization_range, bool visualize){
-  auto clear_type = OccupancyClearingMethod::string_to_clear_type(clear_method_type);
-  switch(clear_type){
-    case CostmapClearMethodType::Time:
-      return std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize);
-    case CostmapClearMethodType::Raytrace:
-      if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
-        node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
-      }
-      return std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
-    case CostmapClearMethodType::RaytraceWithFiltering:
-      if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
-        node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
-      }
-      return std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings,
-                                                                   raytrace_settings.obj_range_filter, this);
-    default:
-      return std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize);
+                                                                             const RaytraceSettings & raytrace_settings,
+                                                                             const TimedNoObsClearingSettings & timed_clear_settings,
+                                                                             float visualization_range, bool visualize){
+  if(clear_method_type == CostmapClearMethodType::None) {
+    return std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize);
   }
+  if(clear_method_type == CostmapClearMethodType::Raytrace) {
+    if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
+      node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
+    }
+    return std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
+  }
+  if(clear_method_type == CostmapClearMethodType::RaytraceWithFiltering) {
+    if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
+      node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
+    }
+    return std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
+  }
+  if(clear_method_type == CostmapClearMethodType::NoObsTime) {
+    return std::make_shared<TimedNoObsClearingMethod>(cells_, visualization_range, visualize, timed_clear_settings, this);
+  }
+  return std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize);
 }
 
 void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
                                              float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-                                             bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter){
+                                             bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold){
   int dsize_x = lround(grid_dilate_x_/res_);
   int dsize_y = lround(grid_dilate_y_/res_);
   RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, clear_method_raytrace_range,
                                      clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res, obj_range_filter);
+  TimedNoObsClearingSettings timed_clearing_settings(llx_, lly_, res_, max_point_age_, sampled_threshold);
+  clear_methods_.clear();
   size_t pos = 0;
   while ((pos = clear_methods_str.find(",")) != std::string::npos) {
-    auto clear_method = CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, visualization_range, visualize);
+    auto clear_method = CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, timed_clearing_settings, visualization_range, visualize);
     clear_methods_.push_back(clear_method);
     clear_methods_str.erase(0, pos + 1);
   }

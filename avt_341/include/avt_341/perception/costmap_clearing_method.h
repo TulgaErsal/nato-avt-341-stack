@@ -11,12 +11,25 @@
 namespace avt_341 {
 namespace perception {
 
-enum CostmapClearMethodType
+struct CostmapClearMethodType
 {
-  None,
-  Time,
-  Raytrace,
-  RaytraceWithFiltering
+public:
+  const static std::string None;
+  const static std::string Time;
+  const static std::string Raytrace;
+  const static std::string RaytraceWithFiltering;
+  const static std::string NoObsTime;
+};
+
+struct TimedNoObsClearingSettings {
+  float llx;
+  float lly;
+  float res;
+  double time_threshold;
+  int sample_threshold;
+
+  TimedNoObsClearingSettings(float llx, float lly, float res, double time_threshold, int sample_threshold)
+    : llx(llx), lly(lly), res(res), time_threshold(time_threshold), sample_threshold(sample_threshold) {}
 };
 
 struct RaytraceSettings{
@@ -43,6 +56,8 @@ struct RaytraceSettings{
 class OccupancyClearingMethod{
 
 public:
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells);
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize);
   OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, int Nx, int Ny, float visualization_range, bool visualize);
   virtual ~OccupancyClearingMethod() = default;
 
@@ -67,14 +82,6 @@ public:
    * Resets the clearing method's local state.
    */
   virtual void Reset() {};
-
-  static CostmapClearMethodType string_to_clear_type(const std::string & val) {
-    if(val == "none"){ return CostmapClearMethodType::None; }
-    if(val == "time"){ return CostmapClearMethodType::Time; }
-    if(val == "raytrace"){ return CostmapClearMethodType::Raytrace; }
-    if(val == "raytrace_obs_filter"){ return CostmapClearMethodType::RaytraceWithFiltering; }
-    throw std::runtime_error("Unknown costmap clearing type " + val);
-  }
 
 protected:
   bool visualize_;
@@ -141,7 +148,7 @@ class RaytraceWithFilteringClearingMethod: public RaytraceClearingMethod{
 
 public:
   RaytraceWithFilteringClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
-  float visualization_range, bool visualize, RaytraceSettings settings, float obj_range_filter, CellObstacleCalculator* cell_obstacle_calculator);
+  float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator);
 
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
   void OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud) override;
@@ -149,13 +156,30 @@ public:
   void Reset() override;
 
 protected:
-  float obj_filter_range_;
   std::vector< std::vector<Cell>> & cells_without_clearing_;
   std::vector< std::vector<Cell>> cells_with_clearing_;
   std::vector< std::vector<bool>> occupancy_delta_;
   utils::vec2 last_position_;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::OccupancyGrid>> occupancy_delta_publisher_;
 
+};
+
+struct TimedNoObsData {
+  double obs_time;
+  int num_samples;
+};
+
+class TimedNoObsClearingMethod: public OccupancyClearingMethod {
+public:
+  TimedNoObsClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range,
+                           bool visualize, const TimedNoObsClearingSettings & config, CellObstacleCalculator* cell_obstacle_calculator);
+  void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
+  void Reset() override;
+private:
+  std::vector< std::vector<Cell>> timed_cells_;
+  std::vector< std::vector<TimedNoObsData>> timed_cells_data;
+  CellObstacleCalculator* cell_obstacle_calculator_;
+  const TimedNoObsClearingSettings & config_;
 };
 
 }

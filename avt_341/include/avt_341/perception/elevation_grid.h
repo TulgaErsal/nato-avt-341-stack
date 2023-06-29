@@ -27,12 +27,10 @@ class ElevationGrid : public CellObstacleCalculator{
     ~ElevationGrid() override;
 
     /**
-     * Add points to be processed 
-     * Modifies the input to be only obstacle points
-     * Returns surface points
+     * Add points to be processed
      * \param point_cloud PointCloud message
      */
-    std::vector<avt_341::msg::Point32> AddPoints(avt_341::msg::PointCloud &point_cloud);
+    void AddPoints(avt_341::msg::PointCloud &point_cloud);
 
     bool has_segmentation() const { return has_segmentation_; }
 
@@ -55,11 +53,13 @@ class ElevationGrid : public CellObstacleCalculator{
 
     std::shared_ptr<OccupancyClearingMethod> CreateClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref,
                                                                   const std::string & clear_method_type,
-                                                                  const RaytraceSettings & raytrace_settings, float visualization_range, bool visualize);
+                                                                  const RaytraceSettings & raytrace_settings,
+                                                                  const TimedNoObsClearingSettings & timed_clear_settings,
+                                                                  float visualization_range, bool visualize);
 
     void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
                                   float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-                                  bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter);
+                                  bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold);
 
     void Visualize() const{
       for(auto & cm : clear_methods_){
