@@ -134,8 +134,16 @@ def generate_launch_description():
     for k, v in param_files.items():
         with open(v) as f:
             params[k] = yaml.load(f, Loader=yaml.FullLoader)
+            for ki, vi in params[k].items():
+                if type(vi) is dict:
+                    for kii, vii in vi.items():
+                        params[k]['_'.join([ki, kii])] = vii
+                    del params[k][ki]
+            for ki, vi in params[k].items():
+                if vi.startswith('$Python:'):
+                    params[k][ki] = exec(vi.strip('$Python:'))
 
-    arg_list = [DeclareLaunchArgument(k, default_value=str(v)) for k, v in params.items()]
+    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
 
     vehicle_node_list = []
     for idx in range(MAX_VEHICLES):
