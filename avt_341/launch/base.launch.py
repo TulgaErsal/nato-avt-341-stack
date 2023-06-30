@@ -551,7 +551,7 @@ def generate_launch_description():
                             'offsets_from_leader': launch.substitutions.LaunchConfiguration('offsets_from_leader'),
                             'follower_dist_break': launch.substitutions.LaunchConfiguration('follower_dist_break'),
                             'follower_dot_threshold': launch.substitutions.LaunchConfiguration('follower_dot_threshold'),
-                            'veh_namespaces': launch.substitutions.LaunchConfiguration('vehicle_namespaces'),
+                            'vehicle_namespaces': launch.substitutions.LaunchConfiguration('vehicle_namespaces'),
                             'toi_approach_dist': launch.substitutions.LaunchConfiguration('toi_approach_dist'),
                             'toi_encircle_radius': launch.substitutions.LaunchConfiguration('toi_encircle_radius'),
                             'toi_encircle_degrees': launch.substitutions.LaunchConfiguration('toi_encircle_degrees'),

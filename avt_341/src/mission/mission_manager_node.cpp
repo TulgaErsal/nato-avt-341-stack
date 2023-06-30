@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~follower_dot_threshold", fsc_params.follower_dot_threshold, 0.0);
     nh->get_parameter("~follower_dot_range", fsc_params.follower_dot_range, 30.0);
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
-    nh->get_parameter("~veh_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
+    nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
     bool add_name_id_to_msg;
     nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
@@ -255,6 +255,8 @@ int main(int argc, char **argv) {
             avt_341::msg::Float64 speed_msg;
             speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses);
             speed_factor_pub->publish(speed_msg);
+        }else{
+          speedController->clearVisualization();
         }
         
         nh->spin_some();

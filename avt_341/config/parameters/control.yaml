@@ -14,8 +14,8 @@ throttle_kd: 0.0                              # derivative coeff for the PID spe
 time_to_max_brake: 4.0                        # Time in seconds to go from 0 to maximum braking
 time_to_max_throttle: 3.0                     # Time in seconds to go from 0 to maximum throttle
 use_feed_forward: False                       # Set to true to use the feed-forward model in the PID throttle control
-ff_a0: 0.28                                   # 0th order coeff in the feed-forward model
-ff_a1: 0.03                                   # 1st order coeff in the feed-forward model
+ff_a0: 0.2856                                 # 0th order coeff in the feed-forward model
+ff_a1: 0.0321                                 # 1st order coeff in the feed-forward model
 ff_a2: 0.0                                    # 2nd order coeff in the feed-forward model
 max_desired_lateral_g: 0.75                   # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
 anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'

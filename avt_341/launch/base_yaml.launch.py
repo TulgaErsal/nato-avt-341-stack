@@ -134,20 +134,30 @@ def generate_launch_description():
     param_dir = os.path.join(get_package_share_directory('avt_341'), 'config', 'parameters')
     param_files = {f[:-len('.yaml')]: os.path.join(param_dir, f) for f in os.listdir(param_dir) if f.endswith('.yaml')}
     params = {}
+    param_refs = {}
     for k, v in param_files.items():
         with open(v) as f:
             params[k] = yaml.load(f, Loader=yaml.FullLoader)
-            keys_list = list(params[k].keys())
-            for ki in keys_list:
-                vi = params[k][ki]
-                if type(vi) is dict:
-                    for kii, vii in vi.items():
-                        params[k]['_'.join([ki, kii])] = vii
-                    del params[k][ki]
-            for ki, vi in params[k].items():
-                if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
-                    python_str = vi[len(PYTHON_EVAL_STR):]
-                    params[k][ki] = eval(python_str)
+            param_refs[k] = {}
+        keys_list = list(params[k].keys())
+        # Flatten sub-dictionaries
+        for ki in keys_list:
+            vi = params[k][ki]
+            if type(vi) is dict:
+                for kii, vii in vi.items():
+                    params[k]['_'.join([ki, kii])] = vii
+                del params[k][ki]
+        for ki, vi in params[k].items():
+            if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
+                python_str = vi[len(PYTHON_EVAL_STR):]
+                params[k][ki] = eval(python_str)
+            if type(vi) is str and vi.startswith("$val{"):
+                key_sub = vi[5:-1].split(':')
+                params[k][ki] = params[key_sub[0]][key_sub[1]]
+            if type(vi) is str and vi.startswith("$ref{"):
+                param_refs[k][ki] = vi[5:-1]
+        for ki in param_refs[k].keys():
+            del params[k][ki]
 
     arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
 
@@ -257,9 +267,11 @@ def generate_launch_description():
                         output='screen',
                         parameters=[{
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                            'veh_namespaces': launch.substitutions.LaunchConfiguration('vehicle_namespaces'),
+                            'add_name_id_to_msg': Invert(launch.substitutions.LaunchConfiguration('add_name_id_to_msg')),
                             },
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager'].keys()}]
+                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager'].keys()},
+                            {k: launch.substitutions.LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
+                        ]
                     ),
                     Node(
                         package='avt_341',

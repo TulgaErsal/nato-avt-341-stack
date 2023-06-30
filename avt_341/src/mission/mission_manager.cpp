@@ -26,8 +26,8 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     mission_contacts.clear();
 
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
+    reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
     gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
-//    follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status",10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
@@ -268,6 +268,10 @@ void MissionManager::reset(){
   task_completions_.clear();
   current_gp_goal = avt_341::msg::PoseStamped();
   mission_contacts.clear();
+
+  avt_341::msg::String reset_msg;
+  reset_msg.data = avt_341::node::NodeType::GlobalPlanner;
+  reset_pub->publish(reset_msg);
 }
 
 void MissionManager::cancelTask(int task_id, bool send_completion_msg){

@@ -27,6 +27,8 @@ namespace avt_341 {
       return target_pose;
     }
 
+    void FormationSpeedController::clearVisualization(){ }
+
 // NullFormationSpeedController
 // ====================================================================================================
 
@@ -116,18 +118,15 @@ namespace avt_341 {
                                                               const avt_341::msg::PoseStamped &terminal_pose,
                                                               std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
 
-      if (formation_def == nullptr || !formation_def->has_formation()) {
-        if (formation_poses.find(my_name_) == formation_poses.end()) {
-          return 1.0;
-        }
-        auto current_pos = formation_poses[my_name_].pose.pose.position;
-        double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
-        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
+      if (formation_poses.find(my_name_) == formation_poses.end()) {
+        std::cout << "FormationSpeedController " << my_name_ << " not found in formation_poses " << std::endl;
         return 1.0;
       }
 
-      if (formation_poses.find(my_name_) == formation_poses.end()) {
-        std::cout << "FormationSpeedController " << my_name_ << " not found in formation_poses " << std::endl;
+      if (formation_def == nullptr || !formation_def->has_formation()) {
+        auto current_pos = formation_poses[my_name_].pose.pose.position;
+        double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
+        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
         return 1.0;
       }
 
@@ -257,6 +256,20 @@ namespace avt_341 {
       return speed_factor;
     }
 
+    void SlowLeaderFormationSpeedController::clearVisualization(){
+      if(!has_visualized_){
+        return;
+      }
+      avt_341::msg::Marker marker;
+      marker.header.frame_id = "map";
+      marker.header.stamp = node_proxy_->get_stamp();
+      marker.id = 0;
+      marker.type = avt_341::msg::Marker::TEXT_VIEW_FACING;
+      marker.action = avt_341::msg::Marker::DELETE;
+      marker_pub_->publish(marker);
+      has_visualized_ = false;
+    }
+
     void SlowLeaderFormationSpeedController::visualizeSpeedIndicators(double speed_factor, double delta_pos,
                                                                       const avt_341::msg::PoseStamped &target_pose,
                                                                       const avt_341::msg::Point &current_pos,
@@ -306,6 +319,7 @@ namespace avt_341 {
       marker.pose.position.y = current_pos.y + 3.0;
       marker.pose.position.z = 0.1;
       marker_pub_->publish(marker);
+      has_visualized_ = true;
     }
 
     std::shared_ptr<FormationSpeedController>
