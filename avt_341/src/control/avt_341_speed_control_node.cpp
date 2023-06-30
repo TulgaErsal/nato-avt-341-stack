@@ -135,6 +135,8 @@ int main(int argc, char *argv[]){
 
     if(reset_called){
       controller.Reset();
+      desired_speed = 0.0f;
+      current_run_state = avt_341::utils::NavStackState::NotInit;
       avt_341::msg::String reset_ack_msg;
       reset_ack_msg.data = avt_341::node::NodeType::Control;
       reset_ack_pub->publish(reset_ack_msg);

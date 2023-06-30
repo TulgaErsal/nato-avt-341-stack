@@ -230,8 +230,9 @@ void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<avt_341::node::Node
   int dsize_y = lround(grid_dilate_y_/res_);
   RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, clear_method_raytrace_range,
                                      clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res, obj_range_filter);
-  TimedNoObsClearingSettings timed_clearing_settings(llx_, lly_, res_, max_point_age_, sampled_threshold);
+  TimedNoObsClearingSettings timed_clearing_settings(max_point_age_, sampled_threshold);
   clear_methods_.clear();
+  const std::string clear_methods_orig = clear_methods_str;
   size_t pos = 0;
   while ((pos = clear_methods_str.find(",")) != std::string::npos) {
     auto clear_method = CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, timed_clearing_settings, visualization_range, visualize);
@@ -239,7 +240,7 @@ void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<avt_341::node::Node
     clear_methods_str.erase(0, pos + 1);
   }
   clear_methods_.push_back(CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, timed_clearing_settings, visualization_range, visualize));
-  node_ref->log_info("Costmap clearing methods: %s (%d)", clear_methods_str.c_str(), clear_methods_.size());
+  node_ref->log_info("Costmap clearing methods: %s (%d)", clear_methods_orig.c_str(), clear_methods_.size());
 }
 
 

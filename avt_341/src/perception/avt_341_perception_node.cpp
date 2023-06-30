@@ -102,6 +102,7 @@ void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
 		for(int c = 0; c < point_cloud.channels.size(); c++){
 			point_cloud.channels[c].values = channel_values[c];
 		}
+    point_cloud.header.frame_id = rcv_cloud->header.frame_id;
     point_cloud.header.stamp = rcv_cloud->header.stamp;
 		grid.AddPoints(point_cloud);
 		grid_created = true;
@@ -193,7 +194,7 @@ int main(int argc, char *argv[]) {
 
   n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
   n->initialize_tf_listener();
-  auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",2,PointCloudCallback);
+  auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",10,PointCloudCallback);
   auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
   auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
   auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
@@ -209,6 +210,7 @@ int main(int argc, char *argv[]) {
   bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation;
   int sampled_threshold;
   std::string clear_method;
+  double perception_rate;
 
   n->get_parameter("~grid_res", grid_res, 1.0f);
   n->get_parameter("~grid_llx", grid_llx, -100.0f);
@@ -223,6 +225,7 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~grid_dilate_y", grid_dilate_y, 1.0f);
   n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
   n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
+  n->get_parameter("~perception_rate", perception_rate, 100.0);
 
   n->get_parameter("~clear_method_type", clear_method, std::string("none"));
   n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
@@ -262,7 +265,7 @@ int main(int argc, char *argv[]) {
 
   ResetNode();
   start_time = n->get_now_seconds();
-  avt_341::node::Rate rate(100.0);
+  avt_341::node::Rate rate(perception_rate);
   int nloops = 0;
 	while (avt_341::node::ok()){
 		double elapsed_time = (n->get_now_seconds()-start_time);

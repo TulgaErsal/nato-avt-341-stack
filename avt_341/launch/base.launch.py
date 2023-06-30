@@ -158,7 +158,7 @@ def generate_launch_description():
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
         DeclareLaunchArgument('time_register_window', default_value='0.05', description="Maximum window of time between odom and point cloud time stamps"),
-        DeclareLaunchArgument('max_point_age', default_value='5.0', description="Lifetime of a point before it is cleared"),
+        DeclareLaunchArgument('perception_rate', default_value='20.0', description="Publish rate for perception node"),
 
         # Elevation Grid - Clearing Methods
         DeclareLaunchArgument('clear_method_type', default_value='none', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."),
@@ -171,6 +171,7 @@ def generate_launch_description():
         DeclareLaunchArgument('clear_method_immediate_clear_dilation', default_value='True', description="Elevation grid - If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values."),
         DeclareLaunchArgument('clear_method_obs_filter_range', default_value='1.0', description="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."),
         DeclareLaunchArgument('clear_method_sampled_threshold', default_value='5', description="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."),
+        DeclareLaunchArgument('clear_method_max_point_age', default_value='5.0', description="Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time"),
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
@@ -360,8 +361,9 @@ def generate_launch_description():
                         'display': display_type,
                         'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
                         'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
-                        'max_point_age': launch.substitutions.LaunchConfiguration('max_point_age'),
+                        'perception_rate': launch.substitutions.LaunchConfiguration('perception_rate'),
 
+                        'clear_method_max_point_age': launch.substitutions.LaunchConfiguration('clear_method_max_point_age'),
                         'clear_method_type': launch.substitutions.LaunchConfiguration('clear_method_type'),
                         'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize'),
                         'clear_method_visualize_range': launch.substitutions.LaunchConfiguration('clear_method_visualize_range'),

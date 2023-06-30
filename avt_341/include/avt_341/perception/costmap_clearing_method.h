@@ -22,14 +22,11 @@ public:
 };
 
 struct TimedNoObsClearingSettings {
-  float llx;
-  float lly;
-  float res;
   double time_threshold;
   int sample_threshold;
 
-  TimedNoObsClearingSettings(float llx, float lly, float res, double time_threshold, int sample_threshold)
-    : llx(llx), lly(lly), res(res), time_threshold(time_threshold), sample_threshold(sample_threshold) {}
+  TimedNoObsClearingSettings(double time_threshold, int sample_threshold)
+    : time_threshold(time_threshold), sample_threshold(sample_threshold) {}
 };
 
 struct RaytraceSettings{
@@ -174,6 +171,7 @@ public:
   TimedNoObsClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range,
                            bool visualize, const TimedNoObsClearingSettings & time_config, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
+  void OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud) override;
   void Reset() override;
 private:
   std::vector< std::vector<Cell>> timed_cells_;

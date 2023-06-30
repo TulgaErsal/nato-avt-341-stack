@@ -542,8 +542,9 @@ namespace perception{
     }
   }
 
-  void TimedNoObsClearingMethod::ClearOccupancy(const avt_341::msg::PointCloud &point_cloud){
+  void TimedNoObsClearingMethod::ClearOccupancy(const avt_341::msg::PointCloud &point_cloud){ }
 
+  void TimedNoObsClearingMethod::OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud){
     cell_obstacle_calculator_->AddOccupancy(point_cloud, timed_cells_, false);
 
     for(int i=0;i<point_cloud.points.size();i++){
