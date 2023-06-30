@@ -27,12 +27,10 @@ class ElevationGrid : public CellObstacleCalculator{
     ~ElevationGrid() override;
 
     /**
-     * Add points to be processed 
-     * Modifies the input to be only obstacle points
-     * Returns surface points
+     * Add points to be processed
      * \param point_cloud PointCloud message
      */
-    std::vector<avt_341::msg::Point32> AddPoints(avt_341::msg::PointCloud &point_cloud);
+    void AddPoints(avt_341::msg::PointCloud &point_cloud);
 
     bool has_segmentation() const { return has_segmentation_; }
 
@@ -53,38 +51,20 @@ class ElevationGrid : public CellObstacleCalculator{
         ResizeGrid();
     }
 
-    void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, const std::string & clearing_method_type,
-                                  float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-                                  bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter){
-      auto clear_type = OccupancyClearingMethod::string_to_clear_type(clearing_method_type);
-      int dsize_x = lround(grid_dilate_x_/res_);
-      int dsize_y = lround(grid_dilate_y_/res_);
-      RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, clear_method_raytrace_range,
-                                         clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res);
+    std::shared_ptr<OccupancyClearingMethod> CreateClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref,
+                                                                  std::string clear_method_type,
+                                                                  const RaytraceSettings & raytrace_settings,
+                                                                  const TimedNoObsClearingSettings & timed_clear_settings,
+                                                                  float visualization_range, bool visualize);
 
-      switch(clear_type){
-        case CostmapClearMethodType::Time:
-          clearing_method_ = std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize);
-          break;
-        case CostmapClearMethodType::Raytrace:
-          if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
-            node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
-          }
-          clearing_method_ = std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
-          break;
-        case CostmapClearMethodType::RaytraceWithFiltering:
-          if(!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0){
-            node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
-          }
-          clearing_method_ = std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, obj_range_filter, this);
-          break;
-        default:
-          clearing_method_ = std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize);
-      }
-    }
+    void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
+                                  float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
+                                  bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold);
 
     void Visualize() const{
-      clearing_method_->Visualize();
+      for(auto & cm : clear_methods_){
+        cm->Visualize();
+      }
     }
 
   bool PastSlopeThreshold(const Cell &cell) const override;
@@ -154,7 +134,7 @@ class ElevationGrid : public CellObstacleCalculator{
     bool has_segmentation_ = false;
     float max_point_age_;
     bool is_resetting_ = false;
-    std::shared_ptr<OccupancyClearingMethod> clearing_method_ = nullptr;
+    std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
 
 };
 

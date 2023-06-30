@@ -7,8 +7,19 @@ namespace perception{
   // ==================================================================================================================
   // ==================================================================================================================
 
-  OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells, int Nx, int Ny, float visualization_range, bool visualize)
-                                              : cells_(cells), Nx_(Nx), Ny_(Ny), visualization_range_(visualization_range), visualize_(visualize)
+
+  OccupancyClearingMethod::OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, const RaytraceSettings & settings, CellObstacleCalculator* cell_obstacle_calculator)
+  : OccupancyClearingMethod(costmap_cells, 0.0, false, settings, cell_obstacle_calculator)
+  {
+  }
+
+  OccupancyClearingMethod::OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize, const RaytraceSettings & settings, CellObstacleCalculator* cell_obstacle_calculator)
+  : OccupancyClearingMethod(costmap_cells, costmap_cells.size(), costmap_cells[0].size(), visualization_range, visualize, settings, cell_obstacle_calculator)
+  {
+  }
+
+  OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells, int Nx, int Ny, float visualization_range, bool visualize, const RaytraceSettings & settings, CellObstacleCalculator* cell_obstacle_calculator)
+                                              : cells_(cells), Nx_(Nx), Ny_(Ny), config_(settings), cell_obstacle_calculator_(cell_obstacle_calculator), visualization_range_(visualization_range), visualize_(visualize)
   {
   }
 
@@ -16,8 +27,9 @@ namespace perception{
   // ==================================================================================================================
   // ==================================================================================================================
 
-  NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell>> &cells, float visualization_range, bool visualize)
-      : OccupancyClearingMethod(cells, cells.size(), cells[0].size(), visualization_range, visualize) {
+  NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell>> &cells, float visualization_range, bool visualize,
+                                         const RaytraceSettings & config, CellObstacleCalculator* obs_calculator)
+      : OccupancyClearingMethod(cells, cells.size(), cells[0].size(), visualization_range, visualize, config, obs_calculator){
   }
 
   void NullClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
@@ -27,8 +39,9 @@ namespace perception{
   // ==================================================================================================================
   // ==================================================================================================================
 
-  TimedClearingMethod::TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range, bool visualize)
-      : max_point_age_(max_point_age), OccupancyClearingMethod(cells, cells.size(), cells[0].size(), visualization_range, visualize) {
+  TimedClearingMethod::TimedClearingMethod(float max_point_age, std::vector< std::vector<Cell>> & cells, float visualization_range,
+                                           bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator)
+      : max_point_age_(max_point_age), OccupancyClearingMethod(cells, cells.size(), cells[0].size(), visualization_range, visualize, config, obs_calculator) {
   }
 
   void TimedClearingMethod::AgeCells(const float dt){
@@ -68,15 +81,14 @@ namespace perception{
   const int RaytraceClearingMethod::N_VOXELS_PER_CELL;
 
   RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
-                                                 float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool handle_dilation)
-                                                 : RaytraceClearingMethod(node_ref, cells, cells.size(), cells[0].size(), visualization_range, visualize, settings, cell_obstacle_calculator, handle_dilation){
+                                                 float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator, bool handle_dilation)
+                                                 : RaytraceClearingMethod(node_ref, cells, cells.size(), cells[0].size(), visualization_range, visualize, config, obs_calculator, handle_dilation){
   }
 
   RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Nx, int Ny,
-                                                 float visualization_range, bool visualize, RaytraceSettings settings, CellObstacleCalculator* cell_obstacle_calculator, bool handle_dilation)
-      : node_(node_ref), config_(settings), cell_obstacle_calculator_(cell_obstacle_calculator), handle_dilation_(handle_dilation), OccupancyClearingMethod(cells, Nx, Ny, visualization_range, visualize){
+                                                 float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator, bool handle_dilation)
+      : node_(node_ref), handle_dilation_(handle_dilation), OccupancyClearingMethod(cells, Nx, Ny, visualization_range, visualize, config, obs_calculator){
 
-    node_->initialize_tf_listener();
     std::string node_ns = std::string(node_->get_namespace());
     node_ns = node_ns.empty() || node_ns == "/" ? "" : (node_ns.substr(1, node_ns.size() - 1) + "/"); // Remove leading slash + add slash at end (/)
     lidar_frame_ =  node_ns + "lidar";
@@ -116,17 +128,24 @@ namespace perception{
     }
   }
 
+  avt_341::msg::Point RaytraceClearingMethod::TfTransformToPoint(const geometry_msgs::msg::TransformStamped & transform) const{
+    avt_341::msg::Point point;
+    point.x = transform.transform.translation.x;
+    point.y = transform.transform.translation.y;
+    point.z = transform.transform.translation.z;
+    return point;
+  }
+
   avt_341::msg::Point RaytraceClearingMethod::GetSensorOrigin() const{
-    avt_341::msg::Point origin;
-    auto lidar_transform = node_->lookup_transform("map", lidar_frame_);
-    origin.x = lidar_transform.transform.translation.x;
-    origin.y = lidar_transform.transform.translation.y;
-    origin.z = lidar_transform.transform.translation.z;
-    return origin;
+    return TfTransformToPoint(node_->lookup_transform("map", lidar_frame_));
+  }
+
+  avt_341::msg::Point RaytraceClearingMethod::GetSensorOrigin(const avt_341::msg::Time & stamp) const{
+    return TfTransformToPoint(node_->lookup_transform("map", lidar_frame_, stamp));
   }
 
   void RaytraceClearingMethod::ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) {
-    avt_341::msg::Point origin = GetSensorOrigin();
+    avt_341::msg::Point origin = GetSensorOrigin(point_cloud.header.stamp);
     for(const auto & point : point_cloud.points){
       const float dx = point.x - origin.x;
       const float dy = point.y - origin.y;
@@ -135,7 +154,7 @@ namespace perception{
       }
     }
 
-    if(handle_dilation_ && !config_.clear_dilation){
+    if(handle_dilation_ && !config_.immediate_clear_dilation){
       CleanupUnattachedDilation(origin, cells_);
     }
 
@@ -150,11 +169,12 @@ namespace perception{
 
   }
 
-  void RaytraceClearingMethod::RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells){
+  void OccupancyClearingMethod::RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells){
     cells[x][y].has_dilated = false;
     for(int i = std::max(0, x - config_.grid_dilate_x); i <= std::min(Nx_ - 1, x + config_.grid_dilate_x); i++){
       for(int j = std::max(0, y - config_.grid_dilate_y); j <= std::min(Ny_ - 1, y + config_.grid_dilate_y); j++){
-        if(config_.clear_dilation || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) < config_.thresh)){
+        if(cells[i][j].dilated_val > 0
+        && (config_.immediate_clear_dilation || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) < config_.thresh))){
           bool found_obs = false;
           // TODO: can remove extra loops with counts or set tracking dilated cells
           for(int ii = std::max(0, i - config_.grid_dilate_x); !found_obs && ii <= std::min(Nx_ - 1, i + config_.grid_dilate_x); ii++){
@@ -401,9 +421,9 @@ namespace perception{
   // ==================================================================================================================
 
   RaytraceWithFilteringClearingMethod::RaytraceWithFilteringClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
-                                                 float visualization_range, bool visualize, RaytraceSettings settings, float obj_range_filter, CellObstacleCalculator* cell_obstacle_calculator)
-      : cells_without_clearing_(cells), obj_filter_range_(obj_range_filter), RaytraceClearingMethod(node_ref, cells_with_clearing_, cells.size(),
-        cells[0].size(), visualization_range, visualize, settings, cell_obstacle_calculator, false){
+                                                 float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator)
+      : cells_without_clearing_(cells), RaytraceClearingMethod(node_ref, cells_with_clearing_, cells.size(),
+        cells[0].size(), visualization_range, visualize, config, obs_calculator, false){
 
     std::vector<Cell> row;
     row.resize(Ny_);
@@ -422,11 +442,11 @@ namespace perception{
     cell_obstacle_calculator_->AddOccupancy(point_cloud, cells_with_clearing_, false);
   }
 
-  void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(){
+  void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud){
     avt_341::msg::Point origin = GetSensorOrigin();
     int x_0, y_0, x_N, y_N;
     GetGridBounds(origin, config_.raytrace_range, x_0, y_0, x_N, y_N);
-    int search_range = static_cast<int>(obj_filter_range_ / config_.res);
+    int search_range = static_cast<int>( config_.obj_range_filter / config_.res);
     last_position_.x = static_cast<float>(x_0);
     last_position_.y = static_cast<float>(y_0);
 
@@ -502,6 +522,73 @@ namespace perception{
 
     last_position_ = utils::vec2(0.0, 0.0);
   }
+
+  TimedNoObsClearingMethod::TimedNoObsClearingMethod(std::vector< std::vector<Cell>> & cells, float visualization_range,
+                                                     bool visualize, const TimedNoObsClearingSettings & time_config,
+                                                     const RaytraceSettings & config, CellObstacleCalculator* obs_calculator)
+      : time_config_(time_config), OccupancyClearingMethod(cells, visualization_range, visualize, config, obs_calculator){
+
+    std::vector<Cell> row;
+    row.resize(Ny_);
+    timed_cells_.resize(Nx_,row);
+
+    std::vector<TimedNoObsData> row_data;
+    row_data.resize(Ny_);
+    timed_cells_data.resize(Nx_, row_data);
+    for(auto& row : timed_cells_data){
+      for(auto& elem : row){
+        elem.obs_time = std::numeric_limits<float>::max();
+      }
+    }
+  }
+
+  void TimedNoObsClearingMethod::ClearOccupancy(const avt_341::msg::PointCloud &point_cloud){ }
+
+  void TimedNoObsClearingMethod::OnOccupancyAdded(const avt_341::msg::PointCloud &point_cloud){
+    cell_obstacle_calculator_->AddOccupancy(point_cloud, timed_cells_, false);
+
+    for(int i=0;i<point_cloud.points.size();i++){
+      int xi = (int)floor((point_cloud.points[i].x - config_.llx)/config_.res);
+      int yi = (int)floor((point_cloud.points[i].y - config_.lly)/config_.res);
+      if (xi>=0 && xi<Nx_ && yi>=0 &&yi<Ny_) {
+        if(cell_obstacle_calculator_->PastSlopeThreshold(timed_cells_[xi][yi])) {
+          timed_cells_data[xi][yi].num_samples = 0;
+          timed_cells_data[xi][yi].obs_time = node::seconds_from_header(point_cloud.header);
+          timed_cells_[xi][yi].ResetHeight();
+        }else if(cell_obstacle_calculator_->PastSlopeThreshold(cells_[xi][yi])){
+          timed_cells_data[xi][yi].num_samples += 1;
+          if(timed_cells_data[xi][yi].num_samples >= time_config_.sample_threshold
+            && node::seconds_from_header(point_cloud.header) - timed_cells_data[xi][yi].obs_time > time_config_.time_threshold)
+          {
+            cells_[xi][yi].ResetHeight();
+            timed_cells_[xi][yi].ResetHeight();
+            RemoveDilationAtCell(xi, yi, cells_);
+            timed_cells_data[xi][yi].num_samples = 0;
+            timed_cells_data[xi][yi].obs_time = std::numeric_limits<float>::max();
+          }
+        }
+      }
+    }
+
+  }
+
+  void TimedNoObsClearingMethod::Reset(){
+    OccupancyClearingMethod::Reset();
+    Cell empty_cell;
+    for(int i = 0; i < Nx_; i++){
+      for(int j = 0; j < Ny_; j++){
+        timed_cells_[i][j] = empty_cell;
+        timed_cells_data[i][j].num_samples = 0;
+        timed_cells_data[i][j].obs_time = std::numeric_limits<float>::max();
+      }
+    }
+  }
+
+  const std::string CostmapClearMethodType::None = "none";
+  const std::string CostmapClearMethodType::Time = "time";
+  const std::string CostmapClearMethodType::NoObsTime = "no_obs_time";
+  const std::string CostmapClearMethodType::Raytrace = "raytrace";
+  const std::string CostmapClearMethodType::RaytraceWithFiltering = "raytrace_obs_filter";
 
   }
 }

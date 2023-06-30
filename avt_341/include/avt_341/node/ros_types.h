@@ -109,6 +109,8 @@ namespace avt_341 {
 
         using OccupiedCells = avt_341_msgs::OccupiedCells;
         using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
+
+        using Time = ros::Time;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;
@@ -120,6 +122,7 @@ namespace avt_341 {
 #else
 
 #include <cstring>
+#include <rclcpp/time.hpp>
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
@@ -227,6 +230,8 @@ namespace avt_341 {
     
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
+
+    using Time = rclcpp::Time;
   }
   namespace msg_tf{
     using Matrix3x3 = tf2::Matrix3x3;

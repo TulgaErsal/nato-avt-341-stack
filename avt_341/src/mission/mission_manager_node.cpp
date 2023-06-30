@@ -141,6 +141,8 @@ int main(int argc, char **argv) {
 
     std::shared_ptr<avt_341::mission::FormationSpeedController> speedController = avt_341::mission::createFormationSpeedController(fsc_type, formation_params.my_name, fsc_params, nh);
 
+    nh->log_info("Mission Manager Settings:\n  fsc_type=%s\n  use_leader_breadcrumbs=%d\n  x_offset_on_path=%d\n  formation_prune_gp=%d",
+                fsc_type.c_str(), formation_params.use_breadcrumbs, formation_params.x_offset_on_path, formation_params.prune_global_path);
     nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
     mgr->loadMissionDefinition(mission_definition_filename);
 

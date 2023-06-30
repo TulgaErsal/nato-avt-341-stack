@@ -30,7 +30,7 @@
   <arg name="points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
 
   <!-- Elevation Grid - Clearing Methods -->
-  <arg name="clear_method" default="none" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."/>
+  <arg name="clear_method_type" default="none" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."/>
   <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
   <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If less than zero, range limit is ignored and all cells are displayed."/>
   <arg name="clear_method_raytrace_range" default="50.0" doc="Elevation grid - Maximum range for raytrace clearing."/>
@@ -127,7 +127,7 @@
     <param name="display" value="$(arg display_type)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)"/>
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)"/>
-    <param name="clear_method" value="$(arg clear_method)"/>
+    <param name="clear_method_type" value="$(arg clear_method_type)"/>
     <param name="clear_method_visualize" value="$(arg clear_method_visualize)"/>
     <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)"/>
     <param name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)"/>

@@ -158,10 +158,10 @@ def generate_launch_description():
         DeclareLaunchArgument('stitch_lidar_points', default_value='True', description="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."),
         DeclareLaunchArgument('filter_highest_lidar', default_value='False', description="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."),
         DeclareLaunchArgument('time_register_window', default_value='0.05', description="Maximum window of time between odom and point cloud time stamps"),
-        DeclareLaunchArgument('max_point_age', default_value='0.0', description="Lifetime of a point before it is cleared"),
+        DeclareLaunchArgument('perception_rate', default_value='20.0', description="Publish rate for perception node"),
 
         # Elevation Grid - Clearing Methods
-        DeclareLaunchArgument('clear_method', default_value='none', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."),
+        DeclareLaunchArgument('clear_method_type', default_value='none', description="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."),
         DeclareLaunchArgument('clear_method_visualize', default_value='False', description="Elevation grid - If true, visualizes costmap clearing method."),
         DeclareLaunchArgument('clear_method_visualize_range', default_value='40.0', description="Elevation grid - Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed."),
         DeclareLaunchArgument('clear_method_raytrace_range', default_value='50.0', description="Elevation grid - Maximum range for raytrace clearing."),
@@ -170,6 +170,8 @@ def generate_launch_description():
         DeclareLaunchArgument('clear_method_voxel_height_res', default_value='0.5', description="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."),
         DeclareLaunchArgument('clear_method_immediate_clear_dilation', default_value='True', description="Elevation grid - If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values."),
         DeclareLaunchArgument('clear_method_obs_filter_range', default_value='1.0', description="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."),
+        DeclareLaunchArgument('clear_method_sampled_threshold', default_value='5', description="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."),
+        DeclareLaunchArgument('clear_method_max_point_age', default_value='5.0', description="Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time"),
 
         # Global Planner
         DeclareLaunchArgument('goal_dist', default_value='5.0', description="Global planner - Lookahead threshold within which next waypoint selected."),
@@ -207,7 +209,7 @@ def generate_launch_description():
         # Local Potential field Planner
         DeclareLaunchArgument("pf_use_global_path", default_value="False"),
         DeclareLaunchArgument("pf_rate", default_value="10.0"),
-        DeclareLaunchArgument("pf_obstacle_cost_thresh" , default_value="50", description="threshold for making something an obstacle (0-100), primarily for use with segmentation grid"),
+        DeclareLaunchArgument("pf_obstacle_cost_thresh", default_value="50", description="threshold for making something an obstacle (0-100), primarily for use with segmentation grid"),
         DeclareLaunchArgument("pf_kp", default_value="10.0", description="attractive potential coeff"),
         DeclareLaunchArgument("pf_eta", default_value="7.5", description="repulsive potential coeff"),
         DeclareLaunchArgument("pf_cutoff_dist", default_value="40.0", description="obstacles farther than this are ignored"),
@@ -359,9 +361,10 @@ def generate_launch_description():
                         'display': display_type,
                         'stitch_lidar_points': launch.substitutions.LaunchConfiguration('stitch_lidar_points'),
                         'filter_highest_lidar': launch.substitutions.LaunchConfiguration('filter_highest_lidar'),
-                        'max_point_age': launch.substitutions.LaunchConfiguration('max_point_age'),
+                        'perception_rate': launch.substitutions.LaunchConfiguration('perception_rate'),
 
-                        'clear_method': launch.substitutions.LaunchConfiguration('clear_method'),
+                        'clear_method_max_point_age': launch.substitutions.LaunchConfiguration('clear_method_max_point_age'),
+                        'clear_method_type': launch.substitutions.LaunchConfiguration('clear_method_type'),
                         'clear_method_visualize': launch.substitutions.LaunchConfiguration('clear_method_visualize'),
                         'clear_method_visualize_range': launch.substitutions.LaunchConfiguration('clear_method_visualize_range'),
                         'clear_method_raytrace_range': launch.substitutions.LaunchConfiguration('clear_method_raytrace_range'),
@@ -369,7 +372,8 @@ def generate_launch_description():
                         'clear_method_voxel_height_min': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_min'),
                         'clear_method_voxel_height_res': launch.substitutions.LaunchConfiguration('clear_method_voxel_height_res'),
                         'clear_method_immediate_clear_dilation': launch.substitutions.LaunchConfiguration('clear_method_immediate_clear_dilation'),
-                        'clear_method_obs_filter_range': launch.substitutions.LaunchConfiguration('clear_method_obs_filter_range')
+                        'clear_method_obs_filter_range': launch.substitutions.LaunchConfiguration('clear_method_obs_filter_range'),
+                        'clear_method_sampled_threshold': launch.substitutions.LaunchConfiguration('clear_method_sampled_threshold')
                     }],
                 ),
                 Node(
@@ -528,20 +532,6 @@ def generate_launch_description():
                     executable='avt_341_grid_compression_node',
                     name='grid_compression'),
                 GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])), actions=[
-                    # Node(
-                    #     package='avt_341',
-                    #     executable='avt_341_formation_control_node',
-                    #     name='formation_control_node',
-                    #     output='screen',
-                    #     parameters=[{
-                    #         'is_leader': idx == 0,
-                    #         'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                    #         'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
-                    #         'fsc_type': launch.substitutions.LaunchConfiguration('fsc_type'),
-                    #         'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
-                    #         'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
-                    #     }]
-                    # ),
                     Node(
                         package='avt_341',
                         executable='avt_341_mission_manager_node',

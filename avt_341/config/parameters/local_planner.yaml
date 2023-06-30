@@ -1,0 +1,66 @@
+local_planner_method: 'rcc'             # Local planner type dwa | rcc | pf.
+
+# Road-centerlined constrained planner
+# ======================================================================================================================
+num_paths: 21                           # Number of candidate paths to be generated.
+path_look_ahead: 30.0                   # Planning horizon.
+vehicle_width: 3.0                      # Vehicle width.
+max_steer_angle: 0.5                    # Maximum steer angle in radians. Used to compute rho_max during local planning.
+output_path_step: 0.5                   # Output path step size.
+path_integration_step: 0.35             # Path integration step size.
+dilation_factor: 1                      # Dilation to costmap to apply during local planning only.
+w_c: 0.0                                # w_c conformability (minimize curvature) weighting factor
+w_s: 0.4                                # w_s static safety (avoid collisions) weighting factor
+w_d: 0.0                                # w_d dynamic safety weighting factor
+w_r: 0.2                                # w_r rho (minimize rho offset) weighting factor
+w_t: 0.0                                # w_t segmentation cost weight
+trim_path: True                         # Whether or not to trim path
+use_global_path: True                   # Whether local planner should use path output from global planner for its road centerline or use simple line connecting waypoints
+use_blend: True                         # Whether or not to apply blending with adjacent candidate paths during planning
+cost_vis: 'final'                       # What type of cost to display on candidate paths: none | final | components | all
+cost_vis_text_size: 2.0                 # Cost vis text size
+ignore_coll_before_dist: 0.0            # Distance before which collisions are ignored in local planner candidate paths.
+
+# Potential Field Local Planner
+# ======================================================================================================================
+pf:
+  use_global_path: False                # Whether local planner should use path output from global planner for its road centerline or use simple line connecting waypoints
+  rate: 10.0                            # Planning rate
+  obstacle_cost_thresh: 50              # Threshold for making something an obstacle (0-100), primarily for use with segmentation grid
+  kp: 10.0                              # Attractive potential coeff
+  eta: 7.5                              # Repulsive potential coeff
+  cutoff_dist: 40.0                     # obstacles farther than this are ignored
+  inner_cutoff_dist: 0.0                # Obstacles closer than this are ignored
+  motion_model_res: 0.25                # Step size for the motion model in meters
+
+# Dynamic Window Approach
+# ======================================================================================================================
+dwa:
+  model: 'ackermann'                    # Motion model for the trajectory prediction - may be 'ackermann' for Ackermann-steered AGVs or 'synchro' for synchro drive robots.
+  wheelbase: 2.72                       # AGV wheelbase. Used for trajectory prediction for the Ackermann motion model.
+  speed_lin_min: 0.15                   # Minimum value for the linear variable (longitudinal speed for all models) in the prediction window.
+  speed_lin_max: 4.0                    # Maximum value for the linear variable (longitudinal speed for all models) in the prediction window.
+  speed_lin_steps: 10                   # Number of intervals to partition the linear variable range into. Higher values allow for finer control, but significantly impact performance.
+  accel_max: 3.0                        # Maximum rate of change of the linear variable (longitudinal speed).
+  speed_ang_min: -0.58                  # Minimum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window.
+  speed_ang_max: 0.58                   # Maximum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window.
+  speed_ang_steps: 40                   # Number of intervals to partition the angular variable range into. Higher values allow for finer control, but significantly impact performance.
+  ang_accel_max: 4.0                    # Maximum rate of change of the angular variable (yaw acceleration for synchro drive, steering rate for Ackermann)
+  horizon: 'adaptive'                   # Time prediction horizon - may be `fixed` or `adaptive` for prediction windows proportional to the longitudinal speed of the AGV.
+  time_span_min: 2.5                    # Minimum time span for the prediction window.
+  time_span_max: 10.0                   # Maximum time span for the prediction window.
+  time_span_var: 4.5                    # Size of the variable component of the prediction window.
+  time_span_gain: 1.1                   # Longitudinal speed proportionality constant for the variable prediction window.
+  time_step_min: 0.2                    # Minimum time step for motion prediction. Smaller values allow for finer control, but significantly impact performance.
+  w_cost_goal: 1.0                      # Objective function goal distance cost term weight. Higher values will promote planned trajectories with final pose closer to the goal pose.
+  w_cost_head: 0.001                    # Objective function heading deviation cost term weight. Higher values will promote planned trajectories with final pose oriented towards the goal.
+  thresh_obs: 0                         # Occupancy threshold above which a grid cell is considered an obstacle.
+  collision_radius: 2.25                # AGV radius used for collision detection (centered in the odometry message frame).
+  w_cost_obs: 1.5                       # Objective function obstacle distance cost term weight.
+  w_cost_speed: 0.0                     # Objective function terminal speed cost term weight. Higher values will promote planned trajectories with higher final velocity.
+  use_global_path: False                # Whether or not to use the global path when selecting the goal waypoint and to evaluate the AGV deviation from it.
+  w_cost_path: 0.0                      # Objective function global path deviation term weight. Higher values will promote planned trajectories closer to the global path.
+  use_segmentation: False               # Whether or not to inflate the obstacle cost with the segmentation cost.
+  w_cost_seg: 0.0                       # Objective function segmentation cost term weight. Higher values will promote planned trajectories which stay far from cells with higher cost.
+  w_cost_dev: 0.75                      # Objective function deviation term weight. Higher values will promote planned trajectories with smaller deviations from the current one.
+  print_summary: False                  # Whether or not to print the results of each planner iteration to console. Has an impact on performance and should only be used for debugging purposes.

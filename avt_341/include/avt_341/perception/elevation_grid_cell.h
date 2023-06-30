@@ -31,7 +31,6 @@ namespace perception{
       high.val = MIN_LIMIT;
       highest.val = MIN_LIMIT;
       second_highest.val = MIN_LIMIT;
-      obstacle = false;
       has_dilated = false;
       dilated_val = 0;
       terrain = 0.0f;
@@ -44,17 +43,18 @@ namespace perception{
       second_highest.age += dt;
       dilated_age += dt;
     }
+
+    void ResetHeight(){
+      // Need to keep dilated_val since from other adjacent cell
+      low.val = MAX_LIMIT;
+      high.val = MIN_LIMIT;
+    }
+
     ElevAge low,high,highest,second_highest;
-    //low.val = std::numeric_limits<float>::max();
-    //high.val = std::numeric_limits<float>::lowest();
-    //highest.val = std::numeric_limits<float>::lowest();
-    //second_highest.val = std::numeric_limits<float>::lowest();
+
     inline float height() const { return high.val - low.val; }
     inline bool filled() const { return low.val < MAX_LIMIT; }
-    //float slope_x = 0.0f;
-    //float slope_y = 0.0f;
 
-    bool obstacle; //  = false;
     bool has_dilated; //  = false;
     uint8_t dilated_val; //  = 0;
     float dilated_age;

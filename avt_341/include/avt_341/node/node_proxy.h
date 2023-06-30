@@ -119,6 +119,7 @@ namespace avt_341 {
 
             void initialize_tf_listener();
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+            geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const ros::Time &stamp);
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
@@ -289,6 +290,7 @@ namespace avt_341 {
 
       void initialize_tf_listener();
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
+      geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time &time);
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
       template<typename... Args> inline void log_debug(const char * format, Args... args){

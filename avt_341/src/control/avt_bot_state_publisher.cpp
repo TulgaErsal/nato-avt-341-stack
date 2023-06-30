@@ -81,13 +81,11 @@ int main(int argc, char** argv) {
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
+#include <queue>
 
-nav_msgs::msg::Odometry odometry;
-geometry_msgs::msg::Pose &pose = odometry.pose.pose;
-bool odom_received = false;
+std::queue<nav_msgs::msg::Odometry> odometry_msgs;
 void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr rcv_odom){
-  odometry = *rcv_odom;
-  odom_received = true;
+  odometry_msgs.push(*rcv_odom);
 }
 
 int main(int argc, char** argv) {
@@ -118,7 +116,9 @@ int main(int argc, char** argv) {
 
   rclcpp::Rate loop_rate(50.0);
   while (rclcpp::ok()) {
-    if(odom_received) {
+    while(!odometry_msgs.empty()) {
+      auto odometry = odometry_msgs.front();
+      odometry_msgs.pop();
       //update joint_state
       joint_state.header.stamp = odometry.header.stamp;
       joint_state.name.resize(3);
@@ -127,10 +127,10 @@ int main(int argc, char** argv) {
       joint_state.position[0] = 0.0;
 
       odom_trans.header.stamp = odometry.header.stamp;
-      odom_trans.transform.translation.x = pose.position.x;
-      odom_trans.transform.translation.y = pose.position.y;
-      odom_trans.transform.translation.z = pose.position.z;
-      odom_trans.transform.rotation = pose.orientation;
+      odom_trans.transform.translation.x = odometry.pose.pose.position.x;
+      odom_trans.transform.translation.y = odometry.pose.pose.position.y;
+      odom_trans.transform.translation.z = odometry.pose.pose.position.z;
+      odom_trans.transform.rotation = odometry.pose.pose.orientation;
 
       //send the joint state and transform
       joint_pub->publish(joint_state);
@@ -149,7 +149,6 @@ int main(int argc, char** argv) {
 
         broadcaster.sendTransform(tf_map_to_odom);
       }
-      odom_received = false;
     }
 
     // This will adjust as needed per iteration
