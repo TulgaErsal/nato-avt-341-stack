@@ -304,9 +304,7 @@ def generate_launch_description():
         # Comm Node
         DeclareLaunchArgument('host', default_value='localhost', description="Communication Node - Hostname of the communication server"),
         DeclareLaunchArgument('port', default_value='9000', description="Communication Node - port number for connecting to the communication server"),
-        DeclareLaunchArgument('disable_socket_comms', default_value='False', description="Communication Node - If true disables tcp socket communication."),
-        DeclareLaunchArgument('broadcast_internal', default_value='False', description="Communication Node - If true, echos received messages from comm_messages topic subscription."),
-        DeclareLaunchArgument('add_name_id_to_msg', default_value='True', description="Communication Node - If true, adds vehicle name and message count to broadcast messages."),
+        DeclareLaunchArgument('broadcast_over_ros', default_value='False', description="Communication Node - If true, comm node publishes to other vehicles on ros network instead of using tcp client."),
         DeclareLaunchArgument('verbose_comm_log', default_value='False', description="Communication Node - If true, comm node includes verbose logging."),
 
     ]
@@ -557,7 +555,6 @@ def generate_launch_description():
                             'toi_encircle_degrees': launch.substitutions.LaunchConfiguration('toi_encircle_degrees'),
                             'toi_encircle_cw': launch.substitutions.LaunchConfiguration('toi_encircle_cw'),
                             'toi_goal_threshold': launch.substitutions.LaunchConfiguration('goal_dist'),
-                            'add_name_id_to_msg': Invert(launch.substitutions.LaunchConfiguration('add_name_id_to_msg')),
                             'use_leader_breadcrumbs': launch.substitutions.LaunchConfiguration('use_leader_breadcrumbs'),
                             'x_offset_on_path': launch.substitutions.LaunchConfiguration('x_offset_on_path'),
                             'formation_prune_gp': launch.substitutions.LaunchConfiguration('formation_prune_gp')
@@ -572,9 +569,7 @@ def generate_launch_description():
                             'host': launch.substitutions.LaunchConfiguration('host'),
                             'port': launch.substitutions.LaunchConfiguration('port'),
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                            'disable_socket_comms': launch.substitutions.LaunchConfiguration('disable_socket_comms'),
-                            'broadcast_internal': launch.substitutions.LaunchConfiguration('broadcast_internal'),
-                            'add_name_id_to_msg': launch.substitutions.LaunchConfiguration('add_name_id_to_msg'),
+                            'broadcast_over_ros': launch.substitutions.LaunchConfiguration('broadcast_over_ros'),
                             'verbose_comm_log': launch.substitutions.LaunchConfiguration('verbose_comm_log')
                         }]
                     )

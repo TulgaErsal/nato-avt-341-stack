@@ -1,5 +1,5 @@
 string sender_name
-int16 msg_id
+int32 msg_id
 string type
 string formation
 string receiver_name
@@ -8,10 +8,10 @@ string follower1_name
 string follower2_name
 string follower3_name
 string original_sender
-string original_msg_id
+int32 original_msg_id
 string original_command
 string objective_name
-string desired_speed
+float64 desired_speed
 string priority_type
 string termination_method
 float64 x_scale
@@ -19,4 +19,4 @@ float64 y_scale
 float64 x_offset
 float64 y_offset
 float64 distance
-int16 target_msg_id
+int32 target_msg_id

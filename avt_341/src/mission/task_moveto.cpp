@@ -85,18 +85,6 @@ void MoveTo::init_() {
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 
-//    if(formation_def_ == nullptr){
-//      // TODO: Need to publish formation def with is_leader to turn off formation_controller from auto-publishing path...
-//      // TODO: Should find better way to disable formation controller, maybe just put it's logic in FollowTask, since only place it is relevant
-//      avt_341::msg::FollowerStatus fs;
-//      fs.use_leader = false;
-//      mgr->publishFormationStatus(fs);
-//    }
-//
-//    if(formation_def_ != nullptr && !formation_def_->formationAtGoal()){
-//      mgr->publishFormationStatus(formation_def_->formation_status);
-//    }
-
 }
 
 void MoveTo::run() {
@@ -122,10 +110,6 @@ bool MoveTo::is_done() {
 }
 
 void MoveTo::on_done() {
-    // announce arrival
-    std::ostringstream stream;
-    stream << "ARRIVE," << name;
-    mgr->publishCommStr(stream.str());
 }
 
 void MoveTo::onPreempt(){

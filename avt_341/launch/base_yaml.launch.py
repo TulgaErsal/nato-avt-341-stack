@@ -267,7 +267,6 @@ def generate_launch_description():
                         output='screen',
                         parameters=[{
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                            'add_name_id_to_msg': Invert(launch.substitutions.LaunchConfiguration('add_name_id_to_msg')),
                             },
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager'].keys()},
                             {k: launch.substitutions.LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
@@ -278,7 +277,11 @@ def generate_launch_description():
                         executable='avt_341_comm_node',
                         name='comm_node',
                         output='screen',
-                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['socket_comms'].keys()}]
+                        parameters=[{
+                            'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
+                            },
+                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['socket_comms'].keys()}
+                        ]
                     )
                 ])
             ])

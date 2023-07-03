@@ -6,15 +6,8 @@
 namespace avt_341 {
 namespace mission {
 
-const std::string PriorityType::QUEUE = "QUEUE";
-const std::string PriorityType::QUEUE_SHORT = "Q";
-const std::string PriorityType::PREEMPT = "PREEMPT";
-const std::string PriorityType::PREEMPT_SHORT = "P";
-const std::string PriorityType::CANCEL_ALL_PREVIOUS = "CANCEL_ALL";
-const std::string PriorityType::CANCEL_ALL_PREVIOUS_SHORT = "C";
-
-MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy, bool add_name_id_to_msg)
-: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy), add_name_id_to_msg_(add_name_id_to_msg){
+MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy)
+: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy){
 
     my_name = formation_params.my_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
@@ -29,7 +22,7 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
     gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
-    communication_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100);
+    communication_pub = node_proxy_->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
 }
@@ -166,12 +159,6 @@ void MissionManager::publishNavStateCmd(int state){
     navcommand_pub->publish(nav_msg);
 }
 
-void MissionManager::publishCommStr(const std::string & msg_data){
-    avt_341::msg::String msg;
-    msg.data = msg_data;
-    communication_pub->publish(msg);
-}
-
 void MissionManager::publishTaskCompletion(Task * task){
   publishTaskCompletion(task->sender_name, task->msg_id);
 }
@@ -181,15 +168,7 @@ void MissionManager::publishTaskCompletion(Task * task){
 //}
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
-  std::ostringstream stream;
-  if(add_name_id_to_msg_){
-    stream << sender_name << "," << msg_id << "," << "TASK_COMPLETE," << sender_name << "," << msg_id;
-  }else{
-    stream << "TASK_COMPLETE," << sender_name << "," << msg_id;
-  }
-  avt_341::msg::String comm_msg;
-  comm_msg.data = stream.str();
-  communication_pub->publish(comm_msg);
+  communication_pub->publish(TaskCompleteMsg(sender_name, -1, sender_name, msg_id).toROSMsg());
 }
 
 void MissionManager::updateTasks() {
@@ -325,9 +304,7 @@ void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const s
             if(overwatch_veh.empty()){
                 node_proxy_->log_info("Could not find overwatch vehicle");
             }else{
-                std::ostringstream stream;
-                stream << my_name << "," << -1 << "," << "OVERWATCH," << overwatch_veh << "," << encircle_task_id;
-                publishCommStr(stream.str());
+                communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
             }
         }
     }
@@ -387,7 +364,7 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
     msg.receiver_name = my_name;
     auto formation_def = new FormationDefinition(msg, mp, formation_params);
     if(formation_def->isLeader() || formation_def->formationAtGoal()){
-        // handle objective
+        // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
         handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def);
     } else if(formation_def->isFollowing()) {
         Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def);
@@ -401,7 +378,7 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
 void MissionManager::handleAcknowledge(const avt_341::msg::Communication & msg) {
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
     if(msg.original_sender == my_name) {
-        node_proxy_->log_info("%s acknowledged my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
+        node_proxy_->log_info("%s acknowledged my msg %d", msg.sender_name.c_str(), msg.original_msg_id);
     }
 }
 
@@ -424,7 +401,7 @@ void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, doubl
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
         MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.x_offset, y_offset+msg.y_offset, msg.distance);
-        bool ret = moveTask->setGoalByMissionPoint(msg.objective_name);
+        moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {
         node_proxy_->log_info("Ignoring MoveTo (not for me)");
@@ -437,11 +414,8 @@ void MissionManager::handleHold(const avt_341::msg::Communication & msg) {
 }
 
 void MissionManager::handleSetSpeed(const avt_341::msg::Communication & msg) {
-    // handle updated speed
-    desired_speed = std::stof(msg.desired_speed);
-//    node_proxy_->log_info("Setting desired speed to %.2f", desired_speed);
     avt_341::msg::Float64 speed_msg;
-    speed_msg.data = desired_speed;
+    speed_msg.data = msg.desired_speed;
     speed_pub->publish(speed_msg);
 }
 
@@ -468,15 +442,8 @@ bool MissionManager::hasCompletedTask(const std::string & target_veh, int target
 }
 
 void MissionManager::publishArrival(const std::string & sender_name, const std::string & objective){
-  std::ostringstream stream;
-  if(add_name_id_to_msg_){
-    stream << sender_name << ",-1," << "ARRIVE," << objective;
-  }else{
-    stream << "ARRIVE," << sender_name << "," << objective;
-  }
-  avt_341::msg::String comm_msg;
-  comm_msg.data = stream.str();
-  communication_pub->publish(comm_msg);
+  auto msg = ArrivedMsg(sender_name, -1, objective).toROSMsg();
+  communication_pub->publish(msg);
 }
 
 bool MissionManager::hasArrival(const std::string & target_veh, const std::string & objective) const{

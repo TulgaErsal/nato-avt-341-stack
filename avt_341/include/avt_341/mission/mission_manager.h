@@ -23,25 +23,13 @@
 #include "avt_341/mission/formation_utils.h"
 #include "avt_341/mission/formation_definition.h"
 #include "avt_341/mission/formation_speed_control.h"
+#include "avt_341/mission/mission_manager_dto.h"
 #include <deque>
 
 namespace avt_341 {
 namespace mission {
 
 class Task;
-
-class PriorityType{
-public:
-  static const std::string QUEUE;
-  static const std::string QUEUE_SHORT;
-  static const std::string PREEMPT;
-  static const std::string PREEMPT_SHORT;
-  static const std::string CANCEL_ALL_PREVIOUS;
-  static const std::string CANCEL_ALL_PREVIOUS_SHORT;
-  inline static bool isQueue(const std::string &type) { return type.empty() || type == QUEUE || type == QUEUE_SHORT; }
-  inline static bool isPreempt(const std::string &type) { return type == PREEMPT || type == PREEMPT_SHORT; }
-  inline static bool isCancelAllPrevious(const std::string &type) { return type == CANCEL_ALL_PREVIOUS || type == CANCEL_ALL_PREVIOUS_SHORT; }
-};
 
 struct Contact {
     // storage for contact information
@@ -58,7 +46,7 @@ class MissionManager{
 
   public:
     /// Construct a formation controller
-    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy, bool add_name_id_to_msg);
+    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy);
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
@@ -96,7 +84,6 @@ class MissionManager{
     void publishGoal(const avt_341::msg::PoseStamped & target_pose);
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
-    void publishCommStr(const std::string & msg_data);
     void publishArrival(const std::string & sender_name, const std::string & objective);
 //    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
     void reset();
@@ -120,7 +107,6 @@ class MissionManager{
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
-    bool add_name_id_to_msg_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<avt_341::msg::Communication> task_completions_;
@@ -131,7 +117,7 @@ class MissionManager{
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> gp_path_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> gp_toggle_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> communication_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Communication>> communication_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
 
     // Methods

@@ -2,7 +2,5 @@
 # ======================================================================================================================
 host: localhost                             # Hostname of the communication server
 port: 9000                                  # port number for connecting to the communication server
-disable_socket_comms: False                 # If true disables tcp socket communication
-broadcast_internal: False                   # If true, echos received messages from comm_messages topic subscription
-add_name_id_to_msg: True                    # If true, adds vehicle name and message count to broadcast messages
+broadcast_over_ros: False                   # If true, comm node publishes to other vehicles on ros network instead of using tcp client
 verbose_comm_log: False                     # If true, comm node includes verbose logging
