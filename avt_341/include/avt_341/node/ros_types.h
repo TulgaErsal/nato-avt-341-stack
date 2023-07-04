@@ -14,6 +14,7 @@
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PointStamped.h"
+#include "geometry_msgs/TransformStamped.h"
 
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Path.h"
@@ -67,6 +68,9 @@ namespace avt_341 {
 
         using PointStamped = geometry_msgs::PointStamped;
         using PointStampedPtr = const geometry_msgs::PointStamped::ConstPtr &;
+
+        using TransformStamped = geometry_msgs::TransformStamped;
+        using TransformStampedPtr = const geometry_msgs::TransformStampedConstPtr &;
 
         using OccupancyGrid = nav_msgs::OccupancyGrid;
         using OccupancyGridPtr = const nav_msgs::OccupancyGrid::ConstPtr &;
