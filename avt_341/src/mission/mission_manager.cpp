@@ -345,13 +345,6 @@ MissionPoint MissionManager::getClosestOverwatch(){
   return mp_out;
 }
 
-bool MissionManager::isMsgForSelf(const avt_341::msg::Communication & msg) {
-  return msg.type == MissionMsgType::TaskComplete
-  || msg.type == MissionMsgType::Arrived
-  || (msg.type == MissionMsgType::Formation && FormationDefinition::vehicleInFormation(msg, my_name))
-  || msg.receiver_name == my_name;
-}
-
 void MissionManager::handleFormationRequest(FormationMsg msg) {
 
     MissionPoint mp;

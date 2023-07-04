@@ -62,9 +62,6 @@ public:
   inline int formationIndex() const { return my_index_; }
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
 
-  bool selfInFormation(const avt_341::msg::Communication &comm_msg);
-  static bool vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name);
-
   avt_341::msg::FollowerStatus formation_status;
   avt_341::msg::PoseStamped goal;
   const FormationParameters &params;

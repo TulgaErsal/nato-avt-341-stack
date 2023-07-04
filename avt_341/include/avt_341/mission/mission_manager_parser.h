@@ -6,6 +6,10 @@
 
 std::vector<std::string> tokenizeMsg(std::string input);
 
+bool isMsgFor(const std::string & veh, const avt_341::msg::Communication & msg);
+bool isMsgFor(const std::string & veh, MissionManagerDto* msg);
+bool isVehicleInFormation(const std::string & veh, const avt_341::msg::Communication & msg);
+
 avt_341::msg::Communication serializedToROSMsg(const std::string & msg);
 avt_341::msg::Communication concreteToROSMsg(MissionManagerDto * msg);
 

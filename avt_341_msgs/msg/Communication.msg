@@ -7,9 +7,6 @@ string leader_name
 string follower1_name
 string follower2_name
 string follower3_name
-string original_sender
-int32 original_msg_id
-string original_command
 string objective_name
 float64 desired_speed
 string priority_type

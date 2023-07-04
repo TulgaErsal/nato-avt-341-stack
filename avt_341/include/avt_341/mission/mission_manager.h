@@ -58,7 +58,6 @@ class MissionManager{
 
     // external messages
     void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
-    bool isMsgForSelf(const avt_341::msg::Communication & msg);
     void handleFormationRequest(FormationMsg msg);
     void handleAcknowledge(const AcknowledgeMsg &);
     void handleArrive(const ArrivedMsg & msg);

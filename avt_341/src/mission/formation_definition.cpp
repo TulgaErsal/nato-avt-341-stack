@@ -127,15 +127,6 @@ avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const For
   return follower_status_msg;
 }
 
-bool FormationDefinition::selfInFormation(const avt_341::msg::Communication &comm_msg){
-  return FormationDefinition::vehicleInFormation(comm_msg, params.my_name);
-}
-
-bool FormationDefinition::vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name){
-  return comm_msg.leader_name == vehicle_name || comm_msg.follower1_name == vehicle_name
-  || comm_msg.follower2_name == vehicle_name || comm_msg.follower3_name == vehicle_name;
-}
-
 bool FormationDefinition::update(FormationMsg &comm_msg, const MissionPoint & mp){
 
   size_t substr_pos = comm_msg.formation.find("_AT_GOAL");

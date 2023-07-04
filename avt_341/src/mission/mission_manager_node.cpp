@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
         while(!comm_msgs.empty()){
             auto rcvd_msg = comm_msgs.front();
             comm_msgs.pop();
-            if(!mgr->isMsgForSelf(rcvd_msg)){
+            if(!isMsgFor(mgr->my_name, rcvd_msg)){
               continue;
             }
             std::string msg_text = rosToSerializedMsg(rcvd_msg);

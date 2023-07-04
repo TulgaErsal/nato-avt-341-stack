@@ -48,7 +48,7 @@ avt_341::msg::Communication MissionManagerDto::toROSMsg() {
 MoveToMsg::MoveToMsg() : MissionManagerDto() {}
 
 MoveToMsg::MoveToMsg(const avt_341::msg::Communication &msg)
-  : MissionManagerDto(msg), objective_name(msg.objective_name), goal_x_offset(msg.x_offset), goal_y_offset(msg.y_scale),
+  : MissionManagerDto(msg), objective_name(msg.objective_name), goal_x_offset(msg.x_offset), goal_y_offset(msg.y_offset),
     approach_distance(msg.distance) {
 }
 
@@ -127,8 +127,7 @@ SetSpeedMsg FormationMsg::speedMsg() {
 // =====================================================================================================================
 
 AcknowledgeMsg::AcknowledgeMsg(const avt_341::msg::Communication &msg)
-: MissionManagerDto(msg), ack_msg_id(msg.original_msg_id) {
-  receiver_name = msg.original_sender;
+: MissionManagerDto(msg), ack_msg_id(msg.target_msg_id) {
 }
 
 AcknowledgeMsg::AcknowledgeMsg(const std::string &sender, int msgId, const std::string & recipient, int ackMsdId)
@@ -137,7 +136,7 @@ AcknowledgeMsg::AcknowledgeMsg(const std::string &sender, int msgId, const std::
 
 avt_341::msg::Communication AcknowledgeMsg::toROSMsg(){
   avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
-  msg.original_msg_id = ack_msg_id;
+  msg.target_msg_id = ack_msg_id;
   return msg;
 }
 
@@ -183,16 +182,16 @@ std::string ShutdownMsg::getType() { return MissionMsgType::Shutdown; }
 // =====================================================================================================================
 
 TaskCompleteMsg::TaskCompleteMsg(const avt_341::msg::Communication &msg)
-    : MissionManagerDto(msg), completed_msg_id(msg.target_msg_id){
+    : MissionManagerDto(msg), target_msg_id(msg.target_msg_id){
 }
 
 TaskCompleteMsg::TaskCompleteMsg(const std::string &sender, int msgId, const std::string receiver, int completedMsgId)
-    : MissionManagerDto(sender, msgId, receiver), completed_msg_id(completedMsgId){
+    : MissionManagerDto(sender, msgId, receiver), target_msg_id(completedMsgId){
 }
 
 avt_341::msg::Communication TaskCompleteMsg::toROSMsg(){
   avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
-  msg.target_msg_id = completed_msg_id;
+  msg.target_msg_id = target_msg_id;
   return msg;
 }
 

@@ -58,8 +58,8 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
   }
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
   else if(message.type == MissionMsgType::Acknowledge) {
-    message.original_sender = tokens[3];
-    message.original_msg_id = std::stoi(tokens[4]);
+    message.receiver_name = tokens[3];
+    message.target_msg_id = std::stoi(tokens[4]);
   }
     // <sender>,<msg_id>,ARRIVE,<objective>
   else if(message.type == MissionMsgType::Arrived) {
@@ -122,7 +122,7 @@ std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
   }
   // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
   else if(msg.type == MissionMsgType::Acknowledge) {
-    stream << "," << msg.original_sender << "," << msg.original_msg_id;
+    stream << "," << msg.receiver_name << "," << msg.target_msg_id;
   }
   // <sender>,<msg_id>,ARRIVE,<objective>
   else if(msg.type == MissionMsgType::Arrived) {
@@ -207,4 +207,20 @@ std::shared_ptr<MissionManagerDto> serializedToConcreteMsg(const std::string & m
 std::string concreteToSerializedMsg(MissionManagerDto * msg){
   auto ros_msg = msg->toROSMsg();
   return rosToSerializedMsg(ros_msg);
+}
+
+bool isMsgFor(const std::string & veh, const avt_341::msg::Communication & msg){
+  return msg.type == MissionMsgType::TaskComplete
+         || msg.type == MissionMsgType::Arrived
+         || (msg.type == MissionMsgType::Formation && isVehicleInFormation(veh, msg))
+         || msg.receiver_name == veh;
+}
+
+bool isMsgFor(const std::string & veh, MissionManagerDto* msg){
+  return isMsgFor(veh, msg->toROSMsg());
+}
+
+bool isVehicleInFormation(const std::string & veh, const avt_341::msg::Communication & msg){
+  return msg.leader_name == veh || msg.follower1_name == veh
+         || msg.follower2_name == veh || msg.follower3_name == veh;
 }

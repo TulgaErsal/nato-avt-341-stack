@@ -130,7 +130,7 @@ struct TaskCompleteMsg : public MissionManagerDto {
   avt_341::msg::Communication toROSMsg() override;
   std::string getType() override;
 
-  int completed_msg_id;
+  int target_msg_id;
 };
 
 struct CancelMsg : public MissionManagerDto {
