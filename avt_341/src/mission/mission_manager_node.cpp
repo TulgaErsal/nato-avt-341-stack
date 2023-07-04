@@ -2,7 +2,7 @@
 #include "avt_341/node/node_proxy.h"
 // local includes
 #include "avt_341/mission/mission_manager.h"
-#include "avt_341/mission/mission_manager_serialization.h"
+#include "avt_341/mission/mission_manager_parser.h"
 #include <queue>
 
 std::queue<avt_341::msg::Communication> comm_msgs;
@@ -196,26 +196,26 @@ int main(int argc, char **argv) {
             nh->log_info("%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
             if(rcvd_msg.type == MissionMsgType::Formation) {
-                mgr->handleFormationRequest(rcvd_msg);
+                mgr->handleFormationRequest(FormationMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Acknowledge) {
-                mgr->handleAcknowledge(rcvd_msg);
+                mgr->handleAcknowledge(AcknowledgeMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Arrived) {
-                mgr->handleArrive(rcvd_msg);
+                mgr->handleArrive(ArrivedMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::TaskComplete) {
-                mgr->handleTaskComplete(rcvd_msg);
+                mgr->handleTaskComplete(TaskCompleteMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::MoveTo) {
-                mgr->handleMoveTo(rcvd_msg);
+                mgr->handleMoveTo(MoveToMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Shutdown) {
                 std::cout << mgr->my_name << " is shutting down" << std::endl;
                 break;
             } else if(rcvd_msg.type == MissionMsgType::SetSpeed) {
-                mgr->handleSetSpeed(rcvd_msg);
+                mgr->handleSetSpeed(SetSpeedMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Cancel) {
-                mgr->handleCancelTask(rcvd_msg);
+                mgr->handleCancelTask(CancelMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::CancelAll){
-                mgr->handleCancelAllTask(rcvd_msg);
+                mgr->handleCancelAllTask(CancelAllMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Overwatch){
-                mgr->handleOverwatch(rcvd_msg);
+                mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
             }
             else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());

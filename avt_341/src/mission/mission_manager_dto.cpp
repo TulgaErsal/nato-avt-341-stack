@@ -21,6 +21,8 @@ const std::string PriorityType::CANCEL_ALL_PREVIOUS_SHORT = "C";
 
 // MissionManagerDto
 // =====================================================================================================================
+MissionManagerDto::MissionManagerDto(){}
+
 MissionManagerDto::MissionManagerDto(const avt_341::msg::Communication &msg) : MissionManagerDto(msg.sender_name,
                                                                                                       msg.msg_id,
                                                                                                       msg.receiver_name,
@@ -28,39 +30,40 @@ MissionManagerDto::MissionManagerDto(const avt_341::msg::Communication &msg) : M
 }
 
 MissionManagerDto::MissionManagerDto(const std::string &sender, int msgId, const std::string &recipient,
-                                     const std::string &priority) : sender(sender), msg_id(msgId), receiver(recipient),
-                                                                    priority(priority.empty() ? PriorityType::QUEUE : priority) {}
+                                     const std::string &priority) : sender_name(sender), msg_id(msgId), receiver_name(recipient),
+                                                                    priority_type(priority.empty() ? PriorityType::QUEUE : priority) {}
 
 avt_341::msg::Communication MissionManagerDto::toROSMsg() {
   avt_341::msg::Communication msg;
-  msg.sender_name = sender;
+  msg.sender_name = sender_name;
   msg.msg_id = msg_id;
-  msg.receiver_name = receiver;
+  msg.receiver_name = receiver_name;
   msg.type = getType();
-  msg.priority_type = priority;
+  msg.priority_type = priority_type;
   return msg;
 }
 
 // MoveToMsg
 // =====================================================================================================================
+MoveToMsg::MoveToMsg() : MissionManagerDto() {}
 
 MoveToMsg::MoveToMsg(const avt_341::msg::Communication &msg)
-  : MissionManagerDto(msg), objective_name(msg.objective_name), x_offset(msg.x_offset), y_offset(msg.y_scale),
-    distance(msg.distance) {
+  : MissionManagerDto(msg), objective_name(msg.objective_name), goal_x_offset(msg.x_offset), goal_y_offset(msg.y_scale),
+    approach_distance(msg.distance) {
 }
 
 MoveToMsg::MoveToMsg(const std::string &sender, int msgId, const std::string &recipient,
                      const std::string &objectiveName, double xOffset, double yOffset, double distance,
                      const std::string &priority)
-    : MissionManagerDto(sender, msgId, recipient, priority), objective_name(objectiveName), x_offset(xOffset),
-      y_offset(yOffset), distance(distance) {}
+    : MissionManagerDto(sender, msgId, recipient, priority), objective_name(objectiveName), goal_x_offset(xOffset),
+      goal_y_offset(yOffset), approach_distance(distance) {}
 
 avt_341::msg::Communication MoveToMsg::toROSMsg() {
   avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.objective_name = objective_name;
-  msg.x_offset = x_offset;
-  msg.y_scale = y_offset;
-  msg.distance = distance;
+  msg.x_offset = goal_x_offset;
+  msg.y_scale = goal_y_offset;
+  msg.distance = approach_distance;
   return msg;
 }
 
@@ -68,6 +71,8 @@ std::string MoveToMsg::getType() { return MissionMsgType::MoveTo; }
 
 // FormationMsg
 // =====================================================================================================================
+
+FormationMsg::FormationMsg() : MoveToMsg() {}
 
 FormationMsg::FormationMsg(const avt_341::msg::Communication &msg)
   : MoveToMsg(msg) {
@@ -106,11 +111,15 @@ avt_341::msg::Communication FormationMsg::toROSMsg(){
   msg.desired_speed = desired_speed;
   msg.x_scale = x_scale;
   msg.y_scale = y_scale;
-  msg.x_offset = x_offset;
-  msg.y_offset = y_offset;
-  msg.distance = distance;
+  msg.x_offset = goal_x_offset;
+  msg.y_offset = goal_y_offset;
+  msg.distance = approach_distance;
 
   return msg;
+}
+
+SetSpeedMsg FormationMsg::speedMsg() {
+  return SetSpeedMsg{sender_name, msg_id, receiver_name, desired_speed, priority_type};
 }
 
 
@@ -118,7 +127,8 @@ avt_341::msg::Communication FormationMsg::toROSMsg(){
 // =====================================================================================================================
 
 AcknowledgeMsg::AcknowledgeMsg(const avt_341::msg::Communication &msg)
-: MissionManagerDto(msg), ack_msg_id(msg.target_msg_id){
+: MissionManagerDto(msg), ack_msg_id(msg.original_msg_id) {
+  receiver_name = msg.original_sender;
 }
 
 AcknowledgeMsg::AcknowledgeMsg(const std::string &sender, int msgId, const std::string & recipient, int ackMsdId)

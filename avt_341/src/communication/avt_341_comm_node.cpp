@@ -18,7 +18,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/communication/tcp_socket_proxy.h"
-#include "avt_341/mission/mission_manager_serialization.h"
+#include "avt_341/mission/mission_manager_parser.h"
 
 std::queue<avt_341::msg::Communication> pending_msgs;
 char message[256] = { 0 };

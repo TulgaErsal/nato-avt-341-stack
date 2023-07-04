@@ -30,6 +30,7 @@ struct MissionMsgType {
 };
 
 struct MissionManagerDto {
+  MissionManagerDto();
   explicit MissionManagerDto(const avt_341::msg::Communication &msg);
   MissionManagerDto(const std::string &sender, int msgId, const std::string & recipient,
                     const std::string &priority = PriorityType::QUEUE);
@@ -37,14 +38,15 @@ struct MissionManagerDto {
   virtual avt_341::msg::Communication toROSMsg();
   virtual std::string getType() = 0;
 
-  std::string sender;
+  std::string sender_name;
   int msg_id;
-  std::string receiver;
-  std::string priority;
+  std::string receiver_name;
+  std::string priority_type;
 
 };
 
 struct MoveToMsg : public MissionManagerDto {
+  MoveToMsg();
   explicit MoveToMsg(const avt_341::msg::Communication &msg);
   MoveToMsg(const std::string &sender, int msgId, const std::string & recipient,
             const std::string &objectiveName, double xOffset = 0.0, double yOffset = 0.0, double distance = 0.0,
@@ -54,12 +56,23 @@ struct MoveToMsg : public MissionManagerDto {
   std::string getType() override;
 
   std::string objective_name;
-  double x_offset;
-  double y_offset;
-  double distance;
+  double goal_x_offset;
+  double goal_y_offset;
+  double approach_distance;
+};
+
+struct SetSpeedMsg : public MissionManagerDto {
+  explicit SetSpeedMsg(const avt_341::msg::Communication &msg);
+  SetSpeedMsg(const std::string &sender, int msgId, const std::string & receiver,
+              double desiredSpeed, const std::string &priority = PriorityType::QUEUE);
+  avt_341::msg::Communication toROSMsg() override;
+  std::string getType() override;
+
+  double desired_speed;
 };
 
 struct FormationMsg : public MoveToMsg {
+  FormationMsg();
   explicit FormationMsg(const avt_341::msg::Communication &msg);
   FormationMsg(const std::string &sender, int msgId, const std::string & recipient,
                const std::string &objectiveName, const std::string &formation, double desiredSpeed,
@@ -69,6 +82,7 @@ struct FormationMsg : public MoveToMsg {
 
   avt_341::msg::Communication toROSMsg() override;
   std::string getType() override;
+  SetSpeedMsg speedMsg();
 
   std::string formation;
   std::string leader_name;
@@ -117,16 +131,6 @@ struct TaskCompleteMsg : public MissionManagerDto {
   std::string getType() override;
 
   int completed_msg_id;
-};
-
-struct SetSpeedMsg : public MissionManagerDto {
-  explicit SetSpeedMsg(const avt_341::msg::Communication &msg);
-  SetSpeedMsg(const std::string &sender, int msgId, const std::string & receiver,
-              double desiredSpeed, const std::string &priority = PriorityType::QUEUE);
-  avt_341::msg::Communication toROSMsg() override;
-  std::string getType() override;
-
-  double desired_speed;
 };
 
 struct CancelMsg : public MissionManagerDto {

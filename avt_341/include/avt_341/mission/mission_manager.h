@@ -57,15 +57,16 @@ class MissionManager{
     void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
 
     // external messages
-    void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
+    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
     bool isMsgForSelf(const avt_341::msg::Communication & msg);
-    void handleFormationRequest(avt_341::msg::Communication);
-    void handleAcknowledge(const avt_341::msg::Communication &);
-    void handleArrive(const avt_341::msg::Communication &);
-    void handleTaskComplete(const avt_341::msg::Communication &);
-    void handleHold(const avt_341::msg::Communication &);
-    void handleSetSpeed(const avt_341::msg::Communication &);
-    void handleOverwatch(const avt_341::msg::Communication &);
+    void handleFormationRequest(FormationMsg msg);
+    void handleAcknowledge(const AcknowledgeMsg &);
+    void handleArrive(const ArrivedMsg & msg);
+    void handleTaskComplete(const TaskCompleteMsg & msg);
+    void handleSetSpeed(const SetSpeedMsg & msg);
+    void handleOverwatch(const OverwatchMsg & msg);
+    void handleCancelTask(const CancelMsg & msg);
+    void handleCancelAllTask(const CancelAllMsg & msg);
 
     std::string my_name;
     double sodist_threshold;
@@ -88,8 +89,6 @@ class MissionManager{
 //    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
     void reset();
     void resetTaskList(bool send_completion_msg);
-    void handleCancelTask(const avt_341::msg::Communication & msg);
-    void handleCancelAllTask(const avt_341::msg::Communication & msg);
     void cancelTask(int task_id,bool send_completion_msg);
     void onGoalReached(const avt_341::msg::PoseStamped & pose);
     bool hasCompletedTask(const std::string & target_veh, int target_msg_id) const;
@@ -109,8 +108,8 @@ class MissionManager{
     std::shared_ptr<node::NodeProxy> node_proxy_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
-    std::vector<avt_341::msg::Communication> task_completions_;
-    std::vector<avt_341::msg::Communication> arrivals_;
+    std::vector<TaskCompleteMsg> task_completions_;
+    std::vector<ArrivedMsg> arrivals_;
 
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> reset_pub = nullptr;

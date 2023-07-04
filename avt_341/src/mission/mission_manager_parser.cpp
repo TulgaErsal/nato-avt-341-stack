@@ -1,4 +1,4 @@
-#include "avt_341/mission/mission_manager_serialization.h"
+#include "avt_341/mission/mission_manager_parser.h"
 #include <sstream>
 
 std::vector<std::string> tokenizeMsg(std::string input){
@@ -159,4 +159,52 @@ std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
 
   return stream.str();
 
+}
+
+avt_341::msg::Communication concreteToROSMsg(MissionManagerDto * msg){
+  return msg->toROSMsg();
+}
+
+std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341::msg::Communication & msg){
+  if(msg.type == MissionMsgType::Formation){
+    return std::make_shared<FormationMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::Acknowledge){
+    return std::make_shared<AcknowledgeMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::Arrived){
+    return std::make_shared<ArrivedMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::TaskComplete){
+    return std::make_shared<TaskCompleteMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::MoveTo){
+    return std::make_shared<MoveToMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::Shutdown){
+    return std::make_shared<ShutdownMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::SetSpeed){
+    return std::make_shared<SetSpeedMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::Cancel){
+    return std::make_shared<CancelMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::CancelAll){
+    return std::make_shared<CancelAllMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::Overwatch){
+    return std::make_shared<OverwatchMsg>(msg);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<MissionManagerDto> serializedToConcreteMsg(const std::string & msg){
+  auto ros_msg = serializedToROSMsg(msg);
+  return rosToConcreteMsg(ros_msg);
+}
+
+std::string concreteToSerializedMsg(MissionManagerDto * msg){
+  auto ros_msg = msg->toROSMsg();
+  return rosToSerializedMsg(ros_msg);
 }

@@ -310,7 +310,7 @@ void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const s
     }
 }
 
-void MissionManager::handleOverwatch(const avt_341::msg::Communication & msg){
+void MissionManager::handleOverwatch(const OverwatchMsg & msg){
 
   MissionPoint mp = getClosestOverwatch();
   if(!mp.name.empty()){
@@ -321,7 +321,7 @@ void MissionManager::handleOverwatch(const avt_341::msg::Communication & msg){
     overwatchTask->is_preemptable = false;
     addTask(overwatchTask, PriorityType::PREEMPT);
 
-    auto waitTask = new WaitUntilComplete(this, my_name, -1, msg.sender_name, msg.target_msg_id);
+    auto waitTask = new WaitUntilComplete(this, my_name, -1, msg.sender_name, msg.wait_for_msg_id);
     waitTask->is_preemptable = false;
     addTask(waitTask, PriorityType::PREEMPT);
   }else{
@@ -346,15 +346,13 @@ MissionPoint MissionManager::getClosestOverwatch(){
 }
 
 bool MissionManager::isMsgForSelf(const avt_341::msg::Communication & msg) {
-  return msg.type == "TASK_COMPLETE" || msg.type == "ARRIVE" || (msg.type == "FORM" && FormationDefinition::vehicleInFormation(msg, my_name)) || msg.receiver_name == my_name;
+  return msg.type == MissionMsgType::TaskComplete
+  || msg.type == MissionMsgType::Arrived
+  || (msg.type == MissionMsgType::Formation && FormationDefinition::vehicleInFormation(msg, my_name))
+  || msg.receiver_name == my_name;
 }
 
-void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
-
-    if(!FormationDefinition::vehicleInFormation(msg, my_name)){
-      node_proxy_->log_info("Ignoring formation request. Not for me.");
-      return;
-    }
+void MissionManager::handleFormationRequest(FormationMsg msg) {
 
     MissionPoint mp;
     if(!getMissionPoint(mp, msg.objective_name)){
@@ -372,24 +370,24 @@ void MissionManager::handleFormationRequest(avt_341::msg::Communication msg) {
     }
 
     // handle set speed
-    handleSetSpeed(msg);
+    handleSetSpeed(msg.speedMsg());
 }
 
-void MissionManager::handleAcknowledge(const avt_341::msg::Communication & msg) {
+void MissionManager::handleAcknowledge(const AcknowledgeMsg & msg) {
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
-    if(msg.original_sender == my_name) {
-        node_proxy_->log_info("%s acknowledged my msg %d", msg.sender_name.c_str(), msg.original_msg_id);
+    if(msg.receiver_name == my_name) {
+        node_proxy_->log_info("%s acknowledged my msg %d", msg.sender_name.c_str(), msg.ack_msg_id);
     }
 }
 
 // <sender>,<msg_id>,ARRIVE,<objective>
-void MissionManager::handleArrive(const avt_341::msg::Communication & msg) {
+void MissionManager::handleArrive(const ArrivedMsg & msg) {
     // If tracking, update mission tracker
     arrivals_.push_back(msg);
 }
 
 // <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
-void MissionManager::handleTaskComplete(const avt_341::msg::Communication & msg) {
+void MissionManager::handleTaskComplete(const TaskCompleteMsg & msg) {
     // If tracking, mark complete
 //    if(msg.original_sender == my_name) {
 //        node_proxy_->log_info("%s has completed the assigned task from my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
@@ -397,10 +395,10 @@ void MissionManager::handleTaskComplete(const avt_341::msg::Communication & msg)
     task_completions_.push_back(msg);
 }
 
-void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
+void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.x_offset, y_offset+msg.y_offset, msg.distance);
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset, y_offset + msg.goal_y_offset, msg.approach_distance);
         moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {
@@ -408,12 +406,7 @@ void MissionManager::handleMoveTo(const avt_341::msg::Communication & msg, doubl
     }
 }
 
-void MissionManager::handleHold(const avt_341::msg::Communication & msg) {
-    // handle request to wait
-
-}
-
-void MissionManager::handleSetSpeed(const avt_341::msg::Communication & msg) {
+void MissionManager::handleSetSpeed(const SetSpeedMsg & msg) {
     avt_341::msg::Float64 speed_msg;
     speed_msg.data = msg.desired_speed;
     speed_pub->publish(speed_msg);
@@ -426,19 +419,19 @@ void MissionManager::onGoalReached(const avt_341::msg::PoseStamped & pose){
   }
 }
 
-void MissionManager::handleCancelTask(const avt_341::msg::Communication & msg){
+void MissionManager::handleCancelTask(const CancelMsg & msg){
   cancelTask(msg.target_msg_id, true);
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
-void MissionManager::handleCancelAllTask(const avt_341::msg::Communication & msg){
+void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
   resetTaskList(true);
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
 bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id) const{
   return std::find_if(task_completions_.begin(), task_completions_.end(),
-                   [&](const avt_341::msg::Communication & comm){return comm.sender_name == target_veh && comm.msg_id == target_msg_id;}) != task_completions_.end();
+                   [&](const TaskCompleteMsg & comm){return comm.sender_name == target_veh && comm.msg_id == target_msg_id;}) != task_completions_.end();
 }
 
 void MissionManager::publishArrival(const std::string & sender_name, const std::string & objective){
@@ -448,7 +441,7 @@ void MissionManager::publishArrival(const std::string & sender_name, const std::
 
 bool MissionManager::hasArrival(const std::string & target_veh, const std::string & objective) const{
   return std::find_if(arrivals_.begin(), arrivals_.end(),
-                      [&](const avt_341::msg::Communication & comm){return comm.sender_name == target_veh && comm.objective_name == objective;}) != arrivals_.end();
+                      [&](const ArrivedMsg & comm){return comm.sender_name == target_veh && comm.objective_name == objective;}) != arrivals_.end();
 }
 
 } // namespace mission
