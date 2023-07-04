@@ -128,7 +128,7 @@ namespace perception{
     }
   }
 
-  avt_341::msg::Point RaytraceClearingMethod::TfTransformToPoint(const geometry_msgs::msg::TransformStamped & transform) const{
+  avt_341::msg::Point RaytraceClearingMethod::TfTransformToPoint(const avt_341::msg::TransformStamped & transform) const{
     avt_341::msg::Point point;
     point.x = transform.transform.translation.x;
     point.y = transform.transform.translation.y;

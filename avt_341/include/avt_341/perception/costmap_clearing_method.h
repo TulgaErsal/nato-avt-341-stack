@@ -123,7 +123,7 @@ public:
   void Visualize() const override;
 
 protected:
-  avt_341::msg::Point TfTransformToPoint(const geometry_msgs::msg::TransformStamped & transform) const;
+  avt_341::msg::Point TfTransformToPoint(const avt_341::msg::TransformStamped & transform) const;
   avt_341::msg::Point GetSensorOrigin(const avt_341::msg::Time & stamp) const;
   avt_341::msg::Point GetSensorOrigin() const;
   void GetGridBounds(const avt_341::msg::Point & origin, float range, int & x_0, int & y_0, int & x_N, int & y_N) const;
