@@ -14,6 +14,7 @@
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PointStamped.h"
+#include "geometry_msgs/TransformStamped.h"
 
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Path.h"
@@ -67,6 +68,9 @@ namespace avt_341 {
 
         using PointStamped = geometry_msgs::PointStamped;
         using PointStampedPtr = const geometry_msgs::PointStamped::ConstPtr &;
+
+        using TransformStamped = geometry_msgs::TransformStamped;
+        using TransformStampedPtr = const geometry_msgs::TransformStampedConstPtr &;
 
         using OccupancyGrid = nav_msgs::OccupancyGrid;
         using OccupancyGridPtr = const nav_msgs::OccupancyGrid::ConstPtr &;
@@ -134,6 +138,7 @@ namespace avt_341 {
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -190,6 +195,9 @@ namespace avt_341 {
 
     using PointStamped = geometry_msgs::msg::PointStamped;
     using PointStampedPtr = const geometry_msgs::msg::PointStamped::SharedPtr;
+
+    using TransformStamped = geometry_msgs::msg::TransformStamped;
+    using TransformStampedPtr = geometry_msgs::msg::TransformStamped::SharedPtr;
 
     using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
     using OccupancyGridPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;

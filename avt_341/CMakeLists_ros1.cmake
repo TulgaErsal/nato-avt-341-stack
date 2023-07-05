@@ -43,7 +43,7 @@ add_definitions(${PCL_DEFINITIONS})
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES nato_avt_341
-#  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
+  CATKIN_DEPENDS avt_341_msgs
 #  DEPENDS system_lib
 )
 
@@ -72,6 +72,7 @@ add_executable(path_manager_node
   src/planning/global/path_manager_node.cpp
   src/node/node_proxy.cpp
 )
+add_dependencies(path_manager_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(path_manager_node
   ${catkin_LIBRARIES}
 )
@@ -83,6 +84,7 @@ add_executable(gps_to_enu_node
   src/planning/global/coord_conversions/ellipsoid.cpp
   src/planning/global/coord_conversions/matrix.cpp
 )
+add_dependencies(gps_to_enu_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gps_to_enu_node
   ${catkin_LIBRARIES}
 )
@@ -90,6 +92,7 @@ target_link_libraries(gps_to_enu_node
 add_executable(gps_spoof_node
   src/planning/global/gps_spoof_node.cpp
 )
+add_dependencies(gps_spoof_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gps_spoof_node
   ${catkin_LIBRARIES}
 )
@@ -140,6 +143,7 @@ src/perception/elevation_grid.cpp
 src/node/node_proxy.cpp
 src/perception/costmap_clearing_method.cpp
 )
+add_dependencies(avt_341_perception_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_perception_node
   ${catkin_LIBRARIES}
 )
@@ -148,6 +152,7 @@ add_executable(avt_341_map_publisher_node
 src/perception/avt_341_map_publisher_node.cpp
 src/node/node_proxy.cpp
 )
+add_dependencies(avt_341_map_publisher_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_map_publisher_node
   ${catkin_LIBRARIES}
 )
@@ -158,6 +163,7 @@ add_executable(avt_341_control_node
   src/control/pid_controller.cpp
   src/node/node_proxy.cpp
 )
+add_dependencies(avt_341_control_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_control_node
   ${catkin_LIBRARIES}
 )
@@ -167,6 +173,7 @@ add_executable(avt_341_speed_control_node
   src/control/pid_controller.cpp
   src/node/node_proxy.cpp
 )
+add_dependencies(avt_341_speed_control_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_speed_control_node
   ${catkin_LIBRARIES}
 )
@@ -175,6 +182,7 @@ add_executable(speed_control_test_node
   src/control/speed_control_test_node.cpp
   src/node/node_proxy.cpp
 )
+add_dependencies(speed_control_test_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(speed_control_test_node
   ${catkin_LIBRARIES}
 )
@@ -189,6 +197,7 @@ add_executable(avt_341_local_planner_node
   src/visualization/image_visualizer.cpp
   src/planning/local/rviz_spline_plotter.cpp
 )
+add_dependencies(avt_341_local_planner_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_local_planner_node
   ${catkin_LIBRARIES}
   X11
@@ -200,6 +209,7 @@ add_executable(avt_341_pf_planner_node
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
 )
+add_dependencies(avt_341_pf_planner_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_pf_planner_node
   ${catkin_LIBRARIES}
   X11
@@ -211,6 +221,7 @@ add_executable(avt_341_dwa_planner_node
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
 )
+add_dependencies(avt_341_dwa_planner_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_dwa_planner_node
   ${catkin_LIBRARIES}
   X11
@@ -221,7 +232,8 @@ add_executable(avt_341_global_path_node
   src/planning/global/astar.cpp
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
-)
+  )
+add_dependencies(avt_341_global_path_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_global_path_node
   ${catkin_LIBRARIES}
   X11
@@ -232,7 +244,8 @@ add_executable(avt_341_sim_test_node
   src/node/node_proxy.cpp
   src/node/clock_publisher.cpp
   src/perception/point_cloud_generator.cpp
-)
+  )
+add_dependencies(avt_341_sim_test_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_sim_test_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
@@ -249,9 +262,7 @@ add_executable(avt_341_grid_compression_node
         src/perception/avt_341_grid_compression_node.cpp
         src/node/node_proxy.cpp
         )
-#add_dependencies(avt_341_grid_compression_node
-#        ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#        )
+add_dependencies(avt_341_grid_compression_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_grid_compression_node
         ${catkin_LIBRARIES}
         )
@@ -262,6 +273,7 @@ add_executable(avt_341_comm_node
   src/communication/tcp_socket_proxy.cpp
   src/node/node_proxy.cpp
 )
+add_dependencies(avt_341_comm_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_comm_node
   ${catkin_LIBRARIES}
 )
@@ -270,6 +282,7 @@ add_executable(avt_341_comm_publisher_node
   src/communication/avt_341_comm_publisher_node.cpp
   src/node/node_proxy.cpp
 )
+add_dependencies(avt_341_comm_publisher_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_comm_publisher_node
   ${catkin_LIBRARIES}
 )
@@ -304,6 +317,7 @@ src/node/clock_publisher.cpp
 )
 
 add_library(avt_341 ${LIB_SOURCES})
+add_dependencies(avt_341 ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}

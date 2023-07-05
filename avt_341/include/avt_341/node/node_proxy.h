@@ -1,6 +1,20 @@
-
 #ifndef AVT_341_NODE_PROXY_H
 #define AVT_341_NODE_PROXY_H
+
+#include <string>
+
+namespace avt_341 {
+namespace node {
+class NodeType {
+public:
+    const static std::string LocalPlanner;
+    const static std::string GlobalPlanner;
+    const static std::string Control;
+    const static std::string Perception;
+    const static std::string Mission;
+};
+}
+}
 
 #ifdef ROS_1
 
@@ -162,6 +176,7 @@ namespace avt_341 {
         }
     }
 }
+
 
 #else
 
@@ -341,18 +356,6 @@ namespace avt_341 {
   }
 }
 
-namespace avt_341 {
-  namespace node {
-    class NodeType {
-    public:
-      const static std::string LocalPlanner;
-      const static std::string GlobalPlanner;
-      const static std::string Control;
-      const static std::string Perception;
-      const static std::string Mission;
-    };
-  }
-}
 #endif //ROS_1
 
 #endif //AVT_341_NODE_PROXY_H

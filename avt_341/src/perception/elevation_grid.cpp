@@ -1,5 +1,6 @@
 #include "avt_341/perception/elevation_grid.h"
 #include <iostream>
+#include <thread>
 #include <math.h>
 
 namespace avt_341{
@@ -197,7 +198,7 @@ std::shared_ptr<OccupancyClearingMethod> ElevationGrid::CreateClearingMethod(std
                                                                              const RaytraceSettings & raytrace_settings,
                                                                              const TimedNoObsClearingSettings & timed_clear_settings,
                                                                              float visualization_range, bool visualize){
-  clear_method_type.erase(std::remove_if(clear_method_type.begin(), clear_method_type.end(), std::isspace), clear_method_type.end());
+  clear_method_type.erase(std::remove_if(clear_method_type.begin(), clear_method_type.end(), ::isspace), clear_method_type.end());
   if(clear_method_type == CostmapClearMethodType::Time) {
     return std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize, raytrace_settings, this);
   }

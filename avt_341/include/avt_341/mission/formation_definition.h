@@ -42,7 +42,7 @@ class FormationDefinition {
 
 public:
 
-  FormationDefinition::FormationDefinition(const FormationParameters & params_in);
+  FormationDefinition(const FormationParameters & params_in);
   FormationDefinition(avt_341::msg::Communication &comm_msg, const MissionPoint & mp, const FormationParameters &params_in);
 
   avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
