@@ -189,6 +189,9 @@ add_executable(avt_341_dwa_planner_node
       src/visualization/image_visualizer.cpp
     )
 ament_target_dependencies(avt_341_dwa_planner_node ${dependencies} )
+target_link_libraries(avt_341_dwa_planner_node
+        ${link_libs}
+        )
 
 add_executable(avt_341_global_path_node
         src/planning/global/avt_341_global_path_node.cpp
