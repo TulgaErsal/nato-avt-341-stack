@@ -9,7 +9,7 @@ nav_msgs::Odometry odometry;
 geometry_msgs::Pose &pose = odometry.pose.pose;
 bool odom_rcvd = false;
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
-  std::cout<<"State publisher recieved odometry "<<std::endl;
+  //std::cout<<"State publisher recieved odometry "<<std::endl;
 	odometry = *(rcv_odom.get());
   odom_rcvd = true;
 }
@@ -64,13 +64,10 @@ int main(int argc, char** argv) {
 
         broadcaster.sendTransform(tf_map_to_odom);
         odom_rcvd = false;
-      } else {
-        std::cout << "State publisher has not received odom update." << std::endl;
-      }
-
-        // This will adjust as needed per iteration
-        ros::spinOnce();
-        loop_rate.sleep();
+      } 
+      // This will adjust as needed per iteration
+      ros::spinOnce();
+      loop_rate.sleep();
     }
 
 
