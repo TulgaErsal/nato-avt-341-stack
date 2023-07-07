@@ -5,7 +5,7 @@
   <!-- General  -->
   <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
   <arg name="use_lidar_obstacle_detector" default="false" doc="Should we start the Lidar Obstacle Detector node?"/>
-  <arg name="auto_launch_rviz" default="true" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
+  <arg name="auto_launch_rviz" default="false" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
   <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
   <arg name="robot_description_file" doc="URDF robot description file to use"/>
   <arg name="use_sim_time" default="false" doc="Use sim time instead of wall time."/>  

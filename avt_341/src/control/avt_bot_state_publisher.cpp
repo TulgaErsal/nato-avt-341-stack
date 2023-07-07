@@ -7,9 +7,11 @@
 
 nav_msgs::Odometry odometry;
 geometry_msgs::Pose &pose = odometry.pose.pose;
+bool odom_rcvd = false;
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
   std::cout<<"State publisher recieved odometry "<<std::endl;
 	odometry = *(rcv_odom.get());
+  odom_rcvd = true;
 }
 
 int main(int argc, char** argv) {
@@ -34,6 +36,7 @@ int main(int argc, char** argv) {
 
     ros::Rate loop_rate(100.0);
     while (ros::ok()) {
+      if(odom_rcvd) {
         //update joint_state
         joint_state.header.stamp = odometry.header.stamp;
         joint_state.name.resize(3);
@@ -60,6 +63,10 @@ int main(int argc, char** argv) {
         tf_map_to_odom.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
 
         broadcaster.sendTransform(tf_map_to_odom);
+        odom_rcvd = false;
+      } else {
+        std::cout << "State publisher has not received odom update." << std::endl;
+      }
 
         // This will adjust as needed per iteration
         ros::spinOnce();
