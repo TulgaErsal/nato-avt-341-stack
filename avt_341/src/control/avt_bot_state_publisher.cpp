@@ -72,7 +72,6 @@ int main(int argc, char** argv) {
 #include <string>
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "sensor_msgs/msg/joint_state.hpp"
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
@@ -89,7 +88,6 @@ void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr rcv_odom){
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_state_publisher");
-  auto joint_pub = n->create_publisher<sensor_msgs::msg::JointState>("joint_states", 1);
   auto odom_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
 
   std::string frame_prefix;
@@ -103,7 +101,6 @@ int main(int argc, char** argv) {
 
   // message declarations
   geometry_msgs::msg::TransformStamped odom_trans;
-  sensor_msgs::msg::JointState joint_state;
   odom_trans.header.frame_id = "odom";
   odom_trans.child_frame_id = frame_prefix + "base_link";
 
@@ -117,12 +114,6 @@ int main(int argc, char** argv) {
     while(!odometry_msgs.empty()) {
       auto odometry = odometry_msgs.front();
       odometry_msgs.pop();
-      //update joint_state
-      joint_state.header.stamp = odometry.header.stamp;
-      joint_state.name.resize(3);
-      joint_state.position.resize(3);
-      joint_state.name[0] = "lidar_joint";
-      joint_state.position[0] = 0.0;
 
       odom_trans.header.stamp = odometry.header.stamp;
       odom_trans.transform.translation.x = odometry.pose.pose.position.x;
@@ -130,8 +121,6 @@ int main(int argc, char** argv) {
       odom_trans.transform.translation.z = odometry.pose.pose.position.z;
       odom_trans.transform.rotation = odometry.pose.pose.orientation;
 
-      //send the joint state and transform
-      joint_pub->publish(joint_state);
       broadcaster.sendTransform(odom_trans);
 
       if (publish_map_to_odom) {
