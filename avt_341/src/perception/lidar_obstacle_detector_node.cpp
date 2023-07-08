@@ -61,7 +61,7 @@ class LidarObstacleDetectorNode
   ros::Publisher pub_jsk_bboxes;
 
   void lidarPointsCallback(const sensor_msgs::PointCloud2::ConstPtr& lidar_points);
-  void publishClouds(const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>&& segmented_clouds, const std_msgs::Header& header);
+  void publishClouds(std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmented_clouds, const std_msgs::Header& header);
   jsk_recognition_msgs::BoundingBox transformJskBbox(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed);
   void publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& cloud_clusters, const std_msgs::Header& header);
 };
@@ -126,35 +126,43 @@ void LidarObstacleDetectorNode::lidarPointsCallback(const sensor_msgs::PointClou
   // Downsampleing, ROI, and removing the car roof
   auto filtered_cloud = obstacle_detector->filterCloud(raw_cloud, VOXEL_GRID_SIZE, ROI_MIN_POINT, ROI_MAX_POINT);
 
+  if(filtered_cloud->size() < 10) return;
+
   // Segment the groud plane and obstacles
   auto segmented_clouds = obstacle_detector->segmentPlane(filtered_cloud, 30, GROUND_THRESH);
+
+  // Publish ground cloud and obstacle cloud
+  publishClouds(segmented_clouds, pointcloud_header);
+
+  if(segmented_clouds.first->size()<= 0) return;
 
   // Cluster objects
   auto cloud_clusters = obstacle_detector->clustering(segmented_clouds.first, CLUSTER_THRESH, CLUSTER_MIN_SIZE, CLUSTER_MAX_SIZE);
   
-  // Publish ground cloud and obstacle cloud
-  publishClouds(std::move(segmented_clouds), pointcloud_header);
   // Publish Obstacles
   publishDetectedObjects(std::move(cloud_clusters), pointcloud_header);
 
   // Time the whole process
   const auto end_time = std::chrono::steady_clock::now();
   const auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  ROS_INFO("The obstacle_detector_node found %d obstacles in %.3f second", int(prev_boxes_.size()), float(elapsed_time.count()/1000.0));
+  ROS_DEBUG("The obstacle_detector_node found %d obstacles in %.3f second", int(prev_boxes_.size()), float(elapsed_time.count()/1000.0));
 }
 
-void LidarObstacleDetectorNode::publishClouds(const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>&& segmented_clouds, const std_msgs::Header& header)
+void LidarObstacleDetectorNode::publishClouds(std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmented_clouds, const std_msgs::Header& header)
 {
-  sensor_msgs::PointCloud2::Ptr ground_cloud(new sensor_msgs::PointCloud2);
-  pcl::toROSMsg(*(segmented_clouds.second), *ground_cloud);
-  ground_cloud->header = header;
+	if(segmented_clouds.second->size() > 0){
+		sensor_msgs::PointCloud2::Ptr ground_cloud(new sensor_msgs::PointCloud2);
+		pcl::toROSMsg(*(segmented_clouds.second), *ground_cloud);
+		ground_cloud->header = header;
+		pub_cloud_ground.publish(std::move(ground_cloud));
+	}
 
-  sensor_msgs::PointCloud2::Ptr obstacle_cloud(new sensor_msgs::PointCloud2);
-  pcl::toROSMsg(*(segmented_clouds.first), *obstacle_cloud);
-  obstacle_cloud->header = header;
-
-  pub_cloud_ground.publish(std::move(ground_cloud));
-  pub_cloud_clusters.publish(std::move(obstacle_cloud));
+	if(segmented_clouds.first->size() > 0) {
+		sensor_msgs::PointCloud2::Ptr obstacle_cloud(new sensor_msgs::PointCloud2);
+		pcl::toROSMsg(*(segmented_clouds.first), *obstacle_cloud);
+		obstacle_cloud->header = header;
+		pub_cloud_clusters.publish(std::move(obstacle_cloud));
+	}
 }
 
 jsk_recognition_msgs::BoundingBox LidarObstacleDetectorNode::transformJskBbox(const Box& box, const std_msgs::Header& header, const geometry_msgs::Pose& pose_transformed)

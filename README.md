@@ -19,6 +19,14 @@ The stack will work with either ROS1 or ROS2. It has been built and tested on Ub
 ## ROS-1 Installation
 A functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) is required to build and run this code.
 
+Install dependencies:
+```bash 
+sudo apt install ros-<version>-jsk-recognition-msgs
+
+# Example
+# sudo apt install ros-noetic-jsk-recognition-msgs
+```
+
 Clone the repo into your catkin_ws/src directory with the following command.
 ```bash
 git clone https://github.com/TulgaErsal/nato-avt-341-stack.git

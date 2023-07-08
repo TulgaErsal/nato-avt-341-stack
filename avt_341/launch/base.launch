@@ -3,7 +3,7 @@
 
 
   <!-- General  -->
-  <arg name="use_sim_time" default="false" doc="Use sim time instead of wall time."/>  
+  <arg name="use_sim_time" default="false" doc="Use sim time instead of wall time."/>
   <arg name="auto_launch_rviz" default="false" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
   <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
   <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
@@ -12,11 +12,11 @@
   <arg name="robot_description_veh3" doc="URDF robot description file to use for vehicle 3"/>
   <arg name="robot_description_veh4" doc="URDF robot description file to use for vehicle 4"/>
   <arg name="num_vehicles" default="1" doc="Number of vehicles controlled by the navigation stack"/>
-  <arg name="namespace_single_vehicle" default="false" doc="If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)."/>  
+  <arg name="namespace_single_vehicle" default="false" doc="If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)."/>
   <!-- NOT in ROS2 launch file -->
   <arg name="use_lidar_obstacle_detector" default="false" doc="Should we start the Lidar Obstacle Detector node?"/>
   <arg name="vehicle_name" default="AGV1" doc="Name of the vehicle"/>
-  
+
   <!-- Elevation Grid  -->
   <arg name="use_elevation" default="false" doc="Elevation grid - To use elevation or slope value when making occupancy grid based on heightmap."/>
   <arg name="slope_threshold" default="0.5" doc="Elevation grid - Threshold within which next waypoint selected."/>
@@ -52,7 +52,7 @@
   <arg name="clear_method_obs_filter_range" default="1.0" doc="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."/>
   <arg name="clear_method_sampled_threshold" default="5" doc="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."/>
   <arg name="clear_method_max_point_age" default="5.0" doc="Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time"/>
-  
+
 
   <!-- Global Planner  -->
   <arg name="goal_dist" default="5.0" doc="Global planner - Lookahead threshold within which next waypoint selected."/>
@@ -66,7 +66,7 @@
   <arg name="shutdown_behavior" default="2" doc="Global planner - behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown)"/>
   <arg name="auto_active_on_new_waypoint" default="true" doc="Global planner - Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint."/>
   <arg name="verbose_gp_log" default="true" doc="Global planner - Activates verbose logging for global planner."/>
-  
+
   <!-- Local Planner  -->
   <arg name="local_planner_method" default="rcc" doc="Local Planner - Local Planner type: dwa | rcc | pf "/>
 
@@ -99,7 +99,7 @@
   <arg name="pf_cutoff_dist" default="40.0" doc="text"/>
   <arg name="pf_inner_cutoff_dist" default="0.0" doc="text"/>
   <arg name="pf_motion_model_res" default="0.25" doc="text"/>
-  
+
   <!-- Local Planner - Dynamic Window Approach Planner -->
   <arg name="dwa_model" default="ackermann" doc="text"/>
   <arg name="dwa_wheelbase" default="2.72" doc="text"/>
@@ -152,7 +152,7 @@
 
   <!-- Global Segmentation Grid -->
   <arg name="global_grid_csv_path" default="$(find avt_341)/config/KRC_CP06_Scaled_Transposed.csv" doc="Path to CSV containing KRC global segmentation grid."/>
-  
+
   <!-- Mission Manager -->
   <arg name="follow_scale_x" default="15.0" doc="Mission Manager - X scale distance between vehicles in formation in vehicle coordinates"/>
   <arg name="follow_scale_y" default="10.0" doc="Mission Manager - Y Scale distance between vehicles in formation in vehicle coordinates"/>
@@ -185,8 +185,18 @@
   <arg name="add_name_id_to_msg" default="true" doc="Communication Node - If true, adds vehicle name and message count to broadcast messages."/>
   <arg name="verbose_comm_log" default="false" doc="Communication Node - If true, comm node includes verbose logging."/>
 
+  <!-- Lidar Obstacle Detection -->
+  <arg name="raw_points_topic" default="/avt_341/points" doc="The name of the points topic the obstacle detection node listens to."/>
+
+
+  <!-- ********************* END OF ARGS ***********************************-->
+
+
+  <!-- Global Parametrs -->
   <param name="/use_sim_time" value="$(arg use_sim_time)"/>
   <rosparam file="$(arg waypoints_file)" />
+
+  <!-- Transform publishers -->
   <param name="robot_description" command="cat $(arg robot_description_file)" />
 
   <group if="$(eval env('ROS_DISTRO') =='noetic')"> 
@@ -276,9 +286,9 @@
 
   <node name="global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
     <param name="display" value="$(arg display_type)" />
-    
+
     <param name="global_lookahead" value="75.0" />
-    
+
     <param name="goal_dist" value="$(arg goal_dist)" />
     <param name="debug_visualize" value="$(arg debug_visualize)" />
     <param name="w_distance" value="$(arg w_distance)" />
@@ -295,7 +305,7 @@
   <group if="$(eval arg('local_planner_method') == 'rcc')">
     <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))" >
       <param name="display" value="$(arg display_type)" />
-      
+
       <param name="output_path_step" value="0.5" />
       <param name="path_integration_step" value="0.35" />
       <param name="rate" value="50.0" />
@@ -319,7 +329,7 @@
       <param name="ignore_coll_before_dist" value="$(arg ignore_coll_before_dist)" />
     </node>
   </group>
-  
+
   <group if="$(eval arg('local_planner_method') == 'dwa')">
     <node name="local_dwa_planner_node" pkg="avt_341" type="avt_341_dwa_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))" >
       <!-- Local Planner - Dynamic Window Approach Planner -->
@@ -353,7 +363,7 @@
       <param name="dwa_print_summary" value="$(arg dwa_print_summary)" />
     </node>
   </group>
-  
+
   <group if="$(eval arg('local_planner_method') == 'pf')">
     <node name="local_pf_planner_node" pkg="avt_341" type="avt_341_pf_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))" >
       <param name="display" value="$(arg display_type)" />
@@ -372,12 +382,12 @@
 
   <node name="grid_compression" pkg="avt_341" type="avt_341_grid_compression_node" output="screen">
   </node>
-  
+
   <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
     <param name="name" value="$(arg vehicle_name)"/>
     <!-- From Communication Node args -->
     <param name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)"/>
-    
+
     <!-- Mission Manager -->
     <param name="follow_scale_x" value="$(arg follow_scale_x)"/>
     <param name="follow_scale_y" value="$(arg follow_scale_y)"/>
@@ -418,7 +428,7 @@
   <group if="$(eval arg('use_lidar_obstacle_detector'))">
     <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
       <!-- Input Topic Names -->
-      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <param name="lidar_points_topic"                  value="$(arg raw_points_topic)"/>
       <!-- Output Topic Names -->
       <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
       <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>

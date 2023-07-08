@@ -10,6 +10,8 @@
 		<arg name="waypoints_file" value="$(find avt_341)/config/no_waypoints.yaml"/>
 		<arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf"/>
   		<arg name="use_lidar_obstacle_detector" value="true"/>
+		<arg name="perception_points_topic" value="/avt_341/lidar_detector/cloud_clusters" />
+		<!--arg name="object_points_topic" value="/avt_341/points" /-->
 
 		<arg name="use_sim_time" value="true"/>
 		<arg name="use_registered" value="false"/>
