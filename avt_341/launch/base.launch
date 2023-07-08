@@ -27,7 +27,7 @@
   <arg name="use_registered" default="true" doc="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."/>
   <arg name="stitch_lidar_points" default="true" doc="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."/>
   <arg name="filter_highest_lidar" default="false" doc="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."/>
-  <arg name="points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
+  <arg name="perception_points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
 
   <!-- Elevation Grid - Clearing Methods -->
   <arg name="clear_method_type" default="none" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."/>
@@ -85,8 +85,18 @@
   <arg name="ff_a2" default="0.0" doc="2nd order coeff in the feed-forward model"/>
   <arg name="max_desired_lateral_g" default="0.75" doc="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2" />
 
+  <!-- Lidar Obstacle Detection -->
+  <arg name="raw_points_topic" default="/avt_341/points" doc="The name of the points topic the obstacle detection node listens to."/>
+
+ 
+  <!-- ********************* END OF ARGS ***********************************-->
+
+
+  <!-- Global Parametrs -->
   <param name="/use_sim_time" value="$(arg use_sim_time)"/>
   <rosparam file="$(arg waypoints_file)" />
+
+  <!-- Transform publishers -->
   <param name="robot_description" command="cat $(arg robot_description_file)" />
 
   <group if="$(eval env('ROS_DISTRO') =='noetic')"> 
@@ -107,7 +117,7 @@
 
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
-    <remap from="/avt_341/points" to="$(arg points_topic)"/>
+    <remap from="/avt_341/points" to="$(arg perception_points_topic)"/>
     <param name="use_elevation" value="$(arg use_elevation)" />
     <param name="slope_threshold" value="$(arg slope_threshold)" />
     <param name="grid_height" value="$(arg grid_height)" />
@@ -194,7 +204,7 @@
   <group if="$(eval arg('use_lidar_obstacle_detector'))">
     <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
       <!-- Input Topic Names -->
-      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <param name="lidar_points_topic"                  value="$(arg raw_points_topic)"/>
       <!-- Output Topic Names -->
       <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
       <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
