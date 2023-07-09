@@ -19,8 +19,8 @@
   <arg name="slope_threshold" default="0.5" />
   <arg name="grid_height" default="200.0" />
   <arg name="grid_width" default="200.0" />
-  <arg name="grid_llx" default="100.0" />
-  <arg name="grid_lly" default="100.0" />
+  <arg name="grid_llx" default="-100.0" />
+  <arg name="grid_lly" default="-100.0" />
   <arg name="grid_res" default="0.5" />
   <arg name="overhead_clearance" default="7.0" />
   <arg name="grid_dilate" default="false" />

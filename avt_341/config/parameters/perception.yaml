@@ -4,8 +4,8 @@ use_elevation: False                      # To use elevation or slope value when
 slope_threshold: 0.5                      # Threshold within which next waypoint selected.
 grid_height: 200.0                        # Grid height.
 grid_width: 200.0                         # Grid width.
-grid_llx: 100.0                           # X coordinate grid bottom left anchor point.
-grid_lly: 100.0                           # Y coordinate grid bottom left anchor point.
+grid_llx: -100.0                           # X coordinate grid bottom left anchor point.
+grid_lly: -100.0                           # Y coordinate grid bottom left anchor point.
 grid_res: 0.5                             # Grid resolution in meters.
 overhead_clearance: 7.0                   # Overhead clearance from vehicle after which lidar points ignored
 grid_dilate: False                        # Whether or not to apply dilation.

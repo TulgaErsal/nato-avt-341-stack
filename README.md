@@ -22,9 +22,11 @@ A functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_w
 Install dependencies:
 ```bash 
 sudo apt install ros-<version>-jsk-recognition-msgs
+sudo apt install ros-<version>-jsk-rviz-plugins
 
 # Example
 # sudo apt install ros-noetic-jsk-recognition-msgs
+sudo apt install ros-noetic-jsk-rviz-plugins
 ```
 
 Clone the repo into your catkin_ws/src directory with the following command.
