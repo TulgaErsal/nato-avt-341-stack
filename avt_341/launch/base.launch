@@ -1,205 +1,186 @@
 <launch>
 
-
-
   <!-- General  -->
-  <arg name="use_sim_time" default="false" doc="Use sim time instead of wall time."/>
-  <arg name="auto_launch_rviz" default="false" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
-  <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
-  <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
-  <arg name="robot_description_file" doc="URDF robot description file to use"/>
-  <arg name="robot_description_veh2" doc="URDF robot description file to use for vehicle 2"/>
-  <arg name="robot_description_veh3" doc="URDF robot description file to use for vehicle 3"/>
-  <arg name="robot_description_veh4" doc="URDF robot description file to use for vehicle 4"/>
-  <arg name="num_vehicles" default="1" doc="Number of vehicles controlled by the navigation stack"/>
-  <arg name="namespace_single_vehicle" default="false" doc="If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)."/>
-  <!-- NOT in ROS2 launch file -->
-  <arg name="use_lidar_obstacle_detector" default="false" doc="Should we start the Lidar Obstacle Detector node?"/>
-  <arg name="vehicle_name" default="AGV1" doc="Name of the vehicle"/>
+  <rosparam file="$(arg waypoints_file)" />
+  <arg name="use_sim_time" default="false" />
+  <arg name="auto_launch_rviz" default="true" />
+  <arg name="display_type" default="rviz" />
+  <arg name="waypoints_file" default="$(find avt_341)/config/no_waypoints.yaml" />
+  <arg name="num_vehicles" default="1" />
+  <arg name="namespace_single_vehicle" default="false" />
+  <arg name="vehicle_namespaces" default="['agv1', 'agv2', 'cgv1', 'cgv2']" />
+  <arg name="robot_description_file" default="" />
+  <arg name="robot_description_veh2_file" default="" />
+  <arg name="robot_description_veh3_file" default="" />
+  <arg name="robot_description_veh4_file" default="" />
 
   <!-- Elevation Grid  -->
-  <arg name="use_elevation" default="false" doc="Elevation grid - To use elevation or slope value when making occupancy grid based on heightmap."/>
-  <arg name="slope_threshold" default="0.5" doc="Elevation grid - Threshold within which next waypoint selected."/>
-  <arg name="grid_height" default="200.0" doc="Elevation grid - Grid height."/>
-  <arg name="grid_width" default="200.0" doc="Elevation grid - Grid width."/>
-  <arg name="grid_llx" default="-100.0" doc="Elevation grid - X coordinate grid bottom left anchor point."/>
-  <arg name="grid_lly" default="-100.0" doc="Elevation grid - Y coordinate grid bottom left anchor point."/>
-  <arg name="grid_res" default="0.5" doc="Elevation grid - Grid resolution in meters."/>
-  <arg name="grid_dilate" default="false" doc="Elevation grid - Apply dilation in occupancy grid."/>
-  <arg name="grid_dilate_x" default="2.0" doc="Elevation grid - Amount of dilation in x direction."/>
-  <arg name="grid_dilate_y" default="2.0" doc="Elevation grid - Amount of dilation in y direction."/>
-  <arg name="grid_dilate_proportion" default="0.8" doc="Elevation grid - Proportion of original grid cell to dilate with."/>
-  <arg name="cull_lidar" default="false" doc="Elevation - Cull lidar points flag based on distance from odometry."/>
-  <arg name="cull_lidar_dist" default="90.0" doc="Elevation grid - Maximum distance used to cull lidar points"/>
-  <arg name="cull_lidar_dist_min" default="0.0" doc="Elevation grid - Minimum distance used to cull lidar points"/>
-  <arg name="use_registered" default="true" doc="Elevation grid - If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates."/>
-  <arg name="stitch_lidar_points" default="true" doc="Elevation grid - If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages."/>
-  <arg name="filter_highest_lidar" default="false" doc="Elevation grid - If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used."/>
-  <arg name="time_register_window" default="0.05" doc="Maximum window of time between odom and point cloud time stamps"/>
-  <arg name="perception_rate" default="20.0" doc="Publish rate for the perception node"/>
-  <!-- NOT in ROS2 Launch file-->
-  <arg name="points_topic" default="/avt_341/points" doc="The name of the points topic the perception node listens to."/>
-
-  <!-- Elevation Grid - Clearing Methods -->
-  <arg name="clear_method_type" default="none" doc="Elevation grid - Costmap clearing method. none | time | raytrace | raytrace_obs_filter."/>
-  <arg name="clear_method_visualize" default="false" doc="Elevation grid - If true, visualizes costmap clearing method."/>
-  <arg name="clear_method_visualize_range" default="40.0" doc="Elevation grid - Visualization range for clear method debugging. If less than zero, range limit is ignored and all cells are displayed."/>
-  <arg name="clear_method_raytrace_range" default="50.0" doc="Elevation grid - Maximum range for raytrace clearing."/>
-  <arg name="clear_method_use_voxels" default="true" doc="Elevation grid - If true, uses a voxel representation on the z-axis."/>
-  <arg name="clear_method_voxel_height_min" default="0.0" doc="Elevation grid - Voxel grid height min used in raytrace_voxel clearing method."/>
-  <arg name="clear_method_voxel_height_res" default="0.5" doc="Elevation grid - Voxel grid height resolution used in raytrace_voxel clearing method."/>
-  <arg name="clear_method_immediate_clear_dilation" default="true" doc="Elevation grid - If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values."/>
-  <arg name="clear_method_obs_filter_range" default="1.0" doc="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."/>
-  <arg name="clear_method_sampled_threshold" default="5" doc="Elevation grid - Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option."/>
-  <arg name="clear_method_max_point_age" default="5.0" doc="Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time"/>
-
+  <arg name="use_elevation" default="false" />
+  <arg name="slope_threshold" default="0.5" />
+  <arg name="grid_height" default="200.0" />
+  <arg name="grid_width" default="200.0" />
+  <arg name="grid_llx" default="100.0" />
+  <arg name="grid_lly" default="100.0" />
+  <arg name="grid_res" default="0.5" />
+  <arg name="overhead_clearance" default="7.0" />
+  <arg name="grid_dilate" default="false" />
+  <arg name="grid_dilate_x" default="2.0" />
+  <arg name="grid_dilate_y" default="2.0" />
+  <arg name="grid_dilate_proportion" default="0.8" />
+  <arg name="cull_lidar" default="false" />
+  <arg name="cull_lidar_dist" default="90.0" />
+  <arg name="cull_lidar_dist_min" default="0.0" />
+  <arg name="warmup_time" default="5.0" />
+  <arg name="use_registered" default="true" />
+  <arg name="stitch_lidar_points" default="true" />
+  <arg name="filter_highest_lidar" default="false" />
+  <arg name="time_register_window" default="0.05" />
+  <arg name="perception_rate" default="20.0" />
+  <arg name="global_grid_csv_path" default="$(find avt_341)/config/KRC_CP06_Scaled_Transposed.csv" />
+  <arg name="use_lidar_obstacle_detector" default="false" />
+  <arg name="points_topic" default="/avt_341/points" />
+  <arg name="clear_method_type" default="none" />
+  <arg name="clear_method_visualize" default="false" />
+  <arg name="clear_method_visualize_range" default="40.0" />
+  <arg name="clear_method_raytrace_range" default="50.0" />
+  <arg name="clear_method_use_voxels" default="true" />
+  <arg name="clear_method_voxel_height_min" default="0.0" />
+  <arg name="clear_method_voxel_height_res" default="0.5" />
+  <arg name="clear_method_immediate_clear_dilation" default="true" />
+  <arg name="clear_method_obs_filter_range" default="1.0" />
+  <arg name="clear_method_max_point_age" default="5.0" />
+  <arg name="clear_method_sampled_threshold" default="5" />
 
   <!-- Global Planner  -->
-  <arg name="goal_dist" default="5.0" doc="Global planner - Lookahead threshold within which next waypoint selected."/>
-  <arg name="debug_visualize" default="false" doc="Global planner - Enables debug visualization of global planner."/>
-  <arg name="w_distance" default="1.0" doc="Global planner - Weight for distance cost."/>
-  <arg name="w_occupancy" default="1.0" doc="Global planner - Weight for occupancy cost."/>
-  <arg name="w_segmentation" default="1.0" doc="Global planner - Weight for segmentation cost."/>
-  <arg name="search_diagonals" default="False" doc="Global planner - If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered."/>
-  <arg name="los_max_iterations" default="1" doc="Global planner - Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges."/>
-  <arg name="los_break_on_first" default="True" doc="Global planner - If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection."/>
-  <arg name="shutdown_behavior" default="2" doc="Global planner - behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown)"/>
-  <arg name="auto_active_on_new_waypoint" default="true" doc="Global planner - Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint."/>
-  <arg name="verbose_gp_log" default="true" doc="Global planner - Activates verbose logging for global planner."/>
+  <arg name="goal_dist" default="5.0" />
+  <arg name="global_lookahead" default="75.0" />
+  <arg name="debug_visualize" default="false" />
+  <arg name="w_distance" default="1.0" />
+  <arg name="w_occupancy" default="1.0" />
+  <arg name="w_segmentation" default="1.0" />
+  <arg name="search_diagonals" default="false" />
+  <arg name="los_max_iterations" default="1" />
+  <arg name="los_break_on_first" default="true" />
+  <arg name="shutdown_behavior" default="2" />
+  <arg name="auto_active_on_new_waypoint" default="true" />
+  <arg name="verbose_gp_log" default="false" />
 
   <!-- Local Planner  -->
-  <arg name="local_planner_method" default="rcc" doc="Local Planner - Local Planner type: dwa | rcc | pf "/>
-
-  <!-- Local Planner - Road-centerline Constrained (RCC) -->
-  <arg name="num_paths" default="21" doc="Local planner - Number of candidate paths to be generated."/>
-  <arg name="path_look_ahead" default="30.0" doc="Local planner - Planning horizon."/>
-  <arg name="vehicle_width" default="3.0" doc="Local planner - Vehicle width. Used during blending phase when re-weighting each path cost by adjacent paths."/>
-  <arg name="max_steer_angle" default="0.5" doc="Local planner - Maximum steer angle in radians. Used to compute rho_max during local planning."/>
-  <arg name="dilation_factor" default="1" doc="Local planner - Dilation in number of grid cells to apply in local planner only."/>
-  <arg name="w_c" default="0.0" doc="Local planner - w_c conformability (minimize curvature) weighting factor"/>
-  <arg name="w_s" default="0.4" doc="Local planner - w_s static safety (avoid collisions) weighting factor"/>
-  <arg name="w_d" default="0.0" doc="Local planner - w_d dynamic safety weighting factor"/>
-  <arg name="w_r" default="0.2" doc="Local planner - w_r rho (minimize rho offset) weighting factor"/>
-  <arg name="w_t" default="0.0" doc="Local planner - w_t segmentation cost weight"/>
-  <arg name="use_global_path" default="true" doc="Local planner - Whether local planner should use path output from global planner for its road centerline or use simple line connecting waypoints."/>
-  <arg name="use_blend" default="true" doc="Local planner - Whether to do blending of path costs based on vehicle width to adjacent paths."/>
-  <arg name="cost_vis" default="final" doc="Local planner - What type of cost to display on candidate paths: none | final | components | all"/>
-  <arg name="cost_vis_text_size" default="2.0" doc="Cost vis text size"/>
-  <arg name="ignore_coll_before_dist" default="0.0" doc="Local planner - Distance before which collisions are ignored in local planner candidate paths."/>
-
-  <!-- Local Planner - MPC -->
-  <arg name="use_mpc" default="false" doc="Local planner - Use MPC local planner instead of road centerline constrained splines."/>
-
-  <!-- Local Planner - Potential Field Planner -->
-  <arg name="pf_use_global_path" default="false"/>
-  <arg name="pf_rate" default="10.0"/>
-  <arg name="pf_obstacle_cost_thresh" default="50" doc="threshold for making something an obstacle (0-100), primarily for use with segmentation grid"/>
-  <arg name="pf_kp" default="10.0" doc="text"/>
-  <arg name="pf_eta" default="7.5" doc="text"/>
-  <arg name="pf_cutoff_dist" default="40.0" doc="text"/>
-  <arg name="pf_inner_cutoff_dist" default="0.0" doc="text"/>
-  <arg name="pf_motion_model_res" default="0.25" doc="text"/>
-
-  <!-- Local Planner - Dynamic Window Approach Planner -->
-  <arg name="dwa_model" default="ackermann" doc="text"/>
-  <arg name="dwa_wheelbase" default="2.72" doc="text"/>
-  <arg name="dwa_speed_lin_min" default="0.15" doc="text"/>
-  <arg name="dwa_speed_lin_max" default="4.0" doc="text"/>
-  <arg name="dwa_speed_lin_steps" default="10" doc="text"/>
-  <arg name="dwa_accel_max" default="3.0" doc="text"/>
-  <arg name="dwa_speed_ang_min" default="-0.58" doc="text"/>
-  <arg name="dwa_speed_ang_max" default="0.58" doc="text"/>
-  <arg name="dwa_speed_ang_steps" default="40" doc="text"/>
-  <arg name="dwa_ang_accel_max" default="4.0" doc="text"/>
-  <arg name="dwa_horizon" default="adaptive" doc="text"/>
-  <arg name="dwa_time_span_min" default="2.5" doc="text"/>
-  <arg name="dwa_time_span_max" default="10.0" doc="text"/>
-  <arg name="dwa_time_span_var" default="4.5" doc="text"/>
-  <arg name="dwa_time_span_gain" default="1.1" doc="text"/>
-  <arg name="dwa_time_step_min" default="0.2" doc="text"/>
-  <arg name="dwa_w_cost_goal" default="1.0" doc="text"/>
-  <arg name="dwa_w_cost_head" default="0.001" doc="text"/>
-  <arg name="dwa_thresh_obs" default="0" doc="text"/>
-  <arg name="dwa_collision_radius" default="2.25" doc="text"/>
-  <arg name="dwa_w_cost_obs" default="1.5" doc="text"/>
-  <arg name="dwa_w_cost_speed" default="0.0" doc="text"/>
-  <arg name="dwa_use_global_path" default="false" doc="text"/>
-  <arg name="dwa_w_cost_path" default="0.0" doc="text"/>
-  <arg name="dwa_use_segmentation" default="false" doc="text"/>
-  <arg name="dwa_w_cost_seg" default="0.0" doc="text"/>
-  <arg name="dwa_w_cost_dev" default="0.75" doc="text"/>
-  <arg name="dwa_print_summary" default="false" doc="text"/>
+  <arg name="local_planner_method" default="rcc" />
+  <arg name="num_paths" default="21" />
+  <arg name="path_look_ahead" default="30.0" />
+  <arg name="vehicle_width" default="3.0" />
+  <arg name="max_steer_angle" default="0.5" />
+  <arg name="output_path_step" default="0.5" />
+  <arg name="path_integration_step" default="0.35" />
+  <arg name="dilation_factor" default="1" />
+  <arg name="w_c" default="0.0" />
+  <arg name="w_s" default="0.4" />
+  <arg name="w_d" default="0.0" />
+  <arg name="w_r" default="0.2" />
+  <arg name="w_t" default="0.0" />
+  <arg name="trim_path" default="true" />
+  <arg name="use_global_path" default="true" />
+  <arg name="use_blend" default="true" />
+  <arg name="cost_vis" default="final" />
+  <arg name="cost_vis_text_size" default="2.0" />
+  <arg name="ignore_coll_before_dist" default="0.0" />
+  <arg name="pf_use_global_path" default="false" />
+  <arg name="pf_rate" default="10.0" />
+  <arg name="pf_obstacle_cost_thresh" default="50" />
+  <arg name="pf_kp" default="10.0" />
+  <arg name="pf_eta" default="7.5" />
+  <arg name="pf_cutoff_dist" default="40.0" />
+  <arg name="pf_inner_cutoff_dist" default="0.0" />
+  <arg name="pf_motion_model_res" default="0.25" />
+  <arg name="dwa_model" default="ackermann" />
+  <arg name="dwa_wheelbase" default="2.72" />
+  <arg name="dwa_speed_lin_min" default="0.15" />
+  <arg name="dwa_speed_lin_max" default="4.0" />
+  <arg name="dwa_speed_lin_steps" default="10" />
+  <arg name="dwa_accel_max" default="3.0" />
+  <arg name="dwa_speed_ang_min" default="-0.58" />
+  <arg name="dwa_speed_ang_max" default="0.58" />
+  <arg name="dwa_speed_ang_steps" default="40" />
+  <arg name="dwa_ang_accel_max" default="4.0" />
+  <arg name="dwa_horizon" default="adaptive" />
+  <arg name="dwa_time_span_min" default="2.5" />
+  <arg name="dwa_time_span_max" default="10.0" />
+  <arg name="dwa_time_span_var" default="4.5" />
+  <arg name="dwa_time_span_gain" default="1.1" />
+  <arg name="dwa_time_step_min" default="0.2" />
+  <arg name="dwa_w_cost_goal" default="1.0" />
+  <arg name="dwa_w_cost_head" default="0.001" />
+  <arg name="dwa_thresh_obs" default="0" />
+  <arg name="dwa_collision_radius" default="2.25" />
+  <arg name="dwa_w_cost_obs" default="1.5" />
+  <arg name="dwa_w_cost_speed" default="0.0" />
+  <arg name="dwa_use_global_path" default="false" />
+  <arg name="dwa_w_cost_path" default="0.0" />
+  <arg name="dwa_use_segmentation" default="false" />
+  <arg name="dwa_w_cost_seg" default="0.0" />
+  <arg name="dwa_w_cost_dev" default="0.75" />
+  <arg name="dwa_print_summary" default="false" />
 
   <!-- Pure Pursuit Control  -->
-  <arg name="vehicle_wheelbase" default="2.72" doc="Pure pursuit controller - vehicle_wheelbase."/>
-  <arg name="vehicle_max_steer_angle_degrees" default="30.0" doc="Pure pursuit controller - max steer angle in degrees."/>
-  <arg name="steering_coefficient" default="4.5" doc="Pure pursuit controller - steering coefficient."/>
-  <arg name="vehicle_speed" default="5.0" doc="Pure pursuit controller - vehicle_speed m/s."/>
-  <arg name="throttle_coefficient" default="1.0" doc="Pure pursuit controller - scale factor for the commanded steering. l.t. 1.0 will make the acceleration less agressive, g.t. 1.0 will make it more agressive" />
-  <arg name="throttle_kp" default="0.1129" doc="Proportional coeff for the PID speed controller" />
-  <arg name="throttle_ki" default="0.0" doc="Integral coeff for the PID speed controller" />
-  <arg name="throttle_kd" default="0.0" doc="Derivative coeff for the PID speed controller" />
-  <arg name="time_to_max_brake" default="4.0" doc="Time in seconds to go from 0 to maximum braking" />
-  <arg name="time_to_max_throttle" default="3.0" doc="Time in seconds to go from 0 to maximum throttle" />
-  <arg name="use_feed_forward" default="false" doc="Set to true to use the feed-forward model in the PID throttle control" />
-  <arg name="ff_a0" default="0.2856" doc="0th order coeff in the feed-forward model" />
-  <arg name="ff_a1" default="0.0321" doc="1st order coeff in the feed-forward model"/>
-  <arg name="ff_a2" default="0.0" doc="2nd order coeff in the feed-forward model"/>
-  <arg name="max_desired_lateral_g" default="0.75" doc="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2" />
-  <arg name="anti_windup_method" default="disabled" doc="PID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'"/>
-  <arg name="pid_output_max" default="1.0" doc="Max value for PID output. Only active when anti_windup_method = 'output_clamping'"/>
-  <arg name="pid_output_min" default="0.0" doc="Min value for PID output. Only active when anti_windup_method = 'output_clamping'"/>
-
-  <!-- Global Segmentation Grid -->
-  <arg name="global_grid_csv_path" default="$(find avt_341)/config/KRC_CP06_Scaled_Transposed.csv" doc="Path to CSV containing KRC global segmentation grid."/>
+  <arg name="vehicle_wheelbase" default="2.72" />
+  <arg name="vehicle_max_steer_angle_degrees" default="30.0" />
+  <arg name="steering_coefficient" default="3.5" />
+  <arg name="vehicle_speed" default="7.0" />
+  <arg name="throttle_coefficient" default="1.0" />
+  <arg name="throttle_kp" default="0.11" />
+  <arg name="throttle_ki" default="0.0" />
+  <arg name="throttle_kd" default="0.0" />
+  <arg name="time_to_max_brake" default="4.0" />
+  <arg name="time_to_max_throttle" default="3.0" />
+  <arg name="use_feed_forward" default="false" />
+  <arg name="ff_a0" default="0.2856" />
+  <arg name="ff_a1" default="0.0321" />
+  <arg name="ff_a2" default="0.0" />
+  <arg name="max_desired_lateral_g" default="0.75" />
+  <arg name="anti_windup_method" default="disabled" />
+  <arg name="pid_output_max" default="1.0" />
+  <arg name="pid_output_min" default="0.0" />
 
   <!-- Mission Manager -->
-  <arg name="follow_scale_x" default="15.0" doc="Mission Manager - X scale distance between vehicles in formation in vehicle coordinates"/>
-  <arg name="follow_scale_y" default="10.0" doc="Mission Manager - Y Scale distance between vehicles in formation in vehicle coordinates"/>
-  <arg name="mission_definition_file" default="$(find avt_341)/config/mission_points.csv" doc="Mission Manager - file describing mission reference points"/>
-  <arg name="fsc_type" default="slow_down_leader" doc="Mission Manager - Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'."/>
-  <arg name="x_offset_on_path" default="false" doc="Mission Manager - If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader."/>
-  <arg name="formation_prune_gp" default="true" doc="Mission Manager - If true prunes the formation controller generated follower global path to the closer point."/>
-  <arg name="follow_goal_threshold" default="10.0" doc="Mission Manager - Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal."/>
-  <arg name="oof_threshold" default="15.0" doc="Mission Manager - Distance threshold after which vehicle considered out of formation."/>
-  <arg name="oof_const_term" default="0.3" doc="Mission Manager - Initial speed factor subtraction if past threshold"/>
-  <arg name="oof_lin_slope" default="0.03" doc="Mission Manager - Slope in linear portion of out of formation speed control"/>
-  <arg name="oof_mult" default="1.5" doc="Mission Manager - Multiplier applied to vehicles out of formation"/>
-  <arg name="formation_debug_visualize" default="false" doc="Mission Manager - Debug visualize formation speed control."/>
-  <arg name="offsets_from_leader" default="true" doc="Mission Manager - If true, formation offsets calculated from lead vehicle. If false, offsets calculated from next vehicle in column formation."/>
-  <arg name="follower_dist_break" default="10.0" doc="Mission Manager - If follower global path distance is less than this amount, follower waits."/>
-  <arg name="follower_dot_threshold" default="0.0" doc="Mission Manager - Heading dot product threshold of heading vectors of follower and lead vehicle below which follower vehicle waits."/>
-  <arg name="follower_dot_range" default="30.0" doc="Mission Manager - Range within which to apply heading dot product filter."/>
-  <arg name="vehicle_namespaces" default="['agv1, 'agv2', 'cgv1', 'cgv2']" doc="Mission Manager - Vehicle namespaces to listen to for odometry callbacks."/>
-  <arg name="toi_approach_dist" default="15.0" doc="Mission Manager - Approach distance to target of interest before encircling."/>
-  <arg name="toi_encircle_radius" default="10.0" doc="Mission Manager - Encircle radius around target of interest."/>
-  <arg name="toi_encircle_degrees" default="180.0" doc="Mission Manager - Encircle degrees around target of interest."/>
-  <arg name="toi_encircle_cw" default="true" doc="Mission Manager - If encircle should be in clock-wise (cw) direction around target of interest."/>
-  <arg name="use_leader_breadcrumbs" default="true" doc="Formation Control - If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner)."/>
+  <arg name="follow_scale_x" default="15.0" />
+  <arg name="follow_scale_y" default="10.0" />
+  <arg name="mission_definition_file" default="$(find avt_341)/config/mission_points.csv" />
+  <arg name="fsc_type" default="slow_down_leader" />
+  <arg name="x_offset_on_path" default="false" />
+  <arg name="formation_prune_gp" default="true" />
+  <arg name="follow_goal_threshold" default="10.0" />
+  <arg name="formation_debug_visualize" default="false" />
+  <arg name="offsets_from_leader" default="true" />
+  <arg name="follower_dist_break" default="10.0" />
+  <arg name="follower_dot_threshold" default="0.0" />
+  <arg name="follower_dot_range" default="30.0" />
+  <arg name="use_leader_breadcrumbs" default="true" />
+  <arg name="oof_threshold" default="15.0" />
+  <arg name="oof_const_term" default="0.3" />
+  <arg name="oof_lin_slope" default="0.03" />
+  <arg name="oof_mult" default="1.5" />
+  <arg name="toi_approach_dist" default="15.0" />
+  <arg name="toi_encircle_radius" default="10.0" />
+  <arg name="toi_encircle_degrees" default="180.0" />
+  <arg name="toi_encircle_cw" default="true" />
 
   <!-- Comm Node -->
-  <arg name="host" default="localhost" doc="Communication Node - Hostname of the communication server"/>
-  <arg name="port" default="9000" doc="Communication Node - port number for connecting to the communication server"/>
-  <arg name="disable_socket_comms" default="false" doc="Communication Node - If true disables tcp socket communication."/>
-  <arg name="broadcast_internal" default="false" doc="Communication Node - If true, echos received messages from comm_messages topic subscription."/>
-  <arg name="add_name_id_to_msg" default="true" doc="Communication Node - If true, adds vehicle name and message count to broadcast messages."/>
-  <arg name="verbose_comm_log" default="false" doc="Communication Node - If true, comm node includes verbose logging."/>
-
-  <!-- Lidar Obstacle Detection -->
-  <arg name="raw_points_topic" default="/avt_341/points" doc="The name of the points topic the obstacle detection node listens to."/>
-
+  <arg name="host" default="localhost" />
+  <arg name="port" default="9000" />
+  <arg name="disable_socket_comms" default="false" />
+  <arg name="broadcast_internal" default="false" />
+  <arg name="add_name_id_to_msg" default="true" />
+  <arg name="verbose_comm_log" default="false" />
 
   <!-- ********************* END OF ARGS ***********************************-->
 
-
-  <!-- Global Parametrs -->
-  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
-  <rosparam file="$(arg waypoints_file)" />
-
-  <!-- Transform publishers -->
   <param name="robot_description" command="cat $(arg robot_description_file)" />
+  <arg name="veh_index" default="0" />
 
-  <group if="$(eval env('ROS_DISTRO') =='noetic')"> 
+  <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
+
+  <group if="$(eval env('ROS_DISTRO') =='noetic')">
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
   </group>
   <group if="$(eval env('ROS_DISTRO') =='melodic')"> 
@@ -218,11 +199,7 @@
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
     <remap from="/avt_341/points" to="$(arg points_topic)"/>
-
-    <param name="overhead_clearance" value="7.0" />
-    <param name="warmup_time" value="5.0" />
-
-    <!-- Elevation Grid -->
+    <param name="display" value="$(arg display_type)" />
     <param name="use_elevation" value="$(arg use_elevation)" />
     <param name="slope_threshold" value="$(arg slope_threshold)" />
     <param name="grid_height" value="$(arg grid_height)" />
@@ -230,6 +207,7 @@
     <param name="grid_llx" value="$(arg grid_llx)" />
     <param name="grid_lly" value="$(arg grid_lly)" />
     <param name="grid_res" value="$(arg grid_res)" />
+    <param name="overhead_clearance" value="$(arg overhead_clearance)" />
     <param name="grid_dilate" value="$(arg grid_dilate)" />
     <param name="grid_dilate_x" value="$(arg grid_dilate_x)" />
     <param name="grid_dilate_y" value="$(arg grid_dilate_y)" />
@@ -237,59 +215,80 @@
     <param name="cull_lidar" value="$(arg cull_lidar)" />
     <param name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />
     <param name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />
-    <param name="use_registered" value="$(arg use_registered)"/>
-    <param name="display" value="$(arg display_type)" />
-    <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)"/>
-    <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)"/>
-    <param name="time_register_window" value="$(arg time_register_window)"/>
-    <param name="perception_rate" value="$(arg perception_rate)"/>
-
-    <!-- Elevation Grid - Clearing Methods -->
-    <param name="clear_method_type" value="$(arg clear_method_type)"/>
-    <param name="clear_method_visualize" value="$(arg clear_method_visualize)"/>
-    <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)"/>
-    <param name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)"/>
-    <param name="clear_method_use_voxels" value="$(arg clear_method_use_voxels)"/>
-    <param name="clear_method_voxel_height_min" value="$(arg clear_method_voxel_height_min)"/>
-    <param name="clear_method_voxel_height_res" value="$(arg clear_method_voxel_height_res)"/>
-    <param name="clear_method_immediate_clear_dilation" value="$(arg clear_method_immediate_clear_dilation)"/>
-    <param name="clear_method_obs_filter_range" value="$(arg clear_method_obs_filter_range)"/>
-    <param name="clear_method_sampled_threshold" value="$(arg clear_method_sampled_threshold)"/>
-    <param name="clear_method_max_point_age" value="$(arg clear_method_max_point_age)"/>
+    <param name="warmup_time" value="$(arg warmup_time)" />
+    <param name="use_registered" value="$(arg use_registered)" />
+    <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />
+    <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />
+    <param name="time_register_window" value="$(arg time_register_window)" />
+    <param name="perception_rate" value="$(arg perception_rate)" />
+    <param name="global_grid_csv_path" value="$(arg global_grid_csv_path)" />
+    <param name="use_lidar_obstacle_detector" value="$(arg use_lidar_obstacle_detector)" />
+    <param name="points_topic" value="$(arg points_topic)" />
+    <param name="clear_method_type" value="$(arg clear_method_type)" />
+    <param name="clear_method_visualize" value="$(arg clear_method_visualize)" />
+    <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)" />
+    <param name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)" />
+    <param name="clear_method_use_voxels" value="$(arg clear_method_use_voxels)" />
+    <param name="clear_method_voxel_height_min" value="$(arg clear_method_voxel_height_min)" />
+    <param name="clear_method_voxel_height_res" value="$(arg clear_method_voxel_height_res)" />
+    <param name="clear_method_immediate_clear_dilation" value="$(arg clear_method_immediate_clear_dilation)" />
+    <param name="clear_method_obs_filter_range" value="$(arg clear_method_obs_filter_range)" />
+    <param name="clear_method_max_point_age" value="$(arg clear_method_max_point_age)" />
+    <param name="clear_method_sampled_threshold" value="$(arg clear_method_sampled_threshold)" />
   </node>
 
   <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
 
-  <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
-    <param name="display" value="$(arg display_type)" />
+  <group if="$(eval arg('local_planner_method') != 'dwa')">
+      <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
+        <param name="vehicle_wheelbase" value="$(arg vehicle_wheelbase)" />
+        <param name="vehicle_max_steer_angle_degrees" value="$(arg vehicle_max_steer_angle_degrees)" />
+        <param name="steering_coefficient" value="$(arg steering_coefficient)" />
+        <param name="vehicle_speed" value="$(arg vehicle_speed)" />
+        <param name="throttle_coefficient" value="$(arg throttle_coefficient)" />
+        <param name="throttle_kp" value="$(arg throttle_kp)" />
+        <param name="throttle_ki" value="$(arg throttle_ki)" />
+        <param name="throttle_kd" value="$(arg throttle_kd)" />
+        <param name="time_to_max_brake" value="$(arg time_to_max_brake)" />
+        <param name="time_to_max_throttle" value="$(arg time_to_max_throttle)" />
+        <param name="use_feed_forward" value="$(arg use_feed_forward)" />
+        <param name="ff_a0" value="$(arg ff_a0)" />
+        <param name="ff_a1" value="$(arg ff_a1)" />
+        <param name="ff_a2" value="$(arg ff_a2)" />
+        <param name="max_desired_lateral_g" value="$(arg max_desired_lateral_g)" />
+        <param name="anti_windup_method" value="$(arg anti_windup_method)" />
+        <param name="pid_output_max" value="$(arg pid_output_max)" />
+        <param name="pid_output_min" value="$(arg pid_output_min)" />
+      </node>
+  </group>
 
-    <!-- Pure pursuit control -->
-    <param name="vehicle_wheelbase" value="$(arg vehicle_wheelbase)" />
-    <param name="vehicle_max_steer_angle_degrees" value="$(arg vehicle_max_steer_angle_degrees)" />
-    <param name="steering_coefficient" value="$(arg steering_coefficient)" />
-    <param name="vehicle_speed" value="$(arg vehicle_speed)" />
-    <param name="throttle_coefficient" value="$(arg throttle_coefficient)" />
-    <param name="throttle_kp" value="$(arg throttle_kp)" />
-    <param name="throttle_ki" value="$(arg throttle_ki)" />
-    <param name="throttle_kd" value="$(arg throttle_kd)" />
-    <param name="time_to_max_brake" value="$(arg time_to_max_brake)" />
-    <param name="time_to_max_throttle" value="$(arg time_to_max_throttle)" />
-    <param name="use_feed_forward" value="$(arg use_feed_forward)" />
-    <param name="ff_a0" value="$(arg ff_a0)" />
-    <param name="ff_a1" value="$(arg ff_a1)" />
-    <param name="ff_a2" value="$(arg ff_a2)" />
-    <param name="max_desired_lateral_g" value="$(arg max_desired_lateral_g)" />
-    <param name="anti_windup_method" value="$(arg anti_windup_method)" />
-    <param name="pid_output_max" value="$(arg pid_output_max)" />
-    <param name="pid_output_min" value="$(arg pid_output_min)" />
-  </node>
+  <group if="$(eval arg('local_planner_method') == 'dwa')">
+      <node name="vehicle_control_node" pkg="avt_341" type="avt_341_speed_control_node" required="true" output="screen" >
+        <param name="vehicle_wheelbase" value="$(arg vehicle_wheelbase)" />
+        <param name="vehicle_max_steer_angle_degrees" value="$(arg vehicle_max_steer_angle_degrees)" />
+        <param name="steering_coefficient" value="$(arg steering_coefficient)" />
+        <param name="vehicle_speed" value="$(arg vehicle_speed)" />
+        <param name="throttle_coefficient" value="$(arg throttle_coefficient)" />
+        <param name="throttle_kp" value="$(arg throttle_kp)" />
+        <param name="throttle_ki" value="$(arg throttle_ki)" />
+        <param name="throttle_kd" value="$(arg throttle_kd)" />
+        <param name="time_to_max_brake" value="$(arg time_to_max_brake)" />
+        <param name="time_to_max_throttle" value="$(arg time_to_max_throttle)" />
+        <param name="use_feed_forward" value="$(arg use_feed_forward)" />
+        <param name="ff_a0" value="$(arg ff_a0)" />
+        <param name="ff_a1" value="$(arg ff_a1)" />
+        <param name="ff_a2" value="$(arg ff_a2)" />
+        <param name="max_desired_lateral_g" value="$(arg max_desired_lateral_g)" />
+        <param name="anti_windup_method" value="$(arg anti_windup_method)" />
+        <param name="pid_output_max" value="$(arg pid_output_max)" />
+        <param name="pid_output_min" value="$(arg pid_output_min)" />
+      </node>
+  </group>
 
   <node name="global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
     <param name="display" value="$(arg display_type)" />
-
-    <param name="global_lookahead" value="75.0" />
-
     <param name="goal_dist" value="$(arg goal_dist)" />
+    <param name="global_lookahead" value="$(arg global_lookahead)" />
     <param name="debug_visualize" value="$(arg debug_visualize)" />
     <param name="w_distance" value="$(arg w_distance)" />
     <param name="w_occupancy" value="$(arg w_occupancy)" />
@@ -303,36 +302,95 @@
   </node>
 
   <group if="$(eval arg('local_planner_method') == 'rcc')">
-    <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))" >
+    <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" >
       <param name="display" value="$(arg display_type)" />
-
-      <param name="output_path_step" value="0.5" />
-      <param name="path_integration_step" value="0.35" />
-      <param name="rate" value="50.0" />
-      <param name="trim_path" value="true" />
-
-      <!-- Local Planner - Road-Centerline Constrained (RCC) -->
+      <param name="local_planner_method" value="$(arg local_planner_method)" />
       <param name="num_paths" value="$(arg num_paths)" />
       <param name="path_look_ahead" value="$(arg path_look_ahead)" />
       <param name="vehicle_width" value="$(arg vehicle_width)" />
       <param name="max_steer_angle" value="$(arg max_steer_angle)" />
+      <param name="output_path_step" value="$(arg output_path_step)" />
+      <param name="path_integration_step" value="$(arg path_integration_step)" />
       <param name="dilation_factor" value="$(arg dilation_factor)" />
       <param name="w_c" value="$(arg w_c)" />
       <param name="w_s" value="$(arg w_s)" />
       <param name="w_d" value="$(arg w_d)" />
       <param name="w_r" value="$(arg w_r)" />
       <param name="w_t" value="$(arg w_t)" />
+      <param name="trim_path" value="$(arg trim_path)" />
       <param name="use_global_path" value="$(arg use_global_path)" />
       <param name="use_blend" value="$(arg use_blend)" />
       <param name="cost_vis" value="$(arg cost_vis)" />
       <param name="cost_vis_text_size" value="$(arg cost_vis_text_size)" />
       <param name="ignore_coll_before_dist" value="$(arg ignore_coll_before_dist)" />
+      <param name="pf_use_global_path" value="$(arg pf_use_global_path)" />
+      <param name="pf_rate" value="$(arg pf_rate)" />
+      <param name="pf_obstacle_cost_thresh" value="$(arg pf_obstacle_cost_thresh)" />
+      <param name="pf_kp" value="$(arg pf_kp)" />
+      <param name="pf_eta" value="$(arg pf_eta)" />
+      <param name="pf_cutoff_dist" value="$(arg pf_cutoff_dist)" />
+      <param name="pf_inner_cutoff_dist" value="$(arg pf_inner_cutoff_dist)" />
+      <param name="pf_motion_model_res" value="$(arg pf_motion_model_res)" />
+      <param name="dwa_model" value="$(arg dwa_model)" />
+      <param name="dwa_wheelbase" value="$(arg dwa_wheelbase)" />
+      <param name="dwa_speed_lin_min" value="$(arg dwa_speed_lin_min)" />
+      <param name="dwa_speed_lin_max" value="$(arg dwa_speed_lin_max)" />
+      <param name="dwa_speed_lin_steps" value="$(arg dwa_speed_lin_steps)" />
+      <param name="dwa_accel_max" value="$(arg dwa_accel_max)" />
+      <param name="dwa_speed_ang_min" value="$(arg dwa_speed_ang_min)" />
+      <param name="dwa_speed_ang_max" value="$(arg dwa_speed_ang_max)" />
+      <param name="dwa_speed_ang_steps" value="$(arg dwa_speed_ang_steps)" />
+      <param name="dwa_ang_accel_max" value="$(arg dwa_ang_accel_max)" />
+      <param name="dwa_horizon" value="$(arg dwa_horizon)" />
+      <param name="dwa_time_span_min" value="$(arg dwa_time_span_min)" />
+      <param name="dwa_time_span_max" value="$(arg dwa_time_span_max)" />
+      <param name="dwa_time_span_var" value="$(arg dwa_time_span_var)" />
+      <param name="dwa_time_span_gain" value="$(arg dwa_time_span_gain)" />
+      <param name="dwa_time_step_min" value="$(arg dwa_time_step_min)" />
+      <param name="dwa_w_cost_goal" value="$(arg dwa_w_cost_goal)" />
+      <param name="dwa_w_cost_head" value="$(arg dwa_w_cost_head)" />
+      <param name="dwa_thresh_obs" value="$(arg dwa_thresh_obs)" />
+      <param name="dwa_collision_radius" value="$(arg dwa_collision_radius)" />
+      <param name="dwa_w_cost_obs" value="$(arg dwa_w_cost_obs)" />
+      <param name="dwa_w_cost_speed" value="$(arg dwa_w_cost_speed)" />
+      <param name="dwa_use_global_path" value="$(arg dwa_use_global_path)" />
+      <param name="dwa_w_cost_path" value="$(arg dwa_w_cost_path)" />
+      <param name="dwa_use_segmentation" value="$(arg dwa_use_segmentation)" />
+      <param name="dwa_w_cost_seg" value="$(arg dwa_w_cost_seg)" />
+      <param name="dwa_w_cost_dev" value="$(arg dwa_w_cost_dev)" />
+      <param name="dwa_print_summary" value="$(arg dwa_print_summary)" />
     </node>
   </group>
 
   <group if="$(eval arg('local_planner_method') == 'dwa')">
-    <node name="local_dwa_planner_node" pkg="avt_341" type="avt_341_dwa_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))" >
-      <!-- Local Planner - Dynamic Window Approach Planner -->
+    <node name="local_dwa_planner_node" pkg="avt_341" type="avt_341_dwa_planner_node" output="screen" required="true" >
+      <param name="local_planner_method" value="$(arg local_planner_method)" />
+      <param name="num_paths" value="$(arg num_paths)" />
+      <param name="path_look_ahead" value="$(arg path_look_ahead)" />
+      <param name="vehicle_width" value="$(arg vehicle_width)" />
+      <param name="max_steer_angle" value="$(arg max_steer_angle)" />
+      <param name="output_path_step" value="$(arg output_path_step)" />
+      <param name="path_integration_step" value="$(arg path_integration_step)" />
+      <param name="dilation_factor" value="$(arg dilation_factor)" />
+      <param name="w_c" value="$(arg w_c)" />
+      <param name="w_s" value="$(arg w_s)" />
+      <param name="w_d" value="$(arg w_d)" />
+      <param name="w_r" value="$(arg w_r)" />
+      <param name="w_t" value="$(arg w_t)" />
+      <param name="trim_path" value="$(arg trim_path)" />
+      <param name="use_global_path" value="$(arg use_global_path)" />
+      <param name="use_blend" value="$(arg use_blend)" />
+      <param name="cost_vis" value="$(arg cost_vis)" />
+      <param name="cost_vis_text_size" value="$(arg cost_vis_text_size)" />
+      <param name="ignore_coll_before_dist" value="$(arg ignore_coll_before_dist)" />
+      <param name="pf_use_global_path" value="$(arg pf_use_global_path)" />
+      <param name="pf_rate" value="$(arg pf_rate)" />
+      <param name="pf_obstacle_cost_thresh" value="$(arg pf_obstacle_cost_thresh)" />
+      <param name="pf_kp" value="$(arg pf_kp)" />
+      <param name="pf_eta" value="$(arg pf_eta)" />
+      <param name="pf_cutoff_dist" value="$(arg pf_cutoff_dist)" />
+      <param name="pf_inner_cutoff_dist" value="$(arg pf_inner_cutoff_dist)" />
+      <param name="pf_motion_model_res" value="$(arg pf_motion_model_res)" />
       <param name="dwa_model" value="$(arg dwa_model)" />
       <param name="dwa_wheelbase" value="$(arg dwa_wheelbase)" />
       <param name="dwa_speed_lin_min" value="$(arg dwa_speed_lin_min)" />
@@ -365,18 +423,62 @@
   </group>
 
   <group if="$(eval arg('local_planner_method') == 'pf')">
-    <node name="local_pf_planner_node" pkg="avt_341" type="avt_341_pf_planner_node" output="screen" required="true" if="$(eval not arg('use_mpc'))" >
-      <param name="display" value="$(arg display_type)" />
-
-      <!-- Local Planner - Potential Field Planner -->
-      <param name="use_global_path" value="$(arg pf_use_global_path)" />
-      <param name="rate" value="$(arg pf_rate)" />
-      <param name="obstacle_cost_thresh" value="$(arg pf_obstacle_cost_thresh)" />
-      <param name="kp" value="$(arg pf_kp)" />
-      <param name="eta" value="$(arg pf_eta)" />
-      <param name="cutoff_dist" value="$(arg pf_cutoff_dist)" />
-      <param name="inner_cutoff_dist" value="$(arg pf_inner_cutoff_dist)" />
-      <param name="motion_model_res" value="$(arg pf_motion_model_res)" />
+    <node name="local_pf_planner_node" pkg="avt_341" type="avt_341_pf_planner_node" output="screen" required="true" >
+      <param name="local_planner_method" value="$(arg local_planner_method)" />
+      <param name="num_paths" value="$(arg num_paths)" />
+      <param name="path_look_ahead" value="$(arg path_look_ahead)" />
+      <param name="vehicle_width" value="$(arg vehicle_width)" />
+      <param name="max_steer_angle" value="$(arg max_steer_angle)" />
+      <param name="output_path_step" value="$(arg output_path_step)" />
+      <param name="path_integration_step" value="$(arg path_integration_step)" />
+      <param name="dilation_factor" value="$(arg dilation_factor)" />
+      <param name="w_c" value="$(arg w_c)" />
+      <param name="w_s" value="$(arg w_s)" />
+      <param name="w_d" value="$(arg w_d)" />
+      <param name="w_r" value="$(arg w_r)" />
+      <param name="w_t" value="$(arg w_t)" />
+      <param name="trim_path" value="$(arg trim_path)" />
+      <param name="use_global_path" value="$(arg use_global_path)" />
+      <param name="use_blend" value="$(arg use_blend)" />
+      <param name="cost_vis" value="$(arg cost_vis)" />
+      <param name="cost_vis_text_size" value="$(arg cost_vis_text_size)" />
+      <param name="ignore_coll_before_dist" value="$(arg ignore_coll_before_dist)" />
+      <param name="pf_use_global_path" value="$(arg pf_use_global_path)" />
+      <param name="pf_rate" value="$(arg pf_rate)" />
+      <param name="pf_obstacle_cost_thresh" value="$(arg pf_obstacle_cost_thresh)" />
+      <param name="pf_kp" value="$(arg pf_kp)" />
+      <param name="pf_eta" value="$(arg pf_eta)" />
+      <param name="pf_cutoff_dist" value="$(arg pf_cutoff_dist)" />
+      <param name="pf_inner_cutoff_dist" value="$(arg pf_inner_cutoff_dist)" />
+      <param name="pf_motion_model_res" value="$(arg pf_motion_model_res)" />
+      <param name="dwa_model" value="$(arg dwa_model)" />
+      <param name="dwa_wheelbase" value="$(arg dwa_wheelbase)" />
+      <param name="dwa_speed_lin_min" value="$(arg dwa_speed_lin_min)" />
+      <param name="dwa_speed_lin_max" value="$(arg dwa_speed_lin_max)" />
+      <param name="dwa_speed_lin_steps" value="$(arg dwa_speed_lin_steps)" />
+      <param name="dwa_accel_max" value="$(arg dwa_accel_max)" />
+      <param name="dwa_speed_ang_min" value="$(arg dwa_speed_ang_min)" />
+      <param name="dwa_speed_ang_max" value="$(arg dwa_speed_ang_max)" />
+      <param name="dwa_speed_ang_steps" value="$(arg dwa_speed_ang_steps)" />
+      <param name="dwa_ang_accel_max" value="$(arg dwa_ang_accel_max)" />
+      <param name="dwa_horizon" value="$(arg dwa_horizon)" />
+      <param name="dwa_time_span_min" value="$(arg dwa_time_span_min)" />
+      <param name="dwa_time_span_max" value="$(arg dwa_time_span_max)" />
+      <param name="dwa_time_span_var" value="$(arg dwa_time_span_var)" />
+      <param name="dwa_time_span_gain" value="$(arg dwa_time_span_gain)" />
+      <param name="dwa_time_step_min" value="$(arg dwa_time_step_min)" />
+      <param name="dwa_w_cost_goal" value="$(arg dwa_w_cost_goal)" />
+      <param name="dwa_w_cost_head" value="$(arg dwa_w_cost_head)" />
+      <param name="dwa_thresh_obs" value="$(arg dwa_thresh_obs)" />
+      <param name="dwa_collision_radius" value="$(arg dwa_collision_radius)" />
+      <param name="dwa_w_cost_obs" value="$(arg dwa_w_cost_obs)" />
+      <param name="dwa_w_cost_speed" value="$(arg dwa_w_cost_speed)" />
+      <param name="dwa_use_global_path" value="$(arg dwa_use_global_path)" />
+      <param name="dwa_w_cost_path" value="$(arg dwa_w_cost_path)" />
+      <param name="dwa_use_segmentation" value="$(arg dwa_use_segmentation)" />
+      <param name="dwa_w_cost_seg" value="$(arg dwa_w_cost_seg)" />
+      <param name="dwa_w_cost_dev" value="$(arg dwa_w_cost_dev)" />
+      <param name="dwa_print_summary" value="$(arg dwa_print_summary)" />
     </node>
   </group>
 
@@ -384,51 +486,45 @@
   </node>
 
   <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
-    <param name="name" value="$(arg vehicle_name)"/>
-    <!-- From Communication Node args -->
-    <param name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)"/>
-
-    <!-- Mission Manager -->
-    <param name="follow_scale_x" value="$(arg follow_scale_x)"/>
-    <param name="follow_scale_y" value="$(arg follow_scale_y)"/>
-    <param name="mission_definition_file" value="$(arg mission_definition_file)"/>
-    <param name="fsc_type" value="$(arg fsc_type)"/>
-    <param name="x_offset_on_path" value="$(arg x_offset_on_path)"/>
-    <param name="formation_prune_gp" value="$(arg formation_prune_gp)"/>
-    <param name="follow_goal_threshold" value="$(arg follow_goal_threshold)"/>
-    <param name="oof_threshold" value="$(arg oof_threshold)"/>
-    <param name="oof_const_term" value="$(arg oof_const_term)"/>
-    <param name="oof_lin_slope" value="$(arg oof_lin_slope)"/>
-    <param name="oof_mult" value="$(arg oof_mult)"/>
-    <param name="formation_debug_visualize" value="$(arg formation_debug_visualize)"/>
-    <param name="offsets_from_leader" value="$(arg offsets_from_leader)"/>
-    <param name="follower_dist_break" value="$(arg follower_dist_break)"/>
-    <param name="follower_dot_threshold" value="$(arg follower_dot_threshold)"/>
-    <param name="follower_dot_range" value="$(arg follower_dot_range)"/>
-    <param name="vehicle_namespaces" value="$(arg vehicle_namespaces)"/>
-    <param name="toi_approach_dist" value="$(arg toi_approach_dist)"/>
-    <param name="toi_encircle_radius" value="$(arg toi_encircle_radius)"/>
-    <param name="toi_encircle_degrees" value="$(arg toi_encircle_degrees)"/>
-    <param name="toi_encircle_cw" value="$(arg toi_encircle_cw)"/>
-    <param name="use_leader_breadcrumbs" value="$(arg use_leader_breadcrumbs)"/>
+    <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
+    <param name="follow_scale_x" value="$(arg follow_scale_x)" />
+    <param name="follow_scale_y" value="$(arg follow_scale_y)" />
+    <param name="mission_definition_file" value="$(arg mission_definition_file)" />
+    <param name="fsc_type" value="$(arg fsc_type)" />
+    <param name="x_offset_on_path" value="$(arg x_offset_on_path)" />
+    <param name="formation_prune_gp" value="$(arg formation_prune_gp)" />
+    <param name="follow_goal_threshold" value="$(arg follow_goal_threshold)" />
+    <param name="formation_debug_visualize" value="$(arg formation_debug_visualize)" />
+    <param name="offsets_from_leader" value="$(arg offsets_from_leader)" />
+    <param name="follower_dist_break" value="$(arg follower_dist_break)" />
+    <param name="follower_dot_threshold" value="$(arg follower_dot_threshold)" />
+    <param name="follower_dot_range" value="$(arg follower_dot_range)" />
+    <param name="use_leader_breadcrumbs" value="$(arg use_leader_breadcrumbs)" />
+    <param name="oof_threshold" value="$(arg oof_threshold)" />
+    <param name="oof_const_term" value="$(arg oof_const_term)" />
+    <param name="oof_lin_slope" value="$(arg oof_lin_slope)" />
+    <param name="oof_mult" value="$(arg oof_mult)" />
+    <param name="toi_approach_dist" value="$(arg toi_approach_dist)" />
+    <param name="toi_encircle_radius" value="$(arg toi_encircle_radius)" />
+    <param name="toi_encircle_degrees" value="$(arg toi_encircle_degrees)" />
+    <param name="toi_encircle_cw" value="$(arg toi_encircle_cw)" />
+    <param name="toi_goal_threshold" value="$(arg goal_dist)" />
   </node>
 
   <node name="comm_node" pkg="avt_341" type="avt_341_comm_node" output="screen">
-    <param name="name" value="$(arg vehicle_name)"/>
-
-    <!-- Communication Node -->
-    <param name="host" value="$(arg host)"/>
-    <param name="port" value="$(arg port)"/>
-    <param name="disable_socket_comms" value="$(arg disable_socket_comms)"/>
-    <param name="broadcast_internal" value="$(arg broadcast_internal)"/>
-    <param name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)"/>
-    <param name="verbose_comm_log" value="$(arg verbose_comm_log)"/>
+    <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
+    <param name="host" value="$(arg host)" />
+    <param name="port" value="$(arg port)" />
+    <param name="disable_socket_comms" value="$(arg disable_socket_comms)" />
+    <param name="broadcast_internal" value="$(arg broadcast_internal)" />
+    <param name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)" />
+    <param name="verbose_comm_log" value="$(arg verbose_comm_log)" />
   </node>
 
   <group if="$(eval arg('use_lidar_obstacle_detector'))">
     <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
       <!-- Input Topic Names -->
-      <param name="lidar_points_topic"                  value="$(arg raw_points_topic)"/>
+      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
       <!-- Output Topic Names -->
       <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
       <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
@@ -439,8 +535,174 @@
   </group>
 
   <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
-  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz'))">
+  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
+  </group>
+
+  </group>  <!-- / End group namespace -->
+
+  <group if="$(eval arg('num_vehicles') > arg('veh_index'))">
+    <include file="$(find avt_341)/launch/base.launch">
+      <arg name="veh_index" value="$(eval arg('veh_index') + 1)" />
+      <arg name="use_sim_time" value="$(arg use_sim_time)" />" />
+      <arg name="auto_launch_rviz" value="$(arg auto_launch_rviz)" />" />
+      <arg name="display_type" value="$(arg display_type)" />" />
+      <arg name="waypoints_file" value="$(arg waypoints_file)" />" />
+      <arg name="num_vehicles" value="$(arg num_vehicles)" />" />
+      <arg name="namespace_single_vehicle" value="$(arg namespace_single_vehicle)" />" />
+      <arg name="vehicle_namespaces" value="$(arg vehicle_namespaces)" />" />
+      <arg name="robot_description_file" value="$(arg robot_description_file)" />" />
+      <arg name="robot_description_veh2_file" value="$(arg robot_description_veh2_file)" />" />
+      <arg name="robot_description_veh3_file" value="$(arg robot_description_veh3_file)" />" />
+      <arg name="robot_description_veh4_file" value="$(arg robot_description_veh4_file)" />" />
+      <arg name="use_elevation" value="$(arg use_elevation)" />" />
+      <arg name="slope_threshold" value="$(arg slope_threshold)" />" />
+      <arg name="grid_height" value="$(arg grid_height)" />" />
+      <arg name="grid_width" value="$(arg grid_width)" />" />
+      <arg name="grid_llx" value="$(arg grid_llx)" />" />
+      <arg name="grid_lly" value="$(arg grid_lly)" />" />
+      <arg name="grid_res" value="$(arg grid_res)" />" />
+      <arg name="overhead_clearance" value="$(arg overhead_clearance)" />" />
+      <arg name="grid_dilate" value="$(arg grid_dilate)" />" />
+      <arg name="grid_dilate_x" value="$(arg grid_dilate_x)" />" />
+      <arg name="grid_dilate_y" value="$(arg grid_dilate_y)" />" />
+      <arg name="grid_dilate_proportion" value="$(arg grid_dilate_proportion)" />" />
+      <arg name="cull_lidar" value="$(arg cull_lidar)" />" />
+      <arg name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />" />
+      <arg name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />" />
+      <arg name="warmup_time" value="$(arg warmup_time)" />" />
+      <arg name="use_registered" value="$(arg use_registered)" />" />
+      <arg name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />" />
+      <arg name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />" />
+      <arg name="time_register_window" value="$(arg time_register_window)" />" />
+      <arg name="perception_rate" value="$(arg perception_rate)" />" />
+      <arg name="global_grid_csv_path" value="$(arg global_grid_csv_path)" />" />
+      <arg name="use_lidar_obstacle_detector" value="$(arg use_lidar_obstacle_detector)" />" />
+      <arg name="points_topic" value="$(arg points_topic)" />" />
+      <arg name="clear_method_type" value="$(arg clear_method_type)" />" />
+      <arg name="clear_method_visualize" value="$(arg clear_method_visualize)" />" />
+      <arg name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)" />" />
+      <arg name="clear_method_raytrace_range" value="$(arg clear_method_raytrace_range)" />" />
+      <arg name="clear_method_use_voxels" value="$(arg clear_method_use_voxels)" />" />
+      <arg name="clear_method_voxel_height_min" value="$(arg clear_method_voxel_height_min)" />" />
+      <arg name="clear_method_voxel_height_res" value="$(arg clear_method_voxel_height_res)" />" />
+      <arg name="clear_method_immediate_clear_dilation" value="$(arg clear_method_immediate_clear_dilation)" />" />
+      <arg name="clear_method_obs_filter_range" value="$(arg clear_method_obs_filter_range)" />" />
+      <arg name="clear_method_max_point_age" value="$(arg clear_method_max_point_age)" />" />
+      <arg name="clear_method_sampled_threshold" value="$(arg clear_method_sampled_threshold)" />" />
+      <arg name="goal_dist" value="$(arg goal_dist)" />" />
+      <arg name="global_lookahead" value="$(arg global_lookahead)" />" />
+      <arg name="debug_visualize" value="$(arg debug_visualize)" />" />
+      <arg name="w_distance" value="$(arg w_distance)" />" />
+      <arg name="w_occupancy" value="$(arg w_occupancy)" />" />
+      <arg name="w_segmentation" value="$(arg w_segmentation)" />" />
+      <arg name="search_diagonals" value="$(arg search_diagonals)" />" />
+      <arg name="los_max_iterations" value="$(arg los_max_iterations)" />" />
+      <arg name="los_break_on_first" value="$(arg los_break_on_first)" />" />
+      <arg name="shutdown_behavior" value="$(arg shutdown_behavior)" />" />
+      <arg name="auto_active_on_new_waypoint" value="$(arg auto_active_on_new_waypoint)" />" />
+      <arg name="verbose_gp_log" value="$(arg verbose_gp_log)" />" />
+      <arg name="local_planner_method" value="$(arg local_planner_method)" />" />
+      <arg name="num_paths" value="$(arg num_paths)" />" />
+      <arg name="path_look_ahead" value="$(arg path_look_ahead)" />" />
+      <arg name="vehicle_width" value="$(arg vehicle_width)" />" />
+      <arg name="max_steer_angle" value="$(arg max_steer_angle)" />" />
+      <arg name="output_path_step" value="$(arg output_path_step)" />" />
+      <arg name="path_integration_step" value="$(arg path_integration_step)" />" />
+      <arg name="dilation_factor" value="$(arg dilation_factor)" />" />
+      <arg name="w_c" value="$(arg w_c)" />" />
+      <arg name="w_s" value="$(arg w_s)" />" />
+      <arg name="w_d" value="$(arg w_d)" />" />
+      <arg name="w_r" value="$(arg w_r)" />" />
+      <arg name="w_t" value="$(arg w_t)" />" />
+      <arg name="trim_path" value="$(arg trim_path)" />" />
+      <arg name="use_global_path" value="$(arg use_global_path)" />" />
+      <arg name="use_blend" value="$(arg use_blend)" />" />
+      <arg name="cost_vis" value="$(arg cost_vis)" />" />
+      <arg name="cost_vis_text_size" value="$(arg cost_vis_text_size)" />" />
+      <arg name="ignore_coll_before_dist" value="$(arg ignore_coll_before_dist)" />" />
+      <arg name="pf_use_global_path" value="$(arg pf_use_global_path)" />" />
+      <arg name="pf_rate" value="$(arg pf_rate)" />" />
+      <arg name="pf_obstacle_cost_thresh" value="$(arg pf_obstacle_cost_thresh)" />" />
+      <arg name="pf_kp" value="$(arg pf_kp)" />" />
+      <arg name="pf_eta" value="$(arg pf_eta)" />" />
+      <arg name="pf_cutoff_dist" value="$(arg pf_cutoff_dist)" />" />
+      <arg name="pf_inner_cutoff_dist" value="$(arg pf_inner_cutoff_dist)" />" />
+      <arg name="pf_motion_model_res" value="$(arg pf_motion_model_res)" />" />
+      <arg name="dwa_model" value="$(arg dwa_model)" />" />
+      <arg name="dwa_wheelbase" value="$(arg dwa_wheelbase)" />" />
+      <arg name="dwa_speed_lin_min" value="$(arg dwa_speed_lin_min)" />" />
+      <arg name="dwa_speed_lin_max" value="$(arg dwa_speed_lin_max)" />" />
+      <arg name="dwa_speed_lin_steps" value="$(arg dwa_speed_lin_steps)" />" />
+      <arg name="dwa_accel_max" value="$(arg dwa_accel_max)" />" />
+      <arg name="dwa_speed_ang_min" value="$(arg dwa_speed_ang_min)" />" />
+      <arg name="dwa_speed_ang_max" value="$(arg dwa_speed_ang_max)" />" />
+      <arg name="dwa_speed_ang_steps" value="$(arg dwa_speed_ang_steps)" />" />
+      <arg name="dwa_ang_accel_max" value="$(arg dwa_ang_accel_max)" />" />
+      <arg name="dwa_horizon" value="$(arg dwa_horizon)" />" />
+      <arg name="dwa_time_span_min" value="$(arg dwa_time_span_min)" />" />
+      <arg name="dwa_time_span_max" value="$(arg dwa_time_span_max)" />" />
+      <arg name="dwa_time_span_var" value="$(arg dwa_time_span_var)" />" />
+      <arg name="dwa_time_span_gain" value="$(arg dwa_time_span_gain)" />" />
+      <arg name="dwa_time_step_min" value="$(arg dwa_time_step_min)" />" />
+      <arg name="dwa_w_cost_goal" value="$(arg dwa_w_cost_goal)" />" />
+      <arg name="dwa_w_cost_head" value="$(arg dwa_w_cost_head)" />" />
+      <arg name="dwa_thresh_obs" value="$(arg dwa_thresh_obs)" />" />
+      <arg name="dwa_collision_radius" value="$(arg dwa_collision_radius)" />" />
+      <arg name="dwa_w_cost_obs" value="$(arg dwa_w_cost_obs)" />" />
+      <arg name="dwa_w_cost_speed" value="$(arg dwa_w_cost_speed)" />" />
+      <arg name="dwa_use_global_path" value="$(arg dwa_use_global_path)" />" />
+      <arg name="dwa_w_cost_path" value="$(arg dwa_w_cost_path)" />" />
+      <arg name="dwa_use_segmentation" value="$(arg dwa_use_segmentation)" />" />
+      <arg name="dwa_w_cost_seg" value="$(arg dwa_w_cost_seg)" />" />
+      <arg name="dwa_w_cost_dev" value="$(arg dwa_w_cost_dev)" />" />
+      <arg name="dwa_print_summary" value="$(arg dwa_print_summary)" />" />
+      <arg name="vehicle_wheelbase" value="$(arg vehicle_wheelbase)" />" />
+      <arg name="vehicle_max_steer_angle_degrees" value="$(arg vehicle_max_steer_angle_degrees)" />" />
+      <arg name="steering_coefficient" value="$(arg steering_coefficient)" />" />
+      <arg name="vehicle_speed" value="$(arg vehicle_speed)" />" />
+      <arg name="throttle_coefficient" value="$(arg throttle_coefficient)" />" />
+      <arg name="throttle_kp" value="$(arg throttle_kp)" />" />
+      <arg name="throttle_ki" value="$(arg throttle_ki)" />" />
+      <arg name="throttle_kd" value="$(arg throttle_kd)" />" />
+      <arg name="time_to_max_brake" value="$(arg time_to_max_brake)" />" />
+      <arg name="time_to_max_throttle" value="$(arg time_to_max_throttle)" />" />
+      <arg name="use_feed_forward" value="$(arg use_feed_forward)" />" />
+      <arg name="ff_a0" value="$(arg ff_a0)" />" />
+      <arg name="ff_a1" value="$(arg ff_a1)" />" />
+      <arg name="ff_a2" value="$(arg ff_a2)" />" />
+      <arg name="max_desired_lateral_g" value="$(arg max_desired_lateral_g)" />" />
+      <arg name="anti_windup_method" value="$(arg anti_windup_method)" />" />
+      <arg name="pid_output_max" value="$(arg pid_output_max)" />" />
+      <arg name="pid_output_min" value="$(arg pid_output_min)" />" />
+      <arg name="follow_scale_x" value="$(arg follow_scale_x)" />" />
+      <arg name="follow_scale_y" value="$(arg follow_scale_y)" />" />
+      <arg name="mission_definition_file" value="$(arg mission_definition_file)" />" />
+      <arg name="fsc_type" value="$(arg fsc_type)" />" />
+      <arg name="x_offset_on_path" value="$(arg x_offset_on_path)" />" />
+      <arg name="formation_prune_gp" value="$(arg formation_prune_gp)" />" />
+      <arg name="follow_goal_threshold" value="$(arg follow_goal_threshold)" />" />
+      <arg name="formation_debug_visualize" value="$(arg formation_debug_visualize)" />" />
+      <arg name="offsets_from_leader" value="$(arg offsets_from_leader)" />" />
+      <arg name="follower_dist_break" value="$(arg follower_dist_break)" />" />
+      <arg name="follower_dot_threshold" value="$(arg follower_dot_threshold)" />" />
+      <arg name="follower_dot_range" value="$(arg follower_dot_range)" />" />
+      <arg name="use_leader_breadcrumbs" value="$(arg use_leader_breadcrumbs)" />" />
+      <arg name="oof_threshold" value="$(arg oof_threshold)" />" />
+      <arg name="oof_const_term" value="$(arg oof_const_term)" />" />
+      <arg name="oof_lin_slope" value="$(arg oof_lin_slope)" />" />
+      <arg name="oof_mult" value="$(arg oof_mult)" />" />
+      <arg name="toi_approach_dist" value="$(arg toi_approach_dist)" />" />
+      <arg name="toi_encircle_radius" value="$(arg toi_encircle_radius)" />" />
+      <arg name="toi_encircle_degrees" value="$(arg toi_encircle_degrees)" />" />
+      <arg name="toi_encircle_cw" value="$(arg toi_encircle_cw)" />" />
+      <arg name="host" value="$(arg host)" />" />
+      <arg name="port" value="$(arg port)" />" />
+      <arg name="disable_socket_comms" value="$(arg disable_socket_comms)" />" />
+      <arg name="broadcast_internal" value="$(arg broadcast_internal)" />" />
+      <arg name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)" />" />
+      <arg name="verbose_comm_log" value="$(arg verbose_comm_log)" />" />
+    </include>
   </group>
 
   <!-- Uncomment this section to use the MAVS simlator.

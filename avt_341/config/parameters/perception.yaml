@@ -40,3 +40,9 @@ clear_method:
 # Segmentation
 # ======================================================================================================================
 global_grid_csv_path: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'KRC_CP06_Scaled_Transposed.csv')"      # Path to CSV containing KRC global segmentation grid.
+
+
+# Lidar Obstacle Detector
+# ======================================================================================================================
+use_lidar_obstacle_detector: False      # If true uses lidar obstacle detector. ROS1 version only currently.
+points_topic: '/avt_341/points'         # The name of the points topic the obstacle detection node listens to.

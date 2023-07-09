@@ -4,12 +4,11 @@
 #include "nav_msgs/Odometry.h"
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_broadcaster.h>
+#include <queue>
 
-nav_msgs::Odometry odometry;
-geometry_msgs::Pose &pose = odometry.pose.pose;
+std::queue<nav_msgs::Odometry> odometry_msgs;
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
-	//std::cout<<"State publisher recieved odometry "<<std::endl;
-	odometry = *(rcv_odom.get());
+  odometry_msgs.push(*rcv_odom);
 }
 
 int main(int argc, char** argv) {
@@ -31,39 +30,22 @@ int main(int argc, char** argv) {
 
     ros::Rate loop_rate(100.0);
     while (ros::ok()) {
-        ros::spinOnce();
+      while(!odometry_msgs.empty()) {
+        nav_msgs::Odometry odometry = odometry_msgs.front();
+        odometry_msgs.pop();
 
-		//don't do anything until odometry is valid
-    	if(odometry.header.frame_id != "") {
-			//send the transform
-			odom_trans.header.seq = odometry.header.seq;
-			odom_trans.header.stamp = odometry.header.stamp;
-			odom_trans.transform.translation.x = pose.position.x;
-			odom_trans.transform.translation.y = pose.position.y;
-			odom_trans.transform.translation.z = pose.position.z;
-			odom_trans.transform.rotation = pose.orientation;
-			broadcaster.sendTransform(odom_trans);
+        odom_trans.header.seq = odometry.header.seq;
+        odom_trans.header.stamp = odometry.header.stamp;
+        odom_trans.transform.translation.x = odometry.pose.pose.position.x;
+        odom_trans.transform.translation.y = odometry.pose.pose.position.y;
+        odom_trans.transform.translation.z = odometry.pose.pose.position.z;
+        odom_trans.transform.rotation = odometry.pose.pose.orientation;
+        broadcaster.sendTransform(odom_trans);
+      }
 
-			//joint states handled by robot_state_publisher in base.launch
-
-			//map->odom handled by static_transform_publisher in base.launch
-
-			/*
-			map_trans.header.seq = odometry.header.seq;
-			map_trans.header.stamp = odometry.header.stamp;
-			map_trans.transform.translation.x = 0.0f;
-			map_trans.transform.translation.y = 0.0f;
-			map_trans.transform.translation.z = 0.0f;
-			map_trans.transform.rotation.x = 0.0f;
-			map_trans.transform.rotation.y = 0.0f;
-			map_trans.transform.rotation.z = 0.0f;
-			map_trans.transform.rotation.w = 1.0f;
-			broadcaster.sendTransform(map_trans);
-			*/
+      ros::spinOnce();
+      loop_rate.sleep();
 		}
-
-        loop_rate.sleep();
-    }
 
     return 0;
 }
