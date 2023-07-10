@@ -22,19 +22,23 @@ A functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_w
 Install dependencies:
 ```bash 
 sudo apt install ros-<version>-jsk-recognition-msgs
+sudo apt install ros-<version>-jsk-rviz-plugins
 
 # Example
 # sudo apt install ros-noetic-jsk-recognition-msgs
+sudo apt install ros-noetic-jsk-rviz-plugins
 ```
 
-Clone the repo into your catkin_ws/src directory with the following command.
+Clone the repo into your `catkin_ws/src` directory with the following command.
 ```bash
 git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 ```
 
 Next, since you are building on ROS-1, copy the appropriate package file.
 ```bash
-cp package_ros1.xml package.xml
+cd ./nato-avt-341-stack
+cp ./avt_341/package_ros1.xml ./avt_341/package.xml
+cp ./avt_341_msgs/package_ros1.xml ./avt_341_msgs/package.xml
 ```
 
 From the top level catkin_ws directory, type
@@ -74,7 +78,9 @@ git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
 
 Next, since you are building on ROS-2, copy the appropriate package file.
 ```bash
-cp package_ros2.xml package.xml
+cd ./nato-avt-341-stack
+cp ./avt_341/package_ros2.xml ./avt_341/package.xml
+cp ./avt_341_msgs/package_ros2.xml ./avt_341_msgs/package.xml
 ```
 
 From the top level ros2_ws directory, type

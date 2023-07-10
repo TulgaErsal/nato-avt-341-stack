@@ -4,68 +4,55 @@
 #include "nav_msgs/Odometry.h"
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_broadcaster.h>
+#include <queue>
 
-nav_msgs::Odometry odometry;
-geometry_msgs::Pose &pose = odometry.pose.pose;
+std::queue<nav_msgs::Odometry> odometry_msgs;
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
-	//std::cout<<"State publisher recieved odometry "<<std::endl;
-	odometry = *(rcv_odom.get());
+  odometry_msgs.push(*rcv_odom);
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "avt_state_publisher");
-    ros::NodeHandle n;
-    ros::Subscriber odom_sub = n.subscribe("avt_341/odometry", 100, OdometryCallback);
+  ros::init(argc, argv, "avt_state_publisher");
+  ros::NodeHandle n;
+  ros::Subscriber odom_sub = n.subscribe("avt_341/odometry", 100, OdometryCallback);
 
-    tf::TransformBroadcaster broadcaster;
-    
-    // message declarations
-    geometry_msgs::TransformStamped odom_trans;
-    odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base_link";
+  tf::TransformBroadcaster broadcaster;
 
-    // set up parent and child frames
-	geometry_msgs::TransformStamped map_trans;
-	map_trans.header.frame_id = "map";
-	map_trans.child_frame_id = "odom";
+  std::string frame_prefix = "";
+  if(ros::param::has("~frame_prefix")) {
+    ros::param::get("~frame_prefix", frame_prefix);
+  }
 
-    ros::Rate loop_rate(100.0);
-    while (ros::ok()) {
-        ros::spinOnce();
+  // message declarations
+  geometry_msgs::TransformStamped odom_trans;
+  odom_trans.header.frame_id = "odom";
+  odom_trans.child_frame_id = frame_prefix + (frame_prefix.empty() ? "" : "/") + "base_link";
 
-		//don't do anything until odometry is valid
-    	if(odometry.header.frame_id != "") {
-			//send the transform
-			odom_trans.header.seq = odometry.header.seq;
-			odom_trans.header.stamp = odometry.header.stamp;
-			odom_trans.transform.translation.x = pose.position.x;
-			odom_trans.transform.translation.y = pose.position.y;
-			odom_trans.transform.translation.z = pose.position.z;
-			odom_trans.transform.rotation = pose.orientation;
-			broadcaster.sendTransform(odom_trans);
+  // set up parent and child frames
+  geometry_msgs::TransformStamped map_trans;
+  map_trans.header.frame_id = "map";
+  map_trans.child_frame_id = "odom";
 
-			//joint states handled by robot_state_publisher in base.launch
+  ros::Rate loop_rate(100.0);
+  while (ros::ok()) {
+    while(!odometry_msgs.empty()) {
+      nav_msgs::Odometry odometry = odometry_msgs.front();
+      odometry_msgs.pop();
 
-			//map->odom handled by static_transform_publisher in base.launch
-
-			/*
-			map_trans.header.seq = odometry.header.seq;
-			map_trans.header.stamp = odometry.header.stamp;
-			map_trans.transform.translation.x = 0.0f;
-			map_trans.transform.translation.y = 0.0f;
-			map_trans.transform.translation.z = 0.0f;
-			map_trans.transform.rotation.x = 0.0f;
-			map_trans.transform.rotation.y = 0.0f;
-			map_trans.transform.rotation.z = 0.0f;
-			map_trans.transform.rotation.w = 1.0f;
-			broadcaster.sendTransform(map_trans);
-			*/
-		}
-
-        loop_rate.sleep();
+      odom_trans.header.seq = odometry.header.seq;
+      odom_trans.header.stamp = odometry.header.stamp;
+      odom_trans.transform.translation.x = odometry.pose.pose.position.x;
+      odom_trans.transform.translation.y = odometry.pose.pose.position.y;
+      odom_trans.transform.translation.z = odometry.pose.pose.position.z;
+      odom_trans.transform.rotation = odometry.pose.pose.orientation;
+      broadcaster.sendTransform(odom_trans);
     }
 
-    return 0;
+    ros::spinOnce();
+    loop_rate.sleep();
+  }
+
+  return 0;
 }
 
 #else 
