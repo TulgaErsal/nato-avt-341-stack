@@ -2,6 +2,7 @@
 #include "avt_341/node/node_proxy.h"
 // local includes
 #include "avt_341/mission/mission_manager.h"
+#include "avt_341/mission/mission_manager_parser.h"
 #include <queue>
 
 std::queue<avt_341::msg::Communication> comm_msgs;
@@ -128,15 +129,13 @@ int main(int argc, char **argv) {
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
-    bool add_name_id_to_msg;
     nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
     nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
     nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
     nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
-    nh->get_parameter("~add_name_id_to_msg", add_name_id_to_msg, false);
 
-    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, add_name_id_to_msg);
+    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh);
     mgr->sodist_threshold = sodist_threshold;
 
     std::shared_ptr<avt_341::mission::FormationSpeedController> speedController = avt_341::mission::createFormationSpeedController(fsc_type, formation_params.my_name, fsc_params, nh);
@@ -147,7 +146,7 @@ int main(int argc, char **argv) {
     mgr->loadMissionDefinition(mission_definition_filename);
 
     // set up subscriptions
-    auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/recv_comms", 10, CommunicationCallback);
+    auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
@@ -190,34 +189,33 @@ int main(int argc, char **argv) {
         while(!comm_msgs.empty()){
             auto rcvd_msg = comm_msgs.front();
             comm_msgs.pop();
-            if(!mgr->isMsgForSelf(rcvd_msg)){
+            if(!isMsgFor(mgr->my_name, rcvd_msg)){
               continue;
             }
-            if(rcvd_msg.type != "TASK_COMPLETE"){
-                nh->log_info("%s handling message: type=%s, id=%d", mgr->my_name.c_str(), rcvd_msg.type.c_str(), rcvd_msg.msg_id);
-            }
+            std::string msg_text = rosToSerializedMsg(rcvd_msg);
+            nh->log_info("%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
-            if(rcvd_msg.type == "FORM") {
-                mgr->handleFormationRequest(rcvd_msg);
-            } else if(rcvd_msg.type == "ACK") {
-                mgr->handleAcknowledge(rcvd_msg);
-            } else if(rcvd_msg.type == "ARRIVE") {
-                mgr->handleArrive(rcvd_msg);
-            } else if(rcvd_msg.type == "TASK_COMPLETE") {
-                mgr->handleTaskComplete(rcvd_msg);
-            } else if(rcvd_msg.type == "MOVETO") {
-                mgr->handleMoveTo(rcvd_msg);
-            } else if(rcvd_msg.type == "SHUTDOWN") {
+            if(rcvd_msg.type == MissionMsgType::Formation) {
+                mgr->handleFormationRequest(FormationMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::Acknowledge) {
+                mgr->handleAcknowledge(AcknowledgeMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::Arrived) {
+                mgr->handleArrive(ArrivedMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::TaskComplete) {
+                mgr->handleTaskComplete(TaskCompleteMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::MoveTo) {
+                mgr->handleMoveTo(MoveToMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::Shutdown) {
                 std::cout << mgr->my_name << " is shutting down" << std::endl;
                 break;
-            } else if(rcvd_msg.type == "SET_SPEED") {
-                mgr->handleSetSpeed(rcvd_msg);
-            } else if(rcvd_msg.type == "CANCEL") {
-                mgr->handleCancelTask(rcvd_msg);
-            } else if(rcvd_msg.type == "CANCEL_ALL"){
-                mgr->handleCancelAllTask(rcvd_msg);
-            } else if(rcvd_msg.type == "OVERWATCH"){
-                mgr->handleOverwatch(rcvd_msg);
+            } else if(rcvd_msg.type == MissionMsgType::SetSpeed) {
+                mgr->handleSetSpeed(SetSpeedMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::Cancel) {
+                mgr->handleCancelTask(CancelMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::CancelAll){
+                mgr->handleCancelAllTask(CancelAllMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::Overwatch){
+                mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
             }
             else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());

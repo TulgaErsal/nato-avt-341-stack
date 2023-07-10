@@ -72,7 +72,7 @@ FormationDefinition::FormationDefinition(const FormationParameters & params_in) 
   offsets_map_["ECH_RIGHT"] = f;
 }
 
-FormationDefinition::FormationDefinition(avt_341::msg::Communication &comm_msg, const MissionPoint & mp, const FormationParameters & params_in)
+FormationDefinition::FormationDefinition(FormationMsg &comm_msg, const MissionPoint & mp, const FormationParameters & params_in)
 : FormationDefinition(params_in){
   update(comm_msg, mp);
 }
@@ -93,7 +93,7 @@ avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const std
   return commToFollowerStatus(current_formation_msg_, veh_name, out_idx);
 }
 
-avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const avt_341::msg::Communication & comm_msg, const std::string & veh_name, int & out_idx) const{
+avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const FormationMsg & comm_msg, const std::string & veh_name, int & out_idx) const{
   avt_341::msg::FollowerStatus follower_status_msg;
   follower_status_msg.leader_name = comm_msg.leader_name;
   if(comm_msg.leader_name == veh_name){
@@ -127,16 +127,7 @@ avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const avt
   return follower_status_msg;
 }
 
-bool FormationDefinition::selfInFormation(const avt_341::msg::Communication &comm_msg){
-  return FormationDefinition::vehicleInFormation(comm_msg, params.my_name);
-}
-
-bool FormationDefinition::vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name){
-  return comm_msg.leader_name == vehicle_name || comm_msg.follower1_name == vehicle_name
-  || comm_msg.follower2_name == vehicle_name || comm_msg.follower3_name == vehicle_name;
-}
-
-bool FormationDefinition::update(avt_341::msg::Communication &comm_msg, const MissionPoint & mp){
+bool FormationDefinition::update(FormationMsg &comm_msg, const MissionPoint & mp){
 
   size_t substr_pos = comm_msg.formation.find("_AT_GOAL");
   formation_at_goal_ = substr_pos != std::string::npos;

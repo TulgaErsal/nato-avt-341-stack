@@ -23,25 +23,13 @@
 #include "avt_341/mission/formation_utils.h"
 #include "avt_341/mission/formation_definition.h"
 #include "avt_341/mission/formation_speed_control.h"
+#include "avt_341/mission/mission_manager_dto.h"
 #include <deque>
 
 namespace avt_341 {
 namespace mission {
 
 class Task;
-
-class PriorityType{
-public:
-  static const std::string QUEUE;
-  static const std::string QUEUE_SHORT;
-  static const std::string PREEMPT;
-  static const std::string PREEMPT_SHORT;
-  static const std::string CANCEL_ALL_PREVIOUS;
-  static const std::string CANCEL_ALL_PREVIOUS_SHORT;
-  inline static bool isQueue(const std::string &type) { return type.empty() || type == QUEUE || type == QUEUE_SHORT; }
-  inline static bool isPreempt(const std::string &type) { return type == PREEMPT || type == PREEMPT_SHORT; }
-  inline static bool isCancelAllPrevious(const std::string &type) { return type == CANCEL_ALL_PREVIOUS || type == CANCEL_ALL_PREVIOUS_SHORT; }
-};
 
 struct Contact {
     // storage for contact information
@@ -58,7 +46,7 @@ class MissionManager{
 
   public:
     /// Construct a formation controller
-    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy, bool add_name_id_to_msg);
+    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy);
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
@@ -69,15 +57,15 @@ class MissionManager{
     void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
 
     // external messages
-    void handleMoveTo(const avt_341::msg::Communication &, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
-    bool isMsgForSelf(const avt_341::msg::Communication & msg);
-    void handleFormationRequest(avt_341::msg::Communication);
-    void handleAcknowledge(const avt_341::msg::Communication &);
-    void handleArrive(const avt_341::msg::Communication &);
-    void handleTaskComplete(const avt_341::msg::Communication &);
-    void handleHold(const avt_341::msg::Communication &);
-    void handleSetSpeed(const avt_341::msg::Communication &);
-    void handleOverwatch(const avt_341::msg::Communication &);
+    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
+    void handleFormationRequest(FormationMsg msg);
+    void handleAcknowledge(const AcknowledgeMsg &);
+    void handleArrive(const ArrivedMsg & msg);
+    void handleTaskComplete(const TaskCompleteMsg & msg);
+    void handleSetSpeed(const SetSpeedMsg & msg);
+    void handleOverwatch(const OverwatchMsg & msg);
+    void handleCancelTask(const CancelMsg & msg);
+    void handleCancelAllTask(const CancelAllMsg & msg);
 
     std::string my_name;
     double sodist_threshold;
@@ -96,13 +84,10 @@ class MissionManager{
     void publishGoal(const avt_341::msg::PoseStamped & target_pose);
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
-    void publishCommStr(const std::string & msg_data);
     void publishArrival(const std::string & sender_name, const std::string & objective);
 //    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
     void reset();
     void resetTaskList(bool send_completion_msg);
-    void handleCancelTask(const avt_341::msg::Communication & msg);
-    void handleCancelAllTask(const avt_341::msg::Communication & msg);
     void cancelTask(int task_id,bool send_completion_msg);
     void onGoalReached(const avt_341::msg::PoseStamped & pose);
     bool hasCompletedTask(const std::string & target_veh, int target_msg_id) const;
@@ -120,18 +105,17 @@ class MissionManager{
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
-    bool add_name_id_to_msg_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
-    std::vector<avt_341::msg::Communication> task_completions_;
-    std::vector<avt_341::msg::Communication> arrivals_;
+    std::vector<TaskCompleteMsg> task_completions_;
+    std::vector<ArrivedMsg> arrivals_;
 
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> reset_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> gp_path_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> gp_toggle_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> communication_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Communication>> communication_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
 
     // Methods

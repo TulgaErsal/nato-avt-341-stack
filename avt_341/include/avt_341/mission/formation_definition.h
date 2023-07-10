@@ -2,6 +2,7 @@
 #define AVT_341_FORMATION_DEFINITION_H
 
 #include "avt_341/node/ros_types.h"
+#include "avt_341/mission/mission_manager_dto.h"
 #include <map>
 
 namespace avt_341 {
@@ -43,11 +44,11 @@ class FormationDefinition {
 public:
 
   FormationDefinition(const FormationParameters & params_in);
-  FormationDefinition(avt_341::msg::Communication &comm_msg, const MissionPoint & mp, const FormationParameters &params_in);
+  FormationDefinition(FormationMsg &comm_msg, const MissionPoint & mp, const FormationParameters &params_in);
 
   avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
-  avt_341::msg::FollowerStatus commToFollowerStatus(const avt_341::msg::Communication & comm_msg, const std::string &veh_name, int &out_idx) const;
-  bool update(avt_341::msg::Communication &comm_msg, const MissionPoint & mp);
+  avt_341::msg::FollowerStatus commToFollowerStatus(const FormationMsg & comm_msg, const std::string &veh_name, int &out_idx) const;
+  bool update(FormationMsg &comm_msg, const MissionPoint & mp);
   FormationOffsets getOffsets(const std::string &formation) const;
 
   inline bool isLeader() const { return leaderName() == params.my_name; }
@@ -61,9 +62,6 @@ public:
   inline int formationIndex() const { return my_index_; }
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
 
-  bool selfInFormation(const avt_341::msg::Communication &comm_msg);
-  static bool vehicleInFormation(const avt_341::msg::Communication &comm_msg, const std::string & vehicle_name);
-
   avt_341::msg::FollowerStatus formation_status;
   avt_341::msg::PoseStamped goal;
   const FormationParameters &params;
@@ -73,7 +71,7 @@ private:
   std::map<std::string, FormationOffsets> offsets_map_;
 
   std::vector<std::string> formation_vehicle_names_;
-  avt_341::msg::Communication current_formation_msg_;
+  FormationMsg current_formation_msg_;
   std::string followed_vehicle_;
   int my_index_;
   bool formation_at_goal_;

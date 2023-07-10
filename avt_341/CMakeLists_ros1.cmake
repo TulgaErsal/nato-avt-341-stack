@@ -110,6 +110,8 @@ add_executable(avt_341_mission_manager_node
   src/mission/formation_definition.cpp
   src/mission/formation_speed_control.cpp
   src/mission/formation_path_generator.cpp
+  src/mission/mission_manager_dto.cpp
+  src/mission/mission_manager_parser.cpp
   src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_mission_manager_node ${catkin_EXPORTED_TARGETS})
@@ -271,6 +273,8 @@ target_link_libraries(avt_341_grid_compression_node
 add_executable(avt_341_comm_node
   src/communication/avt_341_comm_node.cpp
   src/communication/tcp_socket_proxy.cpp
+  src/mission/mission_manager_dto.cpp
+  src/mission/mission_manager_parser.cpp
   src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_comm_node ${catkin_EXPORTED_TARGETS})
