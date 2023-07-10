@@ -96,7 +96,6 @@
 
   <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
     <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
-    <param name="add_name_id_to_msg" value="$(eval not arg('add_name_id_to_msg'))"/>
     $param_list{mission_manager}$
   </node>
 

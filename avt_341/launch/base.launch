@@ -170,9 +170,7 @@
   <!-- Comm Node -->
   <arg name="host" default="localhost" />
   <arg name="port" default="9000" />
-  <arg name="disable_socket_comms" default="false" />
-  <arg name="broadcast_internal" default="false" />
-  <arg name="add_name_id_to_msg" default="true" />
+  <arg name="broadcast_over_ros" default="false" />
   <arg name="verbose_comm_log" default="false" />
 
   <!-- ********************* END OF ARGS ***********************************-->
@@ -496,7 +494,6 @@
 
   <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
     <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
-    <param name="add_name_id_to_msg" value="$(eval not arg('add_name_id_to_msg'))"/>
     <param name="follow_scale_x" value="$(arg follow_scale_x)" />
     <param name="follow_scale_y" value="$(arg follow_scale_y)" />
     <param name="mission_definition_file" value="$(arg mission_definition_file)" />
@@ -525,9 +522,7 @@
     <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
     <param name="host" value="$(arg host)" />
     <param name="port" value="$(arg port)" />
-    <param name="disable_socket_comms" value="$(arg disable_socket_comms)" />
-    <param name="broadcast_internal" value="$(arg broadcast_internal)" />
-    <param name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)" />
+    <param name="broadcast_over_ros" value="$(arg broadcast_over_ros)" />
     <param name="verbose_comm_log" value="$(arg verbose_comm_log)" />
   </node>
 
@@ -714,9 +709,7 @@
       <arg name="toi_encircle_cw" value="$(arg toi_encircle_cw)" />" />
       <arg name="host" value="$(arg host)" />" />
       <arg name="port" value="$(arg port)" />" />
-      <arg name="disable_socket_comms" value="$(arg disable_socket_comms)" />" />
-      <arg name="broadcast_internal" value="$(arg broadcast_internal)" />" />
-      <arg name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)" />" />
+      <arg name="broadcast_over_ros" value="$(arg broadcast_over_ros)" />" />
       <arg name="verbose_comm_log" value="$(arg verbose_comm_log)" />" />
     </include>
   </group>
