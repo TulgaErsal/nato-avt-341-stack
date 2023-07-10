@@ -33,9 +33,6 @@ bool reset_called = false;
 // Initialise ROS node parameters.
 unsigned int loop_count = 0;
 
-// Set the node spin rate to 50 Hz.
-avt_341::node::Rate rosrate(50.0f);
-
 /**
  * @brief Store the AGV odometry and mark it as received.
  *
@@ -252,6 +249,9 @@ main(int argc, char* argv[]) {
     planner.SetUseSegmentation(use_segmentation);
     planner.SetUseGlobalPath(use_global_path);
     planner.SetPrintSummary(print_summary);
+
+    // Set the node spin rate to 50 Hz.
+    avt_341::node::Rate rosrate(50.0f);
 
     while (avt_341::node::ok()) {
         if (msg_path.poses.size() > 0 && rcvd_odom && msg_grid_occ.data.size() > 0) {

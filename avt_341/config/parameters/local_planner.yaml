@@ -46,6 +46,7 @@ dwa:
   speed_ang_max: 0.58                   # Maximum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window.
   speed_ang_steps: 40                   # Number of intervals to partition the angular variable range into. Higher values allow for finer control, but significantly impact performance.
   ang_accel_max: 4.0                    # Maximum rate of change of the angular variable (yaw acceleration for synchro drive, steering rate for Ackermann)
+  lat_accel_max: 9.81                   # Maximum lateral acceleration.
   horizon: 'adaptive'                   # Time prediction horizon - may be `fixed` or `adaptive` for prediction windows proportional to the longitudinal speed of the AGV.
   time_span_min: 2.5                    # Minimum time span for the prediction window.
   time_span_max: 10.0                   # Maximum time span for the prediction window.
@@ -56,6 +57,7 @@ dwa:
   w_cost_head: 0.001                    # Objective function heading deviation cost term weight. Higher values will promote planned trajectories with final pose oriented towards the goal.
   thresh_obs: 0                         # Occupancy threshold above which a grid cell is considered an obstacle.
   collision_radius: 2.25                # AGV radius used for collision detection (centered in the odometry message frame).
+  search_radius: 10.0                   # Search radius for obstacles to be included in cost
   w_cost_obs: 1.5                       # Objective function obstacle distance cost term weight.
   w_cost_speed: 0.0                     # Objective function terminal speed cost term weight. Higher values will promote planned trajectories with higher final velocity.
   use_global_path: False                # Whether or not to use the global path when selecting the goal waypoint and to evaluate the AGV deviation from it.

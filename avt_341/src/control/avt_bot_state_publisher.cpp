@@ -4,81 +4,61 @@
 #include "nav_msgs/Odometry.h"
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_broadcaster.h>
+#include <queue>
 
-nav_msgs::Odometry odometry;
-geometry_msgs::Pose &pose = odometry.pose.pose;
-bool odom_rcvd = false;
+std::queue<nav_msgs::Odometry> odometry_msgs;
 void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
-  //std::cout<<"State publisher recieved odometry "<<std::endl;
-	odometry = *(rcv_odom.get());
-  odom_rcvd = true;
+  odometry_msgs.push(*rcv_odom);
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "avt_state_publisher");
-    ros::NodeHandle n;
-    ros::Publisher joint_pub = n.advertise<sensor_msgs::JointState>("joint_states", 1);
-    ros::Subscriber odom_sub = n.subscribe("avt_341/odometry",100, OdometryCallback);
+  ros::init(argc, argv, "avt_state_publisher");
+  ros::NodeHandle n;
+  ros::Subscriber odom_sub = n.subscribe("avt_341/odometry", 100, OdometryCallback);
 
-    tf::TransformBroadcaster broadcaster;
-    
+  tf::TransformBroadcaster broadcaster;
 
-    // message declarations
-    geometry_msgs::TransformStamped odom_trans;
-    sensor_msgs::JointState joint_state;
-    odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base_link";
+  std::string frame_prefix = "";
+  if(ros::param::has("~frame_prefix")) {
+    ros::param::get("~frame_prefix", frame_prefix);
+  }
 
-    // set up parent and child frames
-    tf::StampedTransform tf_map_to_odom;
-    tf_map_to_odom.frame_id_ = std::string("map");
-    tf_map_to_odom.child_frame_id_ = std::string("odom");
+  // message declarations
+  geometry_msgs::TransformStamped odom_trans;
+  odom_trans.header.frame_id = "odom";
+  odom_trans.child_frame_id = frame_prefix + (frame_prefix.empty() ? "" : "/") + "base_link";
 
-    ros::Rate loop_rate(100.0);
-    while (ros::ok()) {
-      if(odom_rcvd) {
-        //update joint_state
-        joint_state.header.stamp = odometry.header.stamp;
-        joint_state.name.resize(3);
-        joint_state.position.resize(3);
-        joint_state.name[0] ="lidar_joint";
-        joint_state.position[0] = 0.0;
-        
-        odom_trans.header.stamp = odometry.header.stamp;
-        odom_trans.transform.translation.x = pose.position.x;
-        odom_trans.transform.translation.y = pose.position.y;
-        odom_trans.transform.translation.z = pose.position.z;
-        odom_trans.transform.rotation = pose.orientation;
+  // set up parent and child frames
+  geometry_msgs::TransformStamped map_trans;
+  map_trans.header.frame_id = "map";
+  map_trans.child_frame_id = "odom";
 
-        //send the joint state and transform
-        joint_pub.publish(joint_state);
-        broadcaster.sendTransform(odom_trans);
+  ros::Rate loop_rate(100.0);
+  while (ros::ok()) {
+    while(!odometry_msgs.empty()) {
+      nav_msgs::Odometry odometry = odometry_msgs.front();
+      odometry_msgs.pop();
 
-        // map to odom broadcast transform
-        tf_map_to_odom.stamp_ = odometry.header.stamp;
-        //tf_map_to_odom.setOrigin(tf::Vector3(pose.position.x, pose.position.y, pose.position.z));
-        //tf_map_to_odom.setRotation(tf::Quaternion(pose.orientation.x, pose.orientation.y,
-        //                                          pose.orientation.z,pose.orientation.w));
-        tf_map_to_odom.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
-        tf_map_to_odom.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
-
-        broadcaster.sendTransform(tf_map_to_odom);
-        odom_rcvd = false;
-      } 
-      // This will adjust as needed per iteration
-      ros::spinOnce();
-      loop_rate.sleep();
+      odom_trans.header.seq = odometry.header.seq;
+      odom_trans.header.stamp = odometry.header.stamp;
+      odom_trans.transform.translation.x = odometry.pose.pose.position.x;
+      odom_trans.transform.translation.y = odometry.pose.pose.position.y;
+      odom_trans.transform.translation.z = odometry.pose.pose.position.z;
+      odom_trans.transform.rotation = odometry.pose.pose.orientation;
+      broadcaster.sendTransform(odom_trans);
     }
 
+    ros::spinOnce();
+    loop_rate.sleep();
+  }
 
-    return 0;
+  return 0;
 }
 
 #else 
 #include <string>
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "sensor_msgs/msg/joint_state.hpp"
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
@@ -95,7 +75,6 @@ void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr rcv_odom){
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_state_publisher");
-  auto joint_pub = n->create_publisher<sensor_msgs::msg::JointState>("joint_states", 1);
   auto odom_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
 
   std::string frame_prefix;
@@ -109,7 +88,6 @@ int main(int argc, char** argv) {
 
   // message declarations
   geometry_msgs::msg::TransformStamped odom_trans;
-  sensor_msgs::msg::JointState joint_state;
   odom_trans.header.frame_id = "odom";
   odom_trans.child_frame_id = frame_prefix + "base_link";
 
@@ -123,12 +101,6 @@ int main(int argc, char** argv) {
     while(!odometry_msgs.empty()) {
       auto odometry = odometry_msgs.front();
       odometry_msgs.pop();
-      //update joint_state
-      joint_state.header.stamp = odometry.header.stamp;
-      joint_state.name.resize(3);
-      joint_state.position.resize(3);
-      joint_state.name[0] = "lidar_joint";
-      joint_state.position[0] = 0.0;
 
       odom_trans.header.stamp = odometry.header.stamp;
       odom_trans.transform.translation.x = odometry.pose.pose.position.x;
@@ -136,8 +108,6 @@ int main(int argc, char** argv) {
       odom_trans.transform.translation.z = odometry.pose.pose.position.z;
       odom_trans.transform.rotation = odometry.pose.pose.orientation;
 
-      //send the joint state and transform
-      joint_pub->publish(joint_state);
       broadcaster.sendTransform(odom_trans);
 
       if (publish_map_to_odom) {

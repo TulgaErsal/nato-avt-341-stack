@@ -1,0 +1,156 @@
+<launch>
+
+  <!-- General  -->
+  <rosparam file="$(arg waypoints_file)" />
+  $arg_list{common}$
+
+  <!-- Elevation Grid  -->
+  $arg_list{perception}$
+
+  <!-- Global Planner  -->
+  $arg_list{global_planner}$
+
+  <!-- Local Planner  -->
+  $arg_list{local_planner}$
+
+  <!-- Pure Pursuit Control  -->
+  $arg_list{control}$
+
+  <!-- Mission Manager -->
+  $arg_list{mission_manager}$
+
+  <!-- Comm Node -->
+  $arg_list{socket_comms}$
+
+  <!-- ********************* END OF ARGS ***********************************-->
+
+  <param name="robot_description" command="cat $(arg robot_description_file)" />
+  <arg name="veh_index" default="0" />
+
+  <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
+
+  <group if="$(eval env('ROS_DISTRO') != 'lunar' and env('ROS_DISTRO') != 'kinetic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+        <param name="tf_prefix" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '')" />
+    </node>
+  </group>
+  <group if="$(eval env('ROS_DISTRO') == 'lunar' or env('ROS_DISTRO') == 'kinetic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" >
+        <param name="tf_prefix" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '')" />
+    </node>
+  </group>
+
+  <node pkg="tf" name="static_transform_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10" />
+  <node name="state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node" output="screen" >
+    <param name="frame_prefix" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '')" />
+  </node>
+
+  <!-- Lidar perception algorithms  -->
+  <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
+    <remap from="/avt_341/points" to="$(arg points_topic)"/>
+    <param name="display" value="$(arg display_type)" />
+    $param_list{perception}$
+  </node>
+
+  <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
+
+  <group if="$(eval arg('local_planner_method') != 'dwa')">
+      <node name="vehicle_control_node" pkg="avt_341" type="avt_341_control_node" required="true" output="screen" >
+        $param_list{control}$
+      </node>
+  </group>
+
+  <group if="$(eval arg('local_planner_method') == 'dwa')">
+      <node name="vehicle_control_node" pkg="avt_341" type="avt_341_speed_control_node" required="true" output="screen" >
+        $param_list{control}$
+      </node>
+  </group>
+
+  <node name="global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
+    <param name="display" value="$(arg display_type)" />
+    $param_list{global_planner}$
+  </node>
+
+  <group if="$(eval arg('local_planner_method') == 'rcc')">
+    <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true" >
+      <param name="display" value="$(arg display_type)" />
+      $param_list{local_planner}$
+    </node>
+  </group>
+
+  <group if="$(eval arg('local_planner_method') == 'dwa')">
+    <node name="local_dwa_planner_node" pkg="avt_341" type="avt_341_dwa_planner_node" output="screen" required="true" >
+      $param_list{local_planner}$
+    </node>
+  </group>
+
+  <group if="$(eval arg('local_planner_method') == 'pf')">
+    <node name="local_pf_planner_node" pkg="avt_341" type="avt_341_pf_planner_node" output="screen" required="true" >
+      $param_list{local_planner}$
+    </node>
+  </group>
+
+  <node name="grid_compression" pkg="avt_341" type="avt_341_grid_compression_node" output="screen">
+  </node>
+
+
+  <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
+    <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
+    <param name="add_name_id_to_msg" value="$(eval not arg('add_name_id_to_msg'))"/>
+    $param_list{mission_manager}$
+  </node>
+
+  <node name="comm_node" pkg="avt_341" type="avt_341_comm_node" output="screen">
+    <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
+    $param_list{socket_comms}$
+  </node>
+
+  <group if="$(eval arg('use_lidar_obstacle_detector'))">
+    <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
+      <!-- Input Topic Names -->
+      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <!-- Output Topic Names -->
+      <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
+      <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
+      <param name="jsk_bboxes_topic"                    value="/avt_341/lidar_detector/jsk_bboxes"/>
+      <!-- Parameters -->
+      <param name="bbox_target_frame"                   value="base_link"/>
+    </node>
+  </group>
+
+  <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
+  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') == 1)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
+  </group>
+  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') > 1)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341_multi_vehicle.rviz" />
+  </group>
+
+
+  </group>  <!-- / End group namespace -->
+
+  <group if="$(eval arg('num_vehicles') > arg('veh_index'))">
+    <include file="$(find avt_341)/launch/base.launch">
+      <arg name="veh_index" value="$(eval arg('veh_index') + 1)" />
+      $arg_assign{common}$
+      $arg_assign{perception}$
+      $arg_assign{global_planner}$
+      $arg_assign{local_planner}$
+      $arg_assign{control}$
+      $arg_assign{mission_manager}$
+      $arg_assign{socket_comms}$
+    </include>
+  </group>
+
+  <!-- Uncomment this section to use the MAVS simlator.
+       Must have MAVS built and installed and the 
+       mavs_avt_example catkin package built. -->
+  <!--
+  <include file="$(find mavs_avt_example)/launch/mavs_sim.launch">
+    <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
+    <arg name="point_cloud_topic_arg" default="avt_341/points" />
+    <arg name="odometry_topic_arg" default="avt_341/odometry" />
+  </include>
+  -->
+
+</launch>
