@@ -29,21 +29,21 @@
 
   <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
 
-  <group if="$(eval env('ROS_DISTRO') =='noetic')">
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  <group if="$(eval env('ROS_DISTRO') != 'lunar' and env('ROS_DISTRO') != 'kinetic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+        <param name="tf_prefix" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '')" />
+    </node>
   </group>
-  <group if="$(eval env('ROS_DISTRO') =='melodic')"> 
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
-  </group>
-  <group if="$(eval env('ROS_DISTRO') =='lunar')"> 
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
-  </group>
-  <group if="$(eval env('ROS_DISTRO') =='kinetic')"> 
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+  <group if="$(eval env('ROS_DISTRO') == 'lunar' or env('ROS_DISTRO') == 'kinetic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" >
+        <param name="tf_prefix" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '')" />
+    </node>
   </group>
 
   <node pkg="tf" name="static_transform_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10" />
-  <node name="state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node" output="screen" />
+  <node name="state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node" output="screen" >
+    <param name="frame_prefix" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '')" />
+  </node>
 
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
@@ -93,8 +93,10 @@
   <node name="grid_compression" pkg="avt_341" type="avt_341_grid_compression_node" output="screen">
   </node>
 
+
   <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
     <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
+    <param name="add_name_id_to_msg" value="$(eval not arg('add_name_id_to_msg'))"/>
     $param_list{mission_manager}$
   </node>
 
@@ -117,9 +119,13 @@
   </group>
 
   <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
-  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0)">
+  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') == 1)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
   </group>
+  <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') > 1)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341_multi_vehicle.rviz" />
+  </group>
+
 
   </group>  <!-- / End group namespace -->
 

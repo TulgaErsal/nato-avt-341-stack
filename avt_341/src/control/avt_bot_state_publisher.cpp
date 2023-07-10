@@ -12,42 +12,47 @@ void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "avt_state_publisher");
-    ros::NodeHandle n;
-    ros::Subscriber odom_sub = n.subscribe("avt_341/odometry", 100, OdometryCallback);
+  ros::init(argc, argv, "avt_state_publisher");
+  ros::NodeHandle n;
+  ros::Subscriber odom_sub = n.subscribe("avt_341/odometry", 100, OdometryCallback);
 
-    tf::TransformBroadcaster broadcaster;
+  tf::TransformBroadcaster broadcaster;
 
-    // message declarations
-    geometry_msgs::TransformStamped odom_trans;
-    odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base_link";
+  std::string frame_prefix = "";
+  if(ros::param::has("~frame_prefix")) {
+    ros::param::get("~frame_prefix", frame_prefix);
+  }
 
-    // set up parent and child frames
-	geometry_msgs::TransformStamped map_trans;
-	map_trans.header.frame_id = "map";
-	map_trans.child_frame_id = "odom";
+  // message declarations
+  geometry_msgs::TransformStamped odom_trans;
+  odom_trans.header.frame_id = "odom";
+  odom_trans.child_frame_id = frame_prefix + (frame_prefix.empty() ? "" : "/") + "base_link";
 
-    ros::Rate loop_rate(100.0);
-    while (ros::ok()) {
-      while(!odometry_msgs.empty()) {
-        nav_msgs::Odometry odometry = odometry_msgs.front();
-        odometry_msgs.pop();
+  // set up parent and child frames
+  geometry_msgs::TransformStamped map_trans;
+  map_trans.header.frame_id = "map";
+  map_trans.child_frame_id = "odom";
 
-        odom_trans.header.seq = odometry.header.seq;
-        odom_trans.header.stamp = odometry.header.stamp;
-        odom_trans.transform.translation.x = odometry.pose.pose.position.x;
-        odom_trans.transform.translation.y = odometry.pose.pose.position.y;
-        odom_trans.transform.translation.z = odometry.pose.pose.position.z;
-        odom_trans.transform.rotation = odometry.pose.pose.orientation;
-        broadcaster.sendTransform(odom_trans);
-      }
+  ros::Rate loop_rate(100.0);
+  while (ros::ok()) {
+    while(!odometry_msgs.empty()) {
+      nav_msgs::Odometry odometry = odometry_msgs.front();
+      odometry_msgs.pop();
 
-      ros::spinOnce();
-      loop_rate.sleep();
-		}
+      odom_trans.header.seq = odometry.header.seq;
+      odom_trans.header.stamp = odometry.header.stamp;
+      odom_trans.transform.translation.x = odometry.pose.pose.position.x;
+      odom_trans.transform.translation.y = odometry.pose.pose.position.y;
+      odom_trans.transform.translation.z = odometry.pose.pose.position.z;
+      odom_trans.transform.rotation = odometry.pose.pose.orientation;
+      broadcaster.sendTransform(odom_trans);
+    }
 
-    return 0;
+    ros::spinOnce();
+    loop_rate.sleep();
+  }
+
+  return 0;
 }
 
 #else 
