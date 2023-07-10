@@ -31,7 +31,6 @@
   <arg name="cull_lidar_dist" default="90.0" />
   <arg name="cull_lidar_dist_min" default="0.0" />
   <arg name="warmup_time" default="5.0" />
-  <arg name="use_registered" default="true" />
   <arg name="stitch_lidar_points" default="true" />
   <arg name="filter_highest_lidar" default="false" />
   <arg name="time_register_window" default="0.05" />
@@ -217,7 +216,6 @@
     <param name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />
     <param name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />
     <param name="warmup_time" value="$(arg warmup_time)" />
-    <param name="use_registered" value="$(arg use_registered)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />
     <param name="time_register_window" value="$(arg time_register_window)" />
@@ -580,7 +578,6 @@
       <arg name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />" />
       <arg name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />" />
       <arg name="warmup_time" value="$(arg warmup_time)" />" />
-      <arg name="use_registered" value="$(arg use_registered)" />" />
       <arg name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />" />
       <arg name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />" />
       <arg name="time_register_window" value="$(arg time_register_window)" />" />

@@ -11,6 +11,7 @@ set(REQUIRED_ROS_PACKAGES
   message_generation
   tf2_ros
   tf2_geometry_msgs
+  tf2_sensor_msgs
   dynamic_reconfigure
   jsk_recognition_msgs
   avt_341_msgs

@@ -16,7 +16,6 @@ cull_lidar: False                         # Cull lidar points flag based on dist
 cull_lidar_dist: 90.0                     # Maximum distance used to cull lidar points
 cull_lidar_dist_min: 0.0                  # Minimum distance used to cull lidar points
 warmup_time: 5.0                          # Time before lidar processing starts
-use_registered: True                      # If true, assumes lidar points are in world coordinates. Else assumes in robot odom coordinates.
 stitch_lidar_points: True                 # If true, lidar scans will be stitched together. Else, each point cloud 2 message will be independent and the grid will be cleared between messages.
 filter_highest_lidar: False               # If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used.
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps

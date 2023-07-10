@@ -24,7 +24,6 @@ bool grid_created = false;
 double start_time = 0.0;
 bool odom_rcvd = false;
 std::vector<avt_341::msg::Odometry> current_pose_list;
-bool use_registered = true;
 float overhead_clearance = 100.0f;
 double time_register_window = 0.02;
 bool cull_lidar_points = false;
@@ -52,7 +51,7 @@ double GetPoseToUse(avt_341::msg::Odometry & pose_to_use, avt_341::msg::PointClo
 	return dt;
 }
 
-void PointCloudCallbackRegistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
+void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud){
 	// assumes point cloud is already registered to odom frame
 	avt_341::msg::PointCloud point_cloud;
 
@@ -125,62 +124,6 @@ void ResetCallback(avt_341::msg::StringPtr msg){
   }
 }
 
-void PointCloudCallbackUnregistered(avt_341::msg::PointCloud2Ptr rcv_cloud){
-	avt_341::msg::PointCloud point_cloud;
-	
-	bool converted = sensor_msgs::convertPointCloud2ToPointCloud(*rcv_cloud,point_cloud);
-
-	avt_341::msg::Odometry pose_to_use;
-	double dt = GetPoseToUse(pose_to_use, rcv_cloud);
-	std::vector<std::vector<float>> channel_values;
-	for(int c = 0; c < point_cloud.channels.size(); c++){
-		channel_values.push_back(std::vector<float>());
-	}
-	if (converted && fabs(dt)<time_register_window && odom_rcvd){
-    avt_341::msg_tf::Quaternion q(pose_to_use.pose.pose.orientation.x, pose_to_use.pose.pose.orientation.y, pose_to_use.pose.pose.orientation.z, pose_to_use.pose.pose.orientation.w);
-    avt_341::msg_tf::Matrix3x3 R(q);
-    avt_341::msg_tf::Vector3 origin(pose_to_use.pose.pose.position.x, pose_to_use.pose.pose.position.y, pose_to_use.pose.pose.position.z);
-		std::vector<avt_341::msg::Point32> points;
-		for (int p=0;p<point_cloud.points.size();p++){
-      avt_341::msg_tf::Vector3 v;
-			v = avt_341::msg_tf::Vector3(point_cloud.points[p].x, point_cloud.points[p].y,point_cloud.points[p].z);
-			double r = sqrt( pow(v.x()-origin.x(), 2)+pow(v.y()-origin.y(), 2)+pow(v.z()-origin.z(), 2));
-			if (v.x()!=0.0 && v.y()!=0.0 &&!std::isnan(v.x())){
-        avt_341::msg_tf::Vector3 vp = (R*v) + origin;
-				avt_341::msg::Point32 tp;
-				tp.x = vp.x();
-				tp.y = vp.y();
-				tp.z = vp.z();
-        const double point_dist = CalcLidarPointToRobotDistanceSquared(pose_to_use.pose.pose.position, tp);
-				if ( (tp.z-current_pose.pose.pose.position.z)<overhead_clearance &&
-            (!cull_lidar_points || (cull_lidar_points_dist_min_sqr < point_dist && point_dist < cull_lidar_points_dist_sqr))){
-					points.push_back(tp);
-					for(int c = 0; c < point_cloud.channels.size(); c++){
-						channel_values[c].push_back(point_cloud.channels[c].values[p]);
-					}
-				}
-				
-			}
-		}
-		point_cloud.points.clear();
-		point_cloud.points = points;
-		for(int c = 0; c < point_cloud.channels.size(); c++){
-			point_cloud.channels[c].values = channel_values[c];
-		}
-    point_cloud.header.stamp = rcv_cloud->header.stamp;
-		grid.AddPoints(point_cloud);
-		grid_created = true;
-	}
-}
-void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud){
-	if (use_registered){
-		PointCloudCallbackRegistered(rcv_cloud);
-	}
-	else{
-		PointCloudCallbackUnregistered(rcv_cloud);
-	}
-}
-
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom){
 	current_pose = *rcv_odom;
 	odom_rcvd = true;
@@ -219,7 +162,6 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~warmup_time", warmup_time, 1.0f);
   n->get_parameter("~slope_threshold", thresh, 1.0f);
   n->get_parameter("~use_elevation", use_elevation, false);
-  n->get_parameter("~use_registered", use_registered, true);
   n->get_parameter("~grid_dilate", grid_dilate, true);
   n->get_parameter("~grid_dilate_x", grid_dilate_x, 1.0f);
   n->get_parameter("~grid_dilate_y", grid_dilate_y, 1.0f);
