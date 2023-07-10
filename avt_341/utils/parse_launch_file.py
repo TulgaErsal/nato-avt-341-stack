@@ -68,6 +68,8 @@ def generate_launch_file():
 
     for k, v in params.items():
 
+        # Arg List
+        # ==============================================================================================================
         line = [l for l in launch_str_split if ParseConstants.ARG_LIST % k in l]
         if len(line) > 0:
             spaces = line[0][:-len(line[0].lstrip(' '))]
@@ -76,16 +78,25 @@ def generate_launch_file():
                                              for i, (ki, vi) in enumerate(v.items())])
             launch_str = launch_str.replace(ParseConstants.ARG_LIST % k, section_value)
 
-        line = [l for l in launch_str_split if ParseConstants.PARAM_LIST % k in l]
-        if len(line) > 0:
-            spaces = line[0][:-len(line[0].lstrip(' '))]
-            section_value_param = [('' if i == 0 else spaces) + '<param name="%s" value="$(arg %s)" />'
-                                                   % (ki, ki)
-                                                   for i, (ki, vi) in enumerate(v.items())]
-            for ki, vi in param_refs[k].items():
-                section_value_param.append(spaces + '<param name="%s" value="$(arg %s)" />' % (ki, vi))
-            launch_str = launch_str.replace(ParseConstants.PARAM_LIST % k, os.linesep.join(section_value_param))
+        # Param List
+        # ==============================================================================================================
+        lines = [l for l in launch_str_split if ParseConstants.PARAM_LIST[:-2] % k in l]
+        if len(lines) > 0:
+            for line in lines:
+                spaces = line[:-len(line.lstrip(' '))]
+                if len(line.split(':')) > 1:
+                    excluded_items = re.findall(r'exclude\[(.*)\]', line.split(':')[-1][:-1])[0].split(',')
+                else:
+                    excluded_items = []
+                section_value_param = [spaces + '<param name="%s" value="$(arg %s)" />'
+                                       % (ki, ki)
+                                       for i, (ki, vi) in enumerate(v.items()) if ki not in excluded_items]
+                for ki, vi in param_refs[k].items():
+                    section_value_param.append(spaces + '<param name="%s" value="$(arg %s)" />' % (ki, vi))
+                launch_str = launch_str.replace(line, os.linesep.join(section_value_param))
 
+        # Arg Assign for recursive call for multiple vehicles
+        # ==============================================================================================================
         line = [l for l in launch_str_split if ParseConstants.ARG_ASSIGN % k in l]
         if len(line) > 0:
             spaces = line[0][:-len(line[0].lstrip(' '))]

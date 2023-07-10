@@ -38,7 +38,8 @@
   <arg name="perception_rate" default="20.0" />
   <arg name="global_grid_csv_path" default="$(find avt_341)/config/KRC_CP06_Scaled_Transposed.csv" />
   <arg name="use_lidar_obstacle_detector" default="false" />
-  <arg name="points_topic" default="/avt_341/points" />
+  <arg name="raw_points_topic" default="/avt_341/points" />
+  <arg name="perception_points_topic" default="/avt_341/points" />
   <arg name="clear_method_type" default="none" />
   <arg name="clear_method_visualize" default="false" />
   <arg name="clear_method_visualize_range" default="40.0" />
@@ -198,7 +199,7 @@
 
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
-    <remap from="/avt_341/points" to="$(arg points_topic)"/>
+    <remap from="/avt_341/points" to="$(arg perception_points_topic)"/>
     <param name="display" value="$(arg display_type)" />
     <param name="use_elevation" value="$(arg use_elevation)" />
     <param name="slope_threshold" value="$(arg slope_threshold)" />
@@ -223,7 +224,6 @@
     <param name="perception_rate" value="$(arg perception_rate)" />
     <param name="global_grid_csv_path" value="$(arg global_grid_csv_path)" />
     <param name="use_lidar_obstacle_detector" value="$(arg use_lidar_obstacle_detector)" />
-    <param name="points_topic" value="$(arg points_topic)" />
     <param name="clear_method_type" value="$(arg clear_method_type)" />
     <param name="clear_method_visualize" value="$(arg clear_method_visualize)" />
     <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)" />
@@ -529,7 +529,7 @@
   <group if="$(eval arg('use_lidar_obstacle_detector'))">
     <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
       <!-- Input Topic Names -->
-      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <param name="lidar_points_topic"                  value="$(arg raw_points_topic)"/>
       <!-- Output Topic Names -->
       <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
       <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
@@ -587,7 +587,8 @@
       <arg name="perception_rate" value="$(arg perception_rate)" />" />
       <arg name="global_grid_csv_path" value="$(arg global_grid_csv_path)" />" />
       <arg name="use_lidar_obstacle_detector" value="$(arg use_lidar_obstacle_detector)" />" />
-      <arg name="points_topic" value="$(arg points_topic)" />" />
+      <arg name="raw_points_topic" value="$(arg raw_points_topic)" />" />
+      <arg name="perception_points_topic" value="$(arg perception_points_topic)" />" />
       <arg name="clear_method_type" value="$(arg clear_method_type)" />" />
       <arg name="clear_method_visualize" value="$(arg clear_method_visualize)" />" />
       <arg name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)" />" />
