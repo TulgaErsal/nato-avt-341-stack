@@ -1,7 +1,6 @@
 <launch>
 
   <!-- General  -->
-  <rosparam file="$(arg waypoints_file)" />
   <arg name="use_sim_time" default="false" />
   <arg name="auto_launch_rviz" default="true" />
   <arg name="display_type" default="rviz" />
@@ -173,10 +172,13 @@
   <arg name="broadcast_over_ros" default="false" />
   <arg name="verbose_comm_log" default="false" />
 
+  <arg name="veh_index" default="0" />
+
   <!-- ********************* END OF ARGS ***********************************-->
 
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+  <rosparam file="$(arg waypoints_file)" />
   <param name="robot_description" command="cat $(arg robot_description_file)" />
-  <arg name="veh_index" default="0" />
 
   <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
 
