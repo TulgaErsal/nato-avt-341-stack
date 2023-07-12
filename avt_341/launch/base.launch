@@ -1,7 +1,6 @@
 <launch>
 
   <!-- General  -->
-  <rosparam file="$(arg waypoints_file)" />
   <arg name="use_sim_time" default="false" />
   <arg name="auto_launch_rviz" default="true" />
   <arg name="display_type" default="rviz" />
@@ -31,7 +30,6 @@
   <arg name="cull_lidar_dist" default="90.0" />
   <arg name="cull_lidar_dist_min" default="0.0" />
   <arg name="warmup_time" default="5.0" />
-  <arg name="use_registered" default="true" />
   <arg name="stitch_lidar_points" default="true" />
   <arg name="filter_highest_lidar" default="false" />
   <arg name="time_register_window" default="0.05" />
@@ -174,10 +172,13 @@
   <arg name="broadcast_over_ros" default="false" />
   <arg name="verbose_comm_log" default="false" />
 
+  <arg name="veh_index" default="0" />
+
   <!-- ********************* END OF ARGS ***********************************-->
 
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+  <rosparam file="$(arg waypoints_file)" />
   <param name="robot_description" command="cat $(arg robot_description_file)" />
-  <arg name="veh_index" default="0" />
 
   <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
 
@@ -217,7 +218,6 @@
     <param name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />
     <param name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />
     <param name="warmup_time" value="$(arg warmup_time)" />
-    <param name="use_registered" value="$(arg use_registered)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />
     <param name="time_register_window" value="$(arg time_register_window)" />
@@ -580,7 +580,6 @@
       <arg name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />" />
       <arg name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />" />
       <arg name="warmup_time" value="$(arg warmup_time)" />" />
-      <arg name="use_registered" value="$(arg use_registered)" />" />
       <arg name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />" />
       <arg name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />" />
       <arg name="time_register_window" value="$(arg time_register_window)" />" />
