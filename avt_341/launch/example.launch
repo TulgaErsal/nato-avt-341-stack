@@ -1,5 +1,6 @@
 <launch>
-
+<param name="grid_dilate" value="false"/>
+<param name="max_point_age" value="0.0"/>
   <include file="$(find avt_341)/launch/base.launch">
     <arg name="waypoints_file" value="$(find avt_341)/config/waypoints.yaml" />
     <arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf" />
