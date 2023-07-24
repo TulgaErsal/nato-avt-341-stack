@@ -7,8 +7,8 @@
   <!-- General  -->
   <arg name="display_type" default="rviz" doc="Type of visualization to use rviz | none"/>
   <arg name="auto_launch_rviz" default="true" doc="Open rviz automatically on launch. Only applies if display_type = rviz"/>
-  <arg name="waypoints_file" doc="Waypoints file containing locations to navigate to."/>
-  <arg name="robot_description_file" doc="URDF robot description file to use"/>
+  <arg name="waypoints_file" value="$(find avt_341)/config/waypoints.yaml" doc="Waypoints file containing locations to navigate to."/>
+  <arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf" doc="URDF robot description file to use"/>
 
   <!-- Elevation Grid  -->
   <arg name="use_elevation" default="false" doc="Elevation grid - To use elevation or slope value when making occupancy grid based on heightmap."/>
