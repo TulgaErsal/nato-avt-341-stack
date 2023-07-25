@@ -1,7 +1,6 @@
 <launch>
 
   <!-- General  -->
-  <rosparam file="$(arg waypoints_file)" />
   <arg name="use_sim_time" default="false" />
   <arg name="auto_launch_rviz" default="true" />
   <arg name="display_type" default="rviz" />
@@ -31,14 +30,14 @@
   <arg name="cull_lidar_dist" default="90.0" />
   <arg name="cull_lidar_dist_min" default="0.0" />
   <arg name="warmup_time" default="5.0" />
-  <arg name="use_registered" default="true" />
   <arg name="stitch_lidar_points" default="true" />
   <arg name="filter_highest_lidar" default="false" />
   <arg name="time_register_window" default="0.05" />
   <arg name="perception_rate" default="20.0" />
   <arg name="global_grid_csv_path" default="$(find avt_341)/config/KRC_CP06_Scaled_Transposed.csv" />
   <arg name="use_lidar_obstacle_detector" default="false" />
-  <arg name="points_topic" default="/avt_341/points" />
+  <arg name="raw_points_topic" default="/avt_341/points" />
+  <arg name="perception_points_topic" default="/avt_341/points" />
   <arg name="clear_method_type" default="none" />
   <arg name="clear_method_visualize" default="false" />
   <arg name="clear_method_visualize_range" default="40.0" />
@@ -170,15 +169,16 @@
   <!-- Comm Node -->
   <arg name="host" default="localhost" />
   <arg name="port" default="9000" />
-  <arg name="disable_socket_comms" default="false" />
-  <arg name="broadcast_internal" default="false" />
-  <arg name="add_name_id_to_msg" default="true" />
+  <arg name="broadcast_over_ros" default="false" />
   <arg name="verbose_comm_log" default="false" />
+
+  <arg name="veh_index" default="0" />
 
   <!-- ********************* END OF ARGS ***********************************-->
 
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+  <rosparam file="$(arg waypoints_file)" />
   <param name="robot_description" command="cat $(arg robot_description_file)" />
-  <arg name="veh_index" default="0" />
 
   <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
 
@@ -200,7 +200,7 @@
 
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
-    <remap from="/avt_341/points" to="$(arg points_topic)"/>
+    <remap from="/avt_341/points" to="$(arg perception_points_topic)"/>
     <param name="display" value="$(arg display_type)" />
     <param name="use_elevation" value="$(arg use_elevation)" />
     <param name="slope_threshold" value="$(arg slope_threshold)" />
@@ -218,14 +218,12 @@
     <param name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />
     <param name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />
     <param name="warmup_time" value="$(arg warmup_time)" />
-    <param name="use_registered" value="$(arg use_registered)" />
     <param name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />
     <param name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />
     <param name="time_register_window" value="$(arg time_register_window)" />
     <param name="perception_rate" value="$(arg perception_rate)" />
     <param name="global_grid_csv_path" value="$(arg global_grid_csv_path)" />
     <param name="use_lidar_obstacle_detector" value="$(arg use_lidar_obstacle_detector)" />
-    <param name="points_topic" value="$(arg points_topic)" />
     <param name="clear_method_type" value="$(arg clear_method_type)" />
     <param name="clear_method_visualize" value="$(arg clear_method_visualize)" />
     <param name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)" />
@@ -496,7 +494,6 @@
 
   <node name="mission_manager_node" pkg="avt_341" type="avt_341_mission_manager_node" output="screen">
     <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
-    <param name="add_name_id_to_msg" value="$(eval not arg('add_name_id_to_msg'))"/>
     <param name="follow_scale_x" value="$(arg follow_scale_x)" />
     <param name="follow_scale_y" value="$(arg follow_scale_y)" />
     <param name="mission_definition_file" value="$(arg mission_definition_file)" />
@@ -525,16 +522,14 @@
     <param name="name" value="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')].upper())"/>
     <param name="host" value="$(arg host)" />
     <param name="port" value="$(arg port)" />
-    <param name="disable_socket_comms" value="$(arg disable_socket_comms)" />
-    <param name="broadcast_internal" value="$(arg broadcast_internal)" />
-    <param name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)" />
+    <param name="broadcast_over_ros" value="$(arg broadcast_over_ros)" />
     <param name="verbose_comm_log" value="$(arg verbose_comm_log)" />
   </node>
 
   <group if="$(eval arg('use_lidar_obstacle_detector'))">
     <node name="lidar_obstacle_detector_node" pkg="avt_341" type="avt_341_lidar_obstacle_detector_node" output="screen">
       <!-- Input Topic Names -->
-      <param name="lidar_points_topic"                  value="$(arg points_topic)"/>
+      <param name="lidar_points_topic"                  value="$(arg raw_points_topic)"/>
       <!-- Output Topic Names -->
       <param name="cloud_ground_topic"                  value="/avt_341/lidar_detector/cloud_ground"/>
       <param name="cloud_clusters_topic"                value="/avt_341/lidar_detector/cloud_clusters"/>
@@ -585,14 +580,14 @@
       <arg name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />" />
       <arg name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />" />
       <arg name="warmup_time" value="$(arg warmup_time)" />" />
-      <arg name="use_registered" value="$(arg use_registered)" />" />
       <arg name="stitch_lidar_points" value="$(arg stitch_lidar_points)" />" />
       <arg name="filter_highest_lidar" value="$(arg filter_highest_lidar)" />" />
       <arg name="time_register_window" value="$(arg time_register_window)" />" />
       <arg name="perception_rate" value="$(arg perception_rate)" />" />
       <arg name="global_grid_csv_path" value="$(arg global_grid_csv_path)" />" />
       <arg name="use_lidar_obstacle_detector" value="$(arg use_lidar_obstacle_detector)" />" />
-      <arg name="points_topic" value="$(arg points_topic)" />" />
+      <arg name="raw_points_topic" value="$(arg raw_points_topic)" />" />
+      <arg name="perception_points_topic" value="$(arg perception_points_topic)" />" />
       <arg name="clear_method_type" value="$(arg clear_method_type)" />" />
       <arg name="clear_method_visualize" value="$(arg clear_method_visualize)" />" />
       <arg name="clear_method_visualize_range" value="$(arg clear_method_visualize_range)" />" />
@@ -714,9 +709,7 @@
       <arg name="toi_encircle_cw" value="$(arg toi_encircle_cw)" />" />
       <arg name="host" value="$(arg host)" />" />
       <arg name="port" value="$(arg port)" />" />
-      <arg name="disable_socket_comms" value="$(arg disable_socket_comms)" />" />
-      <arg name="broadcast_internal" value="$(arg broadcast_internal)" />" />
-      <arg name="add_name_id_to_msg" value="$(arg add_name_id_to_msg)" />" />
+      <arg name="broadcast_over_ros" value="$(arg broadcast_over_ros)" />" />
       <arg name="verbose_comm_log" value="$(arg verbose_comm_log)" />" />
     </include>
   </group>

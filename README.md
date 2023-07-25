@@ -23,10 +23,12 @@ Install dependencies:
 ```bash 
 sudo apt install ros-<version>-jsk-recognition-msgs
 sudo apt install ros-<version>-jsk-rviz-plugins
+sudo apt install ros-<version>-tf2-sensor-msgs
 
 # Example
 # sudo apt install ros-noetic-jsk-recognition-msgs
-sudo apt install ros-noetic-jsk-rviz-plugins
+# sudo apt install ros-noetic-jsk-rviz-plugins
+# sudo apt install ros-noetic-tf2-sensor-msgs
 ```
 
 Clone the repo into your `catkin_ws/src` directory with the following command.

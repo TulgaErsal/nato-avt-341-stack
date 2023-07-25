@@ -11,6 +11,7 @@ set(REQUIRED_ROS_PACKAGES
   message_generation
   tf2_ros
   tf2_geometry_msgs
+  tf2_sensor_msgs
   dynamic_reconfigure
   jsk_recognition_msgs
   avt_341_msgs
@@ -312,6 +313,7 @@ src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
 src/perception/elevation_grid.cpp
 src/perception/point_cloud_generator.cpp
+src/perception/costmap_clearing_method.cpp
 src/planning/local/spline_path.cpp
 src/planning/local/spline_planner.cpp
 src/planning/local/spline_plotter.cpp

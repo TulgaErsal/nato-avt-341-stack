@@ -9,19 +9,22 @@
 		<!-- no_waypoints.yaml ue4_VehicleAdvanced_waypoints.yaml -->
 		<arg name="waypoints_file" value="$(find avt_341)/config/no_waypoints.yaml"/>
 		<arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf"/>
-  		<arg name="use_lidar_obstacle_detector" value="true"/>
-		<arg name="perception_points_topic" value="/avt_341/lidar_detector/cloud_clusters" />
-		<!--arg name="object_points_topic" value="/avt_341/points" /-->
 
 		<arg name="use_sim_time" value="true"/>
-		<arg name="use_registered" value="false"/>
 
+		<!-- lidar obstacle detector settings -->
+  		<arg name="use_lidar_obstacle_detector" value="true" />
+		<!-- arg name="raw_points_topic" value="/avt_341/points" /-->
+		
 		<!-- These values are for the "VehicleAdvanced" example project in UE4 -->
 		<arg name="vehicle_wheelbase" value="1.0"/>
 		<arg name="vehicle_width" value="1.0"/>
 		<arg name="vehicle_max_steer_angle_degrees" default="45.0"/>
 		<arg name="max_steer_angle" value="0.78"/>
 
+		<!-- perception node settings -->
+		<arg name="perception_points_topic" value="/avt_341/lidar_detector/cloud_clusters" />
+		<arg name="slope_threshold" value="0.1" />
 		<arg name="grid_height" value="249.0"/>
 		<arg name="grid_width" value="187.0"/>
 		<arg name="grid_llx" value="-130"/>

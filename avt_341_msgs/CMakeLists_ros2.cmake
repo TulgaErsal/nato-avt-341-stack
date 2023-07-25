@@ -22,6 +22,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
         )
 ament_export_dependencies(rosidl_default_runtime)
 
+install(
+        FILES ros_bridge_mappings.yaml
+        DESTINATION share/${PROJECT_NAME})
 
 
 ament_package()
