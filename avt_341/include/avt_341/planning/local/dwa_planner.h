@@ -340,7 +340,7 @@ class DwaPlanner {
 
         void SetOccupancyGridData(std::vector<signed char> grid_data) { grid_occ_data_ = grid_data; }
 
-        void SetSegmentationGridData(std::vector<signed char> grid_data) { grid_occ_data_ = grid_data; }
+        void SetSegmentationGridData(std::vector<signed char> grid_data) { grid_seg_data_ = grid_data; }
 
         void SetGlobalPath(DwaPath path) { global_path_ = path; }
 
