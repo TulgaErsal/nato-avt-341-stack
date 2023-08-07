@@ -1,0 +1,7 @@
+<launch>
+
+<node pkg="tracer_ros_segmentation" type="tracer_ros_segmentation_node" name="tracer_ros_segmentation_node" output="screen">
+  <rosparam file="$(find tracer_ros_segmentation)/config/segmentation_config_krc.yaml" command="load"/>
+</node>
+
+</launch>

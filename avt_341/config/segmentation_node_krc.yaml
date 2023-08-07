@@ -1,0 +1,4 @@
+model_selection: "bisenet_customer.py"
+weight_path: "BiSeNet_Tracer/model_final_krc.pth"
+input_image_topic: "/airsim_node/base_link/front_center/Scene"
+segmented_image_topic: "/segmented_image"
