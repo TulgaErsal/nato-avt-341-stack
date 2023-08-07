@@ -1,7 +1,11 @@
 <launch>
 
-<node pkg="tracer_ros_segmentation" type="tracer_ros_segmentation_node" name="tracer_ros_segmentation_node" output="screen">
-  <rosparam file="$(find tracer_ros_segmentation)/config/segmentation_config_krc.yaml" command="load"/>
+<param name="model_selection" value="$(find avt_341)/src/ia/segmentation/configs/bisenet_customer.py" />
+<param name="weight_path" value="$(find avt_341)/src/ia/segmentation/Models/BiSeNet_Tracer/model_final_krc.pth" />
+<param name="input_image_topic" value="/airsim_node/tracer/front_center/Scene" />
+<param name="segmented_image_topic" value="/segmented_image_topic" />
+
+<node name="avt_341_segmentation_node" pkg="avt_341" type="avt_341_segmentation_node" output="screen">
 </node>
 
 </launch>

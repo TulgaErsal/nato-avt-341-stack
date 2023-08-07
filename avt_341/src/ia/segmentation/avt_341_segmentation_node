@@ -19,34 +19,34 @@ from configs import set_cfg_from_file
 from image_utils import image_to_numpy, numpy_to_image
 from lib.models import model_factory
 
-NODE_NAME = "tracer_ros_segmentation_node"
+NODE_NAME = "avt_341_segmentation_node"
 
 # Get config params
 rospack = rospkg.RosPack()
-package_path = rospack.get_path("tracer_ros_segmentation")
+package_path = rospack.get_path("avt_341")
 model_selection = (
-    os.path.join(package_path, "src/configs/bisenet_customer.py")
-    if rospy.search_param(f"/{NODE_NAME}/model_selection") is None
+    os.path.join(package_path, "src/ia/segmentation/configs/bisenet_customer.py")
+    if rospy.search_param(f"/model_selection") is None
     else os.path.join(
-        package_path, "src/configs", rospy.get_param(f"/{NODE_NAME}/model_selection")
+        package_path, "src/ia/segmentation/", rospy.get_param(f"/model_selection")
     )
 )
 weight_path = (
-    os.path.join(package_path, "src/Models/BiSeNet_Tracer/model_final.pth")
-    if rospy.search_param(f"/{NODE_NAME}/weight_path") is None
+    os.path.join(package_path, "src/ia/segmentation/Models/BiSeNet_Tracer/model_final.pth")
+    if rospy.search_param(f"/weight_path") is None
     else os.path.join(
-        package_path, "src/Models", rospy.get_param(f"/{NODE_NAME}/weight_path")
+        package_path, "src/ia/segmentation", rospy.get_param(f"/weight_path")
     )
 )
 input_image_topic = (
     "/airsim_node/base_link/front_center/Scene"
-    if rospy.search_param(f"/{NODE_NAME}/input_image_topic") is None
-    else rospy.get_param(f"/{NODE_NAME}/input_image_topic")
+    if rospy.search_param(f"/input_image_topic") is None
+    else rospy.get_param(f"/input_image_topic")
 )
 segmented_image_topic = (
     "/segmented_image"
-    if rospy.search_param(f"/{NODE_NAME}/segmented_image_topic") is None
-    else rospy.get_param(f"/{NODE_NAME}/segmented_image_topic")
+    if rospy.search_param(f"/segmented_image_topic") is None
+    else rospy.get_param(f"/segmented_image_topic")
 )
 
 
