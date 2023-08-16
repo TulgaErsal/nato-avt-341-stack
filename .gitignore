@@ -43,7 +43,7 @@ cmake-build-debug*
 
 # Visual Studio
 .vs
-out/build
+**/out/build
 .project
 
 # Visual Studio Code

@@ -227,17 +227,18 @@ int main(int argc, char *argv[]) {
         grid.Visualize();
       }
 
-      if(reset_called){
-        ResetNode();
-        avt_341::msg::String reset_ack_msg;
-        reset_ack_msg.data = avt_341::node::NodeType::Perception;
-        reset_ack_pub->publish(reset_ack_msg);
-        reset_called = false;
-      }
-
 			nloops++;
 
 		}
+    
+    if(reset_called){
+      ResetNode();
+      avt_341::msg::String reset_ack_msg;
+      reset_ack_msg.data = avt_341::node::NodeType::Perception;
+      reset_ack_pub->publish(reset_ack_msg);
+      reset_called = false;
+    }
+
 		n->spin_some();
 		rate.sleep();
 	}

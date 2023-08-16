@@ -122,7 +122,6 @@ def generate_launch_description():
 
     rviz_config_single_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_ros2.rviz')
     rviz_config_multi_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_multi_vehicle_ros2.rviz')
-    rviz_config_two_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_two_vehicle_ros2.rviz')
 
     robot_desc_list = [LaunchConfiguration('robot_description'), LaunchConfiguration('robot_description_veh2'),
                        LaunchConfiguration('robot_description_veh3'), LaunchConfiguration('robot_description_veh4')]
@@ -322,7 +321,7 @@ def generate_launch_description():
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
                                  'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
-                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))}]
+                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
                 ),
                 Node(
                     package='avt_341',
@@ -330,7 +329,7 @@ def generate_launch_description():
                     name='state_publisher',
                     parameters=[{'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
-                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])))}]
+                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
                 ),
                 Node(
                     package='avt_341',
@@ -592,10 +591,8 @@ def generate_launch_description():
             name='rviz2',
             condition=IfCondition(auto_launch_rviz),
             arguments=["-d", TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
-                                                 false_val=TernarySubstitution(true_val=TextSubstitution(text=rviz_config_two_vehicle),
-                                                                               false_val=TextSubstitution(text=rviz_config_single_vehicle),
-                                                                               condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1']))),
-                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 2'])))]
+                                                 false_val=TextSubstitution(text=rviz_config_single_vehicle),
+                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
         )
     ])
 
