@@ -1,0 +1,106 @@
+#!/home/innervycs/.local/share/virtualenvs/tracer_ros_segmentation-mCb50u-4/bin/python
+
+import sys
+
+sys.path.insert(0, ".")
+import math
+import os
+
+import numpy as np
+import rospkg
+import rospy
+import torch
+import torch.nn.functional as F
+from numpy.lib.stride_tricks import as_strided
+from sensor_msgs.msg import Image
+
+import lib.data.transform_cv2 as T
+from configs import set_cfg_from_file
+from image_utils import image_to_numpy, numpy_to_image
+from lib.models import model_factory
+
+NODE_NAME = "avt_341_segmentation_node"
+
+# Get config params
+rospack = rospkg.RosPack()
+package_path = rospack.get_path("avt_341")
+model_selection = (
+    os.path.join(package_path, "src/ia/segmentation/configs/bisenet_customer.py")
+    if rospy.search_param(f"/model_selection") is None
+    else os.path.join(
+        package_path, "src/ia/segmentation/", rospy.get_param(f"/model_selection")
+    )
+)
+weight_path = (
+    os.path.join(package_path, "src/ia/segmentation/Models/BiSeNet_Tracer/model_final.pth")
+    if rospy.search_param(f"/weight_path") is None
+    else os.path.join(
+        package_path, "src/ia/segmentation", rospy.get_param(f"/weight_path")
+    )
+)
+input_image_topic = (
+    "/airsim_node/base_link/front_center/Scene"
+    if rospy.search_param(f"/input_image_topic") is None
+    else rospy.get_param(f"/input_image_topic")
+)
+segmented_image_topic = (
+    "/segmented_image"
+    if rospy.search_param(f"/segmented_image_topic") is None
+    else rospy.get_param(f"/segmented_image_topic")
+)
+
+
+torch.set_grad_enabled(False)
+np.random.seed(123)
+palette = np.random.randint(0, 256, (256, 3), dtype=np.uint8)
+
+# Loading Config File.
+cfg = set_cfg_from_file(model_selection)
+# Loading Segmentation Model.
+net = model_factory[cfg.model_type](cfg.n_cats)
+net.load_state_dict(torch.load(weight_path, map_location="cpu"))
+net.eval()
+net.cuda()
+
+# TODO: update to tracer dataset mean and std
+# prepare data
+to_tensor = T.ToTensor(
+    mean=(0.3257, 0.3690, 0.3223),  # city, rgb
+    std=(0.2112, 0.2148, 0.2115),
+)
+
+
+def callback(msg):
+    global publisher
+    # receive image
+    rospy.loginfo("Image received...")
+    # convert ros image to numpy image
+    image_np = image_to_numpy(msg)
+    im = image_np.copy()[:, :, ::-1]
+    # convert numpy image to tensor
+    im = to_tensor(dict(im=im, lb=None))["im"].unsqueeze(0).cuda()
+    # shape divisor
+    org_size = im.size()[2:]
+    new_size = [math.ceil(el / 32) * 32 for el in im.size()[2:]]
+    # inference
+    im = F.interpolate(im, size=new_size, align_corners=False, mode="bilinear")
+    out = net(im)[0]
+    out = F.interpolate(out, size=org_size, align_corners=False, mode="bilinear")
+    out = out.argmax(dim=1)
+    # visualize
+    out = out.squeeze().detach().cpu().numpy()
+    pred = palette[out]
+    # Convert prediction to ros image and publish
+    segmented_image = numpy_to_image(pred, "bgr8")
+    publisher.publish(segmented_image)
+    rospy.loginfo("Image published...")
+
+
+rospy.init_node(NODE_NAME, anonymous=True)
+rospy.Subscriber(input_image_topic, Image, callback, queue_size=1)
+publisher = rospy.Publisher(segmented_image_topic, Image, queue_size=1)
+
+try:
+    rospy.spin()
+except KeyboardInterrupt:
+    print("Shutting down ROS Tracer Segmentation Node")
