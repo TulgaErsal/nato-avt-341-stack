@@ -45,7 +45,7 @@ bool allMsgsReceived()
 * GetCostmapFromMatlab packages up all the data from ROS (odometry, pointcloud, and image), calls
 * the semantic segmentation model in Matlab, and populates an array of cost values based on traversability
 */
-std::vector<double> GetCostmapFromMatlab(std::vector<double> costs, float grid_llx, float grid_lly)
+std::vector<int8_t> GetCostmapFromMatlab(std::vector<int8_t> costs, float width, float height, float res, float grid_llx, float grid_lly)
 {
     //odometry
     mwArray x(current_pose.pose.pose.position.x);
@@ -70,6 +70,15 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs, float grid_l
     mwArray imgData(1, std::size(img.data), mxUINT8_CLASS);
     imgData.SetData(&img.data[0], std::size(img.data));
 
+    //grid width
+    mwArray gridWidth(width);
+
+    //grid height
+    mwArray gridHeight(height);
+
+    //grid resolution
+    mwArray gridRes(res);
+
     //lower left corner grid offset in meters (x/east direction)
     mwArray llx(grid_llx);
 
@@ -79,14 +88,31 @@ std::vector<double> GetCostmapFromMatlab(std::vector<double> costs, float grid_l
     //disable Matlab debug windows
     mwArray debug(false);
 
+    //1, 1 -> original
+    //0, 0 -> lidar only esn
+    //1, 0 -> mixed
+    mwArray C_model(1); mwArray CL_model(0);
+
+    //use probabilistic grid
+    mwArray useProbabilisticGrid(true);
+
     try
     {
         std::cout << "all messages received, calling matlab" << std::endl;
         mwArray costmap;
-        perception_wrapper(1, costmap, imgData, pcData, pcHeight, pcWidth, pcPointStep, pcRowStep, x, y, z, qw, qx, qy, qz, llx, lly, debug);
+        perception_wrapper(1,
+                            costmap,
+                            imgData, //camera data
+                            pcData, pcWidth, pcHeight, pcPointStep, pcRowStep, //pointcloud data
+                            x, y, z, qw, qx, qy, qz, //odometry
+                            gridWidth, gridHeight, gridRes, llx, lly, //grid params
+                            debug, //debug flag
+                            CL_model, C_model, //model selection
+                            useProbabilisticGrid //which type of grid to use
+                        ); 
         
         costmap.GetData(costs.data(), costs.size());
-        std::vector<double> costVec(std::begin(costs), std::end(costs));
+        std::vector<int8_t> costVec(std::begin(costs), std::end(costs));
         return costVec;
     }
     catch(const mwException& e)
@@ -103,7 +129,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
                         float grid_llx,
                         float grid_lly,
                         float res,
-                        std::vector<double> data)
+                        std::vector<int8_t> data)
 {
     grid.header.frame_id = "map";
     grid.info.resolution = res;
@@ -115,21 +141,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
     grid.info.origin.orientation.z = 0.0;
-    grid.data.resize(width*height);
-
-    int c = 0;
-    for (double val : data)
-    {
-        //default Matlab OG value is 0.5 for some reason.
-        //there is no terrain value of 0.5, so we can assume that's just the default value.
-        val = (double)((int)(val * 100)) / 100;
-        if (val == MATLAB_COSTMAP_DEFAULT_VAL) val = 100;
-
-        //scale up cost from Matlab (0..1 -> 0..100)
-        val *= 100;
-
-        grid.data[c++] = val;
-    }
+    grid.data = data;
 }
 
 int main(int argc, char *argv[])
@@ -179,11 +191,14 @@ int main(int argc, char *argv[])
             if (!pc_received) waitingOn += "pointcloud ";
             if (!img_received) waitingOn += "image";
             std::cout << waitingOn << std::endl;
+            
+            avt_341::node::Rate wait(1.0);
+            wait.sleep();
         }
         else
         {
-            std::vector<double> costs(width * height);
-            std::vector<double> costmap = GetCostmapFromMatlab(costs, grid_llx, grid_lly);
+            std::vector<int8_t> costs(width * height);
+            std::vector<int8_t> costmap = GetCostmapFromMatlab(costs, width, height, res, grid_llx, grid_lly);
             
             avt_341::msg::OccupancyGrid grid;
             BuildOccupancyGrid(grid, width, height, grid_llx, grid_lly, res, costmap);
