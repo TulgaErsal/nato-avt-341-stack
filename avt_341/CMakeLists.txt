@@ -19,7 +19,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll")
    # do nothing
 else()
 file(DOWNLOAD
-  https://drive.google.com/uc?export=download&id=1ja__aZx6afy5bY16SlEfobFQtDtP-3X6&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ANzk5s6La1ierbYFY2fWj8PXnCNZ:1681522058224
+  https://www.dropbox.com/s/7m0fy3fx3uitxj5/perception_wrapper.dll?dl=1
   ${CMAKE_CURRENT_SOURCE_DIR}/uab_perception/perception_wrapper.dll
   SHOW_PROGRESS
 )
