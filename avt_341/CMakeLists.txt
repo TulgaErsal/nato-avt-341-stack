@@ -28,12 +28,12 @@ endif()
 ###################################
 ## download the offline cost map ##
 ###################################
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config/KRC_CP06_Scaled_Transposed.csv")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv")
    # do nothing
 else()
 file(DOWNLOAD
-  https://drive.google.com/uc?export=download&id=1j_LEJl1xSeoTjgZRY5cXHq2fikBY70GD&confirm=t&uuid=07647e49-ca01-4076-9147-fc8efa6a3e1a&at=ANzk5s6La1ierbYFY2fWj8PXnCNZ:1681522058224
-  ${CMAKE_CURRENT_SOURCE_DIR}/config/KRC_CP06_Scaled_Transposed.csv
+  https://www.dropbox.com/s/n6img54q02j8tbs/20230816_KRC_CP06_Scaled_FlippedVertical.csv?dl=1
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv
   SHOW_PROGRESS
 )
 endif()
