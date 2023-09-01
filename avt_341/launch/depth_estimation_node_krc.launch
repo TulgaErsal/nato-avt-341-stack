@@ -1,0 +1,7 @@
+<launch>
+
+<node pkg="tracer_ros_depth_estimation" type="tracer_ros_depth_estimation_node_densedepth" name="tracer_ros_depth_estimation_node_densedepth" output="screen">
+  <rosparam file="$(find tracer_ros_depth_estimation)/config/depth_estimation_config_krc.yaml" command="load"/>
+</node>
+
+</launch>
