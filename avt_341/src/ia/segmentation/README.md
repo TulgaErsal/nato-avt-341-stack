@@ -1,57 +1,24 @@
-# TRACER ROS Segmentation
+# avt_341_segmentation_node
 
-This ROS package provides segmentation functionality for the TRACER robot. The package processes data from the robot's camera and uses the Bisenet model to segment frames.
-
-## Installation
-
-To install the TRACER ROS Segmentation package, follow these steps:
-
-1. Navigate to your ROS workspace and clone the package repository:
-    ```
-    cd ~/catkin_ws/src
-    git clone https://gitlab.com/innervycslabs/perception_lab/tracer_x/tracer_simulacion/ros_stack_innervycs/tracer_ros_segmentation.git
-    ```
-
-2. Install Python dependencies:
-    ```
-    cd tracer_ros_segmentation
-    pip install -r requirements.txt
-    ```
-
-3. Install pytorch:
-    ```
-    pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
-    ```
-
-4. Build the package:
-    ```
-    cd ~/catkin_ws
-    catkin_make
-    ```
-
-5. Source the package:
-    ```
-    cd ~/catkin_ws
-    source devel/setup.bash
-    ```
-
-## Usage
-
-To use the TRACER ROS Segmentation package, launch the tracer_segmentation_krc.launch file:
+## Install Dependencies
+The python dependendencies are managed with pipenv. To install the dependencies run the following command inside the 'nato-avt-341-stack/avt_341/src/ia/segmentation' path:
+```bash
+pipenv install
 ```
-    roslaunch tracer_ros_segmentation tracer_segmentation_krc.launch
+Once the dependencies are installed, you can set the 'shebang' of the **avt_341_depth_estimation_node** with the following command:
+```bash
+python3 shebang_util.py
 ```
 
-This will launch the segmentation node and start processing data from the robot's camera. The segmentation map will be published to the `/segmented_image` topic.
+## Run the **avt_341_segmentation_node**
+You can run the node using the provided launch file:
+```bash
+roslaunch avt_341 ai_segmentation_node_krc.launch
+```
 
-
-### Note
-The previous roslaunch assumes that the airsim_ros_pkgs package is installed and that the robot is running in AirSim. The segmentation model used was trained on the KRC images dataset.
-
-
-### Parameters
-
-- `input_image_topic` (default: `/airsim_node/base_link/front_center/Scene`): The topic where the robot's camera publishes image data.
-- `segmented_image_topic` (default: `/segmented_image`): The topic where the segmentation map will be published.
-
-
+## Parameters
+In the roslaunch file you can set the following parameters:
+- **model_selection**: Is the model architecture selection. Default value: **$(find avt_341)/src/ia/segmentation/configs/bisenet_customer.py**
+- **weight_path**: Is the path to the model pre-trained weights. Default value: **$(find avt_341)/src/ia/segmentation/Models/BiSeNet_Tracer/model_final_krc.pth**
+- **input_image_topic**: The topic where the RGB images are published. Default value: **/airsim_node/tracer/front_center/Scene**
+- **depth_map_topic**: The topic where the depth map is published. Default value: **/segmented_image_topic**
