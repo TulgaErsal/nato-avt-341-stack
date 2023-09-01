@@ -14,7 +14,8 @@ import torch.nn.functional as F
 from numpy.lib.stride_tricks import as_strided
 from sensor_msgs.msg import Image
 
-import lib.data.transform_cv2 as T
+#import lib.data.transform_cv2 as T #NOTE: CHange for python 3.6 and CPU mode
+import transform_cv2 as T
 from configs import set_cfg_from_file
 from image_utils import image_to_numpy, numpy_to_image
 from lib.models import model_factory
@@ -32,7 +33,7 @@ model_selection = (
     )
 )
 weight_path = (
-    os.path.join(package_path, "src/ia/segmentation/Models/BiSeNet_Tracer/model_final.pth")
+    os.path.join(package_path, "src/ia/segmentation/Models/BiSeNet_Tracer/model_final_krc.pth")
     if rospy.search_param(f"/weight_path") is None
     else os.path.join(
         package_path, "src/ia/segmentation", rospy.get_param(f"/weight_path")
@@ -60,7 +61,8 @@ cfg = set_cfg_from_file(model_selection)
 net = model_factory[cfg.model_type](cfg.n_cats)
 net.load_state_dict(torch.load(weight_path, map_location="cpu"))
 net.eval()
-net.cuda()
+#net.cuda() #NOTE: Comment in CPU mode
+net.cpu()
 
 # TODO: update to tracer dataset mean and std
 # prepare data
@@ -78,7 +80,8 @@ def callback(msg):
     image_np = image_to_numpy(msg)
     im = image_np.copy()[:, :, ::-1]
     # convert numpy image to tensor
-    im = to_tensor(dict(im=im, lb=None))["im"].unsqueeze(0).cuda()
+    #im = to_tensor(dict(im=im, lb=None))["im"].unsqueeze(0).cuda() #NOTE: Comment in CPU mode
+    im = to_tensor(dict(im=im, lb=None))["im"].unsqueeze(0).cpu()
     # shape divisor
     org_size = im.size()[2:]
     new_size = [math.ceil(el / 32) * 32 for el in im.size()[2:]]
@@ -96,6 +99,7 @@ def callback(msg):
     rospy.loginfo("Image published...")
 
 
+print(f"Init {NODE_NAME} node ...")
 rospy.init_node(NODE_NAME, anonymous=True)
 rospy.Subscriber(input_image_topic, Image, callback, queue_size=1)
 publisher = rospy.Publisher(segmented_image_topic, Image, queue_size=1)

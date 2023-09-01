@@ -1,5 +1,0 @@
-catkin-pkg = "*"
-pyyaml = "*"
-opencv-python = "~=3.4"
-rospkg = "*"
-imutils = "*"
