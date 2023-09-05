@@ -181,13 +181,13 @@
   <!-- Uncomment this section to use the MAVS simlator.
        Must have MAVS built and installed and the 
        mavs_avt_example catkin package built. -->
-#  <!--
-#  <include file="$(find mavs_avt_example)/launch/mavs_sim.launch">
-#    <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
-#    <arg name="point_cloud_topic_arg" default="avt_341/points" />
-#    <arg name="odometry_topic_arg" default="avt_341/odometry" />
-#  </include>
-#  -->
+  <!--
+  <include file="$(find mavs_ros)/launch/mavs_sim.launch">
+    <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
+    <arg name="point_cloud_topic_arg" default="avt_341/points" />
+    <arg name="odometry_topic_arg" default="avt_341/odometry" />
+  </include>
+  -->
 　<!-- Lat-lon convert algorithm  -->
 　<node name="sim_test_node" pkg="avt_341" type="avt_341_sim_test_node" required="true" output="screen" />
 </launch>

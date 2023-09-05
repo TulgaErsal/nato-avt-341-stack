@@ -16,12 +16,21 @@
   </include>
   <!-- This lanch file creates odometry from sensors (Lidar, IMU and GPS)-->
   <include file = "$(find hdl_graph_slam)/launch/LiDAR_odom.launch">
+<<<<<<< HEAD
     <arg name="lidar_odom_frame_id" default="odom" />
     <arg name="published_odom_topic" default="/avt_341/odometry" />
     <arg name="points_topic" default="/os_cloud_node_front/points" />
   </include>
   <!-- Use this node to test the build if no simulator is being used. -->
   <!-- <node name="sim_test_node" pkg="avt_341" type="avt_341_sim_test_node" required="true" output="screen" /> -->
+=======
+    <arg name="lidar_odom_frame_id" default="/avt_341/odometry_1" />
+    <arg name="published_odom_topic" default="/avt_341/odometry_1" />
+    <arg name="points_topic" default="/avt_341/points" />
+  </include>
+  <!-- Use this node to test the build if no simulator is being used. -->
+  <node name="sim_test_node" pkg="avt_341" type="avt_341_sim_test_node" required="true" output="screen" />
+>>>>>>> 1baf86259a88813fdd91792cc527b50c4da910c3
 
 
 </launch>
