@@ -1,2 +1,2 @@
-waypoints_x: [  ]
-waypoints_y: [  ]
+obstacles_x: [ 0.0, 10.0, 10.0  ]
+obstacles_y: [ 0.0, 10.0, -10.0 ]
