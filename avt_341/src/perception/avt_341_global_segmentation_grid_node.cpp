@@ -10,20 +10,20 @@ const int COLS = 1971;
 //resolution
 const float RES = 0.5;
 
-void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid, std::vector<double> data)
+void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid, std::vector<double> data, float grid_llx, float grid_lly)
 {
     grid.header.frame_id = "map";
     grid.info.resolution = RES;
     //rows and columns are swapped since the map is transposed
-    grid.info.height = COLS;
-    grid.info.width = ROWS;
-    grid.info.origin.position.x = -470.0;
-    grid.info.origin.position.y = 905.0;
+    grid.info.height = ROWS;
+    grid.info.width = COLS;
+    grid.info.origin.position.x = grid_llx;
+    grid.info.origin.position.y = grid_lly;
     grid.info.origin.position.z = 0.0;
-    grid.info.origin.orientation.w = 0.7071;
+    grid.info.origin.orientation.w = 1.0;
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
-    grid.info.origin.orientation.z = -0.7071;
+    grid.info.origin.orientation.z = 0.0;
     grid.data.resize(ROWS*COLS);
 
     int c = 0;
@@ -69,6 +69,12 @@ int main(int argc, char *argv[])
     std::string globalGridCSVPath = "";
     std::string defaultPath = "";
     node->get_parameter("~global_grid_csv_path", globalGridCSVPath, defaultPath);
+    float grid_llx;
+    node->get_parameter("~grid_llx", grid_llx, 0.0f);
+    float grid_lly;
+    node->get_parameter("~grid_lly", grid_lly, 0.0f);
+    float res;
+    node->get_parameter("~grid_res", res, 1.0f);
 
     std::vector<double> costmap = GetCostMapFromTif(globalGridCSVPath);
     if (costmap.size() > 0)
@@ -79,7 +85,7 @@ int main(int argc, char *argv[])
         rate.sleep();
 
         avt_341::msg::OccupancyGrid grid;
-        BuildOccupancyGrid(grid, costmap);
+        BuildOccupancyGrid(grid, costmap, grid_llx, grid_lly);
         seg_grid_pub->publish(grid);
 
         node->spin_some();
