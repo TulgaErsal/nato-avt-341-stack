@@ -1,0 +1,82 @@
+#!/home/innervycs/.local/share/virtualenvs/tracer_ros_segmentation-mCb50u-4/bin/python
+
+import sys
+
+sys.path.insert(0, ".")
+import os
+
+import cv2
+import numpy as np
+import rospkg
+import rospy
+from sensor_msgs.msg import Image
+
+# Keras / TensorFlow
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
+from keras.models import load_model
+from layers import BilinearUpSampling2D
+from utils import predict
+
+
+from image_utils import image_to_numpy, numpy_to_image
+
+
+NODE_NAME = "avt_341_depth_estimation_node"
+
+# Get config params
+rospack = rospkg.RosPack()
+package_path = rospack.get_path("avt_341")
+weight_path = (
+    os.path.join(package_path, "src/ia/depth_estimation/Models/densedepth_krc_v2_29082023_225814/model.h5") 
+    if rospy.search_param(f"/depth_estimation_model") is None
+    else os.path.join(
+        package_path, "src/ia/depth_estimation/", rospy.get_param(f"/depth_estimation_model")
+    )
+)
+input_image_topic = (
+    "/airsim_node/base_link/front_center/Scene"
+    if rospy.search_param(f"/input_image_topic") is None
+    else rospy.get_param(f"/input_image_topic")
+)
+depth_map_topic = (
+    "/depth_map"
+    if rospy.search_param(f"/depth_map_topic") is None
+    else rospy.get_param(f"/depth_map_topic")
+)
+
+
+# Define ros node callback function
+# execute when image is received
+def callback(msg):
+    global publisher, model
+    rospy.loginfo("RGB Image received...")
+    loaded_images = []
+    # convert ros image to numpy image
+    image_ = image_to_numpy(msg)
+    # preprocess image
+    input_image = np.clip(np.asarray(image_, dtype=float) / 255, 0, 1)
+    loaded_images.append(input_image)
+    inputs = np.stack(loaded_images, axis=0)
+    outputs = predict(model, inputs)
+    rescaled = outputs[0][:,:,0]
+    rescaled = rescaled - np.min(rescaled)
+    rescaled = rescaled / np.max(rescaled)
+    rescaled = np.clip(np.asarray(rescaled) * 25.0, 0.1, 25.0) # dato de salida en metros 10cm a 25 m
+    depth_image = numpy_to_image(rescaled, "32FC1")
+    publisher.publish(depth_image)
+    rospy.loginfo("Image published...")
+
+# Custom object needed for inference and training
+custom_objects = {'BilinearUpSampling2D': BilinearUpSampling2D, 'depth_loss_function': None}
+
+model = load_model(weight_path, custom_objects=custom_objects, compile=False)
+print('\nModel loaded ({0}).'.format(weight_path))
+
+print(f"Init {NODE_NAME} node ...")
+rospy.init_node(NODE_NAME, anonymous=True)
+rospy.Subscriber(input_image_topic, Image, callback, queue_size=1)
+publisher = rospy.Publisher(depth_map_topic, Image, queue_size=1)
+try:
+    rospy.spin()
+except KeyboardInterrupt:
+    print("Shutting down ROS Tracer Depth Estimation Node")
