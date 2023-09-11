@@ -144,7 +144,7 @@ void MissionManager::publishPath(const avt_341::msg::Path& path){
   path_msg.header.stamp = node_proxy_->get_stamp();
   path_msg.header.frame_id = "map";
   path_msg.poses = path.poses;
-  gp_path_pub->publish(path);
+  gp_path_pub->publish(path_msg);
 }
 
 void MissionManager::publishGpToggle(int state){
@@ -424,7 +424,7 @@ void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
 
 bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id) const{
   return std::find_if(task_completions_.begin(), task_completions_.end(),
-                   [&](const TaskCompleteMsg & comm){return comm.sender_name == target_veh && comm.msg_id == target_msg_id;}) != task_completions_.end();
+                   [&](const TaskCompleteMsg & comm){return comm.sender_name == target_veh && comm.target_msg_id == target_msg_id;}) != task_completions_.end();
 }
 
 void MissionManager::publishArrival(const std::string & sender_name, const std::string & objective){
