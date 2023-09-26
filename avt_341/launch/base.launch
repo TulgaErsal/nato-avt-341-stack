@@ -165,6 +165,8 @@
   <arg name="toi_encircle_radius" default="10.0" />
   <arg name="toi_encircle_degrees" default="180.0" />
   <arg name="toi_encircle_cw" default="true" />
+  <arg name="ot_tracking_veh" default="" />
+  <arg name="ot_tracked_veh" default="" />
 
   <!-- Comm Node -->
   <arg name="host" default="localhost" />
@@ -516,6 +518,8 @@
     <param name="toi_encircle_degrees" value="$(arg toi_encircle_degrees)" />
     <param name="toi_encircle_cw" value="$(arg toi_encircle_cw)" />
     <param name="toi_goal_threshold" value="$(arg goal_dist)" />
+    <param name="ot_tracking_veh" value="$(arg ot_tracking_veh)" />
+    <param name="ot_tracked_veh" value="$(arg ot_tracked_veh)" />
   </node>
 
   <node name="comm_node" pkg="avt_341" type="avt_341_comm_node" output="screen">
@@ -707,6 +711,8 @@
       <arg name="toi_encircle_radius" value="$(arg toi_encircle_radius)" />" />
       <arg name="toi_encircle_degrees" value="$(arg toi_encircle_degrees)" />" />
       <arg name="toi_encircle_cw" value="$(arg toi_encircle_cw)" />" />
+      <arg name="ot_tracking_veh" value="$(arg ot_tracking_veh)" />" />
+      <arg name="ot_tracked_veh" value="$(arg ot_tracked_veh)" />" />
       <arg name="host" value="$(arg host)" />" />
       <arg name="port" value="$(arg port)" />" />
       <arg name="broadcast_over_ros" value="$(arg broadcast_over_ros)" />" />

@@ -29,6 +29,11 @@ toi:
   encircle_cw: True                                                                     # If encircle should be in clock-wise (cw) direction around target of interest
   goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
 
+# Mission Manager - Object Tracking
+ot:
+  tracking_veh: ""                                                                      # Vehicle doing the tracking. Disabled if empty
+  tracked_veh: ""                                                                       # Vehicle to track. Disabled if empty
+
 # Formation Control
 # ======================================================================================================================
 use_leader_breadcrumbs: True                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
