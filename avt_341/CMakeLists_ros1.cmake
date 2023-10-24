@@ -308,6 +308,38 @@ target_link_libraries(avt_341_lidar_obstacle_detector_node
   ${PROJECT_NAME}
 )
 
+if (WIN32 OR WIN64)
+find_package(Matlab)
+
+  if (Matlab_FOUND)
+        # this should point to the installation location of MATLAB Runtime
+        set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+        include_directories(
+                include
+                ${OpenCV_INCLUDE_DIRS}
+                ${Matlab_INCLUDE_DIRS}
+        )
+        add_executable(uab_perception_node
+                src/perception/uab_perception_node.cpp
+                src/node/node_proxy.cpp
+        )
+        add_dependencies(uab_perception_node ${catkin_EXPORTED_TARGETS})
+        target_link_libraries(uab_perception_node
+                ${catkin_LIBRARIES}
+                ${CMAKE_SOURCE_DIR}/nato-avt-341-stack/avt_341/uab_perception/perception_wrapper.lib
+                ${Matlab_MCLMCRRT_LIB}
+        )
+        file(COPY
+          ${CMAKE_SOURCE_DIR}/nato-avt-341-stack/avt_341/uab_perception/perception_wrapper.dll
+          DESTINATION ${CMAKE_SOURCE_DIR}/../devel/lib/${PROJECT_NAME})
+        install(TARGETS
+                uab_perception_node
+                RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+                LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+ endif()
+
+endif()
+
 set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
