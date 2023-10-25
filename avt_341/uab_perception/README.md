@@ -2,7 +2,7 @@
 
 ## The DLL is available [here](https://drive.google.com/file/d/1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X/view?usp=sharing). It has been moved because of the GitHub bandwidth and storage limits on private repositories.
 
-## Performs semantic segmentation on camera images using the DeepLab V3+ architecture and fuses with pointcloud data from a Velodyne VLP-16 LiDAR sensor to create a costmap based on vehicle traversability. Requires MATLAB 2022a Runtime.
+## Performs semantic segmentation on camera images using the DeepLab V3+ architecture and fuses with pointcloud data from a Velodyne VLP-16 LiDAR sensor to create a costmap based on vehicle traversability. Requires MATLAB 2023a Runtime.
 
 The `uab_perception_node` is a C++ wrapper for the machine learning model written in MATLAB. This is easier to build/run due to issues with ROS2 support in MATLAB, but decreases performance.
 
@@ -15,7 +15,7 @@ The `uab_perception_node` is a C++ wrapper for the machine learning model writte
 - `avt_341/segmentation_grid` ([`nav_msgs/OccupancyGrid`](http://docs.ros.org/en/api/nav_msgs/html/msg/OccupancyGrid.html))
 
 ## Before running:
-- Install MATLAB Runtime 2022a
+- Install MATLAB Runtime 2023a
 - Update `Matlab_MCLMCRRT_LIB` path in `CMakeLists.txt` to MATLAB Runtime install location
 - Download the DLL from [here](https://drive.google.com/file/d/1j6TEM9lfAfgaeCVbMfLkTCo0M9c7FW8X/view?usp=sharing) into the `uab_perception` folder
 
