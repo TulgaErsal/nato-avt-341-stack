@@ -147,10 +147,12 @@ int main(int argc, char *argv[])
   state.data = avt_341::utils::NavStackState::NotInit;
 
   float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
+  double local_origin_x, local_origin_y;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint;
   int los_max_iterations;
+  int dilation_factor;
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
@@ -160,6 +162,8 @@ int main(int argc, char *argv[])
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
   n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
+  n->get_parameter("/map_origin_x", local_origin_x, 0.0);
+  n->get_parameter("/map_origin_y", local_origin_y, 0.0);
   n->get_parameter("~debug_visualize", debug_visualize, false);
   n->get_parameter("~search_diagonals", search_diagonals, false);
   n->get_parameter("~los_max_iterations", los_max_iterations, 1);
@@ -169,6 +173,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~w_segmentation", w_segmentation, 1.0f);
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
+  n->get_parameter("~dilation_factor", dilation_factor, 0);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -202,8 +207,8 @@ int main(int argc, char *argv[])
     //nav_msgs::Path loaded_waypoints;
     for (int32_t i=0;i<num_waypoints;i++){
       avt_341::msg::PoseStamped pose;
-      pose.pose.position.x = static_cast<float>(waypoints_x_list[i]);
-      pose.pose.position.y = static_cast<float>(waypoints_y_list[i]);
+      pose.pose.position.x = static_cast<float>(waypoints_x_list[i]) - local_origin_x;
+      pose.pose.position.y = static_cast<float>(waypoints_y_list[i]) - local_origin_y;
       pose.pose.position.z = 0.0f;
       pose.pose.orientation.w = 1.0f;
       pose.pose.orientation.x = 0.0f;
@@ -212,8 +217,8 @@ int main(int argc, char *argv[])
       current_waypoints.poses.push_back(pose);
     }
       // Initialize goal to first waypoint
-    goal[0] = waypoints_x_list[0];
-    goal[1] = waypoints_y_list[0];
+    goal[0] = waypoints_x_list[0] - local_origin_x;
+    goal[1] = waypoints_y_list[0] - local_origin_y;
     state.data = avt_341::utils::NavStackState::Active; // go active
     state_pub->publish(state);
   }
@@ -221,6 +226,11 @@ int main(int argc, char *argv[])
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
   avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation,
                                          search_diagonals, los_max_iterations, los_break_on_first);
+
+  if (dilation_factor > 0.0)
+  {
+    astar_planner.SetDilationFactor(dilation_factor);
+  }
 
   avt_341::node::Rate r(20.0f); // Hz
   int nl = 0;

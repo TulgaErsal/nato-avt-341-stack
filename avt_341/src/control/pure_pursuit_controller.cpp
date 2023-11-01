@@ -49,7 +49,7 @@ void PurePursuitController::SetVehicleSpeed(float speed){
 
 avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj, utils::vec2 & goal) {
 	//initialize the driving command
-  avt_341::msg::Twist dc;
+  	avt_341::msg::Twist dc;
 
 	//make sure the path contains some points
 	int np = traj.poses.size();

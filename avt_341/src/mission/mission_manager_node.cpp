@@ -103,7 +103,6 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std
   bool target_veh_present = target_idx < veh_namespaces.size();
   std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
   std::string sub_postfix = my_name == tracking_veh && !tracked_veh.empty() && toUpper(target_veh_ns) == tracked_veh ? "/tracked" : "";
-
   return target_veh_present
     ? nh->create_subscription<avt_341::msg::Odometry>("/" + target_veh_ns + "/avt_341/odometry" + sub_postfix, 10, VehicleOdometryCallback)
     : nullptr;
@@ -215,10 +214,12 @@ int main(int argc, char **argv) {
         while(!comm_msgs.empty()){
             auto rcvd_msg = comm_msgs.front();
             comm_msgs.pop();
+            std::string msg_text = rosToSerializedMsg(rcvd_msg);
             if(!isMsgFor(mgr->my_name, rcvd_msg)){
+              nh->log_info("%s ignoring message: %s", mgr->my_name.c_str(), msg_text.c_str());
               continue;
             }
-            std::string msg_text = rosToSerializedMsg(rcvd_msg);
+            //std::string msg_text = rosToSerializedMsg(rcvd_msg);
             nh->log_info("%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
             if(rcvd_msg.type == MissionMsgType::Formation) {

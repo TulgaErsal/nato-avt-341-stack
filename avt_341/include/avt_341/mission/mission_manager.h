@@ -75,6 +75,8 @@ class MissionManager{
     float desired_speed;
     bool goal_changed;
     bool arrival_announced;
+    double local_origin_x;
+    double local_origin_y;
 
     // Task management
     void updateTasks();

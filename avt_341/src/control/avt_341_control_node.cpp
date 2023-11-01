@@ -114,6 +114,7 @@ int main(int argc, char *argv[]){
   bool use_feed_forward;
 	float wheelbase, steer_angle, vehicle_speed, steering_coeff, throttle_coeff, time_to_max_brake;
   float throttle_kp, throttle_ki, throttle_kd, max_desired_lateral_g;
+  bool use_speed_controller;
 	std::string display;
 	n->get_parameter("~vehicle_wheelbase", wheelbase, 2.6f);
   n->get_parameter("~vehicle_max_steer_angle_degrees", steer_angle, 25.0f);
@@ -142,6 +143,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~skid_kl", skid_kl, 1.0f);
   n->get_parameter("~skid_kt", skid_kt, 1.0f);
   
+  n->get_parameter("~use_speed_controller", use_speed_controller, true);
 
   if (skid_steered){
     controller.IsSkidSteered(true);
@@ -193,6 +195,7 @@ int main(int argc, char *argv[]){
     controller.SetVehicleState(state);
     controller.SetVehicleSpeed(vel);
 
+    float desired_velocity = 0.0;
     if (shutdown_condition){  // current_run_state = 2 
       // bring to a smooth stop and shut down
       controller.SetDesiredSpeed(0.0f);
@@ -204,7 +207,7 @@ int main(int argc, char *argv[]){
     else if (current_run_state==0){    // active running state
       double max_curvature = GetMaxCurvature(control_msg);
       double lateral_g_force = ((vel*vel)*max_curvature)/9.806;
-      float desired_velocity = vehicle_speed;
+      desired_velocity = vehicle_speed;
       if (lateral_g_force>max_desired_lateral_g){
         desired_velocity = sqrt(9.806*max_desired_lateral_g/max_curvature);
         if (desired_velocity>vehicle_speed)desired_velocity=vehicle_speed;
@@ -214,6 +217,12 @@ int main(int argc, char *argv[]){
       }
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);
+      if (!use_speed_controller)
+      {
+        // publish speed/steering setpoint for external speed controller
+        dc.linear.x = desired_velocity;
+        dc.linear.y = 0.0;
+      }
     }
     else if (current_run_state==-1 || current_run_state==1){
       // bring to a smooth stop and wait / idle
@@ -222,13 +231,13 @@ int main(int argc, char *argv[]){
       //dc = controller.GetDcFromTraj(control_msg, goal);
 	    // Current controller is overshooting - changing to hard stop.
 	    dc.linear.x = 0.0f;
-	    dc.linear.y = 1.0f;
+	    dc.linear.y = use_speed_controller ? 1.0f: 0.0;
 	    dc.angular.z = 0.0f;
     }
     else if (current_run_state==3){
       // bring to a hard stop and shut down
       dc.linear.x = 0.0f;
-      dc.linear.y = 1.0f;
+      dc.linear.y = use_speed_controller ? 1.0f: 0.0;
       dc.angular.z = 0.0f;
       time_to_quit = true;
     }
@@ -252,12 +261,12 @@ int main(int argc, char *argv[]){
     }
 
     // publish the driving command
-    dc_pub->publish(dc);
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;
+    dc_pub->publish(dc);
 
     if (nl % int(rate) == 0){ //update every second
-      std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
+      std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << " Speed Setpoint: " << desired_velocity << " Vehicle Speed: " << vel << std::endl;
     }
       
     // break the loop when an end state is reached

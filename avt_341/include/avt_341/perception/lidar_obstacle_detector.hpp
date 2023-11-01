@@ -24,6 +24,9 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/filters/conditional_removal.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/filters/radius_outlier_removal.h>
 
 #include "box.hpp"
 
@@ -39,7 +42,7 @@ class LidarObstacleDetector
 
   // ****************** Detection ***********************
 
-  typename pcl::PointCloud<PointT>::Ptr filterCloud(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float filter_res, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt);
+  typename pcl::PointCloud<PointT>::Ptr filterCloud(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float filter_res, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt, const Eigen::Vector4f& body_min_pt, const Eigen::Vector4f& body_max_pt);
   
   std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segmentPlane(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const int max_iterations, const float distance_thresh);
 
@@ -48,6 +51,8 @@ class LidarObstacleDetector
   Box axisAlignedBoundingBox(const typename pcl::PointCloud<PointT>::ConstPtr& cluster, const int id);
 
   Box pcaBoundingBox(typename pcl::PointCloud<PointT>::Ptr& cluster, const int id);
+
+  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors);
 
   // ****************** Tracking ***********************
   void obstacleTracking(const std::vector<Box>& prev_boxes, std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh);
@@ -84,7 +89,7 @@ template <typename PointT>
 LidarObstacleDetector<PointT>::~LidarObstacleDetector() {}
 
 template <typename PointT>
-typename pcl::PointCloud<PointT>::Ptr LidarObstacleDetector<PointT>::filterCloud(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float filter_res, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt)
+typename pcl::PointCloud<PointT>::Ptr LidarObstacleDetector<PointT>::filterCloud(const typename pcl::PointCloud<PointT>::ConstPtr& cloud, const float filter_res, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt, const Eigen::Vector4f& body_min_pt, const Eigen::Vector4f& body_max_pt)
 {
   // Time segmentation process
   // const auto start_time = std::chrono::steady_clock::now();
@@ -107,8 +112,8 @@ typename pcl::PointCloud<PointT>::Ptr LidarObstacleDetector<PointT>::filterCloud
   // Removing the car roof region
   std::vector<int> indices;
   pcl::CropBox<PointT> roof(true);
-  roof.setMin(Eigen::Vector4f(-1.5, -1.7, -1, 1));
-  roof.setMax(Eigen::Vector4f(2.6, 1.7, -0.4, 1));
+  roof.setMin(body_min_pt);
+  roof.setMax(body_max_pt);
   roof.setInputCloud(cloud_roi);
   roof.filter(indices);
 
@@ -465,6 +470,62 @@ int LidarObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes,
   }
 
   return -1;
+}
+
+template <typename PointT>
+void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors)
+{
+	// Create a search tree, use KDTreee for non-organized data.
+	typename pcl::search::Search<PointT>::Ptr tree;
+	tree.reset(new pcl::search::KdTree<PointT>(false));
+
+	// Set the input pointcloud for the search tree
+	tree->setInputCloud(cloud_in);
+
+	// Compute normals using both small and large scales at each point
+	typename pcl::NormalEstimationOMP<PointT, pcl::PointNormal> ne;
+	ne.setInputCloud(cloud_in);
+	ne.setSearchMethod(tree);
+
+	/**
+	 * NOTE: setting viewpoint is very important, so that we can ensure
+	 * normals are all pointed in the same direction!
+	 */
+	ne.setViewPoint(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+
+	// calculate normals
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals(new pcl::PointCloud<pcl::PointNormal>);
+	//copyPointCloud(*cloud_in, *cloud_normals);
+	ne.setRadiusSearch(scale);
+	ne.compute(*cloud_normals);
+
+	// Filter normals
+	pcl::ConditionOr<pcl::PointNormal>::Ptr range_cond(new pcl::ConditionOr<pcl::PointNormal>());
+	range_cond->addComparison(pcl::FieldComparison<pcl::PointNormal>::ConstPtr(new pcl::FieldComparison<pcl::PointNormal>("normal_x", pcl::ComparisonOps::LT, norm.x() - threshold)));
+	range_cond->addComparison(pcl::FieldComparison<pcl::PointNormal>::ConstPtr(new pcl::FieldComparison<pcl::PointNormal>("normal_x", pcl::ComparisonOps::GT, norm.x() + threshold)));
+	range_cond->addComparison(pcl::FieldComparison<pcl::PointNormal>::ConstPtr(new pcl::FieldComparison<pcl::PointNormal>("normal_y", pcl::ComparisonOps::LT, norm.y() - threshold)));
+	range_cond->addComparison(pcl::FieldComparison<pcl::PointNormal>::ConstPtr(new pcl::FieldComparison<pcl::PointNormal>("normal_y", pcl::ComparisonOps::GT, norm.y() + threshold)));
+	range_cond->addComparison(pcl::FieldComparison<pcl::PointNormal>::ConstPtr(new pcl::FieldComparison<pcl::PointNormal>("normal_z", pcl::ComparisonOps::LT, norm.z() - threshold)));
+	range_cond->addComparison(pcl::FieldComparison<pcl::PointNormal>::ConstPtr(new pcl::FieldComparison<pcl::PointNormal>("normal_z", pcl::ComparisonOps::GT, norm.z() + threshold)));
+	pcl::ConditionalRemoval<pcl::PointNormal> condrem(true);
+	condrem.setCondition(range_cond);
+	condrem.setInputCloud(cloud_normals);
+	condrem.filter(*cloud_normals);
+  auto norm_ind = condrem.getRemovedIndices();
+
+  // Extract filtered indices
+  typename pcl::ExtractIndices<PointT> extract;
+  extract.setInputCloud(cloud_in);
+  extract.setIndices(norm_ind);
+  extract.setNegative(true);
+  extract.filter(*cloud_out);
+
+	// Filter by number of neighbors
+	typename pcl::RadiusOutlierRemoval<PointT> outrem;
+    outrem.setInputCloud(cloud_out);
+    outrem.setRadiusSearch(scale);
+    outrem.setMinNeighborsInRadius(min_neighbors);
+	outrem.filter(*cloud_out);
 }
 
 } // namespace perception

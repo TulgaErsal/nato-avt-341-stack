@@ -18,6 +18,9 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     task_list.clear();
     mission_contacts.clear();
 
+    node_proxy_->get_parameter("/map_origin_x", local_origin_x, 0.0);
+    node_proxy_->get_parameter("/map_origin_y", local_origin_y, 0.0);
+
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
     reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
     gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
@@ -96,6 +99,8 @@ bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string na
     }
 //    node_proxy_->log_info("Found Mission Point %s = (%.2f, %.2f, %.2f) found", name.c_str(), it->pos_x, it->pos_y, it->pos_z);
     mission_point = *it;
+    mission_point.pos_x -= local_origin_x;
+    mission_point.pos_y -= local_origin_y;
     return true;
 }
 
@@ -132,8 +137,14 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
 
 void MissionManager::publishGoal(const avt_341::msg::PoseStamped & target_pose){
     avt_341::msg::Path goal_msg;
+    
+    // Offset to local map frame
+    avt_341::msg::PoseStamped target_pose_msg = target_pose;
+    //target_pose_msg.pose.position.x -= local_origin_x;
+    //target_pose_msg.pose.position.y -= local_origin_y;
+
     goal_msg.poses.clear();
-    goal_msg.poses.push_back(target_pose);
+    goal_msg.poses.push_back(target_pose_msg);
     goal_msg.header.stamp = node_proxy_->get_stamp();
     goal_msg.header.frame_id = "map";
     waypoint_pub->publish(goal_msg);
@@ -144,6 +155,14 @@ void MissionManager::publishPath(const avt_341::msg::Path& path){
   path_msg.header.stamp = node_proxy_->get_stamp();
   path_msg.header.frame_id = "map";
   path_msg.poses = path.poses;
+
+  /* Offset poses into local map frame
+  for (int i = 0; i < path_msg.poses.size(); i++)
+  {
+    path_msg.poses[i].pose.position.x -= local_origin_x;
+    path_msg.poses[i].pose.position.y -= local_origin_y;
+  }*/
+
   gp_path_pub->publish(path_msg);
 }
 

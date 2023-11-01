@@ -8,7 +8,6 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
-#include "sensor_msgs/Image.h"
 
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Point32.h"
@@ -49,9 +48,6 @@ namespace avt_341 {
 
         using JointState = sensor_msgs::JointState;
         using JointStatePtr = const sensor_msgs::JointState::ConstPtr &;
-
-        using Image = sensor_msgs::Image;
-        using ImagePtr = const sensor_msgs::Image::ConstPtr &;
 
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;

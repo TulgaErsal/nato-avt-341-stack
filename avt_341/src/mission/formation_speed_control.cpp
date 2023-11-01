@@ -126,7 +126,9 @@ namespace avt_341 {
       if (formation_def == nullptr || !formation_def->has_formation()) {
         auto current_pos = formation_poses[my_name_].pose.pose.position;
         double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
-        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
+        if (fsc_params_.debug_visualize) {
+          visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
+        }
         return 1.0;
       }
 

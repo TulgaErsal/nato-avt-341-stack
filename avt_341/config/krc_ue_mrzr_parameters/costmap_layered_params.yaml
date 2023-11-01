@@ -1,0 +1,32 @@
+global_frame: map
+robot_base_frame: base_link
+transform_tolerance: 0.2
+update_frequency: 5.0
+publish_frequency: 5.0
+unknown_threshold: 255
+always_send_full_costmap: true
+plugins:
+    - {name: static_obstacles_layer,    type: "costmap_2d::StaticLayer"}
+    - {name: normals_layer,    type: "costmap_2d::StaticLayer"}
+    - {name: perception_layer,  type: "costmap_2d::StaticLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+static_obstacles_layer:
+    enabled: false
+    map_topic: avt_341/static_obstacles
+    use_maximum: false
+    trinary_costmap: false
+normals_layer:
+    enabled: false
+    map_topic: avt_341/static_normals
+    use_maximum: true
+    trinary_costmap: false
+perception_layer:
+    enabled: true
+    map_topic: avt_341/occupancy_grid
+    use_maximum: true
+    trinary_costmap: false
+    first_map_only: false
+inflation_layer:
+    enabled: false
+    inflation_radius: 1.0
+    cost_scaling_factor: 1.0
