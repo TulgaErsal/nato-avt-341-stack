@@ -20,6 +20,19 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
+# BEGIN MPC WRAPPER NODE DEPENDENCIES
+# -----------------------------------
+find_package(Julia 1.5.4 EXACT)
+if(NOT ${Julia_FOUND})
+  message(WARNING "Julia libraries not found. The MPC wrapper node will not be built.")
+  set(BUILD_MPC OFF)
+else()
+  message(STATUS "Julia libraries found. Adding MPC wrapper node to the build.")
+  set(BUILD_MPC ON)
+endif() # if(${Julia_FOUND})
+# ---------------------------------
+# END MPC WRAPPER NODE DEPENDENCIES
+
 if (WIN32 OR WIN64)
 set (link_libs
 ${OpenCV_LIBS}
@@ -229,6 +242,34 @@ add_executable(avt_341_global_segmentation_grid_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
+
+# BEGIN MPC WRAPPER NODE TARGET
+# -----------------------------
+if(BUILD_MPC)
+  add_executable(${PROJECT_NAME}_mpc_planner_node
+    "src/planning/local/avt_341_mpc_planner_node.cpp"
+    "src/node/node_proxy.cpp")
+  ament_target_dependencies(${PROJECT_NAME}_mpc_planner_node
+    ${dependencies})
+  target_include_directories(${PROJECT_NAME}_mpc_planner_node
+    PUBLIC
+      "$<BUILD_INTERFACE:${Julia_INCLUDE_DIRS}>")
+  target_link_libraries(${PROJECT_NAME}_mpc_planner_node
+    $<BUILD_INTERFACE:${Julia_LIBRARY}>)
+  target_compile_definitions(${PROJECT_NAME}_mpc_planner_node
+    PUBLIC
+      "MPC_PLANNER_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_planner.jl\""
+      -DJULIA_ENABLE_THREADING)
+  install(TARGETS ${PROJECT_NAME}_mpc_planner_node
+          EXPORT export_${PROJECT_NAME}
+          DESTINATION lib/${PROJECT_NAME})
+  # Copy the Julia modules to the install folder.
+  install(FILES "src/planning/local/mpc_planner.jl"
+          DESTINATION share/${PROJECT_NAME})
+endif() # if(BUILD_MPC)
+# ---------------------------
+# END MPC WRAPPER NODE TARGET
+
 
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime

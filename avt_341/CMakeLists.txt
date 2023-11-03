@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Add the "cmake" folder to the CMAKE_MODULE_PATH variable.
+# Used to include custom FindPackage() commands in the build.
+set(CMAKE_MODULE_PATH
+     ${CMAKE_MODULE_PATH}
+     ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 set(LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES
   include/avt_341/perception/box.hpp
   include/avt_341/perception/lidar_obstacle_detector.hpp
