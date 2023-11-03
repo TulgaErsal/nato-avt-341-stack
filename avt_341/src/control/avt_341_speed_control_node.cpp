@@ -89,6 +89,7 @@ int main(int argc, char *argv[]){
 	std::string display, anti_windup_method;
   float vehicle_max_steer_angle_degrees;
   double output_max, output_min;
+  bool use_speed_controller;
   n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
   n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0f);
   n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0f);
@@ -104,6 +105,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~pid_output_min", output_min, 0.0);
   n->get_parameter("~anti_windup_method", anti_windup_method, avt_341::control::AntiWindupMethod::ResetOnSetpoint);
   n->get_parameter("~display", display, std::string("none"));
+  n->get_parameter("~use_speed_controller", use_speed_controller, true);
 
   avt_341::control::PidController controller(anti_windup_method, output_min, output_max);
 
@@ -162,37 +164,40 @@ int main(int argc, char *argv[]){
     }
     else if (current_run_state==avt_341::utils::NavStackState::Active){    // active running state
       controller.SetSetpoint(desired_speed_factor*desired_speed);
-      dc.linear.x = controller.GetControlVariable(vel,dt);
+      dc.linear.x = (use_speed_controller) ? controller.GetControlVariable(vel,dt) : desired_speed_factor*desired_speed;
     }
     else if (current_run_state==avt_341::utils::NavStackState::NotInit || current_run_state==avt_341::utils::NavStackState::Stopped){
       // bring to a smooth stop and wait / idle
       controller.SetSetpoint(0.0f);
-       dc.linear.x = controller.GetControlVariable(vel,dt);
+       dc.linear.x = (use_speed_controller) ? controller.GetControlVariable(vel,dt) : 0.0f;
     }
     else if (current_run_state==avt_341::utils::NavStackState::HardShutdown){
       // bring to a hard stop and shut down
       dc.linear.x = 0.0f;
-      dc.linear.y = 1.0f;
+      dc.linear.y = (use_speed_controller) ? 1.0f : 0.0f;
       dc.angular.z = 0.0f;
       time_to_quit = true;
     }
 
     // apply the throttle scaling coefficient
-    dc.linear.x *= throttle_coeff;
-    // check braking and throttle
-    if (std::abs(dc.linear.y) > 1e-5){
-      // apply the ramp up to the brake
-      if (current_brake_value>dc.linear.y){
-        dc.linear.y = current_brake_value - brake_step;
-        if (dc.linear.y<-1.0)dc.linear.y = -1.0;
-        if (dc.linear.y>0.0)dc.linear.y = 0.0;
+    if (use_speed_controller)
+      {
+      dc.linear.x *= throttle_coeff;
+      // check braking and throttle
+      if (std::abs(dc.linear.y) > 1e-5){
+        // apply the ramp up to the brake
+        if (current_brake_value>dc.linear.y){
+          dc.linear.y = current_brake_value - brake_step;
+          if (dc.linear.y<-1.0)dc.linear.y = -1.0;
+          if (dc.linear.y>0.0)dc.linear.y = 0.0;
+        }
+        // make sure the throttle is zero when braking
+        dc.linear.x = 0.0f;
       }
-      // make sure the throttle is zero when braking
-      dc.linear.x = 0.0f;
-    }
-    // apply the throttle ramp up
-    if (dc.linear.x-current_throttle_value > max_throttle_step){
-      dc.linear.x = current_throttle_value + max_throttle_step;
+      // apply the throttle ramp up
+      if (dc.linear.x-current_throttle_value > max_throttle_step){
+        dc.linear.x = current_throttle_value + max_throttle_step;
+      }
     }
 
     // publish the driving command
