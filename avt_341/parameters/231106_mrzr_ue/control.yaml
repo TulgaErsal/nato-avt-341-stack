@@ -1,6 +1,6 @@
 # Pure pursuit controller
 # ======================================================================================================================
-vehicle_wheelbase: 2.731                      # Vehicle_wheelbase.
+vehicle_wheelbase: 2.019                      # Vehicle_wheelbase.
 vehicle_max_steer_angle_degrees: 40.0         # Max steer angle in degrees.
 steering_coefficient: 3.5                     # Steering coefficient.
 vehicle_speed: 5.0                            # Vehicle_speed m/s.

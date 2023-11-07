@@ -1,6 +1,7 @@
 <launch>
 	<!-- Args -->
-	<arg name="is_simulation" default="false" doc="Set to true if the vehicle is in Unreal Engine" />
+	<arg name="simulation_mode" default="false" doc="Set to true if the vehicle is in Unreal Engine" />
+	<arg name="waypoint_mode" default="false" doc="Set to true for waypoint following mode" />
 	<arg name="max_speed" default="5.0" doc="Maximum speed limit for the vehicle"/>
 	<arg name="record" default="false" doc="Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"/>
 	<arg name="use_sim_time" default="false" doc="Use simulation time, usefull for running stack on recorded telemetry bag file"/>
@@ -11,7 +12,7 @@
     </rosparam>
 
 	<!-- Engine Start Sense -->
-	<node name="remote_started_sense_node" pkg="mrzr_tools" type="remote_started_sense.py" unless="$(arg is_simulation)">
+	<node name="remote_started_sense_node" pkg="mrzr_tools" type="remote_started_sense.py" unless="$(arg simulation_mode)">
 		<param name="rpm_threshold" value="1500"/>
 	</node>
 
@@ -24,9 +25,9 @@
 	<include file="$(find can_controller)/launch/stack_controller.launch">
         <arg name="max_speed" value="$(arg max_speed)" />
 		<arg name="mode" value="0"/>
-		<arg name="is_can_controller" value="$(eval not arg('is_simulation'))"/>
+		<arg name="is_can_controller" value="$(eval not arg('simulation_mode'))"/>
         <arg name="controller_can" default="can1" />
-		<arg name="enable_sensors" value="$(eval not arg('is_simulation'))"/>
+		<arg name="enable_sensors" value="$(eval not arg('simulation_mode'))"/>
         <arg name="ouster_hostname" default="os-122223002379.local" />
 		<arg name="ns" value="/" />
 		<arg name="navstack_ns" default="/mrzr/avt_341" />
@@ -45,14 +46,14 @@
     <remap from="/mrzr/vectornav/GPS" to="/vectornav/GPS"/>
     <remap from="/mrzr/vectornav/Odom" to="/vectornav/Odom"/>
     <remap from="/mrzr/speed_actual" to="/speed_actual"/>
-	<node pkg="tf" name="lidar_ns_fix_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 mrzr/os_sensor os_sensor 10" />
+	<node pkg="tf" name="lidar_ns_fix_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 mrzr/os_sensor os_sensor 100" />
 
 	<!-- NATO AVT-341 Stack -->
 	<include file="$(find avt_341)/launch/krc_base.launch">
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/no_waypoints.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->
@@ -60,12 +61,14 @@
 		<arg name="num_vehicles" value="1" />                                           <!-- Number of vehicles controlled by navigation stack -->
 		<arg name="namespace_single_vehicle" value="true" />                           	<!-- If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1) -->
 		<arg name="vehicle_namespaces" value="['mrzr']" />      						<!-- Vehicle namespaces -->
-		<arg name="vehicle_config_folders" value="['$(find avt_341)/config/parameters/231106_mrzr_ue']"/>	<!-- Directories containing all config files for each vehicle -->
+		<arg name="vehicle_config_folders" value="['$(find avt_341)/parameters/231106_mrzr_ue']"/>	<!-- Directories containing all config files for each vehicle -->
 		<arg name="veh_index" value="0" />                                              <!-- Current index value from vehicle_namespaces and vehicle_config_folders of the vehicle being launched -->
 		<arg name="use_rqt_display" value="false"/>                                     <!-- Launch rviz within rqt window -->
 		<arg name="rviz_config" value="$(find avt_341)/rviz/avt_341_mrzr.rviz" /> 		<!-- Single vehicle rviz config file -->
 		<arg name="rviz_mult_config" value="$(find avt_341)/rviz/avt_341_multi_vehicle.rviz" /> <!-- Multiple vehicle rviz config file -->
-		<arg name="use_lidar_obstacle_detector" value="true" />							<!-- Local planner method. Values = ["rcc", "dwa", "pf"] -->
-		<arg name="local_planner_method" value="rcc" />
+		<arg name="use_lidar_obstacle_detector" value="true" />							<!-- Enable lidar obstacle segmentation -->
+		<arg name="local_planner_method" value="dwa" />									<!-- Local planner method. Values = ["rcc", "dwa", "pf"] -->
+		<arg name="waypoint_mode" value="$(arg waypoint_mode)"/>                        <!-- Set to true for waypoint following mode -->
+		<arg name="simulation_mode" value="$(arg simulation_mode)"/>                    <!-- Set to true for UE simulation -->
 	</include>
 </launch>

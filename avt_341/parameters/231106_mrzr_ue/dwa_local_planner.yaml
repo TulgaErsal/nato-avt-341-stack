@@ -1,7 +1,7 @@
 # Dynamic Window Approach
 # ======================================================================================================================
 model: 'ackermann'                      # Motion model for the trajectory prediction - may be 'ackermann' for Ackermann-steered AGVs or 'synchro' for synchro drive robots.
-wheelbase: 2.731                        # AGV wheelbase. Used for trajectory prediction for the Ackermann motion model.
+wheelbase: 2.019                        # AGV wheelbase. Used for trajectory prediction for the Ackermann motion model.
 speed_lin_min: 0.15                     # Minimum value for the linear variable (longitudinal speed for all models) in the prediction window.
 speed_lin_max: 5.0                      # Maximum value for the linear variable (longitudinal speed for all models) in the prediction window.
 speed_lin_steps: 20                     # Number of intervals to partition the linear variable range into. Higher values allow for finer control, but significantly impact performance.
@@ -13,7 +13,7 @@ ang_accel_max: 4.0                      # Maximum rate of change of the angular 
 lat_accel_max: 9.81                     # Maximum lateral acceleration.
 horizon: 'adaptive'                     # Time prediction horizon - may be `fixed` or `adaptive` for prediction windows proportional to the longitudinal speed of the AGV.
 time_span_min: 0.5                      # Minimum time span for the prediction window.
-time_span_max: 3.0                      # Maximum time span for the prediction window.
+time_span_max: 10.0                      # Maximum time span for the prediction window.
 time_span_var: 2.5                      # Size of the variable component of the prediction window.
 time_span_gain: 1.0                     # Longitudinal speed proportionality constant for the variable prediction window.
 time_step_min: 0.2                      # Minimum time step for motion prediction. Smaller values allow for finer control, but significantly impact performance.
@@ -30,5 +30,5 @@ w_cost_path: 1.0                        # Objective function global path deviati
 use_segmentation: False                 # Whether or not to inflate the obstacle cost with the segmentation cost.
 w_cost_seg: 0.0                         # Objective function segmentation cost term weight. Higher values will promote planned trajectories which stay far from cells with higher cost.
 w_cost_dev: 0.75                        # Objective function deviation term weight. Higher values will promote planned trajectories with smaller deviations from the current one.
-print_summary: True                     # Whether or not to print the results of each planner iteration to console. Has an impact on performance and should only be used for debugging purposes.
+print_summary: False                    # Whether or not to print the results of each planner iteration to console. Has an impact on performance and should only be used for debugging purposes.
 map_topic: costmap_node/costmap/costmap # Occupancy grid topic
