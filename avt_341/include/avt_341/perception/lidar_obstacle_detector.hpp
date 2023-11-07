@@ -52,7 +52,7 @@ class LidarObstacleDetector
 
   Box pcaBoundingBox(typename pcl::PointCloud<PointT>::Ptr& cluster, const int id);
 
-  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors);
+  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors);
 
   // ****************** Tracking ***********************
   void obstacleTracking(const std::vector<Box>& prev_boxes, std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh);
@@ -473,7 +473,7 @@ int LidarObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes,
 }
 
 template <typename PointT>
-void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors)
+void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors)
 {
 	// Create a search tree, use KDTreee for non-organized data.
 	typename pcl::search::Search<PointT>::Ptr tree;
@@ -519,6 +519,12 @@ void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<Poin
   extract.setIndices(norm_ind);
   extract.setNegative(true);
   extract.filter(*cloud_out);
+
+  // Extract ground indices
+  typename pcl::ExtractIndices<PointT> extract_rem;
+  extract_rem.setInputCloud(cloud_in);
+  extract_rem.setIndices(norm_ind);
+  extract_rem.filter(*cloud_rem);
 
 	// Filter by number of neighbors
 	typename pcl::RadiusOutlierRemoval<PointT> outrem;

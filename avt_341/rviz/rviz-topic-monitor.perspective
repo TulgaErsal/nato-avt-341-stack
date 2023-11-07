@@ -33,7 +33,7 @@
               "keys": {
                 "rviz_config_file": {
                   "type": "repr",
-                  "repr": "u'/home/evanderm/nato-stack-ws/src/avt_341/rviz/avt_341_mrzr.rviz'"
+                  "repr": "u'/home/evanderm/nato-stack-ws/src/nato-avt-341-stack/avt_341/rviz/avt_341_mrzr.rviz'"
                 },
                 "hide_menu": {
                   "type": "repr",

@@ -44,5 +44,4 @@ global_grid_csv_path: "$Python:os.path.join(get_package_share_directory('avt_341
 # Lidar Obstacle Detector
 # ======================================================================================================================
 use_lidar_obstacle_detector: False      # If true uses lidar obstacle detector. ROS1 version only currently.
-raw_points_topic: '/avt_341/points'         # The name of the points topic listened to by the obstacle detection node.
 perception_points_topic: '/avt_341/points'  # The name of the points topic listened to by the perception node.

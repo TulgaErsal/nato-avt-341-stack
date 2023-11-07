@@ -168,13 +168,14 @@ void LidarObstacleDetectorNode::lidarPointsCallback(const sensor_msgs::PointClou
 
   // Segment ground and obstacle points using normal filtering
   pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-  obstacle_detector->pclFilterNorms(filtered_cloud, norm_filtered, GROUND_NORMAL, GROUND_NORMAL_THRESH, OBSTACLE_SCALE, OBSTACLE_MIN_NEIGHBORS);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr ground_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+  obstacle_detector->pclFilterNorms(filtered_cloud, norm_filtered, ground_filtered, GROUND_NORMAL, GROUND_NORMAL_THRESH, OBSTACLE_SCALE, OBSTACLE_MIN_NEIGHBORS);
 
   // Segment the groud plane and obstacles
   //auto segmented_clouds = obstacle_detector->segmentPlane(filtered_cloud, 30, GROUND_THRESH);
   std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmented_clouds;
   segmented_clouds.first = norm_filtered;
-  segmented_clouds.second = norm_filtered;
+  segmented_clouds.second = ground_filtered;
  
   // Publish ground cloud and obstacle cloud
   publishClouds(segmented_clouds, pointcloud_header);

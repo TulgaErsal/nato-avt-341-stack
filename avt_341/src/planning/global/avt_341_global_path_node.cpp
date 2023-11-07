@@ -120,32 +120,6 @@ int main(int argc, char *argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
 
-  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
-  auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
-  auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
-  auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
-  auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
-
-  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, MapCallback);
-  auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
-  auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
-  auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
-  auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
-  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
-  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-
-  // ctg, 8-19-2021
-  // the state values can be
-  // -1 - startup (stopped and not shut down)
-  // 0 - active 
-  // 1 - bring to a smooth stop but do not shut down
-  // 2 - bring to a smooth stop and shut down
-  // 3 - bring to an immediate stop (hard braking) and shut down
-  auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
-  state.data = avt_341::utils::NavStackState::NotInit;
-
   float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   double local_origin_x, local_origin_y;
   std::vector<double> waypoints_x_list, waypoints_y_list;
@@ -153,6 +127,7 @@ int main(int argc, char *argv[])
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint;
   int los_max_iterations;
   int dilation_factor;
+  std::string map_topic;
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
@@ -174,6 +149,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
   n->get_parameter("~dilation_factor", dilation_factor, 0);
+  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -195,6 +171,32 @@ int main(int argc, char *argv[])
     std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN /waypoints_x OR /waypoints_y." << std::endl;
     //return 2;
   }
+
+  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
+  auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
+  auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
+  auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
+  auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
+
+  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
+  auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, MapCallback);
+  auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
+  auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
+  auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
+  auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
+  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
+  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+
+  // ctg, 8-19-2021
+  // the state values can be
+  // -1 - startup (stopped and not shut down)
+  // 0 - active 
+  // 1 - bring to a smooth stop but do not shut down
+  // 2 - bring to a smooth stop and shut down
+  // 3 - bring to an immediate stop (hard braking) and shut down
+  auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
+  state.data = avt_341::utils::NavStackState::NotInit;
 
   int num_waypoints = std::min(waypoints_x_list.size(), waypoints_y_list.size());
   Reset();

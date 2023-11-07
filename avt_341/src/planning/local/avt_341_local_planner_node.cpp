@@ -52,21 +52,13 @@ int main(int argc, char *argv[]){
 
   auto n = avt_341::node::init_node(argc, argv, "avt_341_planner_node");
 
-  // Create publishers and subscribers
-  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
-  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, GridCallback);
-  auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationGridCallback);
-  auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
-  auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
-
   avt_341::planning::Planner planner;
   // planner params
   float path_look_ahead, vehicle_width, max_steer_angle, output_path_step, path_int_step, rate;
   int dilation_factor, num_paths;
   float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist;
   bool trim_path, use_global_path, use_blend;
-  std::string display, cost_vis;
+  std::string display, cost_vis, map_topic;
 
   n->get_parameter("~path_look_ahead", path_look_ahead, 15.0f);
   n->get_parameter("~vehicle_width", vehicle_width, 3.0f);
@@ -88,6 +80,15 @@ int main(int argc, char *argv[]){
   n->get_parameter("~cost_vis", cost_vis, std::string("final"));
   n->get_parameter("~cost_vis_text_size", cost_vis_text_size, 2.0f);
   n->get_parameter("~display", display, avt_341::visualization::default_display);
+  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
+
+    // Create publishers and subscribers
+  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
+  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
+  auto grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, GridCallback);
+  auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationGridCallback);
+  auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
+  auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
   planner.SetArcLengthIntegrationStep(path_int_step);
   planner.SetComfortabilityWeight(w_c);

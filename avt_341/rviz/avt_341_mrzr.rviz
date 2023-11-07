@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /Perception1
       Splitter Ratio: 0.5
     Tree Height: 777
   - Class: rviz/Selection
@@ -25,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: Lidar
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -102,7 +103,7 @@ Visualization Manager:
       Marker Topic: /mrzr/avt_341/candidate_paths
       Name: CandidatePaths
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.699999988079071
@@ -161,7 +162,7 @@ Visualization Manager:
       Size (Pixels): 1
       Size (m): 1
       Style: Points
-      Topic: /mrzr/ouster/points
+      Topic: /ouster/points
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -173,13 +174,62 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        base_link:
+          Value: true
+        map:
+          Value: true
+        mrzr/base_link:
+          Value: true
+        mrzr/front_diff_link:
+          Value: true
+        mrzr/lidar:
+          Value: true
+        mrzr/odom:
+          Value: true
+        mrzr/os_lidar:
+          Value: true
+        mrzr/os_sensor:
+          Value: true
+        mrzr/rear_diff_link:
+          Value: true
+        mrzr/vbox_link:
+          Value: true
+        mrzr/vectornav_link:
+          Value: true
+        mrzr/vlp16_top_link:
+          Value: true
+        odom:
+          Value: true
+        os_sensor:
+          Value: true
       Marker Scale: 15
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        map:
+          mrzr/base_link:
+            base_link:
+              {}
+            mrzr/front_diff_link:
+              mrzr/rear_diff_link:
+                {}
+              mrzr/vbox_link:
+                {}
+              mrzr/vectornav_link:
+                mrzr/odom:
+                  {}
+              mrzr/vlp16_top_link:
+                mrzr/os_lidar:
+                  {}
+                mrzr/os_sensor:
+                  mrzr/lidar:
+                    {}
+                  os_sensor:
+                    {}
+          odom:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -203,7 +253,7 @@ Visualization Manager:
           Axis: Z
           Channel Name: intensity
           Class: rviz/PointCloud2
-          Color: 255; 255; 255
+          Color: 85; 255; 255
           Color Transformer: FlatColor
           Decay Time: 0
           Enabled: false
@@ -214,7 +264,7 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 6
+          Size (Pixels): 3
           Size (m): 0.10000000149011612
           Style: Points
           Topic: /avt_341/lidar_detector/cloud_ground
@@ -291,7 +341,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 7.450580596923828e-9
+      Angle: 0.015000230632722378
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -301,11 +351,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 8.758686065673828
+      Scale: 6.972785472869873
       Target Frame: mrzr/base_link
       Value: TopDownOrtho (rviz)
-      X: 0.007138499524444342
-      Y: -0.11145142465829849
+      X: -3.8581697940826416
+      Y: -0.5997287631034851
     Saved: ~
 Window Geometry:
   Displays:
@@ -323,5 +373,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1429
-  X: 0
-  Y: 20
+  X: -32
+  Y: -32

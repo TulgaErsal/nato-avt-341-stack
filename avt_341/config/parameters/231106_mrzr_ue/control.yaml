@@ -1,0 +1,25 @@
+# Pure pursuit controller
+# ======================================================================================================================
+vehicle_wheelbase: 2.731                      # Vehicle_wheelbase.
+vehicle_max_steer_angle_degrees: 40.0         # Max steer angle in degrees.
+steering_coefficient: 3.5                     # Steering coefficient.
+vehicle_speed: 5.0                            # Vehicle_speed m/s.
+throttle_coefficient: 1.0                     # Scale factor for the commanded steering. l.t. 1.0 will make the acceleration less agressive, g.t. 1.0 will make it more agressive
+throttle_kp: 1.1                              # proportional coeff for the PID speed controller
+throttle_ki: 0.0                              # integral coeff for the PID speed controller
+throttle_kd: 0.0                              # derivative coeff for the PID speed controller
+
+# Speed Control
+# ======================================================================================================================
+time_to_max_brake: 4.0                        # Time in seconds to go from 0 to maximum braking
+time_to_max_throttle: 3.0                     # Time in seconds to go from 0 to maximum throttle
+use_feed_forward: False                       # Set to true to use the feed-forward model in the PID throttle control
+use_speed_controller: False                   # Set to true to output velocity commands (linear.x -> forward speed [m/s]) instead of throttle/brake commands (linear.x -> throttle percent, linear.y -> brake percent)
+ff_a0: 0.2856                                 # 0th order coeff in the feed-forward model
+ff_a1: 0.0321                                 # 1st order coeff in the feed-forward model
+ff_a2: 0.0                                    # 2nd order coeff in the feed-forward model
+max_desired_lateral_g: 200.0                  # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
+turn_off_velocity_overshoot_corrector: False  # Disable velocity overshoot corrector
+anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'
+pid_output_max: 1.0                           # Max value for PID output. Only active when anti_windup_method = 'output_clamping'
+pid_output_min: 0.0                           # Min value for PID output. Only active when anti_windup_method = 'output_clamping'

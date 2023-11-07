@@ -170,9 +170,43 @@ main(int argc, char* argv[]) {
     // Initialize ROS node.
     auto node = avt_341::node::init_node(argc, argv, "avt_341_dwa_planner_node");
 
+    // Declare and read node parameters from the ROS parameter server.
+    std::string model; node->get_parameter("~model", model, std::string("ackermann"));
+    float wheelbase; node->get_parameter("~wheelbase", wheelbase, 2.72f);
+    float speed_lin_min; node->get_parameter("~speed_lin_min", speed_lin_min, 0.15f);
+    float speed_lin_max; node->get_parameter("~speed_lin_max", speed_lin_max, 4.0f);
+    int speed_lin_steps; node->get_parameter("~speed_lin_steps", speed_lin_steps, 10);
+    float accel_max; node->get_parameter("~accel_max", accel_max, 3.0f);
+    float speed_ang_min; node->get_parameter("~speed_ang_min", speed_ang_min, -0.58f);
+    float speed_ang_max; node->get_parameter("~speed_ang_max", speed_ang_max, 0.58f);
+    int speed_ang_steps; node->get_parameter("~speed_ang_steps", speed_ang_steps, 40);
+    float ang_accel_max; node->get_parameter("~ang_accel_max", ang_accel_max, 4.0f);
+    float lat_accel_max; node->get_parameter("~lat_accel_max", lat_accel_max, 9.81f);
+    std::string horizon; node->get_parameter("~horizon", horizon, std::string("adaptive"));
+    float time_span_min; node->get_parameter("~time_span_min", time_span_min, 2.5f);
+    float time_span_max; node->get_parameter("~time_span_max", time_span_max, 10.0f);
+    float time_span_var; node->get_parameter("~time_span_var", time_span_var, 4.5f);
+    float time_span_gain; node->get_parameter("~time_span_gain", time_span_gain, 1.1f);
+    float time_step_min; node->get_parameter("~time_step_min", time_step_min, 0.2f);
+    float w_cost_goal; node->get_parameter("~w_cost_goal", w_cost_goal, 1.0f);
+    float w_cost_head; node->get_parameter("~w_cost_head", w_cost_head, 0.001f);
+    int thresh_obs; node->get_parameter("~thresh_obs", thresh_obs, 0);
+    float collision_radius; node->get_parameter("~collision_radius", collision_radius, 2.25f);
+    std::string obs_search; node->get_parameter("~obs_search", obs_search, std::string("fixed"));
+    float search_radius; node->get_parameter("~search_radius", search_radius, 10.0f);
+    float w_cost_obs; node->get_parameter("~w_cost_obs", w_cost_obs, 1.5f);
+    float w_cost_speed; node->get_parameter("~w_cost_speed", w_cost_speed, 0.0f);
+    bool use_global_path; node->get_parameter("~use_global_path", use_global_path, false);
+    float w_cost_path; node->get_parameter("~w_cost_path", w_cost_path, 0.0f);
+    bool use_segmentation; node->get_parameter("~use_segmentation", use_segmentation, false);
+    float w_cost_seg; node->get_parameter("~w_cost_seg", w_cost_seg, 0.0f);
+    float w_cost_dev; node->get_parameter("~w_cost_dev", w_cost_dev, 0.75f);
+    bool print_summary; node->get_parameter("~print_summary", print_summary, false);
+    std::string map_topic; node->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
+
     // Create node subscribers.
     auto sub_odom = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, CallbackOdometry);
-    auto sub_grid_occ = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, CallbackGridOccupancy);
+    auto sub_grid_occ = node->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, CallbackGridOccupancy);
     auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, CallbackGridSegmentation);
     auto sub_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, CallbackPath);
     auto sub_waypoints = node->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, CallbackWaypoints);
@@ -183,39 +217,6 @@ main(int argc, char* argv[]) {
     auto pub_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
     auto pub_ctrl_speed = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
     auto pub_ctrl_steer = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 10);
-
-    // Declare and read node parameters from the ROS parameter server.
-    std::string model; node->get_parameter("~dwa_model", model, std::string("ackermann"));
-    float wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72f);
-    float speed_lin_min; node->get_parameter("~dwa_speed_lin_min", speed_lin_min, 0.15f);
-    float speed_lin_max; node->get_parameter("~dwa_speed_lin_max", speed_lin_max, 4.0f);
-    int speed_lin_steps; node->get_parameter("~dwa_speed_lin_steps", speed_lin_steps, 10);
-    float accel_max; node->get_parameter("~dwa_accel_max", accel_max, 3.0f);
-    float speed_ang_min; node->get_parameter("~dwa_speed_ang_min", speed_ang_min, -0.58f);
-    float speed_ang_max; node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58f);
-    int speed_ang_steps; node->get_parameter("~dwa_speed_ang_steps", speed_ang_steps, 40);
-    float ang_accel_max; node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0f);
-    float lat_accel_max; node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81f);
-    std::string horizon; node->get_parameter("~dwa_horizon", horizon, std::string("adaptive"));
-    float time_span_min; node->get_parameter("~dwa_time_span_min", time_span_min, 2.5f);
-    float time_span_max; node->get_parameter("~dwa_time_span_max", time_span_max, 10.0f);
-    float time_span_var; node->get_parameter("~dwa_time_span_var", time_span_var, 4.5f);
-    float time_span_gain; node->get_parameter("~dwa_time_span_gain", time_span_gain, 1.1f);
-    float time_step_min; node->get_parameter("~dwa_time_step_min", time_step_min, 0.2f);
-    float w_cost_goal; node->get_parameter("~dwa_w_cost_goal", w_cost_goal, 1.0f);
-    float w_cost_head; node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001f);
-    int thresh_obs; node->get_parameter("~dwa_thresh_obs", thresh_obs, 0);
-    float collision_radius; node->get_parameter("~dwa_collision_radius", collision_radius, 2.25f);
-    std::string obs_search; node->get_parameter("~dwa_obs_search", obs_search, std::string("fixed"));
-    float search_radius; node->get_parameter("~dwa_search_radius", search_radius, 10.0f);
-    float w_cost_obs; node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5f);
-    float w_cost_speed; node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0f);
-    bool use_global_path; node->get_parameter("~dwa_use_global_path", use_global_path, false);
-    float w_cost_path; node->get_parameter("~dwa_w_cost_path", w_cost_path, 0.0f);
-    bool use_segmentation; node->get_parameter("~dwa_use_segmentation", use_segmentation, false);
-    float w_cost_seg; node->get_parameter("~dwa_w_cost_seg", w_cost_seg, 0.0f);
-    float w_cost_dev; node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75f);
-    bool print_summary; node->get_parameter("~dwa_print_summary", print_summary, false);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
     avt_341::planning::DwaPlanner planner;
