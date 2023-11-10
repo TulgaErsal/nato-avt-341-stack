@@ -16,11 +16,6 @@
 		<param name="rpm_threshold" value="1500"/>
 	</node>
 
-	<!-- Command Panel -->
-	<group ns="/mrzr">
-		<node name="command_panel_node" pkg="mrzr_tools" type="mission_command_panel.py" output="screen"/>
-	</group>
-
 	<!-- Controller -->
 	<include file="$(find can_controller)/launch/stack_controller.launch">
         <arg name="max_speed" value="$(arg max_speed)" />
@@ -35,7 +30,7 @@
 
 	<!-- Data Recording -->
 	<group if="$(arg record)">
-		<arg name="time_YYMMDD" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%Y%m%d'))"/>
+		<arg name="time_YYMMDD" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%y%m%d'))"/>
 		<arg name="time_HHMMSS" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%H%M%S'))"/>
 		<arg name="home_dir" value="$(eval eval ('_' + '_import_' + '_(\'os\')').path.expanduser('~'))"/>
 		<node pkg="rosbag" type="record" name="rosbag_record" 
@@ -53,7 +48,7 @@
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course - new start.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->
@@ -61,7 +56,7 @@
 		<arg name="num_vehicles" value="1" />                                           <!-- Number of vehicles controlled by navigation stack -->
 		<arg name="namespace_single_vehicle" value="true" />                           	<!-- If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1) -->
 		<arg name="vehicle_namespaces" value="['mrzr']" />      						<!-- Vehicle namespaces -->
-		<arg name="vehicle_config_folders" value="['$(find avt_341)/parameters/231106_mrzr_ue']"/>	<!-- Directories containing all config files for each vehicle -->
+		<arg name="vehicle_config_folders" value="['$(find avt_341)/parameters/config_mrzr']"/>	<!-- Directories containing all config files for each vehicle -->
 		<arg name="veh_index" value="0" />                                              <!-- Current index value from vehicle_namespaces and vehicle_config_folders of the vehicle being launched -->
 		<arg name="use_rqt_display" value="false"/>                                     <!-- Launch rviz within rqt window -->
 		<arg name="rviz_config" value="$(find avt_341)/rviz/avt_341_mrzr.rviz" /> 		<!-- Single vehicle rviz config file -->

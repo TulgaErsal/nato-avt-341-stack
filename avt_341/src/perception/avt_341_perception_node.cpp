@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
   int nloops = 0;
 	while (avt_341::node::ok()){
 		double elapsed_time = (n->get_now_seconds()-start_time);
-		if (grid_created && elapsed_time > warmup_time) {
+		if (elapsed_time > warmup_time) {//if (grid_created && elapsed_time > warmup_time) {
 			avt_341::msg::OccupancyGrid grd;
       		grd = grid.GetGrid();
 			grd.header.stamp = n->get_stamp();

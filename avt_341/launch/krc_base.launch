@@ -166,7 +166,7 @@
   <!-- Visualization -->
   <group unless="$(arg use_rqt_display)">
     <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') == 1)">
-      <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" />
+      <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" output="screen"/>
     </group>
     <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') > 1)">
       <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_mult_config)" />
