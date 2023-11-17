@@ -217,7 +217,7 @@ int main(int argc, char *argv[]){
       }
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);
-      if (!use_speed_controller)
+      if (!use_speed_controller && control_msg.poses.size() > 1)
       {
         // publish speed/steering setpoint for external speed controller
         dc.linear.x = desired_velocity;

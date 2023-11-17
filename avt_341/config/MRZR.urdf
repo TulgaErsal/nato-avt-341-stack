@@ -1,20 +1,7 @@
 <?xml version="1.0" ?>
 <robot name="MRZR">
 	
-    <link name="front_diff_link">
-        <visual>
-            <origin rpy="${pi/2} 0 0" xyz="-1.345 0 -0.525" />
-            <geometry>
-                <mesh filename="package://mrzr_2dnav/geometry/MRZR.OBJ" scale="0.01 0.01 0.01" />
-            </geometry>
-            <material name="gray" />
-        </visual>
-        <collision>
-            <geometry>
-                <mesh filename="package://mrzr_2dnav/geometry/MRZR.OBJ" scale="0.01 0.01 0.01" />
-            </geometry>
-        </collision>
-    </link>
+    <link name="front_diff_link" />
 	
     <link name="base_link" />
 	

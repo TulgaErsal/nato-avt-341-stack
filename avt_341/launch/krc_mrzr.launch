@@ -48,7 +48,7 @@
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course - new start.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course - new start - dense.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->
@@ -62,7 +62,7 @@
 		<arg name="rviz_config" value="$(find avt_341)/rviz/avt_341_mrzr.rviz" /> 		<!-- Single vehicle rviz config file -->
 		<arg name="rviz_mult_config" value="$(find avt_341)/rviz/avt_341_multi_vehicle.rviz" /> <!-- Multiple vehicle rviz config file -->
 		<arg name="use_lidar_obstacle_detector" value="true" />							<!-- Enable lidar obstacle segmentation -->
-		<arg name="local_planner_method" value="dwa" />									<!-- Local planner method. Values = ["rcc", "dwa", "pf"] -->
+		<arg name="local_planner_method" value="rcc" />									<!-- Local planner method. Values = ["rcc", "dwa", "pf"] -->
 		<arg name="waypoint_mode" value="$(arg waypoint_mode)"/>                        <!-- Set to true for waypoint following mode -->
 		<arg name="simulation_mode" value="$(arg simulation_mode)"/>                    <!-- Set to true for UE simulation -->
 	</include>

@@ -1,7 +1,7 @@
 # Road-centerlined constrained planner
 # ======================================================================================================================
-num_paths: 21                           # Number of candidate paths to be generated.
-path_look_ahead: 15.0                   # Planning horizon.
+num_paths: 41                           # Number of candidate paths to be generated.
+path_look_ahead: 30.0                   # Planning horizon.
 vehicle_width: 1.511                    # Vehicle width.
 max_steer_angle: 0.69                   # Maximum steer angle in radians. Used to compute rho_max during local planning.
 output_path_step: 0.5                   # Output path step size.
