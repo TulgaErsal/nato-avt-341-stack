@@ -36,8 +36,16 @@
   <!--republish the mrak speed message as a float64 -->
   </node>
 
+  <node name="lidar_occlusion_node" pkg="avt_341" type="avt_341_lidar_occlusion_node" required="true" output="screen">
+    <param name="start_row" value="2" />
+    <param name="start_col" value="384" />
+    <param name="mask_height" value="60" />
+    <param name="mask_width" value="256" />
+  </node>
+
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
+    <remap from="avt_341/points" to="avt_341/occ_points" />
     <param name="use_elevation" value="false" />
     <param name="slope_threshold" value="2.5" />
     <param name="grid_height" value="120.0" />

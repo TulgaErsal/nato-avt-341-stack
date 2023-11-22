@@ -60,6 +60,15 @@ link_directories(
   ${PCL_LIBRARY_DIRS}
 )
 
+add_executable(avt_341_lidar_occlusion_node
+  src/perception/avt_341_lidar_occlusion_node.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(avt_341_lidar_occlusion_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(avt_341_lidar_occlusion_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(test_target_detection_node
   src/perception/test_target_detection_node.cpp
   src/node/node_proxy.cpp
@@ -370,6 +379,7 @@ catkin_package(INCLUDE_DIRS include
 #############
 
 install(TARGETS
+avt_341_lidar_occlusion_node
 test_target_detection_node
 avt_341_perception_node
 avt_341_map_publisher_node
