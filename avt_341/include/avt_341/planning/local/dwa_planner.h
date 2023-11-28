@@ -43,28 +43,6 @@ class DwaCost {
 
         float GetCost(int i) const { return cost_[i]; }
 
-        float GetNormalisedCost(int i) const { return cost_norm_[i]; }
-
-        void
-        Normalise() {
-            max_ = *std::max_element(cost_.begin(), cost_.end());
-            min_ = *std::min_element(cost_.begin(), cost_.end());
-
-            for (int i = 0; i < (int)cost_.size(); ++i) {
-                if (cost_[i] == std::numeric_limits<float>::infinity()) {
-                    cost_norm_[i] = std::numeric_limits<float>::infinity();
-                } else if (std::abs(max_ - min_) < 100.0f * std::numeric_limits<float>::epsilon()) {
-                    //
-                    cost_norm_[i] = 0.0f;
-                } else {
-                    // Compute the normalised cost
-                    cost_norm_[i] = 0.0f + (1.0 * (1.0f - 0.0f) / (max_ - min_)) * (cost_[i] - min_);
-                }
-
-            }
-
-        }
-
     private:
         std::vector<float> cost_;
         std::vector<float> cost_norm_;
@@ -342,6 +320,8 @@ class DwaPlanner {
 
         void SetSegmentationGridData(std::vector<signed char> grid_data) { grid_seg_data_ = grid_data; }
 
+        void SetSegmentationThreshold(int thresh_seg) { thresh_seg_ = thresh_seg; }
+
         void SetGlobalPath(DwaPath path) { global_path_ = path; }
 
         void SetPrintSummary(bool print_summary) { print_summary_ = print_summary; }
@@ -354,9 +334,6 @@ class DwaPlanner {
             state_.SetSpeed(speed);
             state_.SetAngularSpeed(speed_ang);
         }
-
-        void
-        SetMotionModel(std::string model) { model_ = model; }
 
         void
         SetHorizon(std::string horizon) { horizon_ = horizon; }
@@ -380,10 +357,6 @@ class DwaPlanner {
 
         DwaState PredictMotion(DwaState state, float v, float thetadot, float time_step);
 
-        DwaState PredictMotionSynchro(DwaState state, float speed_lin, float speed_ang, float time_step);
-
-        DwaState PredictMotionAckermann(DwaState state, float speed, float steer, float time_step);
-
         DwaTrajectory PredictTrajectory(float speed, float speed_ang);
 
         float EvaluateCostGoal(DwaTrajectory traj);
@@ -391,6 +364,8 @@ class DwaPlanner {
         float EvaluateCostHeading(DwaTrajectory traj);
 
         float EvaluateCostObstacle(DwaTrajectory traj);
+
+        float EvaluateCostSegmentation(DwaTrajectory traj);
 
         float EvaluateCostSpeed(DwaTrajectory traj);
 
@@ -465,6 +440,7 @@ class DwaPlanner {
         DwaObstacles obs_occ_;
         bool use_segmentation_;
         std::vector<signed char> grid_seg_data_;
+        int thresh_seg_;
         float w_cost_goal_;
         float w_cost_head_;
         float w_cost_speed_;

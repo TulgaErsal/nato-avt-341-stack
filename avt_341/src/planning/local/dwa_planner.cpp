@@ -108,6 +108,7 @@ DwaPlanner::Plan() {
         cost_head.Add(k, EvaluateCostHeading(traj));
         if (obs_size > 0) cost_obs.Add(k, EvaluateCostObstacle(traj));
         cost_speed.Add(k, EvaluateCostSpeed(traj));
+        if (use_segmentation_) cost_seg.Add(k, EvaluateCostSegmentation(traj));
 
         // Evaluate the optional cost terms
         // If at least one planning step was performed, use it to penalise deviations from the current path.
@@ -115,27 +116,19 @@ DwaPlanner::Plan() {
         if (has_plan_) cost_dev.Add(k, EvaluateCostDeviation(traj));
     }
 
-    // Normalise the cost terms.
-    cost_goal.Normalise();
-    cost_speed.Normalise();
-
-    // Normalise the optional cost terms.
-    if (use_segmentation_) cost_seg.Normalise();
-    if (use_global_path_) cost_path.Normalise();
-    if (has_plan_) cost_dev.Normalise();
-
     // Find the minimum of the objective function.
     // Assume the initial speed/yaw pair is optimal
     int k_min = 0;
     for (int k = 0; k < window_size; ++k) {
         float cost =
-            w_cost_goal_ * cost_goal.GetNormalisedCost(k) +
+            w_cost_goal_ * cost_goal.GetCost(k) +
             w_cost_head_ * cost_head.GetCost(k) +
-            w_cost_speed_ * cost_speed.GetNormalisedCost(k);
+            w_cost_speed_ * cost_speed.GetCost(k);
 
         if (obs_size > 0) cost += w_cost_obs_ * cost_obs.GetCost(k);
-        if (use_global_path_ > 0) cost += w_cost_global_path_ * cost_path.GetNormalisedCost(k);
-        if (has_plan_) cost += w_cost_dev_ * cost_dev.GetNormalisedCost(k);
+        if (use_segmentation_) cost += w_cost_seg_ * cost_seg.GetCost(k);
+        if (use_global_path_ > 0) cost += w_cost_global_path_ * cost_path.GetCost(k);
+        if (has_plan_) cost += w_cost_dev_ * cost_dev.GetCost(k);
 
         if (cost_min >= cost) {
             cost_min = cost;
@@ -170,56 +163,32 @@ DwaPlanner::Plan() {
                 << "\n\tYRMAX:\t"<< window.speed_ang_max_
             << "\nOptimal control >> LS: " << speeds_win_lin[i_min] << " YR: " << speeds_win_ang[j_min]
             << "\n\nNumber of obstacles: " << obs_size
-            << "\nCosts:\n\tName (Weight) [Cost] {Normalised cost}\n\t=====================================\n\tGoal cost:\t("
+            << "\nCosts:\n\tName (Weight) [Cost]\n\t=====================================\n\tGoal cost:\t("
             << std::setprecision(2) << w_cost_goal_ << ") ["
             << std::setprecision(3) << cost_goal.GetCost(k_min) << "] {"
-            << std::setprecision(2) << cost_goal.GetNormalisedCost(k_min)
             << "}\n\tHeading cost:\t("
             << std::setprecision(2) << w_cost_head_ << ") ["
             << std::setprecision(3) << cost_head.GetCost(k_min) << "] {"
-            << std::setprecision(2) << cost_head.GetNormalisedCost(k_min)
             << "}\n\tObstacle cost:\t("
             << std::setprecision(2) << w_cost_obs_ << ") ["
             << std::setprecision(3) << cost_obs.GetCost(k_min) << "] {"
-            << std::setprecision(2) << cost_obs.GetNormalisedCost(k_min)
+            << "}\n\tSegmentation cost:\t("
+            << std::setprecision(2) << w_cost_seg_ << ") ["
+            << std::setprecision(3) << cost_seg.GetCost(k_min) << "] {"
             << "}\n\tSpeed cost:\t("
             << std::setprecision(2) << w_cost_speed_ << ") ["
             << std::setprecision(3) << cost_speed.GetCost(k_min) << "] {"
-            << std::setprecision(2) << cost_speed.GetNormalisedCost(k_min)
             << "}\n\tGlobal path cost:\t("
             << std::setprecision(2) << w_cost_global_path_ << ") ["
             << std::setprecision(3) << cost_path.GetCost(k_min) << "] {"
-            << std::setprecision(2) << cost_path.GetNormalisedCost(k_min)
             << "}\n\tDeviation cost:\t("
             << std::setprecision(2) << w_cost_dev_ << ") ["
             << std::setprecision(3) << cost_dev.GetCost(k_min) << "] {"
-            << std::setprecision(2) << cost_dev.GetNormalisedCost(k_min)
             << "}\n";
     }
 }
-
 DwaState
-DwaPlanner::PredictMotion(DwaState state, float v, float thetadot, float time_step) {
-    if (model_ == "ackermann") {
-        return PredictMotionAckermann(state, v, thetadot, time_step);
-    }
-
-    return PredictMotionSynchro(state, v, thetadot, time_step);
-}
-
-DwaState
-DwaPlanner::PredictMotionSynchro(DwaState state, float v, float thetadot, float time_step) {
-    return DwaState(
-        state.GetX() + v * std::cos(state.GetYaw()) * time_step,
-        state.GetY() + v * std::sin(state.GetYaw()) * time_step,
-        state.GetYaw() + thetadot * time_step,
-        v,
-        thetadot
-    );
-}
-
-DwaState
-DwaPlanner::PredictMotionAckermann(DwaState state, float v, float steer, float time_step) {
+DwaPlanner::PredictMotion(DwaState state, float v, float steer, float time_step) {
     return DwaState(
         state.GetX() + v * std::cos(state.GetYaw()) * time_step,
         state.GetY() + v * std::sin(state.GetYaw()) * time_step,
@@ -247,6 +216,27 @@ DwaPlanner::PredictTrajectory(float speed, float speed_ang) {
     }
 
     return traj;
+}
+
+float
+DwaPlanner::EvaluateCostSegmentation(DwaTrajectory traj) {
+    float segmentation_cost = 0.0;
+    for (int k = 0; k < traj.GetNumberOfStates(); k++) {
+        int i = (traj.GetState(k).GetX() - grid_occ_origin_x_) / grid_occ_res_ - 0.5f;
+        int j = (traj.GetState(k).GetY() - grid_occ_origin_y_) / grid_occ_res_ - 0.5f;
+        if (i < 0) continue;
+        if (j < 0) continue;
+        if (i >= grid_occ_width_) continue;
+        if (j >= grid_occ_height_) continue;
+        unsigned int ndx = j * grid_occ_width_ + i;
+        int cost = (int)grid_seg_data_[ndx];
+        if (cost > thresh_seg_) {
+            segmentation_cost = 1000000000.0;
+            return segmentation_cost;
+        }
+        segmentation_cost += cost;
+    }
+    return segmentation_cost;
 }
 
 float
@@ -340,10 +330,6 @@ DwaPlanner::GetObstacles() {
 			unsigned int ndx = j * grid_occ_width_ + i;
 
 			int cost = (int)grid_occ_data_[ndx];
-
-            if (use_segmentation_) {
-                cost += grid_seg_data_[ndx];
-            }
 
 			if (cost > thresh_obs_) {
 				float d = std::hypot(

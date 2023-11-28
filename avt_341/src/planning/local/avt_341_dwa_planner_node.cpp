@@ -185,7 +185,6 @@ main(int argc, char* argv[]) {
     auto pub_ctrl_steer = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 10);
 
     // Declare and read node parameters from the ROS parameter server.
-    std::string model; node->get_parameter("~dwa_model", model, std::string("ackermann"));
     float wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72f);
     float speed_lin_min; node->get_parameter("~dwa_speed_lin_min", speed_lin_min, 0.15f);
     float speed_lin_max; node->get_parameter("~dwa_speed_lin_max", speed_lin_max, 4.0f);
@@ -214,12 +213,12 @@ main(int argc, char* argv[]) {
     float w_cost_path; node->get_parameter("~dwa_w_cost_path", w_cost_path, 0.0f);
     bool use_segmentation; node->get_parameter("~dwa_use_segmentation", use_segmentation, false);
     float w_cost_seg; node->get_parameter("~dwa_w_cost_seg", w_cost_seg, 0.0f);
+    int thresh_seg; node->get_parameter("~dwa_thresh_seg", thresh_seg, 100);
     float w_cost_dev; node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75f);
     bool print_summary; node->get_parameter("~dwa_print_summary", print_summary, false);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
     avt_341::planning::DwaPlanner planner;
-    planner.SetMotionModel(model);
     planner.SetHorizon(horizon);
     planner.SetWindowLinearSpeedMin(speed_lin_min);
     planner.SetWindowLinearSpeedMax(speed_lin_max);
@@ -239,6 +238,7 @@ main(int argc, char* argv[]) {
     planner.SetCostHeadingWeight(w_cost_head);
     planner.SetCostSpeedWeight(w_cost_speed);
     planner.SetCostObstacleWeight(w_cost_obs);
+    planner.SetCostSegmentationWeight(w_cost_seg);
     planner.SetCostGlobalPathWeight(w_cost_path);
     planner.SetCostDeviationWeight(w_cost_dev);
     planner.SetObstacleThreshold(thresh_obs);
@@ -247,6 +247,7 @@ main(int argc, char* argv[]) {
     planner.SetObstacleSearchRadius(search_radius);
     planner.SetVehicleWheelbase(wheelbase);
     planner.SetUseSegmentation(use_segmentation);
+    planner.SetSegmentationThreshold(thresh_seg);
     planner.SetUseGlobalPath(use_global_path);
     planner.SetPrintSummary(print_summary);
 
@@ -255,6 +256,7 @@ main(int argc, char* argv[]) {
 
     while (avt_341::node::ok()) {
         if (msg_path.poses.size() > 0 && rcvd_odom && msg_grid_occ.data.size() > 0) {
+            if (use_segmentation && !(msg_grid_seg.data.size() > 0)) break;
             // Update the planner with the latest information.            
             UpdateState(planner);
             UpdateGoal(planner);
