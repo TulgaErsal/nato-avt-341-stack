@@ -2,6 +2,7 @@
 	<!-- Args -->
 	<arg name="simulation_mode" default="false" doc="Set to true if the vehicle is in Unreal Engine" />
 	<arg name="waypoint_mode" default="false" doc="Set to true for waypoint following mode" />
+	<arg name="use_global_path" default="true" doc="Set to true to use global path, else local path follows points directly"/>
 	<arg name="max_speed" default="5.0" doc="Maximum speed limit for the vehicle"/>
 	<arg name="record" default="false" doc="Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"/>
 	<arg name="use_sim_time" default="false" doc="Use simulation time, usefull for running stack on recorded telemetry bag file"/>
@@ -48,7 +49,7 @@
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course - new start - dense.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/Z_Curve/z_curve_8.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->

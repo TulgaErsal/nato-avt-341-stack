@@ -24,6 +24,7 @@
   <arg name="local_planner_method" default="rcc" />                                 <!-- Local planner method. Values = ["rcc", "dwa", "pf"] -->
   <arg name="waypoint_mode" default="false"/>                                       <!-- Set to true for waypoint following mode -->
   <arg name="simulation_mode" default="false"/>                                     <!-- Set to true for UE simulation -->
+  <arg name="use_global_path" default="true"/>                                      <!-- Set to true to use global path, else local path follows points directly -->
   
   <!-- Vehicle config files  -->
   <arg name="perception_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/perception.yaml')"/>
@@ -43,7 +44,11 @@
   <!-- ********************* END OF ARGS ***********************************-->
 
   <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+
   <rosparam file="$(arg waypoints_file)" if="$(arg waypoint_mode)"/>
+  <param name="waypoints_x" value="[]" unless="$(arg waypoint_mode)"/>
+  <param name="waypoints_y" value="[]" unless="$(arg waypoint_mode)"/>
+
   <param name="robot_description" command="cat $(arg robot_description_file)" />
 
   <group if="$(eval arg('num_vehicles') > arg('veh_index'))" ns="$(eval eval(arg('vehicle_namespaces'))[arg('veh_index')] if arg('num_vehicles') > 1 or arg('namespace_single_vehicle') else '/')" >
@@ -135,7 +140,7 @@
     <node name="local_planner_node" pkg="avt_341" type="avt_341_local_planner_node" output="screen" required="true">
       <param name="display" value="$(arg display_type)" />
       <rosparam command="load" file="$(arg rcc_local_planner_params)"/>
-      <param name="use_global_path" value="false" if="$(arg waypoint_mode)"/>
+      <param name="use_global_path" value="$(arg use_global_path)"/>
     </node>
   </group>
   <group if="$(eval arg('local_planner_method') == 'dwa')">
@@ -201,6 +206,7 @@
       <arg name="local_planner_method" value="$(arg local_planner_method)" />
       <arg name="waypoint_mode" value="$(arg waypoint_mode)"/>
       <arg name="simulation_mode" value="$(arg simulation_mode)"/>
+      <arg name="use_global_path" value="$(arg use_global_path)"/>
     </include>
   </group>
 
