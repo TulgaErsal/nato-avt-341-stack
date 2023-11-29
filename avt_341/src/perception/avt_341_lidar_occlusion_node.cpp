@@ -131,7 +131,6 @@ void OcclusionMaskCallback(avt_341::msg::PointCloud2Ptr rcv_points) {
 }
 
 int main(int argc, char *argv[]) {
-
 	// Initialize the node
 	auto n = avt_341::node::init_node(argc, argv, "lidar_occlusion_node");
 
@@ -143,11 +142,15 @@ int main(int argc, char *argv[]) {
   auto points_pub = n->create_publisher<avt_341::msg::PointCloud2>("avt_341/occ_points", 1);
 
 	// handle parameters
+  bool occluded = true;
+  double timer = -1.0;
   int start_row = 0;
   int start_col = 0;
   int mask_height = 64;
   int mask_width = 512; 
-
+  
+  n->get_parameter("~occluded", occluded, true);
+  n->get_parameter("~timer", timer, -1.0);
 	n->get_parameter("~start_row", start_row, 0);
   n->get_parameter("~start_col", start_col, 0);
   n->get_parameter("~mask_height", mask_height, 64);
@@ -159,12 +162,34 @@ int main(int argc, char *argv[]) {
   //createSquareMask(0, 512, 0, 64, 1024, 64);
   //createSquareMask(0, 64, 0, 512, 64, 1024);
   createSquareMask(start_row, mask_height, start_col, mask_width, 64, 1024);
-  using_mask = true;
-  
+  if(occluded && timer < 0.001) {
+    std::cout << "Applying occlusion at startup (occluded = " << occluded << ", timer = " << timer << std::endl;
+    using_mask = true;
+  } else {
+    using_mask = false;
+  }
+  double elapsed = 0;
+  double start_time = -1.0;
   while(avt_341::node::ok()) {
     if(!points_rcvd) {
       std::cout << "No point cloud received." << std::endl;
     } else {
+      // handle timer if necessary
+      if(occluded && using_mask == false && timer > 0.0) 
+      {
+        // start timer on first points received
+        if(start_time < 0.0) {
+          start_time = n->get_now_seconds();
+        }
+        // check elapsed time
+        elapsed = n->get_now_seconds() - start_time;
+        if(elapsed > timer) {
+          // start using the mask
+          using_mask = true;
+        }
+      }
+
+      // print the contents of the lidar data structure
       if (print_contents) {
         print_contents = false;     // print once
         std::cout << "Height: " << in_points.height << ", Width: " << in_points.width << std::endl;
