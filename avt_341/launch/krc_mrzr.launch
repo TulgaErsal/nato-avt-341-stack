@@ -6,6 +6,7 @@
 	<arg name="max_speed" default="5.0" doc="Maximum speed limit for the vehicle"/>
 	<arg name="record" default="false" doc="Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"/>
 	<arg name="use_sim_time" default="false" doc="Use simulation time, usefull for running stack on recorded telemetry bag file"/>
+	<arg name="separate_camera_bag" default="true" doc="Separate camera topics into a separate bag file"/>
 
     <rosparam subst_value="true">
       map_origin_x: 7885314.3400268555
@@ -14,7 +15,7 @@
 
 	<!-- Engine Start Sense -->
 	<node name="remote_started_sense_node" pkg="mrzr_tools" type="remote_started_sense.py" unless="$(arg simulation_mode)">
-		<param name="rpm_threshold" value="1500"/>
+		<param name="rpm_threshold" value="1000"/>
 	</node>
 
 	<!-- Controller -->
@@ -34,8 +35,16 @@
 		<arg name="time_YYMMDD" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%y%m%d'))"/>
 		<arg name="time_HHMMSS" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%H%M%S'))"/>
 		<arg name="home_dir" value="$(eval eval ('_' + '_import_' + '_(\'os\')').path.expanduser('~'))"/>
-		<node pkg="rosbag" type="record" name="rosbag_record" 
-			args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_$(arg time_HHMMSS) -a" output="screen"/>
+		<group if="$(arg separate_camera_bag)">
+			<node pkg="rosbag" type="record" name="rosbag_nav_record" 
+				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_nav_$(arg time_HHMMSS) -a -x '/flir_rgb/(.*)'" output="screen"/>
+			<node pkg="rosbag" type="record" name="rosbag_flir_record" 
+				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_flir_$(arg time_HHMMSS) -e '/flir_rgb/(.*)'" output="screen"/>
+		</group>
+		<group unless="$(arg separate_camera_bag)">
+			<node pkg="rosbag" type="record" name="rosbag_record" 
+				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_$(arg time_HHMMSS) -a" output="screen"/>
+		</group>
 	</group>
 
 	<!-- Namespace Remaps -->
