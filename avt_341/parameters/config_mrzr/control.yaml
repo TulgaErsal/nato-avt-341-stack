@@ -3,7 +3,7 @@
 vehicle_wheelbase: 2.019                      # Vehicle_wheelbase.
 vehicle_max_steer_angle_degrees: 40.0         # Max steer angle in degrees.
 steering_coefficient: 3.5                     # Steering coefficient.
-vehicle_speed: 5.0                            # Vehicle_speed m/s.
+vehicle_speed: 3.0                            # Vehicle_speed m/s.
 throttle_coefficient: 1.0                     # Scale factor for the commanded steering. l.t. 1.0 will make the acceleration less agressive, g.t. 1.0 will make it more agressive
 throttle_kp: 1.1                              # proportional coeff for the PID speed controller
 throttle_ki: 0.0                              # integral coeff for the PID speed controller
