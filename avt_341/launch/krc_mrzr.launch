@@ -40,10 +40,10 @@
 		<group if="$(arg separate_camera_bag)">
 			<node pkg="rosbag" type="record" name="rosbag_nav_record" 
 				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_nav_$(arg time_HHMMSS) -a -x '/flir_rgb/(.*)|/usb_cam/(.*)'" output="screen"/>
-			<node pkg="rosbag" type="record" name="rosbag_flir_record" 
+			<node pkg="rosbag" type="record" name="rosbag_cam_record" 
 				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_cams_$(arg time_HHMMSS) -e '/flir_rgb/(.*)|/usb_cam/(.*)'" output="screen"
 				unless="$(arg compress_cameras)"/>
-			<node pkg="rosbag" type="record" name="rosbag_flir_record" 
+			<node pkg="rosbag" type="record" name="rosbag_cam_record" 
 				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_cams_$(arg time_HHMMSS) -e '/flir_rgb/(.*)/compressed(.*)|/usb_cam/(.*)/compressed(.*)'" output="screen"
 				if="$(arg compress_cameras)"/>
 		</group>
@@ -64,7 +64,7 @@
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/Z_Curve/z_curve_8.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course - new start - dense.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->
@@ -81,5 +81,6 @@
 		<arg name="local_planner_method" value="rcc" />									<!-- Local planner method. Values = ["rcc", "dwa", "pf"] -->
 		<arg name="waypoint_mode" value="$(arg waypoint_mode)"/>                        <!-- Set to true for waypoint following mode -->
 		<arg name="simulation_mode" value="$(arg simulation_mode)"/>                    <!-- Set to true for UE simulation -->
+		<arg name="use_global_path" value="$(arg use_global_path)"/>					<!-- Set to true to use global path, else local path follows points directly -->
 	</include>
 </launch>
