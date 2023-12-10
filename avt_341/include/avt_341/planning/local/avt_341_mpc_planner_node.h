@@ -53,7 +53,9 @@ std::shared_ptr<avt_341::node::NodeProxy> node;
 // --------------
 
 std::string sysimage_path;
-std::string module_path;
+std::string planner_module_path;
+std::string parameters_module_path;
+std::string models_module_path;
 bool use_terrain_adaptive;
 double t_span;
 double u_min;
@@ -72,11 +74,17 @@ jl_module_t* mpc_module = NULL;
 // Julia functions
 // ---------------
 
+/** @brief Pointer to the Julia function to plan a path. */
+jl_function_t* j_plan = NULL;
+
 /** @brief Pointer to the Julia function to set vehicle state. */
 jl_function_t* j_set_state = NULL;
 
 /** @brief Pointer to the Julia function to set the planner goal point. */
 jl_function_t* j_set_goal_point = NULL;
+
+/** @brief Pointer to the Julia function to set the planner desired heading. */
+jl_function_t* j_set_heading = NULL;
 
 /** @brief Pointer to the Julia function to set the front axle position. */
 jl_function_t* j_set_front_axle_position = NULL;
