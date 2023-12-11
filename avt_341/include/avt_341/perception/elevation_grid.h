@@ -93,7 +93,7 @@ class ElevationGrid : public CellObstacleCalculator{
         dilate_ = use_dil;
     }
 
-    avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation=false);
+    avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation=false, bool is_imaged=false);
 
     void SetCorner(float llx, float lly){
         llx_ = llx;

@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
   auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
   auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
   auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
+  auto vis_grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/vis_grid", 1);
 
   float grid_width, grid_height, visualization_range;
   n->get_parameter("~grid_width", grid_width, 200.0f);
@@ -222,6 +223,11 @@ int main(int argc, char *argv[]) {
 				grd.header.stamp = n->get_stamp();
 				grid_segmentation_pub->publish(grd);
 			}
+
+      // image grid
+      grd = grid.GetGrid(false, true);
+      grd.header.stamp = n->get_stamp();
+			vis_grid_pub->publish(grd);
 
       if(clear_method_visualize && nloops % 20 == 0){
         grid.Visualize();

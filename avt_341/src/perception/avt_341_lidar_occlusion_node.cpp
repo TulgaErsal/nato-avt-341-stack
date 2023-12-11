@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cmath>
 #include <algorithm>
 // ros includes
 #include "avt_341/node/ros_types.h"
@@ -20,8 +21,35 @@ bool mask_rcvd = false;
 bool using_mask = false;
 bool print_contents = true;
 
+std::vector<uint8_t> mask_vector;
+avt_341::msg::Image mask_image;
 
-std::vector<int> mask_vector;
+// Utility function to create a vector of spaced values
+std::vector<double> linspace(double start, double end, int num) {
+    std::vector<double> linspaced;
+
+    if (num == 0) { 
+        return linspaced; 
+    }
+    if (num == 1) {
+        linspaced.push_back(start);
+        return linspaced;
+    }
+
+    double delta = (end - start) / (num - 1);
+
+    for(int i=0; i < num-1; ++i) {
+        linspaced.push_back(start + delta * i);
+    }
+    linspaced.push_back(end); // Ensure that end is exactly end
+
+    return linspaced;
+}
+
+// Utility function to convert degrees to radians
+double deg2rad(double degrees) {
+    return degrees * M_PI / 180.0;
+}
 
 void createSquareMask(int row, int height, int col, int width, int cloud_height, int cloud_width) {
     /// row is start position for rows (height); 0 is bottom beam, height is top beam
@@ -77,7 +105,6 @@ void createSquareMask(int row, int height, int col, int width, int cloud_height,
             mask_vector[index] = 1;
         }
     }
-
 }
 
 void applyMaskToPointCloud(sensor_msgs::PointCloud2 &cloud) {
@@ -119,6 +146,102 @@ void applyMaskToPointCloud(sensor_msgs::PointCloud2 &cloud) {
     //std::cout << "Set " << count << " points x,y,z to 0" << std::endl;
 }
 
+std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVector,
+                                                  int numBeams = 64,
+                                                  int horzResolution = 1024,
+                                                  float lidarFOV = 45.0, 
+                                                  float maxRange = 100.0,   // Max range of LiDAR
+                                                  float lidarHeight = 1.8,
+                                                  int gridSize = 200, 
+                                                  int ceilingHeight = 4,
+                                                  float cellSize = 0.5) { 
+    // create voxel grid
+    int gridResolutionXY = gridSize / cellSize;
+    int gridResolutionZ = ceilingHeight / cellSize;
+    std::cout << "Creating voxel grid (" << gridResolutionXY << "x" << gridResolutionXY << "x" << gridResolutionZ << ")"<< std::endl;
+    std::vector<std::vector<std::vector<int>>> voxelGrid(gridResolutionXY, std::vector<std::vector<int>>(gridResolutionXY, std::vector<int>(gridResolutionZ, 0)));
+    
+    // create map
+    std::cout << "Creating map (" << gridResolutionXY << "x" << gridResolutionXY << ")" << std::endl;
+    std::vector<std::vector<int>> occlusionMap(gridResolutionXY, std::vector<int>(gridResolutionXY, -1));
+
+    float lidarX = (gridSize / 2) / cellSize;   // lidar is in the center of the grid
+    float lidarY = (gridSize / 2) / cellSize;
+    float lidarZ = lidarHeight;
+
+    std::vector<double> verticalAngles = linspace(-lidarFOV/2, lidarFOV/2, numBeams);   // assumes lidar FOV centered on horizon and beams evenly spaced
+    std::vector<double> horizontalAngles = linspace(0, 360, horzResolution);
+    horizontalAngles.pop_back();  /// remove the last element to avoid duplicating 0 and 360
+    
+    std::cout << "Processing " << numBeams << " beams for " << horzResolution << " angles " << std::endl;
+    int blocked = 0;
+    int blocked_beam = -1;
+    int one_time = 0;
+    int one_time_line = 0;
+    for(int beamIndex=0; beamIndex < numBeams; beamIndex++) {
+      for(int angleIndex=0; angleIndex < horzResolution; angleIndex++) {
+        double verticalAngle = verticalAngles[beamIndex];
+        double horizontalAngle = horizontalAngles[angleIndex];
+        if(occlusionVector[angleIndex * numBeams + beamIndex] == 1) {
+          // skip blocked rays
+          if(blocked_beam != beamIndex) { 
+            std::cout << beamIndex << " is blocked. Vert: " << verticalAngle << " Horz: " << horizontalAngle << std::endl;
+            blocked_beam = beamIndex;
+          }
+          blocked++;
+        } else {
+          
+          // calculate ray direction
+          double angleRad = deg2rad(horizontalAngle);
+          double zAngleRad = deg2rad(verticalAngle);
+          double dx = cos(angleRad) * cos(zAngleRad);
+          double dy = sin(angleRad) * cos(zAngleRad);
+          double dz = sin(zAngleRad);
+          if(!one_time && blocked_beam != -1) {
+            std::cout << "   Processing ray for beam " << beamIndex << "(" << verticalAngle << ") at " << angleIndex << "(" <<  horizontalAngle << ")" << std::endl;
+            std::cout << "       From: " << lidarX << ", " << lidarY << ", " << lidarZ << " " << std::endl;
+            std::cout << "       angleRad: " << angleRad << ", zAngleRad: " << zAngleRad << ", dx:" << dx << ", dy:" << dy << ", dz:" << dz << std::endl;
+            std::cout << "       gridResolutionXY: " << gridResolutionXY << ", gridResolutionZ: " << gridResolutionZ << std::endl;
+            one_time = 1;
+          }
+          for(float t=0; t <= maxRange; t+= cellSize) {
+            
+            // calculate the ray position
+            int x = static_cast<int>(lidarX + t * dx / cellSize);
+            int y = static_cast<int>(lidarY + t * dy / cellSize);
+            int z = static_cast<int>(lidarZ + t * dz / cellSize);
+            if(!one_time_line && blocked_beam != -1) {
+              std::cout << "           Step: " << t << " of " << maxRange << " at " << cellSize << " steps: " << x << "," << y <<"," << z << std::endl;
+            }
+            // check grid bounds
+            if(x >= 0 && x < gridResolutionXY && y >= 0 && y < gridResolutionXY && z >= 0 && z < gridResolutionZ) {
+              voxelGrid[x][y][z] = 1; // mark the voxel as 'seen'
+              //occlusionMap[x][y]++; // increment beams 'seeing' this column
+              occlusionMap[x][y] = 1; // set as 'seen'
+              if(!one_time_line && blocked_beam != -1) { 
+                std::cout << "             Marking voxel xyz (" << x << ", " << y << ", " << z << ") as seen." << std::endl;
+              }
+            }
+          }
+          if(!one_time_line && blocked_beam != -1) {
+             one_time_line = 1;
+          }
+        }
+      }      
+      //std::cout << "Completed beam: " << beamIndex << std::endl;
+    }  
+
+    /*  DEBUG - direct write onto the occlusion_map
+    for(int i = 50; i < 75; i++) {
+        for(int j = 25; j < 50; j++) {
+          occlusionMap[i][j] = 1;
+        }
+      }
+    */
+    std::cout << "Returning map. Blocked Rays:" << blocked << std::endl;
+    return occlusionMap;
+}
+
 void IncomingPointCloud2Callback(avt_341::msg::PointCloud2Ptr rcv_points) {
   in_points = *rcv_points;
   points_rcvd = true;
@@ -135,11 +258,12 @@ int main(int argc, char *argv[]) {
 	auto n = avt_341::node::init_node(argc, argv, "lidar_occlusion_node");
 
 	// Subscriptions
-  auto odom_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",10, IncomingPointCloud2Callback);
-  auto mask_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/occ_mask", 10, OcclusionMaskCallback);
-
+  auto odom_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 10, IncomingPointCloud2Callback);
+  
 	// Publishers
-  auto points_pub = n->create_publisher<avt_341::msg::PointCloud2>("avt_341/occ_points", 1);
+  auto points_pub = n->create_publisher<avt_341::msg::PointCloud2>("avt_341/occ_points", 10);
+  auto mask_pub = n->create_publisher<avt_341::msg::Image>("avt_341/occ_mask", 1);
+  auto mask_grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occ_mask_grid", 1); 
 
 	// handle parameters
   bool occluded = true;
@@ -161,15 +285,24 @@ int main(int argc, char *argv[]) {
 
   //createSquareMask(0, 512, 0, 64, 1024, 64);
   //createSquareMask(0, 64, 0, 512, 64, 1024);
-  createSquareMask(start_row, mask_height, start_col, mask_width, 64, 1024);
+  std::cout << "Creating mask" << std::endl;
+  createSquareMask(start_row, mask_height, start_col, mask_width, 64, 1024); 
+  std::vector<std::vector<int>> occ_mask = maskToGrid(mask_vector, 64, 1024, 45.0, 100.0, 1.8, 100, 4, 0.5); 
+  std::cout << "Converting mask to occupancy grid (" << occ_mask[0].size() << "x" << occ_mask.size() << ")" << std::endl;
+  avt_341::msg::OccupancyGrid mask_grid;
+
+  std::cout << "Checking timer..." << std::endl;
+  // check timer
   if(occluded && timer < 0.001) {
     std::cout << "Applying occlusion at startup (occluded = " << occluded << ", timer = " << timer << std::endl;
     using_mask = true;
   } else {
     using_mask = false;
   }
+
   double elapsed = 0;
   double start_time = -1.0;
+
   while(avt_341::node::ok()) {
     if(!points_rcvd) {
       std::cout << "No point cloud received." << std::endl;
@@ -189,7 +322,7 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      // print the contents of the lidar data structure
+      // print the contents of the lidar data structure on first pass
       if (print_contents) {
         print_contents = false;     // print once
         std::cout << "Height: " << in_points.height << ", Width: " << in_points.width << std::endl;
@@ -197,15 +330,41 @@ int main(int argc, char *argv[]) {
           std::cout << "Field name: " << field.name << ", Datatype: " << static_cast<int>(field.datatype) << std::endl;
         }
       }
+
+      // process points
       out_points = in_points;
       if(!using_mask) {
         std::cout << "Not using occlusion mask." << std::endl;
       } else {
         std::cout << "Applying occlusion mask." << std::endl;
         applyMaskToPointCloud(out_points);
+
+        mask_image.header.stamp = n->get_stamp();
+        mask_image.height = out_points.height;
+        mask_image.width = out_points.width;
+        mask_image.encoding = "mono8";
+        mask_image.step = mask_image.height * mask_image.width;
+        mask_image.data = mask_vector;
+        mask_pub->publish(mask_image);
+
+        mask_grid.header.stamp = n->get_stamp();
+        mask_grid.header.frame_id = "lidar";
+        mask_grid.info.resolution = 0.5;
+        mask_grid.info.width = occ_mask[0].size();
+        mask_grid.info.height = occ_mask.size();
+        mask_grid.info.origin.position.x = -50;
+        mask_grid.info.origin.position.y = -50;
+        mask_grid.info.origin.position.z = 0.0;
+        mask_grid.info.origin.orientation.w = 1.0; 
+        mask_grid.data.resize(mask_grid.info.width * mask_grid.info.height);
+        for(size_t y=0; y < occ_mask.size(); ++y) {
+          for(size_t x=0; x < occ_mask[0].size(); ++x) {
+            mask_grid.data[x + y * mask_grid.info.width] = occ_mask[y][x];
+          }
+        }
+        mask_grid_pub->publish(mask_grid);
       }
       points_pub->publish(out_points);
-
     }
     n->spin_some();
     rate.sleep();

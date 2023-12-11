@@ -5,8 +5,8 @@
     <arg name="auto_launch_rviz" value="true" />
 
     <!-- arg name="scene_file_arg" value="/mavs/data/scenes/forester_scene_less_trees_simple.json" / -->
-    <!-- occlusion_scene_maze occlusion_scene_odoa occlusion_scene_random_field occlusion_scene_slalom occlusion_scene_three_obstacles -->
-    <arg name="scene_file_arg" value="/cavs/projects/ARC/ProjectIE.02/dev/catkin_ws/src/occlusion_scenes/occlusion_scene_maze.json" />
+    <!-- occlusion_scene_simple occlusion_scene_maze occlusion_scene_odoa occlusion_scene_random_field occlusion_scene_slalom occlusion_scene_three_obstacles -->
+    <arg name="scene_file_arg" value="/cavs/projects/ARC/ProjectIE.02/dev/catkin_ws/src/occlusion_scenes/occlusion_scene_simple.json" />
     
     <arg name="vehicle_file_arg" value="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
     <arg name="robot_description_file" value="$(find avt_341)/config/avt_bot.urdf" />

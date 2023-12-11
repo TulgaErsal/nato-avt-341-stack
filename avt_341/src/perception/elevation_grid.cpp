@@ -69,22 +69,26 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
             cells[xi][yi].highest.val = h;
             cells[xi][yi].highest.age = 0.0f;
             cells[xi][yi].high = cells[xi][yi].second_highest;
+            cells[xi][yi].imaged = 100;
           }
           else if (h  > cells[xi][yi].second_highest.val){
             cells[xi][yi].second_highest.val = h;
             cells[xi][yi].second_highest.age = 0.0f;
             cells[xi][yi].high = cells[xi][yi].second_highest;
+            cells[xi][yi].imaged = 100;
           }
         }
         else{
           if (h > cells[xi][yi].high.val ) {
             cells[xi][yi].high.val = h;
             cells[xi][yi].high.age = 0.0f;
+            cells[xi][yi].imaged = 100;
           }
         }
         if (h < cells[xi][yi].low.val ) {
           cells[xi][yi].low.val = h;
           cells[xi][yi].low.age = 0.0f;
+          cells[xi][yi].imaged = 100;
         }
         if (has_segmentation_local){
           float terr_val = point_cloud.channels[0].values[i];
@@ -106,7 +110,6 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
       }
     }
   }
-
 }
 
 void ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
@@ -140,7 +143,7 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
 
 }
 
-avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
+avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation, bool is_imaged){
   avt_341::msg::OccupancyGrid grid;
   grid.header.frame_id = "map";
   grid.info.resolution = res_;
@@ -157,7 +160,13 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
 
   for (int j = 0; j < ny_; j++) {
       for (int i = 0; i < nx_; i++) {
-          grid.data[c++] = is_segmentation ? (uint8_t)(cells_[i][j].terrain) : std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
+          if(is_segmentation) {
+            grid.data[c++] = (uint8_t)(cells_[i][j].terrain);
+          } else if(is_imaged) {
+            grid.data[c++] = cells_[i][j].imaged;
+          } else {
+            grid.data[c++] = std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
+          }
       }
   }
   return grid;

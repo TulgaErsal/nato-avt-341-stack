@@ -34,8 +34,10 @@ namespace perception{
       has_dilated = false;
       dilated_val = 0;
       terrain = 0.0f;
+      imaged = -1; 
       dilated_age = 0.0f;
     }
+
     void AgeCell(float dt){
       low.age += dt;
       high.age += dt;
@@ -59,6 +61,7 @@ namespace perception{
     uint8_t dilated_val; //  = 0;
     float dilated_age;
     float terrain; //  = 0.0f;
+    int8_t imaged; // = -1;    has the cell been observed? -1 is 'unknown', 100 is imaged
   };
 
   class CellObstacleCalculator {
