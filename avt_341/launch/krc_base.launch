@@ -129,10 +129,10 @@
   </group>
 
   <!-- Global Planner -->
-  <node name="global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen" >
+  <node name="global_path_node" pkg="avt_341" type="avt_341_global_path_node" required="true" output="screen">
     <param name="display" value="$(arg display_type)" />
     <rosparam command="load" file="$(arg global_planner_params)"/>
-
+    <param name="use_global_path" value="$(arg use_global_path)"/>
   </node>
 
   <!-- Local Planner -->

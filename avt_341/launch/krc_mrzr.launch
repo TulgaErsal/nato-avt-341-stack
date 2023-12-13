@@ -64,7 +64,7 @@
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/circle_lanes_obstacle_course - new start - dense.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->

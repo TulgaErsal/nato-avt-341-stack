@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
   double local_origin_x, local_origin_y;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
-  bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint;
+  bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
   int dilation_factor;
   std::string map_topic;
@@ -149,6 +149,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
   n->get_parameter("~dilation_factor", dilation_factor, 0);
+  n->get_parameter("~use_global_path", use_global_path, true);
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -247,7 +248,8 @@ int main(int argc, char *argv[])
       ros_path.poses.clear();
       ros_path.header.frame_id = "map";
       ros_path.header.stamp = n->get_stamp();
-      path_pub->publish(ros_path);
+      if (use_global_path)
+        path_pub->publish(ros_path);
       state.data = avt_341::utils::NavStackState::NotInit;
       state_pub->publish(state);
 
@@ -330,7 +332,8 @@ int main(int argc, char *argv[])
           ros_path.poses[i].header = ros_path.header;
         }
 
-        path_pub->publish(ros_path);
+        if (use_global_path)
+          path_pub->publish(ros_path);
         waypoint_pub->publish(current_waypoints);
 
         if(debug_visualize){
