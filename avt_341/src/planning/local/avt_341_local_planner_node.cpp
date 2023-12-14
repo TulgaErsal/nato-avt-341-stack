@@ -8,6 +8,8 @@
  * 
  * \date 8/31/2020
  */
+#include <algorithm>
+#include <math.h>
 // ROS includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
@@ -147,8 +149,14 @@ int main(int argc, char *argv[]){
       float theta = avt_341::utils::GetHeadingFromOrientation(odom.pose.pose.orientation);
       avt_341::planning::CurveInfo ci = path.GetCurvatureAndAngle(s);
 
-      planner.GeneratePaths(num_paths, s, rho_start, theta - ci.theta, s_lookahead, max_steer_angle, vehicle_width);
+      // Fix to bug in curvature when heading west
+      float d_theta = theta - ci.theta;
+      d_theta += (d_theta>M_PI) ? -2.0*M_PI : (d_theta<-M_PI) ? 2.0*M_PI : 0.0;
+      
+      planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, max_steer_angle, vehicle_width);
       planner.SetCenterline(path);
+
+      std::cout << "data: " << d_theta << "," << theta << "," << ci.theta << std::endl;
   
       // calculate bounds around the vehicle to limit grid dilation to space 10m behind and path_look_ahead distance in front of the vehicle
       float veh_heading_x = cos(theta);

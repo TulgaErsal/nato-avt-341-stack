@@ -264,7 +264,10 @@ CurveInfo Path::GetCurvatureAndAngle(float s) {
 		float w1 = 1.0f / d1;
 		float w = w0 + w1;
 		ca.curvature = (w0*curvature_[seg.id] + w1 * curvature_[seg.id + 1]) / w;
-		ca.theta = (w0*theta_[seg.id] + w1 * theta_[seg.id + 1]) / w;
+		//ca.theta = (w0*theta_[seg.id] + w1 * theta_[seg.id + 1]) / w;
+		float x_sum = (cos(theta_[seg.id]) * w0 + cos(theta_[seg.id + 1]) * w1) / w;
+		float y_sum = (sin(theta_[seg.id]) * w0 + sin(theta_[seg.id + 1]) * w1) / w;
+		ca.theta = atan2(y_sum, x_sum);
 	}
 	return ca;
 }
