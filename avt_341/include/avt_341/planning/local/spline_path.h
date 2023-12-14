@@ -12,6 +12,7 @@
 #define SPLINE_PATH_H
 
 #include <vector>
+#include <cmath>
 #include "avt_341/avt_341_utils.h"
 
 namespace avt_341 {
