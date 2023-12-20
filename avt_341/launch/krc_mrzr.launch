@@ -21,13 +21,18 @@
 	</node>
 
 	<!-- Controller -->
-	<include file="$(find can_controller)/launch/can_joystick.launch" unless="$(arg simulation_mode)">
-		<arg name="controller_can" default="can1" />
-	</include>
+	<group unless="$(arg simulation_mode)">
+		<!--include file="$(find can_controller)/launch/can_joystick.launch">
+			<arg name="controller_can" default="can1" />
+		</include-->
+		<node pkg="mrzr_tools" type="sbus_joystick_driver.py" name="sbus_joystick_driver_node">
+			<param name="port" value="/dev/ttyUSB0"/>
+		</node>
+	</group>
 	<arg name="joy_topic_xbox" value="/joy"/>
 	<arg name="joy_config_xbox" value="$(find can_controller)/config/joystick_xbox.yaml"/>
 	<arg name="joy_topic_can" value="/joy"/>
-	<arg name="joy_config_can" value="$(find can_controller)/config/joystick_can.yaml"/>
+	<arg name="joy_config_can" value="$(find can_controller)/config/joystick_herelink.yaml"/>
 	<arg name="joy_topic" value="$(eval arg('joy_topic_xbox') if arg('simulation_mode') else arg('joy_topic_can'))"/>
 	<arg name="joy_config" value="$(eval arg('joy_config_xbox') if arg('simulation_mode') else arg('joy_config_can'))"/>
 	<include file="$(find can_controller)/launch/stack_controller.launch">
