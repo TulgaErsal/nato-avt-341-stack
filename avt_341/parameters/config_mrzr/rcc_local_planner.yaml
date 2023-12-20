@@ -8,7 +8,7 @@ output_path_step: 0.5                   # Output path step size.
 path_integration_step: 0.35             # Path integration step size.
 dilation_factor: 1                      # Dilation to costmap to apply during local planning only.
 w_c: 0.0                                # w_c conformability (minimize curvature) weighting factor
-w_s: 0.4                                # w_s static safety (avoid collisions) weighting factor
+w_s: 0.6                                # w_s static safety (avoid collisions) weighting factor
 w_d: 0.0                                # w_d dynamic safety weighting factor
 w_r: 0.2                                # w_r rho (minimize rho offset) weighting factor
 w_t: 0.0                                # w_t segmentation cost weight
@@ -18,5 +18,5 @@ use_global_path: True                   # Whether local planner should use path 
 use_blend: True                         # Whether or not to apply blending with adjacent candidate paths during planning
 cost_vis: 'final'                       # What type of cost to display on candidate paths: none | final | components | all
 cost_vis_text_size: 2.0                 # Cost vis text size
-ignore_coll_before_dist: 0.0            # Distance before which collisions are ignored in local planner candidate paths.
+ignore_coll_before_dist: 3.0            # Distance before which collisions are ignored in local planner candidate paths.
 map_topic: costmap_node/costmap/costmap # Occupancy grid topic

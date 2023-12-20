@@ -155,8 +155,6 @@ int main(int argc, char *argv[]){
       
       planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, max_steer_angle, vehicle_width);
       planner.SetCenterline(path);
-
-      std::cout << "data: " << d_theta << "," << theta << "," << ci.theta << std::endl;
   
       // calculate bounds around the vehicle to limit grid dilation to space 10m behind and path_look_ahead distance in front of the vehicle
       float veh_heading_x = cos(theta);

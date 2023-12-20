@@ -11,6 +11,7 @@
  * \date 7/13/2018
  */
 
+#include <math.h>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 //avt_341 includes
@@ -114,7 +115,7 @@ int main(int argc, char *argv[]){
   bool use_feed_forward;
 	float wheelbase, steer_angle, vehicle_speed, steering_coeff, throttle_coeff, time_to_max_brake;
   float throttle_kp, throttle_ki, throttle_kd, max_desired_lateral_g;
-  bool use_speed_controller;
+  bool use_speed_controller, output_steering_percent;
 	std::string display;
 	n->get_parameter("~vehicle_wheelbase", wheelbase, 2.6f);
   n->get_parameter("~vehicle_max_steer_angle_degrees", steer_angle, 25.0f);
@@ -144,6 +145,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~skid_kt", skid_kt, 1.0f);
   
   n->get_parameter("~use_speed_controller", use_speed_controller, true);
+  n->get_parameter("~output_steering_percent", output_steering_percent, true);
 
   if (skid_steered){
     controller.IsSkidSteered(true);
@@ -217,11 +219,22 @@ int main(int argc, char *argv[]){
       }
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);
-      if (!use_speed_controller && control_msg.poses.size() > 1)
+      if (!use_speed_controller)
       {
         // publish speed/steering setpoint for external speed controller
         dc.linear.x = desired_velocity;
         dc.linear.y = 0.0;
+      }
+      if (!output_steering_percent)
+      {
+        // Covert normalized steering to angle in radians
+        dc.angular.z = dc.angular.z * steer_angle * M_PI / 180.0;
+      }
+      if (control_msg.poses.size() <= 1)
+      {
+        dc.linear.x = 0.0;
+        dc.linear.y = 0.0;
+        dc.angular.z = 0.0;
       }
     }
     else if (current_run_state==-1 || current_run_state==1){

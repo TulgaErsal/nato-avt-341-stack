@@ -21,11 +21,22 @@
 	</node>
 
 	<!-- Controller -->
+	<include file="$(find can_controller)/launch/can_joystick.launch" unless="$(arg simulation_mode)">
+		<arg name="controller_can" default="can1" />
+	</include>
+	<group if="$(arg simulation_mode)">
+		<arg name="joy_topic" value="/joy"/>
+		<arg name="joy_config" value="$(find can_controller)/config/joystick_xbox.yaml"/>
+	</group>
+	<group unless="$(arg simulation_mode)">
+		<arg name="joy_topic" value="/joy"/>
+		<arg name="joy_config" value="$(find can_controller)/config/joystick_can.yaml"/>
+	</group>
 	<include file="$(find can_controller)/launch/stack_controller.launch">
         <arg name="max_speed" value="$(arg max_speed)" />
 		<arg name="mode" value="0"/>
-		<arg name="is_can_controller" value="$(eval not arg('simulation_mode'))"/>
-        <arg name="controller_can" default="can1" />
+		<arg name="joy_topic" value="$(arg joy_topic)"/>
+        <arg name="joy_config" value="$(arg joy_config)" />
 		<arg name="enable_sensors" value="false"/>
         <arg name="ouster_hostname" default="os-122223002379.local" />
 		<arg name="ns" value="/" />
@@ -64,7 +75,7 @@
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
 		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
-		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml" />  <!-- Path to waypoint file to use -->
+		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/side_slope.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
 		<arg name="robot_description_veh2_file" value="" />                             <!-- URDF robot description contents for vehicle 2 -->
 		<arg name="robot_description_veh3_file" value="" />                             <!-- URDF robot description contents for vehicle 3 -->
