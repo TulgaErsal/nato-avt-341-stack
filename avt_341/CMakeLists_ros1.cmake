@@ -60,6 +60,17 @@ link_directories(
   ${PCL_LIBRARY_DIRS}
 )
 
+
+add_executable(avt_341_proj_visibility_node
+  src/perception/avt_341_proj_visibility_node.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(avt_341_proj_visibility_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(avt_341_proj_visibility_node
+  ${catkin_LIBRARIES}
+)
+
+
 add_executable(avt_341_lidar_occlusion_node
   src/perception/avt_341_lidar_occlusion_node.cpp
   src/node/node_proxy.cpp

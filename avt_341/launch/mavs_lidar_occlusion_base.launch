@@ -56,6 +56,10 @@
     <param name="mask_width" value="$(arg occlusion_mask_width)" />
   </node>
 
+  <node name="proj_vis_node" pkg="avt_341" type="avt_341_proj_visibility_node" required="true" output="screen">
+    
+  </node>
+
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
     <remap from="avt_341/points" to="avt_341/occ_points" />
