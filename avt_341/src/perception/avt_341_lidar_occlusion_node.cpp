@@ -173,7 +173,8 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
     std::vector<double> horizontalAngles = linspace(0, 360, horzResolution);
     horizontalAngles.pop_back();  /// remove the last element to avoid duplicating 0 and 360
     
-    std::cout << "Processing " << numBeams << " beams for " << horzResolution << " angles " << std::endl;
+    std::cout << "Processing " << numBeams << " beams with " << horzResolution << " horizontal resolution (samples per 360 deg)" << std::endl;
+
     int blocked = 0;
     int blocked_beam = -1;
     int one_time = 0;
@@ -182,21 +183,23 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
       for(int angleIndex=0; angleIndex < horzResolution; angleIndex++) {
         double verticalAngle = verticalAngles[beamIndex];
         double horizontalAngle = horizontalAngles[angleIndex];
+        // Is the beam blocked by the mask? If so, skip
         if(occlusionVector[angleIndex * numBeams + beamIndex] == 1) {
-          // skip blocked rays
+          // Report blocked beams (only once per beam index - not really useful)
           if(blocked_beam != beamIndex) { 
             std::cout << beamIndex << " is blocked. Vert: " << verticalAngle << " Horz: " << horizontalAngle << std::endl;
             blocked_beam = beamIndex;
           }
           blocked++;
-        } else {
-          
-          // calculate ray direction
+        } else {          
+          // calculate which cells the ray intersects 
+          // calculate ray direction and dx, dy, dz
           double angleRad = deg2rad(horizontalAngle);
           double zAngleRad = deg2rad(verticalAngle);
           double dx = cos(angleRad) * cos(zAngleRad);
           double dy = sin(angleRad) * cos(zAngleRad);
           double dz = sin(zAngleRad);
+          // Report the processing data for the first blocked beam we encounter - just gives us some sample output
           if(!one_time && blocked_beam != -1) {
             std::cout << "   Processing ray for beam " << beamIndex << "(" << verticalAngle << ") at " << angleIndex << "(" <<  horizontalAngle << ")" << std::endl;
             std::cout << "       From: " << lidarX << ", " << lidarY << ", " << lidarZ << " " << std::endl;
@@ -204,16 +207,34 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
             std::cout << "       gridResolutionXY: " << gridResolutionXY << ", gridResolutionZ: " << gridResolutionZ << std::endl;
             one_time = 1;
           }
+          // step along the ray in cell size steps - should probably step along the x in cell size steps and apply the same t 
+          // to the other axes - this doesn't sample the center of each cell
+
+          // rotate the dx, dy
+          double tdx = dy;
+          double tdy = -dx; 
+
           for(float t=0; t <= maxRange; t+= cellSize) {
-            
             // calculate the ray position
             int x = static_cast<int>(lidarX + t * dx / cellSize);
             int y = static_cast<int>(lidarY + t * dy / cellSize);
             int z = static_cast<int>(lidarZ + t * dz / cellSize);
+
+            // rotate x,y to match occupancy grid coordinate space
+            int transformedX = static_cast<int>(lidarX + t * tdx / cellSize);
+            int transformedY = static_cast<int>(lidarY + t * tdy / cellSize);
+            //int gridX = transformedX + GRID_HEIGHT / 2; 
+            //int gridY = transformedY + GRID_WIDTH / 2;
+
+            // Report the step information
             if(!one_time_line && blocked_beam != -1) {
-              std::cout << "           Step: " << t << " of " << maxRange << " at " << cellSize << " steps: " << x << "," << y <<"," << z << std::endl;
+              std::cout << "           Step: " << t << " of " << maxRange << " at " << cellSize << " steps. Grid position: " << x << "," << y <<"," << z << ". Transformed position: " << transformedX << "," << transformedY <<"," << z <<  std::endl;
+              //std::cout << "           Step: " << t << " of " << maxRange << " at " << cellSize << " steps. Grid position: " << x << "," << y <<"," << z << std::endl;
             }
+            x = transformedX;
+            y = transformedY;
             // check grid bounds
+            // possible optimization? We can stop checking once the ray passes outside of the grid resolution
             if(x >= 0 && x < gridResolutionXY && y >= 0 && y < gridResolutionXY && z >= 0 && z < gridResolutionZ) {
               voxelGrid[x][y][z] = 1; // mark the voxel as 'seen'
               //occlusionMap[x][y]++; // increment beams 'seeing' this column
@@ -238,6 +259,8 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
         }
       }
     */
+
+    
     std::cout << "Returning map. Blocked Rays:" << blocked << std::endl;
     return occlusionMap;
 }
