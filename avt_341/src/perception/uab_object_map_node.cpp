@@ -7,7 +7,7 @@
 #include <array>
 #include <math.h>
 
-const uint8_t COSTMAP_DEFAULT_VAL = 50;
+const float MATLAB_COSTMAP_DEFAULT_VAL = 0.5;
 
 avt_341::msg::Odometry current_pose;
 bool odom_received = false;
@@ -112,7 +112,7 @@ std::vector<int8_t> GetCostmapFromMatlab(float width,
     mwArray useProbabilisticGrid(true);
 
     //output obstacle map or terrain map
-    mwArray obstacleMap(false); //terrain map
+    mwArray obstacleMap(true); //obstacle map
 
     try
     {
@@ -170,8 +170,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
     grid.info.origin.orientation.z = 0.0;
-    std::vector<int8_t> initVals(width * height, COSTMAP_DEFAULT_VAL);
-    grid.data = initVals;
+    grid.data.resize(width * height);
 }
 
 bool reset_called = false;
@@ -183,14 +182,13 @@ void ResetCallback(avt_341::msg::StringPtr msg){
 
 int main(int argc, char *argv[])
 {
-    auto node = avt_341::node::init_node(argc, argv, "uab_perception_node");
+    auto node = avt_341::node::init_node(argc, argv, "uab_object_map_node");
 
     auto odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
     auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
     auto img_sub = node->create_subscription<avt_341::msg::Image>("camera/rgb/image_raw", 10, ImageCallback);
+    auto occ_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-    
-    auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
     float width;
@@ -259,7 +257,7 @@ int main(int argc, char *argv[])
                 grid.data[i] = localGrid[c++];
             }
 
-            seg_grid_pub->publish(grid);
+            occ_grid_pub->publish(grid);
         }
         node->spin_some();
         rate.sleep();

@@ -110,7 +110,8 @@ add_executable(avt_341_comm_node
 ament_target_dependencies(avt_341_comm_node ${dependencies})
 
 IF (WIN32 OR WIN64)
-    find_package(Boost REQUIRED)
+    set(Boost_USE_STATIC_LIBS ON)
+    find_package(Boost REQUIRED COMPONENTS system date_time regex)
     include_directories(${Boost_INCLUDE_DIRS})
     target_link_directories(avt_341_comm_node PRIVATE $ENV{BOOST_LIBRARYDIR})
 endif()
@@ -231,32 +232,45 @@ add_executable(avt_341_global_segmentation_grid_node
 ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
 
 if (WIN32 OR WIN64)
-# this should point to the installation location of MATLAB Runtime
 find_package(Matlab)
 
  if (Matlab_FOUND)
-         set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-         include_directories(
-                 include
-                 ${OpenCV_INCLUDE_DIRS}
-                 ${Matlab_INCLUDE_DIRS}
-         )
-         add_executable(uab_perception_node
-                 src/perception/uab_perception_node.cpp
-                 src/node/node_proxy.cpp
-         )
-         ament_target_dependencies(uab_perception_node ${dependencies})
-         target_link_libraries(uab_perception_node
-                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
-                 ${Matlab_MCLMCRRT_LIB}
-         )
-         install(FILES
-                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll
-                 DESTINATION lib/${PROJECT_NAME})
-         install(TARGETS
-                 uab_perception_node
-                 EXPORT export_${PROJECT_NAME}
-                 DESTINATION lib/${PROJECT_NAME})
+        # this should point to the installation location of MATLAB Runtime
+        set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+        set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+        include_directories(
+                include
+                ${OpenCV_INCLUDE_DIRS}
+                ${Matlab_INCLUDE_DIRS}
+        )
+        
+        add_executable(uab_perception_node
+                src/perception/uab_perception_node.cpp
+                src/node/node_proxy.cpp
+        )
+        ament_target_dependencies(uab_perception_node ${dependencies})
+        target_link_libraries(uab_perception_node
+                ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
+                ${Matlab_MCLMCRRT_LIB}
+        )
+         add_executable(uab_object_map_node
+                src/perception/uab_object_map_node.cpp
+                src/node/node_proxy.cpp
+        )
+        ament_target_dependencies(uab_object_map_node ${dependencies})
+        target_link_libraries(uab_object_map_node
+                ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
+                ${Matlab_MCLMCRRT_LIB}
+        )
+
+        install(FILES
+                ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll
+                DESTINATION lib/${PROJECT_NAME})
+        install(TARGETS
+                uab_perception_node
+                uab_object_map_node
+                EXPORT export_${PROJECT_NAME}
+                DESTINATION lib/${PROJECT_NAME})
  endif()
 
 endif()
