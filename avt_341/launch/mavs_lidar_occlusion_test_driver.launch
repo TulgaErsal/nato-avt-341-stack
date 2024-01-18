@@ -1,0 +1,89 @@
+<!-- based on mavs_example.launch - branched on 11.29.2023 -->
+
+<launch>
+
+  <param name="/use_sim_time" value="false" />
+  <arg name="display" default="rviz" />
+  <arg name="auto_launch_rviz" default="true" />
+  <arg name="use_mpc" default="false" doc="Local planner - Use MPC local planner instead of road centerline constrained splines."/>
+  <arg name="waypoints_file" default="$(find avt_341)/config/waypoints.yaml" />
+  <arg name="scene_file_arg" default="/mavs/data/scenes/odoa_scene_with_trees.json" />
+  <arg name="vehicle_file_arg" default="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
+    
+  <arg name="robot_description_file" default="" />
+  <arg name="occluded_lidar" default="true" />
+  <arg name="occlusion_timer" default="-1" />
+  <arg name="occlusion_start_row" default="0" />
+  <arg name="occlusion_start_col" default="0" />
+  <arg name="occlusion_mask_height" default="64" />
+  <arg name="occlusion_mask_width" default="64" />
+
+  <rosparam file="$(arg waypoints_file)" />
+
+  <param name="robot_description" command="cat $(arg robot_description_file)" />
+
+  <group if="$(eval env('ROS_DISTRO') =='noetic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  </group>
+  <group if="$(eval env('ROS_DISTRO') =='melodic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  </group>
+  <group if="$(eval env('ROS_DISTRO') =='lunar')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+  </group>
+  <group if="$(eval env('ROS_DISTRO') =='kinetic')">
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+  </group>
+
+  <node pkg="tf"  name="static_transform_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10" />
+  <node name="state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node" />
+
+  <node name="lidar_occlusion_node" pkg="avt_341" type="avt_341_lidar_occlusion_node" required="true" output="screen">
+    <param name="occluded" value="$(arg occluded_lidar)" />
+    <param name="timer" value="$(arg occlusion_timer)" />
+    <param name="start_row" value="$(arg occlusion_start_row)" />
+    <param name="start_col" value="$(arg occlusion_start_col)" />
+    <param name="mask_height" value="$(arg occlusion_mask_height)" />
+    <param name="mask_width" value="$(arg occlusion_mask_width)" />
+  </node>
+
+  <node name="proj_vis_node" pkg="avt_341" type="avt_341_proj_visibility_node" required="true" output="screen">
+    
+  </node>
+
+  <!-- Lidar perception algorithms  -->
+  <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
+    <remap from="avt_341/points" to="avt_341/occ_points" />
+    <param name="use_elevation" value="false" />
+    <param name="slope_threshold" value="2.5" />
+    <param name="grid_height" value="120.0" />
+    <param name="grid_width" value="120.0" />
+    <param name="stitch_lidar_points" value="true"/>
+    <param name="filter_highest_lidar" value="false"/>
+    <param name="time_register_window" value="0.015" />
+    <param name="grid_llx" value="-60.0" />
+    <param name="grid_lly" value="-60.0" />
+    <param name="grid_res" value="0.25" />
+    <param name="overhead_clearance" value="7.0" />
+    <param name="warmup_time" value="5.0" />
+    <param name="use_registered" value="true" />
+    <param name="display" value="$(arg display)" />
+    <!-- <param name="grid_dilate" value="false"/>
+    <param name="max_point_age" value="0.0"/> -->
+  </node>
+
+  <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
+
+  <include file="$(find mavs_ros)/launch/mavs_sim.launch">
+    <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
+    <arg name="point_cloud_topic_arg" default="avt_341/points" />
+    <arg name="odometry_topic_arg" default="avt_341/odometry" />
+    <arg name="scene_file_arg" value="$(arg scene_file_arg)" />
+    <arg name="vehicle_file_arg" value="$(arg vehicle_file_arg)" />
+  </include>
+
+  <group if="$(eval arg('display') == 'rviz' and arg('auto_launch_rviz'))">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
+  </group>
+
+</launch>

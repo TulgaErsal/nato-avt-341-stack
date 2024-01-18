@@ -113,8 +113,8 @@ void applyMaskToPointCloud(sensor_msgs::PointCloud2 &cloud) {
     sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
     sensor_msgs::PointCloud2Iterator<float> iter_intensity(cloud, "intensity");
     int count = 0;
-    std::cout << "Point Cloud Height: " << cloud.height << " Width: " << cloud.width << " Size: " << cloud.height * cloud.width << std::endl;
-    std::cout << "Mask Size: " << mask_vector.size() << std::endl;
+    //std::cout << "Point Cloud Height: " << cloud.height << " Width: " << cloud.width << " Size: " << cloud.height * cloud.width << std::endl;
+    //std::cout << "Mask Size: " << mask_vector.size() << std::endl;
 
     int row = 0;
     int col = 0;
@@ -158,11 +158,11 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
     // create voxel grid
     int gridResolutionXY = gridSize / cellSize;
     int gridResolutionZ = ceilingHeight / cellSize;
-    std::cout << "Creating voxel grid (" << gridResolutionXY << "x" << gridResolutionXY << "x" << gridResolutionZ << ")"<< std::endl;
+   // std::cout << "Creating voxel grid (" << gridResolutionXY << "x" << gridResolutionXY << "x" << gridResolutionZ << ")"<< std::endl;
     std::vector<std::vector<std::vector<int>>> voxelGrid(gridResolutionXY, std::vector<std::vector<int>>(gridResolutionXY, std::vector<int>(gridResolutionZ, 0)));
     
     // create map
-    std::cout << "Creating map (" << gridResolutionXY << "x" << gridResolutionXY << ")" << std::endl;
+   // std::cout << "Creating map (" << gridResolutionXY << "x" << gridResolutionXY << ")" << std::endl;
     std::vector<std::vector<int>> occlusionMap(gridResolutionXY, std::vector<int>(gridResolutionXY, -1));
 
     float lidarX = (gridSize / 2) / cellSize;   // lidar is in the center of the grid
@@ -173,7 +173,7 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
     std::vector<double> horizontalAngles = linspace(0, 360, horzResolution);
     horizontalAngles.pop_back();  /// remove the last element to avoid duplicating 0 and 360
     
-    std::cout << "Processing " << numBeams << " beams with " << horzResolution << " horizontal resolution (samples per 360 deg)" << std::endl;
+    //std::cout << "Processing " << numBeams << " beams with " << horzResolution << " horizontal resolution (samples per 360 deg)" << std::endl;
 
     int blocked = 0;
     int blocked_beam = -1;
@@ -187,7 +187,7 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
         if(occlusionVector[angleIndex * numBeams + beamIndex] == 1) {
           // Report blocked beams (only once per beam index - not really useful)
           if(blocked_beam != beamIndex) { 
-            std::cout << beamIndex << " is blocked. Vert: " << verticalAngle << " Horz: " << horizontalAngle << std::endl;
+           // std::cout << beamIndex << " is blocked. Vert: " << verticalAngle << " Horz: " << horizontalAngle << std::endl;
             blocked_beam = beamIndex;
           }
           blocked++;
@@ -261,7 +261,7 @@ std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVe
     */
 
     
-    std::cout << "Returning map. Blocked Rays:" << blocked << std::endl;
+    //std::cout << "Returning map. Blocked Rays:" << blocked << std::endl;
     return occlusionMap;
 }
 
@@ -357,9 +357,9 @@ int main(int argc, char *argv[]) {
       // process points
       out_points = in_points;
       if(!using_mask) {
-        std::cout << "Not using occlusion mask." << std::endl;
+        //std::cout << "Not using occlusion mask." << std::endl;
       } else {
-        std::cout << "Applying occlusion mask." << std::endl;
+        //std::cout << "Applying occlusion mask." << std::endl;
         applyMaskToPointCloud(out_points);
 
         mask_image.header.stamp = n->get_stamp();
@@ -385,6 +385,7 @@ int main(int argc, char *argv[]) {
             mask_grid.data[x + y * mask_grid.info.width] = occ_mask[y][x];
           }
         }
+        std::cout << "Publishing Mask Grid" << std::endl;
         mask_grid_pub->publish(mask_grid);
       }
       points_pub->publish(out_points);
