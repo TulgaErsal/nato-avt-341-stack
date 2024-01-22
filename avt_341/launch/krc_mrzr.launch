@@ -5,10 +5,14 @@
 	<arg name="use_global_path" default="true" doc="Set to true to use global path, else local path follows points directly"/>
 	<arg name="max_speed" default="5.0" doc="Maximum speed limit for the vehicle"/>
 	<arg name="record" default="false" doc="Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"/>
+	<arg name="record_select_topic" default="false" doc="Record only topics defined in 'record_topics'"/>
+	<arg name="record_topics" default="/cmd_vel /vectornav/GPS /mrzr/mrzr_velocity" doc="Topics to record as a space separated list (only for record_select_topic=true)"/>
 	<arg name="use_sim_time" default="false" doc="Use simulation time, usefull for running stack on recorded telemetry bag file"/>
 	<arg name="separate_camera_bag" default="true" doc="Separate camera topics into a separate bag file"/>
 	<arg name="compress_cameras" default="true" doc="Only save compressed camera topics (only for separate_camera_bag=true)"/>
 	<arg name="disable_sensor_drivers" default="false" doc="Disable sensor drivers from launching. Drivers are already disabled if simulation_mode is set to true."/>
+	<arg name="enable_joystick" default="true" doc="Enable the stack controller joystick. WARNING: This will enable the avt-341 stack to publish directly to /cmd_vel"/>
+	<arg name="auto_launch_rviz" default="true" doc="Automatically launch rviz"/>
 
     <rosparam subst_value="true">
       map_origin_x: 7885314.3400268555
@@ -35,7 +39,7 @@
 	<arg name="joy_config_can" value="$(find can_controller)/config/joystick_herelink.yaml"/>
 	<arg name="joy_topic" value="$(eval arg('joy_topic_xbox') if arg('simulation_mode') else arg('joy_topic_can'))"/>
 	<arg name="joy_config" value="$(eval arg('joy_config_xbox') if arg('simulation_mode') else arg('joy_config_can'))"/>
-	<include file="$(find can_controller)/launch/stack_controller.launch">
+	<include file="$(find can_controller)/launch/stack_controller.launch" if="$(arg enable_joystick)">
         <arg name="max_speed" value="$(arg max_speed)" />
 		<arg name="mode" value="0"/>
 		<arg name="joy_topic" value="$(arg joy_topic)"/>
@@ -51,19 +55,25 @@
 		<arg name="time_YYMMDD" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%y%m%d'))"/>
 		<arg name="time_HHMMSS" value="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%H%M%S'))"/>
 		<arg name="home_dir" value="$(eval eval ('_' + '_import_' + '_(\'os\')').path.expanduser('~'))"/>
-		<group if="$(arg separate_camera_bag)">
-			<node pkg="rosbag" type="record" name="rosbag_nav_record" 
-				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_nav_$(arg time_HHMMSS) -a -x '/flir_rgb/(.*)|/usb_cam/(.*)'" output="screen"/>
-			<node pkg="rosbag" type="record" name="rosbag_cam_record" 
-				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_cams_$(arg time_HHMMSS) -e '/flir_rgb/(.*)|/usb_cam/(.*)'" output="screen"
-				unless="$(arg compress_cameras)"/>
-			<node pkg="rosbag" type="record" name="rosbag_cam_record" 
-				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_cams_$(arg time_HHMMSS) -e '/flir_rgb/(.*)/compressed(.*)|/usb_cam/(.*)/compressed(.*)'" output="screen"
-				if="$(arg compress_cameras)"/>
+		<group if="$(arg record_select_topic)">
+			<node pkg="rosbag" type="record" name="rosbag_nav_record"
+            	args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_nav_$(arg time_HHMMSS) $(arg record_topics)" output="screen"/>
 		</group>
-		<group unless="$(arg separate_camera_bag)">
-			<node pkg="rosbag" type="record" name="rosbag_record" 
-				args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_$(arg time_HHMMSS) -a" output="screen"/>
+		<group unless="$(arg record_select_topic)">
+			<group if="$(arg separate_camera_bag)">
+				<node pkg="rosbag" type="record" name="rosbag_nav_record" 
+					args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_nav_$(arg time_HHMMSS) -a -x '/flir_rgb/(.*)|/usb_cam/(.*)'" output="screen"/>
+				<node pkg="rosbag" type="record" name="rosbag_cam_record" 
+					args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_cams_$(arg time_HHMMSS) -e '/flir_rgb/(.*)|/usb_cam/(.*)'" output="screen"
+					unless="$(arg compress_cameras)"/>
+				<node pkg="rosbag" type="record" name="rosbag_cam_record" 
+					args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_cams_$(arg time_HHMMSS) -e '/flir_rgb/(.*)/compressed(.*)|/usb_cam/(.*)/compressed(.*)'" output="screen"
+					if="$(arg compress_cameras)"/>
+			</group>
+			<group unless="$(arg separate_camera_bag)">
+				<node pkg="rosbag" type="record" name="rosbag_record" 
+					args="record -O $(arg home_dir)/avt_341_data/$(arg time_YYMMDD)_MRZR_AVT-341_$(arg time_HHMMSS) -a" output="screen"/>
+			</group>
 		</group>
 	</group>
 
@@ -76,7 +86,7 @@
 	<!-- NATO AVT-341 Stack -->
 	<include file="$(find avt_341)/launch/krc_base.launch">
 		<arg name="use_sim_time" value="$(arg use_sim_time)" />                         <!-- Use simulation time (mainly for rosbag data replay) -->
-		<arg name="auto_launch_rviz" value="true" />                                    <!-- Automatically launch rviz display window -->
+		<arg name="auto_launch_rviz" value="$(arg auto_launch_rviz)" />                	<!-- Automatically launch rviz display window -->
 		<arg name="display_type" value="rviz" />                                        <!-- Type of display method to use. Values = [rviz, image] -->
 		<arg name="waypoints_file" value="$(find avt_341)/config/krc_VDA_waypoints/side_slope/dense.yaml" />  <!-- Path to waypoint file to use -->
 		<arg name="robot_description_file" value="$(find avt_341)/config/MRZR.urdf" />  <!-- URDF robot description contents -->
