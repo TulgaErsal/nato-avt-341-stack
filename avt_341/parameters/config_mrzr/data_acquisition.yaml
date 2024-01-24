@@ -1,0 +1,7 @@
+# Data Acquisition
+# ======================================================================================================================
+rate: 30                              # Data aquisition rate [Hz]
+world_frame: 'nad83'                  # World coordinate system reference frame
+map_frame: 'map'                      # Global map reference frame
+vehicle_cg_frame: 'mrzr/vbox_link'    # Vehicle center-of-gravity reference frame
+velocity_averaging_window: 0.5        # Time window to use for CG velocity estimation [sec]

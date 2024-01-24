@@ -309,6 +309,16 @@ target_link_libraries(avt_341_lidar_obstacle_detector_node
   ${PROJECT_NAME}
 )
 
+# DAQ
+add_executable(data_acquisition_node
+  src/daq/data_acquisition_node.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(data_acquisition_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(data_acquisition_node
+  ${catkin_LIBRARIES}
+)
+
 set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
@@ -361,6 +371,7 @@ avt_341_comm_publisher_node
 avt_341_mission_manager_node
 avt_341_formation_control_node
 avt_341_test_formation_control_node
+data_acquisition_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )

@@ -9,12 +9,16 @@
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
 
+#include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Point32.h"
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "geometry_msgs/Transform.h"
+#include "geometry_msgs/Vector3.h"
+#include "geometry_msgs/AccelStamped.h"
 
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Path.h"
@@ -49,6 +53,9 @@ namespace avt_341 {
         using JointState = sensor_msgs::JointState;
         using JointStatePtr = const sensor_msgs::JointState::ConstPtr &;
 
+        using TwistStamped = geometry_msgs::TwistStamped;
+        using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;
+
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;
 
@@ -71,6 +78,15 @@ namespace avt_341 {
 
         using TransformStamped = geometry_msgs::TransformStamped;
         using TransformStampedPtr = const geometry_msgs::TransformStampedConstPtr &;
+
+        using Transform = geometry_msgs::Transform;
+        using TransformPtr = const geometry_msgs::TransformConstPtr &;
+
+        using Vector3 = geometry_msgs::Vector3;
+        using Vector3Ptr = const geometry_msgs::Vector3ConstPtr &;
+
+        using AccelStamped = geometry_msgs::AccelStamped;
+        using AccelStampedPtr = const geometry_msgs::AccelStampedConstPtr &;
 
         using OccupancyGrid = nav_msgs::OccupancyGrid;
         using OccupancyGridPtr = const nav_msgs::OccupancyGrid::ConstPtr &;
@@ -115,6 +131,7 @@ namespace avt_341 {
         using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
 
         using Time = ros::Time;
+        using Duration = ros::Duration;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;
@@ -127,18 +144,23 @@ namespace avt_341 {
 
 #include <cstring>
 #include <rclcpp/time.hpp>
+#include <rclcpp/duration.hpp>
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
 
+#include "geometry_msgs/msg/twist_stamped.h"
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/transform.hpp"
+#include "geometry_msgs/msg/vector3.hpp"
+#include "geometry_msgs/msg/accel_stamped.hpp"
 
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -176,6 +198,9 @@ namespace avt_341 {
     using Image = sensor_msgs::msg::Image;
     using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
 
+    using TwistStamped = geometry_msgs::msg::TwistStamped;
+    using TwistStampedPtr = const geometry_msgs::msg::TwistStamped::SharedPtr &;
+
     using Twist = geometry_msgs::msg::Twist;
     using TwistPtr = const geometry_msgs::msg::Twist::SharedPtr;
 
@@ -198,6 +223,15 @@ namespace avt_341 {
 
     using TransformStamped = geometry_msgs::msg::TransformStamped;
     using TransformStampedPtr = geometry_msgs::msg::TransformStamped::SharedPtr;
+
+    using Transform = geometry_msgs::msg::Transform;
+    using TransformPtr = geometry_msgs::msg::Transform::SharedPtr;
+
+    using Vector3 = geometry_msgs::msg::Vector3;
+    using Vector3Ptr = geometry_msgs::msg::Vector3::SharedPtr;
+
+    using AccelStamped = geometry_msgs::msg::AccelStamped;
+    using AccelStampedPtr = geometry_msgs::msg::AccelStamped::SharedPtr;
 
     using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
     using OccupancyGridPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
@@ -240,6 +274,7 @@ namespace avt_341 {
     using StringPtr = const std_msgs::msg::String::SharedPtr;
 
     using Time = rclcpp::Time;
+    using Duration = rclcpp::Duration;
   }
   namespace msg_tf{
     using Matrix3x3 = tf2::Matrix3x3;

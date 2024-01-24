@@ -34,11 +34,33 @@ void NodeProxy::initialize_tf_listener() {
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
-  return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
+  try {
+    return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
+  } catch (const tf2::TransformException & ex) {
+    //n->log_warning("Could not transform %s to %s: %s", frame_world.c_str(), frame_cg.c_str(), ex.what());
+    return geometry_msgs::TransformStamped();
+  }
+  
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame, const ros::Time &stamp){
-  return tf_buffer_->lookupTransform(target_frame, source_frame, stamp, ros::Duration(0.2));
+  try {
+    return tf_buffer_->lookupTransform(target_frame, source_frame, stamp, ros::Duration(0.2));
+  } catch (const tf2::TransformException & ex) {
+    //n->log_warning("Could not transform %s to %s: %s", frame_world.c_str(), frame_cg.c_str(), ex.what());
+    return geometry_msgs::TransformStamped();
+  }
+}
+
+geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string& target_frame, const ros::Time& target_time,
+                                                            const std::string& source_frame, const ros::Time& source_time,
+                                                            const std::string& fixed_frame){
+  try {
+    return tf_buffer_->lookupTransform(target_frame, target_time, source_frame, source_time, fixed_frame, ros::Duration(0.2));
+  } catch (const tf2::TransformException & ex) {
+    //n->log_warning("Could not transform %s to %s: %s", frame_world.c_str(), frame_cg.c_str(), ex.what());
+    return geometry_msgs::TransformStamped();
+  }
 }
 
 bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame){
@@ -122,6 +144,17 @@ void NodeProxy::spin_some() {
     geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time & stamp){
       try {
         return tf_buffer_->lookupTransform(target_frame, source_frame, stamp, tf2::durationFromSec(0.2));
+      } catch (const tf2::TransformException & ex) {
+        RCLCPP_WARN(node_->get_logger(), "Could not transform %s to %s: %s", source_frame.c_str(), target_frame.c_str(), ex.what());
+        return geometry_msgs::msg::TransformStamped();
+      }
+    }
+
+    geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,
+                                                                     const std::string &source_frame, const rclcpp::Time &source_time,
+                                                                     const std::string &fixed_frame){
+      try {
+        return tf_buffer_->lookupTransform(target_frame, target_time, source_frame, source_time, fixed_frame, tf2::durationFromSec(0.2));
       } catch (const tf2::TransformException & ex) {
         RCLCPP_WARN(node_->get_logger(), "Could not transform %s to %s: %s", source_frame.c_str(), target_frame.c_str(), ex.what());
         return geometry_msgs::msg::TransformStamped();

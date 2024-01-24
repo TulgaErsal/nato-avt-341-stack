@@ -25,7 +25,7 @@
   <arg name="waypoint_mode" default="false"/>                                       <!-- Set to true for waypoint following mode -->
   <arg name="simulation_mode" default="false"/>                                     <!-- Set to true for UE simulation -->
   <arg name="use_global_path" default="true"/>                                      <!-- Set to true to use global path, else local path follows points directly -->
-  
+
   <!-- Vehicle config files  -->
   <arg name="perception_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/perception.yaml')"/>
   <arg name="obstacle_detector_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/obstacle_detector.yaml')"/>
@@ -39,6 +39,7 @@
   <arg name="control_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/control.yaml')" />
   <arg name="mission_manager_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/mission_manager.yaml')"/>
   <arg name="socket_comms_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/socket_comms.yaml')"/>
+  <arg name="data_acquisition_params" value="$(eval eval(arg('vehicle_config_folders'))[arg('veh_index')] + '/data_acquisition.yaml')"/>
   
 
   <!-- ********************* END OF ARGS ***********************************-->
@@ -180,6 +181,11 @@
   <group if="$(arg use_rqt_display)">
     <node name="rqt_topic_rviz" pkg="rqt_gui" type="rqt_gui" args="--perspective-file $(find avt_341)/rviz/rviz-topic-monitor.perspective"/>
   </group>
+
+  <!-- Data Acquisition -->
+  <node name="data_acquisition_node" pkg="avt_341" type="data_acquisition_node" output="screen">
+    <rosparam command="load" file="$(arg data_acquisition_params)"/>
+  </node>
 
   </group>  <!-- / End group namespace -->
 
