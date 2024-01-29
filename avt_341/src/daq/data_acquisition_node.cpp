@@ -120,7 +120,10 @@ int main(int argc, char *argv[]){
                 double dx_sqr = pow((double)pos.x - (double)last_pos.x,2);
                 double dy_sqr = pow((double)pos.y - (double)last_pos.y,2);
                 double dz_sqr = pow((double)pos.z - (double)last_pos.z,2);
-                dist_travelled.data += sqrt(dx_sqr + dy_sqr + dz_sqr);
+                if (cg_vel.twist.linear.x > 0.2)    // Check that longitudinal velocity is significant
+                {
+                    dist_travelled.data += sqrt(dx_sqr + dy_sqr + dz_sqr);
+                }
                 dist_pub->publish(dist_travelled);
 
                 // Publish CG acceleration (estimate from velocity)
