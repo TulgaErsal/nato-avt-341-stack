@@ -196,6 +196,32 @@ def generate_launch_description():
                 ),
                 Node(
                     package='avt_341',
+                    executable='uab_perception_node',
+                    name='uab_perception_node',
+                    parameters=[{
+                        'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
+                        'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
+                        'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
+                        'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
+                        'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
+                    }],
+                    output='screen'
+                ),
+                # Node(
+                #     package='avt_341',
+                #     executable='uab_object_map_node',
+                #     name='uab_object_map_node',
+                #     parameters=[{
+                #         'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
+                #         'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
+                #         'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
+                #         'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
+                #         'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
+                #     }],
+                #     output='screen'
+                # ),
+                Node(
+                    package='avt_341',
                     executable='avt_341_control_node',
                     name='vehicle_control_node',
                     output='screen',
