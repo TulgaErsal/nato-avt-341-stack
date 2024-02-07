@@ -18,5 +18,5 @@ use_global_path: True                   # Whether local planner should use path 
 use_blend: True                         # Whether or not to apply blending with adjacent candidate paths during planning
 cost_vis: 'final'                       # What type of cost to display on candidate paths: none | final | components | all
 cost_vis_text_size: 2.0                 # Cost vis text size
-ignore_coll_before_dist: 3.0            # Distance before which collisions are ignored in local planner candidate paths.
+ignore_coll_before_dist: 2.5            # Distance before which collisions are ignored in local planner candidate paths.
 map_topic: costmap_node/costmap/costmap # Occupancy grid topic

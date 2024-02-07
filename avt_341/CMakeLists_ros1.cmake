@@ -236,6 +236,7 @@ add_executable(avt_341_global_path_node
   src/planning/global/astar.cpp
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
+  src/planning/global/dubins_smoothing.cpp
   )
 add_dependencies(avt_341_global_path_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_global_path_node

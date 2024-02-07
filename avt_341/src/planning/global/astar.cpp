@@ -8,6 +8,7 @@
 // project includes
 #include "avt_341/planning/global/astar.h"
 #include "avt_341/planning/global/astar_cell.h"
+#include "avt_341/planning/global/dubins_smoothing.h"
 
 namespace avt_341 {
 namespace planning{
@@ -15,9 +16,10 @@ namespace planning{
 const int Astar::EdgeDistanceCost;
 
 Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float w_occupancy,
-             float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first)
+             float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first, bool dubins_smoothing, float dubins_radius)
     : w_distance_(w_distance), w_occupancy_(w_occupancy), w_segmentation_(w_segmentation),
-    search_diagonals_(search_diagonals), los_max_iterations_(los_max_iterations), los_break_on_first_(los_break_on_first) {
+    search_diagonals_(search_diagonals), los_max_iterations_(los_max_iterations), los_break_on_first_(los_break_on_first),
+    dubins_smoothing_(dubins_smoothing), dubins_radius_(dubins_radius) {
   dfac_ = 0;
   visualizer_ = visualizer;
 }
@@ -317,6 +319,13 @@ bool Astar::ExtractPath(){
 
   std::reverse(path_.begin(), path_.end());
 	std::reverse(path_world_.begin(), path_world_.end());
+
+  if (dubins_smoothing_) {
+    DubinsSmoothing dubins(path_world_);
+    dubins.SmoothPath(dubins_radius_, map_res_/5.0f);
+    path_world_ = dubins.GetPath();
+  }
+
   return true;
 }
 
