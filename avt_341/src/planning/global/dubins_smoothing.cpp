@@ -8,6 +8,9 @@
 // project includes
 #include "avt_341/planning/global/dubins_smoothing.h"
 
+
+using namespace avt_341::utils;
+
 namespace avt_341 {
 namespace planning{
 
@@ -79,34 +82,34 @@ void DubinsSmoothing::SmoothPath(float min_radius, float point_separation) {
 }
 
 PathPose DubinsSmoothing::PoseAt(std::vector<std::vector<float>> path, int i) {
-    
     // Retrieve point origin
-    std::vector<float> origin = { path[i][0], path[i][1] };
+    vec2 p1(path[i][0], path[i][1]);
+    vec2 p0 = p1;
+    vec2 p2 = p1;
+    if (i != 0)
+        p0 = vec2(path[i-1][0], path[i-1][1]);
+    if (i < path.size()-1)
+        p2 = vec2(path[i+1][0], path[i+1][1]);
 
     // Calculate average slope at path[i]
-    std::vector<float> v1;
-    std::vector<float> v2;
+    vec2 v1;
+    vec2 v2;
     if (i == 0) {
-        v1 = VectorMath::Subtract(path[i+1],path[i]);
-        VectorMath::Normalize(v1);
+        v1 = normalize(p2-p1);
         v2 = v1;
     }
     else if (i == path.size()-1) {
-        v1 = VectorMath::Subtract(path[i],path[i-1]);
-        VectorMath::Normalize(v1);
+        v1 = normalize(p1-p0);
         v2 = v1;
     }
     else {
-        v1 = VectorMath::Subtract(path[i+1],path[i]);
-        VectorMath::Normalize(v1);
-        v2 = VectorMath::Subtract(path[i],path[i-1]);
-        VectorMath::Normalize(v2);
+        v1 = normalize(p2-p1);
+        v2 = normalize(p1-p0);
     }
-    std::vector<float> direction = { (v1[0]+v2[0])/2.0f, (v1[1]+v2[1])/2.0f };
-    VectorMath::Normalize(direction);
+    vec2 direction = normalize(vec2((v1.x+v2.x)/2.0f, (v1.y+v2.y)/2.0f));
 
     // Create pose
-    PathPose pose(origin, direction);
+    PathPose pose(p1, direction);
 
     return pose;
 }
@@ -115,7 +118,9 @@ PathPose DubinsSmoothing::PoseAt(std::vector<std::vector<float>> path, int i) {
 std::vector<int> DubinsSmoothing::PointsAheadInCircle(std::vector<std::vector<float>> path, int i, Circle circle) {
     std::vector<int> indices_inside;
     for (int ii = i; ii < path.size(); ii++) {
-        if (VectorMath::PointDistance(circle.center_, path[ii]) < circle.radius_-0.001) {
+        vec2 pt(path[ii][0],path[ii][1]);
+        float d = length(circle.center_-pt);
+        if (d < circle.radius_-0.001) {
             indices_inside.push_back(ii);
         }
     }
@@ -123,89 +128,154 @@ std::vector<int> DubinsSmoothing::PointsAheadInCircle(std::vector<std::vector<fl
 }
 
 /** Create Dubins path from start to goal */
-std::vector<std::vector<float>> DubinsPath::CreatePath(float point_separation) {
-    // Parse start and goal poses
-    std::vector<float> p0 = start_.origin_;
-    std::vector<float> v0 = start_.direction_;
-    float theta0 = std::atan2(v0[1], v0[0]);
-    std::vector<float> pf = goal_.origin_;
-    std::vector<float> vf = goal_.direction_;
-    float thetaf = std::atan2(vf[1], vf[0]);
-
-    // Determine best circle paths for each point
-    float handedness = VectorMath::CrossOrientation(v0,vf);
-    handedness /= std::abs(handedness);
-    std::vector<float> c1_center = { p0[0] + radius_*std::cos(theta0+handedness*M_PI_2),
-                                     p0[1] + radius_*std::sin(theta0+handedness*M_PI_2) };
-    std::vector<float> c2_center = { pf[0] + radius_*std::cos(thetaf+handedness*M_PI_2),
-                                     pf[1] + radius_*std::sin(thetaf+handedness*M_PI_2) };
-    float c1_radius = radius_;
-    float c2_radius = radius_;
-    Circle c1(c1_center, c1_radius);
-    Circle c2(c2_center, c2_radius);
-    
-    // Calculate outer tangent path
-    std::vector<float> v1 = VectorMath::Subtract(c2.center_,c1.center_);
-    std::vector<float> n1a = { -v1[1], v1[0] };
-    std::vector<float> n1b = { v1[1], -v1[0] };
-    std::vector<float> n1 = n1a;
-    if (VectorMath::VectorAngle(v0,n1b) < VectorMath::VectorAngle(v0,n1a))
-        n1 = n1b;
-    VectorMath::Normalize(n1);
-    std::vector<float> p1n = VectorMath::Add(c1.center_,VectorMath::Multiply(radius_,n1));
-    std::vector<float> p2n = VectorMath::Add(p1n,v1);
-    std::vector<float> n2 = VectorMath::Subtract(p2n,c2.center_);
-    VectorMath::Normalize(n2);
-
-    // Calculate circular path direction
-    float rot_dir = VectorMath::CrossOrientation(VectorMath::Subtract(p0,c1.center_),v0);
-
-    // Generate path
+std::vector<std::vector<float>> DubinsPath::CreatePath(float pt_sep) {
+    std::vector<float> dubins_lengths(4,0.0);
     std::vector<std::vector<float>> path;
-    // Arc section #1
-    if (VectorMath::PointDistance(p0,p1n) > point_separation) {
-        std::vector<std::vector<float>> arc1 = ArcPoints(VectorMath::Subtract(p0,c1.center_),VectorMath::Subtract(p1n,c1.center_),c1,rot_dir,point_separation);
-        if (arc1.size() > 1)
-            path.insert(path.end(), arc1.begin()+1, arc1.end()-1);
-    }
-    // Straight section
-    std::vector<std::vector<float>> straight = LinePoints(p1n,p2n,point_separation);
-    if (straight.size() > 1)
-        path.insert(path.end(), straight.begin()+1, straight.end()-1);
-    // Arc section #1
-    if (VectorMath::PointDistance(pf,p2n) > point_separation) {
-        std::vector<std::vector<float>> arc2 = ArcPoints(VectorMath::Subtract(p2n,c2.center_),VectorMath::Subtract(pf,c2.center_),c2,rot_dir,point_separation);
-        if (arc2.size() > 1)
-            path.insert(path.end(), arc2.begin()+1, arc2.end()-1);
-    }
 
-    if (c1.ArcLength(VectorMath::Subtract(p0,c1.center_),VectorMath::Subtract(p1n,c1.center_),rot_dir) > M_PI*radius_
-        || c2.ArcLength(VectorMath::Subtract(p2n,c2.center_),VectorMath::Subtract(pf,c2.center_),rot_dir) > M_PI*radius_) {
-        std::cout << "\n\tp0: [ " << p0[0] << ", " << p0[1] << " ]"
-                  << "\n\tv0: [ " << v0[0] << ", " << v0[1] << " ]"
-                  << "\n\tpf: [ " << pf[0] << ", " << pf[1] << " ]"
-                  << "\n\tvf: [ " << vf[0] << ", " << vf[1] << " ]" << std::endl;
-    }
+    // Calculate all possible dubins paths
+    DubinsXSX(path, dubins_lengths[0], start_, goal_, radius_, -1, -1);
+    DubinsXSY(path, dubins_lengths[1], start_, goal_, radius_, -1, -1);
+    DubinsXSX(path, dubins_lengths[2], start_, goal_, radius_, -1, 1);
+    DubinsXSY(path, dubins_lengths[3], start_, goal_, radius_, -1, 1);
+
+    // Generate shortest dubins path
+    int i_min = (int)std::distance(std::begin(dubins_lengths), std::min_element(std::begin(dubins_lengths), std::end(dubins_lengths)));
+    path.clear();
+    if (i_min == 0)
+        DubinsXSX(path, dubins_lengths[0], start_, goal_, radius_, pt_sep, -1);
+    else if (i_min == 1)
+        DubinsXSY(path, dubins_lengths[1], start_, goal_, radius_, pt_sep, -1);
+    else if (i_min == 2)
+        DubinsXSX(path, dubins_lengths[2], start_, goal_, radius_, pt_sep, 1);
+    else
+        DubinsXSY(path, dubins_lengths[3], start_, goal_, radius_, pt_sep, 1);
 
     return path;
 }
 
-/** Gets path of points along arc between two vectors */
-std::vector<std::vector<float>> DubinsPath::ArcPoints(std::vector<float> v1, std::vector<float> v2, Circle circle, float direction, float point_separation) {
-    std::vector<std::vector<float>> points;
+/** 
+ * Create Dubins path given start/goal poses and a radius 
+ * direction < 0    -> RSR
+ * direction > 0    -> LSL
+ * pt_sep <= 0      -> No points generated
+*/
+void DubinsPath::DubinsXSX(std::vector<std::vector<float>>& path_out, float& len_out, 
+                            PathPose start, PathPose goal, float radius, float pt_sep, float direction) {
+    // Parse poses
+    vec2 p0 = start.origin_;
+    vec2 v0 = normalize(start.direction_);
+    vec2 pf = goal.origin_;
+    vec2 vf = normalize(goal.direction_);
+    float dir  = direction / abs(direction);
+
+    // Calculate tangent circles
+    Circle c1({ p0.x + radius*cos(atan2(v0.y,v0.x)+dir*M_PI/2.0),
+                p0.y + radius*sin(atan2(v0.y,v0.x)+dir*M_PI/2.0) }, radius);
+    Circle c2({ pf.x + radius*cos(atan2(vf.y,vf.x)+dir*M_PI/2.0),
+                pf.y + radius*sin(atan2(vf.y,vf.x)+dir*M_PI/2.0) }, radius);
     
-    // Normalize vectors
-    std::vector<float> v1_norm = v1;
-    std::vector<float> v2_norm = v2;
-    VectorMath::Normalize(v1);
-    VectorMath::Normalize(v2);
+    // Calculate vectors
+    vec2 v1 = c2.center_-c1.center_;
+    vec2 n1 = cross(normalize(v1),vec3(0,0,dir)).xy() * radius;  // Rotate v1 90deg CCW
+    vec2 p1n = c1.center_ + n1;
+    vec2 p2n = p1n + v1;
+    vec2 n2 = p2n - c2.center_;
+
+    // Generate path
+    if (pt_sep > 0) {
+        std::vector<std::vector<float>> arc1 = ArcPoints(p0-c1.center_,n1,c1,dir,pt_sep);   // R/L
+        std::vector<std::vector<float>> straight = LinePoints(p1n,p2n,pt_sep);              // S
+        std::vector<std::vector<float>> arc2 = ArcPoints(n2,pf-c2.center_,c2,dir,pt_sep);   // R/L
+        path_out.insert(path_out.end(), arc1.begin()+1, arc1.end()-1);
+        path_out.insert(path_out.end(), straight.begin()+1, straight.end()-1);
+        path_out.insert(path_out.end(), arc2.begin()+1, arc2.end()-1);
+    }
+
+    // Calculate path segment lengths
+    len_out = 0.0;
+    len_out += ArcLength(p0-c1.center_,n1,c1.radius_,dir);
+    len_out += length(p2n-p1n);
+    len_out += ArcLength(n2,pf-c2.center_,c2.radius_,dir);
+}
+
+/** 
+ * Create Dubins path given start/goal poses and a radius 
+ * direction < 0            -> RSL
+ * direction > 0            -> LSR
+ * pt_sep <= 0              -> No points generated
+ * len_out == "float limit" -> No Solution
+*/
+void DubinsPath::DubinsXSY(std::vector<std::vector<float>>& path_out, float& len_out,
+                            PathPose start, PathPose goal, float radius, float pt_sep, float direction) {
+    // Parse poses
+    vec2 p0 = start.origin_;
+    vec2 v0 = normalize(start.direction_);
+    vec2 pf = goal.origin_;
+    vec2 vf = normalize(goal.direction_);
+    float dir  = direction / abs(direction);
+
+    // Calculate tangent circles
+    Circle c1({ p0.x + radius*cos(atan2(v0.y,v0.x)+dir*M_PI/2.0),
+                p0.y + radius*sin(atan2(v0.y,v0.x)+dir*M_PI/2.0) }, radius);
+    Circle c2({ pf.x + radius*cos(atan2(vf.y,vf.x)-dir*M_PI/2.0),
+                pf.y + radius*sin(atan2(vf.y,vf.x)-dir*M_PI/2.0) }, radius);
+    
+    // Calculate intermediate circles
+    vec2 v1 = c2.center_ - c1.center_;
+    Circle c3(c1.center_+v1/2.0,length(v1)/2.0);
+    Circle c4(c1.center_,2.0*c1.radius_);
+
+    // Calculate outer tangents
+    std::vector<vec2> p1_ot_all = c3.intersects(c4);
+    if (p1_ot_all.empty()) {
+        len_out = std::numeric_limits<float>::max();
+        return; // No Solution
+    }
+    vec2 n3a = p1_ot_all[0]-c1.center_;
+    vec2 v3a = c2.center_-p1_ot_all[0];
+    vec2 n3b = p1_ot_all[1]-c1.center_;
+    vec2 v3b = c2.center_-p1_ot_all[1];
+
+    // Find correct outer tangent
+    vec2 n3 = n3a;
+    vec2 v3 = v3a;
+    vec2 p1_ot = p1_ot_all[0];
+    if (-dir*cross(n3b,v3b) < 0) {
+        n3 = n3b;
+        v3 = v3b;
+        p1_ot = p1_ot_all[1];
+    }
+
+    // Calculate vectors
+    vec2 n1 = normalize(n3)*c1.radius_;
+    vec2 p1n = c1.center_+n1;
+    vec2 p2n = p1n+v3;
+    vec2 n2 = p2n-c2.center_;
+
+    // Generate path
+    if (pt_sep > 0) {
+        std::vector<std::vector<float>> arc1 = ArcPoints(p0-c1.center_,n1,c1,dir,pt_sep);   // R/L
+        std::vector<std::vector<float>> straight = LinePoints(p1n,p2n,pt_sep);              // S
+        std::vector<std::vector<float>> arc2 = ArcPoints(n2,pf-c2.center_,c2,-dir,pt_sep);  // L/R
+        path_out.insert(path_out.end(), arc1.begin()+1, arc1.end()-1);
+        path_out.insert(path_out.end(), straight.begin()+1, straight.end()-1);
+        path_out.insert(path_out.end(), arc2.begin()+1, arc2.end()-1);
+    }
+
+    // Calculate path segment lengths
+    len_out = 0.0;
+    len_out += ArcLength(p0-c1.center_,n1,c1.radius_,dir);
+    len_out += length(p2n-p1n);
+    len_out += ArcLength(n2,pf-c2.center_,c2.radius_,-dir);
+}
+
+/** Gets path of points along arc between two vectors */
+std::vector<std::vector<float>> DubinsPath::ArcPoints(vec2 v1, vec2 v2, Circle circle, float direction, float pt_sep) {
+    std::vector<std::vector<float>> points;
 
     // Calculate vector angles
-    float theta1 = std::atan2(v1_norm[1], v1_norm[0]);
-    float theta2 = std::atan2(v2_norm[1], v2_norm[0]);
-
-    // Calculate theta increment from linear point distance
-    float dtheta = point_separation/circle.radius_;
+    float theta1 = atan2(v1.y, v1.x);
+    float theta2 = atan2(v2.y, v2.x);
 
     // Calculate theta range
     if (direction > 0 && theta1 > theta2)
@@ -214,34 +284,26 @@ std::vector<std::vector<float>> DubinsPath::ArcPoints(std::vector<float> v1, std
         theta1 += 2.0*M_PI;
 
     // Generate arc points
-    if (direction > 0) {
-        for (float theta = theta1; theta <= theta2; theta += dtheta) {
-            std::vector<float> point = { circle.radius_ * std::cos(theta) + circle.center_[0],
-                                         circle.radius_ * std::sin(theta) + circle.center_[1] };
-            points.push_back(point);
-        }
+    float dtheta = (direction/abs(direction)) * pt_sep * circle.radius_;
+    for (float theta = theta1; (direction > 0 && theta <= theta2) || (direction < 0 && theta >= theta2); theta += dtheta) {
+        std::vector<float> point = { circle.radius_ * cos(theta) + circle.center_.x,
+                                     circle.radius_ * sin(theta) + circle.center_.y };
+        points.push_back(point);
     }
-    else {
-        for (float theta = theta1; theta >= theta2; theta -= dtheta) {
-            std::vector<float> point = { circle.radius_ * std::cos(theta) + circle.center_[0],
-                                         circle.radius_ * std::sin(theta) + circle.center_[1] };
-            points.push_back(point);
-        }
-    }
+
     return points;
 }
 
 /** Gets path of points along line between two points */
-std::vector<std::vector<float>> DubinsPath::LinePoints(std::vector<float> p1, std::vector<float> p2, float point_separation) {
+std::vector<std::vector<float>> DubinsPath::LinePoints(vec2 p1, vec2 p2, float pt_sep) {
     // Calulate line vector
-    std::vector<float> v12 = VectorMath::Subtract(p2,p1);
-    VectorMath::Normalize(v12);
+    vec2 v12 = normalize(p2-p1);
 
     // Generate line points
     std::vector<std::vector<float>> points;
-    for (float dist = 0; dist <= VectorMath::PointDistance(p1,p2); dist += point_separation) {
-        std::vector<float> point = { p1[0] + v12[0]*dist,
-                                     p1[1] + v12[1]*dist };
+    for (float dist = 0; dist <= length(p1-p2); dist += pt_sep) {
+        std::vector<float> point = { p1.x + v12.x*dist,
+                                     p1.y + v12.y*dist };
         points.push_back(point);
     }
     return points;

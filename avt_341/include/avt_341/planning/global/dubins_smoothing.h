@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <iostream>
 #include "avt_341/node/ros_types.h"
+#include "avt_341/avt_341_utils.h"
+
 
 namespace avt_341 {
 namespace planning{
@@ -20,19 +22,30 @@ namespace planning{
 struct Circle {
     Circle() {}
 
-    Circle(std::vector<float> center, float radius) :
+    Circle(utils::vec2 center, float radius) :
         center_(center), radius_(radius) {}
 
-    float ArcLength(std::vector<float> v0, std::vector<float> v1, float direction) {
-        float theta = std::atan2(v1[1], v1[0]) - std::atan2(v0[1], v0[0]);
-        if (theta < 0 && direction > 0)
-            theta += 2.0*M_PI;
-        else if (theta > 0 && direction < 0)
-            theta += 2.0*M_PI;
-        return theta*radius_;
+    std::vector<utils::vec2> intersects(Circle c) {
+        utils::vec2 c0 = center_;
+        float r0 = radius_;
+        utils::vec2 c1 = c.center_;
+        float r1 = c.radius_;
+
+        float d = utils::length(c1-c0);
+
+        if (d > r0+r1 || d < abs(r0-r1) || (d == 0 && r0 == r1))
+            return {};    // No solutions
+        
+        float a = (r0*r0 - r1*r1 + d*d) / 2.0 / d;
+        float h = sqrt(r0*r0 - a*a);
+        float x2 = c0.x + a*(c1.x-c0.x)/d;
+        float y2 = c0.y + a*(c1.y-c0.y)/d;
+
+        return { utils::vec2(x2 + h*(c1.y-c0.y)/d, y2 - h*(c1.x-c0.x)/d),
+                 utils::vec2(x2 - h*(c1.y-c0.y)/d, y2 + h*(c1.x-c0.x)/d) };
     }
 
-    std::vector<float> center_;
+    utils::vec2 center_;
     float radius_;
 };
 
@@ -40,7 +53,7 @@ struct Circle {
 struct PathPose {
     PathPose() {}
 
-    PathPose(std::vector<float> origin, std::vector<float> direction) :
+    PathPose(utils::vec2 origin, utils::vec2 direction) :
         origin_(origin), direction_(direction) {}
 
     /** Calculate both circles tangent to a pose */
@@ -48,83 +61,24 @@ struct PathPose {
         std::vector<Circle> circles;
 
         // Calculate 1st circle
-        std::vector<float> norm1 = { -direction_[1], direction_[0] };
-        std::vector<float> center1 = { origin_[0] + norm1[0]*radius,
-                                       origin_[1] + norm1[1]*radius };
+        utils::vec2 norm1 = { -direction_.y, direction_.x };
+        utils::vec2 center1 = { origin_.x + norm1.x*radius,
+                                       origin_.y + norm1.y*radius };
         Circle circle1(center1, radius);
         circles.push_back(circle1);
 
         // Calculate 2nd circle
-        std::vector<float> norm2 = { direction_[1], -direction_[0] };
-        std::vector<float> center2 = { origin_[0] + norm2[0]*radius,
-                                       origin_[1] + norm2[1]*radius };
+        utils::vec2 norm2 = { direction_.y, -direction_.x };
+        utils::vec2 center2 = { origin_.x + norm2.x*radius,
+                                       origin_.y + norm2.y*radius };
         Circle circle2(center2, radius);
         circles.push_back(circle2);
 
         return circles;
     }
 
-    std::vector<float> origin_;
-    std::vector<float> direction_;
-};
-
-class VectorMath {
-public:
-    /** 2D distance between points */
-    static float PointDistance(std::vector<float> p1, std::vector<float> p2) {
-        return std::sqrt((p2[0]-p1[0])*(p2[0]-p1[0]) + (p2[1]-p1[1])*(p2[1]-p1[1]));
-    }
-
-    /** Calculate magnitude of vector */
-    static float Norm(std::vector<float> v) {
-        float norm = 0;
-        for (float i : v)
-            norm += i*i;
-        return std::sqrt(norm);
-    }
-
-    /** Compute dot product of 2D vectors */
-    static float Dot(std::vector<float> v1, std::vector<float> v2) {
-        return v1[0]*v2[0] + v1[1]*v2[1];
-    }
-
-    /** Compute cross product of 2D vectors on z-plane and get z component */
-    static float CrossOrientation(std::vector<float> v1, std::vector<float> v2) {
-        return v1[0]*v2[1] - v1[1]*v2[0];
-    }
-
-    /** Subtract 2D vectors elements (v1-v2) */
-    static std::vector<float> Subtract(std::vector<float> v1, std::vector<float> v2) {
-        std::vector<float> result = { v1[0]-v2[0],
-                                    v1[1]-v2[1] };
-        return result;
-    }
-
-    /** Add 2D vectors elements (v1+v2) */
-    static std::vector<float> Add(std::vector<float> v1, std::vector<float> v2) {
-        std::vector<float> result = { v1[0]+v2[0],
-                                    v1[1]+v2[1] };
-        return result;
-    }
-
-    /** Multiply all elements in 2D vector by constant */
-    static std::vector<float> Multiply(float c, std::vector<float> v) {
-        std::vector<float> result = { c*v[0],
-                                    c*v[1] };
-        return result;
-    }
-
-    /** Compute angle between vectors */
-    static float VectorAngle(std::vector<float> v1, std::vector<float> v2) {
-        return std::acos(VectorMath::Dot(v1,v2)/VectorMath::Norm(v1)/VectorMath::Norm(v2));
-    }
-
-    /** Normalize vector */
-    static void Normalize(std::vector<float>& v) {
-        float norm_v = VectorMath::Norm(v);
-        for (float i = 0; i < v.size(); i++)
-            v[i] = v[i]/norm_v;
-    }
+    utils::vec2 origin_;
+    utils::vec2 direction_;
 };
 
 /**
@@ -165,14 +119,42 @@ public:
         start_(start), goal_(goal), radius_(radius) {}
     
     /** Create Dubins path from start to goal */
-    std::vector<std::vector<float>> CreatePath(float point_separation);
+    std::vector<std::vector<float>> CreatePath(float pt_sep);
+
+    /** 
+     * Create Dubins path given start/goal poses and a radius 
+     * direction < 0    -> RSR
+     * direction > 0    -> LSL
+     * pt_sep <= 0      -> No points generated
+    */
+    static void DubinsXSX(std::vector<std::vector<float>>& path_out, float& len_out, 
+                            PathPose start, PathPose goal, float radius, float pt_sep, float direction);
+
+    /** 
+     * Create Dubins path given start/goal poses and a radius 
+     * direction < 0 -> RSL
+     * direction > 0 -> LSR
+     * pt_sep <= 0      -> No points generated
+    */
+    static void DubinsXSY(std::vector<std::vector<float>>& path_out, float& len_out, 
+                            PathPose start, PathPose goal, float radius, float pt_sep, float direction);
 
 private:
     /** Gets path of points along arc between two vectors */
-    std::vector<std::vector<float>> ArcPoints(std::vector<float> v1, std::vector<float> v2, Circle circle, float direction, float point_separation);
+    static std::vector<std::vector<float>> ArcPoints(utils::vec2 v1, utils::vec2 v2, Circle circle, float direction, float pt_sep);
 
     /** Gets path of points along line between two points */
-    std::vector<std::vector<float>> LinePoints(std::vector<float> p1, std::vector<float> p2, float point_separation);
+    static std::vector<std::vector<float>> LinePoints(utils::vec2 p1, utils::vec2 p2, float pt_sep);
+
+    /** Calculates length of an arc */
+    static float ArcLength(utils::vec2 v1, utils::vec2 v2, float radius, float direction) {
+        float theta = atan2(v2.y,v2.x) - atan2(v1.y,v1.x);
+        if (theta < 0 && direction > 0)
+            theta += 2.0*M_PI;
+        else if (theta > 0 && direction < 0)
+            theta -= 2.0*M_PI;
+        return abs(theta*radius);
+    }
     
     PathPose start_;
     PathPose goal_;
