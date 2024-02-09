@@ -13,7 +13,7 @@ shutdown_behavior: 1                          # behavior upon reaching goal (1 -
 auto_active_on_new_waypoint: True             # Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint.
 verbose_gp_log: True                          # Activates verbose logging for global planner.
 dilation_factor: 1.5                          # Dilation to costmap to apply during planning.
-dubins_smoothing: False                        # Enable path smoothing with minimum radius of curvature 'dubins_radius'
+dubins_smoothing: True                        # Enable path smoothing with minimum radius of curvature 'dubins_radius'
 dubins_radius: 2.0                            # Minimum radius of curvature of path (only for dubins_smoothing=True)
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
 map_topic: costmap_node/costmap/costmap       # Occupancy map topic

@@ -141,14 +141,22 @@ std::vector<std::vector<float>> DubinsPath::CreatePath(float pt_sep) {
     // Generate shortest dubins path
     int i_min = (int)std::distance(std::begin(dubins_lengths), std::min_element(std::begin(dubins_lengths), std::end(dubins_lengths)));
     path.clear();
-    if (i_min == 0)
-        DubinsXSX(path, dubins_lengths[0], start_, goal_, radius_, pt_sep, -1);
-    else if (i_min == 1)
-        DubinsXSY(path, dubins_lengths[1], start_, goal_, radius_, pt_sep, -1);
-    else if (i_min == 2)
-        DubinsXSX(path, dubins_lengths[2], start_, goal_, radius_, pt_sep, 1);
-    else
-        DubinsXSY(path, dubins_lengths[3], start_, goal_, radius_, pt_sep, 1);
+    switch(i_min) {
+        case 0:
+            DubinsXSX(path, dubins_lengths[0], start_, goal_, radius_, pt_sep, -1);
+            break;
+        case 1:
+            DubinsXSY(path, dubins_lengths[1], start_, goal_, radius_, pt_sep, -1);
+            break;
+        case 2:
+            DubinsXSX(path, dubins_lengths[2], start_, goal_, radius_, pt_sep, 1);
+            break;
+        case 3:
+            DubinsXSY(path, dubins_lengths[3], start_, goal_, radius_, pt_sep, 1);
+            break;
+        default:
+            std::cout << "No dubins path found, should never see this.\n";
+    }
 
     return path;
 }
@@ -186,9 +194,22 @@ void DubinsPath::DubinsXSX(std::vector<std::vector<float>>& path_out, float& len
         std::vector<std::vector<float>> arc1 = ArcPoints(p0-c1.center_,n1,c1,dir,pt_sep);   // R/L
         std::vector<std::vector<float>> straight = LinePoints(p1n,p2n,pt_sep);              // S
         std::vector<std::vector<float>> arc2 = ArcPoints(n2,pf-c2.center_,c2,dir,pt_sep);   // R/L
-        path_out.insert(path_out.end(), arc1.begin()+1, arc1.end()-1);
-        path_out.insert(path_out.end(), straight.begin()+1, straight.end()-1);
-        path_out.insert(path_out.end(), arc2.begin()+1, arc2.end()-1);
+
+        if (arc1.size() > 1)
+        {
+            arc1.erase(arc1.begin());
+            arc1.erase(arc1.end());
+            path_out.insert(path_out.end(), arc1.begin(), arc1.end());
+        }
+       
+        path_out.insert(path_out.end(), straight.begin(), straight.end());
+
+        if (arc2.size() > 1)
+        {
+            arc2.erase(arc2.begin());
+            arc2.erase(arc2.end());
+            path_out.insert(path_out.end(), arc2.begin(), arc2.end());
+        }
     }
 
     // Calculate path segment lengths
@@ -257,9 +278,22 @@ void DubinsPath::DubinsXSY(std::vector<std::vector<float>>& path_out, float& len
         std::vector<std::vector<float>> arc1 = ArcPoints(p0-c1.center_,n1,c1,dir,pt_sep);   // R/L
         std::vector<std::vector<float>> straight = LinePoints(p1n,p2n,pt_sep);              // S
         std::vector<std::vector<float>> arc2 = ArcPoints(n2,pf-c2.center_,c2,-dir,pt_sep);  // L/R
-        path_out.insert(path_out.end(), arc1.begin()+1, arc1.end()-1);
-        path_out.insert(path_out.end(), straight.begin()+1, straight.end()-1);
-        path_out.insert(path_out.end(), arc2.begin()+1, arc2.end()-1);
+
+        if (arc1.size() > 1)
+        {
+            arc1.erase(arc1.begin());
+            arc1.erase(arc1.end());
+            path_out.insert(path_out.end(), arc1.begin(), arc1.end());
+        }
+       
+        path_out.insert(path_out.end(), straight.begin(), straight.end());
+
+        if (arc2.size() > 1)
+        {
+            arc2.erase(arc2.begin());
+            arc2.erase(arc2.end());
+            path_out.insert(path_out.end(), arc2.begin(), arc2.end());
+        }
     }
 
     // Calculate path segment lengths
@@ -271,6 +305,10 @@ void DubinsPath::DubinsXSY(std::vector<std::vector<float>>& path_out, float& len
 
 /** Gets path of points along arc between two vectors */
 std::vector<std::vector<float>> DubinsPath::ArcPoints(vec2 v1, vec2 v2, Circle circle, float direction, float pt_sep) {
+    // Check arc length
+    if (ArcLength(v1,v2,circle.radius_,direction) < pt_sep)
+        return {};
+
     std::vector<std::vector<float>> points;
 
     // Calculate vector angles
