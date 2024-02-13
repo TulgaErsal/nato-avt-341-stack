@@ -34,8 +34,6 @@ add_definitions(-DROS_1)
 find_package(PCL REQUIRED)
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(GDAL CONFIG REQUIRED)
-
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
   config/lidar_obstacle_detector.cfg
@@ -322,19 +320,6 @@ target_link_libraries(data_acquisition_node
   ${catkin_LIBRARIES}
 )
 
-# Geotiff Map Publisher
-add_executable(avt_341_geotiff_map_publisher_node
-  src/perception/avt_341_geotiff_map_publisher_node.cpp
-  src/perception/geotiff_dataset.cpp
-  src/node/node_proxy.cpp
-)
-add_dependencies(avt_341_geotiff_map_publisher_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(avt_341_geotiff_map_publisher_node 
-  ${catkin_LIBRARIES}
-  GDAL::GDAL
-  )
-
-
 set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
@@ -388,7 +373,6 @@ avt_341_mission_manager_node
 avt_341_formation_control_node
 avt_341_test_formation_control_node
 data_acquisition_node
-avt_341_geotiff_map_publisher_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
