@@ -14,7 +14,7 @@ __Contents:__
 
 
 ## Requirements
-The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22. 
+The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22.
 
 ## ROS-1 Installation
 A functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) is required to build and run this code.
@@ -29,6 +29,12 @@ sudo apt install ros-<version>-tf2-sensor-msgs
 # sudo apt install ros-noetic-jsk-recognition-msgs
 # sudo apt install ros-noetic-jsk-rviz-plugins
 # sudo apt install ros-noetic-tf2-sensor-msgs
+
+# GDAL
+sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
+sudo apt-get update
+sudo apt-get install gdal-bin
+sudo apt-get install libgdal-dev
 ```
 
 Clone the repo into your `catkin_ws/src` directory with the following command.
@@ -72,6 +78,15 @@ roslaunch avt_341 example.launch
 
 ## ROS-2 Installation
 A functioning [colcon workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html) is required to build and run this code.
+
+Install dependencies:
+```bash 
+# GDAL
+sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
+sudo apt-get update
+sudo apt-get install gdal-bin
+sudo apt-get install libgdal-dev
+```
 
 Clone the repo into your catkin_ws/src directory with the following command.
 ```bash

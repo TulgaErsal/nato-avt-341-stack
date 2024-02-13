@@ -22,6 +22,8 @@ public:
 #include "std_msgs/Header.h"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/static_transform_broadcaster.h"
 #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "sensor_msgs/PointCloud2.h"
@@ -71,6 +73,10 @@ namespace avt_341 {
         private:
             ros::Subscriber sub_ptr_;
         };
+
+        inline double seconds_from_time(std_msgs::Time t){
+            return t.toSec();
+        }
 
         inline double seconds_from_header(std_msgs::Header header){
             return header.stamp.toSec();
@@ -140,6 +146,8 @@ namespace avt_341 {
                                                              const std::string& fixed_frame);
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
+            void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
+
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
             template<typename... Args> inline void log_debug(const char * format, Args... args){
@@ -163,10 +171,13 @@ namespace avt_341 {
             ros::Time get_stamp() const;
             double get_now_seconds() const;
             void spin_some();
+            void spin();
 
         private:
             ros::NodeHandle node_;
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+            std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
+            std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
         };
 
@@ -190,6 +201,7 @@ namespace avt_341 {
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/static_transform_broadcaster.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include <stdarg.h>
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -242,6 +254,14 @@ namespace avt_341 {
     private:
       std::shared_ptr<rclcpp::Subscription<CallbackMessageT, AllocatorT>> sub_ptr_;
     };
+
+    inline double seconds_from_time(rclcpp::Time t){
+        return t.seconds();
+    }
+
+    inline double seconds_from_time(rclcpp::Duration t){
+        return t.seconds();
+    }
 
     inline double seconds_from_header(const std_msgs::msg::Header & header){
       return rclcpp::Time(header.stamp).seconds();
@@ -315,6 +335,8 @@ namespace avt_341 {
                                                             const std::string &fixed_frame);
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
+      void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
+
       template<typename... Args> inline void log_debug(const char * format, Args... args){
         RCLCPP_DEBUG(node_->get_logger(), format, args...);
       }
@@ -342,12 +364,14 @@ namespace avt_341 {
       rclcpp::Time get_stamp() const;
       double get_now_seconds() const;
       void spin_some();
+      void spin();
 
     private:
       std::shared_ptr<rclcpp::Node> node_;
       bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
       std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
+      std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};
       std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     };
 

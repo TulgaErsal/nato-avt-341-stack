@@ -31,6 +31,8 @@ void NodeProxy::initialize_tf_listener() {
 
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+  tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+  tf_static_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
@@ -74,7 +76,43 @@ bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, senso
 }
 
 void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose) {
-  // TODO: Only currently used for debugging. Used to visualize formation target positions.
+      if(tf_buffer_ == nullptr) {
+        initialize_tf_listener();
+      }
+
+      geometry_msgs::TransformStamped tf_msg;
+      tf_msg.header.frame_id = parent_frame;
+      tf_msg.child_frame_id = child_frame;
+
+      tf_msg.transform.translation.x = target_pose.pose.position.x;
+      tf_msg.transform.translation.y = target_pose.pose.position.y;
+      tf_msg.transform.translation.z = target_pose.pose.position.z;
+      tf_msg.transform.rotation.x = target_pose.pose.orientation.x;
+      tf_msg.transform.rotation.y = target_pose.pose.orientation.y;
+      tf_msg.transform.rotation.z = target_pose.pose.orientation.z;
+      tf_msg.transform.rotation.w = target_pose.pose.orientation.w;
+
+      tf_broadcaster_->sendTransform(tf_msg);
+}
+
+void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose) {
+  if(tf_buffer_ == nullptr) {
+    initialize_tf_listener();
+  }
+
+  geometry_msgs::msg::TransformStamped tf_msg;
+  tf_msg.header.frame_id = parent_frame;
+  tf_msg.child_frame_id = child_frame;
+
+  tf_msg.transform.translation.x = target_pose.pose.position.x;
+  tf_msg.transform.translation.y = target_pose.pose.position.y;
+  tf_msg.transform.translation.z = target_pose.pose.position.z;
+  tf_msg.transform.rotation.x = target_pose.pose.orientation.x;
+  tf_msg.transform.rotation.y = target_pose.pose.orientation.y;
+  tf_msg.transform.rotation.z = target_pose.pose.orientation.z;
+  tf_msg.transform.rotation.w = target_pose.pose.orientation.w;
+
+  tf_static_broadcaster_->sendTransform(tf_msg);
 }
 
 double NodeProxy::get_now_seconds() const {
@@ -87,6 +125,10 @@ ros::Time NodeProxy::get_stamp() const {
 
 void NodeProxy::spin_some() {
     ros::spinOnce();
+}
+
+void NodeProxy::spin() {
+    ros::spin();
 }
 
 #else
@@ -110,6 +152,7 @@ void NodeProxy::spin_some() {
       tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node_->get_clock());
       tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
       tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+      tf_static_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
     }
 
     void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose) {
@@ -131,6 +174,27 @@ void NodeProxy::spin_some() {
 
       tf_broadcaster_->sendTransform(tf_msg);
     }
+
+    void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose) {
+      if(tf_buffer_ == nullptr) {
+        initialize_tf_listener();
+      }
+
+      geometry_msgs::msg::TransformStamped tf_msg;
+      tf_msg.header.frame_id = parent_frame;
+      tf_msg.child_frame_id = child_frame;
+
+      tf_msg.transform.translation.x = target_pose.pose.position.x;
+      tf_msg.transform.translation.y = target_pose.pose.position.y;
+      tf_msg.transform.translation.z = target_pose.pose.position.z;
+      tf_msg.transform.rotation.x = target_pose.pose.orientation.x;
+      tf_msg.transform.rotation.y = target_pose.pose.orientation.y;
+      tf_msg.transform.rotation.z = target_pose.pose.orientation.z;
+      tf_msg.transform.rotation.w = target_pose.pose.orientation.w;
+
+      tf_static_broadcaster_->sendTransform(tf_msg);
+    }
+
 
     geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
       try {
@@ -182,6 +246,10 @@ void NodeProxy::spin_some() {
 
     void NodeProxy::spin_some() {
       rclcpp::spin_some(node_);
+    }
+
+    void NodeProxy::spin() {
+      rclcpp::spin(node_);
     }
 
 #endif

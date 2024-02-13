@@ -19,6 +19,7 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(GDAL CONFIG REQUIRED)
 
 if (WIN32 OR WIN64)
 set (link_libs
@@ -198,6 +199,7 @@ add_executable(avt_341_global_path_node
         src/planning/global/astar.cpp
         src/node/node_proxy.cpp
         src/visualization/image_visualizer.cpp
+        src/planning/global/dubins_smoothing.cpp
         )
 ament_target_dependencies(avt_341_global_path_node ${dependencies} OpenCV)
 target_link_libraries(avt_341_global_path_node
@@ -229,6 +231,21 @@ add_executable(avt_341_global_segmentation_grid_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
+
+add_executable(data_acquisition_node
+        src/daq/data_acquisition_node.cpp
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(data_acquisition_node ${dependencies})
+
+# Geotiff Map Publisher
+add_executable(avt_341_geotiff_map_publisher_node
+  src/perception/avt_341_geotiff_map_publisher_node.cpp
+  src/perception/geotiff_dataset.cpp
+  src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_geotiff_map_publisher_node ${dependencies})
+target_link_libraries(avt_341_geotiff_map_publisher_node GDAL::GDAL)
 
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime
@@ -265,6 +282,8 @@ install(DIRECTORY
         launch
         config
         rviz
+        parameters
+        maps
         DESTINATION share/${PROJECT_NAME}
         )
 
@@ -289,6 +308,8 @@ install(TARGETS
         avt_341_formation_control_node
         avt_341_grid_compression_node
         avt_341_global_segmentation_grid_node
+        data_acquisition_node
+        avt_341_geotiff_map_publisher_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 

@@ -13,18 +13,9 @@
 // ROS includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-#include "std_msgs/Duration.h"
 
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
-#include "tf2/LinearMath/Quaternion.h"
-#include "tf2/LinearMath/Matrix3x3.h"
-
-
-std_msgs::Duration time_elapsed;
 
 int main(int argc, char *argv[]){
-
     // Init node
     auto n = avt_341::node::init_node(argc, argv, "data_acquisition_node");
     n->initialize_tf_listener();
@@ -42,7 +33,7 @@ int main(int argc, char *argv[]){
     n->get_parameter("~rate", rate, 60.0f);
 
     // Create publishers and subscribers
-    auto time_pub = n->create_publisher<std_msgs::Duration>("avt_341/elapsed_time", 10);
+    auto time_pub = n->create_publisher<avt_341::msg::DurationMsg>("avt_341/elapsed_time", 10);
     auto dist_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/dist_travelled", 10);
     auto avg_speed_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/avg_speed", 10);
     auto cg_pos_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/vehicle_cg/pos", 10);
@@ -65,14 +56,14 @@ int main(int argc, char *argv[]){
     {
         // Current elapsed time
         avt_341::msg::Time t_now = n->get_stamp();
-        time_elapsed.data = t_now - t_start;
+        avt_341::msg::Duration time_elapsed = t_now - t_start;
         time_pub->publish(time_elapsed);
 
         // Get CG transform
         avt_341::msg::TransformStamped tfs_ref = n->lookup_transform(frame_world, frame_cg);
 
         // Calculate CG dynamics
-        if (tfs_ref.header.stamp.toSec() > 1e-3f)
+        if (avt_341::node::seconds_from_header(tfs_ref.header) > 1e-3f)
         {
             // Publish CG position
             avt_341::msg::PoseStamped cg_pos;
@@ -84,7 +75,7 @@ int main(int argc, char *argv[]){
             cg_pos_pub->publish(cg_pos);
 
             // Lookup old tf
-            avt_341::msg::Time old_stamp = tfs_ref.header.stamp - vel_duration;
+            avt_341::msg::Time old_stamp = avt_341::msg::Time(tfs_ref.header.stamp) - vel_duration;
             avt_341::msg::TransformStamped tfs_old = n->lookup_transform(frame_cg, old_stamp, frame_cg, tfs_ref.header.stamp, frame_map);
             
             // Calculate twist
@@ -112,7 +103,7 @@ int main(int argc, char *argv[]){
             avg_speed.data += (cg_vel.twist.linear.x - avg_speed.data) / (double)(++loop_count);
             avg_speed_pub->publish(avg_speed);
 
-            if (last_t.toSec() > 1e-3)
+            if (avt_341::node::seconds_from_time(last_t) > 1e-3)
             {
                 // Publish distance travelled
                 avt_341::msg::Point pos = cg_pos.pose.position;
@@ -127,7 +118,7 @@ int main(int argc, char *argv[]){
                 dist_pub->publish(dist_travelled);
 
                 // Publish CG acceleration (estimate from velocity)
-                double dt = (t_now - last_t).toSec();
+                double dt = avt_341::node::seconds_from_time(t_now - last_t);
                 avt_341::msg::AccelStamped cg_accel;
                 cg_accel.header = tfs_ref.header;
                 cg_accel.header.frame_id = frame_cg;

@@ -132,6 +132,7 @@ namespace avt_341 {
 
         using Time = ros::Time;
         using Duration = ros::Duration;
+        using DurationMsg = ros::Duration;
     }
     namespace msg_tf{
         using Matrix3x3 = tf::Matrix3x3;
@@ -145,13 +146,14 @@ namespace avt_341 {
 #include <cstring>
 #include <rclcpp/time.hpp>
 #include <rclcpp/duration.hpp>
+#include "builtin_interfaces/msg/duration.hpp"
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
 
-#include "geometry_msgs/msg/twist_stamped.h"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
@@ -275,6 +277,7 @@ namespace avt_341 {
 
     using Time = rclcpp::Time;
     using Duration = rclcpp::Duration;
+    using DurationMsg = builtin_interfaces::msg::Duration;
   }
   namespace msg_tf{
     using Matrix3x3 = tf2::Matrix3x3;
