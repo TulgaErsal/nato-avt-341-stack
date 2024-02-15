@@ -31,4 +31,4 @@ use_segmentation: False                 # Whether or not to inflate the obstacle
 w_cost_seg: 0.0                         # Objective function segmentation cost term weight. Higher values will promote planned trajectories which stay far from cells with higher cost.
 w_cost_dev: 0.75                        # Objective function deviation term weight. Higher values will promote planned trajectories with smaller deviations from the current one.
 print_summary: False                    # Whether or not to print the results of each planner iteration to console. Has an impact on performance and should only be used for debugging purposes.
-map_topic: costmap_node/costmap/costmap # Occupancy grid topic
+map_topic: avt_341/occupancy_grid       # Occupancy grid topic

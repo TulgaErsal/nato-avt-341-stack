@@ -17,9 +17,15 @@ find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
+find_package(pcl_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(GDAL CONFIG REQUIRED)
+find_package(PCL REQUIRED)
+
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 if (WIN32 OR WIN64)
 set (link_libs
@@ -47,7 +53,8 @@ set(dependencies
         std_msgs
         tf2_ros
         tf2_sensor_msgs
-        )
+        pcl_msgs
+)
 
 ###########
 ## Build ##
@@ -232,6 +239,18 @@ add_executable(avt_341_global_segmentation_grid_node
         )
 ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
 
+add_executable(avt_341_lidar_obstacle_detector_node
+        include/avt_341/perception/box.hpp
+        include/avt_341/perception/lidar_obstacle_detector.hpp
+        src/perception/lidar_obstacle_detector_node.cpp
+        src/node/node_proxy.cpp
+)
+ament_target_dependencies(avt_341_lidar_obstacle_detector_node ${dependencies})
+target_link_libraries(avt_341_lidar_obstacle_detector_node
+        ${PCL_LIBRARIES}
+)
+
+
 add_executable(data_acquisition_node
         src/daq/data_acquisition_node.cpp
         src/node/node_proxy.cpp
@@ -308,9 +327,16 @@ install(TARGETS
         avt_341_formation_control_node
         avt_341_grid_compression_node
         avt_341_global_segmentation_grid_node
+        avt_341_lidar_obstacle_detector_node
         data_acquisition_node
         avt_341_geotiff_map_publisher_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
+
+install(
+        DIRECTORY include/
+        DESTINATION include
+)
+ament_export_include_directories(include)
 
 ament_package()

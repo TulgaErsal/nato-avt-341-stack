@@ -5,13 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES
-  include/avt_341/perception/box.hpp
-  include/avt_341/perception/lidar_obstacle_detector.hpp
-  src/perception/lidar_obstacle_detector_node.cpp
-)
-
-
 ###########################
 ## download the UAB dll ##
 ##########################

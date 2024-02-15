@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
   std::string display_type;
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
-  int dilation_factor;
+  float dilation_factor;
   bool dubins_smoothing;
   float dubins_radius;
   std::string map_topic;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~w_segmentation", w_segmentation, 1.0f);
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
-  n->get_parameter("~dilation_factor", dilation_factor, 0);
+  n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
   n->get_parameter("~dubins_smoothing", dubins_smoothing, false);
   n->get_parameter("~dubins_radius", dubins_radius, 2.0f);
   n->get_parameter("~use_global_path", use_global_path, true);

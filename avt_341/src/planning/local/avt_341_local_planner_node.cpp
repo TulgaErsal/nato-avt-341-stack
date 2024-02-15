@@ -56,8 +56,8 @@ int main(int argc, char *argv[]){
 
   avt_341::planning::Planner planner;
   // planner params
-  float path_look_ahead, vehicle_width, max_steer_angle, output_path_step, path_int_step, rate;
-  int dilation_factor, num_paths;
+  float path_look_ahead, vehicle_width, max_steer_angle, output_path_step, path_int_step, rate, dilation_factor;
+  int num_paths;
   float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist;
   bool trim_path, use_global_path, use_blend;
   std::string display, cost_vis, map_topic;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~max_steer_angle", max_steer_angle, 0.43f);
   n->get_parameter("~output_path_step", output_path_step, 0.5f);
   n->get_parameter("~path_integration_step", path_int_step, 0.25f);
-  n->get_parameter("~dilation_factor", dilation_factor, 0);
+  n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
   n->get_parameter("~w_c", w_c, 0.2f);
   n->get_parameter("~w_d", w_d, 0.2f);
   n->get_parameter("~w_s", w_s, 0.2f);

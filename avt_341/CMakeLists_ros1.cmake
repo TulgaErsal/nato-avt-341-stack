@@ -296,7 +296,9 @@ target_link_libraries(avt_341_comm_publisher_node
 
 ## lidar_obstacle_detector node
 add_executable(avt_341_lidar_obstacle_detector_node
-  ${LIDAR_OBSTACLE_DETECTOR_NODE_SOURCES}
+  include/avt_341/perception/box.hpp
+  include/avt_341/perception/lidar_obstacle_detector.hpp
+  src/perception/lidar_obstacle_detector_node.cpp
 )
 add_dependencies(avt_341_lidar_obstacle_detector_node 
   ${${PROJECT_NAME}_EXPORTED_TARGETS}

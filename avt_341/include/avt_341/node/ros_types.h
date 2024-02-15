@@ -33,6 +33,7 @@
 #include "std_msgs/Float64.h"
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Header.h"
 
 #include "avt_341_msgs/Communication.h"
 #include "avt_341_msgs/FollowerStatus.h"
@@ -72,6 +73,7 @@ namespace avt_341 {
         using PoseStampedPtr = const geometry_msgs::PoseStamped::ConstPtr &;
 
         using Pose = geometry_msgs::Pose;
+        using PosePtr = const geometry_msgs::Pose::ConstPtr &;
 
         using PointStamped = geometry_msgs::PointStamped;
         using PointStampedPtr = const geometry_msgs::PointStamped::ConstPtr &;
@@ -117,6 +119,9 @@ namespace avt_341 {
 
         using String = std_msgs::String;
         using StringPtr = const std_msgs::String::ConstPtr &;
+
+        using Header = std_msgs::Header;
+        using HeaderPtr = const std_msgs::Header::ConstPtr &;
 
         using FollowerStatus = avt_341_msgs::FollowerStatus;
         using FollowerStatusPtr = const avt_341_msgs::FollowerStatus::ConstPtr &;
@@ -177,6 +182,7 @@ namespace avt_341 {
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/header.hpp"
 
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
@@ -219,6 +225,7 @@ namespace avt_341 {
     using PoseStampedPtr = geometry_msgs::msg::PoseStamped::SharedPtr;
 
     using Pose = geometry_msgs::msg::Pose;
+    using PosePtr = geometry_msgs::msg::Pose::SharedPtr;
 
     using PointStamped = geometry_msgs::msg::PointStamped;
     using PointStampedPtr = const geometry_msgs::msg::PointStamped::SharedPtr;
@@ -272,6 +279,9 @@ namespace avt_341 {
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;
     using MultiArrayDimension = std_msgs::msg::MultiArrayDimension;
     
+    using Header = std_msgs::msg::Header;
+    using HeaderPtr = std_msgs::msg::Header::SharedPtr;
+
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
 

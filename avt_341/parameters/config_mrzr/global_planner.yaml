@@ -16,4 +16,4 @@ dilation_factor: 1.5                          # Dilation to costmap to apply dur
 dubins_smoothing: True                        # Enable path smoothing with minimum radius of curvature 'dubins_radius'
 dubins_radius: 2.0                            # Minimum radius of curvature of path (only for dubins_smoothing=True)
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
-map_topic: costmap_node/costmap/costmap       # Occupancy map topic
+map_topic: avt_341/occupancy_grid             # Occupancy map topic

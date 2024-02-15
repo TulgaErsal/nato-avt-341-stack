@@ -455,7 +455,7 @@ std::vector<int> LidarObstacleDetector<PointT>::hungarian(const std::vector<std:
       count++;
   }
 
-  ROS_DEBUG("For: %zu current frame bounding boxes, found: %d matches in previous frame!", right_pair.size(), count);
+  //ROS_DEBUG("For: %zu current frame bounding boxes, found: %d matches in previous frame!", right_pair.size(), count);
 
   return right_pair;
 }
