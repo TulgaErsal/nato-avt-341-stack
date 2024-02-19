@@ -227,11 +227,12 @@ void NodeProxy::spin() {
 
     bool NodeProxy::transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame){
       try {
-        tf_buffer_->transform(in_cloud, out_cloud, target_frame, tf2::durationFromSec(0.2));
+        out_cloud = tf_buffer_->transform(in_cloud, target_frame, tf2::durationFromSec(0.2));
 //        tf2::doTransform(in_cloud, out_cloud, lookup_transform(target_frame, in_cloud.header.frame_id));
         return true;
       } catch (const tf2::TransformException & ex) {
         RCLCPP_WARN(node_->get_logger(), "Could not transform cloud %s to %s: %s", in_cloud.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+        out_cloud = in_cloud;
         return false;
       }
     }

@@ -440,6 +440,7 @@ bool LidarObstacleDetector<PointT>::hungarianFind(const int i, const std::vector
       }
     }
   }
+  return false;
 }
 
 template <typename PointT>

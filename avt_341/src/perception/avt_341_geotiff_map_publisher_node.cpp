@@ -10,7 +10,6 @@
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/perception/geotiff_dataset.h"
 #include <fstream>
-#include <gdal_priv.h>
 #include <vector>
 #include <algorithm>
 #include <cmath>

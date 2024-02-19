@@ -29,12 +29,18 @@ sudo apt install ros-<version>-tf2-sensor-msgs
 # sudo apt install ros-noetic-jsk-recognition-msgs
 # sudo apt install ros-noetic-jsk-rviz-plugins
 # sudo apt install ros-noetic-tf2-sensor-msgs
+```
 
-# GDAL
-sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
-sudo apt-get update
-sudo apt-get install gdal-bin
-sudo apt-get install libgdal-dev
+# GDAL 3
+* Download [gdal-3.5.0.tar.gz](https://github.com/OSGeo/gdal/releases/download/v3.5.0/gdal-3.5.0.tar.gz)
+```bash
+tar -xf gdal-3.5.0.tar.gz
+cd gdal-3.5.0
+mkdir build
+cd build
+cmake ..
+cmake --build .
+cmake --build . --target install
 ```
 
 Clone the repo into your `catkin_ws/src` directory with the following command.
@@ -79,13 +85,16 @@ roslaunch avt_341 example.launch
 ## ROS-2 Installation
 A functioning [colcon workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html) is required to build and run this code.
 
-Install dependencies:
-```bash 
-# GDAL
-sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
-sudo apt-get update
-sudo apt-get install gdal-bin
-sudo apt-get install libgdal-dev
+# GDAL 3
+* Download [gdal-3.5.0.tar.gz](https://github.com/OSGeo/gdal/releases/download/v3.5.0/gdal-3.5.0.tar.gz)
+```bash
+tar -xf gdal-3.5.0.tar.gz
+cd gdal-3.5.0
+mkdir build
+cd build
+cmake ..
+cmake --build .
+cmake --build . --target install
 ```
 
 Clone the repo into your catkin_ws/src directory with the following command.

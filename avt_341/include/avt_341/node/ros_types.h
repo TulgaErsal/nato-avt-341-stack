@@ -195,7 +195,7 @@ namespace avt_341 {
     using PointCloudPtr = sensor_msgs::msg::PointCloud::SharedPtr;
 
     using PointCloud2 = sensor_msgs::msg::PointCloud2;
-    using PointCloud2Ptr = sensor_msgs::msg::PointCloud2::SharedPtr;
+    using PointCloud2Ptr = const sensor_msgs::msg::PointCloud2::SharedPtr;
 
     using PointField = sensor_msgs::msg::PointField;
     using PointFieldPtr = sensor_msgs::msg::PointField::SharedPtr;

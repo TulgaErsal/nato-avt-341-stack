@@ -100,8 +100,6 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
         waypoints_x = "[ 0.0 ]"
         waypoints_y = "[ 0.0 ]"
 
-    print(f"Loaded {len(json.loads(waypoints_x))} waypoints from [{waypoints_file_path}]")
-
     return [
         DeclareLaunchArgument('waypoints_x', description="List of waypoint x coordinates. Will override waypoints_file is specified.", default_value=waypoints_x),
         DeclareLaunchArgument('waypoints_y', description="List of waypoint y coordinates. Will override waypoints_file is specified.", default_value=waypoints_y),

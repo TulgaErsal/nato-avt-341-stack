@@ -89,15 +89,15 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
 	avt_341::msg::PointCloud2 lidar_points_transformed;
   if(lidar_points->header.frame_id != robot_base_link_)
   {
-    if (!nh->transform_cloud(*lidar_points, lidar_points_transformed, robot_base_link_))
+    if (!nh->transform_cloud(*lidar_points, lidar_points_transformed, robot_base_link_)) {
+      nh->log_warning("Unable to transform pointcloud from %s -> %s",lidar_points->header.frame_id.c_str(),robot_base_link_.c_str());
       return;
+    }
   }
   else
   {
     lidar_points_transformed = *lidar_points;
   }
-
-  nh->log_debug("lidar points recieved");
 
   const auto pointcloud_header = lidar_points_transformed.header;
   bbox_source_frame_ = lidar_points_transformed.header.frame_id;
@@ -120,7 +120,7 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmented_clouds;
   segmented_clouds.first = norm_filtered;
   segmented_clouds.second = ground_filtered;
- 
+
   // Publish ground cloud and obstacle cloud
   publishClouds(segmented_clouds, pointcloud_header);
 
@@ -128,7 +128,7 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
 
   // Cluster objects
   auto cloud_clusters = obstacle_detector->clustering(segmented_clouds.first, cluster_threshold, cluster_min_size, cluster_max_size);
-  
+
   // Publish Obstacles
   publishDetectedObjects(std::move(cloud_clusters), pointcloud_header);
 }
@@ -137,7 +137,8 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
 int main(int argc, char** argv)
 {
   nh = avt_341::node::init_node(argc, argv, "obstacle_detector_node");
-  
+  nh->initialize_tf_listener();
+
   std::string lidar_points_topic;
   std::string cloud_ground_topic;
   std::string cloud_clusters_topic;

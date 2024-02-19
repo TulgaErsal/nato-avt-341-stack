@@ -23,35 +23,41 @@ def tf2_nodes():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='map_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "1", "map", "odom"]
+            arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='master_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "1", "mrzr/base_link" "base_link"]
+            arguments=["0", "0", "0", "0", "0", "0", "base_link", "mrzr/base_link"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='lidar_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "1", "mrzr/os_sensor" "mrzr/lidar"]
+            arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "mrzr/lidar"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='lidar_ns_fix_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "1", "mrzr/os_sensor" "os_sensor"]
+            arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "os_sensor"]
         ),
         Node(
             package='mrzr_tools',
             executable='mrzr_tf2_server.py',
             name='mrzr_tf2_server',
+            namespace='/mrzr',
             output='screen',
             parameters=[{
                 'publish_odom': True,
                 'odom_topic': 'avt_341/odometry',
-            }]
+            }],
+            remappings=[
+                ("/mrzr/vectornav/GPS", "/vectornav/GPS"),
+                ("/mrzr/vectornav/Odom", "/vectornav/Odom"),
+                ("/mrzr/steering_status", "/steering_status")
+            ]
         )
     ]
 
@@ -79,7 +85,11 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='mrzr_tools',
             executable='mrzr_speed_republish_node',
-            name='mrzr_speed_republish_node'
+            name='mrzr_speed_republish_node',
+            namespace='/mrzr',
+            remappings=[
+                ("/mrzr/speed_actual", "/speed_actual")
+            ]
         ),
 
         # NATO AVT-341 Stack
@@ -89,7 +99,7 @@ def launch_setup(context, *args, **kwargs):
                 "use_sim_time":	                use_sim_time.perform(context),
                 "auto_launch_rviz":	            auto_launch_rviz.perform(context),
                 "display_type":	                "rviz",
-                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/side_slope/dense.yaml",
+                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/side_slope.yaml",
                 "robot_description_file":	    f"{avt_341_dir}/config/MRZR.urdf",
                 "robot_description_veh2_file":	"",
                 "robot_description_veh3_file":	"",

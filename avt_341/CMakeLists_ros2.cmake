@@ -2,6 +2,8 @@
 
 #cmake_minimum_required(VERSION 3.5)
 
+cmake_policy(VERSION 3.16)
+
 set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
@@ -26,6 +28,11 @@ find_package(PCL REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
+
+if(NOT TARGET GDAL::GDAL)
+  add_library(GDAL::GDAL ALIAS ${GDAL_LIBRARY})
+endif()
+include_directories(${GDAL_INCLUDE_DIRS})
 
 if (WIN32 OR WIN64)
 set (link_libs
@@ -249,7 +256,6 @@ ament_target_dependencies(avt_341_lidar_obstacle_detector_node ${dependencies})
 target_link_libraries(avt_341_lidar_obstacle_detector_node
         ${PCL_LIBRARIES}
 )
-
 
 add_executable(data_acquisition_node
         src/daq/data_acquisition_node.cpp
