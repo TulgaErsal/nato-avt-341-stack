@@ -95,7 +95,7 @@ void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &c
       tf_broadcaster_->sendTransform(tf_msg);
 }
 
-void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose) {
+void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose) {
   if(tf_buffer_ == nullptr) {
     initialize_tf_listener();
   }

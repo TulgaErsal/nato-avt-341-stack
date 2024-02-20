@@ -31,7 +31,7 @@ sudo apt install ros-<version>-tf2-sensor-msgs
 # sudo apt install ros-noetic-tf2-sensor-msgs
 ```
 
-# GDAL 3
+### GDAL 3
 * Download [gdal-3.5.0.tar.gz](https://github.com/OSGeo/gdal/releases/download/v3.5.0/gdal-3.5.0.tar.gz)
 ```bash
 tar -xf gdal-3.5.0.tar.gz
@@ -85,7 +85,7 @@ roslaunch avt_341 example.launch
 ## ROS-2 Installation
 A functioning [colcon workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html) is required to build and run this code.
 
-# GDAL 3
+### GDAL 3
 * Download [gdal-3.5.0.tar.gz](https://github.com/OSGeo/gdal/releases/download/v3.5.0/gdal-3.5.0.tar.gz)
 ```bash
 tar -xf gdal-3.5.0.tar.gz
