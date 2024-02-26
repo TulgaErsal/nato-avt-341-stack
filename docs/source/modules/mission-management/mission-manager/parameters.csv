@@ -1,0 +1,6 @@
+"Parameter", "Description"
+"name", "unique string identifier for the vehicle."
+"mission_definition_file", "loads data on mission points mission."
+"follow_scale_x", "Scaling factor on x axis. Formation definitions are defined based on 1 'unit'. Follow scale allows user to increase separation between vehicles."
+"follow_scale_y", "Same as follow_scale_x but on the y axis."
+"same_object_distance_threshold", "Minimum distance between two objects for them to be perceived as two separate objects. Used by the object detection/contact management system to avoid revisiting objects."

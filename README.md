@@ -1,132 +1,47 @@
 # AVT-341
+
 ROS package with autonomy algorithms for the NATO AVT-341.
 
 The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
 
-__Contents:__ 
-- [Requirements](#requirements)
-- [ROS1 Installation](#ros-1-installation)
-- [ROS2 Installation](#ros-2-installation)
-- [Troubleshooting](#troubleshooting)
-- [Running with MAVS](#running-with-mavs)
-- [Costmap Clearing Methods](documentation/costmap_clearing.md)
-- [Funding Acknowledgement](#funding-acknowledgement)
+## Building the documentation
 
+The NATO AVT-341 autonomy stack comes with documentation that may be built and
+browsed locally. The documentation build has been tested on Ubuntu 22.04, but a
+similar procedure should work provided a working Python installation is
+available.
 
-## Requirements
-The stack will work with either ROS1 or ROS2. It has been built and tested on Ubuntu 16, 18, 20, and 22. 
+First, install Doxygen:
 
-## ROS-1 Installation
-A functioning [catkin workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) is required to build and run this code.
-
-Install dependencies:
-```bash 
-sudo apt install ros-<version>-jsk-recognition-msgs
-sudo apt install ros-<version>-jsk-rviz-plugins
-sudo apt install ros-<version>-tf2-sensor-msgs
-
-# Example
-# sudo apt install ros-noetic-jsk-recognition-msgs
-# sudo apt install ros-noetic-jsk-rviz-plugins
-# sudo apt install ros-noetic-tf2-sensor-msgs
-```
-
-Clone the repo into your `catkin_ws/src` directory with the following command.
 ```bash
-git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
+sudo apt install -y doxygen
 ```
 
-Next, since you are building on ROS-1, copy the appropriate package file.
+Then install the required Python dependencies by issuing the following commands from
+the root of the repository:
+
 ```bash
-cd ./nato-avt-341-stack
-cp ./avt_341/package_ros1.xml ./avt_341/package.xml
-cp ./avt_341_msgs/package_ros1.xml ./avt_341_msgs/package.xml
+python -m venv docs/.nato-avt-341-docs-env
+source docs/.nato-avt-341-docs-env/bin/activate
+pip install -r docs/requirements.txt
 ```
 
-From the top level catkin_ws directory, type
+Finally, run the build process:
+
 ```bash
-catkin_make install
+cd docs
+make html
 ```
 
-Or, if you want to build only this package:
-```bash
-catkin_make --only-pkg-with-deps avt_341
-```
+Before sourcing your ROS distribution to run the stack, make sure the
+documentation build environment is deactivated by issuing `deactivate` in the
+current terminal or by opening a new terminal. The prefix
+`.nato-avt-341-docs-env` should no longer be visible in your terminal before
+sourcing the ROS distribution.
 
-__If user-defined workspace with default install spaces:__ Make sure that ```setup.bash``` has been sourced in either the workspace's ```devel``` or ```install``` folder depending on if ```catkin_make``` or ```catkin_make install``` has been used respectively. Typically this command is added to ```~/.bashrc``` so that it is called on opening a command prompt instead of being issued manually.  
+## Acknowledgements
 
-Can be placed in ~/.bashrc also so does not need to be issued manually
-```bash 
-source ~/<path_to_catkin_workspace>/[install|devel]/setup.bash
-```
-
-Example (when built with catkin_make): 
-```bash
-source ~/catkin_ws/devel/setup.bash
-```
-
-To test the installation, type
-```bash
-roslaunch avt_341 example.launch
-```
-
-## ROS-2 Installation
-A functioning [colcon workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html) is required to build and run this code.
-
-Clone the repo into your catkin_ws/src directory with the following command.
-```bash
-git clone https://github.com/TulgaErsal/nato-avt-341-stack.git
-```
-
-Next, since you are building on ROS-2, copy the appropriate package file.
-```bash
-cd ./nato-avt-341-stack
-cp ./avt_341/package_ros2.xml ./avt_341/package.xml
-cp ./avt_341_msgs/package_ros2.xml ./avt_341_msgs/package.xml
-```
-
-From the top level ros2_ws directory, type
-```bash
-colcon build
-```
-Currently, colcon will echo some warning messages on the first build about deprecated point cloud libraries. Execute the build a second time:
-```bash
-colcon build
-```
-and these will be fised.
-
-__If user-defined workspace with default install spaces:__ Make sure that ```ros2_ws/install/setup.bash``` has been sourced after the build. Typically this command is added to ```~/.bashrc``` so that it is called on opening a command prompt instead of being issued manually.  
-
-Can be placed in ~/.bashrc also so does not need to be issued manually
-```bash 
-source ~/<path_to_colcon_workspace>/[install]/setup.bash
-```
-
-To test the installation, type
-```bash
-ros2 launch avt_341 example.launch.py
-```
-
-##  Troubleshooting
-In ROS1, the package requires the ROS PointCloud Library (PCL) interface. If you get errors related to missing pcl header files, then you may need to install pcl_ros on your system.
-```bash
-sudo apt-get install ros-kinetic-pcl-ros
-```
-
-## Running with MAVS
-To run an example simulation with MAVS, first [install and build MAVS](https://mavs-documentation.readthedocs.io/en/latest/MavsBuildInstructions/).
-
-Next, install and build the [MAVS-ROS package](https://github.com/CGoodin/mavs_ros) (for ROS1) or the [MAVS-ROS2](https://github.com/CGoodin/mavs-ros2) package (for ROS2).
-
-To test in ROS-1:
-```bash
-roslaunch avt_341 mavs_example.launch
-```
-
-To test in ROS-2:
-```bash
-ros2 launch avt_341 mavs_example.launch.py
-```
-
-## Funding Acknowledgement
-This project is made possible by technical and financial support of the Mississippi State University Center for Advanced Vehicular Systems as well as the Automotive Research Center (ARC) in accordance with Cooperative Agreement W56HZV 14 2 0001 U.S. Army CCDC Ground Vehicle Systems Center (GVSC) Warren, MI.
+This project is made possible by technical and financial support of the
+Mississippi State University Center for Advanced Vehicular Systems as well as
+the Automotive Research Center (ARC) in accordance with Cooperative Agreement
+W56HZV 14 2 0001 U.S. Army CCDC Ground Vehicle Systems Center (GVSC) Warren, MI.

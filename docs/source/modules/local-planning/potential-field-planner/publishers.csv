@@ -1,0 +1,2 @@
+Topic, Message type, Description
+"avt_341/local_path", "nav_msgs/Path", "Local path with obstacle avoidance and safe steering properties."
