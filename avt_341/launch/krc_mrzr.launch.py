@@ -1,13 +1,14 @@
 import os
+from datetime import datetime
 
 import launch
 import launch.conditions
+from launch.conditions import IfCondition, UnlessCondition
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-import launch.conditions
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess, GroupAction
 from launch_ros.actions import Node, SetParameter
 
 # Global Params
@@ -61,6 +62,57 @@ def tf2_nodes():
         )
     ]
 
+def recording_node(context):
+    record = LaunchConfiguration('record')
+    record_select_topic = LaunchConfiguration('record_select_topic')
+    record_topics = LaunchConfiguration('record_topics')
+    separate_camera_bag = LaunchConfiguration('separate_camera_bag')
+    compress_cameras = LaunchConfiguration('compress_cameras')
+
+    # File naming constants
+    time_YYMMDD = datetime.now().strftime('%y%m%d')
+    time_HHMMSS = datetime.now().strftime('%H%M%S')
+    home_dir = os.path.expanduser('~')
+
+    filename = f"{home_dir}/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_{time_HHMMSS}"
+    filename_nav = f"{home_dir}/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_nav_{time_HHMMSS}"
+    filename_cams = f"{home_dir}/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_cam_{time_HHMMSS}"
+
+    return [
+        GroupAction(condition=IfCondition(record), actions=[
+            GroupAction(condition=IfCondition(record_select_topic), actions=[
+                ExecuteProcess(
+                    cmd=['ros2','bag','record','-o',filename]+record_topics.perform(context).split(' '),
+                    output='screen'
+                )
+            ]),
+            GroupAction(condition=UnlessCondition(record_select_topic), actions=[
+                GroupAction(condition=IfCondition(separate_camera_bag), actions=[
+                    ExecuteProcess(
+                        cmd=['ros2','bag','record','-o',filename_nav,'-a','-x','(/flir_rgb/.*|/usb_cam/.*)'],
+                        output='screen'
+                    ),
+                    ExecuteProcess(
+                        cmd=['ros2','bag','record','-o',filename_cams,'-e','(/flir_rgb/.*|/usb_cam/.*)'],
+                        output='screen',
+                        condition=UnlessCondition(compress_cameras)
+                    ),
+                    ExecuteProcess(
+                        cmd=['ros2','bag','record','-o',filename_cams,'-e','(/flir_rgb/.*/compressed.*|/usb_cam/.*/compressed.*)'],
+                        output='screen',
+                        condition=IfCondition(compress_cameras)
+                    )
+                ]),
+                GroupAction(condition=UnlessCondition(separate_camera_bag), actions=[
+                    ExecuteProcess(
+                        cmd=['ros2','bag','record','-o',filename,'-a'],
+                        output='screen'
+                    )
+                ])
+            ])
+        ])
+    ]
+
 def launch_setup(context, *args, **kwargs):
     simulation_mode = LaunchConfiguration('simulation_mode')
     waypoint_mode = LaunchConfiguration('waypoint_mode')
@@ -80,6 +132,9 @@ def launch_setup(context, *args, **kwargs):
     mrzr_nodes = [
         # Transform servers
         *tf2_nodes(),
+
+        # Recording node
+        *recording_node(context),
 
         # Speed republisher
         Node(

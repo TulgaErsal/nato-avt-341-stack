@@ -2,7 +2,7 @@
 # ======================================================================================================================
 follow_scale_x: 15.0                                                                    # X scale distance between vehicles in formation in vehicle coordinates
 follow_scale_y: 10.0                                                                    # Y Scale distance between vehicles in formation in vehicle coordinates
-mission_definition_file: "$(find avt_341)/config/krc_mission_points - NAD83_m.csv"     # Mission Manager - file describing mission reference points
+mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_mission_points - NAD83_m.csv')"     # Mission Manager - file describing mission reference points
 fsc_type: 'slow_down_leader'
 fsc_max_speed_factor: 2.0                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
 x_offset_on_path: False                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader

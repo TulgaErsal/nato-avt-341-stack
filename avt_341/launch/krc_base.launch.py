@@ -3,7 +3,7 @@ import yaml
 import json
 
 import launch.conditions
-from launch.conditions import IfCondition, LaunchConfigurationNotEquals, LaunchConfigurationEquals
+from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationNotEquals, LaunchConfigurationEquals
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetLaunchConfiguration
@@ -84,6 +84,8 @@ class ArrayIndexSubstitution(Substitution):
 
 def evaluate_waypoint_parameters(context, *args, **kwargs):
     waypoints_file_path = LaunchConfiguration('waypoints_file').perform(context)
+    waypoint_mode = LaunchConfiguration('waypoint_mode')
+
     waypoints_x = "[ ]"
     waypoints_y = "[ ]"
     is_empty_waypoints = not waypoints_file_path
@@ -101,11 +103,24 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
         waypoints_y = "[ 0.0 ]"
 
     return [
-        DeclareLaunchArgument('waypoints_x', description="List of waypoint x coordinates. Will override waypoints_file is specified.", default_value=waypoints_x),
-        DeclareLaunchArgument('waypoints_y', description="List of waypoint y coordinates. Will override waypoints_file is specified.", default_value=waypoints_y),
+        # waypoint_mode enabled
+        DeclareLaunchArgument('waypoints_x', description="List of waypoint x coordinates. Will override waypoints_file is specified.", default_value=waypoints_x,
+                              condition=IfCondition(waypoint_mode)),
+        DeclareLaunchArgument('waypoints_y', description="List of waypoint y coordinates. Will override waypoints_file is specified.", default_value=waypoints_y,
+                              condition=IfCondition(waypoint_mode)),
         DeclareLaunchArgument('is_empty_waypoints',
                               description="Parameter set internally to detect if waypoints file empty. ROS2 foxy workaround (https://answers.ros.org/question/396556/what-is-best-practice-for-parameters-which-are-empty-lists-in-ros2/). Do not set manually",
-                              default_value=str(is_empty_waypoints).capitalize()),
+                              default_value=str(is_empty_waypoints).capitalize(),
+                              condition=IfCondition(waypoint_mode)),
+        # waypoint_mode disabled
+        DeclareLaunchArgument('waypoints_x', description="List of waypoint x coordinates. Will override waypoints_file is specified.", default_value="[ 0.0 ]",
+                              condition=UnlessCondition(waypoint_mode)),
+        DeclareLaunchArgument('waypoints_y', description="List of waypoint y coordinates. Will override waypoints_file is specified.", default_value="[ 0.0 ]",
+                              condition=UnlessCondition(waypoint_mode)),
+        DeclareLaunchArgument('is_empty_waypoints',
+                              description="Parameter set internally to detect if waypoints file empty. ROS2 foxy workaround (https://answers.ros.org/question/396556/what-is-best-practice-for-parameters-which-are-empty-lists-in-ros2/). Do not set manually",
+                              default_value="True",
+                              condition=UnlessCondition(waypoint_mode)),
     ]
 
 def evaluate_speed_controller(params, context, *args, **kwargs):
@@ -317,34 +332,33 @@ def launch_setup(context, *args, **kwargs):
                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
         ),
 
-        # (for multiple vehicles)
-        GroupAction(condition=IfCondition(PythonExpression([num_vehicles, ' > 1'])), actions=[
-            # Mission Manager
-            Node(
-                package='avt_341',
-                executable='avt_341_mission_manager_node',
-                name='mission_manager_node',
-                output='screen',
-                parameters=[{
+        # Mission Manager
+        Node(
+            package='avt_341',
+            executable='avt_341_mission_manager_node',
+            name='mission_manager_node',
+            output='screen',
+            parameters=[
+                {
                     'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx)),
-                    },
-                    {k: LaunchConfiguration(k) for k in params['mission_manager'].keys()},
-                    {k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
-                ]
-            ),
-            # Socket Communication
-            Node(
-                package='avt_341',
-                executable='avt_341_comm_node',
-                name='comm_node',
-                output='screen',
-                parameters=[{
-                    'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx)),
-                    },
-                    {k: LaunchConfiguration(k) for k in params['socket_comms'].keys()}
-                ]
-            )
-        ])
+                    'vehicle_namespaces': vehicle_namespaces
+                },
+                {k: LaunchConfiguration(k) for k in params['mission_manager'].keys()},
+                {k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
+            ]
+        ),
+
+        # Socket Communication
+        Node(
+            package='avt_341',
+            executable='avt_341_comm_node',
+            name='comm_node',
+            output='screen',
+            parameters=[
+                {'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx))},
+                {k: LaunchConfiguration(k) for k in params['socket_comms'].keys()}
+            ]
+        )
     ])
     
     return [*arg_list, *vehicle_node_list]
