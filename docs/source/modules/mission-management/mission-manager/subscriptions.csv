@@ -1,0 +1,7 @@
+"Topic", "Message Type", "Description"
+"avt_341/recv_comms", "avt_341::msg::Communication", "Channel for sending Communication messages to the mission manager."
+"avt_341/odometry", "avt_341::msg::Odometry", "Receives ego odometry"
+"avt_341/state", "avt_341::msg::Int32", "Mission manager tracks state updates"
+"avt_341/target_contacts", "avt_341::msg::Path", "List of contact positions stored in a Path message"
+"/'veh num'/avt_341/odometry", "avt_341::msg::Odometry", "Receives odometry of team members."
+"/avt_341/desired_speed_factor", "avt_341::msg::Float64", ""
