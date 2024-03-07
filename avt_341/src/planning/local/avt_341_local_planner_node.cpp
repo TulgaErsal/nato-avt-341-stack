@@ -74,7 +74,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~w_s", w_s, 0.2f);
   n->get_parameter("~w_r", w_r, 0.4f);
   n->get_parameter("~w_t", w_t, 0.0f);
-  n->get_parameter("~rate", rate, 50.0f);
+  n->get_parameter("~rcc_rate", rate, 50.0f);
   n->get_parameter("~ignore_coll_before_dist", ignore_coll_before_dist, 0.0f);
   n->get_parameter("~trim_path", trim_path, false);
   n->get_parameter("~use_global_path", use_global_path, false);

@@ -25,6 +25,7 @@ public:
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/static_transform_broadcaster.h"
 #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -150,6 +151,8 @@ namespace avt_341 {
 
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
+            bool transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame);
+
             template<typename... Args> inline void log_debug(const char * format, Args... args){
               ROS_DEBUG(format, args...);
             }
@@ -202,6 +205,7 @@ namespace avt_341 {
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/static_transform_broadcaster.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include <stdarg.h>
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -341,6 +345,8 @@ namespace avt_341 {
         RCLCPP_DEBUG(node_->get_logger(), format, args...);
       }
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
+
+      bool transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame);
 
       template<typename... Args> inline void log_info(const char * format, Args... args){
         RCLCPP_INFO(node_->get_logger(), format, args...);

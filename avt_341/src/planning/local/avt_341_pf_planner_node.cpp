@@ -70,7 +70,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~inner_cutoff_dist", inner_cutoff_dist, 1.5f);
   n->get_parameter("~motion_model_res", motion_model_res, 0.5f);
   n->get_parameter("~use_global_path", use_global_path, false);
-  n->get_parameter("~rate", rate, 50.0f);
+  n->get_parameter("~pf_rate", rate, 50.0f);
 
   avt_341::planning::PfPlanner planner;
   planner.SetEta(eta);

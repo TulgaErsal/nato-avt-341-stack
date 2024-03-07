@@ -8,6 +8,7 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
+#include "sensor_msgs/point_cloud2_iterator.h"
 
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Twist.h"
@@ -47,6 +48,8 @@ namespace avt_341 {
 
         using PointCloud2 = sensor_msgs::PointCloud2;
         using PointCloud2Ptr = const sensor_msgs::PointCloud2::ConstPtr &;
+        template<typename T>
+        using PointCloud2Iterator = sensor_msgs::PointCloud2Iterator<T>;
 
         using PointField = sensor_msgs::PointField;
         using PointFieldPtr = const sensor_msgs::PointField::ConstPtr &;
@@ -157,6 +160,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
 
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -196,6 +200,8 @@ namespace avt_341 {
 
     using PointCloud2 = sensor_msgs::msg::PointCloud2;
     using PointCloud2Ptr = const sensor_msgs::msg::PointCloud2::SharedPtr;
+    template<typename T>
+    using PointCloud2Iterator = sensor_msgs::PointCloud2Iterator<T>;
 
     using PointField = sensor_msgs::msg::PointField;
     using PointFieldPtr = sensor_msgs::msg::PointField::SharedPtr;

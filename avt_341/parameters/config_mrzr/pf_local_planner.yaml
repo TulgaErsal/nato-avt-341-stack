@@ -1,7 +1,7 @@
 # Potential Field Local Planner
 # ======================================================================================================================
 use_global_path: False                # Whether local planner should use path output from global planner for its road centerline or use simple line connecting waypoints
-rate: 10.0                            # Planning rate
+pf_rate: 10.0                            # Planning rate
 obstacle_cost_thresh: 50              # Threshold for making something an obstacle (0-100), primarily for use with segmentation grid
 kp: 10.0                              # Attractive potential coeff
 eta: 7.5                              # Repulsive potential coeff

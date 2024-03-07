@@ -156,7 +156,7 @@ void UpdateState() {}
 void DeclareParameters()
 {
     // Declare the Julia SysImage path parameter.
-    node->get_parameter("~rate", rate, 10.0);
+    node->get_parameter("~mpc_rate", rate, 10.0);
 
     // Declare the Julia SysImage path parameter.
     node->get_parameter("~sysimage_path", sysimage_path, std::string());

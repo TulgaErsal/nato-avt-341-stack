@@ -1,6 +1,6 @@
 # Data Acquisition
 # ======================================================================================================================
-rate: 30.0                            # Data aquisition rate [Hz]
+daq_rate: 30.0                            # Data aquisition rate [Hz]
 world_frame: 'nad83'                  # World coordinate system reference frame
 map_frame: 'map'                      # Global map reference frame
 vehicle_cg_frame: 'mrzr/vbox_link'    # Vehicle center-of-gravity reference frame

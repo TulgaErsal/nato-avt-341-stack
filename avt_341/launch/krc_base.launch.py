@@ -135,7 +135,7 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                     output='screen',
                     parameters=[
                         {'vehicle_wheelbase': '2.731'} if simulation_mode == 'true' else {},
-                        {k: LaunchConfiguration(k) for k in params['control'].keys()}
+                        {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
     else:
@@ -146,7 +146,7 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                     output='screen',
                     parameters=[
                         {'vehicle_wheelbase': '2.731'} if simulation_mode == 'true' else {},
-                        {k: LaunchConfiguration(k) for k in params['control'].keys()}
+                        {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
 
@@ -164,7 +164,7 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                     output='screen',
                     parameters=[
                         {'display': display_type},
-                        {k: LaunchConfiguration(k) for k in params['rcc_local_planner'].keys()}
+                        {k: LaunchConfiguration(f'rcc_local_planner_{k}') for k in params['rcc_local_planner'].keys()}
                     ],
         )]
     elif local_planner_method == 'dwa':
@@ -175,7 +175,7 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                     output='screen',
                     parameters=[
                         {'wheelbase': '2.731'} if simulation_mode == 'true' else {},
-                        {k: LaunchConfiguration(k) for k in params['dwa_local_planner'].keys()}
+                        {k: LaunchConfiguration(f'dwa_local_planner_{k}') for k in params['dwa_local_planner'].keys()}
                     ],
         )]
     else: # local_planner_method == 'pf':
@@ -186,7 +186,7 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 output='screen',
                 parameters=[
                     {'display': display_type},
-                    {k: LaunchConfiguration(k) for k in params['pf_local_planner'].keys()}
+                    {k: LaunchConfiguration(f'pf_local_planner_{k}') for k in params['pf_local_planner'].keys()}
                 ],
         )]
 
@@ -250,7 +250,7 @@ def launch_setup(context, *args, **kwargs):
                 param_refs[k][ki] = vi[5:-1]
         for ki in param_refs[k].keys():
             del params[k][ki]
-    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
+    arg_list = [DeclareLaunchArgument(f'{k}_{ki}', default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
 
     # Load waypoints
     arg_list.extend(evaluate_waypoint_parameters(context=context, args=args, kwargs=kwargs))
@@ -280,7 +280,7 @@ def launch_setup(context, *args, **kwargs):
             executable='avt_341_perception_node',
             name='perception_node',
             output='screen',
-            parameters=[{k: LaunchConfiguration(k) for k in params['perception'].keys()}]
+            parameters=[{k: LaunchConfiguration(f'perception_{k}') for k in params['perception'].keys()}]
         ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(
@@ -288,7 +288,7 @@ def launch_setup(context, *args, **kwargs):
                 executable='avt_341_lidar_obstacle_detector_node',
                 name='lidar_obstacle_detector_node',
                 output='screen',
-                parameters=[{k: LaunchConfiguration(k) for k in params['obstacle_detector'].keys()}]
+                parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}]
             )
         ]),
 
@@ -315,11 +315,20 @@ def launch_setup(context, *args, **kwargs):
                     '/waypoints_y': LaunchConfiguration('waypoints_y'),
                     '/is_empty_waypoints': LaunchConfiguration('is_empty_waypoints'),
                 },
-                {k: LaunchConfiguration(k) for k in params['global_planner'].keys()}],
+                {k: LaunchConfiguration(f'global_planner_{k}') for k in params['global_planner'].keys()}],
         ),
 
         # Local Planner
         *evaluate_local_planner(params, context=context, args=args, kwargs=kwargs),
+
+        # Local Grid
+        Node(
+            package='avt_341',
+            executable='avt_341_local_occupancy_grid_node',
+            name='avt_341_local_occupancy_grid_node',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'local_occupancy_{k}') for k in params['local_occupancy'].keys()}]
+        ),
 
         # Visualization
         Node(
@@ -343,8 +352,8 @@ def launch_setup(context, *args, **kwargs):
                     'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx)),
                     'vehicle_namespaces': vehicle_namespaces
                 },
-                {k: LaunchConfiguration(k) for k in params['mission_manager'].keys()},
-                {k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
+                {k: LaunchConfiguration(f'mission_manager_{k}') for k in params['mission_manager'].keys()},
+                #{k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
             ]
         ),
 
@@ -356,7 +365,7 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[
                 {'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx))},
-                {k: LaunchConfiguration(k) for k in params['socket_comms'].keys()}
+                {k: LaunchConfiguration(f'socket_comms_{k}') for k in params['socket_comms'].keys()}
             ]
         )
     ])

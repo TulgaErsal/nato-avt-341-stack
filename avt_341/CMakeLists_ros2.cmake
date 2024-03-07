@@ -19,6 +19,7 @@ find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(pcl_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
@@ -73,6 +74,7 @@ set(dependencies
         std_msgs
         tf2_ros
         tf2_sensor_msgs
+        tf2_geometry_msgs
         pcl_msgs
 )
 
@@ -285,6 +287,16 @@ add_executable(avt_341_geotiff_map_publisher_node
 ament_target_dependencies(avt_341_geotiff_map_publisher_node ${dependencies})
 target_link_libraries(avt_341_geotiff_map_publisher_node GDAL::GDAL)
 
+add_executable(avt_341_local_occupancy_grid_node
+        src/perception/avt_341_local_occupancy_grid_node.cpp
+        src/perception/local_occupancy_grid.cpp
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(avt_341_local_occupancy_grid_node ${dependencies})
+target_link_libraries(avt_341_local_occupancy_grid_node
+        ${PCL_LIBRARIES}
+)
+
 # BEGIN MPC WRAPPER NODE TARGET
 # -----------------------------
 if(BUILD_MPC)
@@ -397,6 +409,7 @@ install(TARGETS
         avt_341_lidar_obstacle_detector_node
         data_acquisition_node
         avt_341_geotiff_map_publisher_node
+        avt_341_local_occupancy_grid_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 

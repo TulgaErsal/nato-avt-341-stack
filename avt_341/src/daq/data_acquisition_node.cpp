@@ -30,7 +30,7 @@ int main(int argc, char *argv[]){
     n->get_parameter("~map_frame", frame_map, std::string("map"));
     n->get_parameter("~vehicle_cg_frame", frame_cg, std::string("vbox_link"));
     n->get_parameter("~velocity_averaging_window", vel_window, 0.2f);
-    n->get_parameter("~rate", rate, 60.0f);
+    n->get_parameter("~daq_rate", rate, 60.0f);
 
     // Create publishers and subscribers
     auto time_pub = n->create_publisher<avt_341::msg::DurationMsg>("avt_341/elapsed_time", 10);
