@@ -1,0 +1,6 @@
+Name, Type (Default value), Description
+"grid_width", "double (500.0)", "The spatial extent of the map in the x/east direction, in meters."
+"grid_height", "double, (500.0)", "The spatial extent of the map in the y/north direction, in meters."
+"grid_llx", "double, (-250.0)", "The ENU coordinate of the lower-left corner of the grid in the x/east direction, in meters."
+"grid_lly", "double, (-250.0)", "The ENU coordinate of the lower-left corner of the grid in the y/north direction, in meters."
+"grid_res", "double, (1.0)", "The size of a grid cell, in meters."

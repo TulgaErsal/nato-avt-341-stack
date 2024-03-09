@@ -1,0 +1,2 @@
+Topic, Message type, Description
+"/depth_map", "sensor_msgs/Image", "Depth map."

@@ -1,0 +1,2 @@
+Topic, Message type, Description
+"avt_341/segmentation_grid", "nav_msgs/OccupancyGrid", "Semantic segmentation grid encoded in integer occupancy grid values."

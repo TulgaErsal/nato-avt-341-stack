@@ -1,0 +1,5 @@
+Name, Type (Default value), Description
+"model_selection", string ('$(find avt_341)/src/ia/segmentation/configs/bisenet_customer.py'), "Model architecture selection."
+"weight_path", string ('$(find avt_341)/src/ia/segmentation/Models/BiSeNet_Tracer/model_final_krc.pth'), "Is the path to the model pre-trained weights."
+"input_image_topic", string ('/airsim_node/tracer/front_center/Scene') "The topic where the RGB images are published."
+"depth_map_topic", string ('/segmented_image_topic'), "The topic where the depth map is published."
