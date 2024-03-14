@@ -116,6 +116,9 @@ void Planner::DilateGrid(avt_341::msg::OccupancyGrid &grid, int x, float llx, fl
 	//std::cerr << "Grid Size: " << grid.info.width << ", " << grid.info.height << std::endl;
 	//std::cerr << "Grid Origin: " << grid.info.origin.position.x << ", " << grid.info.origin.position.y << std::endl;
 	//std::cerr << "Grid Resolution: " << grid.info.resolution << std::endl;
+	if (x <= 0) {
+		return;
+	}
 	std::vector<int8_t> new_data = grid.data;
 
 	int ix = (int)floor((llx - grid.info.origin.position.x) / grid.info.resolution);

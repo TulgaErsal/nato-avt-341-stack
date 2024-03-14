@@ -39,6 +39,7 @@ public:
 private:
     void ClearGrid();
     void MapToGrid(float map_x, float map_y, int &grid_x, int &grid_y);
+    uint8_t GetOccupancy(float map_x, float map_y);
 
     uint8_t MAX_OCCUPANCY = 100;
     std::string frame_;

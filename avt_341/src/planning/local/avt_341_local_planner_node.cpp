@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
   // planner params
   float path_look_ahead, vehicle_width, max_steer_angle, output_path_step, path_int_step, rate, dilation_factor;
   int num_paths;
-  float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist;
+  float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist, max_theta;
   bool trim_path, use_global_path, use_blend;
   std::string display, cost_vis, map_topic;
 
@@ -66,6 +66,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~vehicle_width", vehicle_width, 3.0f);
   n->get_parameter("~num_paths", num_paths, 31);
   n->get_parameter("~max_steer_angle", max_steer_angle, 0.43f);
+  n->get_parameter("~max_theta", max_theta, 1.0f);
   n->get_parameter("~output_path_step", output_path_step, 0.5f);
   n->get_parameter("~path_integration_step", path_int_step, 0.25f);
   n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
@@ -152,6 +153,9 @@ int main(int argc, char *argv[]){
       // Fix to bug in curvature when heading west
       float d_theta = theta - ci.theta;
       d_theta += (d_theta>M_PI) ? -2.0*M_PI : (d_theta<-M_PI) ? 2.0*M_PI : 0.0;
+
+      // Fix bug with paths not converging when d_theta ~= 90 degrees
+      d_theta = std::max(std::min(d_theta, max_theta), -max_theta);
       
       planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, max_steer_angle, vehicle_width);
       planner.SetCenterline(path);

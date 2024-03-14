@@ -129,6 +129,8 @@ def launch_setup(context, *args, **kwargs):
     auto_launch_rviz = LaunchConfiguration('auto_launch_rviz')
 
     avt_341_dir = get_package_share_directory('avt_341')
+    mrzr_tools_dir = get_package_share_directory('mrzr_tools')
+
     mrzr_nodes = [
         # Transform servers
         *tf2_nodes(),
@@ -147,6 +149,36 @@ def launch_setup(context, *args, **kwargs):
             ]
         ),
 
+        # Controller
+        launch.actions.IncludeLaunchDescription(    # Simulation
+            PythonLaunchDescriptionSource(os.path.join(mrzr_tools_dir, 'launch', 'stack_controller.launch.py')),
+            condition=IfCondition(simulation_mode),
+            launch_arguments={
+                "max_speed":        max_speed.perform(context),
+		        "mode":             "0",
+		        "joy_topic":        "/joy",
+                "joy_config":       "xbox",
+		        "enable_sensors":   "False",
+                "ouster_hostname":  "os-122223002379.local",
+		        "ns":               "/",
+		        "navstack_ns":      "/mrzr/avt_341"
+            }.items()
+        ),
+        launch.actions.IncludeLaunchDescription(    # Physical
+            PythonLaunchDescriptionSource(os.path.join(mrzr_tools_dir, 'launch', 'stack_controller.launch.py')),
+            condition=UnlessCondition(simulation_mode),
+            launch_arguments={
+                "max_speed":        max_speed.perform(context),
+		        "mode":             "0",
+		        "joy_topic":        "/joy",
+                "joy_config":       "can",
+		        "enable_sensors":   "False",
+                "ouster_hostname":  "os-122223002379.local",
+		        "ns":               "/",
+		        "navstack_ns":      "/mrzr/avt_341"
+            }.items()
+        ),
+
         # NATO AVT-341 Stack
         launch.actions.IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(avt_341_dir, 'launch', 'krc_base.launch.py')),
@@ -154,7 +186,7 @@ def launch_setup(context, *args, **kwargs):
                 "use_sim_time":	                use_sim_time.perform(context),
                 "auto_launch_rviz":	            auto_launch_rviz.perform(context),
                 "display_type":	                "rviz",
-                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/side_slope.yaml",
+                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/nato_mission_points.yaml",
                 "robot_description_file":	    f"{avt_341_dir}/config/MRZR.urdf",
                 "robot_description_veh2_file":	"",
                 "robot_description_veh3_file":	"",

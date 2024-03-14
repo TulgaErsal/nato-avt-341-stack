@@ -51,18 +51,11 @@ int main(int argc, char *argv[]){
 
   auto n = avt_341::node::init_node(argc, argv, "avt_341_pf_planner_node");
 
-  // Create publishers and subscribers
-  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
-  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, GridCallback);
-  auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationGridCallback);
-  auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
-  auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
-
   // planner params
   float kp, eta, cutoff_dist, inner_cutoff_dist, rate, motion_model_res;
   bool use_global_path;
   int obs_cost_thresh;
+  std::string grid_topic;
   n->get_parameter("~kp", kp, 5.0f);
   n->get_parameter("~eta", eta, 100.0f);
   n->get_parameter("~obstacle_cost_thresh", obs_cost_thresh, 0);
@@ -71,6 +64,15 @@ int main(int argc, char *argv[]){
   n->get_parameter("~motion_model_res", motion_model_res, 0.5f);
   n->get_parameter("~use_global_path", use_global_path, false);
   n->get_parameter("~pf_rate", rate, 50.0f);
+  n->get_parameter("~grid_topic", grid_topic, std::string("avt_341/segmentation_grid"));
+
+  // Create publishers and subscribers
+  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
+  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
+  auto grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, GridCallback);
+  auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(grid_topic, 10, SegmentationGridCallback);
+  auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
+  auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
   avt_341::planning::PfPlanner planner;
   planner.SetEta(eta);

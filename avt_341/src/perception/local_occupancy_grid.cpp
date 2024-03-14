@@ -47,6 +47,15 @@ avt_341::msg::OccupancyGrid LocalOccupancyGrid::GetGrid() {
     return grid;
 }
 
+uint8_t LocalOccupancyGrid::GetOccupancy(float map_x, float map_y) {
+    int grid_x, grid_y;
+    MapToGrid(map_x, map_y, grid_x, grid_y);
+    if (grid_x < 0 || grid_x > nx_ || grid_y < 0 || grid_y > ny_) {
+        return 0;
+    }
+    return cells_[grid_x][grid_y];
+}
+
 void LocalOccupancyGrid::UpdateOrigin(int x, int y) {
     origin_x_ = x;
     origin_y_ = y;

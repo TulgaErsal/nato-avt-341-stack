@@ -11,27 +11,34 @@
 // Globals
 std::shared_ptr<avt_341::node::NodeProxy> n;
 std::shared_ptr<avt_341::perception::LocalOccupancyGrid> grid;
+avt_341::msg::PointCloud2 points;
 std::string local_frame, frame, cloud_topic;
 float width, height, resolution, dilate_x, dilate_y, rate_hz;
 bool dilate;
 
-void CloudCallback(avt_341::msg::PointCloud2Ptr rcv_points)
-{
-    // Transform cloud to map frame
-    avt_341::msg::PointCloud2 cloud_transformed;
-    if (!n->transform_cloud(*rcv_points, cloud_transformed, frame)) {
-        return;
-    }
-
-    // Update map origin
+bool GetLocalPose(avt_341::msg::PoseStamped& pose_out) {
     avt_341::msg::PoseStamped local_pose;
     local_pose.header.stamp = n->get_stamp();
     local_pose.header.frame_id = local_frame;
     local_pose.pose.position.x = 0.0;
     local_pose.pose.position.y = 0.0;
     local_pose.pose.position.z = 0.0;
+    if (!n->transform_pose(local_pose, pose_out, frame)) {
+        return false;
+    }
+    return true;
+}
+
+void CloudCallback(avt_341::msg::PointCloud2Ptr rcv_points)
+{
+    // Transform cloud to map frame
+    n->transform_cloud(*rcv_points, points, frame);
+}
+
+void UpdateGrid() {
+    // Update map origin
     avt_341::msg::PoseStamped map_pose;
-    if (!n->transform_pose(local_pose, map_pose, frame)) {
+    if (!GetLocalPose(map_pose)) {
         return;
     }
     int origin_x = map_pose.pose.position.x - (int)(width/2.0);
@@ -39,7 +46,9 @@ void CloudCallback(avt_341::msg::PointCloud2Ptr rcv_points)
     grid->UpdateOrigin(origin_x, origin_y);
 
     // Add obstacle points to grid
-    grid->AddPoints(cloud_transformed, dilate);
+    if (points.data.size() > 0) {
+        grid->AddPoints(points, dilate);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -65,6 +74,7 @@ int main(int argc, char** argv) {
     avt_341::node::Rate rate(rate_hz);
 
     while (avt_341::node::ok()) {
+        UpdateGrid();
         avt_341::msg::OccupancyGrid grd = grid->GetGrid();
         occupancy_grid_pub->publish(grd);
 
