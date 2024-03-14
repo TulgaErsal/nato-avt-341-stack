@@ -139,6 +139,11 @@ namespace avt_341 {
 
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
+            bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud,
+                                 const std::string &target_frame, const ros::Time& target_time, const std::string &fixed_frame);
+
+            bool transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame);
+
             template<typename... Args> inline void log_debug(const char * format, Args... args){
               ROS_DEBUG(format, args...);
             }
@@ -153,6 +158,10 @@ namespace avt_341 {
 
             template<typename... Args> inline void log_error(const char * format, Args... args){
               ROS_ERROR(format, args...);
+            }
+
+            template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
+              ROS_INFO_THROTTLE(period, format, args...);
             }
 
             inline const char* get_name() const{ return ros::this_node::getName().c_str(); }
@@ -314,6 +323,11 @@ namespace avt_341 {
       }
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
 
+      bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud,
+                           const std::string &target_frame, const rclcpp::Time &target_time, const std::string &fixed_frame);
+
+      bool transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame);
+
       template<typename... Args> inline void log_info(const char * format, Args... args){
         RCLCPP_INFO(node_->get_logger(), format, args...);
       }
@@ -324,6 +338,10 @@ namespace avt_341 {
 
       template<typename... Args> inline void log_error(const char * format, Args... args){
         RCLCPP_ERROR(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
+        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);
       }
 
       inline const char* get_name() const{ return node_->get_name(); }
