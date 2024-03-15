@@ -6,6 +6,9 @@ extensions = ["breathe"]
 templates_path = ["_templates"]
 exclude_patterns = []
 html_theme = "pydata_sphinx_theme"
+html_theme_options = {
+    "navigation_with_keys": False,
+}
 html_static_path = ["_static"]
 html_logo = "_static/img/logo.png"
 html_css_files = [
