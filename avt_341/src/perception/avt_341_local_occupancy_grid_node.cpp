@@ -23,7 +23,7 @@ bool GetLocalPose(avt_341::msg::PoseStamped& pose_out) {
     local_pose.pose.position.x = 0.0;
     local_pose.pose.position.y = 0.0;
     local_pose.pose.position.z = 0.0;
-    if (!n->transform_pose(local_pose, pose_out, frame)) {
+    if (!n->transform_pose(local_pose, pose_out, frame, 1.0)) {
         return false;
     }
     return true;

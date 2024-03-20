@@ -34,6 +34,10 @@ add_definitions(-DROS_1)
 find_package(PCL REQUIRED)
 add_definitions(${PCL_DEFINITIONS})
 
+if (MPC)
+  find_package(casadi REQUIRED)
+endif ()
+
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
   config/lidar_obstacle_detector.cfg
@@ -322,6 +326,36 @@ target_link_libraries(data_acquisition_node
   ${catkin_LIBRARIES}
 )
 
+if (MPC)
+  message("Building MPC planner")
+  add_executable(veh_converter_node
+    src/planning/local/veh_converter_node.cpp
+    src/node/node_proxy.cpp
+    )
+  target_link_libraries(veh_converter_node ${catkin_LIBRARIES})
+
+  add_executable(avt_341_mpc_planner_node
+    src/planning/local/avt_341_mpc_planner_node.cpp
+    src/planning/local/mpc_planner_solver.cpp
+    src/planning/local/mpc_planner.cpp
+    src/node/node_proxy.cpp
+  )
+
+  add_dependencies(avt_341_mpc_planner_node ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(avt_341_mpc_planner_node
+    casadi
+    ${catkin_LIBRARIES}
+    )
+
+  add_executable(obstacle_processor_node
+    src/planning/local/obstacles_processor_node.cpp
+    src/node/node_proxy.cpp
+    )
+  add_dependencies(obstacle_processor_node ${catkin_EXPORTED_TARGETS})
+  target_link_libraries( obstacle_processor_node ${catkin_LIBRARIES} )
+endif()
+
+
 set(LIB_SOURCES
 src/control/pid_controller.cpp
 src/control/pure_pursuit_controller.cpp
@@ -378,6 +412,15 @@ data_acquisition_node
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
+
+if (MPC)
+  install( TARGETS
+  avt_341_mpc_planner_node
+  obstacle_processor_node
+  veh_converter_node
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    )
+endif()
 
 install(TARGETS avt_341
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

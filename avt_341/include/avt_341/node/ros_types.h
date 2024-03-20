@@ -9,6 +9,7 @@
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/point_cloud2_iterator.h"
+#include "sensor_msgs/Imu.h"
 
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Twist.h"
@@ -40,6 +41,7 @@
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
+#include "avt_341_msgs/Obstacles.h"
 
 namespace avt_341 {
     namespace msg {
@@ -56,6 +58,9 @@ namespace avt_341 {
 
         using JointState = sensor_msgs::JointState;
         using JointStatePtr = const sensor_msgs::JointState::ConstPtr &;
+
+        using Imu = sensor_msgs::Imu;
+        using ImuPtr = const sensor_msgs::Imu::ConstPtr &;
 
         using TwistStamped = geometry_msgs::TwistStamped;
         using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;
@@ -138,6 +143,9 @@ namespace avt_341 {
         using OccupiedCells = avt_341_msgs::OccupiedCells;
         using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
 
+        using Obstacles = avt_341_msgs::Obstacles;
+        using ObstaclesPtr = const avt_341_msgs::Obstacles::ConstPtr &;
+
         using Time = ros::Time;
         using Duration = ros::Duration;
         using DurationMsg = ros::Duration;
@@ -161,6 +169,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -192,6 +201,7 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
+#include "avt_341_msgs/msg/obstacles.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -211,6 +221,9 @@ namespace avt_341 {
 
     using Image = sensor_msgs::msg::Image;
     using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
+
+    using Imu = sensor_msgs::msg::Imu;
+    using ImuPtr = sensor_msgs::msg::Imu::ConstSharedPtr;
 
     using TwistStamped = geometry_msgs::msg::TwistStamped;
     using TwistStampedPtr = const geometry_msgs::msg::TwistStamped::SharedPtr &;
@@ -280,6 +293,9 @@ namespace avt_341 {
 
     using OccupiedCells = avt_341_msgs::msg::OccupiedCells;
     using OccupiedCellsPtr = avt_341_msgs::msg::OccupiedCells::SharedPtr;
+
+    using Obstacles = avt_341_msgs::msg::Obstacles;
+    using ObstaclesPtr = avt_341_msgs::msg::Obstacles::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;

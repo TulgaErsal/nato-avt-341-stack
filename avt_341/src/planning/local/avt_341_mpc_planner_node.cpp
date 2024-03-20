@@ -1,442 +1,320 @@
 /**
- * @file avt_341_mpc_planner_node.cpp
+ * \file avt_341_mpc_planner_node.cpp
+ * Plan a local trajectory using the MPC planner
  *
- * @brief Plan a local trajectory using the model predictive control planner.
- *        This ROS node is a wrapper to the TulgaErsal/AVT-341-MPC planner
- *        through the Julia C API.
+ * \author Marius Thoresen
  *
- * @date 03/11/2023
+ * \contact marius.thoresen@ffi.no
  *
- * @author Dario Sirangelo (dsi@mpe.au.dk)
- *         Aarhus University (DK)
- *         Department of Mechanical and Production Engineering
- *         Section Mechatronics & Dynamics
+ * \date 4/14/2023
+*/
+
+#include <cmath>
+#include "avt_341/node/node_proxy.h"
+#include "avt_341/node/ros_types.h"
+#include "avt_341/planning/local/mpc_planner.h"
+#include "avt_341/planning/local/mpc_planner_solver.h"
+
+using namespace avt_341::planning;
+
+// Initialise ROS messages.
+avt_341::msg::Odometry g_odometry;
+
+avt_341::msg::Path g_global_path;
+
+double g_acceleration{0.0};
+
+double g_steering_angle{0.0};
+
+std::vector<float> g_obstacles_x;
+
+std::vector<float> g_obstacles_y;
+
+std::vector<float> g_obstacles_r;
+
+// Initialise receive flags.
+bool g_received_odometry{false};
+
+bool g_received_obstacles{false};
+
+bool g_received_global_path{false};
+
+bool g_received_acceleration{false};
+
+/**
+ * @brief Store the AGV odometry and mark it as received.
+ *
+ * @param msg_received_odom Pointer to the odometry ROS nav_msgs/Odometry message.
  */
-
-// TODO: The subscribers should really be defined outside of the local scope.
-// TODO: Split some of the warning message for better readability.
-// TODO: The lock guards should not exclude each other, only the planner update block!
-
-#include <avt_341/planning/local/avt_341_mpc_planner_node.h>
-
-// This call must be included in the ROS node executable before initialising
-// the Julia C bindings and is required for fast execution of wrapped Julia
-// code.
-JULIA_DEFINE_FAST_TLS();
-
-void SinkageCallback(avt_341_msgs::msg::Sinkage::SharedPtr sinkage_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
-
-    double n = sinkage_msg->n;
-
-    jl_value_t *j_n = jl_box_float64(n);
-
-    jl_call1(j_set_sinkage, j_n);
-    CATCH_JULIA_EXCEPTION;
-
-    node->log_info("Received sinkage %f", n);
+void callbackOdometry(avt_341::msg::OdometryPtr msg_received_odometry) {
+    g_odometry = *msg_received_odometry;
+    g_received_odometry = true;
 }
 
-void OccupancyGridCallback(avt_341::msg::OccupancyGridPtr occgrid_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
+/**
+ * @brief Receive and store obstacle list from dedicated obstacle processor node.
+ *
+ * @param msg_received_obstacles Pointer to the avt_341_msgs::Obstacles message.
+ */
+void callbackObstacles(avt_341::msg::ObstaclesPtr msg_received_obstacles) {
+    double radius = msg_received_obstacles->obstacle_size_meters;
+    g_obstacles_x.clear();
+    g_obstacles_y.clear();
+    g_obstacles_r.clear();
+    for (size_t i = 0; i < msg_received_obstacles->data.size() / 2; i++) {
+        double x = msg_received_obstacles->data[2 * i];
+        double y = msg_received_obstacles->data[2 * i + 1];
+        g_obstacles_x.push_back(x);
+        g_obstacles_y.push_back(y);
+        g_obstacles_r.push_back(radius);
+    }
+    g_received_obstacles = true;
 }
 
-void PathCallback(avt_341::msg::PathPtr path_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
+
+/**
+ * @brief Store the global path as received. The first point outside the MPC planning radius
+ * will be selected as the goal.
+ *
+ * @param msg_received_path Pointer to the goal pose ROS nav_msgs/Path message.
+ */
+void callbackGlobalPath(avt_341::msg::PathPtr msg_received_global_path) {
+    g_global_path = *msg_received_global_path;
+    g_received_global_path = true;
 }
 
-void ObstaclesCallback(avt_341_msgs::msg::Obstacles::SharedPtr obs_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
-
-    int64_t id = obs_msg->id;
-    double obstacle_size_meters = obs_msg->obstacle_size_meters;
-    std::vector<double> data = obs_msg->data;
-
-    jl_value_t *j_id = jl_box_int64(id);
-    jl_value_t *j_obstacle_size_meters = jl_box_float64(obstacle_size_meters);
-    // TODO: Copy the array here.
-    jl_value_t *j_data;
-
-    jl_call3(j_set_obstacles, j_id, j_obstacle_size_meters, j_data);
-    CATCH_JULIA_EXCEPTION;
-
-    node->log_info("Received %i obstacles with size %f",
-                   data.size(),
-                   obstacle_size_meters);
+/**
+ * @brief Store the acceleration.
+ * Can be obtained from either IMU topic or acceleration topic.
+ *
+ * @param msg_received_acceleration Pointer to the ROS acceleration Float64 message
+ */
+void callbackAcceleration(avt_341::msg::Float64Ptr msg_received_acceleration) {
+    g_acceleration = msg_received_acceleration->data;
+    g_received_acceleration = true;
 }
 
-void CatchJuliaException()
-{
-    // Catch exceptions from the Julia function call.
-    if (jl_exception_occurred())
-    {
-        node->log_error("Julia module has thrown an exception: %s",
-                        jl_typeof_str(jl_exception_occurred()));
-        has_error = true;
-    }
+void callbackImu(avt_341::msg::ImuPtr msg_received_imu) {
+    g_acceleration = msg_received_imu->linear_acceleration.x;
+    g_received_acceleration = true;
 }
 
-void HeadingCallback(avt_341::msg::Float64Ptr heading_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
 
-    double psi = heading_msg->data;
-
-    jl_value_t *j_psi = jl_box_float64(psi);
-
-    jl_call1(j_set_heading, j_psi);
-    CATCH_JULIA_EXCEPTION;
-
-    node->log_info("Updated MPC desired heading %f", psi);
+void updateState(avt_341::planning::MpcPlanner& planner) {
+    planner.setState(g_odometry.pose.pose.position.x,
+                     g_odometry.pose.pose.position.y,
+                     MpcUtils::quaternionMsg2Yaw(g_odometry.pose.pose.orientation),
+                     g_odometry.twist.twist.linear.x,
+                     g_odometry.twist.twist.linear.y,
+                     g_odometry.twist.twist.angular.z,
+                     g_steering_angle,
+                     g_acceleration,
+                     0.000,
+                     0.000);
+    g_received_odometry = false;
 }
 
-void GoalPointCallback(avt_341::msg::PointStampedPtr point_stamped_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
-
-    double x = point_stamped_msg->point.x;
-    double y = point_stamped_msg->point.y;
-
-    jl_value_t *j_x = jl_box_float64(x);
-    jl_value_t *j_y = jl_box_float64(y);
-
-    jl_call2(j_set_goal_point, j_x, j_y);
-    CATCH_JULIA_EXCEPTION;
-
-    node->log_info("Updated MPC goal point %f %f", x, y);
+double distance(const avt_341::msg::Point& a, const avt_341::msg::Point& b) {
+    return std::sqrt(std::pow(a.x - b.x, 2) + std::pow(a.y - b.y, 2));
 }
 
-void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
-{
-    std::lock_guard<std::mutex> guard(planner_mutex);
-
-    double x = f64_ma_msg->data[1] + l_a * std::cos(f64_ma_msg->data[6]);
-    double y = f64_ma_msg->data[2] + l_a * std::sin(f64_ma_msg->data[6]);
-    double u = f64_ma_msg->data[3];
-    double v = f64_ma_msg->data[4];
-    double delta = f64_ma_msg->data[5];
-    double psi = f64_ma_msg->data[6];
-    double r = f64_ma_msg->data[7];
-    double a = f64_ma_msg->data[6];
-
-    jl_value_t **j_args;
-    j_args[0] = jl_box_float64(x);
-    j_args[1] = jl_box_float64(y);
-    j_args[2] = jl_box_float64(u);
-    j_args[3] = jl_box_float64(v);
-    j_args[4] = jl_box_float64(delta);
-    j_args[5] = jl_box_float64(psi);
-    j_args[6] = jl_box_float64(r);
-    j_args[7] = jl_box_float64(a);
-
-    jl_call(j_set_state, j_args, 8);
-    CATCH_JULIA_EXCEPTION;
-
-    node->log_info("Updated vehicle state\nX: %f\nY: %f\nU: %f\nV: %f\nDELTA: "
-                   "%f\nPSI: %f\nR: %f\nA: %f",
-                   x,
-                   y,
-                   u,
-                   v,
-                   delta,
-                   psi,
-                   r,
-                   a);
-}
-void PublishPath() {}
-
-void Plan() {}
-
-void UpdateState() {}
-
-void DeclareParameters()
-{
-    // Declare the Julia SysImage path parameter.
-    node->get_parameter("~mpc_rate", rate, 10.0);
-
-    // Declare the Julia SysImage path parameter.
-    node->get_parameter("~sysimage_path", sysimage_path, std::string());
-
-    // Declare the Julia planner module path parameter.
-    node->get_parameter("~julia_planner_planner_module_path", planner_module_path, std::string());
-
-    // Declare the Julia parameters module path parameter.
-    node->get_parameter("~julia_parameters_module_path", parameters_module_path, std::string());
-
-    // Declare the Julia parameters module path parameter.
-    node->get_parameter("~julia_models_module_path", models_module_path, std::string());
-
-    // Set the minimum speed.
-    node->get_parameter("~front_axle_distance", l_a, 0.5);
-
-    // Set the minimum speed.
-    node->get_parameter("~speed_min", u_min, 0.5);
-
-    // Set the prediction horizon.
-    node->get_parameter("~prediction_horizon", t_span, 5.0);
-
-    // Set the prediction horizon.
-    node->get_parameter("~use_terrain_adaptive", use_terrain_adaptive, false);
-}
-void InitialiseJuliaAPI()
-{
-    // Initialise the Julia C bindings
-    // -------------------------------
-
-    jl_options.handle_signals = JL_OPTIONS_HANDLE_SIGNALS_OFF;
-
-    // If the user provided a Julia system image, use it during the
-    // initialisation procedure.
-    if (sysimage_path.empty())
-    {
-        node->log_warning("No Julia system image specified!");
-        node->log_info("Initialising Julia C API with no system image.");
-        jl_init();
+void updateGoal(avt_341::planning::MpcPlanner& planner, double speed_max, double time_span) {
+    auto& vehicle_position = g_odometry.pose.pose.position;
+    avt_341::msg::Point best_path_point;
+    for (auto& path_pose: g_global_path.poses) {
+        best_path_point = path_pose.pose.position;
+        if (distance(path_pose.pose.position, vehicle_position) > (time_span + 0.1) * speed_max) {
+            break;
+        }
     }
-    else
-    {
-        node->log_info("Loading Julia system image at %s ...", sysimage_path);
-        jl_init_with_image(NULL, sysimage_path.c_str());
-    }
-    CATCH_JULIA_EXCEPTION;
-    node->log_info("Julia C API is now initialised.");
-
-    // TODO: Lots of repetition here for the time being - I will wrap this in a
-    // function later.
-    
-    // Load the Julia MPC planner module.
-    // First, look for a user-specified absolute path from the ROS parameter
-    // server. If none is provided, revert to the path defined during the
-    // original CMake build. If no compile definition for the path is provided,
-    // terminate the Julia C API and throw an exception.
-    if (!planner_module_path.empty())
-    {
-        node->log_info("Loading Julia module from user-defined path at: %s ...",
-                       planner_module_path);
-    }
-    else if (!strlen(MPC_PLANNER_MODULE_PATH) == 0)
-    {
-        node->log_warning(
-            "No absolute path to the Julia module was defined. Reverting to "
-            "CMake compile definition, defined at: %s",
-            MPC_PLANNER_MODULE_PATH);
-    }
-    else
-    {
-        node->log_error(
-            "No valid path to the Julia module could be found. Check your "
-            "CMake build log for variable MPC_PLANNER_MODULE_PATH or define the "
-            "parameter ~julia_planner_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC module could be found.");
-    }
-
-    node->log_info("Loading Julia planner module at: %s", MPC_PLANNER_MODULE_PATH);
-    std::string planner_module_include_command(std::string("Base.include(Main, \"") + MPC_PLANNER_MODULE_PATH +
-                                               std::string("\")"));
-    jl_eval_string(planner_module_include_command.c_str());
-    jl_eval_string("using Main.MPC");
-
-    // Load the Julia MPC parameters module. Similar considerations as for the
-    // Julia MPC planner module apply.
-    if (!parameters_module_path.empty())
-    {
-        node->log_info("Loading Julia MPC parameters module from user-defined path at: %s ...",
-                       parameters_module_path);
-    }
-    else if (!strlen(MPC_PARAMETERS_MODULE_PATH) == 0)
-    {
-        node->log_warning(
-            "No absolute path to the Julia MPC parameters module was defined. Reverting to "
-            "CMake compile definition, defined at: %s",
-            MPC_PARAMETERS_MODULE_PATH);
-    }
-    else
-    {
-        node->log_error(
-            "No valid path to the Julia MPC parameters module could be found. Check your "
-            "CMake build log for variable MPC_PARAMETERS_MODULE_PATH or define the "
-            "parameter ~julia_parameters_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC parameters module could be found.");
-    }
-
-    node->log_info("Loading Julia MPC parameters module at: %s", MPC_PARAMETERS_MODULE_PATH);
-
-    std::string parameters_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_PARAMETERS_MODULE_PATH +
-                                                  std::string("\")"));
-    jl_eval_string(parameters_module_include_command.c_str());
-
-    // Load the Julia MPC models module. Similar considerations as for the
-    // Julia MPC planner module apply.
-    if (!models_module_path.empty())
-    {
-        node->log_info("Loading Julia MPC models module from user-defined path at: %s ...",
-                       models_module_path);
-    }
-    else if (!strlen(MPC_MODELS_MODULE_PATH) == 0)
-    {
-        node->log_warning(
-            "No absolute path to the Julia MPC models module was defined. Reverting to "
-            "CMake compile definition, defined at: %s",
-            MPC_MODELS_MODULE_PATH);
-    }
-    else
-    {
-        node->log_error(
-            "No valid path to the Julia MPC models module could be found. Check your "
-            "CMake build log for variable MPC_MODELS_MODULE_PATH or define the "
-            "parameter ~julia_models_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC models module could be found.");
-    }
-
-    node->log_info("Loading Julia MPC models module at: %s", MPC_MODELS_MODULE_PATH);
-
-    std::string models_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_MODELS_MODULE_PATH +
-                                                  std::string("\")"));
-    jl_eval_string(models_module_include_command.c_str());
-
-    // Define the Julia module.
-    mpc_module = (jl_module_t *)jl_eval_string("Main.MPC");
-
-    // Define the Julia functions.
-    j_plan = jl_get_function(mpc_module, "Plan");
-    j_set_front_axle_position =
-        jl_get_function(mpc_module, "SetFrontAxlePosition");
-    j_set_goal_point = jl_get_function(mpc_module, "SetGoalPoint");
-    j_set_heading = jl_get_function(mpc_module, "SetHeading");
-    j_set_minimum_speed = jl_get_function(mpc_module, "SetMinimumSpeed");
-    j_set_prediction_horizon =
-        jl_get_function(mpc_module, "SetPredictionHorizon");
-    j_use_terrain_adaptive =
-        jl_get_function(mpc_module, "SetUseTerrainAdaptive");
-    j_set_sinkage = jl_get_function(mpc_module, "SetSinkage");
-    j_set_state = jl_get_function(mpc_module, "SetState");
-    // -------------------------------
+    planner.setGoal(best_path_point.x, best_path_point.y);
 }
 
-void InitialisePlanner()
-{
-    // Initialise the planner
-    // ----------------------
-
-    // Set the prediction horizon in the planner.
-    jl_value_t *j_t_span = jl_box_float64(t_span);
-    jl_call1(j_set_prediction_horizon, j_t_span);
-
-    // Set the minimum speed in the planner.
-    jl_value_t *j_u_min = jl_box_float64(u_min);
-    jl_call1(j_set_minimum_speed, j_u_min);
-
-    // Set the position of the front axle in the planner.
-    jl_value_t *j_l_a = jl_box_float64(l_a);
-    jl_call1(j_set_front_axle_position, j_l_a);
-    // ----------------------
+void updateObstacles(avt_341::planning::MpcPlanner& planner) {
+    planner.setObstacles(g_obstacles_x, g_obstacles_y, g_obstacles_r);
+    g_received_obstacles = false;
 }
 
-int main(int argc, char *argv[])
-{
-    node = avt_341::node::init_node(argc, argv, "avt_341_mpc_wrapper_node");
+int main(int argc, char* argv[]) {
+    // Initialize ROS node.
+    auto node = avt_341::node::init_node(argc, argv, "avt_341_mpc_planner_node");
 
-    // Declare parameters on the ROS parameter server.
-    DeclareParameters();
+    // Create node subscribers.
+    auto sub_odometry = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
+    auto sub_obstacles = node->create_subscription<avt_341::msg::Obstacles>("avt_341/obstacles", 1, callbackObstacles);
+    auto sub_global_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 1, callbackGlobalPath);
+    auto sub_imu = node->create_subscription<avt_341::msg::Imu>("avt_341/imu", 1, callbackImu);
 
-    // Initialise the Julia C API.
-    InitialiseJuliaAPI();
+    // Create node publishers.
+    auto pub_local_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
+    auto pub_control_jerk = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_jerk", 1);
+    auto pub_control_steering_rate = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer_rate", 1);
+    auto pub_control_velocities = node->create_publisher<avt_341::msg::Twist>("avt_341/cmd_vel", 1);
+    auto pub_speed = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    auto pub_steer = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 1);
 
-    // Initialise planner with the user-specified parameters.
-    InitialisePlanner();
+    // Declare and read node parameters from the ROS parameter server.
+    float rate;
+    node->get_parameter("~mpc_rate", rate, 0.0f);
 
-    // Register subscriptions
-    // ----------------------
+    float vehicle_mass;
+    node->get_parameter("~mpc_vehicle_mass", vehicle_mass, 0.0f);
+    float yaw_inertia;
+    node->get_parameter("~mpc_vehicle_yaw_inertia", yaw_inertia, 0.0f);
+    float axle_distance_front;
+    node->get_parameter("~mpc_vehicle_axle_distance_front", axle_distance_front, 0.0f);
+    float axle_distance_rear;
+    node->get_parameter("~mpc_vehicle_axle_distance_rear", axle_distance_rear, 0.0f);
+    float axle_combined_stiffness_front;
+    node->get_parameter("~mpc_vehicle_axle_combined_stiffness_front", axle_combined_stiffness_front, 0.0f);
+    float axle_combined_stiffness_rear;
+    node->get_parameter("~mpc_vehicle_axle_combined_stiffness_rear", axle_combined_stiffness_rear, 0.0f);
+    float relaxation_length;
+    node->get_parameter("~mpc_vehicle_relaxation_length", relaxation_length, 0.0f);
 
-    // Register a subscription for the vehicle state.
-    auto veh_state_sub =
-        node->create_subscription<avt_341::msg::Float64MultiArray>(
-            "avt_341/veh",
-            1,
-            VehicleStateCallback);
+    float steering_angle_max;
+    node->get_parameter("~mpc_bounds_steering_angle_max", steering_angle_max, 0.0f);
+    float steering_rate_max;
+    node->get_parameter("~mpc_bounds_steering_rate_max", steering_rate_max, 0.0f);
+    float yaw_rate_min;
+    node->get_parameter("~mpc_bounds_yaw_rate_min", yaw_rate_min, 0.0f);
+    float yaw_rate_max;
+    node->get_parameter("~mpc_bounds_yaw_rate_max", yaw_rate_max, 0.0f);
+    float lateral_speed_max;
+    node->get_parameter("~mpc_bounds_lateral_speed_max", lateral_speed_max, 0.0f);
+    float long_speed_max;
+    node->get_parameter("~mpc_bounds_longitudinal_speed_max", long_speed_max, 0.0f);
+    float long_speed_min;
+    node->get_parameter("~mpc_bounds_longitudinal_speed_min", long_speed_min, 0.0f);
+    float long_acceleration_max;
+    node->get_parameter("~mpc_bounds_longitudinal_acceleration_max", long_acceleration_max, 0.0f);
+    float long_acceleration_min;
+    node->get_parameter("~mpc_bounds_longitudinal_acceleration_min", long_acceleration_min, 0.0f);
+    float long_jerk_max;
+    node->get_parameter("~mpc_bounds_longitudinal_jerk_max", long_jerk_max, 0.0f);
+    float long_jerk_min;
+    node->get_parameter("~mpc_bounds_longitudinal_jerk_min", long_jerk_min, 0.0f);
 
-    // Register a subscription for the detected obstacles.
-    auto obs_sub = node->create_subscription<avt_341_msgs::msg::Obstacles>(
-        "avt_341/obstacles",
-        1,
-        ObstaclesCallback);
+    float rate_control;
+    node->get_parameter("~mpc_rate_control", rate_control, 0.0f);
+    float rate_plan;
+    node->get_parameter("~mpc_rate_plan", rate_plan, 0.0f);
+    std::string solver_name;
+    node->get_parameter("~mpc_solver_name", solver_name, {});
+    int solver_max_iterations;
+    node->get_parameter("~mpc_solver_max_iterations", solver_max_iterations, 0);
+    float solver_tolerance;
+    node->get_parameter("~mpc_solver_tolerance", solver_tolerance, 0.0f);
+    float solver_max_wall_time;
+    node->get_parameter("~mpc_solver_max_wall_time", solver_max_wall_time, 0.0f);
+    float solver_time_span;
+    node->get_parameter("~mpc_solver_time_span", solver_time_span, 0.0f);
+    float solver_time_step;
+    node->get_parameter("~mpc_solver_time_step", solver_time_step, 0.0f);
+    int solver_print_level;
+    node->get_parameter("~mpc_solver_print_level", solver_print_level, 0);
 
-    // TODO: This subscription odes not fit the case convention...
-    // Register a subscription for the planner goal point.
-    auto goal_pt_sub =
-        node->create_subscription<geometry_msgs::msg::PointStamped>(
-            "avt_341/mpc_goalPoint",
-            1,
-            GoalPointCallback);
+    float weight_goal;
+    node->get_parameter("~mpc_weight_goal", weight_goal, 1.0f);
+    float weight_steering_rate;
+    node->get_parameter("~mpc_weight_steering_rate", weight_steering_rate, 1.0f);
+    float weight_obstacle_term;
+    node->get_parameter("~mpc_weight_obstacle_term", weight_obstacle_term, 1.0f);
+    float weight_longitudinal_jerk;
+    node->get_parameter("~mpc_weight_longitudinal_jerk", weight_longitudinal_jerk, 1.0f);
 
-    // TODO: This subscription odes not fit the case convention...
-    // Register a subscription for the desired heading.
-    auto head_sub =
-        node->create_subscription<avt_341::msg::Float64>(
-            "avt_341/mpc_desiredHeading",
-            1,
-            HeadingCallback);
+    avt_341::planning::MpcPlanner planner;
+    planner.setVehicleMass(vehicle_mass);
+    planner.setYawInertia(yaw_inertia);
+    planner.setAxleDistanceFront(axle_distance_front);
+    planner.setAxleDistanceRear(axle_distance_rear);
+    planner.setFrontAxleCombinedStiffness(axle_combined_stiffness_front);
+    planner.setRearAxleCombinedStiffness(axle_combined_stiffness_rear);
+    planner.setRelaxationLength(relaxation_length);
 
-    // Register a subscription for the estimated sinkage..
-    if (use_terrain_adaptive)
-    {
-        auto sink_sub = node->create_subscription<avt_341_msgs::msg::Sinkage>(
-            "avt_341/sinkage",
-            1,
-            SinkageCallback);
-    }
-    // ----------------------
+    planner.setSteeringAngleMin(-steering_angle_max);
+    planner.setSteeringAngleMax(steering_angle_max);
+    planner.setSteeringRateMin(-steering_rate_max);
+    planner.setSteeringRateMax(steering_rate_max);
+    planner.setYawRateMin(yaw_rate_min);
+    planner.setYawRateMax(yaw_rate_max);
+    planner.setLateralSpeedMin(-lateral_speed_max);
+    planner.setLateralSpeedMax(lateral_speed_max);
+    planner.setLongSpeedMin(long_speed_min);
+    planner.setLongSpeedMax(long_speed_max);
+    planner.setLongAccelerationMin(long_acceleration_min);
+    planner.setLongAccelerationMax(long_acceleration_max);
+    planner.setLongJerkMin(long_jerk_min);
+    planner.setLongJerkMax(long_jerk_max);
 
-    // Register publishers
-    // -------------------
+    planner.setSolverName(solver_name);
+    planner.setSolverMaxIterations(solver_max_iterations);
+    planner.setSolverMaxWallTime(solver_max_wall_time);
+    planner.setSolverTolerance(solver_tolerance);
+    planner.setSolverTimeSpan(solver_time_span);
+    planner.setSolverTimeStep(solver_time_step);
+    planner.setSolverPrintLevel(solver_print_level);
 
-    // Register a publisher for the optimal path.
-    auto path_pub =
-        node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
+    planner.setWeights(weight_goal, weight_steering_rate, weight_obstacle_term, weight_longitudinal_jerk);
 
-    // Register a publisher for the desired speed.
-    auto speed_pub =
-        node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",
-                                                      1);
+    planner.initialize();
 
-    // Register a publisher for the desired steering angle.
-    auto steer_pub =
-        node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    avt_341::node::Rate rosrate(rate);
 
-    // ----------------------
+    while (avt_341::node::ok()) {
+        if (g_received_global_path && g_received_odometry) {
+            // Update the planner with the latest information.
+            updateState(planner);
+            updateGoal(planner, long_speed_max, solver_time_span);
+            if (g_received_obstacles) {
+                updateObstacles(planner);
+            }
 
-    avt_341::node::Rate node_rate(rate);
-    while (avt_341::node::ok() && !has_error)
-    {
-        jl_call0(j_plan);
-        CATCH_JULIA_EXCEPTION;
+            // Run the planning step.
+            if (planner.ready()) {
+                planner.plan();
 
+                // Serialise and publish the planned path.
+                auto msg_path = planner.getPlannedPathRos();
+                msg_path.header.stamp = node->get_stamp();
+                pub_local_path->publish(msg_path);
+
+                // Serialise and publish the jerk.
+                double jerk = planner.getControlJerk();
+                avt_341::msg::Float64 msg_control_jerk;
+                msg_control_jerk.data = jerk;
+                pub_control_jerk->publish(msg_control_jerk);
+
+                // Serialise and publish the target steering angle.
+                double steering_rate = planner.getControlSteeringRate();
+                avt_341::msg::Float64 msg_control_steering_rate;
+                msg_control_steering_rate.data = steering_rate;
+                pub_control_steering_rate->publish(msg_control_steering_rate);
+
+                avt_341::msg::Float64 msg_speed;
+                avt_341::msg::Float64 msg_steer;
+                auto controls = planner.getControls();
+                std::cout << controls.speed_longitudinal;
+                msg_speed.data = controls.speed_longitudinal;
+                msg_steer.data = controls.steering_angle;
+
+                pub_speed->publish(msg_speed);
+                pub_steer->publish(msg_steer);
+                avt_341::msg::Twist msg_cmd_vel;
+                msg_cmd_vel.linear.x = controls.speed_longitudinal;
+                msg_cmd_vel.angular.z = controls.steering_angle;
+                pub_control_velocities->publish(msg_cmd_vel);
+
+
+            } else {
+                std::cout << "Planner not ready. Either missing data or not initialized" << std::endl;
+            }
+        }
+
+        // Run the ROS node at the specified rate.
         node->spin_some();
-        node_rate.sleep();
+        rosrate.sleep();
     }
 
-    // Cleanup
-    // -------
-
-    // Exit the Julia C bindings cleanly.
-    jl_atexit_hook(has_error);
-
-    // Ensure the shared pointer to the ROS node is reset to avoid exceptions
-    // from ROS.
-    node.reset();
-
-    return has_error;
+    return EXIT_SUCCESS;
 }

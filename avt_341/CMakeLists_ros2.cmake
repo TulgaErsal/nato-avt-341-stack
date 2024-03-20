@@ -6,6 +6,8 @@ cmake_policy(VERSION 3.16)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
 
+set(MPC true)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 find_package(ament_cmake REQUIRED)
@@ -25,6 +27,10 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(GDAL CONFIG REQUIRED)
 find_package(PCL REQUIRED)
+if (MPC)
+  find_package(Boost REQUIRED COMPONENTS filesystem)
+  find_package(casadi REQUIRED)
+endif ()
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -34,19 +40,6 @@ if(NOT TARGET GDAL::GDAL)
   add_library(GDAL::GDAL ALIAS ${GDAL_LIBRARY})
 endif()
 include_directories(${GDAL_INCLUDE_DIRS})
-
-# BEGIN MPC WRAPPER NODE DEPENDENCIES
-# -----------------------------------
-find_package(Julia 1.5.4 EXACT)
-if(NOT ${Julia_FOUND})
-  message(WARNING "Julia libraries not found. The MPC wrapper node will not be built.")
-  set(BUILD_MPC OFF)
-else()
-  message(STATUS "Julia libraries found. Adding MPC wrapper node to the build.")
-  set(BUILD_MPC ON)
-endif() # if(${Julia_FOUND})
-# ---------------------------------
-# END MPC WRAPPER NODE DEPENDENCIES
 
 if (WIN32 OR WIN64)
 set (link_libs
@@ -297,53 +290,36 @@ target_link_libraries(avt_341_local_occupancy_grid_node
         ${PCL_LIBRARIES}
 )
 
-# BEGIN MPC WRAPPER NODE TARGET
-# -----------------------------
-if(BUILD_MPC)
-  add_executable(${PROJECT_NAME}_mpc_planner_node
-    "src/planning/local/avt_341_mpc_planner_node.cpp"
-    "src/node/node_proxy.cpp")
-  ament_target_dependencies(${PROJECT_NAME}_mpc_planner_node
-    ${dependencies})
-  target_include_directories(${PROJECT_NAME}_mpc_planner_node
-    PUBLIC
-      "$<BUILD_INTERFACE:${Julia_INCLUDE_DIRS}>")
-  target_link_libraries(${PROJECT_NAME}_mpc_planner_node
-    $<BUILD_INTERFACE:${Julia_LIBRARY}>)
-  target_compile_definitions(${PROJECT_NAME}_mpc_planner_node
-    PUBLIC
-      "MPC_PLANNER_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_planner.jl\""
-      "MPC_PARAMETERS_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_parameters.jl\""
-      "MPC_MODELS_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_models.jl\""
-      -DJULIA_ENABLE_THREADING)
-  install(TARGETS ${PROJECT_NAME}_mpc_planner_node
-          EXPORT export_${PROJECT_NAME}
-          DESTINATION lib/${PROJECT_NAME})
-  # Copy the Julia modules to the install folder.
-  install(FILES
-            "src/planning/local/mpc_models.jl"
-            "src/planning/local/mpc_planner.jl"
-            "src/planning/local/mpc_parameters.jl"
-          DESTINATION share/${PROJECT_NAME})
-  # Try to generate a Julia sysimage (if not already present).
-  if(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/sysimage.so")
-    message(STATUS "Generating Julia sysimage to improve MPC node startup time - this may take a while...")
+if (MPC)
+  message("Building MPC planner")
+  add_executable(veh_converter_node
+    src/planning/local/veh_converter_node.cpp
+    src/node/node_proxy.cpp
+    )
+  ament_target_dependencies(veh_converter_node ${dependencies})
+  target_link_libraries(veh_converter_node ${link_libs})
 
-    # Set the input template and output file absolute paths as environment
-    # variables so the Julia REPL can access them.
-    set(ENV{JULIA_SYSIMAGE_OUTPUT_PATH} "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/sysimage.so")
-    set(ENV{JULIA_SYSIMAGE_TEMPLATE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/src/planning/local/mpc_sysimage_template.jl")
+  add_executable(avt_341_mpc_planner_node
+    src/planning/local/avt_341_mpc_planner_node.cpp
+    src/planning/local/mpc_planner_solver.cpp
+    src/planning/local/mpc_planner.cpp
+    src/node/node_proxy.cpp
+    )
+  ament_target_dependencies(avt_341_mpc_planner_node ${dependencies} )
+  target_link_libraries(avt_341_mpc_planner_node
+    ${Boost_LIBRARIES}
+    casadi
+    ${link_libs}
+    )
 
-    # Set the path to the Julia sysimage generator script.
-    set(JULIA_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/src/planning/local/mpc_sysimage_generator.jl")
+  add_executable(obstacle_processor_node
+    src/planning/local/obstacles_processor_node.cpp
+    src/node/node_proxy.cpp
+    )
+  ament_target_dependencies( obstacle_processor_node ${dependencies} )
+  target_link_libraries( obstacle_processor_node ${link_libs} )
 
-    # Run the Julia REPL with the sysimage generator script.
-    execute_process(COMMAND ${Julia_EXECUTABLE} -L ${JULIA_SCRIPT})
-  endif() # if(NOT EXISTS "(...)/sysimage.so")
-endif() # if(BUILD_MPC)
-# ---------------------------
-# END MPC WRAPPER NODE TARGET
-
+endif()
 
 if (WIN32 OR WIN64)
 # this should point to the installation location of MATLAB Runtime
@@ -412,6 +388,15 @@ install(TARGETS
         avt_341_local_occupancy_grid_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
+if (MPC)
+        install( TARGETS
+        avt_341_mpc_planner_node
+        obstacle_processor_node
+        veh_converter_node
+        EXPORT export_${PROJECT_NAME}
+        DESTINATION lib/${PROJECT_NAME}}
+        )
+endif()
 
 install(
         DIRECTORY include/
