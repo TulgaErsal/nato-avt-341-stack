@@ -45,13 +45,15 @@ bool allMsgsReceived()
 * GetCostmapFromMatlab packages up all the data from ROS (odometry, pointcloud, and image), calls
 * the semantic segmentation model in Matlab, and populates an array of cost values based on traversability
 */
-std::vector<int8_t> GetCostmapFromMatlab(float width,
-                                        float height,
-                                        float res,
-                                        float grid_llx,
-                                        float grid_lly,
-                                        std::vector<int8_t> &grid,
-                                        std::vector<double> &modifiedCellIdxs)
+void GetCostmapFromMatlab(float width,
+                            float height,
+                            float res,
+                            float grid_llx,
+                            float grid_lly,
+                            std::vector<int8_t> &terrainGrid,
+                            std::vector<double> &terrainGridModifiedIdxs,
+                            std::vector<int8_t> &obstacleGrid,
+                            std::vector<double> &obstacleGridModifiedIdxs)
 {
     //odometry
     mwArray x(current_pose.pose.pose.position.x);
@@ -97,9 +99,6 @@ std::vector<int8_t> GetCostmapFromMatlab(float width,
     //lower right corner grid offset in meters (y/north direction)
     mwArray lly(grid_lly);
 
-    //disable Matlab debug windows
-    mwArray debug(false);
-
     //1, 1 -> original
     //0, 0 -> lidar only esn
     //1, 0 -> mixed
@@ -108,49 +107,52 @@ std::vector<int8_t> GetCostmapFromMatlab(float width,
     //use DeepLab?
     mwArray DL_model(0);
 
-    //use probabilistic grid
-    mwArray useProbabilisticGrid(true);
-
-    //output obstacle map or terrain map
-    mwArray obstacleMap(false); //terrain map
-
     try
     {
         //output variables
-        mwArray mwCostmap;
-        mwArray mwLocalGridSize;
-        mwArray mwModifiedCellIdxs;
+        mwArray mwTerrainCostmap;
+        mwArray mwTerrainSubGridSize;
+        mwArray mwTerrainGridModifiedIdxs;
+        mwArray mwObstacleCostmap;
+        mwArray mwObstacleSubGridSize;
+        mwArray mwObstacleGridModifiedIdxs;
         perception_wrapper(
-                            3, //number of output arguments
-                            mwCostmap,
-                            mwLocalGridSize,
-                            mwModifiedCellIdxs,
+                            6, //number of output arguments
+                            mwTerrainCostmap,
+                            mwTerrainSubGridSize,
+                            mwTerrainGridModifiedIdxs,
+                            mwObstacleCostmap,
+                            mwObstacleSubGridSize,
+                            mwObstacleGridModifiedIdxs,
                             imgData, //camera data
                             imgWidth, //image width
                             imgHeight, //image height
                             pcData, pcWidth, pcHeight, pcPointStep, pcRowStep, //pointcloud data
                             x, y, z, qw, qx, qy, qz, //odometry
                             mwGridWidth, mwGridHeight, mwGridRes, llx, lly, //grid params
-                            debug, //debug flag
-                            CL_model, C_model, DL_model, //model selection
-                            useProbabilisticGrid, //which type of grid to use
-                            obstacleMap //output obstacle map or terrain map
+                            CL_model, C_model, DL_model //model selection
                         );
 
-        uint32_t localGridSize = mwLocalGridSize;
-        modifiedCellIdxs.resize(localGridSize);
-        mwModifiedCellIdxs.GetData(modifiedCellIdxs.data(), modifiedCellIdxs.size());
+        // parse terrain sub grid
+        uint32_t terrainSubGridSize = mwTerrainSubGridSize;
+        terrainGridModifiedIdxs.resize(terrainSubGridSize);
+        mwTerrainGridModifiedIdxs.GetData(terrainGridModifiedIdxs.data(), terrainGridModifiedIdxs.size());
 
-        grid.resize(localGridSize);
-        mwCostmap.GetData(grid.data(), grid.size());
-        return grid;
+        terrainGrid.resize(terrainSubGridSize);
+        mwTerrainCostmap.GetData(terrainGrid.data(), terrainGrid.size());
+
+        // parse obstacle sub grid
+        uint32_t obstacleSubGridSize = mwObstacleSubGridSize;
+        obstacleGridModifiedIdxs.resize(obstacleSubGridSize);
+        mwObstacleGridModifiedIdxs.GetData(obstacleGridModifiedIdxs.data(), obstacleGridModifiedIdxs.size());
+
+        obstacleGrid.resize(obstacleSubGridSize);
+        mwObstacleCostmap.GetData(obstacleGrid.data(), obstacleGrid.size());
     }
     catch(const mwException& e)
     {
         std::cerr << "Failed to execute Matlab perception_wrapper. " << e.what() << std::endl;
     }
-    
-    return {};
 }
 
 void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
@@ -191,6 +193,7 @@ int main(int argc, char *argv[])
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
+    auto occ_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
     float width;
@@ -203,6 +206,9 @@ int main(int argc, char *argv[])
     node->get_parameter("~grid_lly", grid_lly, 0.0f);
     float res;
     node->get_parameter("~grid_res", res, 1.0f);
+    bool publishOccupancyGrid;
+    node->get_parameter("~publish_uab_occupancy_grid", publishOccupancyGrid, true);
+
     width = width/res;
     height = height/res;
 
@@ -220,8 +226,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    avt_341::msg::OccupancyGrid grid;
-    BuildOccupancyGrid(grid, width, height, grid_llx, grid_lly, res);
+    avt_341::msg::OccupancyGrid terrainGrid;
+    BuildOccupancyGrid(terrainGrid, width, height, grid_llx, grid_lly, res);
+
+    avt_341::msg::OccupancyGrid obstacleGrid;
+    BuildOccupancyGrid(obstacleGrid, width, height, grid_llx, grid_lly, res);
     
     avt_341::node::Rate rate(100.0);
     uint16_t timeout = 20; //exit if messages not received within 20s
@@ -249,17 +258,35 @@ int main(int argc, char *argv[])
         }
         else
         {
-            std::vector<int8_t> localGrid;
-            std::vector<double> localGridIdxs;
-            std::vector<int8_t> costmap = GetCostmapFromMatlab(width, height, res, grid_llx, grid_lly, localGrid, localGridIdxs);
+            std::vector<int8_t> terrainSubGrid;
+            std::vector<double> terrainSubGridIdxs;
+            std::vector<int8_t> obstacleSubGrid;
+            std::vector<double> obstacleSubGridIdxs;
+            GetCostmapFromMatlab(width, height, res, grid_llx, grid_lly, terrainSubGrid, terrainSubGridIdxs, obstacleSubGrid, obstacleSubGridIdxs);
 
             int c = 0;
-            for (auto i : localGridIdxs)
+            for (auto i : terrainSubGridIdxs)
             {
-                grid.data[i] = localGrid[c++];
+                terrainGrid.data[i] = terrainSubGrid[c++];
             }
 
-            seg_grid_pub->publish(grid);
+            seg_grid_pub->publish(terrainGrid);
+
+            if (publishOccupancyGrid)
+            {
+                c = 0;
+                for (auto i : obstacleSubGridIdxs)
+                {
+                    double obstacleThreshold = 95.0;
+                    double val = obstacleSubGrid[c++];
+                    if (val >= obstacleThreshold)
+                    {
+                        obstacleGrid.data[i] = val;
+                    }
+                }
+
+                occ_grid_pub->publish(obstacleGrid);
+            }
         }
         node->spin_some();
         rate.sleep();

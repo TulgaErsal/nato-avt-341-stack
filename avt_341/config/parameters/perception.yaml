@@ -39,6 +39,7 @@ clear_method:
 # Segmentation
 # ======================================================================================================================
 global_grid_csv_path: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', '20230816_KRC_CP06_Scaled_FlippedVertical.csv')"      # Path to CSV containing KRC global segmentation grid.
+publish_uab_occupancy_grid: False # Wether or not to publish the occupancy grid produced by UAB perception algorithm
 
 
 # Lidar Obstacle Detector

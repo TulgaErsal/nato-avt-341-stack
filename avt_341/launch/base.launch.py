@@ -185,15 +185,15 @@ def generate_launch_description():
                                                                      TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
                 ),
-                Node(
-                    package='avt_341',
-                    executable='avt_341_perception_node',
-                    name='perception_node',
-                    output='screen',
-                    parameters=[
-                        {'display': display_type},
-                        {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
-                ),
+                # Node(
+                #     package='avt_341',
+                #     executable='avt_341_perception_node',
+                #     name='perception_node',
+                #     output='screen',
+                #     parameters=[
+                #         {'display': display_type},
+                #         {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
+                # ),
                 Node(
                     package='avt_341',
                     executable='uab_perception_node',
@@ -204,22 +204,10 @@ def generate_launch_description():
                         'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
                         'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
                         'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
+                        'publish_uab_occupancy_grid': launch.substitutions.LaunchConfiguration('publish_uab_occupancy_grid'),
                     }],
                     output='screen'
                 ),
-                # Node(
-                #     package='avt_341',
-                #     executable='uab_object_map_node',
-                #     name='uab_object_map_node',
-                #     parameters=[{
-                #         'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
-                #         'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
-                #         'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
-                #         'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
-                #         'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
-                #     }],
-                #     output='screen'
-                # ),
                 Node(
                     package='avt_341',
                     executable='avt_341_control_node',
