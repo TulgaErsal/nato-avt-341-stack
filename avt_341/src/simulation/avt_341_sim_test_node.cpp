@@ -19,7 +19,7 @@ int main(int argc, char **argv){
   auto twist_sub = n->create_subscription<avt_341::msg::Twist>("avt_341/cmd_vel",1, TwistCallback);
 
   auto lidar_pub = n->create_publisher<avt_341::msg::PointCloud2>("avt_341/points",1);
-  auto odom_pub = n->create_publisher<avt_341::msg::Odometry>("avt_341/odometry",1);
+  auto odom_pub = n->create_publisher<avt_341::msg::Odometry>("/avt_341/odometry",1);
   auto mpc_state_pub = n->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/veh",1);
 
 

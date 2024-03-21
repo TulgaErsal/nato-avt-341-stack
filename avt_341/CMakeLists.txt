@@ -45,3 +45,9 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
 else()
   message(ERROR "Unable to detect ROS version. Did you source /opt/ros/${version}/setup.bash?")
 endif()
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES basic_lecture
+#  CATKIN_DEPENDS roscpp rospy std_msgs tf
+#  DEPENDS system_lib
+)

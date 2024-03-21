@@ -36,9 +36,13 @@
   <arg name="perception_rate" default="20.0" />
   <arg name="global_grid_csv_path" default="$(find avt_341)/config/KRC_CP06_Scaled_Transposed.csv" />
   <arg name="use_lidar_obstacle_detector" default="false" />
-  <arg name="raw_points_topic" default="/avt_341/points" />
+ <!-- <arg name="raw_points_topic" default="/avt_341/points" />
   <arg name="perception_points_topic" default="/avt_341/points" />
-  <arg name="clear_method_type" default="none" />
+-->
+  <arg name="raw_points_topic" default="/aligned_points" />
+  <arg name="perception_points_topic" default="/aligned_points" />
+
+<arg name="clear_method_type" default="none" />
   <arg name="clear_method_visualize" default="false" />
   <arg name="clear_method_visualize_range" default="40.0" />
   <arg name="clear_method_raytrace_range" default="50.0" />
@@ -216,6 +220,8 @@
     <param name="grid_dilate_x" value="$(arg grid_dilate_x)" />
     <param name="grid_dilate_y" value="$(arg grid_dilate_y)" />
     <param name="grid_dilate_proportion" value="$(arg grid_dilate_proportion)" />
+github.com/TulgaErsal/nato-avt-341-stack.git
+Cloning into 'nato-avt-341-stack'...
     <param name="cull_lidar" value="$(arg cull_lidar)" />
     <param name="cull_lidar_dist" value="$(arg cull_lidar_dist)" />
     <param name="cull_lidar_dist_min" value="$(arg cull_lidar_dist_min)" />
@@ -544,12 +550,14 @@
   </group>
 
   <!-- rosrun rviz rviz -d $(rospack find avt_341)/rviz/avt_341.rviz -->
+ <!--
   <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') == 1)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
   </group>
   <group if="$(eval arg('display_type') == 'rviz' and arg('auto_launch_rviz') and arg('veh_index') == 0 and arg('num_vehicles') > 1)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341_multi_vehicle.rviz" />
   </group>
+ -->
 
 
   </group>  <!-- / End group namespace -->
