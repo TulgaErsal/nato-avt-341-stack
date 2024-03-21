@@ -3,6 +3,7 @@
   <param name="/use_sim_time" value="false"/>
   <arg name="display" default="rviz"/>
   <arg name="auto_launch_rviz" default="true"/>
+  <arg name="bags_dir" default="/media/riku/ボリューム/rosbag//Date_1sec_2sec_3sec.bag"/>
   <arg name="use_mpc" default="false" doc="Local planner - Use MPC local planner instead of road centerline constrained splines."/>
 
 
@@ -117,5 +118,11 @@
   <group if="$(eval arg('display') == 'rviz' and arg('auto_launch_rviz'))">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
   </group>
-
+  
+  <node pkg="rosbag" type="record" name="bag_node" 
+        args="-o $(arg bags_dir) /tf /tf_static /avt_341/odometry /avt_341/occupancy_grid /avt_341/occupancy_grid_updates /avt_341/occupancy_grid_cells /avt_341/local_path" />
+  
+  <param name="publish_value1" value="5"/>
+  <param name="publish_value2" value="1.0"/>
+  <node name="mpc_node" pkg="avt_341" type="mpc" required="true" output="screen"/>
 </launch>
