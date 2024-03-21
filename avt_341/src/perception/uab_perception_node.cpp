@@ -7,7 +7,8 @@
 #include <array>
 #include <math.h>
 
-const uint8_t COSTMAP_DEFAULT_VAL = 50;
+const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
+const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
 avt_341::msg::Odometry current_pose;
 bool odom_received = false;
@@ -160,7 +161,8 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
                         float height,
                         float grid_llx,
                         float grid_lly,
-                        float res)
+                        float res,
+                        float defaultCellVal)
 {
     grid.header.frame_id = "map";
     grid.info.resolution = res;
@@ -172,7 +174,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
     grid.info.origin.orientation.z = 0.0;
-    std::vector<int8_t> initVals(width * height, COSTMAP_DEFAULT_VAL);
+    std::vector<int8_t> initVals(width * height, defaultCellVal);
     grid.data = initVals;
 }
 
@@ -206,8 +208,8 @@ int main(int argc, char *argv[])
     node->get_parameter("~grid_lly", grid_lly, 0.0f);
     float res;
     node->get_parameter("~grid_res", res, 1.0f);
-    bool publishOccupancyGrid;
-    node->get_parameter("~publish_uab_occupancy_grid", publishOccupancyGrid, true);
+    bool publishUabOccupancyGrid;
+    node->get_parameter("~publish_uab_occupancy_grid", publishUabOccupancyGrid, false);
 
     width = width/res;
     height = height/res;
@@ -227,10 +229,10 @@ int main(int argc, char *argv[])
     }
 
     avt_341::msg::OccupancyGrid terrainGrid;
-    BuildOccupancyGrid(terrainGrid, width, height, grid_llx, grid_lly, res);
+    BuildOccupancyGrid(terrainGrid, width, height, grid_llx, grid_lly, res, TERRAIN_GRID_DEFAULT_VAL);
 
     avt_341::msg::OccupancyGrid obstacleGrid;
-    BuildOccupancyGrid(obstacleGrid, width, height, grid_llx, grid_lly, res);
+    BuildOccupancyGrid(obstacleGrid, width, height, grid_llx, grid_lly, res, OBSTACLE_GRID_DEFAULT_VAL);
     
     avt_341::node::Rate rate(100.0);
     uint16_t timeout = 20; //exit if messages not received within 20s
@@ -272,7 +274,7 @@ int main(int argc, char *argv[])
 
             seg_grid_pub->publish(terrainGrid);
 
-            if (publishOccupancyGrid)
+            if (publishUabOccupancyGrid)
             {
                 c = 0;
                 for (auto i : obstacleSubGridIdxs)
