@@ -15,6 +15,10 @@
 * \author Chris Goodin
 *
 * \date 8/31/2020
+*
+* \author Tulga Ersal
+*
+* \date 03/21/2024
 */
 #ifndef PURE_PURSUIT_CONTROLLER_H
 #define PURE_PURSUIT_CONTROLLER_H
@@ -182,6 +186,9 @@ private:
 	float veh_speed_;
 	float vx_;
 	float vy_;
+	float steer_cur_;
+	float err_last_;
+	float err_accum_;
 	float current_angular_velocity_;
 };
 
