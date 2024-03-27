@@ -57,7 +57,7 @@ class MissionManager{
     void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
 
     // external messages
-    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
+    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr, double desired_speed = 0.0);
     void handleFormationRequest(FormationMsg msg);
     void handleAcknowledge(const AcknowledgeMsg &);
     void handleArrive(const ArrivedMsg & msg);

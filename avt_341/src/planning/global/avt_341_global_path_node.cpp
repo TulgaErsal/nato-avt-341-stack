@@ -243,6 +243,7 @@ int main(int argc, char *argv[])
   avt_341::node::Rate r(20.0f); // Hz
   int nl = 0;
   int shutdown_count = 0;
+  auto t1 = std::chrono::system_clock::now();
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()){
 
@@ -366,7 +367,9 @@ int main(int argc, char *argv[])
 
         dist_to_current_waypoint_pub->publish(dist_to_goal);
         if (nl % 20 == 0 && verbose_gp_log){ //update every second
-          n->log_info("Global Path: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f",
+          auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - t1);
+          t1 = std::chrono::system_clock::now();
+          n->log_info("Global Path [%f]: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f", duration.count(),
                       odom.pose.pose.position.x, odom.pose.pose.position.y, goal[0], goal[1], current_waypoint, current_waypoints.poses.size() - 1, d);
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint

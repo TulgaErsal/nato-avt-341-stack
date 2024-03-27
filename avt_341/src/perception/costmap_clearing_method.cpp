@@ -18,7 +18,7 @@ namespace perception{
   {
   }
 
-  OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells, int Nx, int Ny, float visualization_range, bool visualize, const RaytraceSettings & settings, CellObstacleCalculator* cell_obstacle_calculator)
+  OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells, int Ny, int Nx, float visualization_range, bool visualize, const RaytraceSettings & settings, CellObstacleCalculator* cell_obstacle_calculator)
                                               : cells_(cells), Nx_(Nx), Ny_(Ny), config_(settings), cell_obstacle_calculator_(cell_obstacle_calculator), visualization_range_(visualization_range), visualize_(visualize)
   {
   }

@@ -8,9 +8,9 @@ grid_llx: 0.0                             # X coordinate grid bottom left anchor
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
 grid_res: 1.0                             # Grid resolution in meters.
 overhead_clearance: 5.0                   # Overhead clearance from vehicle after which lidar points ignored
-grid_dilate: False                         # Whether or not to apply dilation.
-grid_dilate_x: 0.5                        # Amount of dilation in x.
-grid_dilate_y: 0.5                        # Amount of dilation in y.
+grid_dilate: True                         # Whether or not to apply dilation.
+grid_dilate_x: 5.0                        # Amount of dilation in x.
+grid_dilate_y: 5.0                        # Amount of dilation in y.
 grid_dilate_proportion: 0.8               # Proportion of original grid cell to dilate with.
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
 cull_lidar_dist: 100.0                    # Maximum distance used to cull lidar points

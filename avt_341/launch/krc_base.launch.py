@@ -138,7 +138,7 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                         {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
-    else:
+    elif local_planner_method != 'mpc':
         return [Node(
                     package='avt_341',
                     executable='avt_341_control_node',
@@ -149,6 +149,8 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                         {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
+    else:
+        return []
 
 
 def evaluate_local_planner(params, context, *args, **kwargs):
@@ -178,6 +180,25 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                         {k: LaunchConfiguration(f'dwa_local_planner_{k}') for k in params['dwa_local_planner'].keys()}
                     ],
         )]
+    elif local_planner_method == 'mpc':
+        return [
+            Node(
+                    package='avt_341',
+                    executable='avt_341_mpc_planner_node',
+                    name='local_mpc_planner_node',
+                    output='screen',
+                    parameters=[
+                        {k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}
+                    ],
+            ),
+            Node(
+                    package='avt_341',
+                    executable='obstacle_processor_node',
+                    name='obstacle_processor_node',
+                    output='screen',
+                    parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
+            ),
+        ]
     else: # local_planner_method == 'pf':
         return [Node(
                 package='avt_341',
@@ -339,6 +360,15 @@ def launch_setup(context, *args, **kwargs):
             arguments=["-d", TernarySubstitution(true_val=TextSubstitution(text=rviz_mult_config.perform(context)),
                                                 false_val=TextSubstitution(text=rviz_config.perform(context)),
                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
+        ),
+
+        # Data Acquisition
+        Node(
+            package='avt_341',
+            executable='data_acquisition_node',
+            name='data_acquisition_node',
+            output='log',
+            parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}]
         ),
 
         # Mission Manager

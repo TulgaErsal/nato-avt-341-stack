@@ -9,6 +9,7 @@
  * \date 01/23/2024
  */
 #include <cmath>
+#include <vector>
 
 // ROS includes
 #include "avt_341/node/ros_types.h"
@@ -24,12 +25,14 @@ int main(int argc, char *argv[]){
     double local_origin_x, local_origin_y;
     std::string frame_world, frame_map, frame_cg;
     float vel_window, rate;
+    int accel_samples;
     n->get_parameter("/map_origin_x", local_origin_x, 0.0);
     n->get_parameter("/map_origin_y", local_origin_y, 0.0);
     n->get_parameter("~world_frame", frame_world, std::string("nad83"));
     n->get_parameter("~map_frame", frame_map, std::string("map"));
     n->get_parameter("~vehicle_cg_frame", frame_cg, std::string("vbox_link"));
     n->get_parameter("~velocity_averaging_window", vel_window, 0.2f);
+    n->get_parameter("~accel_averaging_samples", accel_samples, 5);
     n->get_parameter("~daq_rate", rate, 60.0f);
 
     // Create publishers and subscribers
@@ -48,6 +51,13 @@ int main(int argc, char *argv[]){
     avt_341::msg::Time last_t;
     avt_341::msg::PoseStamped last_cg_pos;
     avt_341::msg::TwistStamped last_cg_vel;
+    
+    // Acceleration averaging values
+    std::vector<std::vector<float>> accel_vals;
+    std::vector<float> accel_frame;
+    accel_frame.resize(6, 0.0f);  // linear (x, y, z), angular (x, y, z) -> 6 values
+    accel_vals.resize(accel_samples,accel_frame);
+    int i_accel = 0;
 
     // MAINLOOP
     avt_341::msg::Time t_start = n->get_stamp();
@@ -117,17 +127,41 @@ int main(int argc, char *argv[]){
                 }
                 dist_pub->publish(dist_travelled);
 
-                // Publish CG acceleration (estimate from velocity)
+                // Calculate current acceleration estimate
                 double dt = avt_341::node::seconds_from_time(t_now - last_t);
+                if (i_accel >= accel_samples) {
+                    i_accel = 0;
+                }
+                accel_vals[i_accel][0] = (cg_vel.twist.linear.x - last_cg_vel.twist.linear.x) / dt;
+                accel_vals[i_accel][1] = (cg_vel.twist.linear.y - last_cg_vel.twist.linear.y) / dt;
+                accel_vals[i_accel][2] = (cg_vel.twist.linear.z - last_cg_vel.twist.linear.z) / dt;
+                accel_vals[i_accel][3] = (cg_vel.twist.angular.x - last_cg_vel.twist.angular.x) / dt;
+                accel_vals[i_accel][4] = (cg_vel.twist.angular.y - last_cg_vel.twist.angular.y) / dt;
+                accel_vals[i_accel][5] = (cg_vel.twist.angular.z - last_cg_vel.twist.angular.z) / dt;
+                i_accel++;
+
+                // Average acceleration estimates
+                accel_frame.clear();
+                accel_frame.resize(6, 0.0f);
+                for (int i = 0; i < accel_vals.size(); i++) {
+                    for (int j = 0; j < accel_frame.size(); j++) {
+                        accel_frame[j] += accel_vals[i][j];
+                    }
+                }
+                for (int j = 0; j < accel_frame.size(); j++) {
+                    accel_frame[j] /= accel_vals.size();
+                }
+
+                // Publish averaged acceleration
                 avt_341::msg::AccelStamped cg_accel;
                 cg_accel.header = tfs_ref.header;
                 cg_accel.header.frame_id = frame_cg;
-                cg_accel.accel.linear.x = (cg_vel.twist.linear.x - last_cg_vel.twist.linear.x) / dt;
-                cg_accel.accel.linear.y = (cg_vel.twist.linear.y - last_cg_vel.twist.linear.y) / dt;
-                cg_accel.accel.linear.z = (cg_vel.twist.linear.z - last_cg_vel.twist.linear.z) / dt;
-                cg_accel.accel.angular.x = (cg_vel.twist.angular.x - last_cg_vel.twist.angular.x) / dt;
-                cg_accel.accel.angular.y = (cg_vel.twist.angular.y - last_cg_vel.twist.angular.y) / dt;
-                cg_accel.accel.angular.z = (cg_vel.twist.angular.z - last_cg_vel.twist.angular.z) / dt;
+                cg_accel.accel.linear.x = accel_frame[0];
+                cg_accel.accel.linear.y = accel_frame[1];
+                cg_accel.accel.linear.z = accel_frame[2];
+                cg_accel.accel.angular.x = accel_frame[3];
+                cg_accel.accel.angular.y = accel_frame[4];
+                cg_accel.accel.angular.z = accel_frame[5];
                 cg_accel_pub->publish(cg_accel);
             }
 

@@ -13,6 +13,7 @@
 
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Point.h"
 #include "geometry_msgs/Point32.h"
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -25,6 +26,7 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Path.h"
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/GridCells.h"
 
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
@@ -68,6 +70,9 @@ namespace avt_341 {
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;
 
+        using Point = geometry_msgs::Point;
+        using PointPtr = const geometry_msgs::Point::ConstPtr &;
+
         using Point32 = geometry_msgs::Point32;
         using Point32Ptr = const geometry_msgs::Point32::ConstPtr &;
 
@@ -106,6 +111,9 @@ namespace avt_341 {
 
         using Odometry = nav_msgs::Odometry;
         using OdometryPtr = const nav_msgs::Odometry::ConstPtr &;
+
+        using GridCells = nav_msgs::GridCells;
+        using GridCellsPtr = const nav_msgs::GridCells::ConstPtr &;
 
         using Marker = visualization_msgs::Marker;
         using MarkerPtr = const visualization_msgs::Marker::ConstPtr &;
@@ -173,6 +181,7 @@ namespace avt_341 {
 
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -185,6 +194,7 @@ namespace avt_341 {
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/grid_cells.hpp"
 
 #include "visualization_msgs/msg/marker_array.hpp"
 
@@ -231,6 +241,9 @@ namespace avt_341 {
     using Twist = geometry_msgs::msg::Twist;
     using TwistPtr = const geometry_msgs::msg::Twist::SharedPtr;
 
+    using Point = geometry_msgs::msg::Point;
+    using PointPtr = geometry_msgs::msg::Point::SharedPtr;
+
     using Point32 = geometry_msgs::msg::Point32;
     using Point32Ptr = geometry_msgs::msg::Point32::SharedPtr;
 
@@ -269,6 +282,9 @@ namespace avt_341 {
 
     using Odometry = nav_msgs::msg::Odometry;
     using OdometryPtr = nav_msgs::msg::Odometry::SharedPtr;
+
+    using GridCells = nav_msgs::msg::GridCells;
+    using GridCellsPtr = nav_msgs::msg::GridCells::SharedPtr;
 
     using Marker = visualization_msgs::msg::Marker;
     using MarkerPtr = visualization_msgs::msg::Marker::SharedPtr;

@@ -23,9 +23,12 @@ avt_341::msg::OccupancyGrid grid;
 avt_341::msg::OccupancyGrid segmentation_grid;
 avt_341::msg::Path global_path;
 avt_341::msg::Path waypoints;
+double speedometer = 0.0;
 bool odom_rcvd = false;
 bool new_grid_rcvd = false;
 bool new_seg_grid_rcvd = false;
+bool speedometer_rcvd = false;
+
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom){
   odom = *rcv_odom;
@@ -50,22 +53,36 @@ void WaypointCallback(avt_341::msg::PathPtr wp_path){
   waypoints = *wp_path;
 }
 
+void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
+	speedometer = rcv_speed->data;
+  speedometer_rcvd = true; 
+}
+
 int main(int argc, char *argv[]){
 
   auto n = avt_341::node::init_node(argc, argv, "avt_341_planner_node");
 
   avt_341::planning::Planner planner;
   // planner params
-  float path_look_ahead, vehicle_width, max_steer_angle, output_path_step, path_int_step, rate, dilation_factor;
+  float path_look_ahead, vehicle_wheelbase, vehicle_width, steer_angle_limit, output_path_step, path_int_step, rate, dilation_factor;
+  float time_look_ahead, min_path_look_ahead, max_path_look_ahead, max_lateral_accel, min_steer_angle_limit, max_steer_angle_limit;
   int num_paths;
   float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist, max_theta;
-  bool trim_path, use_global_path, use_blend;
+  bool trim_path, use_global_path, use_blend, use_dynamic_window;
   std::string display, cost_vis, map_topic;
 
+  n->get_parameter("~use_dynamic_window", use_dynamic_window, false);
+  n->get_parameter("~time_look_ahead", time_look_ahead, 3.0f);
+  n->get_parameter("~min_path_look_ahead", min_path_look_ahead, 10.0f);
+  n->get_parameter("~max_path_look_ahead", max_path_look_ahead, 20.0f);
   n->get_parameter("~path_look_ahead", path_look_ahead, 15.0f);
+  n->get_parameter("~max_lateral_accel", max_lateral_accel, 5.0f);
+  n->get_parameter("~min_steer_angle_limit", min_steer_angle_limit, 0.1f);
+  n->get_parameter("~max_steer_angle_limit", max_steer_angle_limit, 0.69f);
+  n->get_parameter("~steer_angle_limit", steer_angle_limit, 0.43f);
+  n->get_parameter("~vehicle_wheelbase", vehicle_wheelbase, 2.012f);
   n->get_parameter("~vehicle_width", vehicle_width, 3.0f);
   n->get_parameter("~num_paths", num_paths, 31);
-  n->get_parameter("~max_steer_angle", max_steer_angle, 0.43f);
   n->get_parameter("~max_theta", max_theta, 1.0f);
   n->get_parameter("~output_path_step", output_path_step, 0.5f);
   n->get_parameter("~path_integration_step", path_int_step, 0.25f);
@@ -92,6 +109,7 @@ int main(int argc, char *argv[]){
   auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
+  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",10,SpeedCallback);
 
   planner.SetArcLengthIntegrationStep(path_int_step);
   planner.SetComfortabilityWeight(w_c);
@@ -130,6 +148,17 @@ int main(int argc, char *argv[]){
         
       }
       avt_341::planning::Path path;
+      if (use_dynamic_window && speedometer_rcvd) {
+        // Calulate path look ahead
+        path_look_ahead = time_look_ahead * speedometer;
+        path_look_ahead = std::min(path_look_ahead, max_path_look_ahead);
+        path_look_ahead = std::max(path_look_ahead, min_path_look_ahead);
+
+        // Calculate max steering angle
+        steer_angle_limit = std::atan(vehicle_wheelbase * max_lateral_accel / (speedometer * speedometer));
+        steer_angle_limit = std::min(steer_angle_limit, max_steer_angle_limit);
+        steer_angle_limit = std::max(steer_angle_limit, min_steer_angle_limit);
+      }
       if (trim_path && use_global_path ){
         avt_341::utils::vec2 current_pos(odom.pose.pose.position.x, odom.pose.pose.position.y);
         path.Init(path_points, current_pos, 1.5f * path_look_ahead);
@@ -157,7 +186,7 @@ int main(int argc, char *argv[]){
       // Fix bug with paths not converging when d_theta ~= 90 degrees
       d_theta = std::max(std::min(d_theta, max_theta), -max_theta);
       
-      planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, max_steer_angle, vehicle_width);
+      planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, steer_angle_limit, vehicle_width);
       planner.SetCenterline(path);
   
       // calculate bounds around the vehicle to limit grid dilation to space 10m behind and path_look_ahead distance in front of the vehicle

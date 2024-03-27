@@ -66,7 +66,7 @@ public:
     static const std::string ACTOR;
 
     MoveTo(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr,
-           double x_offset = 0.0, double y_offset = 0.0, double d_approach=0.0);
+           double x_offset = 0.0, double y_offset = 0.0, double d_approach=0.0, double desired_speed=0.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -93,6 +93,7 @@ private:
     double x_offset_;
     double y_offset_;
     double d_approach_;
+    double desired_speed_;
 }; // class MoveTo
 
 class WaitUntilComplete : public Task {

@@ -20,23 +20,23 @@ mpc_bounds_longitudinal_speed_min: -1.10  # [m/s] Minimum speed allowed. Must be
 mpc_bounds_longitudinal_speed_max: 5.0  # [m/s] Maximum speed allowed.
 mpc_bounds_longitudinal_acceleration_min: -5.0  # [m/s^2] Minimum allowed acceleration. Can be negative.
 mpc_bounds_longitudinal_acceleration_max: 5.0  # [m/s^2] Maximum allowed acceleration.
-mpc_bounds_longitudinal_jerk_min: -1  # [m/s^3] Minimum allowed jerk. Can be negative.
-mpc_bounds_longitudinal_jerk_max: 1 # [m/s^3] Maximum allowed jerk in m/s^3.
+mpc_bounds_longitudinal_jerk_min: -1.0  # [m/s^3] Minimum allowed jerk. Can be negative.
+mpc_bounds_longitudinal_jerk_max: 1.0 # [m/s^3] Maximum allowed jerk in m/s^3.
 
 # Solver options
-mpc_solver_name: "ipopt"
+mpc_solver_name: "ma27"
 mpc_solver_max_iterations: 10
 mpc_solver_tolerance: 1.0e-3  # From file: 1e-8
-mpc_solver_max_wall_time: 5  # [s]
+mpc_solver_max_wall_time: 5.0  # [s]
 mpc_solver_time_span: 4.0  # [s]
 mpc_solver_time_step: 0.075  # [s]
 mpc_solver_print_level: 0
 
 # Solver weights
 mpc_weight_goal: 10.0
-mpc_weight_steering_rate: 10
+mpc_weight_steering_rate: 10.0
 mpc_weight_obstacle_term: 1.0
-mpc_weight_longitudinal_jerk: 1
+mpc_weight_longitudinal_jerk: 1.0
 
 # Obstacles
 mpc_obstacles_max_obstacle_number: 1000

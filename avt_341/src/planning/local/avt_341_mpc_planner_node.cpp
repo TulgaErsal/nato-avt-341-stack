@@ -17,6 +17,8 @@
 
 using namespace avt_341::planning;
 
+std::shared_ptr<avt_341::node::NodeProxy> node;
+
 // Initialise ROS messages.
 avt_341::msg::Odometry g_odometry;
 
@@ -99,6 +101,10 @@ void callbackImu(avt_341::msg::ImuPtr msg_received_imu) {
     g_received_acceleration = true;
 }
 
+void callbackAccelStamped(avt_341::msg::AccelStampedPtr msg_received_acceleration) {
+    g_acceleration = msg_received_acceleration->accel.linear.x;
+    g_received_acceleration = true;
+}
 
 void updateState(avt_341::planning::MpcPlanner& planner) {
     planner.setState(g_odometry.pose.pose.position.x,
@@ -137,13 +143,14 @@ void updateObstacles(avt_341::planning::MpcPlanner& planner) {
 
 int main(int argc, char* argv[]) {
     // Initialize ROS node.
-    auto node = avt_341::node::init_node(argc, argv, "avt_341_mpc_planner_node");
+    node = avt_341::node::init_node(argc, argv, "avt_341_mpc_planner_node");
 
     // Create node subscribers.
     auto sub_odometry = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
     auto sub_obstacles = node->create_subscription<avt_341::msg::Obstacles>("avt_341/obstacles", 1, callbackObstacles);
     auto sub_global_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 1, callbackGlobalPath);
-    auto sub_imu = node->create_subscription<avt_341::msg::Imu>("avt_341/imu", 1, callbackImu);
+    //auto sub_imu = node->create_subscription<avt_341::msg::Imu>("avt_341/imu", 1, callbackImu);
+    auto sub_accel = node->create_subscription<avt_341::msg::AccelStamped>("avt_341/vehicle_cg/accel", 1, callbackAccelStamped);
 
     // Create node publishers.
     auto pub_local_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
@@ -294,7 +301,6 @@ int main(int argc, char* argv[]) {
                 avt_341::msg::Float64 msg_speed;
                 avt_341::msg::Float64 msg_steer;
                 auto controls = planner.getControls();
-                std::cout << controls.speed_longitudinal;
                 msg_speed.data = controls.speed_longitudinal;
                 msg_steer.data = controls.steering_angle;
 
@@ -305,6 +311,10 @@ int main(int argc, char* argv[]) {
                 msg_cmd_vel.angular.z = controls.steering_angle;
                 pub_control_velocities->publish(msg_cmd_vel);
 
+                /*
+                node->log_info_throttle(1.0, "MPC Planner Output: \n\tavt_341/local_path (length) = \t\t%d\n\tavt_341/cmd_jerk = \t%lf\n\tavt_341/cmd_steer_rate = \t\t%lf\n\tavt_341/cmd_vel (linear.x)= \t%f\n\tavt_341/cmd_steer = \t%f\n\tavt_341/desired_speed = \t%f\n\t",
+                    msg_path.poses.size(), jerk, steering_rate, controls.speed_longitudinal, controls.speed_longitudinal, controls.steering_angle);
+                */
 
             } else {
                 std::cout << "Planner not ready. Either missing data or not initialized" << std::endl;

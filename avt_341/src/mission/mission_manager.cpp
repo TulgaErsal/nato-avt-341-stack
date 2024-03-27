@@ -375,14 +375,14 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
     auto formation_def = new FormationDefinition(msg, mp, formation_params);
     if(formation_def->isLeader() || formation_def->formationAtGoal()){
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
-        handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def);
+        handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
     } else if(formation_def->isFollowing()) {
         Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def);
         addTask(followTask, msg.priority_type);
     }
 
     // handle set speed
-    handleSetSpeed(msg.speedMsg());
+    //handleSetSpeed(msg.speedMsg());
 }
 
 void MissionManager::handleAcknowledge(const AcknowledgeMsg & msg) {
@@ -407,10 +407,10 @@ void MissionManager::handleTaskComplete(const TaskCompleteMsg & msg) {
     task_completions_.push_back(msg);
 }
 
-void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
+void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def, double desired_speed) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset, y_offset + msg.goal_y_offset, msg.approach_distance);
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset, y_offset + msg.goal_y_offset, msg.approach_distance, desired_speed);
         moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {
@@ -422,6 +422,7 @@ void MissionManager::handleSetSpeed(const SetSpeedMsg & msg) {
     avt_341::msg::Float64 speed_msg;
     speed_msg.data = msg.desired_speed;
     speed_pub->publish(speed_msg);
+    node_proxy_->log_info("SET SPEED TO %lf", msg.desired_speed);
 }
 
 void MissionManager::onGoalReached(const avt_341::msg::PoseStamped & pose){
