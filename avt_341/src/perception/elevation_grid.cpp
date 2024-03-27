@@ -32,16 +32,17 @@ void ElevationGrid::ResizeGrid(){
   nx_ = (int)ceil(width_/res_);
   ny_ = (int)ceil(height_/res_);
   //if (n_%2!=0) n_ = n_+1;
+  Cell cell(res_, thresh_, GRID_SLOPE_MULT, GRID_MAX_VALUE);
   cells_.clear();
   std::vector<Cell> row;
-  row.resize(ny_);
-  cells_.resize(nx_,row);
+  row.resize(nx_,cell);
+  cells_.resize(ny_,row);
 }
 
 void ElevationGrid::ClearGrid(){
 Cell empty_cell;
- for (int i=0;i<(nx_);i++){
-    for (int j=0;j<(ny_);j++){ 
+ for (int i=0;i<(ny_);i++){
+    for (int j=0;j<(nx_);j++){ 
       cells_[i][j] = empty_cell;
     }
  }
@@ -61,44 +62,44 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
       int xi = (int)floor((point_cloud.points[i].x - llx_)/res_);
       int yi = (int)floor((point_cloud.points[i].y - lly_)/res_);
       if (xi>=0 && xi<nx_ && yi>=0 &&yi<ny_){
-        const float original_slope = Slope(cells[xi][yi]);
+        const float original_slope = Slope(cells[yi][xi]);
         float h = point_cloud.points[i].z;
         if (filter_highest_){
-          if (h > cells[xi][yi].highest.val ){
-            cells[xi][yi].second_highest = cells[xi][yi].highest;
-            cells[xi][yi].highest.val = h;
-            cells[xi][yi].highest.age = 0.0f;
-            cells[xi][yi].high = cells[xi][yi].second_highest;
+          if (h > cells[yi][xi].highest.val ){
+            cells[yi][xi].second_highest = cells[yi][xi].highest;
+            cells[yi][xi].highest.val = h;
+            cells[yi][xi].highest.age = 0.0f;
+            cells[yi][xi].high = cells[yi][xi].second_highest;
           }
-          else if (h  > cells[xi][yi].second_highest.val){
-            cells[xi][yi].second_highest.val = h;
-            cells[xi][yi].second_highest.age = 0.0f;
-            cells[xi][yi].high = cells[xi][yi].second_highest;
+          else if (h  > cells[yi][xi].second_highest.val){
+            cells[yi][xi].second_highest.val = h;
+            cells[yi][xi].second_highest.age = 0.0f;
+            cells[yi][xi].high = cells[yi][xi].second_highest;
           }
         }
         else{
-          if (h > cells[xi][yi].high.val ) {
-            cells[xi][yi].high.val = h;
-            cells[xi][yi].high.age = 0.0f;
+          if (h > cells[yi][xi].high.val ) {
+            cells[yi][xi].high.val = h;
+            cells[yi][xi].high.age = 0.0f;
           }
         }
-        if (h < cells[xi][yi].low.val ) {
-          cells[xi][yi].low.val = h;
-          cells[xi][yi].low.age = 0.0f;
+        if (h < cells[yi][xi].low.val ) {
+          cells[yi][xi].low.val = h;
+          cells[yi][xi].low.age = 0.0f;
         }
         if (has_segmentation_local){
           float terr_val = point_cloud.channels[0].values[i];
-          cells[xi][yi].terrain = fmax(cells[xi][yi].terrain, terr_val);
+          cells[yi][xi].terrain = fmax(cells[yi][xi].terrain, terr_val);
         }
 
         // Optional dilation
         if(dilate){
-          if( (!cells[xi][yi].has_dilated || Slope(cells[xi][yi]) > original_slope) && PastSlopeThreshold(cells[xi][yi])){
-            cells[xi][yi].has_dilated = true;
-            uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * GetGridCellValue( cells[xi][yi]));
+          if( (!cells[yi][xi].has_dilated || Slope(cells[yi][xi]) > original_slope) && PastSlopeThreshold(cells[yi][xi])){
+            cells[yi][xi].has_dilated = true;
+            uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * cells[yi][xi]);
             for (int xii=std::max(0, xi-dsize_x); xii <= std::min(xi+dsize_x, nx_-1); xii++){
               for (int yii=std::max(0, yi-dsize_y); yii <= std::min(yi+dsize_y, ny_-1); yii++){
-                cells[xii][yii].dilated_val = std::max(grid_val, cells[xii][yii].dilated_val);
+                cells[yii][xii].dilated_val = std::max(grid_val, cells[yii][xii].dilated_val);
               }
             }
           }
@@ -106,7 +107,6 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
       }
     }
   }
-
 }
 
 void ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
@@ -152,14 +152,20 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
   grid.info.origin.orientation.x = 0.0;
   grid.info.origin.orientation.y = 0.0;
   grid.info.origin.orientation.z = 0.0;
-  grid.data.resize(nx_*ny_);
+  
+  /*grid.data.resize(nx_*ny_);
   int c = 0;
 
   for (int j = 0; j < ny_; j++) {
       for (int i = 0; i < nx_; i++) {
           grid.data[c++] = is_segmentation ? (uint8_t)(cells_[i][j].terrain) : std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
       }
+  }*/
+  
+  for (auto& row : cells_) {
+    grid.data.insert(std::end(grid.data), std::begin(row), std::end(row));
   }
+  
   return grid;
 }
 
