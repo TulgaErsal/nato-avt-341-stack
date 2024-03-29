@@ -253,22 +253,12 @@ find_package(Matlab)
                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
                 ${Matlab_MCLMCRRT_LIB}
         )
-         add_executable(uab_object_map_node
-                src/perception/uab_object_map_node.cpp
-                src/node/node_proxy.cpp
-        )
-        ament_target_dependencies(uab_object_map_node ${dependencies})
-        target_link_libraries(uab_object_map_node
-                ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
-                ${Matlab_MCLMCRRT_LIB}
-        )
 
         install(FILES
                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll
                 DESTINATION lib/${PROJECT_NAME})
         install(TARGETS
                 uab_perception_node
-                uab_object_map_node
                 EXPORT export_${PROJECT_NAME}
                 DESTINATION lib/${PROJECT_NAME})
  endif()
