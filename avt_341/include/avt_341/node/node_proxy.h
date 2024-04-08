@@ -75,6 +75,9 @@ namespace avt_341 {
             ros::Subscriber sub_ptr_;
         };
 
+        template<typename MessageT>
+        using SubscriberPtr = std::shared_ptr<Subscriber<MessageT>>;
+
         inline double seconds_from_time(std_msgs::Time t){
             return t.toSec();
         }
@@ -265,6 +268,9 @@ namespace avt_341 {
     private:
       std::shared_ptr<rclcpp::Subscription<CallbackMessageT, AllocatorT>> sub_ptr_;
     };
+
+    template<typename MessageT, typename CallbackT>
+    using SubscriberPtr = std::shared_ptr<Subscriber<MessageT, CallbackT>>;
 
     inline double seconds_from_time(rclcpp::Time t){
         return t.seconds();

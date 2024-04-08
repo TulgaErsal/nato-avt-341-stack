@@ -134,7 +134,6 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                     name='vehicle_control_node',
                     output='screen',
                     parameters=[
-                        {'vehicle_wheelbase': '2.731'} if simulation_mode == 'true' else {},
                         {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
@@ -145,7 +144,6 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                     name='vehicle_control_node',
                     output='screen',
                     parameters=[
-                        {'vehicle_wheelbase': '2.731'} if simulation_mode == 'true' else {},
                         {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
@@ -176,7 +174,6 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                     name='local_dwa_planner_node',
                     output='screen',
                     parameters=[
-                        {'wheelbase': '2.731'} if simulation_mode == 'true' else {},
                         {k: LaunchConfiguration(f'dwa_local_planner_{k}') for k in params['dwa_local_planner'].keys()}
                     ],
         )]
@@ -319,6 +316,16 @@ def launch_setup(context, *args, **kwargs):
             executable='avt_341_grid_compression_node',
             name='grid_compression'
         ),
+
+        # Costmap Layered
+        #Node(
+        #    package='avt_341',
+        #    executable='avt_341_costmap_layered_node',
+        #    name='avt_341_costmap_layered_node',
+        #    output='screen',
+        #    parameters=[
+        #        {k: LaunchConfiguration(f'costmap_layered_{k}') for k in params['costmap_layered'].keys()}],
+        #),
 
         # Speed Controller
         *evaluate_speed_controller(params, context=context, args=args, kwargs=kwargs),

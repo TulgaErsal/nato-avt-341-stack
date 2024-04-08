@@ -4,10 +4,13 @@ from datetime import datetime
 import launch
 import launch.conditions
 from launch.conditions import IfCondition, UnlessCondition
+from launch.condition import Condition
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, TextSubstitution
+from launch.substitution import Substitution
+from launch.some_substitutions_type import SomeSubstitutionsType
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess, GroupAction
 from launch_ros.actions import Node, SetParameter
 
@@ -16,6 +19,22 @@ global_params = {
     '/map_origin_x': 7885314.3400268555,
     '/map_origin_y': 264132.3708496094
 }
+
+class TernarySubstitution(Substitution):
+
+    def __init__(self, true_val: SomeSubstitutionsType, false_val: SomeSubstitutionsType, condition: Condition):
+        self.__true_val = true_val
+        self.__false_val = false_val
+        self.__condition = condition
+
+    def describe(self):
+        return 'TernarySubstitution(%s %s %s)' % (self.__true_val.describe(), self.__false_val.describe(), self.__condition.describe())
+
+    def perform(self, context: launch.LaunchContext):
+        if self.__condition.evaluate(context):
+            return self.__true_val.perform(context)
+        else:
+            return self.__false_val.perform(context)
 
 # tf publishers
 def tf2_nodes():
@@ -151,28 +170,14 @@ def launch_setup(context, *args, **kwargs):
         ),
 
         # Controller
-        launch.actions.IncludeLaunchDescription(    # Simulation
+        launch.actions.IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(mrzr_tools_dir, 'launch', 'stack_controller.launch.py')),
-            condition=IfCondition(simulation_mode),
+            condition=IfCondition(enable_joystick),
             launch_arguments={
                 "max_speed":        max_speed.perform(context),
 		        "mode":             "0",
 		        "joy_topic":        "/joy",
-                "joy_config":       "xbox",
-		        "enable_sensors":   "False",
-                "ouster_hostname":  "os-122223002379.local",
-		        "ns":               "/",
-		        "navstack_ns":      "/mrzr/avt_341"
-            }.items()
-        ),
-        launch.actions.IncludeLaunchDescription(    # Physical
-            PythonLaunchDescriptionSource(os.path.join(mrzr_tools_dir, 'launch', 'stack_controller.launch.py')),
-            condition=UnlessCondition(simulation_mode),
-            launch_arguments={
-                "max_speed":        max_speed.perform(context),
-		        "mode":             "0",
-		        "joy_topic":        "/joy",
-                "joy_config":       "can",
+                "joy_config":       TernarySubstitution(TextSubstitution(text="xbox"),TextSubstitution(text="can"), IfCondition(simulation_mode)),
 		        "enable_sensors":   "False",
                 "ouster_hostname":  "os-122223002379.local",
 		        "ns":               "/",

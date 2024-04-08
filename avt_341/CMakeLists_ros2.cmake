@@ -288,6 +288,13 @@ target_link_libraries(avt_341_local_occupancy_grid_node
         ${PCL_LIBRARIES}
 )
 
+add_executable(avt_341_costmap_layered_node
+        src/perception/avt_341_costmap_layered_node.cpp
+        include/avt_341/perception/costmap_layer.h
+        src/node/node_proxy.cpp
+        )
+ament_target_dependencies(avt_341_costmap_layered_node ${dependencies})
+
 add_executable(obstacles_converter_node
         src/perception/obstacles_converter_node.cpp
         src/node/node_proxy.cpp
@@ -389,6 +396,7 @@ install(TARGETS
         data_acquisition_node
         avt_341_geotiff_map_publisher_node
         avt_341_local_occupancy_grid_node
+        avt_341_costmap_layered_node
         avt_341_mpc_planner_node
         obstacle_processor_node
         veh_converter_node
