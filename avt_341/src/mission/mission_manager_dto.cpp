@@ -11,6 +11,7 @@ const std::string MissionMsgType::SetSpeed = "SET_SPEED";
 const std::string MissionMsgType::Cancel = "CANCEL";
 const std::string MissionMsgType::CancelAll = "CANCEL_ALL";
 const std::string MissionMsgType::Overwatch = "OVERWATCH";
+const std::string MissionMsgType::PathFollow = "PATH_FOLLOW";
 
 const std::string PriorityType::QUEUE = "QUEUE";
 const std::string PriorityType::QUEUE_SHORT = "Q";
@@ -69,9 +70,28 @@ avt_341::msg::Communication MoveToMsg::toROSMsg() {
 
 std::string MoveToMsg::getType() { return MissionMsgType::MoveTo; }
 
+// PathFollowMsg
+// =====================================================================================================================
+PathFollowMsg::PathFollowMsg() : MissionManagerDto() {}
+
+PathFollowMsg::PathFollowMsg(const avt_341::msg::Communication &msg)
+  : MissionManagerDto(msg), objective_name(msg.objective_name), desired_speed(msg.desired_speed) {}
+
+PathFollowMsg::PathFollowMsg(const std::string &sender, int msgId, const std::string & recipient,
+            const std::string &objectiveName, double desiredSpeed, const std::string &priority)
+    : MissionManagerDto(sender, msgId, recipient, priority), objective_name(objectiveName), desired_speed(desiredSpeed) {}
+
+avt_341::msg::Communication PathFollowMsg::toROSMsg() {
+  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+  msg.objective_name = objective_name;
+  msg.desired_speed = desired_speed;
+  return msg;
+}
+
+std::string PathFollowMsg::getType() { return MissionMsgType::PathFollow; }
+
 // FormationMsg
 // =====================================================================================================================
-
 FormationMsg::FormationMsg() : MoveToMsg() {}
 
 FormationMsg::FormationMsg(const avt_341::msg::Communication &msg)

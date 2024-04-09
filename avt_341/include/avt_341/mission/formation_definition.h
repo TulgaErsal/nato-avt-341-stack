@@ -4,6 +4,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/mission/mission_manager_dto.h"
 #include <map>
+#include <vector>
 
 namespace avt_341 {
 namespace mission {
@@ -17,6 +18,11 @@ struct FormationOffsets {
 struct MissionPoint {
   std::string name;
   double pos_x, pos_y, pos_z, rot_x, rot_y, rot_z, rot_w;
+};
+
+struct MissionPath {
+  std::string name;
+  std::vector<MissionPoint> poses;
 };
 
 struct FormationParameters{

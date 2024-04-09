@@ -27,6 +27,7 @@ struct MissionMsgType {
   static const std::string Cancel;
   static const std::string CancelAll;
   static const std::string Overwatch;
+  static const std::string PathFollow;
 };
 
 struct MissionManagerDto {
@@ -60,6 +61,21 @@ struct MoveToMsg : public MissionManagerDto {
   double goal_y_offset;
   double approach_distance;
 };
+
+struct PathFollowMsg : public MissionManagerDto {
+  PathFollowMsg();
+  explicit PathFollowMsg(const avt_341::msg::Communication &msg);
+  PathFollowMsg(const std::string &sender, int msgId, const std::string & recipient,
+            const std::string &objectiveName, double desiredSpeed = 0.0,
+            const std::string &priority = PriorityType::QUEUE);
+
+  avt_341::msg::Communication toROSMsg() override;
+  std::string getType() override;
+
+  std::string objective_name;
+  double desired_speed;
+};
+
 
 struct SetSpeedMsg : public MissionManagerDto {
   explicit SetSpeedMsg(const avt_341::msg::Communication &msg);

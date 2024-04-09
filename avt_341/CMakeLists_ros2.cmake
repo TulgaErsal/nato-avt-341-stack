@@ -26,8 +26,10 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(GDAL CONFIG REQUIRED)
 find_package(PCL REQUIRED)
 ### MPC ###
-find_package(Boost REQUIRED COMPONENTS filesystem)
-find_package(casadi REQUIRED)
+if (MPC)
+        find_package(Boost REQUIRED COMPONENTS filesystem)
+        find_package(casadi REQUIRED)
+endif ()
 ### END MPC ###
 
 include_directories(${PCL_INCLUDE_DIRS})
@@ -96,6 +98,7 @@ add_executable(avt_341_mission_manager_node
     src/mission/task_encircle.cpp
     src/mission/task_follow.cpp
     src/mission/task_moveto.cpp
+    src/mission/task_pathfollow.cpp
     src/mission/task_wait_until.cpp
     src/mission/formation_utils.cpp
     src/mission/formation_definition.cpp
@@ -302,33 +305,35 @@ add_executable(obstacles_converter_node
 ament_target_dependencies(obstacles_converter_node ${dependencies})
 
 ### MPC BUILDING ###
-message("Building MPC planner")
-add_executable(veh_converter_node
-src/planning/local/veh_converter_node.cpp
-src/node/node_proxy.cpp
-)
-ament_target_dependencies(veh_converter_node ${dependencies})
-target_link_libraries(veh_converter_node ${link_libs})
+if (MPC)
+        message("Building MPC planner")
+        add_executable(veh_converter_node
+        src/planning/local/veh_converter_node.cpp
+        src/node/node_proxy.cpp
+        )
+        ament_target_dependencies(veh_converter_node ${dependencies})
+        target_link_libraries(veh_converter_node ${link_libs})
 
-add_executable(avt_341_mpc_planner_node
-src/planning/local/avt_341_mpc_planner_node.cpp
-src/planning/local/mpc_planner_solver.cpp
-src/planning/local/mpc_planner.cpp
-src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_mpc_planner_node ${dependencies} )
-target_link_libraries(avt_341_mpc_planner_node
-${Boost_LIBRARIES}
-casadi
-${link_libs}
-)
+        add_executable(avt_341_mpc_planner_node
+        src/planning/local/avt_341_mpc_planner_node.cpp
+        src/planning/local/mpc_planner_solver.cpp
+        src/planning/local/mpc_planner.cpp
+        src/node/node_proxy.cpp
+        )
+        ament_target_dependencies(avt_341_mpc_planner_node ${dependencies} )
+        target_link_libraries(avt_341_mpc_planner_node
+        ${Boost_LIBRARIES}
+        casadi
+        ${link_libs}
+        )
 
-add_executable(obstacle_processor_node
-src/planning/local/obstacles_processor_node.cpp
-src/node/node_proxy.cpp
-)
-ament_target_dependencies( obstacle_processor_node ${dependencies} )
-target_link_libraries( obstacle_processor_node ${link_libs} )
+        add_executable(obstacle_processor_node
+        src/planning/local/obstacles_processor_node.cpp
+        src/node/node_proxy.cpp
+        )
+        ament_target_dependencies( obstacle_processor_node ${dependencies} )
+        target_link_libraries( obstacle_processor_node ${link_libs} )
+endif ()
 ### END MPC BUILDING ###
 
 if (WIN32 OR WIN64)
@@ -397,12 +402,18 @@ install(TARGETS
         avt_341_geotiff_map_publisher_node
         avt_341_local_occupancy_grid_node
         avt_341_costmap_layered_node
-        avt_341_mpc_planner_node
-        obstacle_processor_node
-        veh_converter_node
         obstacles_converter_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
+
+if (MPC)
+        install(TARGETS
+                avt_341_mpc_planner_node
+                veh_converter_node
+                obstacle_processor_node
+                EXPORT export_${PROJECT_NAME}
+                DESTINATION lib/${PROJECT_NAME})
+endif ()
 
 install(
         DIRECTORY include/

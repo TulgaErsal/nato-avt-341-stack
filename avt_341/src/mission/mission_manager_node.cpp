@@ -15,7 +15,7 @@ bool odom_rcvd = false;
 avt_341::msg::Int32 nav_state;
 bool nav_state_rcvd = false;
 
-std::string mission_definition_filename;
+std::string mission_definition_filename, mission_paths_file;
 float sodist_threshold;
 
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
@@ -125,6 +125,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~name", formation_params.my_name, std::string("AGV1"));
     formation_params.my_name = toUpper(formation_params.my_name);
     nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
+    nh->get_parameter("~mission_paths_file", mission_paths_file, std::string("mission_paths.csv"));
     nh->get_parameter("~follow_scale_x", formation_params.follow_scale_x, 1.0f);
     nh->get_parameter("~follow_scale_y", formation_params.follow_scale_y, 1.0f);
     nh->get_parameter("~global_path_point_dist", formation_params.global_path_points_dist, 1.0f);
@@ -168,6 +169,8 @@ int main(int argc, char **argv) {
                 fsc_type.c_str(), formation_params.use_breadcrumbs, formation_params.x_offset_on_path, formation_params.prune_global_path);
     nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
     mgr->loadMissionDefinition(mission_definition_filename);
+    nh->log_info("%s loading paths file %s", mgr->my_name.c_str(), mission_paths_file.c_str());
+    mgr->loadMissionPaths(mission_paths_file);
 
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
@@ -243,6 +246,8 @@ int main(int argc, char **argv) {
                 mgr->handleCancelAllTask(CancelAllMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Overwatch){
                 mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::PathFollow){
+                mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
             }
             else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
