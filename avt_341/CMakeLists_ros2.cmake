@@ -17,6 +17,8 @@ find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(pcl_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
@@ -46,6 +48,8 @@ set(dependencies
         std_msgs
         tf2_ros
         tf2_sensor_msgs
+        tf2_geometry_msgs
+        pcl_msgs
         )
 
 ###########
