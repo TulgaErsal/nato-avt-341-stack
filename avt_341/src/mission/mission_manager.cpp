@@ -471,10 +471,10 @@ void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double
     }
 }
 
-void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinition* formation_def, double desired_speed) {
+void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinition* formation_def) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        PathFollow* pathTask = new PathFollow(this, msg.sender_name, msg.msg_id, formation_def, desired_speed);
+        PathFollow* pathTask = new PathFollow(this, msg.sender_name, msg.msg_id, formation_def, msg.desired_speed);
         pathTask->setPathByDef(msg.objective_name);
         addTask(pathTask, msg.priority_type);
     } else {

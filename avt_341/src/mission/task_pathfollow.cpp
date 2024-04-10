@@ -78,7 +78,7 @@ void PathFollow::onPreempt(){
 
 std::string PathFollow::description() const {
   std::ostringstream stream;
-  stream << "ID " << msg_id << " PATH_FOLLOW: " << name;
+  stream << "ID " << msg_id << " PATH_FOLLOW: " << name << " Speed=" << desired_speed_;
   return stream.str();
 }
 
