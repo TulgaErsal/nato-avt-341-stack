@@ -309,13 +309,21 @@ int main(int argc, char *argv[])
         pos.push_back(odom.pose.pose.position.x);
         pos.push_back(odom.pose.pose.position.y);
 
+
+        // check the progression along the path
+        float dx = goal[0] - odom.pose.pose.position.x;
+        float dy = goal[1] - odom.pose.pose.position.y;
+        double d = sqrt(dx * dx + dy * dy);
+        avt_341::msg::Float64 dist_to_goal;
+        dist_to_goal.data = d;
+
         std::vector<std::vector<float>> path = astar_planner.PlanPath(&current_grid, &segmentation_grid, goal, pos);
 
         avt_341::msg::Path ros_path = ToROSPath(path);
         // ctg 8/19/21
         // if not on the last waypoint, add a straight path to the next waypoint to the global path
         // this helps the local planner make smooth transitions between waypoints
-        if (ros_path.poses.size()>1) {
+        if (d<goal_dist || ros_path.poses.size()>1) {
           int cp =current_waypoint;
           while (cp<current_waypoints.poses.size()-1){
             avt_341::msg::PoseStamped pose;
@@ -353,13 +361,6 @@ int main(int argc, char *argv[])
           ros_path_pre_fill.header.stamp = n->get_stamp();
           global_path_pre_fill_pub->publish(ros_path_pre_fill);
         }
-
-        // check the progression along the path
-        float dx = goal[0] - odom.pose.pose.position.x;
-        float dy = goal[1] - odom.pose.pose.position.y;
-        double d = sqrt(dx * dx + dy * dy);
-        avt_341::msg::Float64 dist_to_goal;
-        dist_to_goal.data = d;
 
         if(current_waypoint < current_waypoints.poses.size()){
           current_waypoint_pub->publish(current_waypoints.poses[current_waypoint]);

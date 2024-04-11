@@ -25,7 +25,7 @@ w_d: 0.0                                # w_d dynamic safety weighting factor
 w_r: 0.2                                # w_r rho (minimize rho offset) weighting factor
 w_t: 0.0                                # w_t segmentation cost weight
 rcc_rate: 10.0                          # Planner update rate [Hz]
-trim_path: True                         # Whether or not to trim path
+trim_path: False                         # Whether or not to trim path
 use_global_path: True                   # Whether local planner should use path output from global planner for its road centerline or use simple line connecting waypoints
 use_blend: True                         # Whether or not to apply blending with adjacent candidate paths during planning
 cost_vis: 'none'                        # What type of cost to display on candidate paths: none | final | components | all
