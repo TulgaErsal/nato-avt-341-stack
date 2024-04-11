@@ -42,6 +42,7 @@ obstacle_min_neighbors: 10                                      # Minimum neighb
 # ======================================================================================================================
 bbox_target_frame: 'base_link'                                  # Target frame for bounding boxes
 robot_base_link: 'mrzr/base_link'                               # Base link of the robot
+fixed_frame: 'map'                                              # World-fixed frame used for normal filtering
 
 # Pointcloud Topics
 # ======================================================================================================================

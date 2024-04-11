@@ -279,7 +279,7 @@ int main(int argc, char *argv[]){
     dc_pub->publish(dc);
 
     if (nl % int(rate) == 0){ //update every second
-      std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << " Speed Setpoint: " << desired_velocity << " Vehicle Speed: " << vel << std::endl;
+      //std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << " Speed Setpoint: " << desired_velocity << " Vehicle Speed: " << vel << std::endl;
     }
       
     // break the loop when an end state is reached

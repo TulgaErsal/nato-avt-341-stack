@@ -27,6 +27,7 @@
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/common/transforms.h>
 
 #include "box.hpp"
 
@@ -52,7 +53,7 @@ class LidarObstacleDetector
 
   Box pcaBoundingBox(typename pcl::PointCloud<PointT>::Ptr& cluster, const int id);
 
-  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors);
+  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_fixed, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors);
 
   // ****************** Tracking ***********************
   void obstacleTracking(const std::vector<Box>& prev_boxes, std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh);
@@ -474,18 +475,18 @@ int LidarObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes,
 }
 
 template <typename PointT>
-void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors)
+void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_fixed, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors)
 {
 	// Create a search tree, use KDTreee for non-organized data.
 	typename pcl::search::Search<PointT>::Ptr tree;
 	tree.reset(new pcl::search::KdTree<PointT>(false));
 
 	// Set the input pointcloud for the search tree
-	tree->setInputCloud(cloud_in);
+	tree->setInputCloud(cloud_fixed);
 
 	// Compute normals using both small and large scales at each point
 	typename pcl::NormalEstimationOMP<PointT, pcl::PointNormal> ne;
-	ne.setInputCloud(cloud_in);
+	ne.setInputCloud(cloud_fixed);
 	ne.setSearchMethod(tree);
 
 	/**
@@ -496,7 +497,7 @@ void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<Poin
 
 	// calculate normals
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals(new pcl::PointCloud<pcl::PointNormal>);
-	//copyPointCloud(*cloud_in, *cloud_normals);
+	//copyPointCloud(*cloud_fixed, *cloud_normals);
 	ne.setRadiusSearch(scale);
 	ne.compute(*cloud_normals);
 

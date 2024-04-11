@@ -19,6 +19,7 @@ size_t obstacle_id_;
 std::string bbox_target_frame_;
 std::string bbox_source_frame_;
 std::string robot_base_link_;
+std::string fixed_frame_;
 std::vector<Box> prev_boxes_, curr_boxes_;
 std::shared_ptr<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>> obstacle_detector;
 
@@ -105,15 +106,25 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromROSMsg(lidar_points_transformed, *raw_cloud);
 
-  // Downsampleing, ROI, and removing the car roof
+  // Downsampling, ROI, and removing the car roof
   auto filtered_cloud = obstacle_detector->filterCloud(raw_cloud, voxel_grid_size, roi_min_point, roi_max_point, body_min_point, body_max_point);
 
   if(filtered_cloud->size() < 10) return;
 
+  // Transform pointcloud to fixed frame (rotation only)
+  pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  avt_341::msg::TransformStamped fixed_tf = nh->lookup_transform(fixed_frame_, robot_base_link_);
+  Eigen::Quaternionf q(fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x, fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
+  Eigen::Matrix4f mat4 = Eigen::Matrix4f::Identity();
+  mat4.block<3,3>(0,0) = q.normalized().toRotationMatrix();
+  Eigen::Affine3f transform_fixed;
+  transform_fixed.matrix() = mat4;
+  pcl::transformPointCloud(*filtered_cloud, *fixed_cloud, transform_fixed);
+
   // Segment ground and obstacle points using normal filtering
   pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PointCloud<pcl::PointXYZ>::Ptr ground_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-  obstacle_detector->pclFilterNorms(filtered_cloud, norm_filtered, ground_filtered, ground_normal, ground_normal_threshold, obstacle_scale, obstacle_min_neighbors);
+  obstacle_detector->pclFilterNorms(filtered_cloud, fixed_cloud, norm_filtered, ground_filtered, ground_normal, ground_normal_threshold, obstacle_scale, obstacle_min_neighbors);
 
   // Segment the groud plane and obstacles
   //auto segmented_clouds = obstacle_detector->segmentPlane(filtered_cloud, 30, ground_threshold);
@@ -151,6 +162,7 @@ int main(int argc, char** argv)
   nh->get_parameter("~cloud_clusters_topic", cloud_clusters_topic, std::string("/avt_341/lidar_detector/cloud_clusters"));
   nh->get_parameter("~bbox_target_frame", bbox_target_frame_, std::string("base_link"));
   nh->get_parameter("~robot_base_link", robot_base_link_, std::string("mrzr/base_link"));
+  nh->get_parameter("~fixed_frame", fixed_frame_, std::string("map"));
   nh->get_parameter("~use_pca_box", use_pca_box,  false);
   nh->get_parameter("~use_tracking", use_tracking,  true);
   nh->get_parameter("~voxel_grid_size", voxel_grid_size,  0.2f);
