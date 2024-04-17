@@ -1,0 +1,3 @@
+"Topic", "Message type", "Description"
+"odometry", "nav_msgs/msg/Odometry", "AGV odometry."
+"occupancy_grid", "nav_msgs/msg/OccupancyGrid", "Occupancy grid."

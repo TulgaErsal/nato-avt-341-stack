@@ -197,6 +197,8 @@ target_link_libraries(avt_341_local_planner_node
 
 add_executable(avt_341_pf_planner_node
         src/planning/local/avt_341_pf_planner_node.cpp
+add_executable(avt_341_pf_planner_node
+        src/planning/local/avt_341_pf_planner_node.cpp
         src/planning/local/pf_planner.cpp
         src/node/node_proxy.cpp
         src/visualization/image_visualizer.cpp
@@ -206,6 +208,8 @@ target_link_libraries(avt_341_pf_planner_node
         ${link_libs}
         )
 
+add_executable(avt_341_dwa_planner_node
+      src/planning/local/avt_341_dwa_planner_node.cpp
 add_executable(avt_341_dwa_planner_node
       src/planning/local/avt_341_dwa_planner_node.cpp
       src/planning/local/dwa_planner.cpp
@@ -254,6 +258,8 @@ add_executable(avt_341_global_segmentation_grid_node
         src/node/node_proxy.cpp
         )
 ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
+
+add_subdirectory("src/perception/occupancy_grid_parser")
 
 add_executable(avt_341_lidar_obstacle_detector_node
         include/avt_341/perception/box.hpp

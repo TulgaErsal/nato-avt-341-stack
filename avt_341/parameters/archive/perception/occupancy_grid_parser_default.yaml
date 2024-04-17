@@ -1,0 +1,21 @@
+occupancy_grid_parser:
+  ros__parameters:
+    obstacles:
+      rate: 50.0
+      limit: -1
+      type: cylinder
+      inflation: 1.0
+    occupancy:
+      threshold: 0
+    horizon:
+      enable: true
+      type: static
+      radius: 5.0
+      time: 5.0
+      max_speed: 15.0
+      fov:
+        enable: true
+        degrees: 90.0
+      visualization:
+        enable: true
+        rate: 5.0

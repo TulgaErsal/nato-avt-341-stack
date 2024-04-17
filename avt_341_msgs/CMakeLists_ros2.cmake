@@ -12,6 +12,8 @@ find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
+"msg/StaticObstacle.msg"
+"msg/StaticObstacleArray.msg"
         "msg/OccupiedCell.msg"
         "msg/OccupiedCells.msg"
         "msg/Sinkage.msg"
