@@ -1,37 +1,33 @@
-set(REQUIRED_ROS_PACKAGES
+find_package(catkin
+  REQUIRED
+  COMPONENTS
+    message_generation
+    nav_msgs
     roscpp
     rospy
-    std_msgs
-    nav_msgs
-    message_generation
-)
-
-#########################
-## add custom messages ##
-#########################
-
-find_package(catkin REQUIRED COMPONENTS
-  ${REQUIRED_ROS_PACKAGES}) 
+    std_msgs)
 
 add_message_files(
-    FILES
-    Sinkage.msg
-    Obstacles.msg
+  FILES
+    BoundingBox2d.msg
     Communication.msg
+    Detection2d.msg
+    Detection2dArray.msg
     FollowerStatus.msg
+    Hypothesis.msg
+    Obstacles.msg
     OccupiedCell.msg
     OccupiedCells.msg
-)
+    Sinkage.msg)
 
 generate_messages(
-    DEPENDENCIES
-    std_msgs
+  DEPENDENCIES
     nav_msgs
-)
+    std_msgs)
 
 catkin_package(
-    CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
-)
-
-#############
-## Install ##
+  CATKIN_DEPENDS
+    message_runtime
+    roscpp
+    rospy
+    std_msgs)
