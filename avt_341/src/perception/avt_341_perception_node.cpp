@@ -11,7 +11,6 @@
 #ifdef ROS_1
 #include "sensor_msgs/point_cloud_conversion.h"
 #else
-#define SENSOR_MSGS_SKIP_WARNING
 #include "sensor_msgs/point_cloud_conversion.hpp"
 #endif
 
