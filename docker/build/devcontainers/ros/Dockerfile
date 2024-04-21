@@ -11,6 +11,7 @@ RUN apt-get update && \
     apt-get install \
         --yes \
         curl \
+        git \
         gpg \
         lsb-release && \
     rm -rf /var/lib/apt/lists/*
@@ -22,6 +23,7 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc
     apt-get install \
         --yes \
         ros-noetic-desktop && \
+    echo 'source /opt/ros/noetic/setup.bash' >> /root/.bashrc && \
     rm -rf /var/lib/apt/lists/*
 
 # Install and configure rosdep.
@@ -34,21 +36,21 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy the "avt_341" and "avt_341_msgs" packages into the catkin workspace
-COPY avt_341 /usr/local/share/ros_ws/src/avt_341
-COPY avt_341_msgs /usr/local/share/ros_ws/src/avt_341_msgs
+COPY avt_341 /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341
+COPY avt_341_msgs /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341_msgs
 
 # Set the working directory to the root of the catkin workspace.
-WORKDIR /usr/local/share/ros_ws
+WORKDIR /opt/ros/ws
 
 # Install all dependencies via rosdep and build the "avt_341" and "avt_341_msgs" ROS packages.
 RUN sudo apt-get update && \
     source /opt/ros/noetic/setup.bash && \
-    cp \
-        src/avt_341/package_ros1.xml \
-        src/avt_341/package.xml && \
-    cp \
-        src/avt_341_msgs/package_ros1.xml \
-        src/avt_341_msgs/package.xml && \
+    ln -sf \
+        /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341/package_ros1.xml \
+        /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341/package.xml && \
+    ln -sf \
+        /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341_msgs/package_ros1.xml \
+        /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341_msgs/package.xml && \
     rosdep install \
         -y \
         --from-paths src \

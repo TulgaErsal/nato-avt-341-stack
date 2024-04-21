@@ -1,13 +1,15 @@
 {
-  "image": "TulgaErsal/nato-avt-341-stack:devcontainer-ros",
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-iot.vscode-ros"
-      ]
-    }
-  },
-  "forwardPorts": [
-    11311
-  ]
+    "image": "TulgaErsal/nato-avt-341-stack:devcontainer-ros",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-iot.vscode-ros"
+            ]
+        }
+    },
+    "forwardPorts": [
+        11311
+    ],
+    "workspaceMount": "source=${localWorkspaceFolder},target=/opt/ros/ws/src/TulgaErsal/nato-avt-341-stack,type=bind",
+    "workspaceFolder": "/opt/ros/ws/src/TulgaErsal/nato-avt-341-stack"
 }
