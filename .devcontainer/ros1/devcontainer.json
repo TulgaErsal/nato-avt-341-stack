@@ -1,0 +1,13 @@
+{
+  "image": "TulgaErsal/nato-avt-341-stack:devcontainer-ros",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-iot.vscode-ros"
+      ]
+    }
+  },
+  "forwardPorts": [
+    11311
+  ]
+}

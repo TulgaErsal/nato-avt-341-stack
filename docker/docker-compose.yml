@@ -1,0 +1,12 @@
+services:
+  devcontainer-ros:
+    build:
+      context: ../
+      dockerfile: docker/build/devcontainers/ros/Dockerfile
+    environment:
+      - DISPLAY=$DISPLAY
+    image: TulgaErsal/nato-avt-341-stack:devcontainer-ros
+    ports: [ 13111 ]
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      #- <your-launch-file>.launch:/usr/local/share/ros_ws/src/avt_341/launch/devcontainer.launch:ro
