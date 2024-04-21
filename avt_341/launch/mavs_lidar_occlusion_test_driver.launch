@@ -38,6 +38,12 @@
   <node pkg="tf"  name="static_transform_publisher" type="static_transform_publisher" args="0 0 0 0 0 0 1 map odom 10" />
   <node name="state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node" />
 
+  <node name="lidar_occlusion_map_node" pkg="avt_341" type="avt_341_lidar_occlusion_map_node" required="true" output="screen">
+    <param name="lidar_range" value="100.0" />
+    <param name="vehicle_height" value="3.0" />
+    <param name="grid_resolution" value="0.5" />
+  </node>
+  
   <node name="lidar_occlusion_node" pkg="avt_341" type="avt_341_lidar_occlusion_node" required="true" output="screen">
     <param name="occluded" value="$(arg occluded_lidar)" />
     <param name="timer" value="$(arg occlusion_timer)" />

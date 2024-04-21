@@ -15,6 +15,13 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 
+// store indices to voxels in the grid
+struct voxel {
+  int x;
+  int y;
+  int z;
+}; 
+
 avt_341::msg::PointCloud2 in_points, occ_mask;
 bool points_rcvd = false;
 bool mask_rcvd = false;
@@ -23,6 +30,8 @@ bool print_contents = true;
 
 std::vector<uint8_t> mask_vector;
 avt_341::msg::Image mask_image;
+
+std::vector<std::vector<std::vector<voxel>>> gridLUT;   // look up table of which voxel indices are 'seen' by a given lidar beam
 
 // Utility function to create a vector of spaced values
 std::vector<double> linspace(double start, double end, int num) {
@@ -145,6 +154,9 @@ void applyMaskToPointCloud(sensor_msgs::PointCloud2 &cloud) {
     
     //std::cout << "Set " << count << " points x,y,z to 0" << std::endl;
 }
+
+
+
 
 std::vector<std::vector<int>> maskToGrid(const std::vector<uint8_t>& occlusionVector,
                                                   int numBeams = 64,
@@ -276,6 +288,95 @@ void OcclusionMaskCallback(avt_341::msg::PointCloud2Ptr rcv_points) {
   using_mask = true;
 }
 
+std::vector<voxel> calculateIntersectedCells(int x0, int y0, int z0, int x1, int y1, int z1, int max_x, int max_y, int max_z) {
+  std::vector<voxel> intersectedCells;
+
+  int dx = abs(x1-x0);          // change in the x axis
+  int dy = abs(y1-y0);          // change in the y axis
+  int dz = abs(z1-z0);          // change in the z axis
+  int sx = x0 < x1 ? 1 : -1;    // direction of change along x axis
+  int sy = y0 < y1 ? 1 : -1;    // direction of change along y axis
+  int sz = z0 < z1 ? 1 : -1;    // direction of change along z axis
+  int err1 = (dx > dy ? dx : -dy) / 2;  // err1 is dx/2 if dx greated than dy, otherwise -dy/2
+  int err2;
+
+  while(true) {
+    if (x0 > max_x || y0 >> max_y || z0 >> max_z) {
+      //std::cout << "Line exceeded bounds: " << x0 << ", " << y0 << ", " << z0 << ". " << max_x << ", " << max_y << ", " << max_z << std::endl;
+      break;
+    }
+
+    intersectedCells.push_back({x0, y0, z0});   // add the current cell to the list
+
+    if (x0 == x1 && y0 == y1 && z0 == z1) break;    // reached the end, exit 
+   
+    err2 = err1;
+    if (err2 > -dx) { err1 -= dy; x0 += sx; }   // advance x
+    if (err2 < dy) { err1 += dx; y0 += sy; }    // advance y
+    if (err2 < dz) { err1 += dx; z0 += dz; }    // advance z
+  }
+
+  return intersectedCells;
+}
+
+void initializeGridLUT() {
+  // lidar parameters
+  int lidar_num_beams = 64;
+  int lidar_angle_resolution = 1024;
+  int lidar_range = 100;
+  float lidar_horz_angle_min = 0.0f;
+  float lidar_horz_angle_max = 360.0f;
+  float lidar_vert_angle_min = 0.0f;
+  float lidar_vert_angle_max = 42.5f;
+  int grid_max_x = 100;
+  int grid_max_y = 100;
+  int grid_max_height = 10;
+
+  // LIDAR is located at 0,0,0;
+  int start_x = 0;
+  int start_y = 0;
+  int start_z = 0;
+
+  double directionX = 0.0f;
+  double directionY = 0.0f;
+  double directionZ = 0.0f;
+
+  float horz_angle_increment = (lidar_horz_angle_max - lidar_horz_angle_min) / lidar_angle_resolution;
+  float vert_angle_increment = (lidar_vert_angle_max - lidar_vert_angle_min) / lidar_num_beams;
+
+  // set up the LUT based on lidar parameters
+  gridLUT.resize(lidar_num_beams, std::vector<std::vector<voxel>>(lidar_angle_resolution));
+
+  double pitch = 0.0f;
+  double azimuth = 0.0f;
+
+  // for each beam
+  for(int x = 0; x < lidar_num_beams; x++) {
+    // for each angle
+    for(int y = 0; y < lidar_angle_resolution; y++) {
+      // calculate start and end of the beams
+      pitch = lidar_vert_angle_min + (x * vert_angle_increment);
+      if(pitch > lidar_vert_angle_max) pitch = lidar_vert_angle_max;
+      azimuth = lidar_horz_angle_min + (y * horz_angle_increment); 
+      if(azimuth > lidar_horz_angle_max) azimuth = lidar_horz_angle_max;
+
+      // direction
+      directionX = cos(azimuth);
+      directionY = sin(azimuth);
+      directionZ = sin(pitch);
+
+      double endX = start_x + (directionX * lidar_range);
+      double endY = start_y + (directionY * lidar_range);
+      double endZ = start_z + (directionZ * lidar_range);
+
+      gridLUT[x][y] = calculateIntersectedCells(start_x, start_y, start_z, 
+                                                endX, endY, endZ, 
+                                                grid_max_x, grid_max_y, grid_max_height);
+
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
 	// Initialize the node
 	auto n = avt_341::node::init_node(argc, argv, "lidar_occlusion_node");
@@ -306,10 +407,16 @@ int main(int argc, char *argv[]) {
   avt_341::msg::PointCloud2 out_points;
   avt_341::node::Rate rate(10.0);
 
+  // initialize the grid look up table
+  initializeGridLUT();
+  
+
   //createSquareMask(0, 512, 0, 64, 1024, 64);
   //createSquareMask(0, 64, 0, 512, 64, 1024);
   std::cout << "Creating mask" << std::endl;
   createSquareMask(start_row, mask_height, start_col, mask_width, 64, 1024); 
+
+  
   std::vector<std::vector<int>> occ_mask = maskToGrid(mask_vector, 64, 1024, 45.0, 100.0, 1.8, 100, 4, 0.5); 
   std::cout << "Converting mask to occupancy grid (" << occ_mask[0].size() << "x" << occ_mask.size() << ")" << std::endl;
   avt_341::msg::OccupancyGrid mask_grid;
