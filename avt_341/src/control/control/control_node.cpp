@@ -251,6 +251,9 @@ int main(int argc, char *argv[]){
       }
     }
 
+    // Clamp the throttle effort
+    dc.linear.x = std::max(0.0, std::min(dc.linear.x, 1.0));
+
     // publish the driving command
     dc_pub->publish(dc);
     current_brake_value = dc.linear.y;

@@ -195,6 +195,9 @@ int main(int argc, char *argv[]){
       dc.linear.x = current_throttle_value + max_throttle_step;
     }
 
+    // Clamp the throttle effort
+    dc.linear.x = std::max(0.0, std::min(dc.linear.x, 1.0));
+
     // publish the driving command
     dc.angular.z = std::max(-1.0f,std::min(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees));
     dc_pub->publish(dc);
