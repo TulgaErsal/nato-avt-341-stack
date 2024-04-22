@@ -131,6 +131,7 @@ int main(int argc, char* argv[]) {
   double start_time = n->get_now_seconds();
   double end_time = start_time + timer;
   while(avt_341::node::ok()) {
+    // using a timer to trigger the mask, should really have some other node with smarts doing it
     if(n->get_now_seconds() > end_time) 
     {
       std::cout << "Synthetic Node: TIME!" << std::endl;
