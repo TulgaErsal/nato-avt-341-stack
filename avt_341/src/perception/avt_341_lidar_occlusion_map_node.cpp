@@ -13,6 +13,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 // ros includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
@@ -22,6 +23,8 @@ avt_341::msg::Image occ_mask;
 bool occ_mask_rcvd = false;
 
 double lidar_range = 100.0f;  // range of the lidar system in meters
+int lidar_beams = 64;
+int lidar_horz_resolution = 1024;
 double max_vertical_angle = 22.5f; 
 double min_vertical_angle = -22.5f;
 double min_horizontal_angle = 0.0f;   // on a circle, min should always be lower
@@ -34,6 +37,13 @@ double lidar_y = 0.0;
 
 void IncomingOcclusionMaskCallback(avt_341::msg::ImagePtr rcv_image) {
   occ_mask = *rcv_image;
+  std::cout << "Received occlusion mask of width: " << rcv_image->width << " and height: " << rcv_image->height << std::endl;
+  if(rcv_image->width != lidar_horz_resolution) {
+    std::cout << "Received occlusion mask width does not match expected resolution (" << lidar_horz_resolution << ")" << std::endl;
+  }
+  if(rcv_image->height != lidar_beams) {
+    std::cout << "Received occlusion mask height does not match expected resolution (" << lidar_beams << ")" << std::endl;
+  }
   occ_mask_rcvd = true;
 }
 
@@ -51,19 +61,109 @@ int main(int argc, char* argv[]) {
   n->get_parameter("~lidar_range", lidar_range, 100.0);
   n->get_parameter("~vehicle_height", vehicle_height, 3.0);
   n->get_parameter("~grid_resolution", grid_resolution, 0.5);
+  n->get_parameter("~lidar_beams", lidar_beams, 64);
+  n->get_parameter("~lidar_horz_resolution", lidar_horz_resolution, 1024);
+  n->get_parameter("~lidar_min_vertical_angle", min_vertical_angle, -22.5);
+  n->get_parameter("~lidar_max_vertical_angle", max_vertical_angle, 22.5);
+  n->get_parameter("~lidar_min_horizontal_angle", min_horizontal_angle, 0.0);
+  n->get_parameter("~lidar_max_horizontal_angle", max_horizontal_angle, 360.0);
+  if(min_horizontal_angle > max_horizontal_angle) {
+    std::cout << "LIDAR OCCLUSION MAP NODE: parameter min_horizontal_angle MUST be less than max_horizontal_angle" << std::endl;
+  }
+  if(min_vertical_angle > max_vertical_angle) {
+    std::cout << "LIDAR OCCLUSION MAP NODE: parameter min_vertical_angle MUST be less than max_vertical_angle" << std::endl;
+  }
   avt_341::node::Rate rate(10.0);
 
-  // setup the grid look up table
-  // grid dimensions are:
+  // setup the grid
+  // grid dimensions are 2x range and vehicle height
   int grid_length = (lidar_range * 2) / grid_resolution;
   int grid_width = (lidar_range * 2) / grid_resolution;
   int grid_height = vehicle_height / grid_resolution;
-  // lidar_position = length, width, lidar_mount_height
-  lidar_x = static_cast<int>(std::round(grid_length / 2));
-  lidar_y = static_cast<int>(std::round(grid_width / 2));
-  double lidar_z = static_cast<int>(std::round(lidar_mount_height));
   VoxelGrid grid(grid_length, grid_width, grid_height, grid_resolution);
 
+  // lidar_position = center of grid (lidar_range), lidar_mount_height
+  lidar_x = grid.toVoxelCoord(lidar_range);   // center the lidar
+  lidar_y = grid.toVoxelCoord(lidar_range); 
+  double lidar_z = grid.toVoxelCoord(lidar_mount_height);
+
+  // Set up the grid look up table
+  std::vector<std::vector<std::vector<Voxel>>> gridLUT(
+    lidar_beams,
+    std::vector<std::vector<Voxel>>(lidar_horz_resolution)
+  );
+  
+  double pitch_range = max_vertical_angle - min_vertical_angle;
+  double pitch_step = pitch_range / lidar_beams;
+  double horz_range = max_horizontal_angle - min_horizontal_angle;
+  double horz_step = horz_range / lidar_horz_resolution;
+  double pitch = 0.0;
+  double azimuth = 0.0;
+  auto start = std::chrono::high_resolution_clock::now();
+  std::cout << "P, " << min_vertical_angle << ", " << max_vertical_angle << ", " << pitch_range << ", " << pitch_step << std::endl;
+  std::cout << "A, " << min_horizontal_angle << ", " << max_horizontal_angle << ", " << horz_range << ", " << horz_step << std::endl;
+  for(int i = 0; i < lidar_beams; ++i) {
+    pitch = min_vertical_angle + (pitch_step * i);
+    for(int j = 0; j < lidar_horz_resolution; ++j) {
+      azimuth = min_horizontal_angle + (horz_step * j);
+      gridLUT[i][j] = grid.drawLineFromSpherical(lidar_x, lidar_y, lidar_z,
+                                  pitch, azimuth, lidar_range);
+      /*std::cout << "Ray(" << i << ", " << j << " (" << pitch << ", " << azimuth << ") " << std::endl;
+      for(const auto& voxel : gridLUT[i][j]) {
+        int x, y, z;
+        std::tie(x, y, z) = voxel;
+        std::cout << "   Voxel: (" << x << ", " << y << ", " << z << ")\n";
+      }*/
+    }
+  }
+  // build default voxel grid
+  for(int i = 0; i < lidar_beams; ++i) {
+    for(int j = 0; j < lidar_horz_resolution; ++j) {
+      for(const auto& voxel : gridLUT[i][j]) {
+        // true argument indicates the 'clean' grid
+        grid.incrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), true);
+      }
+    }
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+  std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
+  
+  
+  
+  while(avt_341::node::ok()) {
+    if(occ_mask_rcvd) {
+      occ_mask_rcvd = false;
+
+      // handle the updated mask
+      start = std::chrono::high_resolution_clock::now();
+      grid.reset(false);
+      for(int i = 0; i < lidar_beams; ++i) {
+        for(int j = 0; j < lidar_horz_resolution; ++j) {
+          int index = j * lidar_horz_resolution + i;
+          std::cout << "Index: " << index << " i: " << i << " j: " << j << std::endl;
+          if(occ_mask.data[index] == 255) {
+            for(const auto& voxel : gridLUT[i][j]) {
+              grid.incrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), false);
+            }
+          }
+        }
+      }
+      end = std::chrono::high_resolution_clock::now();
+      elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+      std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
+    }
+
+    n->spin_some();
+    rate.sleep();
+  }
+
+}
+
+
+
+
+/* Simple tests of the drawLine functions
   std::vector<Voxel> voxels;
   voxels = grid.drawLine(lidar_x, lidar_y, lidar_z, 0, 0, 10);
 
@@ -82,45 +182,4 @@ int main(int argc, char* argv[]) {
     std::tie(x, y, z) = voxel;
     std::cout << "Voxel: (" << x << ", " << y << ", " << z << ")\n";
   }
-
-  voxels = grid.drawLineFromSpherical(lidar_x, lidar_y, lidar_z, 0.0, 0.0, 10.0);
-  std::cout << "LineFromSpherical - Start (" << lidar_x << ", " << lidar_y << ", " << lidar_z << ") ";
-  std::cout << " Pitch: 0 Azimuth: 0 Range: 10" << std::endl;
-
-  for(const auto& voxel : voxels) {
-    int x, y, z;
-    std::tie(x, y, z) = voxel;
-    std::cout << "Voxel: (" << x << ", " << y << ", " << z << ")\n";
-  }
-
-  voxels = grid.drawLineFromSpherical(lidar_x, lidar_y, lidar_z, 0.0, 45.0, 10.0);
-  std::cout << "LineFromSpherical - Start (" << lidar_x << ", " << lidar_y << ", " << lidar_z << ") ";
-  std::cout << " Pitch: 0 Azimuth: 45 Range: 10" << std::endl;
-
-  for(const auto& voxel : voxels) {
-    int x, y, z;
-    std::tie(x, y, z) = voxel;
-    std::cout << "Voxel: (" << x << ", " << y << ", " << z << ")\n";
-  }
-
-  voxels = grid.drawLineFromSpherical(lidar_x, lidar_y, lidar_z, 0.0, -90.0, 10.0);
-  std::cout << "LineFromSpherical - Start (" << lidar_x << ", " << lidar_y << ", " << lidar_z << ") ";
-  std::cout << " Pitch: 0 Azimuth: -90 Range: 10" << std::endl;
-  for(const auto& voxel : voxels) {
-    int x, y, z;
-    std::tie(x, y, z) = voxel;
-    std::cout << "Voxel: (" << x << ", " << y << ", " << z << ")\n";
-  }
-
-
-
-  while(avt_341::node::ok()) {
-    n->spin_some();
-    rate.sleep();
-  }
-
-}
-
-
-
-
+  */

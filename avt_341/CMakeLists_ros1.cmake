@@ -70,6 +70,15 @@ target_link_libraries(avt_341_proj_visibility_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(avt_341_lidar_occlusion_synthetic_soil_node
+  src/perception/avt_341_lidar_occlusion_synthetic_soil_node.cpp
+  src/node/node_proxy.cpp
+)
+add_dependencies(avt_341_lidar_occlusion_synthetic_soil_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(avt_341_lidar_occlusion_synthetic_soil_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(avt_341_lidar_occlusion_map_node
   src/perception/avt_341_lidar_occlusion_map_node.cpp
   src/perception/voxel_grid.cpp
@@ -399,6 +408,7 @@ catkin_package(INCLUDE_DIRS include
 #############
 
 install(TARGETS
+avt_341_lidar_occlusion_synthetic_soil_node
 avt_341_lidar_occlusion_node
 avt_341_lidar_occlusion_map_node
 test_target_detection_node
