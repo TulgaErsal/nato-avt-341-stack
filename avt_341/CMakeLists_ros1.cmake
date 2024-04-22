@@ -56,17 +56,6 @@ add_library(${PROJECT_NAME}_proxy
 target_link_libraries(${PROJECT_NAME}_proxy
     ${catkin_LIBRARIES})
 
-
-# Path manager node
-add_executable(path_manager_node
-  "src/planning/global/path_manager_node.cpp")
-add_dependencies(path_manager_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(path_manager_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS path_manager_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
 # GPS to ENU coordinates conversion node
 add_executable(gps_to_enu_node
   "src/planning/global/coord_conversions/coord_conversions.cpp"
@@ -90,149 +79,29 @@ install(TARGETS gps_spoof_node
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
-# Mission manager node
-add_executable(avt_341_mission_manager_node
-  "src/mission/formation_definition.cpp"
-  "src/mission/formation_path_generator.cpp"
-  "src/mission/formation_speed_control.cpp"
-  "src/mission/formation_utils.cpp"
-  "src/mission/mission_manager.cpp"
-  "src/mission/mission_manager_dto.cpp"
-  "src/mission/mission_manager_node.cpp"
-  "src/mission/mission_manager_parser.cpp"
-  "src/mission/task.cpp"
-  "src/mission/task_encircle.cpp"
-  "src/mission/task_follow.cpp"
-  "src/mission/task_moveto.cpp"
-  "src/mission/task_wait_until.cpp")
-add_dependencies(avt_341_mission_manager_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(avt_341_mission_manager_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_mission_manager_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
-# Formation control node
-add_executable(avt_341_formation_control_node
-  "src/mission/formation_control_node.cpp"
-  "src/mission/formation_controller.cpp"
-  "src/mission/formation_utils.cpp")
-add_dependencies(avt_341_formation_control_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(avt_341_formation_control_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_formation_control_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
-# Perception node
-add_executable(${PROJECT_NAME}_perception_node
-  "src/perception/costmap_clearing_method.cpp"
-  "src/perception/elevation_grid.cpp"
-  "src/perception/perception_node.cpp")
-add_dependencies(${PROJECT_NAME}_perception_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_perception_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_perception_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
-# Map publisher node
-add_executable(${PROJECT_NAME}_map_publisher_node
-  "src/perception/map_publisher_node.cpp")
-add_dependencies(${PROJECT_NAME}_map_publisher_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_map_publisher_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_map_publisher_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+add_subdirectory(src/communication/comms_publisher/ros1)
+add_subdirectory(src/communication/communication/ros1)
 
-# Control node
-add_executable(${PROJECT_NAME}_control_node
-  "src/control/control_node.cpp"
-  "src/control/pid_controller.cpp"
-  "src/control/pure_pursuit_controller.cpp")
-add_dependencies(${PROJECT_NAME}_control_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_control_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_control_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+add_subdirectory(src/control/avt_bot_state_publisher/ros1)
+add_subdirectory(src/control/control/ros1)
+add_subdirectory(src/control/speed_control/ros1)
+add_subdirectory(src/control/speed_control_test/ros1)
 
-# Speed control node
-add_executable(${PROJECT_NAME}_speed_control_node
-  "src/control/speed_control_node.cpp"
-  "src/control/pid_controller.cpp")
-add_dependencies(${PROJECT_NAME}_speed_control_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(avt_341_speed_control_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_speed_control_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+add_subdirectory(src/mission/formation_control/ros1)
+add_subdirectory(src/mission/mission_manager/ros1)
 
-add_executable(speed_control_test_node
-  "src/control/speed_control_test_node.cpp")
-add_dependencies(speed_control_test_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(speed_control_test_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS speed_control_test_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+add_subdirectory(src/perception/map_publisher/ros1)
+add_subdirectory(src/perception/grid_compression/ros2)
+add_subdirectory(src/perception/lidar_obstacle_detector/ros1)
+add_subdirectory(src/perception/perception/ros1)
 
-# Local planner node
-add_executable(${PROJECT_NAME}_local_planner_node
-  "src/planning/local/local_planner_node.cpp"
-  "src/planning/local/pf_planner.cpp"
-  "src/planning/local/spline_path.cpp"
-  "src/planning/local/spline_planner.cpp"
-  "src/planning/local/spline_plotter.cpp"
-  "src/planning/local/rviz_spline_plotter.cpp"
-  "src/visualization/image_visualizer.cpp")
-add_dependencies(${PROJECT_NAME}_local_planner_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_local_planner_node
-  ${PROJECT_NAME}_proxy
-  X11)
-install(TARGETS ${PROJECT_NAME}_local_planner_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-# Potential field planner node
-add_executable(${PROJECT_NAME}_pf_planner_node
-  "src/planning/local/pf_planner.cpp"
-  "src/planning/local/pf_planner_node.cpp"
-  "src/visualization/image_visualizer.cpp")
-add_dependencies(${PROJECT_NAME}_pf_planner_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_pf_planner_node
-  ${PROJECT_NAME}_proxy
-  X11)
-install(TARGETS ${PROJECT_NAME}_pf_planner_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-# DWA planner node
-add_executable(${PROJECT_NAME}_dwa_planner_node
-  "src/planning/local/dwa_planner.cpp"
-  "src/planning/local/dwa_planner_node.cpp"
-  "src/visualization/image_visualizer.cpp")
-add_dependencies(${PROJECT_NAME}_dwa_planner_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_dwa_planner_node
-${PROJECT_NAME}_proxy
-  X11)
-install(TARGETS ${PROJECT_NAME}_dwa_planner_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-# Global path node
-add_executable(${PROJECT_NAME}_global_path_node
-  "src/planning/global/astar.cpp"
-  "src/planning/global/global_path_node.cpp"
-  "src/visualization/image_visualizer.cpp")
-add_dependencies(${PROJECT_NAME}_global_path_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_global_path_node
-  ${PROJECT_NAME}_proxy
-  X11)
-install(TARGETS ${PROJECT_NAME}_global_path_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+add_subdirectory(src/planning/local/local_planner/ros1)
+add_subdirectory(src/planning/local/potential_field/ros1)
+add_subdirectory(src/planning/local/dwa/ros1)
+add_subdirectory(src/planning/global/global_path/ros1)
 
 # Simulation test node
 add_executable(${PROJECT_NAME}_sim_test_node
@@ -247,61 +116,6 @@ install(TARGETS ${PROJECT_NAME}_sim_test_node
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
-# AVT bot state publisher node
-add_executable(avt_bot_state_publisher_node
-  "src/control/avt_bot_state_publisher.cpp")
-target_link_libraries(avt_bot_state_publisher_node
-   ${catkin_LIBRARIES})
-install(TARGETS avt_bot_state_publisher_node
-   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-add_executable(${PROJECT_NAME}_grid_compression_node
-  "src/perception/grid_compression_node.cpp")
-add_dependencies(${PROJECT_NAME}_grid_compression_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_grid_compression_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_grid_compression_node
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-# Communications node
-add_executable(${PROJECT_NAME}_comm_node
-  "src/communication/comm_node.cpp"
-  "src/communication/tcp_socket_proxy.cpp"
-  "src/mission/mission_manager_dto.cpp"
-  "src/mission/mission_manager_parser.cpp")
-add_dependencies(${PROJECT_NAME}_comm_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_comm_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_comm_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-# Communications publisher node
-add_executable(${PROJECT_NAME}_comm_publisher_node
-  "src/communication/comm_publisher_node.cpp")
-add_dependencies(${PROJECT_NAME}_comm_publisher_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_comm_publisher_node
-  ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_comm_publisher_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-
-## Lidar_obstacle_detector node
-add_executable(${PROJECT_NAME}_lidar_obstacle_detector_node
-  "src/perception/lidar_obstacle_detector_node.cpp")
-add_dependencies(${PROJECT_NAME}_lidar_obstacle_detector_node
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME}_lidar_obstacle_detector_node
-  ${catkin_LIBRARIES}
-  ${${PROJECT_NAME}_LIBRARY}
-  ${PROJECT_NAME})
-install(TARGETS ${PROJECT_NAME}_lidar_obstacle_detector_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 if (WIN32 OR WIN64)
 find_package(Matlab)
@@ -364,19 +178,19 @@ set(LIB_SOURCES
   "src/planning/local/spline_plotter.cpp"
   "src/visualization/image_visualizer.cpp")
 
-add_library(avt_341 ${LIB_SOURCES})
-add_dependencies(avt_341 ${catkin_EXPORTED_TARGETS})
-target_link_libraries(avt_341
-  ${PROJECT_NAME}_proxy
-  ${PCL_LIBRARIES}
-  X11)
+#add_library(avt_341 ${LIB_SOURCES})
+#add_dependencies(avt_341 ${catkin_EXPORTED_TARGETS})
+#target_link_libraries(avt_341
+#  ${PROJECT_NAME}_proxy
+#  ${PCL_LIBRARIES}
+#  X11)
 
 catkin_package(INCLUDE_DIRS include
                LIBRARIES ${PROJECT_NAME})
 
 
-# Install
-install(TARGETS ${PROJECT_NAME}
+# Install proxy library
+install(TARGETS ${PROJECT_NAME}_proxy
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})

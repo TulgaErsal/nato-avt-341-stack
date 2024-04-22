@@ -51,161 +51,22 @@ ament_target_dependencies(${PROJECT_NAME}_proxy
     tf2_sensor_msgs
     visualization_msgs)
 
-# Path manager node
-add_executable(path_manager_node
-    "src/planning/global/path_manager_node.cpp")
-target_link_libraries(path_manager_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS path_manager_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Mission manager node
-add_executable(${PROJECT_NAME}_mission_manager_node
-    "src/mission/formation_definition.cpp"
-    "src/mission/formation_path_generator.cpp"
-    "src/mission/formation_speed_control.cpp"
-    "src/mission/formation_utils.cpp"
-    "src/mission/mission_manager.cpp"
-    "src/mission/mission_manager_dto.cpp"
-    "src/mission/mission_manager_node.cpp"
-    "src/mission/mission_manager_parser.cpp"
-    "src/mission/task.cpp"
-    "src/mission/task_encircle.cpp"
-    "src/mission/task_follow.cpp"
-    "src/mission/task_moveto.cpp"
-    "src/mission/task_wait_until.cpp")
-target_link_libraries(${PROJECT_NAME}_mission_manager_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_mission_manager_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
-
-# Formation control node
-add_executable(${PROJECT_NAME}_formation_control_node
-    "src/mission/formation_control_node.cpp"
-    "src/mission/formation_controller.cpp"
-    "src/mission/formation_utils.cpp")
-target_link_libraries(${PROJECT_NAME}_formation_control_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_formation_control_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
-
-# Communications node
-add_executable(${PROJECT_NAME}_comm_node
-    "src/communication/comm_node.cpp"
-    "src/communication/tcp_socket_proxy.cpp"
-    "src/mission/mission_manager_dto.cpp"
-    "src/mission/mission_manager_parser.cpp")
-target_link_libraries(${PROJECT_NAME}_comm_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_comm_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
-
-# Communications publisher node
-add_executable(${PROJECT_NAME}_comm_publisher_node
-    "src/communication/comm_publisher_node.cpp")
-
-target_link_libraries(${PROJECT_NAME}_comm_publisher_node
-    ${PROJECT_NAME}_proxy)
-
-install(TARGETS ${PROJECT_NAME}_comm_publisher_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Perception node
-add_executable(${PROJECT_NAME}_perception_node
-    "src/perception/perception_node.cpp"
-    "src/perception/costmap_clearing_method.cpp"
-    "src/perception/elevation_grid.cpp")
-target_link_libraries(${PROJECT_NAME}_perception_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_perception_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
-
-# Map publisher node
-add_executable(${PROJECT_NAME}_map_publisher_node
-    "src/perception/map_publisher_node.cpp")
-target_link_libraries(${PROJECT_NAME}_map_publisher_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_map_publisher_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Control node
-add_executable(${PROJECT_NAME}_control_node
-    "src/control/control_node.cpp"
-    "src/control/pid_controller.cpp"
-    "src/control/pure_pursuit_controller.cpp")
-target_link_libraries(${PROJECT_NAME}_control_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_control_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
-
-# Speed control node
-add_executable(${PROJECT_NAME}_speed_control_node
-    "src/control/speed_control_node.cpp"
-    "src/control/pid_controller.cpp")
-target_link_libraries(${PROJECT_NAME}_speed_control_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_speed_control_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
-
-# Local planner node
-add_executable(${PROJECT_NAME}_local_planner_node
-    "src/planning/local/local_planner_node.cpp"
-    "src/planning/local/rviz_spline_plotter.cpp"
-    "src/planning/local/spline_path.cpp"
-    "src/planning/local/spline_planner.cpp"
-    "src/planning/local/spline_plotter.cpp"
-    "src/visualization/image_visualizer.cpp")
-target_link_libraries(${PROJECT_NAME}_local_planner_node
-    ${PROJECT_NAME}_proxy)
-target_link_libraries(${PROJECT_NAME}_local_planner_node
-    ${link_libs})
-install(TARGETS ${PROJECT_NAME}_local_planner_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Potential field planner node
-# ----------------------------
-add_executable(${PROJECT_NAME}_pf_planner_node
-    "src/planning/local/pf_planner_node.cpp"
-    "src/planning/local/pf_planner.cpp")
-target_link_libraries(${PROJECT_NAME}_pf_planner_node
-    ${PROJECT_NAME}_proxy
-    ${link_libs})
-install(TARGETS ${PROJECT_NAME}_pf_planner_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Dynamic window approach planner node
-add_executable(${PROJECT_NAME}_dwa_planner_node
-    "src/planning/local/dwa_planner_node.cpp"
-    "src/planning/local/dwa_planner.cpp")
-target_link_libraries(${PROJECT_NAME}_dwa_planner_node
-    ${link_libs}
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_dwa_planner_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Global path planner node
-add_executable(${PROJECT_NAME}_global_path_node
-    "src/planning/global/astar.cpp"
-    "src/planning/global/global_path_node.cpp"
-    "src/visualization/image_visualizer.cpp")
-target_link_libraries(${PROJECT_NAME}_global_path_node
-    ${link_libs}
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_global_path_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
+add_subdirectory(src/communication/comms_publisher/ros2)
+add_subdirectory(src/communication/communication/ros2)
+add_subdirectory(src/control/avt_bot_state_publisher/ros2)
+add_subdirectory(src/control/control/ros2)
+add_subdirectory(src/control/speed_control/ros2)
+add_subdirectory(src/control/speed_control_test/ros2)
+add_subdirectory(src/mission/formation_control/ros2)
+add_subdirectory(src/mission/mission_manager/ros2)
+add_subdirectory(src/perception/map_publisher/ros2)
+add_subdirectory(src/perception/global_segmentation_grid/ros2)
+add_subdirectory(src/perception/grid_compression/ros2)
+add_subdirectory(src/perception/perception/ros2)
+add_subdirectory(src/planning/local/local_planner/ros2)
+add_subdirectory(src/planning/local/potential_field/ros2)
+add_subdirectory(src/planning/local/dwa/ros2)
+add_subdirectory(src/planning/global/global_path/ros2)
 
 # Simulation test node
 add_executable(${PROJECT_NAME}_sim_test_node
@@ -218,32 +79,6 @@ install(TARGETS ${PROJECT_NAME}_sim_test_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION "lib/${PROJECT_NAME}")
 
-# AVT Bot state publisher node
-add_executable(avt_bot_state_publisher_node
-    "src/control/avt_bot_state_publisher.cpp")
-target_link_libraries(avt_bot_state_publisher_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS avt_bot_state_publisher_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Occupancy grid compression node
-add_executable(${PROJECT_NAME}_grid_compression_node
-    "src/perception/grid_compression_node.cpp")
-target_link_libraries(${PROJECT_NAME}_grid_compression_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_grid_compression_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-# Global segmentation grid node
-add_executable(${PROJECT_NAME}_global_segmentation_grid_node
-    "src/perception/global_segmentation_grid_node.cpp")
-target_link_libraries(${PROJECT_NAME}_global_segmentation_grid_node
-    ${PROJECT_NAME}_proxy)
-install(TARGETS ${PROJECT_NAME}_global_segmentation_grid_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
 
 # UAB perception node
 if(WIN32 OR WIN64)
@@ -285,16 +120,6 @@ install(TARGETS test_target_detection_node
     EXPORT export_${PROJECT_NAME}
     DESTINATION "lib/${PROJECT_NAME}")
 
-# Speed control test node
-add_executable(speed_control_test_node
-    "src/control/speed_control_test_node.cpp")
-
-target_link_libraries(speed_control_test_node
-    ${PROJECT_NAME}_proxy)
-
-install(TARGETS speed_control_test_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION "lib/${PROJECT_NAME}")
 
 # Formation control test node
 add_executable(${PROJECT_NAME}_test_formation_control_node
