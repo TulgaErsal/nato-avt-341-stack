@@ -1,24 +1,24 @@
-# AVT-341
+# NATO AVT-341 Autonomy Stack
 
 ROS package with autonomy algorithms for the NATO AVT-341.
 
-The MPC plugin is available at
-[https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
-
 ## Documentation
 
-### Downloading the latest release
+### Accessing the latest release
 
 The latest released documentation in PDF format can be accessed [at this
 link](https://www.dropbox.com/scl/fi/swf6yi9j3yf84bh7go59j/nato-avt-341-stack.pdf?rlkey=2vm9q1yyanwebyf3sjnyc7ku7&e=1&st=sw1z7q8h&dl=0).
-Refer to the first page for the hash of the commit the documentation was built
-against.
+
+> [!INFO]
+> The features documented in the PDF version of the documentation may differ
+> from the ones available in the latest commit. Refer to the title page for the
+> hash of the commit the documentation was built against.
 
 If you would like to access the documentation for the latest commit or would
 like a browseable web version instead, follow the instructions in the [Building
 the documentation from source](#building-the-documentation-from-source) section.
 
-## Building the documentation from source
+### Building the documentation from source
 
 To build the documentation from source, you will need:
 
@@ -44,8 +44,7 @@ poetry shell
 ```
 
 Change directory to the `docs` folder and run the Sphinx Makefile with `cd docs
-&& make html`. The documentation will be available under
-`build/html/index.html`.
+&& make html`.
 
 Before sourcing your ROS distribution to build and/or run the stack, make sure
 the documentation environment is deactivated by exiting the Poetry shell with
@@ -62,15 +61,17 @@ source docs/.nato-avt-341-docs-env/bin/activate
 pip install -r requirements.txt
 ```
 
-Finally, run the build process by running `cd docs && make html`. The
-documentation will be available under `build/html/index.html`.
+Finally, run the build process by running `cd docs && make html`.
 
 ---
+
+Once the build process is complete, the documentation will be available under
+`build/html/index.html`.
 
 > [!WARNING]
 > Before sourcing your ROS distribution to build and/or run the stack, make sure
 > the documentation environment is deactivated (`exit` for Poetry, `deactivate`
-> for pip) in the current terminal or by opening a new terminal.
+> for pip).
 
 ## Acknowledgements
 

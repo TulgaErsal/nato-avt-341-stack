@@ -1,6 +1,9 @@
 Building on ROS 1
 =================
 
+The MPC plugin is available at `TulgaErsal/AVT-341-MPC
+<https://github.com/TulgaErsal/AVT-341-MPC>`_.
+
 The stack has been built and tested on Ubuntu 16.04, 18.04 and 20.04.
 
 Installing dependencies
