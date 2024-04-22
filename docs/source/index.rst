@@ -1,6 +1,8 @@
 NATO AVT-341 Autonomy Stack
 ===========================
 
+This documentation refers to branch "|version|" at commit with hash "|release|".
+
 Overview
 --------
 
