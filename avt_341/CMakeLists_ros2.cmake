@@ -94,7 +94,7 @@ install(TARGETS ${PROJECT_NAME}_formation_control_node
 
 # Communications node
 add_executable(${PROJECT_NAME}_comm_node
-    "src/communication/avt_341_comm_node.cpp"
+    "src/communication/comm_node.cpp"
     "src/communication/tcp_socket_proxy.cpp"
     "src/mission/mission_manager_dto.cpp"
     "src/mission/mission_manager_parser.cpp")
@@ -106,7 +106,7 @@ install(TARGETS ${PROJECT_NAME}_comm_node
 
 # Communications publisher node
 add_executable(${PROJECT_NAME}_comm_publisher_node
-    "src/communication/avt_341_comm_publisher_node.cpp")
+    "src/communication/comm_publisher_node.cpp")
 
 target_link_libraries(${PROJECT_NAME}_comm_publisher_node
     ${PROJECT_NAME}_proxy)
@@ -117,7 +117,7 @@ install(TARGETS ${PROJECT_NAME}_comm_publisher_node
 
 # Perception node
 add_executable(${PROJECT_NAME}_perception_node
-    "src/perception/avt_341_perception_node.cpp"
+    "src/perception/perception_node.cpp"
     "src/perception/costmap_clearing_method.cpp"
     "src/perception/elevation_grid.cpp")
 target_link_libraries(${PROJECT_NAME}_perception_node
@@ -128,7 +128,7 @@ install(TARGETS ${PROJECT_NAME}_perception_node
 
 # Map publisher node
 add_executable(${PROJECT_NAME}_map_publisher_node
-    "src/perception/avt_341_map_publisher_node.cpp")
+    "src/perception/map_publisher_node.cpp")
 target_link_libraries(${PROJECT_NAME}_map_publisher_node
     ${PROJECT_NAME}_proxy)
 install(TARGETS ${PROJECT_NAME}_map_publisher_node
@@ -137,7 +137,7 @@ install(TARGETS ${PROJECT_NAME}_map_publisher_node
 
 # Control node
 add_executable(${PROJECT_NAME}_control_node
-    "src/control/avt_341_control_node.cpp"
+    "src/control/control_node.cpp"
     "src/control/pid_controller.cpp"
     "src/control/pure_pursuit_controller.cpp")
 target_link_libraries(${PROJECT_NAME}_control_node
@@ -148,7 +148,7 @@ install(TARGETS ${PROJECT_NAME}_control_node
 
 # Speed control node
 add_executable(${PROJECT_NAME}_speed_control_node
-    "src/control/avt_341_speed_control_node.cpp"
+    "src/control/speed_control_node.cpp"
     "src/control/pid_controller.cpp")
 target_link_libraries(${PROJECT_NAME}_speed_control_node
     ${PROJECT_NAME}_proxy)
@@ -158,7 +158,7 @@ install(TARGETS ${PROJECT_NAME}_speed_control_node
 
 # Local planner node
 add_executable(${PROJECT_NAME}_local_planner_node
-    "src/planning/local/avt_341_local_planner_node.cpp"
+    "src/planning/local/local_planner_node.cpp"
     "src/planning/local/rviz_spline_plotter.cpp"
     "src/planning/local/spline_path.cpp"
     "src/planning/local/spline_planner.cpp"
@@ -175,7 +175,7 @@ install(TARGETS ${PROJECT_NAME}_local_planner_node
 # Potential field planner node
 # ----------------------------
 add_executable(${PROJECT_NAME}_pf_planner_node
-    "src/planning/local/avt_341_pf_planner_node.cpp"
+    "src/planning/local/pf_planner_node.cpp"
     "src/planning/local/pf_planner.cpp")
 target_link_libraries(${PROJECT_NAME}_pf_planner_node
     ${PROJECT_NAME}_proxy
@@ -186,7 +186,7 @@ install(TARGETS ${PROJECT_NAME}_pf_planner_node
 
 # Dynamic window approach planner node
 add_executable(${PROJECT_NAME}_dwa_planner_node
-    "src/planning/local/avt_341_dwa_planner_node.cpp"
+    "src/planning/local/dwa_planner_node.cpp"
     "src/planning/local/dwa_planner.cpp")
 target_link_libraries(${PROJECT_NAME}_dwa_planner_node
     ${link_libs}
@@ -198,7 +198,7 @@ install(TARGETS ${PROJECT_NAME}_dwa_planner_node
 # Global path planner node
 add_executable(${PROJECT_NAME}_global_path_node
     "src/planning/global/astar.cpp"
-    "src/planning/global/avt_341_global_path_node.cpp"
+    "src/planning/global/global_path_node.cpp"
     "src/visualization/image_visualizer.cpp")
 target_link_libraries(${PROJECT_NAME}_global_path_node
     ${link_libs}
@@ -211,7 +211,7 @@ install(TARGETS ${PROJECT_NAME}_global_path_node
 add_executable(${PROJECT_NAME}_sim_test_node
     "src/node/clock_publisher.cpp"
     "src/perception/point_cloud_generator.cpp"
-    "src/simulation/avt_341_sim_test_node.cpp")
+    "src/simulation/sim_test_node.cpp")
 target_link_libraries(${PROJECT_NAME}_sim_test_node
     ${PROJECT_NAME}_proxy)
 install(TARGETS ${PROJECT_NAME}_sim_test_node
@@ -229,7 +229,7 @@ install(TARGETS avt_bot_state_publisher_node
 
 # Occupancy grid compression node
 add_executable(${PROJECT_NAME}_grid_compression_node
-    "src/perception/avt_341_grid_compression_node.cpp")
+    "src/perception/grid_compression_node.cpp")
 target_link_libraries(${PROJECT_NAME}_grid_compression_node
     ${PROJECT_NAME}_proxy)
 install(TARGETS ${PROJECT_NAME}_grid_compression_node
@@ -238,7 +238,7 @@ install(TARGETS ${PROJECT_NAME}_grid_compression_node
 
 # Global segmentation grid node
 add_executable(${PROJECT_NAME}_global_segmentation_grid_node
-    "src/perception/avt_341_global_segmentation_grid_node.cpp")
+    "src/perception/global_segmentation_grid_node.cpp")
 target_link_libraries(${PROJECT_NAME}_global_segmentation_grid_node
     ${PROJECT_NAME}_proxy)
 install(TARGETS ${PROJECT_NAME}_global_segmentation_grid_node

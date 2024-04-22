@@ -141,7 +141,7 @@ target_link_libraries(avt_341_test_formation_control_node
 )
 
 add_executable(avt_341_perception_node
-src/perception/avt_341_perception_node.cpp
+src/perception/perception_node.cpp
 src/perception/elevation_grid.cpp
 src/node/node_proxy.cpp
 src/perception/costmap_clearing_method.cpp
@@ -152,7 +152,7 @@ target_link_libraries(avt_341_perception_node
 )
 
 add_executable(avt_341_map_publisher_node
-src/perception/avt_341_map_publisher_node.cpp
+src/perception/map_publisher_node.cpp
 src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_map_publisher_node ${catkin_EXPORTED_TARGETS})
@@ -161,7 +161,7 @@ target_link_libraries(avt_341_map_publisher_node
 )
 
 add_executable(avt_341_control_node
-  src/control/avt_341_control_node.cpp
+  src/control/control_node.cpp
   src/control/pure_pursuit_controller.cpp
   src/control/pid_controller.cpp
   src/node/node_proxy.cpp
@@ -172,7 +172,7 @@ target_link_libraries(avt_341_control_node
 )
 
 add_executable(avt_341_speed_control_node
-  src/control/avt_341_speed_control_node.cpp
+  src/control/speed_control_node.cpp
   src/control/pid_controller.cpp
   src/node/node_proxy.cpp
 )
@@ -191,7 +191,7 @@ target_link_libraries(speed_control_test_node
 )
 
 add_executable(avt_341_local_planner_node
-  src/planning/local/avt_341_local_planner_node.cpp
+  src/planning/local/local_planner_node.cpp
   src/planning/local/spline_path.cpp
   src/planning/local/spline_planner.cpp
   src/planning/local/spline_plotter.cpp
@@ -207,7 +207,7 @@ target_link_libraries(avt_341_local_planner_node
 )
 
 add_executable(avt_341_pf_planner_node
-  src/planning/local/avt_341_pf_planner_node.cpp
+  src/planning/local/pf_planner_node.cpp
   src/planning/local/pf_planner.cpp
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
@@ -219,7 +219,7 @@ target_link_libraries(avt_341_pf_planner_node
 )
 
 add_executable(avt_341_dwa_planner_node
-  src/planning/local/avt_341_dwa_planner_node.cpp
+  src/planning/local/dwa_planner_node.cpp
   src/planning/local/dwa_planner.cpp
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
@@ -231,7 +231,7 @@ target_link_libraries(avt_341_dwa_planner_node
 )
 
 add_executable(avt_341_global_path_node
-  src/planning/global/avt_341_global_path_node.cpp
+  src/planning/global/global_path_node.cpp
   src/planning/global/astar.cpp
   src/node/node_proxy.cpp
   src/visualization/image_visualizer.cpp
@@ -243,7 +243,7 @@ target_link_libraries(avt_341_global_path_node
 )
 
 add_executable(avt_341_sim_test_node
-  src/simulation/avt_341_sim_test_node.cpp
+  src/simulation/sim_test_node.cpp
   src/node/node_proxy.cpp
   src/node/clock_publisher.cpp
   src/perception/point_cloud_generator.cpp
@@ -262,7 +262,7 @@ target_link_libraries(avt_bot_state_publisher_node
 )
 
 add_executable(avt_341_grid_compression_node
-        src/perception/avt_341_grid_compression_node.cpp
+        src/perception/grid_compression_node.cpp
         src/node/node_proxy.cpp
         )
 add_dependencies(avt_341_grid_compression_node ${catkin_EXPORTED_TARGETS})
@@ -272,7 +272,7 @@ target_link_libraries(avt_341_grid_compression_node
 
 
 add_executable(avt_341_comm_node
-  src/communication/avt_341_comm_node.cpp
+  src/communication/comm_node.cpp
   src/communication/tcp_socket_proxy.cpp
   src/mission/mission_manager_dto.cpp
   src/mission/mission_manager_parser.cpp
@@ -284,7 +284,7 @@ target_link_libraries(avt_341_comm_node
 )
 
 add_executable(avt_341_comm_publisher_node
-  src/communication/avt_341_comm_publisher_node.cpp
+  src/communication/comm_publisher_node.cpp
   src/node/node_proxy.cpp
 )
 add_dependencies(avt_341_comm_publisher_node ${catkin_EXPORTED_TARGETS})
