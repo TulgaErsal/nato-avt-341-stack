@@ -3,6 +3,7 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "josetr.cmake-language-support-vscode",
                 "ms-iot.vscode-ros"
             ]
         }
