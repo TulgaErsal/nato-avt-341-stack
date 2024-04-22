@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
   }
   avt_341::node::Rate rate(10.0);
 
-  // setup the grid
+  // Create the grid
   // grid dimensions are 2x range and vehicle height
   int grid_length = (lidar_range * 2) / grid_resolution;
   int grid_width = (lidar_range * 2) / grid_resolution;
@@ -87,14 +87,15 @@ int main(int argc, char* argv[]) {
   lidar_x = grid.toVoxelCoord(lidar_range);   // center the lidar
   lidar_y = grid.toVoxelCoord(lidar_range); 
   double lidar_z = grid.toVoxelCoord(lidar_mount_height);
-  std::cout << "Map Node: setting up LUT" << std::endl;
-    
-  // Set up the grid look up table
+
+  std::cout << "Map Node: setting up LUT" << std::endl;  
+  // Create the Look up table
   std::vector<std::vector<std::vector<Voxel>>> gridLUT(
     lidar_beams,
     std::vector<std::vector<Voxel>>(lidar_horz_resolution)
   );
   
+  // set up the pitch and azimuth according to the 
   double pitch_range = max_vertical_angle - min_vertical_angle;
   double pitch_step = pitch_range / lidar_beams;
   double horz_range = max_horizontal_angle - min_horizontal_angle;
@@ -102,25 +103,22 @@ int main(int argc, char* argv[]) {
   double pitch = 0.0;
   double azimuth = 0.0;
   auto start = std::chrono::high_resolution_clock::now();
+
   std::cout << "Map Node: P, " << min_vertical_angle << ", " << max_vertical_angle << ", " << pitch_range << ", " << pitch_step << std::endl;
   std::cout << "Map Node: A, " << min_horizontal_angle << ", " << max_horizontal_angle << ", " << horz_range << ", " << horz_step << std::endl;
+
+  // Set up the Look Up Table 
   for(int i = 0; i < lidar_beams; ++i) {
     pitch = min_vertical_angle + (pitch_step * i);
     for(int j = 0; j < lidar_horz_resolution; ++j) {
       azimuth = min_horizontal_angle + (horz_step * j);
       gridLUT[i][j] = grid.drawLineFromSpherical(lidar_x, lidar_y, lidar_z,
                                   pitch, azimuth, lidar_range);
-      /*std::cout << "Ray(" << i << ", " << j << " (" << pitch << ", " << azimuth << ") " << std::endl;
-      for(const auto& voxel : gridLUT[i][j]) {
-        int x, y, z;
-        std::tie(x, y, z) = voxel;
-        std::cout << "   Voxel: (" << x << ", " << y << ", " << z << ")\n";
-      }*/
     }
   }
   std::cout << "Map Node: LUT initialized" << std::endl;
     
-  // build default voxel grid
+  // build a clean version of the grid using the LUT
   for(int i = 0; i < lidar_beams; ++i) {
     for(int j = 0; j < lidar_horz_resolution; ++j) {
       int index = (i * lidar_horz_resolution) + j;
@@ -138,17 +136,20 @@ int main(int argc, char* argv[]) {
   std::cout << "Map Node: Elapsed time: " << elapsed.count() << " ms" << std::endl;
   
   while(avt_341::node::ok()) {
-    //std::cout << "Map Node: starting loop" << std::endl;
+
+    // Only do something if we have an updated occlusion mask
     if(occ_mask_rcvd) {
       std::cout << "Map Node: received updated occlusion mask" << std::endl;
       occ_mask_rcvd = false;
 
-      // handle the updated mask
+      // collect some statistics
       int count = 0;
       start = std::chrono::high_resolution_clock::now();
-      //grid.reset(false);
+      
+      // create a copy of the clean grid
       grid.copyCleanToDirty();
       
+      // Decrement marks for voxels blocked by the occlusions
       for(int i = 0; i < lidar_beams; ++i) {
         for(int j = 0; j < lidar_horz_resolution; ++j) {
           int index = (i * lidar_horz_resolution) + j;
@@ -161,12 +162,13 @@ int main(int argc, char* argv[]) {
           }
         }
       }
-      
+      // collect and report the statistics
       end = std::chrono::high_resolution_clock::now();
       elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
       std::cout << "Count: " << count << " Elapsed time: " << elapsed.count() << " ms" << std::endl;
 
       // publish the projection
+      // Set up the header and other info
       mask_grid.header.stamp = n->get_stamp();
       mask_grid.header.frame_id = "lidar";
       mask_grid.info.resolution = grid_resolution;
@@ -179,25 +181,15 @@ int main(int argc, char* argv[]) {
       mask_grid.data.resize(mask_grid.info.width * mask_grid.info.height);
       std::fill(mask_grid.data.begin(), mask_grid.data.end(), 0); 
 
-      std::cout << "Grid: " << grid_width << " x " << grid_length << std::endl;
+      // Update the occupancy grid with grid data
       for(int y = 0; y < grid_width; ++y) {
         for(int x = 0; x < grid_length; ++x) {
-          //mask_grid.data[x + (y * grid_width)] = grid.dirtyPlane[x][y];
           float scaled_value = grid.differencePlane[x][y] * 100.0;
           mask_grid.data[x + y * grid_width] = static_cast<int>(scaled_value);
-          /*
-          if(grid.dirtyPlane[x][y] < 0 || grid.dirtyPlane[x][y] > 255) {
-            std::cout << "What?" << x << ", " << y << ": " << grid.dirtyPlane[x][y] << std::endl;
-          }*/
         }
       }
 
-      //for(size_t y=0; y < grid_width; ++y) {
-      //  for(size_t x=0; x < grid_length; ++x) {
-          //mask_grid.data[x + y * grid_width] = grid.dirtyPlane[y][x];
-          //mask_grid.data[x + y * grid_width] = grid.differencePlane[y][x]*255;
-      //  }
-      //}
+      // Publish the occupancy grid
       mask_grid_pub->publish(mask_grid);
     }
 
