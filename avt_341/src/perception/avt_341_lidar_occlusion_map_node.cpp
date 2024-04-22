@@ -56,6 +56,7 @@ int main(int argc, char* argv[]) {
 
   // Publishers
   auto mask_grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occ_mask_grid", 1);
+  avt_341::msg::OccupancyGrid mask_grid;
 
   // handle parameters
   n->get_parameter("~lidar_range", lidar_range, 100.0);
@@ -86,7 +87,8 @@ int main(int argc, char* argv[]) {
   lidar_x = grid.toVoxelCoord(lidar_range);   // center the lidar
   lidar_y = grid.toVoxelCoord(lidar_range); 
   double lidar_z = grid.toVoxelCoord(lidar_mount_height);
-
+  std::cout << "Map Node: setting up LUT" << std::endl;
+    
   // Set up the grid look up table
   std::vector<std::vector<std::vector<Voxel>>> gridLUT(
     lidar_beams,
@@ -100,8 +102,8 @@ int main(int argc, char* argv[]) {
   double pitch = 0.0;
   double azimuth = 0.0;
   auto start = std::chrono::high_resolution_clock::now();
-  std::cout << "P, " << min_vertical_angle << ", " << max_vertical_angle << ", " << pitch_range << ", " << pitch_step << std::endl;
-  std::cout << "A, " << min_horizontal_angle << ", " << max_horizontal_angle << ", " << horz_range << ", " << horz_step << std::endl;
+  std::cout << "Map Node: P, " << min_vertical_angle << ", " << max_vertical_angle << ", " << pitch_range << ", " << pitch_step << std::endl;
+  std::cout << "Map Node: A, " << min_horizontal_angle << ", " << max_horizontal_angle << ", " << horz_range << ", " << horz_step << std::endl;
   for(int i = 0; i < lidar_beams; ++i) {
     pitch = min_vertical_angle + (pitch_step * i);
     for(int j = 0; j < lidar_horz_resolution; ++j) {
@@ -116,42 +118,85 @@ int main(int argc, char* argv[]) {
       }*/
     }
   }
+  std::cout << "Map Node: LUT initialized" << std::endl;
+    
   // build default voxel grid
   for(int i = 0; i < lidar_beams; ++i) {
     for(int j = 0; j < lidar_horz_resolution; ++j) {
       for(const auto& voxel : gridLUT[i][j]) {
         // true argument indicates the 'clean' grid
         grid.incrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), true);
+        //grid.setVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), 1, true);
       }
     }
   }
+  std::cout << "Map Node: clean grid initialized" << std::endl;
+    
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-  std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
-  
-  
+  std::cout << "Map Node: Elapsed time: " << elapsed.count() << " ms" << std::endl;
   
   while(avt_341::node::ok()) {
+    //std::cout << "Map Node: starting loop" << std::endl;
     if(occ_mask_rcvd) {
+      std::cout << "Map Node: received updated occlusion mask" << std::endl;
       occ_mask_rcvd = false;
 
       // handle the updated mask
+      int count = 0;
       start = std::chrono::high_resolution_clock::now();
-      grid.reset(false);
+      //grid.reset(false);
+      grid.copyCleanToDirty();
       for(int i = 0; i < lidar_beams; ++i) {
         for(int j = 0; j < lidar_horz_resolution; ++j) {
-          int index = j * lidar_horz_resolution + i;
-          std::cout << "Index: " << index << " i: " << i << " j: " << j << std::endl;
+          int index = i * lidar_horz_resolution + j;
+          //std::cout << "Index: " << index << " i: " << i << " j: " << j << std::endl;
           if(occ_mask.data[index] == 255) {
+            count++;
             for(const auto& voxel : gridLUT[i][j]) {
-              grid.incrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), false);
+              grid.decrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel));
             }
           }
         }
       }
       end = std::chrono::high_resolution_clock::now();
       elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-      std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
+      std::cout << "Count: " << count << " Elapsed time: " << elapsed.count() << " ms" << std::endl;
+
+      // publish the projection
+      mask_grid.header.stamp = n->get_stamp();
+      mask_grid.header.frame_id = "lidar";
+      mask_grid.info.resolution = grid_resolution;
+      mask_grid.info.width = grid_width;
+      mask_grid.info.height = grid_length;
+      mask_grid.info.origin.position.x = -100; // should these be cells or meters?
+      mask_grid.info.origin.position.y = -100;
+      mask_grid.info.origin.position.z = 0;
+      mask_grid.info.origin.orientation.w = 1.0;
+      mask_grid.data.resize(mask_grid.info.width * mask_grid.info.height);
+
+      for(int x = 0; x < grid_width; ++x) {
+        for(int y = 0; y < grid_length; ++y) {
+          //mask_grid.data[x + (y * grid_width)] = grid.dirtyPlane[x][y];
+          float scaled_value = grid.differencePlane[x][y] * 100.0;
+          mask_grid.data[x + y * grid_width] = static_cast<int>(scaled_value);
+          if(scaled_value > 0 && scaled_value < 100) {
+            std::cout << scaled_value << " : " << static_cast<int>(mask_grid.data[x + y * grid_width]) << std::endl;
+          }
+          /*
+          if(grid.dirtyPlane[x][y] < 0 || grid.dirtyPlane[x][y] > 255) {
+            std::cout << "What?" << x << ", " << y << ": " << grid.dirtyPlane[x][y] << std::endl;
+          }*/
+        }
+      }
+
+      //for(size_t y=0; y < grid_width; ++y) {
+      //  for(size_t x=0; x < grid_length; ++x) {
+          //mask_grid.data[x + y * grid_width] = grid.dirtyPlane[y][x];
+          //mask_grid.data[x + y * grid_width] = grid.differencePlane[y][x]*255;
+      //  }
+      //}
+      mask_grid_pub->publish(mask_grid);
     }
 
     n->spin_some();

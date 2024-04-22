@@ -44,7 +44,7 @@
     <param name="lidar_horz_resolution" value="1024" />
     <param name="sq_row" value="0" />
     <param name="sq_height" value="64" />
-    <param name="sq_col" value="0" />
+    <param name="sq_col" value="800" />
     <param name="sq_width" value="100" />
   </node>
 
@@ -55,19 +55,11 @@
     <param name="lidar_beams" value="64" />
     <param name="lidar_horz_resolution" value="1024" />
     <param name="lidar_min_vertical_angle" value="0" />
-    <param name="lidar_max_vertical_angle" value="0" />
+    <param name="lidar_max_vertical_angle" value="10" />
     <param name="lidar_min_horizontal_angle" value="0" />
     <param name="lidar_max_horizontal_angle" value="360" />
   </node>
 
-  <node name="lidar_occlusion_node" pkg="avt_341" type="avt_341_lidar_occlusion_node" required="true" output="screen">
-    <param name="occluded" value="$(arg occluded_lidar)" />
-    <param name="timer" value="$(arg occlusion_timer)" />
-    <param name="start_row" value="$(arg occlusion_start_row)" />
-    <param name="start_col" value="$(arg occlusion_start_col)" />
-    <param name="mask_height" value="$(arg occlusion_mask_height)" />
-    <param name="mask_width" value="$(arg occlusion_mask_width)" />
-  </node>
 
   <node name="proj_vis_node" pkg="avt_341" type="avt_341_proj_visibility_node" required="true" output="screen">
     

@@ -19,11 +19,18 @@ void VoxelGrid::incrementVoxel(int l, int w, int h, bool clean=false)
   if(l >=0 && l < length && w >=0 && w < width && h >= 0 && h < height) {
     if(clean == true) {
       cleanGrid[l][w][h]++;
+      cleanPlane[l][w]++;
     } else {
       dirtyGrid[l][w][h]++;
+      dirtyPlane[l][w]++;
+    }
+    // calculate current difference
+      differencePlane[l][w] = static_cast<float>(dirtyPlane[l][w]) / cleanPlane[l][w];
+    if(clean==false) {
+      std::cout << differencePlane[l][w] << " = " << dirtyPlane[l][w] << " / " << cleanPlane[l][w] << std::endl;
     }
   } else {
-    std::cout << "VoxelGrid::setVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
+    //std::cout << "VoxelGrid::incrementVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
   }
 }
 
@@ -35,8 +42,18 @@ void VoxelGrid::decrementVoxel(int l, int w, int h)
       std::cout << "VoxelGrid::decrementVoxel - error decrementing below 0. Resetting to 0." << std::endl;
       dirtyGrid[l][w][h] = 0;
     }
+    // update the l x w plane too
+    dirtyPlane[l][w]--;
+    if(dirtyPlane[l][w] < 0) {
+      std::cout << "Why is this happening?" << std::endl;
+      dirtyPlane[l][w] = 0; 
+    }
+    // calculate current difference
+    differencePlane[l][w] = static_cast<float>(dirtyPlane[l][w]) / cleanPlane[l][w];
+    //std::cout << differencePlane[l][w] << " = " << dirtyPlane[l][w] << " / " << cleanPlane[l][w] << std::endl;
+    
   } else {
-    std::cout << "VoxelGrid::setVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
+    //std::cout << "VoxelGrid::decrementVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
   }
 }
 
@@ -49,7 +66,7 @@ int VoxelGrid::getVoxel(int l, int w, int h, bool clean=false) const
       return dirtyGrid[l][w][h];
     }
   } else {
-    std::cout << "VoxelGrid::setVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
+    std::cout << "VoxelGrid::getVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
     return -1;
   }
 }
@@ -77,6 +94,7 @@ std::vector<Voxel> VoxelGrid::drawLine(int x0, int y0, int z0, int x1, int y1, i
 
 std::vector<Voxel> VoxelGrid::drawLineFromSpherical(int x0, int y0, int z0, double pitch, double azimuth, double range)
 {
+  range = range/grid_resolution;
   float radPitch = pitch * M_PI / 180.0;
   float radAzimuth = azimuth * M_PI / 180.0;
   int x1 = x0 + round(range * cos(radPitch) * cos(radAzimuth));
@@ -99,4 +117,10 @@ void VoxelGrid::reset(bool clean=false) {
       }
     }
   }
+}
+
+void VoxelGrid::copyCleanToDirty() {
+  dirtyGrid = cleanGrid;
+  dirtyPlane = cleanPlane;
+  std::vector<std::vector<float>> differencePlane(length, std::vector<float>(width, 1.0));
 }

@@ -30,6 +30,7 @@ int sq_row = 0;
 int sq_height = 64;
 int sq_col = 0;
 int sq_width = 100;
+double timer = 1.0;
  
 void IncomingMaskRequest(avt_341::msg::Int32Ptr rcv_request) {
   if(rcv_request->data > 0) {
@@ -38,8 +39,6 @@ void IncomingMaskRequest(avt_341::msg::Int32Ptr rcv_request) {
     mask_type = 1;  // TODO - support other mask types
   }
 }
-
-
 
 void createSquareMask(int row, int height, int col, int width, int lidar_beams, int lidar_horz_resolution) {
   // create a square mask 
@@ -72,29 +71,35 @@ void createSquareMask(int row, int height, int col, int width, int lidar_beams, 
   int col_end = col + width;
   int row_end = row + height; 
   if (row_end > lidar_beams) {
-    std::cout << "Synthetic Node: Warning: End row position (row: " << row << " + " << " height: " << height << " is greater than the number of lidar beams. Clamping to " << lidar_beams << "." << std::endl;
+    std::cout << "Synthetic Node: Warning: End row position (row: " << row << " + " << "height: " << height << " is greater than the number of lidar beams. Clamping to " << lidar_beams << "." << std::endl;
   }
   row_end = std::min(lidar_beams, row_end);
   if(col_end > lidar_horz_resolution) {
-    std::cout << "End column position (col: " << col << " + " << " width: " << width << ") is greater than point cloud width. Wrapping and applying to columns 0 - " << col_end - lidar_horz_resolution << "." << std::endl;
+    std::cout << "Synthetic Node: End column position (col: " << col << " + " << " width: " << width << ") is greater than point cloud width. Wrapping and applying to columns 0 - " << col_end - lidar_horz_resolution << "." << std::endl;
   }
 
+  int count = 0;
+  
   for(int curr_row = row; curr_row < row_end; ++curr_row) {
     for(int curr_col = col; curr_col < col_end; ++curr_col) {
       int wrapped_col = curr_col % lidar_horz_resolution;
-      int adjusted_y = lidar_beams - (row + curr_row) - 1;  // adjust for bottom left origin
-      int index = adjusted_y * lidar_horz_resolution + (curr_col + wrapped_col);
+      int index = (curr_row * lidar_horz_resolution) + wrapped_col;
       occ_mask.data[index] = 255;
+      count++;
     }
   }
+  
+  std::cout << "Synthetic Node: Count: " << count << std::endl;
 }
 
 void generateMask() {
+  std::cout << "Synthetic Node: Generating Mask Type: " << mask_type << std::endl;
   // initialize the mask vector with zeros
   if(occ_mask.data.empty()) {
     occ_mask.data.resize(lidar_beams * lidar_horz_resolution, 0);
   }
   if(mask_type == 1) {
+    std::cout << "Synthetic Node: Generating Square Mask" << std::endl;
     createSquareMask(sq_row, sq_height, sq_col, sq_width, lidar_beams, lidar_horz_resolution);
   } else {
     // add other mask types
@@ -119,10 +124,21 @@ int main(int argc, char* argv[]) {
   n->get_parameter("~sq_height", sq_height, 1024);
   n->get_parameter("~sq_col", sq_col, 1024);
   n->get_parameter("~sq_width", sq_width, 1024);
+  n->get_parameter("~timer", timer, 2.0);
   avt_341::node::Rate rate(10.0);
-  
+
+  double start_time = n->get_now_seconds();
+  double end_time = start_time + timer;
   while(avt_341::node::ok()) {
+    if(n->get_now_seconds() > end_time) 
+    {
+      std::cout << "Synthetic Node: TIME!" << std::endl;
+      gen_mask = 1;
+      mask_type = 1;
+      end_time = n->get_now_seconds() + 10000.0;
+    }
     if(gen_mask) {
+      std::cout << "Synthetic Node: Generating mask" << std::endl;
       // set up image message
       occ_mask.header.stamp = ros::Time::now();
       occ_mask.header.frame_id = frame;
