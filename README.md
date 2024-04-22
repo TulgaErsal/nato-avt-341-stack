@@ -9,7 +9,7 @@ ROS package with autonomy algorithms for the NATO AVT-341.
 The latest released documentation in PDF format can be accessed [at this
 link](https://www.dropbox.com/scl/fi/swf6yi9j3yf84bh7go59j/nato-avt-341-stack.pdf?rlkey=2vm9q1yyanwebyf3sjnyc7ku7&e=1&st=sw1z7q8h&dl=0).
 
-> [!INFO]
+> [!NOTE]
 > The features documented in the PDF version of the documentation may differ
 > from the ones available in the latest commit. Refer to the title page for the
 > hash of the commit the documentation was built against.
