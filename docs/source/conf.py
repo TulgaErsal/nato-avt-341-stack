@@ -10,7 +10,7 @@ copyright = "2024, NATO Applied Vehicle Technology (AVT)"
 author = "The AVT-341 Autonomy Stack Developers Team"
 version = "main"
 release = get_git_revision_short_hash()
-extensions = ["breathe"]
+extensions = ["breathe", "sphinx.ext.todo"]
 templates_path = ["_templates"]
 exclude_patterns = []
 
@@ -44,5 +44,7 @@ breathe_default_members = (
     "members",
     "protected-members",
     "private-members",
-    "undoc-members",
 )
+
+# Todo extension
+todo_include_todos = True
