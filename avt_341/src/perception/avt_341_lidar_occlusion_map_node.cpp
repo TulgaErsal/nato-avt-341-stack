@@ -123,10 +123,11 @@ int main(int argc, char* argv[]) {
   // build default voxel grid
   for(int i = 0; i < lidar_beams; ++i) {
     for(int j = 0; j < lidar_horz_resolution; ++j) {
+      int index = (i * lidar_horz_resolution) + j;
+      //std::cout << "Increment, Index, " << index << ", i, " << i << ", j, " << j << std::endl;
       for(const auto& voxel : gridLUT[i][j]) {
         // true argument indicates the 'clean' grid
-        grid.incrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), true);
-        //grid.setVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), 1, true);
+        grid.incrementVoxel(i, j, std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel), true);
       }
     }
   }
@@ -147,18 +148,20 @@ int main(int argc, char* argv[]) {
       start = std::chrono::high_resolution_clock::now();
       //grid.reset(false);
       grid.copyCleanToDirty();
+      
       for(int i = 0; i < lidar_beams; ++i) {
         for(int j = 0; j < lidar_horz_resolution; ++j) {
-          int index = i * lidar_horz_resolution + j;
-          //std::cout << "Index: " << index << " i: " << i << " j: " << j << std::endl;
+          int index = (i * lidar_horz_resolution) + j;
           if(occ_mask.data[index] == 255) {
+            //std::cout << "Decrement, Index," << index << ", i, " << i << ", j, " << j << std::endl;
             count++;
             for(const auto& voxel : gridLUT[i][j]) {
-              grid.decrementVoxel(std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel));
+              grid.decrementVoxel(i, j, std::get<0>(voxel), std::get<1>(voxel), std::get<2>(voxel));
             }
           }
         }
       }
+      
       end = std::chrono::high_resolution_clock::now();
       elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
       std::cout << "Count: " << count << " Elapsed time: " << elapsed.count() << " ms" << std::endl;
@@ -174,15 +177,14 @@ int main(int argc, char* argv[]) {
       mask_grid.info.origin.position.z = 0;
       mask_grid.info.origin.orientation.w = 1.0;
       mask_grid.data.resize(mask_grid.info.width * mask_grid.info.height);
+      std::fill(mask_grid.data.begin(), mask_grid.data.end(), 0); 
 
-      for(int x = 0; x < grid_width; ++x) {
-        for(int y = 0; y < grid_length; ++y) {
+      std::cout << "Grid: " << grid_width << " x " << grid_length << std::endl;
+      for(int y = 0; y < grid_width; ++y) {
+        for(int x = 0; x < grid_length; ++x) {
           //mask_grid.data[x + (y * grid_width)] = grid.dirtyPlane[x][y];
           float scaled_value = grid.differencePlane[x][y] * 100.0;
           mask_grid.data[x + y * grid_width] = static_cast<int>(scaled_value);
-          if(scaled_value > 0 && scaled_value < 100) {
-            std::cout << scaled_value << " : " << static_cast<int>(mask_grid.data[x + y * grid_width]) << std::endl;
-          }
           /*
           if(grid.dirtyPlane[x][y] < 0 || grid.dirtyPlane[x][y] > 255) {
             std::cout << "What?" << x << ", " << y << ": " << grid.dirtyPlane[x][y] << std::endl;

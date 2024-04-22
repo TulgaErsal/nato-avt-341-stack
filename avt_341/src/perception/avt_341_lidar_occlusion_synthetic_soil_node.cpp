@@ -125,6 +125,7 @@ int main(int argc, char* argv[]) {
   n->get_parameter("~sq_col", sq_col, 1024);
   n->get_parameter("~sq_width", sq_width, 1024);
   n->get_parameter("~timer", timer, 2.0);
+  
   avt_341::node::Rate rate(10.0);
 
   double start_time = n->get_now_seconds();

@@ -44,7 +44,7 @@
     <param name="lidar_horz_resolution" value="1024" />
     <param name="sq_row" value="0" />
     <param name="sq_height" value="64" />
-    <param name="sq_col" value="800" />
+    <param name="sq_col" value="0" />
     <param name="sq_width" value="100" />
   </node>
 
@@ -54,15 +54,10 @@
     <param name="grid_resolution" value="0.5" />
     <param name="lidar_beams" value="64" />
     <param name="lidar_horz_resolution" value="1024" />
-    <param name="lidar_min_vertical_angle" value="0" />
-    <param name="lidar_max_vertical_angle" value="10" />
+    <param name="lidar_min_vertical_angle" value="-20" />
+    <param name="lidar_max_vertical_angle" value="20" />
     <param name="lidar_min_horizontal_angle" value="0" />
     <param name="lidar_max_horizontal_angle" value="360" />
-  </node>
-
-
-  <node name="proj_vis_node" pkg="avt_341" type="avt_341_proj_visibility_node" required="true" output="screen">
-    
   </node>
 
   <!-- Lidar perception algorithms  -->

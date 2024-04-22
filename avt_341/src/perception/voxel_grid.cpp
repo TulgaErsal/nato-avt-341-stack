@@ -14,43 +14,43 @@ void VoxelGrid::setVoxel(int l, int w, int h, int value)
   }
 }
 
-void VoxelGrid::incrementVoxel(int l, int w, int h, bool clean=false) 
+void VoxelGrid::incrementVoxel(int i, int j, int l, int w, int h, bool clean=false) 
 {
   if(l >=0 && l < length && w >=0 && w < width && h >= 0 && h < height) {
     if(clean == true) {
       cleanGrid[l][w][h]++;
       cleanPlane[l][w]++;
+      differencePlane[l][w] = 1.0; // we're seeing this voxel so mark it, this will get updated if we decrement
     } else {
       dirtyGrid[l][w][h]++;
       dirtyPlane[l][w]++;
     }
     // calculate current difference
-      differencePlane[l][w] = static_cast<float>(dirtyPlane[l][w]) / cleanPlane[l][w];
-    if(clean==false) {
-      std::cout << differencePlane[l][w] << " = " << dirtyPlane[l][w] << " / " << cleanPlane[l][w] << std::endl;
-    }
+    // differencePlane[l][w] = static_cast<float>(dirtyPlane[l][w]) / cleanPlane[l][w];
+    //std::cout << " INC," << i << "," << j <<", " << l << "," << w << "," << differencePlane[l][w] << ", = ," << dirtyPlane[l][w] << ", / ," << cleanPlane[l][w] << std::endl;
+    
   } else {
     //std::cout << "VoxelGrid::incrementVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;
   }
 }
 
-void VoxelGrid::decrementVoxel(int l, int w, int h)
+void VoxelGrid::decrementVoxel(int i, int j, int l, int w, int h)
 {
   if(l >=0 && l < length && w >=0 && w < width && h >= 0 && h < height) {
     dirtyGrid[l][w][h]--;
+    dirtyPlane[l][w]--;
     if(dirtyGrid[l][w][h] < 0) {
       std::cout << "VoxelGrid::decrementVoxel - error decrementing below 0. Resetting to 0." << std::endl;
       dirtyGrid[l][w][h] = 0;
     }
     // update the l x w plane too
-    dirtyPlane[l][w]--;
     if(dirtyPlane[l][w] < 0) {
       std::cout << "Why is this happening?" << std::endl;
       dirtyPlane[l][w] = 0; 
     }
     // calculate current difference
     differencePlane[l][w] = static_cast<float>(dirtyPlane[l][w]) / cleanPlane[l][w];
-    //std::cout << differencePlane[l][w] << " = " << dirtyPlane[l][w] << " / " << cleanPlane[l][w] << std::endl;
+    //std::cout << " DEC," << i << "," << j <<", " << l << "," << w << "," << differencePlane[l][w] << ", = ," << dirtyPlane[l][w] << ", / ," << cleanPlane[l][w] << std::endl;
     
   } else {
     //std::cout << "VoxelGrid::decrementVoxel - dimensions out of bounds (" << l << "," << w << "," << h << ") (" << length << "," << width << "," << height << ")" << std::endl;

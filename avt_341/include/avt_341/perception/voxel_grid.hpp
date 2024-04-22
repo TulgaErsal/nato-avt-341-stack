@@ -22,10 +22,10 @@ public:
           dirtyGrid(length, std::vector<std::vector<int>>(width, std::vector<int>(height, 0))),
           cleanPlane(length, std::vector<int>(width, 0)),
           dirtyPlane(length, std::vector<int>(width, 0)),
-          differencePlane(length, std::vector<float>(width, 1.0)) {}
+          differencePlane(length, std::vector<float>(width, 0.0)) {}
   void setVoxel(int l, int w, int h, int value);
-  void incrementVoxel(int l, int w, int h, bool clean);
-  void decrementVoxel(int l, int w, int h);
+  void incrementVoxel(int i, int j, int l, int w, int h, bool clean);
+  void decrementVoxel(int i, int j, int l, int w, int h);
   int getVoxel(int l, int w, int h, bool clean) const;
   int toVoxelCoord(double coordinate);
   std::vector<Voxel> drawLine(int x0, int y0, int z0, int x1, int y1, int z1);
