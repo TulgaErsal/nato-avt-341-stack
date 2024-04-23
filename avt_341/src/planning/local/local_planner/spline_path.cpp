@@ -33,13 +33,13 @@ void Path::Init(std::vector<utils::vec2> points) {
 
 
 float Path::TriangleArea(utils::vec2 a, utils::vec2 b, utils::vec2 c) {
-	float area = (float)fabs(a.x*(b.y - c.y) + b.x*(c.y - a.y) + c.x*(a.y - b.y));
+	float area = (float)fabs(a.x*(b.y - c.y) + b.x*(c.y - a.y) + c.x*(a.y - b.y))/2;
 	return area;
 }
 
 float Path::MengerCurvature(utils::vec2 a, utils::vec2 b, utils::vec2 c) {
 	float curv = 0.0f;
-	float denom = utils::length(a - b)*utils::length(b - c)*utils::length(c - b);
+	float denom = utils::length(a - b)*utils::length(b - c)*utils::length(c - a);
 	if (denom == 0.0f) {
 		curv = std::numeric_limits<float>::max();
 	}
