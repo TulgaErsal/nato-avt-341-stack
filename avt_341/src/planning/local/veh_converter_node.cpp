@@ -68,12 +68,12 @@ void callbackSteeringAngle(avt_341::msg::Float64Ptr msg_received_steering_angle)
 
 int main(int argc, char* argv[]) {
     // Initialize ROS node.
-    auto node = avt_341::node::init_node(argc, argv, "avt_341_mpc_planner_node");
+    auto node = avt_341::node::init_node(argc, argv, "avt_341_veh_converter_node");
 
     // Create node subscribers.
-    auto sub_odometry = node->create_subscription<avt_341::msg::Odometry>("/avt_341/odometry", 1, callbackOdometry);
+    auto sub_odometry = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
     auto sub_steering_angle =
-        node->create_subscription<avt_341::msg::Float64>("/avt_341/steering_angle", 1, callbackSteeringAngle);
+        node->create_subscription<avt_341::msg::Float64>("avt_341/steering_angle", 1, callbackSteeringAngle);
     auto sub_imu = node->create_subscription<avt_341::msg::Imu>("/mavs_ros/imu", 1, callbackImu);
 
 

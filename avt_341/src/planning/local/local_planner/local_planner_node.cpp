@@ -92,7 +92,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~w_s", w_s, 0.2f);
   n->get_parameter("~w_r", w_r, 0.4f);
   n->get_parameter("~w_t", w_t, 0.0f);
-  n->get_parameter("~rate", rate, 50.0f);
+  n->get_parameter("~rcc_rate", rate, 50.0f);
   n->get_parameter("~ignore_coll_before_dist", ignore_coll_before_dist, 0.0f);
   n->get_parameter("~trim_path", trim_path, false);
   n->get_parameter("~use_global_path", use_global_path, false);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]){
   avt_341::node::Rate rosrate(rate);
   while (avt_341::node::ok()){
     double start_secs = n->get_now_seconds();
-    if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
+    if ((!use_global_path || global_path.poses.size() > 0) && odom_rcvd && grid.data.size() > 0){
       //std::cout << ros::this_node::getName() << " Running Local planner " << global_path.poses.size() << std::endl;
       std::vector<avt_341::utils::vec2> path_points;
       if (use_global_path){
@@ -188,8 +188,6 @@ int main(int argc, char *argv[]){
       
       planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, steer_angle_limit, vehicle_width);
       planner.SetCenterline(path);
-
-      std::cout << "data: " << d_theta << "," << theta << "," << ci.theta << std::endl;
   
       // calculate bounds around the vehicle to limit grid dilation to space 10m behind and path_look_ahead distance in front of the vehicle
       float veh_heading_x = cos(theta);
@@ -261,8 +259,8 @@ int main(int argc, char *argv[]){
       odom_rcvd = false;
     }
     else {
-      if (global_path.poses.size() <= 0){
-        //std::cout << ros::this_node::getName() << " Local planner did not run because global path not recieved " << std::endl;
+      if (use_global_path && global_path.poses.size() <= 0){
+        //std::cout << ros::this_node::getName() << " Local planner did not run because global path not recieved." << std::endl;
       }
       else if (!odom_rcvd){
         //std::cout << ros::this_node::getName() << " Local planner did not run because vehicle odometry not recieved." << std::endl;

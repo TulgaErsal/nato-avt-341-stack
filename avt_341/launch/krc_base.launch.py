@@ -137,7 +137,7 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                         {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
-    elif local_planner_method != 'mpc':
+    else:
         return [Node(
                     package='avt_341',
                     executable='avt_341_control_node',
@@ -147,9 +147,6 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                         {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
                     ],
         )]
-    else:
-        return []
-
 
 def evaluate_local_planner(params, context, *args, **kwargs):
     display_type = LaunchConfiguration('display_type').perform(context)
@@ -179,15 +176,7 @@ def evaluate_local_planner(params, context, *args, **kwargs):
         )]
     elif local_planner_method == 'mpc':
         return [
-            Node(
-                    package='avt_341',
-                    executable='avt_341_mpc_planner_node',
-                    name='local_mpc_planner_node',
-                    output='screen',
-                    parameters=[
-                        {k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}
-                    ],
-            ),
+            # Obstacle Processor
             Node(
                     package='avt_341',
                     executable='obstacle_processor_node',
@@ -195,6 +184,13 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                     output='screen',
                     parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
+            # Vehicle Converter
+            Node(
+                package='avt_341',
+                executable='veh_converter_node',
+                name='avt_341_veh_converter_node',
+                output='screen'
+            )
         ]
     else: # local_planner_method == 'pf':
         return [Node(
@@ -405,6 +401,7 @@ def launch_setup(context, *args, **kwargs):
                 {k: LaunchConfiguration(f'socket_comms_{k}') for k in params['socket_comms'].keys()}
             ]
         )
+
     ])
     
     return [*arg_list, *vehicle_node_list]

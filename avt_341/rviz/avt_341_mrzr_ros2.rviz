@@ -189,7 +189,7 @@ Visualization Manager:
       Enabled: true
       Name: CandidatePaths
       Namespaces:
-        "": true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -434,7 +434,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 11.519392013549805
+      Scale: 12.850706100463867
       Target Frame: mrzr/base_link
       Value: TopDownOrtho (rviz_default_plugins)
       X: -1.7911376953125
@@ -462,5 +462,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1908
-  X: 3120
-  Y: 620
+  X: 3088
+  Y: 588

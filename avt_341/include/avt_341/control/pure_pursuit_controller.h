@@ -182,9 +182,6 @@ private:
 	float veh_speed_;
 	float vx_;
 	float vy_;
-	float steer_cur_;
-	float err_last_;
-	float err_accum_;
 	float current_angular_velocity_;
 };
 

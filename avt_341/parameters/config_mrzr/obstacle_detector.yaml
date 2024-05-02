@@ -36,7 +36,7 @@ ground_normal_z: 1.0                                            # Normal vector 
 ground_normal_threshold: 0.4                                    # Threshold for ground point segmentation
 
 obstacle_scale: 1.0                                             # Scale to search for neighnor obstacle points [m]
-obstacle_min_neighbors: 10                                      # Minimum neighboring obstacle points [points]
+obstacle_min_neighbors: 5                                       # Minimum neighboring obstacle points [points]
 
 # Frames
 # ======================================================================================================================
