@@ -98,10 +98,13 @@ add_subdirectory(src/perception/map_publisher/ros2)
 add_subdirectory(src/perception/global_segmentation_grid/ros2)
 add_subdirectory(src/perception/grid_compression/ros2)
 add_subdirectory(src/perception/perception/ros2)
+add_subdirectory(src/perception/lidar_obstacle_detector/ros2)
+add_subdirectory(src/perception/local_occupancy_grid/ros2)
 add_subdirectory(src/planning/local/local_planner/ros2)
 add_subdirectory(src/planning/local/potential_field/ros2)
 add_subdirectory(src/planning/local/dwa/ros2)
 add_subdirectory(src/planning/global/global_path/ros2)
+add_subdirectory(src/daq/data_acquisition/ros2)
 
 # Simulation test node
 add_executable(${PROJECT_NAME}_sim_test_node
@@ -173,30 +176,6 @@ install(DIRECTORY
         maps
         DESTINATION share/${PROJECT_NAME}
         )
-
-install(TARGETS
-        avt_341_perception_node
-        avt_341_map_publisher_node
-        avt_341_control_node
-        avt_341_speed_control_node
-        avt_341_local_planner_node
-        avt_341_pf_planner_node
-        avt_341_dwa_planner_node
-        avt_341_global_path_node
-        avt_341_sim_test_node
-        avt_bot_state_publisher_node
-        speed_control_test_node
-        avt_341_comm_node
-        avt_341_comm_publisher_node
-        avt_341_mission_manager_node
-        avt_341_test_formation_control_node
-        avt_341_global_segmentation_grid_node
-        test_target_detection_node
-        avt_341_formation_control_node
-        avt_341_grid_compression_node
-        avt_341_global_segmentation_grid_node
-        EXPORT export_${PROJECT_NAME}
-        DESTINATION lib/${PROJECT_NAME})
 
 if (MPC)
         install(TARGETS

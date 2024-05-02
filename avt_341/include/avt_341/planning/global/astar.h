@@ -19,7 +19,7 @@ class Astar {
 
   /// Constructor
   Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float  w_occupancy,
-        float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first, bool dubins_smoothing, float dubins_radius);
+        float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first);//, bool dubins_smoothing, float dubins_radius);
 
   /// Destructor
   ~Astar();
@@ -229,8 +229,8 @@ class Astar {
   bool search_diagonals_;
   int los_max_iterations_;
   bool los_break_on_first_;
-  bool dubins_smoothing_;
-  float dubins_radius_;
+  //bool dubins_smoothing_;
+  //float dubins_radius_;
 
   std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer_;
 };

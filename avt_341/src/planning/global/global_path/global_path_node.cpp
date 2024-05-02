@@ -232,8 +232,7 @@ int main(int argc, char *argv[])
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
   avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation,
-                                         search_diagonals, los_max_iterations, los_break_on_first,
-                                         dubins_smoothing, dubins_radius);
+                                         search_diagonals, los_max_iterations, los_break_on_first);//, dubins_smoothing, dubins_radius);
 
   if (dilation_factor > 0.0)
   {
