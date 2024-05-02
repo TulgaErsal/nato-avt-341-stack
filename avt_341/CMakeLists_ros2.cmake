@@ -80,32 +80,48 @@ install(TARGETS ${PROJECT_NAME}_sim_test_node
         DESTINATION "lib/${PROJECT_NAME}")
 
 
-# UAB perception node
-if(WIN32 OR WIN64)
-    find_package(Matlab)
+# UAB terrain perception node
+find_package(Matlab)
 
-    if(Matlab_FOUND)
-        # this should point to the installation location of MATLAB Runtime
-        set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-        set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
-        include_directories(
-            include
-            ${OpenCV_INCLUDE_DIRS}
-            ${Matlab_INCLUDE_DIRS})
+if(Matlab_FOUND)
+    # Manually set MATLAB paths (optional, only needed if find_package(Matlab) fails)
+    # These should point to the installation location of MATLAB Runtime 2023a
+    # 
+    # ex: Windows
+    # set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+    # set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+    # 
+    # ex. Linux
+    # set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
+    # set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
 
-        add_executable(uab_perception_node
-            "src/perception/uab_perception_node.cpp")
+    include_directories(
+        include
+        ${OpenCV_INCLUDE_DIRS}
+        ${Matlab_INCLUDE_DIRS})
+
+    add_executable(uab_perception_node
+        "src/perception/uab_perception_node.cpp")
+    target_link_libraries(uab_perception_node
+        ${PROJECT_NAME}_proxy)
+
+    if(WIN32 OR WIN64)
         target_link_libraries(uab_perception_node
-            ${PROJECT_NAME}_proxy)
-        target_link_libraries(uab_perception_node
-            "${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib"
+            "${CMAKE_SOURCE_DIR}/uab_perception/lib_uab_perception_wrapper.lib"
             ${Matlab_MCLMCRRT_LIB})
-        install(FILES "${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll"
+        install(FILES "${CMAKE_SOURCE_DIR}/uab_perception/lib_uab_perception_wrapper.dll"
                 DESTINATION "lib/${PROJECT_NAME}")
-        install(TARGETS uab_perception_node
-                EXPORT export_${PROJECT_NAME}
-                DESTINATION "lib/${PROJECT_NAME}")
+    else()
+        target_link_libraries(uab_perception_node
+            "${CMAKE_SOURCE_DIR}/uab_perception/lib_uab_perception_wrapper.so"
+            ${Matlab_MCLMCRRT_LIB})
+        install(FILES "${CMAKE_SOURCE_DIR}/uab_perception/lib_uab_perception_wrapper.so"
+                DESTINATION "lib")
     endif()
+    
+    install(TARGETS uab_perception_node
+            EXPORT export_${PROJECT_NAME}
+            DESTINATION "lib/${PROJECT_NAME}")
 endif()
 
 # Testing

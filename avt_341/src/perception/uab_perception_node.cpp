@@ -1,6 +1,6 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-#include "avt_341/perception/perception_wrapper.h"
+#include "avt_341/perception/lib_uab_perception_wrapper.h"
 #include "mclcppclass.h"
 #include "mclmcrrt.h"
 #include <vector>
@@ -66,8 +66,9 @@ void GetCostmapFromMatlab(float width,
     mwArray qz(current_pose.pose.pose.orientation.z);
 
     //raw pointcloud
-    mwArray pcData(1, std::size(pc.data), mxUINT8_CLASS);
-    pcData.SetData(&pc.data[0], std::size(pc.data));
+    std::vector<uint8_t> rawPcData(std::begin(pc.data), std::end(pc.data));
+    mwArray pcData(1, rawPcData.size(), mxUINT8_CLASS);
+    pcData.SetData(&rawPcData.front(), rawPcData.size());
 
     //pointcloud properties
     mwArray pcWidth(pc.width);
@@ -76,8 +77,9 @@ void GetCostmapFromMatlab(float width,
     mwArray pcRowStep(pc.row_step);
 
     //raw image
-    mwArray imgData(1, std::size(img.data), mxUINT8_CLASS);
-    imgData.SetData(&img.data[0], std::size(img.data));
+    std::vector<uint8_t> rawImgData(std::begin(img.data), std::end(img.data));
+    mwArray imgData(1, rawImgData.size(), mxUINT8_CLASS);
+    imgData.SetData(&rawImgData.front(), rawImgData.size());
 
     //image width
     mwArray imgWidth(img.width);
@@ -99,14 +101,6 @@ void GetCostmapFromMatlab(float width,
 
     //lower right corner grid offset in meters (y/north direction)
     mwArray lly(grid_lly);
-
-    //1, 1 -> original
-    //0, 0 -> lidar only esn
-    //1, 0 -> mixed
-    mwArray C_model(1); mwArray CL_model(0);
-
-    //use DeepLab?
-    mwArray DL_model(0);
 
     try
     {
@@ -130,8 +124,7 @@ void GetCostmapFromMatlab(float width,
                             imgHeight, //image height
                             pcData, pcWidth, pcHeight, pcPointStep, pcRowStep, //pointcloud data
                             x, y, z, qw, qx, qy, qz, //odometry
-                            mwGridWidth, mwGridHeight, mwGridRes, llx, lly, //grid params
-                            CL_model, C_model, DL_model //model selection
+                            mwGridWidth, mwGridHeight, mwGridRes, llx, lly //grid params
                         );
 
         // parse terrain sub grid
@@ -222,7 +215,7 @@ int main(int argc, char *argv[])
     }
 
     //initialize uab matlab perception model
-    if(!perception_wrapperInitialize())
+    if(!lib_uab_perception_wrapperInitialize())
     {
         std::cerr << "Failed to initialize perception_wrapper package" << std::endl;
         return -1;
