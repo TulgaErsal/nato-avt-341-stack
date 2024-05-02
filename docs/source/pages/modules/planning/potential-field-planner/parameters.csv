@@ -1,0 +1,6 @@
+Name, Type (Default value), Description
+"kp", "double (5.0)", "The strength of the repulsive term for obstacles in the occupancy grid."
+"eta", "double, (100.0)", "The strength of the attractive term for the final goal point."
+"cutoff_dist", "double (20.0)", "Obstacles farther than this distance away will be ignored."
+"rate", "double (50.0)", "Rate in Hz at which to run the node."
+"use_global_path", "bool (false)", "If false, will use the user-input waypoints as the desired path. If true, will use the output of the global planner as the desired path."

@@ -1,28 +1,16 @@
-#project(avt_341)
-
-#cmake_minimum_required(VERSION 3.5)
-
-cmake_policy(VERSION 3.16)
-
-set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
-
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(avt_341_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(pcl_msgs REQUIRED)
-find_package(ament_cmake REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(GDAL CONFIG REQUIRED)
 find_package(PCL REQUIRED)
 ### MPC ###
@@ -41,20 +29,20 @@ if(NOT TARGET GDAL::GDAL)
 endif()
 include_directories(${GDAL_INCLUDE_DIRS})
 
-if (WIN32 OR WIN64)
-set (link_libs
-${OpenCV_LIBS}
-)
+if(WIN32 OR WIN64)
+    set(link_libs
+        ${OpenCV_LIBS}
+    )
 else()
- find_package(X11 REQUIRED)
-set (link_libs
-${OpenCV_LIBS}
-X11
-)
+    find_package(X11 REQUIRED)
+    set(link_libs
+        ${OpenCV_LIBS}
+        X11
+    )
 endif()
 
 if($ENV{ROS_DISTRO} STREQUAL "humble")
-add_definitions(-DROS_HUMBLE)
+    add_definitions(-DROS_HUMBLE)
 endif()
 
 set(dependencies
@@ -75,303 +63,107 @@ set(dependencies
 ## Build ##
 ###########
 include_directories(
-        include
-        ${OpenCV_INCLUDE_DIRS}
+    include
+    ${OpenCV_INCLUDE_DIRS}
 )
 
-add_executable(test_target_detection_node
-    src/perception/test_target_detection_node.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(test_target_detection_node ${dependencies})
-
-add_executable(path_manager_node
-    src/planning/global/path_manager_node.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(path_manager_node ${dependencies})
-
-add_executable(avt_341_mission_manager_node
-    src/mission/mission_manager_node.cpp
-    src/mission/mission_manager.cpp
-    src/mission/task.cpp
-    src/mission/task_encircle.cpp
-    src/mission/task_follow.cpp
-    src/mission/task_moveto.cpp
-    src/mission/task_pathfollow.cpp
-    src/mission/task_wait_until.cpp
-    src/mission/formation_utils.cpp
-    src/mission/formation_definition.cpp
-    src/mission/formation_speed_control.cpp
-    src/mission/formation_path_generator.cpp
-    src/mission/mission_manager_dto.cpp
-    src/mission/mission_manager_parser.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_mission_manager_node ${dependencies})
-
-add_executable(avt_341_formation_control_node
-    src/mission/formation_control_node.cpp
-    src/mission/formation_controller.cpp
-    src/mission/formation_utils.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_formation_control_node ${dependencies})
-
-add_executable(avt_341_test_formation_control_node
-    src/mission/test_formation_control_node.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_test_formation_control_node ${dependencies})
-
-add_executable(avt_341_comm_node
-    src/communication/avt_341_comm_node.cpp
-    src/communication/tcp_socket_proxy.cpp
-    src/mission/mission_manager_dto.cpp
-    src/mission/mission_manager_parser.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_comm_node ${dependencies})
-
-IF (WIN32 OR WIN64)
-    find_package(Boost REQUIRED)
+IF(WIN32 OR WIN64)
+    set(Boost_USE_STATIC_LIBS ON)
+    find_package(Boost REQUIRED COMPONENTS system date_time regex)
     include_directories(${Boost_INCLUDE_DIRS})
-    target_link_directories(avt_341_comm_node PRIVATE $ENV{BOOST_LIBRARYDIR})
+    target_link_directories(${PROJECT_NAME} PRIVATE $ENV{BOOST_LIBRARYDIR})
 endif()
 
-add_executable(avt_341_comm_publisher_node
-    src/communication/avt_341_comm_publisher_node.cpp
-    src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_comm_publisher_node ${dependencies})
+# Node proxy library
+# ------------------
+add_library(${PROJECT_NAME}_proxy
+    "src/node/node_proxy.cpp")
 
-add_executable(avt_341_perception_node
-        src/perception/avt_341_perception_node.cpp
-        src/perception/elevation_grid.cpp
-        src/node/node_proxy.cpp
-        src/perception/costmap_clearing_method.cpp)
-ament_target_dependencies(avt_341_perception_node ${dependencies})
+ament_target_dependencies(${PROJECT_NAME}_proxy
+    avt_341_msgs
+    rclcpp
+    tf2_geometry_msgs
+    tf2_sensor_msgs
+    visualization_msgs)
 
-add_executable(avt_341_map_publisher_node
-        src/perception/avt_341_map_publisher_node.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_map_publisher_node
-        ${dependencies}
-        )
+add_subdirectory(src/communication/comms_publisher/ros2)
+add_subdirectory(src/communication/communication/ros2)
+add_subdirectory(src/control/avt_bot_state_publisher/ros2)
+add_subdirectory(src/control/control/ros2)
+add_subdirectory(src/control/speed_control/ros2)
+add_subdirectory(src/control/speed_control_test/ros2)
+add_subdirectory(src/mission/formation_control/ros2)
+add_subdirectory(src/mission/mission_manager/ros2)
+add_subdirectory(src/perception/map_publisher/ros2)
+add_subdirectory(src/perception/global_segmentation_grid/ros2)
+add_subdirectory(src/perception/grid_compression/ros2)
+add_subdirectory(src/perception/perception/ros2)
+add_subdirectory(src/planning/local/local_planner/ros2)
+add_subdirectory(src/planning/local/potential_field/ros2)
+add_subdirectory(src/planning/local/dwa/ros2)
+add_subdirectory(src/planning/global/global_path/ros2)
 
-add_executable(avt_341_control_node
-        src/control/avt_341_control_node.cpp
-        src/control/pure_pursuit_controller.cpp
-        src/control/pid_controller.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_control_node ${dependencies})
+# Simulation test node
+add_executable(${PROJECT_NAME}_sim_test_node
+    "src/node/clock_publisher.cpp"
+    "src/perception/point_cloud_generator.cpp"
+    "src/simulation/sim_test_node.cpp")
+target_link_libraries(${PROJECT_NAME}_sim_test_node
+    ${PROJECT_NAME}_proxy)
+install(TARGETS ${PROJECT_NAME}_sim_test_node
+        EXPORT export_${PROJECT_NAME}
+        DESTINATION "lib/${PROJECT_NAME}")
 
-add_executable(avt_341_speed_control_node
-        src/control/avt_341_speed_control_node.cpp
-        src/control/pid_controller.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_speed_control_node ${dependencies})
 
-add_executable(speed_control_test_node
-        src/control/speed_control_test_node.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(speed_control_test_node ${dependencies})
+# UAB perception node
+if(WIN32 OR WIN64)
+    find_package(Matlab)
 
-add_executable(avt_341_local_planner_node
-        src/planning/local/avt_341_local_planner_node.cpp
-        src/planning/local/spline_path.cpp
-        src/planning/local/spline_planner.cpp
-        src/planning/local/spline_plotter.cpp
-        src/node/node_proxy.cpp
-        src/visualization/image_visualizer.cpp
-        src/planning/local/rviz_spline_plotter.cpp
-        )
-ament_target_dependencies(avt_341_local_planner_node ${dependencies} OpenCV)
-target_link_libraries(avt_341_local_planner_node
-        ${link_libs}
-        )
+    if(Matlab_FOUND)
+        # this should point to the installation location of MATLAB Runtime
+        set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+        set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+        include_directories(
+            include
+            ${OpenCV_INCLUDE_DIRS}
+            ${Matlab_INCLUDE_DIRS})
 
-add_executable(avt_341_pf_planner_node
-        src/planning/local/avt_341_pf_planner_node.cpp
-add_executable(avt_341_pf_planner_node
-        src/planning/local/avt_341_pf_planner_node.cpp
-        src/planning/local/pf_planner.cpp
-        src/node/node_proxy.cpp
-        src/visualization/image_visualizer.cpp
-      )
-ament_target_dependencies(avt_341_pf_planner_node ${dependencies} )
-target_link_libraries(avt_341_pf_planner_node
-        ${link_libs}
-        )
-
-add_executable(avt_341_dwa_planner_node
-      src/planning/local/avt_341_dwa_planner_node.cpp
-add_executable(avt_341_dwa_planner_node
-      src/planning/local/avt_341_dwa_planner_node.cpp
-      src/planning/local/dwa_planner.cpp
-      src/node/node_proxy.cpp
-      src/visualization/image_visualizer.cpp
-    )
-ament_target_dependencies(avt_341_dwa_planner_node ${dependencies} )
-target_link_libraries(avt_341_dwa_planner_node
-        ${link_libs}
-        )
-
-add_executable(avt_341_global_path_node
-        src/planning/global/avt_341_global_path_node.cpp
-        src/planning/global/astar.cpp
-        src/node/node_proxy.cpp
-        src/visualization/image_visualizer.cpp
-        src/planning/global/dubins_smoothing.cpp
-        )
-ament_target_dependencies(avt_341_global_path_node ${dependencies} OpenCV)
-target_link_libraries(avt_341_global_path_node
-        ${link_libs}
-        )
-
-add_executable(avt_341_sim_test_node
-        src/simulation/avt_341_sim_test_node.cpp
-        src/node/node_proxy.cpp
-        src/node/clock_publisher.cpp
-        src/perception/point_cloud_generator.cpp
-        )
-ament_target_dependencies(avt_341_sim_test_node ${dependencies})
-
-add_executable(avt_bot_state_publisher_node
-        src/control/avt_bot_state_publisher.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_bot_state_publisher_node ${dependencies})
-
-add_executable(avt_341_grid_compression_node
-        src/perception/avt_341_grid_compression_node.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_grid_compression_node ${dependencies})
-
-add_executable(avt_341_global_segmentation_grid_node
-        src/perception/avt_341_global_segmentation_grid_node.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_global_segmentation_grid_node ${dependencies})
-
-add_subdirectory("src/perception/occupancy_grid_parser")
-
-add_executable(avt_341_lidar_obstacle_detector_node
-        include/avt_341/perception/box.hpp
-        include/avt_341/perception/lidar_obstacle_detector.hpp
-        src/perception/lidar_obstacle_detector_node.cpp
-        src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_lidar_obstacle_detector_node ${dependencies})
-target_link_libraries(avt_341_lidar_obstacle_detector_node
-        ${PCL_LIBRARIES}
-)
-
-add_executable(data_acquisition_node
-        src/daq/data_acquisition_node.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(data_acquisition_node ${dependencies})
-
-# Geotiff Map Publisher
-add_executable(avt_341_geotiff_map_publisher_node
-  src/perception/avt_341_geotiff_map_publisher_node.cpp
-  src/perception/geotiff_dataset.cpp
-  src/node/node_proxy.cpp
-)
-ament_target_dependencies(avt_341_geotiff_map_publisher_node ${dependencies})
-target_link_libraries(avt_341_geotiff_map_publisher_node GDAL::GDAL)
-
-add_executable(avt_341_local_occupancy_grid_node
-        src/perception/avt_341_local_occupancy_grid_node.cpp
-        src/perception/local_occupancy_grid.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_local_occupancy_grid_node ${dependencies})
-target_link_libraries(avt_341_local_occupancy_grid_node
-        ${PCL_LIBRARIES}
-)
-
-add_executable(avt_341_costmap_layered_node
-        src/perception/avt_341_costmap_layered_node.cpp
-        include/avt_341/perception/costmap_layer.h
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(avt_341_costmap_layered_node ${dependencies})
-
-add_executable(obstacles_converter_node
-        src/perception/obstacles_converter_node.cpp
-        src/node/node_proxy.cpp
-        )
-ament_target_dependencies(obstacles_converter_node ${dependencies})
-
-### MPC BUILDING ###
-if (MPC)
-        message("Building MPC planner")
-        add_executable(veh_converter_node
-        src/planning/local/veh_converter_node.cpp
-        src/node/node_proxy.cpp
-        )
-        ament_target_dependencies(veh_converter_node ${dependencies})
-        target_link_libraries(veh_converter_node ${link_libs})
-
-        add_executable(avt_341_mpc_planner_node
-        src/planning/local/avt_341_mpc_planner_node.cpp
-        src/planning/local/mpc_planner_solver.cpp
-        src/planning/local/mpc_planner.cpp
-        src/node/node_proxy.cpp
-        )
-        ament_target_dependencies(avt_341_mpc_planner_node ${dependencies} )
-        target_link_libraries(avt_341_mpc_planner_node
-        ${Boost_LIBRARIES}
-        casadi
-        ${link_libs}
-        )
-
-        add_executable(obstacle_processor_node
-        src/planning/local/obstacles_processor_node.cpp
-        src/node/node_proxy.cpp
-        )
-        ament_target_dependencies( obstacle_processor_node ${dependencies} )
-        target_link_libraries( obstacle_processor_node ${link_libs} )
-endif ()
-### END MPC BUILDING ###
-
-if (WIN32 OR WIN64)
-# this should point to the installation location of MATLAB Runtime
-find_package(Matlab)
-
- if (Matlab_FOUND)
-         set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\v912\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-         include_directories(
-                 include
-                 ${OpenCV_INCLUDE_DIRS}
-                 ${Matlab_INCLUDE_DIRS}
-         )
-         add_executable(uab_perception_node
-                 src/perception/uab_perception_node.cpp
-                 src/node/node_proxy.cpp
-         )
-         ament_target_dependencies(uab_perception_node ${dependencies})
-         target_link_libraries(uab_perception_node
-                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib
-                 ${Matlab_MCLMCRRT_LIB}
-         )
-         install(FILES
-                 ${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll
-                 DESTINATION lib/${PROJECT_NAME})
-         install(TARGETS
-                 uab_perception_node
-                 EXPORT export_${PROJECT_NAME}
-                 DESTINATION lib/${PROJECT_NAME})
- endif()
-
+        add_executable(uab_perception_node
+            "src/perception/uab_perception_node.cpp")
+        target_link_libraries(uab_perception_node
+            ${PROJECT_NAME}_proxy)
+        target_link_libraries(uab_perception_node
+            "${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.lib"
+            ${Matlab_MCLMCRRT_LIB})
+        install(FILES "${CMAKE_SOURCE_DIR}/uab_perception/perception_wrapper.dll"
+                DESTINATION "lib/${PROJECT_NAME}")
+        install(TARGETS uab_perception_node
+                EXPORT export_${PROJECT_NAME}
+                DESTINATION "lib/${PROJECT_NAME}")
+    endif()
 endif()
+
+# Testing
+# =======
+
+# Target detection test node
+add_executable(test_target_detection_node
+    "src/perception/test_target_detection_node.cpp")
+target_link_libraries(test_target_detection_node
+    ${PROJECT_NAME}_proxy)
+install(TARGETS test_target_detection_node
+    EXPORT export_${PROJECT_NAME}
+    DESTINATION "lib/${PROJECT_NAME}")
+
+
+# Formation control test node
+add_executable(${PROJECT_NAME}_test_formation_control_node
+    "src/mission/test_formation_control_node.cpp")
+target_link_libraries(${PROJECT_NAME}_test_formation_control_node
+    ${PROJECT_NAME}_proxy)
+install(TARGETS ${PROJECT_NAME}_test_formation_control_node
+        EXPORT export_${PROJECT_NAME}
+        DESTINATION "lib/${PROJECT_NAME}")
 
 install(DIRECTORY
         launch
@@ -403,12 +195,6 @@ install(TARGETS
         avt_341_formation_control_node
         avt_341_grid_compression_node
         avt_341_global_segmentation_grid_node
-        avt_341_lidar_obstacle_detector_node
-        data_acquisition_node
-        avt_341_geotiff_map_publisher_node
-        avt_341_local_occupancy_grid_node
-        avt_341_costmap_layered_node
-        obstacles_converter_node
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 

@@ -1,0 +1,3 @@
+Topic, Message type, Description
+"/avt_341/odometry", "nav_msgs/Odometry", "Vehicle odometry from real-time-kinematic or other localization sensor."
+"/avt_341/points", "sensor_msgs/PointCloud2", "Point cloud from lidar sensor or stereo camera."

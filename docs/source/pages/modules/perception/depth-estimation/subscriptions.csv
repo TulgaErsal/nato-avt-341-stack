@@ -1,0 +1,2 @@
+Topic, Message type, Description
+"/airsim_node/base_link/front_center/Scene", "sensor_msgs/Image", "Input image."

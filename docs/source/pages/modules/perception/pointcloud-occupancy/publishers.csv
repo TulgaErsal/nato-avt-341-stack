@@ -1,0 +1,2 @@
+Topic, Message type, Description
+"/avt_341/occupancy_grid", "nav_msgs/OccupancyGrid", "Grid showing obstacle locations."

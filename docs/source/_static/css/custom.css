@@ -1,0 +1,15 @@
+/* Hide the theme version. */
+.theme-version {
+    display: none;
+}
+
+/* Hide captions. */
+.caption-text {
+    display: none;
+}
+
+/* Wrap long table entries. */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: inherit;
+}

@@ -52,5 +52,5 @@ cmake-build-debug*
 package.xml
 config/KRC_CP*.csv
 
-# Pipenv Lock Files
-*.lock
+# iOS files
+*.DS_Store

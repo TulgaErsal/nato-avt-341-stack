@@ -1,0 +1,4 @@
+Topic, Message type, Description
+"avt_341/odometry", "nav_msgs/Odometry", "Vehicle odometry from real-time-kinematic or other localization sensor."
+"avt_341/occupancy_grid", "nav_msgs/OccupancyGrid", "Grid showing obstacle locations."
+"avt_341/global_path", "nav_msgs/Path", "Global path defined by user as waypoints in East-North-Up coordinates."
