@@ -1,18 +1,24 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
 <package format="3">
   <name>avt_341</name>
   <version>0.0.0</version>
   <description> AVT-341 autonomy stack. Released under BSD-III license. MIT license included as part
     of "SS47816/lidar_obstacle_detector".</description>
+
   <maintainer email="cgoodin@cavs.msstate.edu">Chris Goodin</maintainer>
   <maintainer email="dsi@mpe.au.dk">Dario Sirangelo</maintainer>
+
   <license>BSD-III</license>
   <license>MIT</license>
+
   <author email="cgoodin@cavs.msstate.edu">Chris Goodin</author>
   <author email="dwc2@cavs.msstate.edu">Daniel Carruth</author>
+
   <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
   <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
+
   <depend condition="$ROS_VERSION == 2">ament_index_cpp</depend>
   <depend>avt_341_msgs</depend>
   <depend condition="$ROS_VERSION == 1">dynamic_reconfigure</depend>
@@ -29,8 +35,10 @@
   <depend>tf2_geometry_msgs</depend>
   <depend>tf2_sensor_msgs</depend>
   <depend>visualization_msgs</depend>
+
   <test_depend condition="$ROS_VERSION == 2">ament_lint_auto</test_depend>
   <test_depend condition="$ROS_VERSION == 2">ament_lint_common</test_depend>
+
   <export>
     <build_type condition="$ROS_VERSION == 1">catkin</build_type>
     <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
