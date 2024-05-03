@@ -47,6 +47,28 @@ else()
   )
 endif()
 
+set(AVT341_SOURCE_FILES
+    "communication/comms_publisher"
+    "communication/communication"
+    "control/avt_bot_state_publisher"
+    "control/control"
+    "control/speed_control"
+    "control/speed_control_test"
+    "mission/formation_control"
+    "mission/mission_manager"
+    "perception/map_publisher"
+    "perception/grid_compression"
+    "perception/lidar_obstacle_detector"
+    "perception/perception"
+    "planning/local/local_planner"
+    "planning/local/potential_field"
+    "planning/local/dwa"
+    "planning/global/global_path")
+
+# Append src/ subdirectory to the path of each target.
+string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
+                     "${AVT341_SOURCE_FILES}")
+
 if(USING_CATKIN)
   set(REQUIRED_ROS_PACKAGES
       avt_341_msgs
@@ -89,6 +111,10 @@ if(USING_CATKIN)
   add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp")
   target_link_libraries(${PROJECT_NAME}_proxy ${catkin_LIBRARIES})
 
+  foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
+    add_subdirectory(${SOURCE_FILE})
+  endforeach()
+
   # GPS to ENU coordinates conversion node
   add_executable(
     gps_to_enu_node
@@ -111,23 +137,6 @@ if(USING_CATKIN)
     TARGETS gps_spoof_node
     RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
     LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}")
-
-  add_subdirectory("src/communication/comms_publisher/ros1")
-  add_subdirectory("src/communication/communication/ros1")
-  add_subdirectory("src/control/avt_bot_state_publisher/ros1")
-  add_subdirectory("src/control/control/ros1")
-  add_subdirectory("src/control/speed_control/ros1")
-  add_subdirectory("src/control/speed_control_test/ros1")
-  add_subdirectory("src/mission/formation_control/ros1")
-  add_subdirectory("src/mission/mission_manager/ros1")
-  add_subdirectory("src/perception/map_publisher/ros1")
-  add_subdirectory("src/perception/grid_compression/ros1")
-  add_subdirectory("src/perception/lidar_obstacle_detector/ros1")
-  add_subdirectory("src/perception/perception/ros1")
-  add_subdirectory("src/planning/local/local_planner/ros1")
-  add_subdirectory("src/planning/local/potential_field/ros1")
-  add_subdirectory("src/planning/local/dwa/ros1")
-  add_subdirectory("src/planning/global/global_path/ros1")
 
   # Simulation test node
   add_executable(
@@ -285,22 +294,9 @@ if(USING_AMENT)
     ${PROJECT_NAME}_proxy avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
     visualization_msgs)
 
-  add_subdirectory("src/communication/comms_publisher/ros2")
-  add_subdirectory("src/communication/communication/ros2")
-  add_subdirectory("src/control/avt_bot_state_publisher/ros2")
-  add_subdirectory("src/control/control/ros2")
-  add_subdirectory("src/control/speed_control/ros2")
-  add_subdirectory("src/control/speed_control_test/ros2")
-  add_subdirectory("src/mission/formation_control/ros2")
-  add_subdirectory("src/mission/mission_manager/ros2")
-  add_subdirectory("src/perception/map_publisher/ros2")
-  add_subdirectory("src/perception/global_segmentation_grid/ros2")
-  add_subdirectory("src/perception/grid_compression/ros2")
-  add_subdirectory("src/perception/perception/ros2")
-  add_subdirectory("src/planning/local/local_planner/ros2")
-  add_subdirectory("src/planning/local/potential_field/ros2")
-  add_subdirectory("src/planning/local/dwa/ros2")
-  add_subdirectory("src/planning/global/global_path/ros2")
+  foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
+    add_subdirectory(${SOURCE_FILE})
+  endforeach()
 
   # Simulation test node
   add_executable(
