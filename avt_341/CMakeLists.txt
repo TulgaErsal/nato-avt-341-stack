@@ -16,15 +16,6 @@ file(
     SHA256=8b1563225bd5e547f375903eb0d5a5a696566091bb65d76476aff4fab452d14f
   SHOW_PROGRESS)
 
-# TODO: Move to global costmap module folder Download the offline cost map
-file(
-  DOWNLOAD
-  https://www.dropbox.com/s/n6img54q02j8tbs/20230816_KRC_CP06_Scaled_FlippedVertical.csv?dl=1
-  "${CMAKE_CURRENT_SOURCE_DIR}/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv"
-  EXPECTED_HASH
-    SHA256=ee537193d028f54ffe08ce9ba78879ee2758fa129942a66f81001382c90fb588
-  SHOW_PROGRESS)
-
 if(WIN32 OR WIN64)
   add_compile_definitions(-D_USE_MATH_DEFINES)
 endif() # if(WIN32 OR WIN64)
@@ -61,6 +52,7 @@ set(AVT341_SOURCE_FILES
     "mission/formation_control"
     "mission/mission_manager"
     "perception/map_publisher"
+    "perception/global_segmentation_grid"
     "perception/grid_compression"
     "perception/lidar_obstacle_detector"
     "perception/perception"
