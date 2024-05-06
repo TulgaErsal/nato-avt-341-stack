@@ -39,6 +39,7 @@ void VoxelGrid::decrementVoxel(int i, int j, int l, int w, int h)
   if(l >=0 && l < length && w >=0 && w < width && h >= 0 && h < height) {
     dirtyGrid[l][w][h]--;
     dirtyPlane[l][w]--;
+
     if(dirtyGrid[l][w][h] < 0) {
       std::cout << "VoxelGrid::decrementVoxel - error decrementing below 0. Resetting to 0." << std::endl;
       dirtyGrid[l][w][h] = 0;
@@ -122,6 +123,16 @@ void VoxelGrid::reset(bool clean=false) {
 void VoxelGrid::copyCleanToDirty() {
   dirtyGrid = cleanGrid;
   dirtyPlane = cleanPlane;
+  /*
+  if(dirtyGrid == cleanGrid) {
+    std::cout << "Reset the dirty Grid " << std::endl;
+  }
+  if(dirtyPlane == cleanPlane) {
+    std::cout << "Reset the dirty plane " << std::endl;
+  } 
+  */
   // difference plane is set to default to 1.0
-  std::vector<std::vector<float>> differencePlane(length, std::vector<float>(width, 1.0));
+  for (auto& row : differencePlane) {
+    std::fill(row.begin(), row.end(), 1.0f);  // Resets all elements in the row to 1.0
+  }
 }

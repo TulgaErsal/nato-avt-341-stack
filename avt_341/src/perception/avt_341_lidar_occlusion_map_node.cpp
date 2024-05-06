@@ -37,6 +37,8 @@ double lidar_y = 0.0;
 bool proportional = false;
 std::string frame = "front/os_lidar";
 
+  
+
 void IncomingOcclusionMaskCallback(avt_341::msg::ImagePtr rcv_image) {
   avt_341::msg::Image flipped_img = *rcv_image;
 
@@ -255,10 +257,11 @@ int main(int argc, char* argv[]) {
           }
         }
       }
+      
       // collect and report the statistics
       end = std::chrono::high_resolution_clock::now();
       elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-      std::cout << "Count: " << count << " Elapsed time: " << elapsed.count() << " ms" << std::endl;
+      std::cout << "Blocked Rays: " << count << " Elapsed time: " << elapsed.count() << " ms" << std::endl;
 
       // publish the projection
       // Set up the header and other info
@@ -282,6 +285,7 @@ int main(int argc, char* argv[]) {
       
       mask_grid.data.resize(mask_grid.info.width * mask_grid.info.height);
       std::fill(mask_grid.data.begin(), mask_grid.data.end(), 0); 
+
 
       // Update the occupancy grid with grid data
       for(int y = 0; y < grid_width; ++y) {
