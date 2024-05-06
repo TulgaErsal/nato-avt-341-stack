@@ -34,10 +34,32 @@ double vehicle_height = 3.0f;       // total height of the vehicle in meters
 double lidar_mount_height = 1.5f;   // mounting height of the lidar
 double lidar_x = 0.0;
 double lidar_y = 0.0;
+bool proportional = false;
+std::string frame = "front/os_lidar";
 
 void IncomingOcclusionMaskCallback(avt_341::msg::ImagePtr rcv_image) {
-  occ_mask = *rcv_image;
-  std::cout << "Received occlusion mask of width: " << rcv_image->width << " and height: " << rcv_image->height << std::endl;
+  avt_341::msg::Image flipped_img = *rcv_image;
+
+  if(rcv_image->encoding == "32FC1") {
+    int pixel_size = sizeof(float);
+
+    // Accessing each row from the bottom to the top
+    for (int i = 0; i < rcv_image->height; ++i) {
+        int index1 = i * rcv_image->width * pixel_size;
+        int index2 = (rcv_image->height - 1 - i) * rcv_image->width * pixel_size;
+        for (int j = 0; j < rcv_image->width * pixel_size; ++j) {
+            // Swapping the pixels vertically
+            flipped_img.data[index1 + j] = rcv_image->data[index2 + j];
+        }
+    }
+
+    occ_mask = flipped_img;
+  } else {
+    std::cout << "NOT VERTICALLY FLIPPED" << std::endl;
+    occ_mask = *rcv_image;
+  }
+  
+  std::cout << "Received occlusion mask of format: " << rcv_image->encoding << " with width: " << rcv_image->width << " and height: " << rcv_image->height << std::endl;
   if(rcv_image->width != lidar_horz_resolution) {
     std::cout << "Received occlusion mask width does not match expected resolution (" << lidar_horz_resolution << ")" << std::endl;
   }
@@ -46,6 +68,73 @@ void IncomingOcclusionMaskCallback(avt_341::msg::ImagePtr rcv_image) {
   }
   occ_mask_rcvd = true;
 }
+
+bool getMaskValue(int row, int col) {
+  //std::cout << "  Getting Mask Value for " << row << ", " << col << std::endl;
+  if(occ_mask.encoding == "32FC1") {
+    //std::cout << "  Mask Encoding 32FC1" << std::endl;
+    // 32FC1 uses 4 bytes to store a float
+    const float* imageData = reinterpret_cast<const float *>(&occ_mask.data[0]);
+    int index = (occ_mask.width * row) + col;
+    //std::cout << "  Index: " << index << " (Width: " << occ_mask.width << " * row: " << row << " + col: " << col << ")" << std::endl;
+    float pixelValue = imageData[index];
+    //std::cout << "  Value: " << pixelValue << std::endl;
+    if(pixelValue > 0.9) {
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    std::cout << "Encoding not 32FC1" << std::endl;
+  }
+}
+
+// Function to reshape the 1D occupancy grid data into a 2D grid
+std::vector<std::vector<signed char>> reshapeGrid(const avt_341::msg::OccupancyGrid& occupancy_grid) {
+    std::vector<std::vector<signed char>> grid;
+    grid.reserve(occupancy_grid.info.height);
+    for (int i = 0; i < occupancy_grid.info.height; ++i) {
+        std::vector<signed char> row(occupancy_grid.info.width);
+        for (int j = 0; j < occupancy_grid.info.width; ++j) {
+            int index = i * occupancy_grid.info.width + j;
+            row[j] = occupancy_grid.data[index];
+        }
+        grid.push_back(row);
+    }
+    return grid;
+}
+
+// Function to flatten the 2D grid back into a 1D array
+std::vector<signed char> flattenGrid(const std::vector<std::vector<signed char>>& grid) {
+    std::vector<signed char> data;
+    for (const auto& row : grid) {
+        data.insert(data.end(), row.begin(), row.end());
+    }
+    return data;
+}
+
+// Function to flip the grid data horizontally
+void flipGridHorizontally(std::vector<std::vector<signed char>>& grid) {
+    for (auto& row : grid) {
+        std::reverse(row.begin(), row.end());
+    }
+}
+
+// Function to rotate the grid data 90 degrees
+void rotateGrid90Degrees(std::vector<std::vector<signed char>>& grid) {
+    // Transpose the grid data
+    std::vector<std::vector<signed char>> transposedGrid(grid[0].size(), std::vector<signed char>(grid.size()));
+    for (size_t i = 0; i < grid.size(); ++i) {
+        for (size_t j = 0; j < grid[0].size(); ++j) {
+            transposedGrid[j][i] = grid[i][j];
+        }
+    }
+    // Flip the transposed grid data horizontally to rotate it 90 degrees
+    //flipGridHorizontally(transposedGrid);
+    // Copy the rotated grid data back to the original grid
+    grid = transposedGrid;
+}
+
 
 int main(int argc, char* argv[]) {
   // Initialize the node
@@ -68,6 +157,9 @@ int main(int argc, char* argv[]) {
   n->get_parameter("~lidar_max_vertical_angle", max_vertical_angle, 22.5);
   n->get_parameter("~lidar_min_horizontal_angle", min_horizontal_angle, 0.0);
   n->get_parameter("~lidar_max_horizontal_angle", max_horizontal_angle, 360.0);
+  n->get_parameter("~proportional", proportional, false);
+  n->get_parameter("~frame", frame, std::string("front/os_lidar"));
+
   if(min_horizontal_angle > max_horizontal_angle) {
     std::cout << "LIDAR OCCLUSION MAP NODE: parameter min_horizontal_angle MUST be less than max_horizontal_angle" << std::endl;
   }
@@ -153,7 +245,8 @@ int main(int argc, char* argv[]) {
       for(int i = 0; i < lidar_beams; ++i) {
         for(int j = 0; j < lidar_horz_resolution; ++j) {
           int index = (i * lidar_horz_resolution) + j;
-          if(occ_mask.data[index] == 255) {
+          //if(occ_mask.data[index] == 255) {
+          if(getMaskValue(i, j)) {
             //std::cout << "Decrement, Index," << index << ", i, " << i << ", j, " << j << std::endl;
             count++;
             for(const auto& voxel : gridLUT[i][j]) {
@@ -170,24 +263,57 @@ int main(int argc, char* argv[]) {
       // publish the projection
       // Set up the header and other info
       mask_grid.header.stamp = n->get_stamp();
-      mask_grid.header.frame_id = "lidar";
+      mask_grid.header.frame_id = frame.c_str();
       mask_grid.info.resolution = grid_resolution;
       mask_grid.info.width = grid_width;
       mask_grid.info.height = grid_length;
-      mask_grid.info.origin.position.x = -100; // should these be cells or meters?
-      mask_grid.info.origin.position.y = -100;
-      mask_grid.info.origin.position.z = 0;
+      mask_grid.info.origin.position.x = 0.0 - ((grid_width * grid_resolution) / 2); // meters?
+      mask_grid.info.origin.position.y = 0.0 - ((grid_length * grid_resolution) / 2);
+      mask_grid.info.origin.position.z = -1;
+      
+      tf2::Quaternion rotation_quat;
+      rotation_quat.setRPY(0, 0, -M_PI / 2.0);
+      mask_grid.info.origin.orientation.x = rotation_quat.x();
+      mask_grid.info.origin.orientation.y = rotation_quat.y();
+      mask_grid.info.origin.orientation.z = rotation_quat.z(); 
+      mask_grid.info.origin.orientation.w = rotation_quat.w();
+      mask_grid.info.origin.orientation.x = mask_grid.info.origin.orientation.y = mask_grid.info.origin.orientation.z = 0.0;
       mask_grid.info.origin.orientation.w = 1.0;
+      
       mask_grid.data.resize(mask_grid.info.width * mask_grid.info.height);
       std::fill(mask_grid.data.begin(), mask_grid.data.end(), 0); 
 
       // Update the occupancy grid with grid data
       for(int y = 0; y < grid_width; ++y) {
         for(int x = 0; x < grid_length; ++x) {
-          float scaled_value = grid.differencePlane[x][y] * 100.0;
-          mask_grid.data[x + y * grid_width] = static_cast<int>(scaled_value);
+          if(grid.dirtyPlane[x][y] == 0) {      // if NOT seen, Mark as NOT seen
+            mask_grid.data[x + y * grid_width] = 0.0;   
+          } else {    // seen, at least somewhat
+            // scale the difference between the dirty and clean by 100 to a percentage
+            float scaled_value = grid.differencePlane[x][y] * 100.0;
+            // if we're coloring the map by proportion - MARK with the proportion - as dirty goes to 0, difference will go to 0 (less seen)
+            if(proportional) {
+              mask_grid.data[x + y * grid_width] = static_cast<int>(scaled_value);
+            } else {    
+              // Otherwise - if the scaled value is less than 100 (dirty is different, set it as UNSEEN and we can play with this threshold)
+              if(scaled_value < 95) {
+                mask_grid.data[x + y * grid_width] = 0.0;
+              } else {
+                mask_grid.data[x + y * grid_width] = 100.0;
+              }
+            }  
+          }
         }
       }
+
+      std::vector<std::vector<signed char>> fix_grid = reshapeGrid(mask_grid);
+      // Flip the grid data horizontally
+      //flipGridHorizontally(fix_grid);
+      // Rotate the grid data 90 degrees
+      rotateGrid90Degrees(fix_grid);
+      //flipGridHorizontally(fix_grid);
+      // Flatten the data
+      mask_grid.data = flattenGrid(fix_grid);
 
       // Publish the occupancy grid
       mask_grid_pub->publish(mask_grid);

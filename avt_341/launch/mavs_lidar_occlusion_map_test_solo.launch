@@ -1,0 +1,19 @@
+<!-- based on mavs_example.launch - branched on 11.29.2023 -->
+<launch>
+   <!-- Generates projection of occlusion onto occupancy grid -->
+  <node name="lidar_occlusion_map_node" pkg="avt_341" type="avt_341_lidar_occlusion_map_node" required="true" output="screen">
+    <remap from="avt_341/occ_mask" to="/segmented_images" />
+    <param name="frame" value="front/os_sensor" />
+    <param name="proportional" value="false" />
+    <param name="lidar_range" value="50.0" />
+    <param name="vehicle_height" value="3.0" />
+    <param name="grid_resolution" value="0.5" />
+    <param name="lidar_beams" value="64" />
+    <param name="lidar_horz_resolution" value="410" />
+    <param name="lidar_min_vertical_angle" value="-22.5" />
+    <param name="lidar_max_vertical_angle" value="22.5" />
+    <param name="lidar_min_horizontal_angle" value="18" />
+    <param name="lidar_max_horizontal_angle" value="162" />
+  </node>
+
+</launch>

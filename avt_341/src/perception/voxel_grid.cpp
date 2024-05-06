@@ -122,5 +122,6 @@ void VoxelGrid::reset(bool clean=false) {
 void VoxelGrid::copyCleanToDirty() {
   dirtyGrid = cleanGrid;
   dirtyPlane = cleanPlane;
+  // difference plane is set to default to 1.0
   std::vector<std::vector<float>> differencePlane(length, std::vector<float>(width, 1.0));
 }
