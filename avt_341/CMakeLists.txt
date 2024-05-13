@@ -17,7 +17,7 @@ file(
   SHOW_PROGRESS)
 
 if(WIN32 OR WIN64)
-  add_compile_definitions(-D_USE_MATH_DEFINES)
+  add_compile_definitions(-D _USE_MATH_DEFINES)
 endif() # if(WIN32 OR WIN64)
 
 if($ENV{ROS_VERSION} EQUAL 1)
@@ -305,13 +305,6 @@ if(USING_AMENT)
 
   # Build
   include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
-
-  if(WIN32 OR WIN64)
-    set(Boost_USE_STATIC_LIBS ON)
-    find_package(Boost REQUIRED COMPONENTS system date_time regex)
-    include_directories(${Boost_INCLUDE_DIRS})
-    target_link_directories(${PROJECT_NAME} PRIVATE $ENV{BOOST_LIBRARYDIR})
-  endif()
 
   # Node proxy library
   # ------------------
