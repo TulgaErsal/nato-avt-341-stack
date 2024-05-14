@@ -44,7 +44,8 @@ bool allMsgsReceived()
 
 /*
 * GetCostmapFromMatlab packages up all the data from ROS (odometry, pointcloud, and image), calls
-* the semantic segmentation model in Matlab, and populates an array of cost values based on traversability
+* the semantic segmentation model in Matlab, and populates an array of cost values based on
+* terrain traversability
 */
 void GetCostmapFromMatlab(float width,
                             float height,
@@ -228,7 +229,8 @@ int main(int argc, char *argv[])
     BuildOccupancyGrid(obstacleGrid, width, height, grid_llx, grid_lly, res, OBSTACLE_GRID_DEFAULT_VAL);
     
     avt_341::node::Rate rate(100.0);
-    uint16_t timeout = 20; //exit if messages not received within 20s
+    //number of seconds to wait for messages before exiting
+    uint16_t timeout = 20;
     while (avt_341::node::ok())
     {
         if(reset_called){

@@ -1,6 +1,6 @@
 if(USING_CATKIN)
   message(
-    WARN
+    WARNING
     "Skipping global segmentation grid node build - not yet supported in ROS 1."
   )
 endif() # if(USING_CATKIN)

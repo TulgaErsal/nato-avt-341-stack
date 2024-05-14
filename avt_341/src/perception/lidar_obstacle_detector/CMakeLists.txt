@@ -16,6 +16,6 @@ endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
   message(
-    WARN
-    "Skipping LiDAR obstacle detector node build - not yet supported in ROS 1.")
+    WARNING
+    "Skipping LiDAR obstacle detector node build - not yet supported in ROS 2.")
 endif() # if(USING_AMENT)
