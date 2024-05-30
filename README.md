@@ -1,43 +1,77 @@
-# AVT-341
+# NATO AVT-341 Autonomy Stack
 
 ROS package with autonomy algorithms for the NATO AVT-341.
 
-The MPC plugin is available at [https://github.com/TulgaErsal/AVT-341-MPC](https://github.com/TulgaErsal/AVT-341-MPC)
+## Documentation
 
-## Building the documentation
+### Accessing the latest release
 
-The NATO AVT-341 autonomy stack comes with documentation that may be built and
-browsed locally. The documentation build has been tested on Ubuntu 22.04, but a
-similar procedure should work provided a working Python installation is
-available.
+The latest released documentation in PDF format can be accessed [at this
+link](https://www.dropbox.com/scl/fi/swf6yi9j3yf84bh7go59j/nato-avt-341-stack.pdf?rlkey=2vm9q1yyanwebyf3sjnyc7ku7&e=1&st=sw1z7q8h&dl=0).
 
-First, install Doxygen:
+> [!NOTE]
+> The features documented in the PDF version of the documentation may differ
+> from the ones available in the latest commit. Refer to the title page for the
+> hash of the commit the documentation was built against.
 
-```bash
-sudo apt install -y doxygen
+If you would like to access the documentation for the latest commit or would
+like a browseable web version instead, follow the instructions in the [Building
+the documentation from source](#building-the-documentation-from-source) section.
+
+### Building the documentation from source
+
+To build the documentation from source, you will need:
+
+* A working Doxygen binary in your `PATH` (on Ubuntu, `sudo apt install -y
+  doxygen`).
+* A Python dependency manager, i.e. `Poetry` (see [Build using
+  Poetry](#build-using-poetry)) or `pip` (see [Build using
+  pip](#build-using-pip))
+
+#### Build using Poetry
+
+> This method assumes you have a working [Poetry](https://python-poetry.org/)
+> installation. Follow the [installation
+> instructions](https://python-poetry.org/docs/#installation) for your platform
+> to get Poetry running on your system.
+
+From the root of the repository, install and activate the Poetry environment for
+the current session:
+
+```shell
+poetry install --with documentation
+poetry shell
 ```
 
-Then install the required Python dependencies by issuing the following commands from
-the root of the repository:
+Change directory to the `docs` folder and run the Sphinx Makefile with `cd docs
+&& make html`.
 
-```bash
+Before sourcing your ROS distribution to build and/or run the stack, make sure
+the documentation environment is deactivated by exiting the Poetry shell with
+`exit`.
+
+#### Build using pip
+
+Then install the required Python dependencies by issuing the following commands
+from the root of the repository:
+
+```shell
 python -m venv docs/.nato-avt-341-docs-env
 source docs/.nato-avt-341-docs-env/bin/activate
-pip install -r docs/requirements.txt
+pip install -r requirements.txt
 ```
 
-Finally, run the build process:
+Finally, run the build process by running `cd docs && make html`.
 
-```bash
-cd docs
-make html
-```
+---
 
-Before sourcing your ROS distribution to run the stack, make sure the
-documentation build environment is deactivated by issuing `deactivate` in the
-current terminal or by opening a new terminal. The prefix
-`.nato-avt-341-docs-env` should no longer be visible in your terminal before
-sourcing the ROS distribution.
+Once the build process is complete, the documentation will be available under
+`build/html/index.html`.
+
+> [!WARNING]
+> Before sourcing your ROS distribution to build and/or run the stack, make sure
+> the documentation environment is deactivated (`exit` for Poetry, `deactivate`
+> for pip).
 
 ## Acknowledgements
 

@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "avt_341"
+version = "0.0.0"
+description = ""
+authors = ["Christopher T. Goodin <cgoodin@cavs.msstate.edu>",
+           "Dario Sirangelo <dsi@mpe.au.dk>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.group.documentation]
+optional = true
+
+[tool.poetry.group.documentation.dependencies]
+breathe = "^4.35.0"
+pydata-sphinx-theme = "^0.15.2"
+sphinx = "^7.2.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

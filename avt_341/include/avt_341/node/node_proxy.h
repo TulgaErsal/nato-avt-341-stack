@@ -18,14 +18,17 @@ public:
 
 #ifdef ROS_1
 
-#include "ros/ros.h"
-#include "std_msgs/Header.h"
-#include "tf2_ros/transform_listener.h"
-#include "tf2_ros/buffer.h"
-#include "tf2_sensor_msgs/tf2_sensor_msgs.h"
-#include "geometry_msgs/TransformStamped.h"
-#include "sensor_msgs/PointCloud2.h"
-#include "geometry_msgs/PoseStamped.h"
+#include <ros/ros.h>
+#include <std_msgs/Header.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <stdarg.h>
 
 namespace avt_341 {
@@ -139,6 +142,11 @@ namespace avt_341 {
 
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
+            bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud,
+                                 const std::string &target_frame, const ros::Time& target_time, const std::string &fixed_frame);
+
+            bool transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame);
+
             template<typename... Args> inline void log_debug(const char * format, Args... args){
               ROS_DEBUG(format, args...);
             }
@@ -153,6 +161,10 @@ namespace avt_341 {
 
             template<typename... Args> inline void log_error(const char * format, Args... args){
               ROS_ERROR(format, args...);
+            }
+
+            template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
+              ROS_INFO_THROTTLE(period, format, args...);
             }
 
             inline const char* get_name() const{ return ros::this_node::getName().c_str(); }
@@ -182,15 +194,21 @@ namespace avt_341 {
 #else
 
 
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/header.hpp"
-#include "tf2_ros/transform_listener.h"
-#include "tf2_ros/buffer.h"
-#include "tf2_ros/transform_broadcaster.h"
-#include "geometry_msgs/msg/pose_stamped.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/header.hpp>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#ifdef ROS_HUMBLE
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#else
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#endif
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <stdarg.h>
-#include "geometry_msgs/msg/transform_stamped.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 namespace avt_341 {
   namespace node {
@@ -314,6 +332,11 @@ namespace avt_341 {
       }
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
 
+      bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud,
+                           const std::string &target_frame, const rclcpp::Time &target_time, const std::string &fixed_frame);
+
+      bool transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame);
+
       template<typename... Args> inline void log_info(const char * format, Args... args){
         RCLCPP_INFO(node_->get_logger(), format, args...);
       }
@@ -324,6 +347,10 @@ namespace avt_341 {
 
       template<typename... Args> inline void log_error(const char * format, Args... args){
         RCLCPP_ERROR(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
+        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);
       }
 
       inline const char* get_name() const{ return node_->get_name(); }

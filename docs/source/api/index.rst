@@ -1,6 +1,7 @@
 API
 ===
 
-.. doxygenclass:: avt_341::planning::DwaCost
+.. toctree::
+  :maxdepth: 1
 
-.. doxygenclass:: avt_341::planning::DwaPlanner
+  dwa/index.rst

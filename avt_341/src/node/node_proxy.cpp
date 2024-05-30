@@ -1,4 +1,4 @@
-#include "avt_341/node/node_proxy.h"
+#include <avt_341/node/node_proxy.h>
 
 #ifdef ROS_1
 
@@ -46,6 +46,27 @@ bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, senso
 		tf_buffer_->transform(in_cloud, out_cloud, target_frame, ros::Duration(0.2));
 	} catch (const tf2::TransformException & ex) {
 		log_warning("Could not transform cloud %s to %s: %s", in_cloud.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+		return false;
+	}
+   return true;
+}
+
+bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud,
+                                const std::string &target_frame, const ros::Time& target_time, const std::string &fixed_frame) {
+	try {
+		tf_buffer_->transform(in_cloud, out_cloud, target_frame, target_time, fixed_frame, ros::Duration(0.2));
+	} catch (const tf2::TransformException & ex) {
+		log_warning("Could not transform cloud %s to %s: %s", in_cloud.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+		return false;
+	}
+   return true;
+}
+
+bool NodeProxy::transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame) {
+	try {
+		tf_buffer_->transform(in_pose, out_pose, target_frame, ros::Duration(0.2));
+	} catch (const tf2::TransformException & ex) {
+		log_warning("Could not transform pose %s to %s: %s", out_pose.header.frame_id.c_str(), target_frame.c_str(), ex.what());
 		return false;
 	}
    return true;
@@ -135,6 +156,31 @@ void NodeProxy::spin_some() {
         return true;
       } catch (const tf2::TransformException & ex) {
         RCLCPP_WARN(node_->get_logger(), "Could not transform cloud %s to %s: %s", in_cloud.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+        out_cloud = in_cloud;
+        return false;
+      }
+    }
+
+    bool NodeProxy::transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, 
+                                    const std::string &target_frame, const rclcpp::Time &target_time, const std::string &fixed_frame) {
+      try {
+        tf_buffer_->transform(in_cloud, out_cloud, target_frame, tf2_ros::fromMsg(target_time), fixed_frame, tf2::durationFromSec(0.2));
+//        tf2::doTransform(in_cloud, out_cloud, lookup_transform(target_frame, in_cloud.header.frame_id));
+        return true;
+      } catch (const tf2::TransformException & ex) {
+        RCLCPP_WARN(node_->get_logger(), "Could not transform cloud %s to %s: %s", in_cloud.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+        out_cloud = in_cloud;
+        return false;
+      }
+    }
+
+    bool NodeProxy::transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame) {
+      try {
+        out_pose = tf_buffer_->transform(in_pose, target_frame, tf2::durationFromSec(0.2));
+        return true;
+      } catch (const tf2::TransformException & ex) {
+        RCLCPP_WARN(node_->get_logger(), "Could not transform pose %s to %s: %s", in_pose.header.frame_id.c_str(), target_frame.c_str(), ex.what());
+        out_pose = in_pose;
         return false;
       }
     }
