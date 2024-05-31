@@ -81,8 +81,8 @@ def tf2_nodes():
                 'odom_topic': 'avt_341/odometry',
             }],
             remappings=[
-                ("/mrzr/vectornav/GPS", "/vectornav/GPS"),
-                ("/mrzr/vectornav/Odom", "/vectornav/Odom"),
+                ("/mrzr/vectornav/gnss", "/vectornav/gnss"),
+                ("/mrzr/vectornav/pose", "/vectornav/pose"),
                 ("/mrzr/steering_status", "/steering_status")
             ]
         )

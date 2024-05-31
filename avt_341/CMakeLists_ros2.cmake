@@ -101,6 +101,21 @@ add_subdirectory(src/planning/local/dwa/ros2)
 add_subdirectory(src/planning/global/global_path/ros2)
 add_subdirectory(src/daq/data_acquisition/ros2)
 
+# MPC Helpers
+add_executable(veh_converter_node
+src/planning/local/veh_converter_node.cpp
+src/node/node_proxy.cpp
+)
+ament_target_dependencies(veh_converter_node ${dependencies})
+target_link_libraries(veh_converter_node ${link_libs})
+
+add_executable(obstacle_processor_node
+src/planning/local/obstacles_processor_node.cpp
+src/node/node_proxy.cpp
+)
+ament_target_dependencies( obstacle_processor_node ${dependencies} )
+target_link_libraries( obstacle_processor_node ${link_libs} )
+
 # Simulation test node
 add_executable(${PROJECT_NAME}_sim_test_node
     "src/node/clock_publisher.cpp"
@@ -201,14 +216,12 @@ install(DIRECTORY
         DESTINATION share/${PROJECT_NAME}
         )
 
-if (MPC)
-        install(TARGETS
-                avt_341_mpc_planner_node
-                veh_converter_node
-                obstacle_processor_node
-                EXPORT export_${PROJECT_NAME}
-                DESTINATION lib/${PROJECT_NAME})
-endif ()
+# MPC Helpers
+install(TARGETS
+        veh_converter_node
+        obstacle_processor_node
+        EXPORT export_${PROJECT_NAME}
+        DESTINATION lib/${PROJECT_NAME})
 
 install(
         DIRECTORY include/
