@@ -127,7 +127,7 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
     simulation_mode = LaunchConfiguration('simulation_mode').perform(context)
     local_planner_method = LaunchConfiguration('local_planner_method').perform(context)
 
-    if local_planner_method == 'dwa':
+    if local_planner_method == 'dwa' or local_planner_method == 'mpc':
         return [Node(
                     package='avt_341',
                     executable='avt_341_speed_control_node',
@@ -182,6 +182,9 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                     executable='obstacle_processor_node',
                     name='obstacle_processor_node',
                     output='screen',
+                    #remappings=[
+                    #    ('avt_341/occupancy_grid', 'avt_341/local_grid'),
+                    #],
                     parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
             # Vehicle Converter

@@ -48,6 +48,12 @@ def tf2_nodes():
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
+            name='mrzr_odom_link_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "odom", "mrzr/odom"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
             name='master_link_publisher',
             arguments=["0", "0", "0", "0", "0", "0", "base_link", "mrzr/base_link"]
         ),
@@ -192,7 +198,7 @@ def launch_setup(context, *args, **kwargs):
                 "use_sim_time":	                use_sim_time.perform(context),
                 "auto_launch_rviz":	            auto_launch_rviz.perform(context),
                 "display_type":	                "rviz",
-                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/nato_mission_points.yaml",
+                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml",
                 "robot_description_file":	    f"{avt_341_dir}/config/MRZR.urdf",
                 "robot_description_veh2_file":	"",
                 "robot_description_veh3_file":	"",
@@ -206,7 +212,7 @@ def launch_setup(context, *args, **kwargs):
                 "rviz_config":	                f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
                 "rviz_mult_config":	            f"{avt_341_dir}/rviz/avt_341_multi_vehicle.rviz",
                 "use_lidar_obstacle_detector":  "True",
-                "local_planner_method":	        "rcc",
+                "local_planner_method":	        "mpc",
                 "waypoint_mode":	            waypoint_mode.perform(context),
                 "simulation_mode":	            simulation_mode.perform(context),
                 "use_global_path":	            use_global_path.perform(context),

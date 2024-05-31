@@ -125,64 +125,13 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base_link:
-          Value: true
-        map:
-          Value: true
-        mrzr/base_link:
-          Value: true
-        mrzr/front_diff_link:
-          Value: true
-        mrzr/lidar:
-          Value: true
-        mrzr/odom:
-          Value: true
-        mrzr/os_lidar:
-          Value: true
-        mrzr/os_sensor:
-          Value: true
-        mrzr/rear_diff_link:
-          Value: true
-        mrzr/vbox_link:
-          Value: true
-        mrzr/vectornav_link:
-          Value: true
-        mrzr/vlp16_top_link:
-          Value: true
-        nad83:
-          Value: true
-        odom:
-          Value: true
-        os_sensor:
-          Value: true
       Marker Scale: 15
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          mrzr/base_link:
-            mrzr/front_diff_link:
-              mrzr/rear_diff_link:
-                {}
-              mrzr/vbox_link:
-                {}
-              mrzr/vectornav_link:
-                mrzr/odom:
-                  {}
-              mrzr/vlp16_top_link:
-                mrzr/os_lidar:
-                  {}
-                mrzr/os_sensor:
-                  mrzr/lidar:
-                    {}
-                  os_sensor:
-                    {}
-          nad83:
-            {}
-          odom:
-            {}
+        {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
@@ -379,6 +328,21 @@ Visualization Manager:
         Value: /mrzr/avt_341/local_grid_updates
       Use Timestamp: false
       Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/PointStamped
+      Color: 204; 41; 204
+      Enabled: true
+      History Length: 1
+      Name: MPC Goal
+      Radius: 1
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /mrzr/avt_341/mpc_goalPoint
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -462,5 +426,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1908
-  X: 3088
-  Y: 588
+  X: 3120
+  Y: 620

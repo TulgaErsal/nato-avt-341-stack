@@ -11,8 +11,6 @@
 
 	<link name="vbox_link" />
 
-    <link name="odom" />
-
     <link name="os_lidar" />
 
     <link name="os_sensor" />
@@ -54,12 +52,6 @@
         <origin xyz="-1.28566 0.0911805 1.71814" rpy="0.009444903230138307 0.30068682297650656 -0.0021757396093236617"/>
         <parent link="front_diff_link" />  
         <child link="vlp16_top_link" />  
-    </joint>
-	
-	<joint name="odom_to_vectornav" type="fixed">
-        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-        <parent link="vectornav_link" />  
-        <child link="odom" />  
     </joint>
 
     <joint name="vlp16_top_to_os_lidar" type="fixed">

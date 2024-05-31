@@ -126,9 +126,7 @@ int main(int argc, char *argv[])
   std::string display_type;
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
-  float dilation_factor;
-  bool dubins_smoothing;
-  float dubins_radius;
+  float dilation_factor, max_sep;
   std::string map_topic;
 
   std::vector<float> goal;
@@ -151,8 +149,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
   n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
-  n->get_parameter("~dubins_smoothing", dubins_smoothing, false);
-  n->get_parameter("~dubins_radius", dubins_radius, 2.0f);
+  n->get_parameter("~max_separation", max_sep, 1.0f);
   n->get_parameter("~use_global_path", use_global_path, true);
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
 
@@ -232,7 +229,7 @@ int main(int argc, char *argv[])
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
   avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation,
-                                         search_diagonals, los_max_iterations, los_break_on_first);//, dubins_smoothing, dubins_radius);
+                                         search_diagonals, los_max_iterations, los_break_on_first);
 
   if (dilation_factor > 0.0)
   {
@@ -325,9 +322,30 @@ int main(int argc, char *argv[])
         if (d<goal_dist || ros_path.poses.size()>1) {
           int cp =current_waypoint;
           while (cp<current_waypoints.poses.size()-1){
+            avt_341::utils::vec2 wp1(static_cast<float>(current_waypoints.poses[cp].pose.position.x),
+                                     static_cast<float>(current_waypoints.poses[cp].pose.position.y));
+            avt_341::utils::vec2 wp2(static_cast<float>(current_waypoints.poses[cp+1].pose.position.x),
+                                     static_cast<float>(current_waypoints.poses[cp+1].pose.position.y));
+            avt_341::utils::vec2 wp_diff = wp2-wp1;
+            avt_341::utils::vec2 wp_diff_norm = wp_diff;
+            wp_diff_norm.normalize();
+            if(wp_diff.mag() > max_sep) {
+              // Add intermediate waypoints
+              for(int d = max_sep; d < wp_diff.mag(); d+=max_sep){
+                avt_341::msg::PoseStamped pose;
+                pose.pose.position.x = wp1.x + d*wp_diff_norm.x;
+                pose.pose.position.y = wp1.y + d*wp_diff_norm.y;
+                pose.pose.position.z = 0.0f;
+                pose.pose.orientation.w = 1.0f;
+                pose.pose.orientation.x = 0.0f;
+                pose.pose.orientation.y = 0.0f;
+                pose.pose.orientation.z = 0.0f;
+                ros_path.poses.push_back(pose);
+              }
+            }
             avt_341::msg::PoseStamped pose;
-            pose.pose.position.x = static_cast<float>(current_waypoints.poses[cp+1].pose.position.x);
-            pose.pose.position.y = static_cast<float>(current_waypoints.poses[cp+1].pose.position.y);
+            pose.pose.position.x = wp2.x;
+            pose.pose.position.y = wp2.y;
             pose.pose.position.z = 0.0f;
             pose.pose.orientation.w = 1.0f;
             pose.pose.orientation.x = 0.0f;
