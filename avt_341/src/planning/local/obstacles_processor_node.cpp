@@ -3,6 +3,8 @@
 #include "avt_341/node/node_proxy.h"
 
 // Global variables
+std::shared_ptr<avt_341::node::NodeProxy> node;
+
 int max_obstacle_number;
 
 double max_speed;
@@ -12,6 +14,8 @@ double prediction_time_horizon;
 double axle_distance_front;
 
 double obstacle_size_meters = 0.0;
+
+bool viz = false;
 
 avt_341::msg::Time init_time;
 
@@ -24,6 +28,8 @@ avt_341::msg::Odometry vehicle_odom_input;
 avt_341::msg::OccupancyGrid occupancy_grid_input;
 
 std::vector<double> obstacles;
+
+std::vector<avt_341::msg::Marker> obstacle_markers;
 
 void callback_veh(avt_341::msg::OdometryPtr veh) {
     vehicle_odom_input = *veh;
@@ -50,6 +56,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     avt_341::msg_tf::Matrix3x3 rotation_matrix;
     obstacle_size_meters = grid.info.resolution;
     obstacles.clear();
+    obstacle_markers.clear();
     int obstacle_number = 0;
     for (int i = 0; i < grid.info.height; i++) {
         for (int j = 0; j < grid.info.width; j++) {
@@ -87,6 +94,25 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                     if (int(obstacles.size() / 2) > max_obstacle_number) {
                         std::cerr << "Number of obstacles exceeds limit. Consider increasing max_obstacle_number.\n";
                     }
+                    if (viz) {
+                        avt_341::msg::Marker obs_marker;
+                        obs_marker.header.frame_id = "map";
+                        obs_marker.header.stamp = node->get_stamp();
+                        obs_marker.id = obstacle_number;
+                        obs_marker.type = avt_341::msg::Marker::CUBE;
+                        obs_marker.action = avt_341::msg::Marker::ADD;
+                        obs_marker.scale.x = obstacle_size_meters;
+                        obs_marker.scale.y = obstacle_size_meters;
+                        obs_marker.scale.z = obstacle_size_meters;
+                        obs_marker.color.a = 1.0;
+                        obs_marker.color.r = 1.0;
+                        obs_marker.color.g = 0.0;
+                        obs_marker.color.b = 0.0;
+                        obs_marker.pose.position.x = point[0];
+                        obs_marker.pose.position.y = point[1];
+                        obs_marker.pose.position.z = 0.0;
+                        obstacle_markers.push_back(obs_marker);
+                    }
                 }
             }
         }
@@ -95,7 +121,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
 }
 
 int main(int argc, char* argv[]) {
-    auto node = avt_341::node::init_node(argc, argv, "occupancy_processor_node");
+    node = avt_341::node::init_node(argc, argv, "occupancy_processor_node");
     double rate = 10.0;
     avt_341::node::Rate ros_rate(rate);
 
@@ -109,12 +135,14 @@ int main(int argc, char* argv[]) {
         node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, callback_obs);
     auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, callback_veh);
     auto obstacles_pub = node->create_publisher<avt_341::msg::Obstacles>("avt_341/obstacles", 1);
+    auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
 
     // Load parameters
     node->get_parameter("~mpc_obstacles_max_obstacle_number", max_obstacle_number, 1000);
     node->get_parameter("~mpc_bounds_longitudinal_speed_max", max_speed, 10.0);
     node->get_parameter("~mpc_solver_time_span", prediction_time_horizon, 2.0);
     node->get_parameter("~mpc_vehicle_axle_distance_front", axle_distance_front, 1.5521);
+    node->get_parameter("~mpc_obstacles_vizualize", viz, false);
 
     int count = 0;
 
@@ -127,6 +155,12 @@ int main(int argc, char* argv[]) {
 
             // Publish obstacle message
             obstacles_pub->publish(obs_msg);
+
+            if (viz) {
+                avt_341::msg::MarkerArray obs_marker_msg;
+                obs_marker_msg.markers = obstacle_markers;
+                obstacles_marker_pub->publish(obs_marker_msg);
+            }
 
             count++;
         }
