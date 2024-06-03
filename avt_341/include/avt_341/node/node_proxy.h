@@ -78,7 +78,7 @@ namespace avt_341 {
         template<typename MessageT>
         using SubscriberPtr = std::shared_ptr<Subscriber<MessageT>>;
 
-        inline double seconds_from_time(std_msgs::Time t){
+        inline double seconds_from_time(ros::Time t){
             return t.toSec();
         }
 

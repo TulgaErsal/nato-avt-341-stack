@@ -31,8 +31,8 @@ void NodeProxy::initialize_tf_listener() {
 
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-  tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
-  tf_static_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
+  tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>();
+  tf_static_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>();
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
@@ -121,7 +121,7 @@ void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::st
     initialize_tf_listener();
   }
 
-  geometry_msgs::msg::TransformStamped tf_msg;
+  geometry_msgs::TransformStamped tf_msg;
   tf_msg.header.frame_id = parent_frame;
   tf_msg.child_frame_id = child_frame;
 

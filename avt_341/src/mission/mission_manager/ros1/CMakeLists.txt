@@ -13,7 +13,8 @@ add_executable(
   "../task_encircle.cpp"
   "../task_follow.cpp"
   "../task_moveto.cpp"
-  "../task_wait_until.cpp")
+  "../task_wait_until.cpp"
+  "../task_pathfollow.cpp")
 add_dependencies(avt_341_mission_manager_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(avt_341_mission_manager_node ${PROJECT_NAME}_proxy)
 install(
