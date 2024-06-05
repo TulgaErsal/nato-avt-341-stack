@@ -182,9 +182,9 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                     executable='obstacle_processor_node',
                     name='obstacle_processor_node',
                     output='screen',
-                    #remappings=[
-                    #    ('avt_341/occupancy_grid', 'avt_341/local_grid'),
-                    #],
+                    remappings=[
+                        ('avt_341/occupancy_grid', 'avt_341/local_grid'),
+                    ],
                     parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
             # Vehicle Converter
@@ -192,6 +192,13 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 package='avt_341',
                 executable='veh_converter_node',
                 name='avt_341_veh_converter_node',
+                output='screen'
+            ),
+            # MPC ROS1 Planner
+            Node(
+                package='avt_341',
+                executable='mpc_planner_ros1.sh',
+                name='local_mpc_planner_node',
                 output='screen'
             )
         ]

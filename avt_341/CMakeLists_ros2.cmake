@@ -223,6 +223,11 @@ install(TARGETS
         EXPORT export_${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
+# MPC ROS1 Launcher
+install(
+    PROGRAMS "launch/mpc_planner_ros1.sh"
+    DESTINATION lib/${PROJECT_NAME})
+
 install(
         DIRECTORY include/
         DESTINATION include
