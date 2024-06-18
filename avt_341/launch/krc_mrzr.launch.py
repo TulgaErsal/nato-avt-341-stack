@@ -175,6 +175,19 @@ def launch_setup(context, *args, **kwargs):
             ]
         ),
 
+        # Occupied cells vizualization
+        Node(
+            package='mrzr_tools',
+            executable='compressed_occupancy_viz_node.py',
+            name='compressed_grid_viz_node',
+            namespace='/mrzr',
+            remappings=[
+                ("map_in", "avt_341/occupied_cells"),
+                ("markers_out", "avt_341/occupied_cells_markers")
+            ]
+        ),
+
+
         # Controller
         launch.actions.IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(mrzr_tools_dir, 'launch', 'stack_controller.launch.py')),
