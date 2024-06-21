@@ -13,12 +13,12 @@ roi_min_x: -5.0                                                 # Minimum x for 
 roi_min_y: -30.0                                                # Minimum y for obstacle detection [m]
 roi_min_z: -2.5                                                 # Minimum z for obstacle detection [m]
 
-body_max_x: 0.3                                                 # Maximum x for vehicle body bounding box, to exclude from obstacle detection [m]
-body_max_y: 0.8                                                 # Maximum y for vehicle body bounding box, to exclude from obstacle detection [m]
+body_max_x: 1.3                                                 # Maximum x for vehicle body bounding box, to exclude from obstacle detection [m]
+body_max_y: 1.0                                                 # Maximum y for vehicle body bounding box, to exclude from obstacle detection [m]
 body_max_z: 2.0                                                 # Maximum z for vehicle body bounding box, to exclude from obstacle detection [m]
 
 body_min_x: -2.2                                                # Minimum x for vehicle body bounding box, to exclude from obstacle detection [m]
-body_min_y: -0.8                                                # Minimum y for vehicle body bounding box, to exclude from obstacle detection [m]
+body_min_y: -1.0                                                # Minimum y for vehicle body bounding box, to exclude from obstacle detection [m]
 body_min_z: -0.3                                                # Minimum z for vehicle body bounding box, to exclude from obstacle detection [m]
 
 ground_threshold: 0.3                                           # [UNUSED]
