@@ -7,6 +7,6 @@ local_grid_width: 50.0                                                        # 
 local_grid_height: 50.0                                                       # Height of the occupancy grid [m]
 local_grid_resolution: 0.5                                                    # Resolution of the occupancy grid [m]
 dilate_local_grid: True                                                       # Enable dilation of occupancy
-local_grid_dilate_x: 1.5                                                      # Dilation amount in x direction
-local_grid_dilate_y: 1.5                                                      # Dilation amount in y direction
+local_grid_dilate_x: 2.0                                                      # Dilation amount in x direction
+local_grid_dilate_y: 2.0                                                      # Dilation amount in y direction
 local_grid_rate: 5.0                                                          # Publish rate
