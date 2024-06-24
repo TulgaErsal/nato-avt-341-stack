@@ -40,4 +40,5 @@ mpc_weight_longitudinal_jerk: 1.0
 
 # Obstacles
 mpc_obstacles_max_obstacle_number: 1000
+mpc_obstacles_angle: 1.571 # 90 degrees l/r around vehicle
 mpc_obstacles_vizualize: True

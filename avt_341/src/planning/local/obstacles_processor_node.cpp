@@ -15,6 +15,8 @@ double axle_distance_front;
 
 double obstacle_size_meters = 0.0;
 
+double obstacles_angle = 0.707107;
+
 bool viz = false;
 
 avt_341::msg::Time init_time;
@@ -53,7 +55,18 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     double x_vehicle = vehicle_odom.pose.pose.position.x + axle_distance_front * cos(yaw);  // x position of front axle
     double y_vehicle = vehicle_odom.pose.pose.position.y + axle_distance_front * sin(yaw);  // y position of front axle
 
+    // Rotation matrix
     avt_341::msg_tf::Matrix3x3 rotation_matrix;
+    rotation_matrix[0] = {cos(yaw), -sin(yaw), 0.0};
+    rotation_matrix[1] = {sin(yaw), cos(yaw), 0.0};
+    rotation_matrix[2] = {0.0, 0.0, 1.0};
+
+    // Observational region determined by right/left vectors
+    avt_341::msg_tf::Vector3 left_vector = {cos(obstacles_angle), sin(obstacles_angle), 0};  // 45deg to left
+    avt_341::msg_tf::Vector3 right_vector = {cos(obstacles_angle), -sin(obstacles_angle), 0}; // 45deg to right
+    auto left_boundary_vector = rotation_matrix * left_vector;
+    auto right_boundary_vector = rotation_matrix * right_vector;
+
     obstacle_size_meters = grid.info.resolution;
     obstacles.clear();
     obstacle_markers.clear();
@@ -64,17 +77,6 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                 std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
                                              (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
                 avt_341::msg_tf::Vector3 obstacle = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
-
-                // Rotation matrix
-                rotation_matrix[0] = {cos(yaw), -sin(yaw), 0.0};
-                rotation_matrix[1] = {sin(yaw), cos(yaw), 0.0};
-                rotation_matrix[2] = {0.0, 0.0, 1.0};
-
-                // Observational region determined by right/left vectors
-                avt_341::msg_tf::Vector3 left_vector = {0.707107, 0.707107, 0};  // 45deg to left
-                avt_341::msg_tf::Vector3 right_vector = {0.707107, -0.707107, 0}; // 45deg to right
-                auto left_boundary_vector = rotation_matrix * left_vector;
-                auto right_boundary_vector = rotation_matrix * right_vector;
 
                 // Add obstacle if it is within range of prediction time horizon driving distance or within observation region
                 if (obstacle.length() > (prediction_time_horizon + 0.1) * max_speed
@@ -142,6 +144,7 @@ int main(int argc, char* argv[]) {
     node->get_parameter("~mpc_bounds_longitudinal_speed_max", max_speed, 10.0);
     node->get_parameter("~mpc_solver_time_span", prediction_time_horizon, 2.0);
     node->get_parameter("~mpc_vehicle_axle_distance_front", axle_distance_front, 1.5521);
+    node->get_parameter("~mpc_obstacles_angle", obstacles_angle, 0.707107);
     node->get_parameter("~mpc_obstacles_vizualize", viz, false);
 
     int count = 0;
