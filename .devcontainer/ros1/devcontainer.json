@@ -11,6 +11,10 @@
     "forwardPorts": [
         11311
     ],
+    "containerEnv": {
+        "SHELL": "/bin/bash"
+    },
+    "containerUser": "avt341",
     "workspaceMount": "source=${localWorkspaceFolder},target=/opt/ros/ws/src/TulgaErsal/nato-avt-341-stack,type=bind",
     "workspaceFolder": "/opt/ros/ws/src/TulgaErsal/nato-avt-341-stack"
 }
