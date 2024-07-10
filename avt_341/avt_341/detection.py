@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shutil import copy
 from typing import List
 
 from ultralytics import YOLO
@@ -13,6 +14,7 @@ class YoloModel:
 
     def __init__(self,
                  base_model_name: str,
+                 model_names: Path,
                  working_directory: Path,
                  training_size: int = 640,
                  training_device: str = "cpu",
@@ -31,7 +33,7 @@ class YoloModel:
 
         self._base_model_name: str = base_model_name
         """base_model_name (str): Name of the base YOLO model to use for warm-starting training."""
-
+        self._model_names: str = model_names
         self._working_directory: Path = working_directory
         self._base_model_path: Path = Path(self._working_directory,
                                            self._base_model_name)
@@ -51,6 +53,19 @@ class YoloModel:
         self._validate_device(export_device)
         self._export_device: str = export_device
 
+    def _copy_names_file(self: YoloModel) -> None:
+
+        exported_model: Path = Path(
+            self._working_directory,
+            f"{self._base_model_path.with_suffix('.torchscript')}")
+
+        copy(
+            self._model_names,
+            Path(
+                exported_model.parent,
+                f"{exported_model.stem}-{self._export_device}-{self._export_size}x{self._export_size}.names"
+            ))
+
     def export(self: YoloModel) -> None:
         """Export the loaded model to a TorchScript file."""
 
@@ -59,6 +74,7 @@ class YoloModel:
                                   device=self._export_device)
 
         self._rename_exported_model()
+        self._copy_names_file()
 
     def _rename_exported_model(self) -> None:
         """Rename the TorchScript file exported by the Ultralytics YOLOv8 export

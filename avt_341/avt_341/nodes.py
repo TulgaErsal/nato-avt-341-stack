@@ -41,6 +41,10 @@ class YoloGym(AvtNode):
             "model.base").get_parameter_value().string_value
         self._base_model_path = self._get_model(self._base_model)
 
+        self.declare_parameter("model.names", "")
+        self._model_names = self.get_parameter(
+            "model.names").get_parameter_value().string_value
+
         self.declare_parameter("training.size", 640)
         self._training_size = self.get_parameter(
             "training.size").get_parameter_value().integer_value
@@ -60,11 +64,12 @@ class YoloGym(AvtNode):
     def _initialize(self: YoloGym) -> None:
 
         self._yolo_model = YoloModel(str(self._base_model_path),
-                                        self._base_model_path.parent,
-                                        training_size=self._training_size,
-                                        training_device=self._training_device,
-                                        export_size=self._export_size,
-                                        export_device=self._export_device)
+                                     self._model_names,
+                                     self._base_model_path.parent,
+                                     training_size=self._training_size,
+                                     training_device=self._training_device,
+                                     export_size=self._export_size,
+                                     export_device=self._export_device)
 
     def _create_timers(self: YoloGym) -> None:
 
@@ -74,7 +79,7 @@ class YoloGym(AvtNode):
     def _get_model(self: YoloGym, model: str) -> Path:
 
         return Path(get_package_share_directory('avt_341')) / Path(
-            f"data/yolo/{model}.pt")
+            f"data/detection/models/{model}.pt")
 
     def _oneshot_timer_callback(self: YoloGym) -> None:
 
