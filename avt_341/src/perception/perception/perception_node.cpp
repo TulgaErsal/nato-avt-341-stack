@@ -138,8 +138,8 @@ int main(int argc, char *argv[]) {
   n->initialize_tf_listener();
 
   float grid_width, grid_height, visualization_range;
-  n->get_parameter("~grid_width", grid_width, 200.0f);
-  n->get_parameter("~grid_height", grid_height, 200.0f);
+  n->get_parameter("/grid_width", grid_width, 200.0f);
+  n->get_parameter("/grid_height", grid_height, 200.0f);
   grid.SetSize(grid_width,grid_height);
 
   float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;

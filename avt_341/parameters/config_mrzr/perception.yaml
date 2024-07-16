@@ -2,15 +2,13 @@
 # ======================================================================================================================
 use_elevation: False                      # To use elevation or slope value when making occupancy grid based on heightmap.
 slope_threshold: 0.5                      # Threshold within which next waypoint selected.
-grid_height: 2290.0                       # Grid height.
-grid_width: 2955.0                        # Grid width.
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
-grid_res: 1.0                             # Grid resolution in meters.
+grid_res: 0.5                             # Grid resolution in meters.
 overhead_clearance: 5.0                   # Overhead clearance from vehicle after which lidar points ignored
 grid_dilate: True                        # Whether or not to apply dilation.
-grid_dilate_x: 0.5                        # Amount of dilation in x.
-grid_dilate_y: 0.5                        # Amount of dilation in y.
+grid_dilate_x: 0.75                        # Amount of dilation in x.
+grid_dilate_y: 0.75                        # Amount of dilation in y.
 grid_dilate_proportion: 0.8               # Proportion of original grid cell to dilate with.
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
 cull_lidar_dist: 100.0                    # Maximum distance used to cull lidar points
