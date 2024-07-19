@@ -99,6 +99,7 @@ add_subdirectory(src/planning/local/local_planner/ros2)
 add_subdirectory(src/planning/local/potential_field/ros2)
 add_subdirectory(src/planning/local/dwa/ros2)
 add_subdirectory(src/planning/global/global_path/ros2)
+add_subdirectory(src/planning/global/pf_global_path/ros2)
 add_subdirectory(src/daq/data_acquisition/ros2)
 
 # MPC Helpers

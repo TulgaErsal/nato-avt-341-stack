@@ -8,4 +8,4 @@ eta: 7.5                              # Repulsive potential coeff
 cutoff_dist: 40.0                     # obstacles farther than this are ignored
 inner_cutoff_dist: 0.0                # Obstacles closer than this are ignored
 motion_model_res: 0.25                # Step size for the motion model in meters
-grid_topic: 'avt_341/local_grid'      # Occupancy grid topic
+grid_topic: 'avt_341/occupancy_grid'      # Occupancy grid topic

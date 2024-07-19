@@ -107,6 +107,7 @@ add_subdirectory(src/planning/local/local_planner/ros1)
 add_subdirectory(src/planning/local/potential_field/ros1)
 add_subdirectory(src/planning/local/dwa/ros1)
 add_subdirectory(src/planning/global/global_path/ros1)
+add_subdirectory(src/planning/global/pf_global_path/ros1)
 
 # Simulation test node
 add_executable(${PROJECT_NAME}_sim_test_node

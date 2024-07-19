@@ -148,6 +148,36 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                     ],
         )]
 
+def evaluate_global_planner(params, context, *args, **kwargs):
+    display_type = LaunchConfiguration('display_type').perform(context)
+    global_planner_method = LaunchConfiguration('global_planner_method').perform(context)
+
+    if global_planner_method == 'a_star':
+        return [Node(
+                    package='avt_341',
+                    executable='avt_341_global_path_node',
+                    name='avt_341_global_path_node',
+                    output='screen',
+                    parameters=[
+                        {
+                            'display': display_type,
+                            '/waypoints_x': LaunchConfiguration('waypoints_x'),
+                            '/waypoints_y': LaunchConfiguration('waypoints_y'),
+                            '/is_empty_waypoints': LaunchConfiguration('is_empty_waypoints'),
+                        },
+                        {k: LaunchConfiguration(f'global_planner_{k}') for k in params['global_planner'].keys()}],
+                )]
+    else: # global_planner_method == 'pf':
+        return [Node(
+                package='avt_341',
+                executable='avt_341_pf_global_path_node',
+                name='pf_global_path_node',
+                output='screen',
+                parameters=[
+                    {k: LaunchConfiguration(f'pf_global_planner_{k}') for k in params['pf_global_planner'].keys()}
+                ],
+        )]
+
 def evaluate_local_planner(params, context, *args, **kwargs):
     display_type = LaunchConfiguration('display_type').perform(context)
     local_planner_method = LaunchConfiguration('local_planner_method').perform(context)
@@ -237,6 +267,7 @@ def launch_setup(context, *args, **kwargs):
     waypoint_mode = LaunchConfiguration('waypoint_mode')                                # Set to true for waypoint following mode
     simulation_mode = LaunchConfiguration('simulation_mode')                            # Set to true for UE simulation
     use_global_path = LaunchConfiguration('use_global_path')                            # Set to true to use global path, else local path follows points directly
+    global_planner_method = LaunchConfiguration('global_planner_method')                # Global planner method. Values = ["a_star", "pf"]
 
     # Vehicle index
     idx = int(veh_index.perform(context))
@@ -337,20 +368,7 @@ def launch_setup(context, *args, **kwargs):
         *evaluate_speed_controller(params, context=context, args=args, kwargs=kwargs),
 
         # Global Planner
-        Node(
-            package='avt_341',
-            executable='avt_341_global_path_node',
-            name='avt_341_global_path_node',
-            output='screen',
-            parameters=[
-                {
-                    'display': display_type,
-                    '/waypoints_x': LaunchConfiguration('waypoints_x'),
-                    '/waypoints_y': LaunchConfiguration('waypoints_y'),
-                    '/is_empty_waypoints': LaunchConfiguration('is_empty_waypoints'),
-                },
-                {k: LaunchConfiguration(f'global_planner_{k}') for k in params['global_planner'].keys()}],
-        ),
+        *evaluate_global_planner(params, context=context, args=args, kwargs=kwargs),
 
         # Local Planner
         *evaluate_local_planner(params, context=context, args=args, kwargs=kwargs),
@@ -437,7 +455,8 @@ def generate_launch_description():
                             "local_planner_method":         "rcc",
                             "waypoint_mode":                "False",
                             "simulation_mode":              "False",
-                            "use_global_path":              "True"
+                            "use_global_path":              "True",
+                            "global_planner_method":        "a_star",
     }
     launch_args = []
     for arg,default in launch_arg_defaults.items():
