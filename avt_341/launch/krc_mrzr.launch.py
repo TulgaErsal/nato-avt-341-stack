@@ -16,10 +16,10 @@ from launch_ros.actions import Node, SetParameter
 
 # Global Params
 global_params = {
-    '/map_origin_x': 7885721.697, #7885721.697, #7885314.3400268555,
-    '/map_origin_y': 265528.894, #265528.894, #264132.3708496094
-    '/grid_height': 877.0, #877.0 #2290.0                       # Grid height.
-    '/grid_width': 759.0 #759.0 #2955.0                        # Grid width.
+    '/map_origin_x': 7885314.3400268555, #7885721.697, #7885314.3400268555,
+    '/map_origin_y': 264132.3708496094, #265528.894, #264132.3708496094
+    '/grid_height': 2290.0, #877.0 #2290.0                       # Grid height.
+    '/grid_width': 2955.0 #759.0 #2955.0                        # Grid width.
 }
 
 class TernarySubstitution(Substitution):

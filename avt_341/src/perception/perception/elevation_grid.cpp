@@ -169,6 +169,41 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
   return grid;
 }
 
+avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double width, double height, bool is_segmentation) {
+    double local_x_origin = x - width/2.0;
+    double local_y_origin = y - height/2.0;
+    int local_nx = (int)(width/res_);
+    int local_ny = (int)(height/res_);
+    int xi_min = std::max(0,(int)((local_x_origin-llx_)/res_));
+    int yi_min = std::max(0,(int)((local_y_origin-lly_)/res_));
+    int xi_max = std::min(nx_,xi_min+local_nx);
+    int yi_max = std::min(ny_,yi_min+local_ny);
+
+    avt_341::msg::OccupancyGrid grid;
+    grid.header.frame_id = "map";
+    grid.info.resolution = res_;
+    grid.info.width = local_nx;
+    grid.info.height = local_ny;
+    grid.info.origin.position.x = local_x_origin;
+    grid.info.origin.position.y = local_y_origin;
+    grid.info.origin.orientation.w = 1.0;
+    grid.info.origin.orientation.x = 0.0;
+    grid.info.origin.orientation.y = 0.0;
+    grid.info.origin.orientation.z = 0.0;
+
+    grid.data.resize(local_nx*local_ny);
+
+    int c = 0;
+    for (int j = yi_min; j < yi_max; j++) {
+        for (int i = xi_min; i < xi_max; i++) {
+            //grid.data[nx_*j+i] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
+            grid.data[c++] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
+        }
+    }
+
+    return grid;
+}
+
 bool ElevationGrid::PastSlopeThreshold(const Cell &cell) const {
   return cell.height()/res_ > thresh_;
 }
