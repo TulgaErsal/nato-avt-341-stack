@@ -41,6 +41,7 @@ set(AVT341_SOURCE_FILES
     "control/control"
     "control/speed_control"
     "control/speed_control_test"
+    "daq/data_acquisition"
     "mission/formation_control"
     "mission/mission_manager"
     "perception/map_publisher"
@@ -49,9 +50,12 @@ set(AVT341_SOURCE_FILES
     "perception/lidar_obstacle_detector"
     "perception/perception"
     "perception/uab_terrain_perception"
+    "perception/obstacles_processor"
+    "perception/local_occupancy_grid"
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"
+    "planning/local/vehicle_converter"
     "planning/global/global_path")
 
 # Append src/ subdirectory to the path of each target.
@@ -206,6 +210,9 @@ if(USING_CATKIN)
   install(DIRECTORY "config/"
           DESTINATION "${CATKIN_PACKAGE_SHARE_DESTINATION}/config")
 
+  install(DIRECTORY "parameters/"
+          DESTINATION "${CATKIN_PACKAGE_SHARE_DESTINATION}/parameters")
+
   install(
     DIRECTORY "rviz/"
     DESTINATION "${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz"
@@ -223,6 +230,11 @@ if(USING_AMENT)
   find_package(OpenCV REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
+  find_package(PCL REQUIRED)
+
+  include_directories(${PCL_INCLUDE_DIRS})
+  link_directories(${PCL_LIBRARY_DIRS})
+  add_definitions(${PCL_DEFINITIONS})
 
   if(WIN32 OR WIN64)
     set(link_libs ${OpenCV_LIBS})
@@ -287,7 +299,11 @@ if(USING_AMENT)
     TARGETS ${PROJECT_NAME}_test_formation_control_node
     EXPORT export_${PROJECT_NAME}
     DESTINATION "lib/${PROJECT_NAME}")
-
-  install(DIRECTORY launch config rviz DESTINATION "share/${PROJECT_NAME}")
+  
+  install(
+    PROGRAMS "launch/mpc_planner_ros1.sh"
+    DESTINATION lib/${PROJECT_NAME})
+  
+  install(DIRECTORY launch config rviz parameters maps DESTINATION "share/${PROJECT_NAME}")
   ament_package()
 endif() # if(USING_AMENT)

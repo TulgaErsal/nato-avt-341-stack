@@ -1,5 +1,6 @@
+message(STATUS "Building LiDAR obstacle detector node ...")
+
 if(USING_CATKIN)
-  message(STATUS "Building LiDAR obstacle detector node ...")
   # LiDAR obstacle detector node
   add_executable(${PROJECT_NAME}_lidar_obstacle_detector_node
                  "lidar_obstacle_detector_node.cpp")
@@ -15,7 +16,15 @@ if(USING_CATKIN)
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
-  message(
-    WARNING
-    "Skipping LiDAR obstacle detector node build - not yet supported in ROS 2.")
+  # Lidar obstacle detector node
+  add_executable(${PROJECT_NAME}_lidar_obstacle_detector_node
+          "lidar_obstacle_detector_node.cpp"
+  )
+  target_link_libraries(${PROJECT_NAME}_lidar_obstacle_detector_node
+                        ${PROJECT_NAME}_proxy
+                        ${PCL_LIBRARIES})
+  install(
+      TARGETS ${PROJECT_NAME}_lidar_obstacle_detector_node
+      EXPORT export_${PROJECT_NAME}
+      DESTINATION "lib/${PROJECT_NAME}")
 endif() # if(USING_AMENT)
