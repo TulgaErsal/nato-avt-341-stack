@@ -49,7 +49,6 @@ cmake-build-debug*
 # Visual Studio Code
 .vscode/
 
-package.xml
 config/KRC_CP*.csv
 
 # iOS files
