@@ -4,11 +4,11 @@ use_elevation: False                      # To use elevation or slope value when
 slope_threshold: 0.5                      # Threshold within which next waypoint selected.
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
-grid_res: 0.25                             # Grid resolution in meters.
+grid_res: 0.5                             # Grid resolution in meters.
 overhead_clearance: 5.0                   # Overhead clearance from vehicle after which lidar points ignored
 grid_dilate: True                        # Whether or not to apply dilation.
-grid_dilate_x: 0.75                        # Amount of dilation in x.
-grid_dilate_y: 0.75                        # Amount of dilation in y.
+grid_dilate_x: 0.5                        # Amount of dilation in x.
+grid_dilate_y: 0.5                        # Amount of dilation in y.
 grid_dilate_proportion: 0.8               # Proportion of original grid cell to dilate with.
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
 cull_lidar_dist: 100.0                    # Maximum distance used to cull lidar points
@@ -19,8 +19,8 @@ filter_highest_lidar: False               # If true, the highest point in each c
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
 perception_rate: 100.0                    # Publish rate for perception node
 limit_grid_size: True                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
-max_grid_width: 400.0                     # Maximum grid width [m] (for limit_grid_size = True)
-max_grid_height: 400.0                    # Maximum grid height [m] (for limit_grid_size = True)
+max_grid_width: 800.0                     # Maximum grid width [m] (for limit_grid_size = True)
+max_grid_height: 800.0                    # Maximum grid height [m] (for limit_grid_size = True)
 
 # Clearing method
 # ======================================================================================================================

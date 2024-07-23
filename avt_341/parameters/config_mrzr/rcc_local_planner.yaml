@@ -31,4 +31,4 @@ use_blend: True                         # Whether or not to apply blending with 
 cost_vis: 'none'                        # What type of cost to display on candidate paths: none | final | components | all
 cost_vis_text_size: 2.0                 # Cost vis text size
 ignore_coll_before_dist: 0.5            # Distance before which collisions are ignored in local planner candidate paths.
-map_topic: avt_341/local_grid           # Occupancy grid topic
+map_topic: avt_341/occupancy_grid           # Occupancy grid topic

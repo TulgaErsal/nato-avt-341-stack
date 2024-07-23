@@ -184,8 +184,8 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double wi
     grid.info.resolution = res_;
     grid.info.width = local_nx;
     grid.info.height = local_ny;
-    grid.info.origin.position.x = local_x_origin;
-    grid.info.origin.position.y = local_y_origin;
+    grid.info.origin.position.x = xi_min*res_+llx_;
+    grid.info.origin.position.y = yi_min*res_+lly_;
     grid.info.origin.orientation.w = 1.0;
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;

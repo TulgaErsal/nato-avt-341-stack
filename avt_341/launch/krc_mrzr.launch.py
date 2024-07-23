@@ -227,7 +227,7 @@ def launch_setup(context, *args, **kwargs):
                 "rviz_config":	                f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
                 "rviz_mult_config":	            f"{avt_341_dir}/rviz/avt_341_multi_vehicle.rviz",
                 "use_lidar_obstacle_detector":  "True",
-                "local_planner_method":	        "mpc",
+                "local_planner_method":	        "rcc",
                 "waypoint_mode":	            waypoint_mode.perform(context),
                 "simulation_mode":	            simulation_mode.perform(context),
                 "use_global_path":	            use_global_path.perform(context),
