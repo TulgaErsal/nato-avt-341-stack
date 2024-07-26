@@ -56,7 +56,8 @@ set(AVT341_SOURCE_FILES
     "planning/local/potential_field"
     "planning/local/dwa"
     "planning/local/vehicle_converter"
-    "planning/global/global_path")
+    "planning/global/global_path"
+    "planning/global/pf_global_path")
 
 # Append src/ subdirectory to the path of each target.
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES

@@ -61,7 +61,7 @@ void ResetCallback(avt_341::msg::StringPtr msg){
 }
 
 int main(int argc, char *argv[]){
-  auto n = avt_341::node::init_node(argc,argv,"avt_341_control_node");
+  auto n = avt_341::node::init_node(argc,argv,"avt_341_speed_control_node");
 
   auto dc_pub = n->create_publisher<avt_341::msg::Twist>("avt_341/cmd_vel",1);
 
@@ -87,9 +87,9 @@ int main(int argc, char *argv[]){
 	float throttle_coeff, time_to_max_brake;
   float throttle_kp, throttle_ki, throttle_kd;
 	std::string display, anti_windup_method;
-  float vehicle_max_steer_angle_degrees;
+  float vehicle_max_steer_angle_degrees, steering_gain;
   double output_max, output_min;
-  bool use_speed_controller;
+  bool use_speed_controller, output_steering_percent;
   n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
   n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0f);
   n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0f);
@@ -106,6 +106,10 @@ int main(int argc, char *argv[]){
   n->get_parameter("~anti_windup_method", anti_windup_method, avt_341::control::AntiWindupMethod::ResetOnSetpoint);
   n->get_parameter("~display", display, std::string("none"));
   n->get_parameter("~use_speed_controller", use_speed_controller, true);
+  n->get_parameter("~output_steering_percent", output_steering_percent, true);
+  
+  //n->get_parameter("~steering_gain", steering_gain, 1.0f);
+  steering_gain = 1.0f;
 
   avt_341::control::PidController controller(anti_windup_method, output_min, output_max);
 
@@ -203,7 +207,13 @@ int main(int argc, char *argv[]){
     }
 
     // publish the driving command
-    dc.angular.z = std::max(-1.0f,std::min(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees));
+    if (output_steering_percent) {
+      dc.angular.z = std::max(-1.0f,std::min(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees*steering_gain));
+    }
+    else {
+      float vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979f / 180.0f;
+      dc.angular.z = std::max(-vehicle_max_steer_angle_rad,std::min(vehicle_max_steer_angle_rad,desired_steer_radians*steering_gain));
+    }
     dc_pub->publish(dc);
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;

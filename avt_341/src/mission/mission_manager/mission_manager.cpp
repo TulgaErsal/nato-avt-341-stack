@@ -27,7 +27,7 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_proxy_->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
-    speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
+    speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
 }
 
 MissionManager::~MissionManager() {

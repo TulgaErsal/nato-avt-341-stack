@@ -113,7 +113,7 @@ int main(int argc, char *argv[]){
 	// Set controller parameters
   float ff_a0, ff_a1, ff_a2;
   bool use_feed_forward;
-	float wheelbase, steer_angle, vehicle_speed, steering_coeff, throttle_coeff, time_to_max_brake;
+	float wheelbase, steer_angle, vehicle_speed, steering_coeff, throttle_coeff, time_to_max_brake, steering_gain;
   float throttle_kp, throttle_ki, throttle_kd, max_desired_lateral_g;
   bool use_speed_controller, output_steering_percent;
 	std::string display;
@@ -146,6 +146,7 @@ int main(int argc, char *argv[]){
   
   n->get_parameter("~use_speed_controller", use_speed_controller, true);
   n->get_parameter("~output_steering_percent", output_steering_percent, true);
+  n->get_parameter("~steering_gain", steering_gain, 1.0f);
 
   if (skid_steered){
     controller.IsSkidSteered(true);
@@ -236,6 +237,7 @@ int main(int argc, char *argv[]){
         dc.linear.y = 0.0;
         dc.angular.z = 0.0;
       }
+      dc.angular.z *= steering_gain;
     }
     else if (current_run_state==-1 || current_run_state==1){
       // bring to a smooth stop and wait / idle

@@ -28,7 +28,7 @@ mpc_solver_name: "ma27"
 mpc_solver_max_iterations: 10
 mpc_solver_tolerance: 1.0e-3  # From file: 1e-8
 mpc_solver_max_wall_time: 5.0  # [s]
-mpc_solver_time_span: 4.0  # [s]
+mpc_solver_time_span: 2.0  # [s]
 mpc_solver_time_step: 0.075  # [s]
 mpc_solver_print_level: 0
 
