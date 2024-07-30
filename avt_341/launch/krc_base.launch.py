@@ -134,7 +134,7 @@ def evaluate_speed_controller(params, context, *args, **kwargs):
                     name='vehicle_control_node',
                     output='screen',
                     parameters=[
-                        {k: LaunchConfiguration(f'control_{k}') for k in params['control'].keys()}
+                        {k: LaunchConfiguration(f'speed_control_{k}') for k in params['speed_control'].keys()}
                     ],
         )]
     else:

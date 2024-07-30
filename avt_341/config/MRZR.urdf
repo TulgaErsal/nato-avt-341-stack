@@ -60,7 +60,9 @@
         <child link="os_lidar" />  
     </joint>
 
+    <!-- Fix offset from new ouster os1-64 sensor -->
     <joint name="vlp16_top_to_os_sensor" type="fixed">
+        <!--origin xyz="0.0 0.0 0.0" rpy="0.0 -0.017453292519943295 -0.06981317007977318"/-->
         <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
         <parent link="vlp16_top_link" />  
         <child link="os_sensor" />  
