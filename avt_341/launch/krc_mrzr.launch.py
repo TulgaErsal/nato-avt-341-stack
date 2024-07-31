@@ -215,7 +215,7 @@ def launch_setup(context, *args, **kwargs):
                 "display_type":	                "rviz",
                 "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml",
                 "robot_description_file":	    f"{avt_341_dir}/config/MRZR.urdf",
-                "robot_description_veh2_file":	"",
+                "robot_description_veh2_file":	f"{avt_341_dir}/config/MRZR_UE.urdf",  # For UE4 mrzr vehicle
                 "robot_description_veh3_file":	"",
                 "robot_description_veh4_file":	"",
                 "num_vehicles":	                "1",

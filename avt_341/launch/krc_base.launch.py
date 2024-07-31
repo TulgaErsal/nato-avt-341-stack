@@ -273,8 +273,12 @@ def launch_setup(context, *args, **kwargs):
     idx = int(veh_index.perform(context))
 
     # Read robot description
-    with open(robot_desc_list[idx].perform(context), 'r') as infp:
-        robot_desc = infp.read()
+    if simulation_mode.perform(context) in ["True", "true"]:
+        with open(robot_desc_list[1].perform(context), 'r') as infp:
+            robot_desc = infp.read()
+    else:
+        with open(robot_desc_list[i].perform(context), 'r') as infp:
+            robot_desc = infp.read()
 
     # Load vehicle config files
     vehicle_config_folders_arr = json.loads(vehicle_config_folders.perform(context).replace("'","\""))

@@ -25,12 +25,18 @@ avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::ms
 	float gx = goal_x_;
 	float gy = goal_y_;
 
+	// Obstacle search bounds
+	int i_min = std::min((int)grid.info.width,std::max(0,(int)((sx-obs_cutoff_dist_-grid.info.origin.position.x)/grid.info.resolution)));
+	int i_max = std::min((int)grid.info.width,std::max(0,(int)((sx+obs_cutoff_dist_-grid.info.origin.position.x)/grid.info.resolution)));
+	int j_min = std::min((int)grid.info.height,std::max(0,(int)((sy-obs_cutoff_dist_-grid.info.origin.position.y)/grid.info.resolution)));
+	int j_max = std::min((int)grid.info.height,std::max(0,(int)((sy+obs_cutoff_dist_-grid.info.origin.position.y)/grid.info.resolution)));
+
 	// first populate the obstacle list from the current grid
 	std::vector<float> ox, oy;
-	for (int i = 0; i < grid.info.width; i++){
+	for (int i = i_min; i < i_max; i++){
 		float x = grid.info.origin.position.x + (i + 0.5f) * grid.info.resolution;
 		float dx = sx - x;
-		for (int j = 0; j < grid.info.height; j++){
+		for (int j = j_min; j < j_max; j++){
 			float y = grid.info.origin.position.y + (j + 0.5f) * grid.info.resolution;
 			float dy = sy - y;
 			unsigned int ndx = j * grid.info.width + i;

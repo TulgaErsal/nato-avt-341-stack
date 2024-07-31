@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
         }
 
         dist_to_current_waypoint_pub->publish(dist_to_goal);
-        if (nl % 20 == 0 && verbose_gp_log){ //update every second
+        if (nl % 10 == 0 && verbose_gp_log){ //update every second
           auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - t1);
           t1 = std::chrono::system_clock::now();
           n->log_info("Global Path [%f]: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f", duration.count(),

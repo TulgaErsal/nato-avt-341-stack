@@ -87,9 +87,10 @@ int main(int argc, char *argv[]){
 	float throttle_coeff, time_to_max_brake;
   float throttle_kp, throttle_ki, throttle_kd;
 	std::string display, anti_windup_method;
-  float vehicle_max_steer_angle_degrees, steering_gain;
+  float vehicle_max_steer_angle_degrees, steering_gain, wheelbase, max_yr;
   double output_max, output_min;
   bool use_speed_controller, output_steering_percent;
+  n->get_parameter("~vehicle_wheelbase", wheelbase, 2.019f);
   n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
   n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0f);
   n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0f);
@@ -107,6 +108,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~display", display, std::string("none"));
   n->get_parameter("~use_speed_controller", use_speed_controller, true);
   n->get_parameter("~output_steering_percent", output_steering_percent, true);
+  n->get_parameter("~max_yaw_rate", max_yr, 0.5f);
   
   //n->get_parameter("~steering_gain", steering_gain, 1.0f);
   steering_gain = 1.0f;
@@ -206,7 +208,7 @@ int main(int argc, char *argv[]){
       dc.linear.x = std::max(0.0, std::min(dc.linear.x, 1.0));
     }
 
-    // publish the driving command
+    // Enforce bounds
     if (output_steering_percent) {
       dc.angular.z = std::max(-1.0f,std::min(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees*steering_gain));
     }
@@ -214,9 +216,22 @@ int main(int argc, char *argv[]){
       float vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979f / 180.0f;
       dc.angular.z = std::max(-vehicle_max_steer_angle_rad,std::min(vehicle_max_steer_angle_rad,desired_steer_radians*steering_gain));
     }
-    dc_pub->publish(dc);
-    current_brake_value = dc.linear.y;
-    current_throttle_value = dc.linear.x;
+
+    // Enforce maximum yaw rate
+    avt_341::msg::Twist dc_safe = dc;
+    double yr = vel * tan(dc_safe.angular.z) / wheelbase;
+    if (yr > max_yr) {
+      //n->log_info("Yaw rate limit activated: %f rad/s", yr);
+      // Calculate maximum speed for commanded steering angle
+      dc_safe.linear.x = max_yr * wheelbase / tan(dc_safe.angular.z);
+      // Calculate maximum steering angle for current speed
+      dc_safe.angular.z = atan(max_yr * wheelbase / vel);
+    }
+
+    // Publish command
+    dc_pub->publish(dc_safe);
+    current_brake_value = dc_safe.linear.y;
+    current_throttle_value = dc_safe.linear.x;
 
     // break the loop when an end state is reached
     if (time_to_quit)break;
