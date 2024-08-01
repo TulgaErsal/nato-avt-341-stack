@@ -16,6 +16,21 @@
 #include "avt_341/node/node_proxy.h"
 
 
+avt_341::msg::Twist cmd_vel;
+double vel;
+bool cmd_rcvd;
+bool vel_rcvd;
+
+void cmd_vel_callback(avt_341::msg::TwistPtr msg) {
+    cmd_vel = *msg;
+    cmd_rcvd = true;
+}
+
+void speed_callback(avt_341::msg::Float64Ptr rcv_speed) {
+	vel = rcv_speed->data;
+    vel_rcvd = true;
+}
+
 int main(int argc, char *argv[]){
     // Init node
     auto n = avt_341::node::init_node(argc, argv, "data_acquisition_node");
@@ -24,7 +39,7 @@ int main(int argc, char *argv[]){
     // Parameters
     double local_origin_x, local_origin_y;
     std::string frame_world, frame_map, frame_cg;
-    float vel_window, rate;
+    float vel_window, rate, wheelbase;
     int accel_samples;
     n->get_parameter("/map_origin_x", local_origin_x, 0.0);
     n->get_parameter("/map_origin_y", local_origin_y, 0.0);
@@ -34,6 +49,7 @@ int main(int argc, char *argv[]){
     n->get_parameter("~velocity_averaging_window", vel_window, 0.2f);
     n->get_parameter("~accel_averaging_samples", accel_samples, 5);
     n->get_parameter("~daq_rate", rate, 60.0f);
+    n->get_parameter("~wheelbase", wheelbase, 2.019f);
 
     // Create publishers and subscribers
     auto time_pub = n->create_publisher<avt_341::msg::DurationMsg>("avt_341/elapsed_time", 10);
@@ -42,6 +58,9 @@ int main(int argc, char *argv[]){
     auto cg_pos_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/vehicle_cg/pos", 10);
     auto cg_vel_pub = n->create_publisher<avt_341::msg::TwistStamped>("avt_341/vehicle_cg/vel", 10);
     auto cg_accel_pub = n->create_publisher<avt_341::msg::AccelStamped>("avt_341/vehicle_cg/accel", 10);
+    auto cg_lat_g_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/lateral_g", 10);
+    auto cmd_vel_sub = n->create_subscription<avt_341::msg::Twist>("avt_341/cmd_vel",1,cmd_vel_callback);
+    auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",1,speed_callback);
 
     // Timestep variables
     int64_t loop_count = 0;
@@ -51,6 +70,8 @@ int main(int argc, char *argv[]){
     avt_341::msg::Time last_t;
     avt_341::msg::PoseStamped last_cg_pos;
     avt_341::msg::TwistStamped last_cg_vel;
+    cmd_rcvd = false;
+    vel_rcvd = false;
     
     // Acceleration averaging values
     std::vector<std::vector<float>> accel_vals;
@@ -68,6 +89,13 @@ int main(int argc, char *argv[]){
         avt_341::msg::Time t_now = n->get_stamp();
         avt_341::msg::Duration time_elapsed = t_now - t_start;
         time_pub->publish(time_elapsed);
+
+        // Publish lateral acceleration
+        if (cmd_rcvd && vel_rcvd) {
+            avt_341::msg::Float64 lat_accel;
+            lat_accel.data = (vel*vel) * tan(cmd_vel.angular.z) / wheelbase / 9.81;
+            cg_lat_g_pub->publish(lat_accel);
+        }
 
         // Get CG transform
         avt_341::msg::TransformStamped tfs_ref = n->lookup_transform(frame_world, frame_cg);

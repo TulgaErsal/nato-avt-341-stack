@@ -20,7 +20,7 @@ output_steering_percent: False                # Set to true to output steering c
 ff_a0: 0.2856                                 # 0th order coeff in the feed-forward model
 ff_a1: 0.0321                                 # 1st order coeff in the feed-forward model
 ff_a2: 0.0                                    # 2nd order coeff in the feed-forward model
-max_yaw_rate: 0.3                             # Controller will limit the speed to try to keep the yaw rate under this amount [rad/s]
+max_desired_lateral_g: 0.5                    # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
 turn_off_velocity_overshoot_corrector: False  # Disable velocity overshoot corrector
 anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'
 pid_output_max: 1.0                           # Max value for PID output. Only active when anti_windup_method = 'output_clamping'

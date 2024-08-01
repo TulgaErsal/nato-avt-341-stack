@@ -6,3 +6,4 @@ map_frame: 'map'                      # Global map reference frame
 vehicle_cg_frame: 'mrzr/vbox_link'    # Vehicle center-of-gravity reference frame
 velocity_averaging_window: 0.5        # Time window to use for CG velocity estimation [sec]
 accel_averaging_samples: 15           # Amount of previous frames used to find current acceleration
+wheelbase: 2.019                      # Vehicle wheelbase [m]
