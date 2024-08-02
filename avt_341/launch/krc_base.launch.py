@@ -337,16 +337,16 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='avt_341',
             executable='avt_341_perception_node',
-            name='perception_node',
+            name='perception_local_node',
             output='screen',
-            parameters=[{k: LaunchConfiguration(f'perception_{k}') for k in params['perception'].keys()}]
+            parameters=[{k: LaunchConfiguration(f'perception_local_{k}') for k in params['perception_local'].keys()}]
         ),
         Node(
             package='avt_341',
             executable='avt_341_perception_node',
-            name='perception_low_res_node',
+            name='perception_global_node',
             output='screen',
-            parameters=[{k: LaunchConfiguration(f'perception_low_res_{k}') for k in params['perception_low_res'].keys()}],
+            parameters=[{k: LaunchConfiguration(f'perception_global_{k}') for k in params['perception_global'].keys()}],
             remappings=[
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
             ]
