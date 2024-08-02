@@ -341,6 +341,16 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[{k: LaunchConfiguration(f'perception_{k}') for k in params['perception'].keys()}]
         ),
+        Node(
+            package='avt_341',
+            executable='avt_341_perception_node',
+            name='perception_low_res_node',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'perception_low_res_{k}') for k in params['perception_low_res'].keys()}],
+            remappings=[
+                ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+            ]
+        ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(
                 package='avt_341',

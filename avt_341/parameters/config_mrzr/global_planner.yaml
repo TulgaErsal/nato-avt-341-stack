@@ -17,4 +17,4 @@ max_separation: 1.0                           # Maximum separation between waypo
 dubins_smoothing: False                       # Enable path smoothing with minimum radius of curvature 'dubins_radius'
 dubins_radius: 2.0                            # Minimum radius of curvature of path (only for dubins_smoothing=True)
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
-map_topic: avt_341/occupancy_grid             # Occupancy map topic
+map_topic: avt_341/occupancy_grid_low_res             # Occupancy map topic
