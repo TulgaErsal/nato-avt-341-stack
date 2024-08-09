@@ -22,6 +22,7 @@ mpc_bounds_longitudinal_acceleration_min: -5.0  # [m/s^2] Minimum allowed accele
 mpc_bounds_longitudinal_acceleration_max: 5.0  # [m/s^2] Maximum allowed acceleration.
 mpc_bounds_longitudinal_jerk_min: -1.0  # [m/s^3] Minimum allowed jerk. Can be negative.
 mpc_bounds_longitudinal_jerk_max: 1.0 # [m/s^3] Maximum allowed jerk in m/s^3.
+mpc_bound_front_angle: 1.571 # [rad] Angle considered "in front of" the vehicle.
 
 # Solver options
 mpc_solver_name: "ma27"

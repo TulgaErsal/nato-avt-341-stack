@@ -55,6 +55,7 @@ set(AVT341_SOURCE_FILES
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"
+    "planning/local/goal_point_processor"
     "planning/local/vehicle_converter"
     "planning/global/global_path"
     "planning/global/pf_global_path")

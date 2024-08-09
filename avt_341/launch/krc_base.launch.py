@@ -224,6 +224,14 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 name='avt_341_veh_converter_node',
                 output='screen'
             ),
+            # Goal Point Processor
+            Node(
+                    package='avt_341',
+                    executable='goal_point_processor_node',
+                    name='goal_point_processor_node',
+                    output='screen',
+                    parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
+            ),
             # MPC ROS1 Planner
             Node(
                 package='avt_341',
