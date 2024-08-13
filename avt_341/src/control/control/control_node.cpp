@@ -101,7 +101,7 @@ int main(int argc, char *argv[]){
 
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",1,SpeedCallback);
 
-  auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
+  auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,DesiredSpeedCallback);
 
 
   avt_341::control::PurePursuitController controller;
@@ -208,13 +208,7 @@ int main(int argc, char *argv[]){
       dc.angular.z = 0.0f;
     }
     else if (current_run_state==0){    // active running state
-      double max_curvature = GetMaxCurvature(control_msg);
-      double lateral_g_force = ((vel*vel)*max_curvature)/9.806;
       desired_velocity = vehicle_speed;
-      if (lateral_g_force>max_desired_lateral_g){
-        desired_velocity = sqrt(9.806*max_desired_lateral_g/max_curvature);
-        if (desired_velocity>vehicle_speed)desired_velocity=vehicle_speed;
-      }
       if (des_speed_rcvd){
         desired_velocity = desired_speed;
       }
@@ -273,6 +267,19 @@ int main(int argc, char *argv[]){
       if (dc.linear.x-current_throttle_value > max_throttle_step){
         dc.linear.x = current_throttle_value + max_throttle_step;
       }
+    }
+
+    // Enforce maximum lateral acceleration
+    avt_341::msg::Twist dc_safe = dc;
+    double lat_accel_g = (vel*vel) * tan(dc_safe.angular.z) / wheelbase / 9.81;
+    if (abs(lat_accel_g) > max_desired_lateral_g) {
+      // Calculate maximum speed for commanded steering angle
+      dc_safe.linear.x = sqrt(abs((max_desired_lateral_g*9.81) * wheelbase / tan(dc_safe.angular.z)));
+      if (dc_safe.linear.x > dc.linear.x) dc_safe.linear.x = dc.linear.x;
+      // Calculate maximum steering angle for current speed
+      dc_safe.angular.z = atan((max_desired_lateral_g*9.81) * wheelbase / (vel*vel)) * (dc_safe.angular.z/abs(dc_safe.angular.z));
+      n->log_info("Lateral acceleration limit activated: %f g\n(%f, %f) -> (%f, %f)", lat_accel_g, dc.linear.x, dc.angular.z, dc_safe.linear.x, dc_safe.angular.z);
+      dc = dc_safe;
     }
 
     // publish the driving command

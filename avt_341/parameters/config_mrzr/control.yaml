@@ -13,14 +13,14 @@ throttle_kd: 0.0                              # derivative coeff for the PID spe
 # Speed Control
 # ======================================================================================================================
 time_to_max_brake: 4.0                        # Time in seconds to go from 0 to maximum braking
-time_to_max_throttle: 3.0                     # Time in seconds to go from 0 to maximum throttle
+time_to_max_throttle: 1.5                     # Time in seconds to go from 0 to maximum throttle
 use_feed_forward: False                       # Set to true to use the feed-forward model in the PID throttle control
 use_speed_controller: False                   # Set to true to output throttle/brake commands (linear.x -> throttle percent, linear.y -> brake percent) instead of velocity commands (linear.x -> forward speed [m/s])
 output_steering_percent: False                # Set to true to output steering commands as a percentage of vehicle_max_steer_angle_degrees (cmd_vel.angular.x -> % steering) instead of the wheel angle (cmd_vel.angular.x -> wheel angle [rad])
 ff_a0: 0.2856                                 # 0th order coeff in the feed-forward model
 ff_a1: 0.0321                                 # 1st order coeff in the feed-forward model
 ff_a2: 0.0                                    # 2nd order coeff in the feed-forward model
-max_desired_lateral_g: 200.0                  # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
+max_desired_lateral_g: 0.5                    # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
 turn_off_velocity_overshoot_corrector: False  # Disable velocity overshoot corrector
 anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'
 pid_output_max: 1.0                           # Max value for PID output. Only active when anti_windup_method = 'output_clamping'

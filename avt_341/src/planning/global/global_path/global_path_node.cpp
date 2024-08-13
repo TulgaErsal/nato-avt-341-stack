@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     //return 2;
   }
 
-  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
+  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 1);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
   auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
   auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);

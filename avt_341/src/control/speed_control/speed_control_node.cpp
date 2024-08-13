@@ -223,9 +223,10 @@ int main(int argc, char *argv[]){
     if (abs(lat_accel_g) > max_lat_g) {
       n->log_info("Lateral acceleration limit activated: %f g", lat_accel_g);
       // Calculate maximum speed for commanded steering angle
-      dc_safe.linear.x = (max_lat_g/9.81) * wheelbase / tan(dc_safe.angular.z);
+      dc_safe.linear.x = sqrt(abs((max_lat_g*9.81) * wheelbase / tan(dc_safe.angular.z)));
+      if (dc_safe.linear.x > dc.linear.x) dc_safe.linear.x = dc.linear.x;
       // Calculate maximum steering angle for current speed
-      dc_safe.angular.z = atan((max_lat_g/9.81) * wheelbase / (vel*vel)) * (dc_safe.angular.z/abs(dc_safe.angular.z));
+      dc_safe.angular.z = atan((max_lat_g*9.81) * wheelbase / (vel*vel)) * (dc_safe.angular.z/abs(dc_safe.angular.z));
     }
 
     // Publish command

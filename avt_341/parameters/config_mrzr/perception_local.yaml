@@ -19,8 +19,8 @@ filter_highest_lidar: False               # If true, the highest point in each c
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
 perception_rate: 100.0                    # Publish rate for perception node
 limit_grid_size: True                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
-max_grid_width: 400.0                     # Maximum grid width [m] (for limit_grid_size = True)
-max_grid_height: 400.0                    # Maximum grid height [m] (for limit_grid_size = True)
+max_grid_width: 100.0                     # Maximum grid width [m] (for limit_grid_size = True)
+max_grid_height: 100.0                    # Maximum grid height [m] (for limit_grid_size = True)
 
 # Clearing method
 # ======================================================================================================================

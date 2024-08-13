@@ -396,13 +396,13 @@ def launch_setup(context, *args, **kwargs):
         *evaluate_local_planner(params, context=context, args=args, kwargs=kwargs),
 
         # Local Grid
-        Node(
-            package='avt_341',
-            executable='avt_341_local_occupancy_grid_node',
-            name='avt_341_local_occupancy_grid_node',
-            output='log',
-            parameters=[{k: LaunchConfiguration(f'local_occupancy_{k}') for k in params['local_occupancy'].keys()}]
-        ),
+#        Node(
+#            package='avt_341',
+#            executable='avt_341_local_occupancy_grid_node',
+#            name='avt_341_local_occupancy_grid_node',
+#            output='log',
+#            parameters=[{k: LaunchConfiguration(f'local_occupancy_{k}') for k in params['local_occupancy'].keys()}]
+#        ),
 
         # Visualization
         Node(
