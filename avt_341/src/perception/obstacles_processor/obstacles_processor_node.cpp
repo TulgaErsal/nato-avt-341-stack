@@ -30,11 +30,17 @@ avt_341::msg::Odometry vehicle_odom_input;
 
 avt_341::msg::OccupancyGrid occupancy_grid_input;
 
-std::vector<std::vector<double>> obstacles;
+std::vector<std::vector<bool>> obstacles;
+
+std::vector<std::vector<bool>> cluster_mask;
+
+std::vector<double> obstacles_origin;
 
 std::vector<double> obstacles_clustered;
 
 std::vector<avt_341::msg::Marker> obstacle_markers;
+
+double prediction_horizon;
 
 void callback_veh(avt_341::msg::OdometryPtr veh) {
     vehicle_odom_input = *veh;
@@ -47,22 +53,28 @@ void callback_obs(avt_341::msg::OccupancyGridPtr obs) {
 
 void callback_speed(avt_341::msg::Float64Ptr speed_setpoint) {
     max_speed = speed_setpoint->data;
+    prediction_horizon = (prediction_time_horizon + 0.1) * max_speed;
 }
 
 // Helper function for cluster_occupied_cells
-bool is_occupied(std::vector<std::vector<double>> points, double x, double y) {
-    return std::find(points.begin(), points.end(), std::vector<double>({x,y})) != points.end();
+bool is_occupied(double x, double y, double r) {
+    int px = (int)((x-obstacles_origin[0])/r);
+    int py = (int)((y-obstacles_origin[1])/r);
+    if (px < 0 || py < 0 || px >= obstacles.size() || py >= obstacles[0].size()) {
+        return false;
+    }
+    return obstacles[px][py] && !cluster_mask[px][py];
 }
 
 // Helper function for cluster_occupied_cells
-double largest_square(std::vector<std::vector<double>> points, double x, double y, double r) {
+double largest_square(double x, double y, double r) {
     double max_size = 0;
     bool max_size_found = false;
     while (!max_size_found) {
         max_size++;
         for (int i=0; i<max_size; i++) {
-            if (!is_occupied(points, x+i*r, y+max_size*r) 
-                    || !is_occupied(points, x+max_size*r, y+i*r)) {
+            if (!is_occupied(x+i*r, y+max_size*r, r) 
+                    || !is_occupied(x+max_size*r, y+i*r, r)) {
                 max_size_found = true;
                 return max_size;
             }
@@ -72,15 +84,35 @@ double largest_square(std::vector<std::vector<double>> points, double x, double 
 
 std::vector<double> cluster_occupied_cells(std::vector<std::vector<double>> cells, double r) {
     std::vector<std::vector<double>> points = cells;
+    
+    // Reset cluster mask
+    cluster_mask.clear();
+    std::vector<bool> obstacle_row;
+    obstacle_row.resize(obstacles.size(), false);
+    cluster_mask.resize(obstacles.size(), obstacle_row);
 
     std::vector<double> output;
     while (!points.empty()) {
+        // Find largest occupied square
         double x = points[0][0];
         double y = points[0][1];
-        double max_size = largest_square(points,x,y,r) * r;
+        double max_size = largest_square(x,y,r) * r;
+
+        // Push clustered obstacle to output
         output.push_back(x + (max_size - r) / 2.0);
         output.push_back(y + (max_size - r) / 2.0);
         output.push_back(max_size);
+
+        // Update clustered cells
+        int xi1 = std::max(0,std::min((int)cluster_mask.size(),(int)((x-obstacles_origin[0])/r)));
+        int yi1 = std::max(0,std::min((int)cluster_mask.size(),(int)((y-obstacles_origin[1])/r)));
+        int xi2 = std::max(0,std::min((int)cluster_mask.size(),(int)((x-obstacles_origin[0]+max_size)/r)));
+        int yi2 = std::max(0,std::min((int)cluster_mask.size(),(int)((y-obstacles_origin[1]+max_size)/r)));
+        for (int i=xi1; i<xi2; i++) {
+            for (int j=yi1; j<yi2; j++) {
+                cluster_mask[i][j] = true;
+            }
+        }
 
         std::vector<std::vector<double>> new_points;
         for (auto pt: points) {
@@ -120,7 +152,13 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     auto right_boundary_vector = rotation_matrix * right_vector;
 
     obstacle_size_meters = grid.info.resolution;
+    int poi_width = (int)(prediction_horizon / obstacle_size_meters * 2.0);
+    obstacles_origin = {x_vehicle-prediction_horizon,y_vehicle-prediction_horizon};
+    std::vector<std::vector<double>> obstacle_cells;
     obstacles.clear();
+    std::vector<bool> obstacle_row;
+    obstacle_row.resize(poi_width, false);
+    obstacles.resize(poi_width, obstacle_row);
     obstacle_markers.clear();
     int obstacle_number = 0;
     for (int i = 0; i < grid.info.height; i++) {
@@ -140,14 +178,20 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                     continue;
                 } else {
                     obstacle_number = obstacle_number + 1;
-                    obstacles.push_back({point[0],point[1]});
+                    int px = (int)((point[0]-obstacles_origin[0]) / obstacle_size_meters);
+                    int py = (int)((point[1]-obstacles_origin[1]) / obstacle_size_meters);
+                    if (px < 0 || py < 0 || px >= obstacles.size() || py >= obstacles[0].size()) {
+                        continue;
+                    }
+                    obstacles[px][py] = true;
+                    obstacle_cells.push_back({point[0],point[1]});
                 }
             }
         }
     }
 
     // Cluster obstacles
-    obstacles_clustered = cluster_occupied_cells(obstacles, obstacle_size_meters);
+    obstacles_clustered = cluster_occupied_cells(obstacle_cells, obstacle_size_meters);
     if (int(obstacles_clustered.size() / 3) > max_obstacle_number) {
         std::cerr << "Number of obstacles exceeds limit ("<<int(obstacles_clustered.size() / 3)<<">"<<max_obstacle_number<<"). Consider increasing max_obstacle_number.\n";
     }
@@ -207,6 +251,7 @@ int main(int argc, char* argv[]) {
     node->get_parameter("~mpc_obstacles_vizualize", viz, false);
 
     int count = 0;
+    prediction_horizon = (prediction_time_horizon + 0.1) * max_speed;
 
     while (avt_341::node::ok()) {
         if (new_input_available(occupancy_grid_input, vehicle_odom_input)) {
