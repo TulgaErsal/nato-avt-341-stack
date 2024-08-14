@@ -285,7 +285,7 @@ def launch_setup(context, *args, **kwargs):
         with open(robot_desc_list[1].perform(context), 'r') as infp:
             robot_desc = infp.read()
     else:
-        with open(robot_desc_list[i].perform(context), 'r') as infp:
+        with open(robot_desc_list[idx].perform(context), 'r') as infp:
             robot_desc = infp.read()
 
     # Load vehicle config files
