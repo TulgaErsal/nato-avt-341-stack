@@ -1,4 +1,5 @@
 #include <vector>
+#include <algorithm>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 
@@ -29,7 +30,9 @@ avt_341::msg::Odometry vehicle_odom_input;
 
 avt_341::msg::OccupancyGrid occupancy_grid_input;
 
-std::vector<double> obstacles;
+std::vector<std::vector<double>> obstacles;
+
+std::vector<double> obstacles_clustered;
 
 std::vector<avt_341::msg::Marker> obstacle_markers;
 
@@ -40,6 +43,55 @@ void callback_veh(avt_341::msg::OdometryPtr veh) {
 
 void callback_obs(avt_341::msg::OccupancyGridPtr obs) {
     occupancy_grid_input = *obs;
+}
+
+void callback_speed(avt_341::msg::Float64Ptr speed_setpoint) {
+    max_speed = speed_setpoint->data;
+}
+
+// Helper function for cluster_occupied_cells
+bool is_occupied(std::vector<std::vector<double>> points, double x, double y) {
+    return std::find(points.begin(), points.end(), std::vector<double>({x,y})) != points.end();
+}
+
+// Helper function for cluster_occupied_cells
+double largest_square(std::vector<std::vector<double>> points, double x, double y, double r) {
+    double max_size = 0;
+    bool max_size_found = false;
+    while (!max_size_found) {
+        max_size++;
+        for (int i=0; i<max_size; i++) {
+            if (!is_occupied(points, x+i*r, y+max_size*r) 
+                    || !is_occupied(points, x+max_size*r, y+i*r)) {
+                max_size_found = true;
+                return max_size;
+            }
+        }
+    }
+}
+
+std::vector<double> cluster_occupied_cells(std::vector<std::vector<double>> cells, double r) {
+    std::vector<std::vector<double>> points = cells;
+
+    std::vector<double> output;
+    while (!points.empty()) {
+        double x = points[0][0];
+        double y = points[0][1];
+        double max_size = largest_square(points,x,y,r) * r;
+        output.push_back(x + (max_size - r) / 2.0);
+        output.push_back(y + (max_size - r) / 2.0);
+        output.push_back(max_size);
+
+        std::vector<std::vector<double>> new_points;
+        for (auto pt: points) {
+            if (!((pt[0] >= x && pt[0] < x+max_size) && (pt[1] >= y && pt[1] < y+max_size))) {
+                new_points.push_back(pt);
+            }
+        }
+        points = new_points;
+    }
+
+    return output;
 }
 
 bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341::msg::Odometry& vehicle_odom) {
@@ -88,37 +140,43 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                     continue;
                 } else {
                     obstacle_number = obstacle_number + 1;
-                    obstacles.push_back(point[0]);
-                    obstacles.push_back(point[1]);
-                    if (int(obstacles.size() / 2) == max_obstacle_number) {
-                        std::cerr << "Number of obstacles exceeds limit. Consider increasing max_obstacle_number.\n";
-                    }
-                    if (int(obstacles.size() / 2) > max_obstacle_number) {
-                        std::cerr << "Number of obstacles exceeds limit. Consider increasing max_obstacle_number.\n";
-                    }
-                    if (viz) {
-                        avt_341::msg::Marker obs_marker;
-                        obs_marker.header.frame_id = "map";
-                        obs_marker.header.stamp = node->get_stamp();
-                        obs_marker.id = obstacle_number;
-                        obs_marker.type = avt_341::msg::Marker::CUBE;
-                        obs_marker.action = avt_341::msg::Marker::ADD;
-                        obs_marker.scale.x = obstacle_size_meters;
-                        obs_marker.scale.y = obstacle_size_meters;
-                        obs_marker.scale.z = obstacle_size_meters;
-                        obs_marker.color.a = 1.0;
-                        obs_marker.color.r = 1.0;
-                        obs_marker.color.g = 0.0;
-                        obs_marker.color.b = 0.0;
-                        obs_marker.pose.position.x = point[0];
-                        obs_marker.pose.position.y = point[1];
-                        obs_marker.pose.position.z = 0.0;
-                        obstacle_markers.push_back(obs_marker);
-                    }
+                    obstacles.push_back({point[0],point[1]});
                 }
             }
         }
     }
+
+    // Cluster obstacles
+    obstacles_clustered = cluster_occupied_cells(obstacles, obstacle_size_meters);
+    if (int(obstacles_clustered.size() / 3) > max_obstacle_number) {
+        std::cerr << "Number of obstacles exceeds limit ("<<int(obstacles_clustered.size() / 3)<<">"<<max_obstacle_number<<"). Consider increasing max_obstacle_number.\n";
+    }
+    if (viz) {
+        for (int i=0; i < obstacles_clustered.size()/3; i++) {
+            double x = obstacles_clustered[3*i];
+            double y = obstacles_clustered[3*i+1];
+            double obs_size = obstacles_clustered[3*i+2];
+
+            avt_341::msg::Marker obs_marker;
+            obs_marker.header.frame_id = "map";
+            obs_marker.header.stamp = node->get_stamp();
+            obs_marker.id = i;
+            obs_marker.type = avt_341::msg::Marker::CUBE;
+            obs_marker.action = avt_341::msg::Marker::ADD;
+            obs_marker.scale.x = obs_size;
+            obs_marker.scale.y = obs_size;
+            obs_marker.scale.z = obs_size;
+            obs_marker.color.a = 1.0;
+            obs_marker.color.r = 1.0;
+            obs_marker.color.g = 0.0;
+            obs_marker.color.b = 0.0;
+            obs_marker.pose.position.x = x;
+            obs_marker.pose.position.y = y;
+            obs_marker.pose.position.z = 0.0;
+            obstacle_markers.push_back(obs_marker);
+        }
+    }
+
     return true;
 }
 
@@ -136,7 +194,8 @@ int main(int argc, char* argv[]) {
     auto occupancy_grid_sub =
         node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, callback_obs);
     auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, callback_veh);
-    auto obstacles_pub = node->create_publisher<avt_341::msg::Obstacles>("avt_341/obstacles", 1);
+    auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
+    auto obstacle_clusters_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
     auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
 
     // Load parameters
@@ -151,13 +210,10 @@ int main(int argc, char* argv[]) {
 
     while (avt_341::node::ok()) {
         if (new_input_available(occupancy_grid_input, vehicle_odom_input)) {
-            avt_341::msg::Obstacles obs_msg;
-            obs_msg.id = count;
-            obs_msg.obstacle_size_meters = obstacle_size_meters;
-            obs_msg.data = obstacles;
-
-            // Publish obstacle message
-            obstacles_pub->publish(obs_msg);
+            // Publish obstacle clusters message
+            avt_341::msg::Float64MultiArray obs_cluster_msg;
+            obs_cluster_msg.data = obstacles_clustered;
+            obstacle_clusters_pub->publish(obs_cluster_msg);
 
             if (viz) {
                 avt_341::msg::MarkerArray obs_marker_msg;
