@@ -184,10 +184,10 @@ int main(int argc, char* argv[]) {
     pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_desiredHeading", 1);
 
     // Retrieve params
-    n->get_parameter("~mpc_bounds_longitudinal_speed_max", max_speed, 5.0f);
-    n->get_parameter("~mpc_vehicle_axle_distance_front", la, 1.25f);
-    n->get_parameter("~mpc_solver_time_span", predictionTimeHorizon, 2.0f);
-    n->get_parameter("~mpc_bound_front_angle", frontAngleGoal, 1.571f);
+    n->get_parameter("~max_speed", max_speed, 5.0f);
+    n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
+    n->get_parameter("~prediction_time_horizon", predictionTimeHorizon, 2.0f);
+    n->get_parameter("~front_angle_goal", frontAngleGoal, 1.571f);
 
     // Initialize variables
     init_time = n->get_stamp();

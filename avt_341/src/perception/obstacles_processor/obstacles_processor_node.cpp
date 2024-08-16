@@ -71,7 +71,7 @@ double largest_square(double x, double y, double r) {
     double max_size = 0;
     bool max_size_found = false;
     while (!max_size_found) {
-        max_size++;
+        max_size+=1.0;
         for (int i=0; i<max_size; i++) {
             if (!is_occupied(x+i*r, y+max_size*r, r) 
                     || !is_occupied(x+max_size*r, y+i*r, r)) {
@@ -93,6 +93,11 @@ std::vector<double> cluster_occupied_cells(std::vector<std::vector<double>> cell
 
     std::vector<double> output;
     while (!points.empty()) {
+        // Check obstacle limit
+        if (int(output.size() / 3) >= max_obstacle_number) {
+            std::cerr << "Number of obstacles exceeds limit ("<<int(obstacles_clustered.size() / 3)<<">"<<max_obstacle_number<<"). Consider increasing max_obstacle_number.\n";
+        }
+        
         // Find largest occupied square
         double x = points[0][0];
         double y = points[0][1];
@@ -163,7 +168,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     int obstacle_number = 0;
     for (int i = 0; i < grid.info.height; i++) {
         for (int j = 0; j < grid.info.width; j++) {
-            if (grid.data[i * grid.info.width + j] > 0.0 && obstacle_number < max_obstacle_number) {
+            if (grid.data[i * grid.info.width + j] > 0.0) {
                 std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
                                              (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
                 avt_341::msg_tf::Vector3 obstacle = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
@@ -192,9 +197,6 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
 
     // Cluster obstacles
     obstacles_clustered = cluster_occupied_cells(obstacle_cells, obstacle_size_meters);
-    if (int(obstacles_clustered.size() / 3) > max_obstacle_number) {
-        std::cerr << "Number of obstacles exceeds limit ("<<int(obstacles_clustered.size() / 3)<<">"<<max_obstacle_number<<"). Consider increasing max_obstacle_number.\n";
-    }
     if (viz) {
         for (int i=0; i < obstacles_clustered.size()/3; i++) {
             double x = obstacles_clustered[3*i];
@@ -243,12 +245,12 @@ int main(int argc, char* argv[]) {
     auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
 
     // Load parameters
-    node->get_parameter("~mpc_obstacles_max_obstacle_number", max_obstacle_number, 1000);
-    node->get_parameter("~mpc_bounds_longitudinal_speed_max", max_speed, 10.0);
-    node->get_parameter("~mpc_solver_time_span", prediction_time_horizon, 2.0);
-    node->get_parameter("~mpc_vehicle_axle_distance_front", axle_distance_front, 1.5521);
-    node->get_parameter("~mpc_obstacles_angle", obstacles_angle, 0.707107);
-    node->get_parameter("~mpc_obstacles_vizualize", viz, false);
+    node->get_parameter("~max_num_obs", max_obstacle_number, 1000);
+    node->get_parameter("~max_speed", max_speed, 10.0);
+    node->get_parameter("~prediction_time_horizon", prediction_time_horizon, 2.0);
+    node->get_parameter("~vehicle_axle_distance_front", axle_distance_front, 1.5521);
+    node->get_parameter("~front_angle_obstacle", obstacles_angle, 0.707107);
+    node->get_parameter("~obstacles_vizualize", viz, false);
 
     int count = 0;
     prediction_horizon = (prediction_time_horizon + 0.1) * max_speed;
