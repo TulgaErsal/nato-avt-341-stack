@@ -10,20 +10,25 @@
         Department of Mechanical Engineering
 """
 
-tireModel = "P" #L for linear, P for Pacejka, N for neural network for deformable terrain
+tireModel = "L" #L for linear, P for Pacejka, N for neural network for deformable terrain
 
-numColPoints = 6 #number of collocation points to use in MPC
+numColPoints = 10 #number of collocation points to use in MPC
 predictionTimeHorizon = 2.0 #MPC predition time horizon [s]
-maxNumObs = 1000 #maximum number of obstacles allowed in MPC
+maxNumObs = 500 #maximum number of obstacles allowed in MPC
 minSpeed = 0.5 #minimum allowed vehicle speed [m/s]
-maxSpeed = 7.5 #maximum allowed vehicle speed [m/s]
+maxSpeed = 3.5 #maximum allowed vehicle speed [m/s]
+
+stopOnMaxSolveTime = true # Stop the vehicle when maximum solve time is reached
 
 useHardConstraints = false #whether to include obstacles as hard constraints in addition to soft constraints
+w_distanceToObstacles = 5. #weight on distanceToObstacles in the objective function
+w_distanceToGoal = 100. #weight on distanceToGoal in the objective function
+w_deviationInYaw = 1. #weight on deviationInYaw in the objective function
 
-sm_x = 0.75 #safety margin [m] around obstacles in x direction
-sm_y = 0.75 #safety margin [m] around obstacles in y direction
+safetyMargin = 0.0 #safety margin [m] around obstacles
+grid_resolution = 0.25 #resulution of the occupancy grid [m]
 
-frontAngleGoal = 60 * π / 180 #the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle
+frontAngleGoal = 90 * π / 180 #the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle
 frontAngleObstacle = 90 * π / 180 #the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle
 
 #whether to use the terrain adaptive formulation or not
@@ -119,7 +124,7 @@ FZ0        = 2670
 g          = 9.81
 T = 0.002
 la = 1.25
-lb = 2.715-la  #1.1629
+lb = 2.019-la  #2.715-la
 h_cg = 0.596;
 m = 1.269e+03
 Izz = 1.620e+03
@@ -200,7 +205,7 @@ sa_min   = -0.485
 sa_max   = 0.485
 psi_min  = -2*pi
 psi_max  = 2*pi
-#u_min    = 0.01   #5.
+u_min    = 0.01   #5.
 u_max    = 30.
 sr_min   = -0.523
 sr_max   = 0.523

@@ -1,45 +1,34 @@
-# Launch parameters for the MPC planner
-mpc_rate: 10.0
+sysimage_path: "" # Filepath to the Julia sysimage
+planner_module_path: "" # Filepath to the Julia MPC planner module
+parameters_module_path: "" # Filepath to the Julia MPC parameters module
+models_module_path: "" # Filepath to the Julia MPC models module
 
-# Vehicle parameters
-mpc_vehicle_mass: 1683.97  # [kg]
-mpc_vehicle_yaw_inertia: 10442.53  # [kg m^2]
-mpc_vehicle_axle_distance_front: 1.38599  # [m]
-mpc_vehicle_axle_distance_rear: 1.38825  # [m]
-mpc_vehicle_axle_combined_stiffness_front: 164448.37  # ?? front axle combined stiffness?
-mpc_vehicle_axle_combined_stiffness_rear: 164448.37  # ??
-mpc_vehicle_relaxation_length: 0.91  # [m]
+rate: 10.0 # Planner update rate
 
-# Bounds
-mpc_bounds_steering_angle_max: 0.5  # [radians]
-mpc_bounds_steering_rate_max: 0.5  # [radians/s]
-mpc_bounds_yaw_rate_min: -2.0  # [radians/s]
-mpc_bounds_yaw_rate_max: 2.0  # [radians/s]
-mpc_bounds_lateral_speed_max: 1.0  # [m/s]
-mpc_bounds_longitudinal_speed_min: 2.0  # [m/s] Minimum speed allowed. Must be positive.
-mpc_bounds_longitudinal_speed_max: 5.0  # [m/s] Maximum speed allowed.
-mpc_bounds_longitudinal_acceleration_min: -5.0  # [m/s^2] Minimum allowed acceleration. Can be negative.
-mpc_bounds_longitudinal_acceleration_max: 5.0  # [m/s^2] Maximum allowed acceleration.
-mpc_bounds_longitudinal_jerk_min: -1.0  # [m/s^3] Minimum allowed jerk. Can be negative.
-mpc_bounds_longitudinal_jerk_max: 1.0 # [m/s^3] Maximum allowed jerk in m/s^3.
-mpc_bound_front_angle: 1.571 # [rad] Angle considered "in front of" the vehicle.
+tire_model: "L" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
-# Solver options
-mpc_solver_name: "ma27"
-mpc_solver_max_iterations: 10
-mpc_solver_tolerance: 1.0e-3  # From file: 1e-8
-mpc_solver_max_wall_time: 5.0  # [s]
-mpc_solver_time_span: 2.0  # [s]
-mpc_solver_time_step: 0.075  # [s]
-mpc_solver_print_level: 0
+num_col_points: 10 # number of collocation points to use in MPC
+prediction_time_horizon: 2.0 # MPC predition time horizon [s]
+max_num_obs: 500 # maximum number of obstacles allowed in MPC
+min_speed: 0.5 # minimum allowed vehicle speed [m/s]
+max_speed: 3.5 # maximum allowed vehicle speed [m/s]
 
-# Solver weights
-mpc_weight_goal: 10.0
-mpc_weight_steering_rate: 10.0
-mpc_weight_obstacle_term: 1.0
-mpc_weight_longitudinal_jerk: 1.0
+stop_on_max_solve_time: True # Stop the vehicle when maximum solve time is reached
 
-# Obstacles
-mpc_obstacles_max_obstacle_number: 10000
-mpc_obstacles_angle: 1.571 # 90 degrees l/r around vehicle
-mpc_obstacles_vizualize: True
+use_hard_constraints: False # whether to include obstacles as hard constraints in addition to soft constraints
+
+w_distance_to_obstacles: 5. # weight on distanceToObstacles in the objective function
+w_distance_to_goal: 100. # weight on distanceToGoal in the objective function
+w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
+
+safety_margin: 0.0 # safety margin [m] around obstacles
+grid_resolution: 0.25 # resulution of the occupancy grid [m]
+
+front_angle_goal: 1.571 # the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle [rad]
+front_angle_obstacle: 1.571 # the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle [rad]
+
+adaptive: False # whether to use the terrain adaptive formulation or not
+
+vehicle_axle_distance_front: 1.38599  # [m]
+
+obstacles_vizualize: True # Publish obstacle vizualization messages

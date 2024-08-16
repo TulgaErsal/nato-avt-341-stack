@@ -206,16 +206,26 @@ def evaluate_local_planner(params, context, *args, **kwargs):
         )]
     elif local_planner_method == 'mpc':
         return [
+            # MPC Planner
+            Node(
+                package='avt_341',
+                executable='avt_341_mpc_planner_node',
+                name='mpc_planner_node',
+                output='screen',
+                #prefix=['xterm -e gdb -ex run --args'],
+                parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
+            ),
             # Obstacle Processor
             Node(
-                    package='avt_341',
-                    executable='obstacle_processor_node',
-                    name='obstacle_processor_node',
-                    output='screen',
-                    remappings=[
-                        #('avt_341/occupancy_grid', 'avt_341/local_grid'),
-                    ],
-                    parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
+                package='avt_341',
+                executable='obstacle_processor_node',
+                name='obstacle_processor_node',
+                output='screen',
+                remappings=[
+                    #('avt_341/occupancy_grid', 'avt_341/local_grid'),
+                ],
+                #prefix=['xterm -e gdb -ex run --args'],
+                parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
             # Vehicle Converter
             Node(
@@ -226,18 +236,11 @@ def evaluate_local_planner(params, context, *args, **kwargs):
             ),
             # Goal Point Processor
             Node(
-                    package='avt_341',
-                    executable='goal_point_processor_node',
-                    name='goal_point_processor_node',
-                    output='screen',
-                    parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
-            ),
-            # MPC ROS1 Planner
-            Node(
                 package='avt_341',
-                executable='mpc_planner_ros1.sh',
-                name='local_mpc_planner_node',
-                output='screen'
+                executable='goal_point_processor_node',
+                name='goal_point_processor_node',
+                output='screen',
+                parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             )
         ]
     else: # local_planner_method == 'pf':
