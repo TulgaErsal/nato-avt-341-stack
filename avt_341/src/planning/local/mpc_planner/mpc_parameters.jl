@@ -24,12 +24,18 @@ useHardConstraints = false #whether to include obstacles as hard constraints in 
 w_distanceToObstacles = 5. #weight on distanceToObstacles in the objective function
 w_distanceToGoal = 100. #weight on distanceToGoal in the objective function
 w_deviationInYaw = 1. #weight on deviationInYaw in the objective function
+w_traversabilityCost = 0.1  #weight on traversabilityCost in the objective function
 
 safetyMargin = 0.0 #safety margin [m] around obstacles
 grid_resolution = 0.25 #resulution of the occupancy grid [m]
 
 frontAngleGoal = 90 * π / 180 #the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle
 frontAngleObstacle = 90 * π / 180 #the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle
+frontAngleSegmentation = 90 * π / 180
+
+gridResolution = 0.25
+maxNumCells = Int(ceil(2*((predictionTimeHorizon+0.1) * maxSpeed)^2 * frontAngleSegmentation / gridResolution)) #maximum number of cells to account for in terrain segmentation
+sigma = 1.414214*gridResolution
 
 #whether to use the terrain adaptive formulation or not
 adaptive = false

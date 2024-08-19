@@ -94,6 +94,16 @@ void SinkageCallback(avt_341::msg::SinkagePtr sinkage_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
+void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
+{
+    jl_value_t* seg_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
+    jl_array_t *seg_arg = jl_ptr_to_array_1d(seg_type, &seg_msg->data[0], seg_msg->data.size(), 0);
+    jl_value_t *seg_res = jl_box_float64(segmentation_resolution);
+
+    jl_call2(j_set_segmentation, (jl_value_t*)seg_arg, seg_res);
+    CATCH_JULIA_EXCEPTION;
+}
+
 avt_341::msg::Path GetMPCPath()
 {
     jl_array_t *j_path = (jl_array_t*)jl_call0(j_get_path);
@@ -161,6 +171,8 @@ void DeclareParameters()
     node->get_parameter("~max_speed", max_speed, 3.5);
     node->get_parameter("~stop_on_max_solve_time", stop_on_max_solve_time, true);
     node->get_parameter("~use_hard_constraints", use_hard_constraints, false);
+    node->get_parameter("~use_segmentation", use_segmentation, true);
+    node->get_parameter("~segmentation_resolution", segmentation_resolution, 0.25);
     node->get_parameter("~w_distance_to_obstacles", w_distance_to_obstacles, 5.);
     node->get_parameter("~w_distance_to_goal", w_distance_to_goal, 100.);
     node->get_parameter("~w_deviation_in_yaw", w_deviation_in_yaw, 1.);
@@ -168,6 +180,7 @@ void DeclareParameters()
     node->get_parameter("~grid_resolution", grid_resolution, 0.25);
     node->get_parameter("~front_angle_goal", front_angle_goal, 1.571);
     node->get_parameter("~front_angle_obstacle", front_angle_obstacle, 1.571);
+    node->get_parameter("~front_angle_segmentation", front_angle_segmentation, 1.571 );
     node->get_parameter("~adaptive", adaptive, false);
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
 }
@@ -310,6 +323,7 @@ void InitialiseJuliaAPI()
     j_set_heading = jl_get_function(mpc_module, "SetHeading");
     j_set_speed = jl_get_function(mpc_module, "SetSpeedSetpoint");
     j_set_sinkage = jl_get_function(mpc_module, "SetSinkage");
+    j_set_segmentation = jl_get_function(mpc_module, "SetSegmentation");
     j_get_path = jl_get_function(mpc_module, "GetPath");
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
@@ -322,6 +336,7 @@ void InitialiseJuliaAPI()
     j_set_max_speed = jl_get_function(mpc_module, "SetMaxSpeed");
     j_set_stop_on_max_solve_time = jl_get_function(mpc_module, "SetStopOnMaxSolveTime");
     j_set_use_hard_constraints = jl_get_function(mpc_module, "SetUseHardConstraints");
+    j_set_use_segmentation = jl_get_function(mpc_module, "SetUseSegmentation");
     j_set_w_distance_to_obstacles = jl_get_function(mpc_module, "SetWDistanceToObstacles");
     j_set_w_distance_to_goal = jl_get_function(mpc_module, "SetWDistanceToGoal");
     j_set_w_deviation_in_yaw = jl_get_function(mpc_module, "SetWDeviationInYaw");
@@ -331,6 +346,7 @@ void InitialiseJuliaAPI()
     j_set_front_angle_obstacle = jl_get_function(mpc_module, "SetFrontAngleObstacle");
     j_set_terrain_adaptive = jl_get_function(mpc_module, "SetTerrainAdaptive");
     j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
+    j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
     // -------------------------------
 }
 
@@ -345,6 +361,7 @@ void InitialisePlanner()
     jl_value_t *j_max_speed = jl_box_float64(max_speed);
     jl_value_t *j_stop_on_max_solve_time = jl_box_int32(stop_on_max_solve_time);
     jl_value_t *j_use_hard_constraints = jl_box_int32(use_hard_constraints);
+    jl_value_t *j_use_segmentation = jl_box_int32(use_segmentation);
     jl_value_t *j_w_distance_to_obstacles = jl_box_float64(w_distance_to_obstacles);
     jl_value_t *j_w_distance_to_goal = jl_box_float64(w_distance_to_goal);
     jl_value_t *j_w_deviation_in_yaw = jl_box_float64(w_deviation_in_yaw);
@@ -354,6 +371,7 @@ void InitialisePlanner()
     jl_value_t *j_front_angle_obstacle = jl_box_float64(front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
     jl_value_t *j_vehicle_axle_distance_front = jl_box_float64(vehicle_axle_distance_front);
+    jl_value_t *j_front_angle_segmentation = jl_box_float64(front_angle_segmentation);
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -364,6 +382,7 @@ void InitialisePlanner()
     jl_call1(j_set_max_speed, j_max_speed);
     jl_call1(j_set_stop_on_max_solve_time, j_stop_on_max_solve_time);
     jl_call1(j_set_use_hard_constraints, j_use_hard_constraints);
+    jl_call1(j_set_use_segmentation, j_use_segmentation);
     jl_call1(j_set_w_distance_to_obstacles, j_w_distance_to_obstacles);
     jl_call1(j_set_w_distance_to_goal, j_w_distance_to_goal);
     jl_call1(j_set_w_deviation_in_yaw, j_w_deviation_in_yaw);
@@ -373,6 +392,7 @@ void InitialisePlanner()
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
     jl_call1(j_set_terrain_adaptive, j_adaptive);
     jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
+    jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
     CATCH_JULIA_EXCEPTION;
 
     // Initialise the planner
@@ -403,6 +423,9 @@ int main(int argc, char *argv[])
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
     if (adaptive) {
         auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
+    }
+    if (use_segmentation) {
+        auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
     }
     // Register publishers
     // -------------------.

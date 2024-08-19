@@ -227,6 +227,17 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 #prefix=['xterm -e gdb -ex run --args'],
                 parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
+            # Segmentation Grid Processor
+            Node(
+                package='avt_341',
+                executable='segmentation_grid_processor_node',
+                name='segmentation_grid_processor_node',
+                output='screen',
+                remappings=[
+                    ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
+                ],
+                parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
+            ),
             # Vehicle Converter
             Node(
                 package='avt_341',
@@ -361,6 +372,20 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
             ]
+        ),
+        Node(
+            package='avt_341',
+            executable='avt_341_lidar_normal_estimation_node',
+            name='lidar_normal_estimation_node',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'normal_estimation_{k}') for k in params['normal_estimation'].keys()}]
+        ),
+        Node(
+            package='avt_341',
+            executable='avt_341_normal_segmentation_grid_node',
+            name='normal_segmentation_grid_node',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'normal_segmentation_grid_{k}') for k in params['normal_segmentation_grid'].keys()}]
         ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(

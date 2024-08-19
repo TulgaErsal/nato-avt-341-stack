@@ -16,6 +16,8 @@ max_speed: 3.5 # maximum allowed vehicle speed [m/s]
 stop_on_max_solve_time: True # Stop the vehicle when maximum solve time is reached
 
 use_hard_constraints: False # whether to include obstacles as hard constraints in addition to soft constraints
+use_segmentation: False
+segmentation_resolution: 0.25
 
 w_distance_to_obstacles: 5. # weight on distanceToObstacles in the objective function
 w_distance_to_goal: 100. # weight on distanceToGoal in the objective function
@@ -26,6 +28,7 @@ grid_resolution: 0.25 # resulution of the occupancy grid [m]
 
 front_angle_goal: 1.571 # the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle [rad]
 front_angle_obstacle: 1.571 # the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle [rad]
+front_angle_segmentation: 1.571 # the angle measured from the vehicle heading beyond which segmentation data is considered not in front of the vehicle [rad]
 
 adaptive: False # whether to use the terrain adaptive formulation or not
 

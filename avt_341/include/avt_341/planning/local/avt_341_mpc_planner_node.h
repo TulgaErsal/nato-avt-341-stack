@@ -66,6 +66,8 @@ double min_speed;
 double max_speed;
 bool stop_on_max_solve_time;
 bool use_hard_constraints;
+bool use_segmentation;
+double segmentation_resolution;
 double w_distance_to_obstacles;
 double w_distance_to_goal;
 double w_deviation_in_yaw;
@@ -73,6 +75,7 @@ double safety_margin;
 double grid_resolution;
 double front_angle_goal;
 double front_angle_obstacle;
+double front_angle_segmentation;
 bool adaptive;
 double vehicle_axle_distance_front;
 bool obstacles_vizualize;
@@ -120,6 +123,9 @@ jl_function_t* j_set_speed = NULL;
 /** @brief Pointer to the Julia function to set the estimated sinkage. */
 jl_function_t* j_set_sinkage = NULL;
 
+/** @brief Pointer to the Julia function to set the segmentation grid cells. */
+jl_function_t* j_set_segmentation = NULL;
+
 /** @brief Pointer to the Julia function to get the MPC path */
 jl_function_t* j_get_path = NULL;
 
@@ -138,6 +144,7 @@ jl_function_t* j_set_min_speed = NULL;
 jl_function_t* j_set_max_speed = NULL;
 jl_function_t* j_set_stop_on_max_solve_time = NULL;
 jl_function_t* j_set_use_hard_constraints = NULL;
+jl_function_t* j_set_use_segmentation = NULL;
 jl_function_t* j_set_w_distance_to_obstacles = NULL;
 jl_function_t* j_set_w_distance_to_goal = NULL;
 jl_function_t* j_set_w_deviation_in_yaw = NULL;
@@ -147,6 +154,7 @@ jl_function_t* j_set_front_angle_goal = NULL;
 jl_function_t* j_set_front_angle_obstacle = NULL;
 jl_function_t* j_set_terrain_adaptive = NULL;
 jl_function_t* j_set_veh_front_axle_dist = NULL;
+jl_function_t* j_set_front_angle_segmentation = NULL;
 
 // ---------------
 
