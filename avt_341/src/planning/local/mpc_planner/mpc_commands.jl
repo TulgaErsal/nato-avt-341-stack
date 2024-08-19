@@ -17,6 +17,8 @@ global numobs = 0
 global obstacle_size_meters = 0.0
 global obs_radius = 0.0
 global obstacles = Float64[]
+global segmentation = Float32[]
+global numSegCells = 0
 global count = 0
 global goal = [0. 0.]
 global desiredHeading = 0.0
@@ -39,6 +41,9 @@ global timeSeq=0
 global Robs=0
 global Xobs=0
 global Yobs=0
+global cellX0=0
+global cellY0=0
+global cellZ0=0
 global obs_con=0
 global obj=0
 global path_prev=0
@@ -84,6 +89,10 @@ function SetUseHardConstraints(use_constraints::Int32)
 	global useHardConstraints = Bool(use_constraints)
 end
 
+function SetUseSegmentation(use_segmentation::Int32)
+	global useSegmentation = Bool(use_segmentation)
+end
+
 function SetWDistanceToObstacles(w_dist_obs::Float64)
 	global w_distanceToObstacles = w_dist_obs
 end
@@ -119,6 +128,10 @@ end
 function SetVehFrontAxleDist(front_axle_dist::Float64)
 	global la = front_axle_dist
 end
+
+function SetFrontAngleSeg(angle_seg::Float64)
+	global frontAngleSegmentation = angle_seg
+end
 # ---------- (END) PARAMETER SETTERS ----------
 
 
@@ -144,9 +157,6 @@ function SetObstacles(obs::Vector{Float64})
 	end
 
 	for i=1:numobs
-		if obstacles[3*i] < 0.001
-			println("SMALL OBSTACLE -> ",obstacles[3*i]," m")
-		end
 		JuMP.setValue(obs_r[i], obstacles[3*i])
 		JuMP.setValue(Xobs_0[i], obstacles[3*i-2])
 		JuMP.setValue(Yobs_0[i], obstacles[3*i-1])
@@ -155,6 +165,27 @@ function SetObstacles(obs::Vector{Float64})
 		JuMP.setValue(obs_r[i], Robs[i])
 		JuMP.setValue(Xobs_0[i], Xobs[i])
 		JuMP.setValue(Yobs_0[i], Yobs[i])
+	end
+end
+
+function SetSegmentation(seg::Vector{Float64}, res::Float64)
+	global segmentation = seg
+	global numSegCells = Int(length(segmentation)/3)
+	global gridResolution = res
+	global maxNumCells = Int(ceil(2*((predictionTimeHorizon+0.1) * maxSpeed)^2 * frontAngleSegmentation / gridResolution))
+	global sigma = 1.414214*gridResolution
+
+	if useSegmentation
+		for i=1:numSegCells
+			JuMP.setValue(cellX[i], segmentation[3*(i-1)+1])
+			JuMP.setValue(cellY[i], segmentation[3*(i-1)+2])
+			JuMP.setValue(cellZ[i], segmentation[3*(i-1)+3])
+		end
+		for i=numSegCells+1:maxNumCells
+			JuMP.setValue(cellX[i], cellX0)
+			JuMP.setValue(cellY[i], cellY0)
+			JuMP.setValue(cellZ[i], cellZ0)
+		end
 	end
 end
 
@@ -205,9 +236,12 @@ end
 
 function Setup()
 	global safetyMargin
+	global useSegmentation
+	global maxNumCells
 	global maxNumObs
 	global mpc_path
 	global useHardConstraints
+	global sigma
 	global w_distanceToObstacles
 	global w_distanceToGoal
 	global w_deviationInYaw
@@ -270,6 +304,14 @@ function Setup()
 	@NLparameter(n.ocp.mdl, obs_r[i=1:maxNumObs] == Robs[i]);
 	@NLparameter(n.ocp.mdl, Xobs_0[i=1:maxNumObs] == Xobs[i]);
 	@NLparameter(n.ocp.mdl, Yobs_0[i=1:maxNumObs] == Yobs[i]);
+	if useSegmentation
+		global cellX0 = 0.
+		global cellY0 = 0.
+		global cellZ0 = 0.
+		@NLparameter(n.ocp.mdl, cellX[i=1:maxNumCells] == cellX0)
+		@NLparameter(n.ocp.mdl, cellY[i=1:maxNumCells] == cellY0)
+		@NLparameter(n.ocp.mdl, cellZ[i=1:maxNumCells] == cellZ0)
+	end
 	@NLparameter(n.ocp.mdl, g1 == 50.0);
 	@NLparameter(n.ocp.mdl, g2 == 0.0);
 	@NLparameter(n.ocp.mdl, rhoKS == 2.5 * obstacle_size_meters)
@@ -286,19 +328,24 @@ function Setup()
 	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(2*obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
-
-
+	if useSegmentation
+		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumCells for j=2:n.ocp.state.pts))
+	end
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
 	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw)
 	# @NLobjective(n.ocp.mdl, Min, obj+100.0 * (distanceToGoal+1))
-
+	if useSegmentation
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_traversabilityCost*traversabilityCost)
+	else
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw)
+	end
 	n.s.ocp.save = false
 
 	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
-	linear_solver = "ma27",
-	max_iter = 2000,
-	print_level = 0,
-	warm_start_init_point = "no",
+		linear_solver = "ma27",
+		max_iter = 2000,
+		print_level = 0,
+		warm_start_init_point = "no",
 	))
 
 	if n.s.mpc.shiftX0
@@ -321,20 +368,20 @@ function Setup()
 	println("Setup done. Type 'q' to quit.")
 
 	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
-	linear_solver = "ma27",
-	max_iter = 200,
-	max_cpu_time = 0.2,
-	print_level = 0,
-	warm_start_init_point = "yes",
-	# mu_strategy = "adaptive",
-	tol = 2e-1,
-	dual_inf_tol = 1.,
-	constr_viol_tol = 3e-1,
-	compl_inf_tol = 3e-1,
-	acceptable_tol = 7e-2,
-	acceptable_constr_viol_tol = 0.01,
-	acceptable_dual_inf_tol = 1e10,
-	acceptable_compl_inf_tol = 0.01
+		linear_solver = "ma27",
+		max_iter = 200,
+		max_cpu_time = 0.2,
+		print_level = 0,
+		warm_start_init_point = "yes",
+		# mu_strategy = "adaptive",
+		tol = 2e-1,
+		dual_inf_tol = 1.,
+		constr_viol_tol = 3e-1,
+		compl_inf_tol = 3e-1,
+		acceptable_tol = 7e-2,
+		acceptable_constr_viol_tol = 0.01,
+		acceptable_dual_inf_tol = 1e10,
+		acceptable_compl_inf_tol = 0.01
 	))
 
 	# n.s.ocp.solver.settings[:max_cpu_time] = 1.0
