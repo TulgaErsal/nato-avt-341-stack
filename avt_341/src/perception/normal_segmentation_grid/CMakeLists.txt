@@ -1,5 +1,8 @@
 message(STATUS "Building normal segmentation grid node ...")
 
+find_package(PCL REQUIRED)
+add_definitions(${PCL_DEFINITIONS})
+
 if(USING_CATKIN)
   # Normal segmentation grid node
   add_executable(

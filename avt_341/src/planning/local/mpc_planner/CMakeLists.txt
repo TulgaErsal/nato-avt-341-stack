@@ -8,9 +8,45 @@ else()
 endif() # if(${Julia_FOUND})
 
 if(BUILD_MPC)
+
   if(USING_CATKIN)
-    message(WARNING "Skipping build for MPC planner node, not supported in ROS1.")
+    add_executable(${PROJECT_NAME}_mpc_planner_node
+      "avt_341_mpc_planner_node.cpp")
+    add_dependencies(${PROJECT_NAME}_mpc_planner_node ${catkin_EXPORTED_TARGETS})
+    target_include_directories(${PROJECT_NAME}_mpc_planner_node
+      PUBLIC
+        "$<BUILD_INTERFACE:${Julia_INCLUDE_DIRS}>")
+    target_link_libraries(${PROJECT_NAME}_mpc_planner_node
+        ${PROJECT_NAME}_proxy
+        $<BUILD_INTERFACE:${Julia_LIBRARY}>)
+    target_compile_definitions(${PROJECT_NAME}_mpc_planner_node
+      PUBLIC
+        "MPC_PLANNER_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_commands.jl\""
+        "MPC_PARAMETERS_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_parameters.jl\""
+        "MPC_MODELS_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_models.jl\""
+        "MPC_SYSIMAGE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so\""
+        -DJULIA_ENABLE_THREADING)
+    install(
+      TARGETS ${PROJECT_NAME}_mpc_planner_node
+      RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
+      LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}")
+    # Try to generate a Julia sysimage (if not already present).
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so")
+      message(STATUS "Generating Julia sysimage to improve MPC node startup time - this may take a while...")
+
+      # Set the input template and output file absolute paths as environment
+      # variables so the Julia REPL can access them.
+      set(ENV{JULIA_SYSIMAGE_OUTPUT_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so")
+      set(ENV{JULIA_SYSIMAGE_TEMPLATE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/mpc_sysimage_template.jl")
+
+      # Set the path to the Julia sysimage generator script.
+      set(JULIA_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/mpc_sysimage_generator.jl")
+
+      # Run the Julia REPL with the sysimage generator script.
+      execute_process(COMMAND ${Julia_EXECUTABLE} -L ${JULIA_SCRIPT})
+    endif() # if(NOT EXISTS "(...)/sysimage.so")
   endif() # if(USING_CATKIN)
+
   if(USING_AMENT)
     add_executable(${PROJECT_NAME}_mpc_planner_node
       "avt_341_mpc_planner_node.cpp")

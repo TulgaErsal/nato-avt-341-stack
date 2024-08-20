@@ -1,5 +1,8 @@
 message(STATUS "Building LiDAR normal estimation node ...")
 
+find_package(PCL REQUIRED)
+add_definitions(${PCL_DEFINITIONS})
+
 if(USING_CATKIN)
   # LiDAR normal estimation node
   add_executable(${PROJECT_NAME}_lidar_normal_estimation_node

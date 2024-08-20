@@ -172,6 +172,7 @@ namespace avt_341 {
             ros::Time get_stamp() const;
             double get_now_seconds() const;
             void spin_some();
+            void spin();
 
         private:
             ros::NodeHandle node_;
@@ -363,6 +364,7 @@ namespace avt_341 {
       rclcpp::Time get_stamp() const;
       double get_now_seconds() const;
       void spin_some();
+      void spin();
 
     private:
       std::shared_ptr<rclcpp::Node> node_;

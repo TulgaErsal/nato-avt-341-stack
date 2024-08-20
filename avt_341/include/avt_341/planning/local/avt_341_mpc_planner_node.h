@@ -21,8 +21,6 @@
 
 #include <avt_341/node/node_proxy.h>
 #include <avt_341/node/ros_types.h>
-#include <avt_341_msgs/msg/obstacles.hpp>
-#include <avt_341_msgs/msg/sinkage.hpp>
 #include <julia.h>
 
 // TODO: I do not have a Windows environment to test whether this declaration
@@ -41,7 +39,7 @@ void CatchJuliaException();
 // Thread safety
 // -------------
 
-std::atomic<bool> has_error = false;
+bool has_error = false;
 // -------------
 
 // ROS members

@@ -88,6 +88,10 @@ void NodeProxy::spin_some() {
     ros::spinOnce();
 }
 
+void NodeProxy::spin() {
+    ros::spin();
+}
+
 #else
 
     Rate::Rate(double hz) : rate_(hz) {
@@ -195,6 +199,10 @@ void NodeProxy::spin_some() {
 
     void NodeProxy::spin_some() {
       rclcpp::spin_some(node_);
+    }
+
+    void NodeProxy::spin() {
+      rclcpp::spin(node_);
     }
 
 #endif
