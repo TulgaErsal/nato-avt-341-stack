@@ -35,7 +35,8 @@ void CatchJuliaException()
 void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
 {
     jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    jl_array_t *veh_data = jl_ptr_to_array_1d(array_type, &f64_ma_msg->data[0], 11, 0);
+    double* veh_data_arr = const_cast<double*>(&f64_ma_msg->data[0]);
+    jl_array_t *veh_data = jl_ptr_to_array_1d(array_type, veh_data_arr, 11, 0);
 
     jl_call1(j_set_state, (jl_value_t*)veh_data);
     CATCH_JULIA_EXCEPTION;
@@ -46,7 +47,8 @@ void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
 void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
 {
     jl_value_t* obs_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, &obs_msg->data[0], obs_msg->data.size(), 0);
+    double* obs_arr = const_cast<double*>(&obs_msg->data[0]);
+    jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_msg->data.size(), 0);
 
     jl_call1(j_set_obstacles, (jl_value_t*)obs_arg);
     CATCH_JULIA_EXCEPTION;
@@ -97,7 +99,8 @@ void SinkageCallback(avt_341::msg::SinkagePtr sinkage_msg)
 void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
 {
     jl_value_t* seg_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    jl_array_t *seg_arg = jl_ptr_to_array_1d(seg_type, &seg_msg->data[0], seg_msg->data.size(), 0);
+    double* seg_arr = const_cast<double*>(&seg_msg->data[0]);
+    jl_array_t *seg_arg = jl_ptr_to_array_1d(seg_type, seg_arr, seg_msg->data.size(), 0);
     jl_value_t *seg_res = jl_box_float64(segmentation_resolution);
 
     jl_call2(j_set_segmentation, (jl_value_t*)seg_arg, seg_res);

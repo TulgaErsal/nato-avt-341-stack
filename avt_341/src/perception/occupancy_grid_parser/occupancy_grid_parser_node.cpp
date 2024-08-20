@@ -132,7 +132,7 @@ void OccupancyGridParserNode::CreatePublishers() {
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_default);
 
     static_obstacles_publisher_ =
-        create_publisher<avt_341_msgs::msg::StaticObstacleArray>(
+        create_publisher<avt_341::msg::StaticObstacleArray>(
             "obstacles/static",
             qos);
 
@@ -296,13 +296,13 @@ void OccupancyGridParserNode::RefreshTimerCallback() {
 void OccupancyGridParserNode::PublishObstacles(
     const OccupancyGrid& occupancy_grid) {
     auto static_obstacles_array_message =
-        std::make_shared<avt_341_msgs::msg::StaticObstacleArray>();
+        std::make_shared<avt_341::msg::StaticObstacleArray>();
     static_obstacles_array_message->header.frame_id =
         occupancy_grid.GetFrameId();
     static_obstacles_array_message->header.stamp = get_clock()->now();
     for(const auto& obstacle : obstacles_) {
         auto static_obstacle_message =
-            std::make_shared<avt_341_msgs::msg::StaticObstacle>();
+            std::make_shared<avt_341::msg::StaticObstacle>();
         static_obstacle_message->type = obstacle.GetMarkerType();
         static_obstacle_message->pose.position.x = obstacle.GetPosition().x();
         static_obstacle_message->pose.position.y = obstacle.GetPosition().y();

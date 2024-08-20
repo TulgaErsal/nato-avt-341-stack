@@ -45,6 +45,8 @@
 #include "avt_341_msgs/OccupiedCells.h"
 #include "avt_341_msgs/Obstacles.h"
 #include "avt_341_msgs/Sinkage.h"
+#include "avt_341_msgs/StaticObstacleArray.h"
+#include "avt_341_msgs/StaticObstacle.h"
 
 namespace avt_341 {
     namespace msg {
@@ -152,11 +154,17 @@ namespace avt_341 {
         using OccupiedCells = avt_341_msgs::OccupiedCells;
         using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
 
+        using StaticObstacleArray = avt_341_msgs::StaticObstacleArray;
+        using StaticObstacleArrayPtr = const avt_341_msgs::StaticObstacleArray::ConstPtr &;
+
+        using StaticObstacle = avt_341_msgs::StaticObstacle;
+        using StaticObstaclePtr = const avt_341_msgs::StaticObstacle::ConstPtr &;
+
         using Obstacles = avt_341_msgs::Obstacles;
         using ObstaclesPtr = const avt_341_msgs::Obstacles::ConstPtr &;
 
         using Sinkage = avt_341_msgs::Sinkage;
-        using SinkagePtr = avt_341_msgs::Sinkage::ConstPtr &;
+        using SinkagePtr = const avt_341_msgs::Sinkage::ConstPtr &;
 
         using Time = ros::Time;
         using Duration = ros::Duration;
@@ -217,6 +225,8 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
+#include "avt_341_msgs/msg/static_obstacle_array.hpp"
+#include "avt_341_msgs/msg/static_obstacle.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -317,6 +327,12 @@ namespace avt_341 {
 
     using Obstacles = avt_341_msgs::msg::Obstacles;
     using ObstaclesPtr = avt_341_msgs::msg::Obstacles::SharedPtr;
+
+    using StaticObstacleArray = avt_341_msgs::msg::StaticObstacleArray;
+    using StaticObstacleArrayPtr = avt_341_msgs::msg::StaticObstacleArray::SharedPtr;
+
+    using StaticObstacle = avt_341_msgs::msg::StaticObstacle;
+    using StaticObstaclePtr = avt_341_msgs::msg::StaticObstacle::SharedPtr;
 
     using Sinkage = avt_341_msgs::msg::Sinkage;
     using SinkagePtr = avt_341_msgs::msg::Sinkage::SharedPtr;

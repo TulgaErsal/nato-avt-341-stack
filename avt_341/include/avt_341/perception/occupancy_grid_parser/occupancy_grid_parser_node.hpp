@@ -11,7 +11,6 @@
 #include <avt_341/perception/occupancy_grid_parser/obstacle.hpp>
 #include <avt_341/perception/occupancy_grid_parser/occupancy_grid.hpp>
 #include <avt_341/perception/occupancy_grid_parser/state.hpp>
-#include <avt_341_msgs/msg/static_obstacle_array.hpp>
 
 namespace avt_341 {
 namespace perception {
@@ -119,7 +118,7 @@ class OccupancyGridParserNode : public rclcpp::Node {
     double refresh_rate_;
 
     /** @brief Shared pointer to the static obstacles publisher. */
-    rclcpp::Publisher<avt_341_msgs::msg::StaticObstacleArray>::SharedPtr
+    rclcpp::Publisher<avt_341::msg::StaticObstacleArray>::SharedPtr
         static_obstacles_publisher_;
 
     void PublishObstacles(const OccupancyGrid& occupancy_grid);

@@ -23,21 +23,21 @@ avt_341::utils::vec2 goal;
 // Params
 float max_speed, la, predictionTimeHorizon, frontAngleGoal;
 
-void callback_global_path(avt_341::msg::Path global_path) {
-    global_path_input = global_path;
+void callback_global_path(avt_341::msg::PathPtr global_path) {
+    global_path_input = *global_path;
 }
 
-void callback_veh(avt_341::msg::Float64MultiArray veh) {
-    veh_input = veh;
+void callback_veh(avt_341::msg::Float64MultiArrayPtr veh) {
+    veh_input = *veh;
     veh_input_stamp = n->get_stamp();
 }
 
-void callback_speedSetpoint(avt_341::msg::Float64 ss) {
-    speedSetpoint_input = ss;
+void callback_speedSetpoint(avt_341::msg::Float64Ptr ss) {
+    speedSetpoint_input = *ss;
 }
 
-void callback_follower_status(avt_341::msg::FollowerStatus follower_status) {
-    follower_status_input = follower_status;
+void callback_follower_status(avt_341::msg::FollowerStatusPtr follower_status) {
+    follower_status_input = *follower_status;
 }
 
 bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path global_path, avt_341::msg::Float64 ss) {
