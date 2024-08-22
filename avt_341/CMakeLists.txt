@@ -54,6 +54,7 @@ set(AVT341_SOURCE_FILES
     "planning/local/potential_field"
     "planning/local/dwa"
     "planning/local/goal_point_processor"
+    "planning/local/vehicle_converter"
     "planning/global/global_path")
 
 # Append src/ subdirectory to the path of each target.

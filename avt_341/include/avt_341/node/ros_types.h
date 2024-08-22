@@ -9,6 +9,7 @@
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/Imu.h"
 
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Point32.h"
@@ -54,6 +55,9 @@ namespace avt_341 {
 
         using Image = sensor_msgs::Image;
         using ImagePtr = const sensor_msgs::Image::ConstPtr &;
+
+        using Imu = sensor_msgs::Imu;
+        using ImuPtr = const sensor_msgs::Imu::ConstPtr &;
 
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;
@@ -144,6 +148,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/point32.hpp"
@@ -189,6 +194,9 @@ namespace avt_341 {
 
     using Image = sensor_msgs::msg::Image;
     using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
+
+    using Imu = sensor_msgs::msg::Imu;
+    using ImuPtr = sensor_msgs::msg::Imu::ConstSharedPtr;
 
     using Twist = geometry_msgs::msg::Twist;
     using TwistPtr = const geometry_msgs::msg::Twist::SharedPtr;
