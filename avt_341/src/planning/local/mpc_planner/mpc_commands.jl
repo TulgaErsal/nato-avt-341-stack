@@ -81,10 +81,6 @@ function SetMaxSpeed(max_speed::Float64)
 	global maxSpeed = max_speed
 end
 
-function SetStopOnMaxSolveTime(b_stop::Int32)
-	global stopOnMaxSolveTime = Bool(b_stop)
-end
-
 function SetUseHardConstraints(use_constraints::Int32)
 	global useHardConstraints = Bool(use_constraints)
 end
@@ -103,6 +99,10 @@ end
 
 function SetWDeviationInYaw(w_dev_yaw::Float64)
 	global w_deviationInYaw = w_dev_yaw
+end
+
+function SetWTraversabilityCost(w_traversability_cost::Float64)
+	global w_traversabilityCost = w_traversability_cost
 end
 
 function SetSafetyMargin(marigin::Float64)
@@ -132,6 +132,7 @@ end
 function SetFrontAngleSeg(angle_seg::Float64)
 	global frontAngleSegmentation = angle_seg
 end
+
 # ---------- (END) PARAMETER SETTERS ----------
 
 
@@ -211,10 +212,6 @@ function GetPath()
 end
 
 function GetSpeed()
-	if stopOnMaxSolveTime && !solutionFound
-		return 0.0
-	end
-
 	num_path_points = size(mpc_path)[1]
 	if skipCount < num_path_points - 2
 		return mpc_speed[2 + skipCount]
@@ -223,10 +220,6 @@ function GetSpeed()
 end
 
 function GetSteering()
-	if stopOnMaxSolveTime && !solutionFound
-		return 0.0
-	end
-
 	num_path_points = size(mpc_path)[1]
 	if skipCount < num_path_points - 2
 		return mpc_steering[2 + skipCount]

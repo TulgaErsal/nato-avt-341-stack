@@ -3,7 +3,7 @@ planner_module_path: "" # Filepath to the Julia MPC planner module
 parameters_module_path: "" # Filepath to the Julia MPC parameters module
 models_module_path: "" # Filepath to the Julia MPC models module
 
-rate: 10.0 # Planner update rate
+rate: 20.0 # Planner update rate
 
 tire_model: "L" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
@@ -13,8 +13,6 @@ max_num_obs: 500 # maximum number of obstacles allowed in MPC
 min_speed: 0.5 # minimum allowed vehicle speed [m/s]
 max_speed: 3.5 # maximum allowed vehicle speed [m/s]
 
-stop_on_max_solve_time: True # Stop the vehicle when maximum solve time is reached
-
 use_hard_constraints: False # whether to include obstacles as hard constraints in addition to soft constraints
 use_segmentation: False
 segmentation_resolution: 0.25
@@ -22,6 +20,7 @@ segmentation_resolution: 0.25
 w_distance_to_obstacles: 5. # weight on distanceToObstacles in the objective function
 w_distance_to_goal: 100. # weight on distanceToGoal in the objective function
 w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
+w_traversability_cost: 0.1  #weight on traversabilityCost in the objective function
 
 safety_margin: 0.0 # safety margin [m] around obstacles
 grid_resolution: 0.25 # resulution of the occupancy grid [m]
