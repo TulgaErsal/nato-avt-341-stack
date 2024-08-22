@@ -105,6 +105,8 @@ void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
 
     jl_call2(j_set_segmentation, (jl_value_t*)seg_arg, seg_res);
     CATCH_JULIA_EXCEPTION;
+
+    recv_seg_input = true;
 }
 
 avt_341::msg::Path GetMPCPath()
@@ -152,7 +154,7 @@ avt_341::msg::Float64 GetMPCSteering()
 }
 
 bool NewInputAvailable() {
-    return recv_veh_input;
+    return recv_veh_input && (!use_segmentation || recv_seg_input);
 }
 
 void PublishPath() {}
@@ -172,13 +174,13 @@ void DeclareParameters()
     node->get_parameter("~max_num_obs", max_num_obs, 500);
     node->get_parameter("~min_speed", min_speed, 0.5);
     node->get_parameter("~max_speed", max_speed, 3.5);
-    node->get_parameter("~stop_on_max_solve_time", stop_on_max_solve_time, true);
     node->get_parameter("~use_hard_constraints", use_hard_constraints, false);
     node->get_parameter("~use_segmentation", use_segmentation, true);
     node->get_parameter("~segmentation_resolution", segmentation_resolution, 0.25);
     node->get_parameter("~w_distance_to_obstacles", w_distance_to_obstacles, 5.);
     node->get_parameter("~w_distance_to_goal", w_distance_to_goal, 100.);
     node->get_parameter("~w_deviation_in_yaw", w_deviation_in_yaw, 1.);
+    node->get_parameter("~w_traversability_cost", w_traversability_cost, 0.1);
     node->get_parameter("~safety_margin", safety_margin, 0.0);
     node->get_parameter("~grid_resolution", grid_resolution, 0.25);
     node->get_parameter("~front_angle_goal", front_angle_goal, 1.571);
@@ -337,12 +339,12 @@ void InitialiseJuliaAPI()
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
     j_set_max_speed = jl_get_function(mpc_module, "SetMaxSpeed");
-    j_set_stop_on_max_solve_time = jl_get_function(mpc_module, "SetStopOnMaxSolveTime");
     j_set_use_hard_constraints = jl_get_function(mpc_module, "SetUseHardConstraints");
     j_set_use_segmentation = jl_get_function(mpc_module, "SetUseSegmentation");
     j_set_w_distance_to_obstacles = jl_get_function(mpc_module, "SetWDistanceToObstacles");
     j_set_w_distance_to_goal = jl_get_function(mpc_module, "SetWDistanceToGoal");
     j_set_w_deviation_in_yaw = jl_get_function(mpc_module, "SetWDeviationInYaw");
+    j_set_w_traversability_cost = jl_get_function(mpc_module, "SetWTraversabilityCost");
     j_set_safety_margin = jl_get_function(mpc_module, "SetSafetyMargin");
     j_set_grid_resolution = jl_get_function(mpc_module, "SetGridResolution");
     j_set_front_angle_goal = jl_get_function(mpc_module, "SetFrontAngleGoal");
@@ -362,12 +364,12 @@ void InitialisePlanner()
     jl_value_t *j_max_num_obs = jl_box_int32(max_num_obs);
     jl_value_t *j_min_speed = jl_box_float64(min_speed);
     jl_value_t *j_max_speed = jl_box_float64(max_speed);
-    jl_value_t *j_stop_on_max_solve_time = jl_box_int32(stop_on_max_solve_time);
     jl_value_t *j_use_hard_constraints = jl_box_int32(use_hard_constraints);
     jl_value_t *j_use_segmentation = jl_box_int32(use_segmentation);
     jl_value_t *j_w_distance_to_obstacles = jl_box_float64(w_distance_to_obstacles);
     jl_value_t *j_w_distance_to_goal = jl_box_float64(w_distance_to_goal);
     jl_value_t *j_w_deviation_in_yaw = jl_box_float64(w_deviation_in_yaw);
+    jl_value_t *j_w_traversability_cost = jl_box_float64(w_traversability_cost);
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
     jl_value_t *j_front_angle_goal = jl_box_float64(front_angle_goal);
@@ -383,12 +385,12 @@ void InitialisePlanner()
     jl_call1(j_set_max_num_obs, j_max_num_obs);
     jl_call1(j_set_min_speed, j_min_speed);
     jl_call1(j_set_max_speed, j_max_speed);
-    jl_call1(j_set_stop_on_max_solve_time, j_stop_on_max_solve_time);
     jl_call1(j_set_use_hard_constraints, j_use_hard_constraints);
     jl_call1(j_set_use_segmentation, j_use_segmentation);
     jl_call1(j_set_w_distance_to_obstacles, j_w_distance_to_obstacles);
     jl_call1(j_set_w_distance_to_goal, j_w_distance_to_goal);
     jl_call1(j_set_w_deviation_in_yaw, j_w_deviation_in_yaw);
+    jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);

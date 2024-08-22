@@ -69,6 +69,7 @@ double segmentation_resolution;
 double w_distance_to_obstacles;
 double w_distance_to_goal;
 double w_deviation_in_yaw;
+double w_traversability_cost;
 double safety_margin;
 double grid_resolution;
 double front_angle_goal;
@@ -83,6 +84,7 @@ bool obstacles_vizualize;
 // --------------
 
 bool recv_veh_input = false;
+bool recv_seg_input = false;
 bool is_initialized = false;
 // --------------
 
@@ -146,6 +148,7 @@ jl_function_t* j_set_use_segmentation = NULL;
 jl_function_t* j_set_w_distance_to_obstacles = NULL;
 jl_function_t* j_set_w_distance_to_goal = NULL;
 jl_function_t* j_set_w_deviation_in_yaw = NULL;
+jl_function_t* j_set_w_traversability_cost = NULL;
 jl_function_t* j_set_safety_margin = NULL;
 jl_function_t* j_set_grid_resolution = NULL;
 jl_function_t* j_set_front_angle_goal = NULL;
