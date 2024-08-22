@@ -35,6 +35,8 @@
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
+#include "avt_341_msgs/Obstacles.h"
+#include "avt_341_msgs/Sinkage.h"
 
 namespace avt_341 {
     namespace msg {
@@ -118,6 +120,12 @@ namespace avt_341 {
         using OccupiedCells = avt_341_msgs::OccupiedCells;
         using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
 
+        using Obstacles = avt_341_msgs::Obstacles;
+        using ObstaclesPtr = const avt_341_msgs::Obstacles::ConstPtr &;
+
+        using Sinkage = avt_341_msgs::Sinkage;
+        using SinkagePtr = const avt_341_msgs::Sinkage::ConstPtr &;
+
         using Time = ros::Time;
     }
     namespace msg_tf{
@@ -162,6 +170,8 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
+#include "avt_341_msgs/msg/obstacles.hpp"
+#include "avt_341_msgs/msg/sinkage.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -235,6 +245,12 @@ namespace avt_341 {
 
     using OccupiedCells = avt_341_msgs::msg::OccupiedCells;
     using OccupiedCellsPtr = avt_341_msgs::msg::OccupiedCells::SharedPtr;
+
+    using Obstacles = avt_341_msgs::msg::Obstacles;
+    using ObstaclesPtr = avt_341_msgs::msg::Obstacles::SharedPtr;
+
+    using Sinkage = avt_341_msgs::msg::Sinkage;
+    using SinkagePtr = avt_341_msgs::msg::Sinkage::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;
