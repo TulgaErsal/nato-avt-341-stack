@@ -37,18 +37,22 @@ struct vec2{
 		x = x_; 
 		y = y_;
 	}
+
 	vec2 operator+(const vec2& b) { return vec2(this->x + b.x, this->y + b.y); }
 	vec2 operator-(const vec2& b) { return vec2(this->x - b.x, this->y - b.y); }
 	vec2 operator*(const float s) { return vec2(s*this->x, s*this->y); }
 	vec2 operator/(const float s) { return vec2(this->x/s, this->y/s); }
-  void normalize() {
-    float mag = sqrt(x*x + y*y);
-    x /= mag;
-    y /= mag;
-  }
-  float mag() {
-    return sqrt(x*x + y*y);
-  }
+
+	void normalize() {
+		float mag = sqrt(x*x + y*y);
+		x /= mag;
+		y /= mag;
+	}
+
+	float mag() {
+		return sqrt(x*x + y*y);
+	}
+
 	float x;
 	float y;
 };
@@ -64,13 +68,19 @@ struct vec3{
 		y = y_;
 		z = z_;
 	}
+
 	vec3 operator+(const vec3& b) { return vec3(this->x + b.x, this->y + b.y, this->z + b.z); }
 	vec3 operator-(const vec3& b) { return vec3(this->x - b.x, this->y - b.y, this->z - b.z); }
 	vec3 operator*(const float s) { return vec3(s*this->x, s*this->y, s*this->z); }
 	vec3 operator/(const float s) { return vec3(this->x/s, this->y/s, this->z/s); }
-  float operator[](const int idx) const {
-    return idx == 0 ? x : (idx == 1 ? y : z);
-  };
+	float operator[](const int idx) const {
+		return idx == 0 ? x : (idx == 1 ? y : z);
+	};
+
+	vec2 xy() {
+		return vec2(x,y);
+	}
+
 	float x;
 	float y;
 	float z;
@@ -100,6 +110,27 @@ inline float length(vec2 p){
 
 inline float dot(vec2 p, vec2 q){
 	return (p.x*q.x+p.y*q.y);
+}
+
+inline vec2 normalize(vec2 v) {
+	float mag = sqrt(v.x*v.x + v.y*v.y);
+	return vec2(v.x/mag, v.y/mag);
+}
+
+inline vec3 cross(vec3 v1, vec3 v2) {
+	return vec3( v1.y*v2.z - v1.z*v2.y,
+				 v1.z*v2.x - v1.x*v2.z,
+				 v1.x*v2.y - v1.y*v2.x );
+}
+
+inline vec3 cross(vec2 v1, vec3 v2) {
+	return vec3( v1.y*v2.z,
+				 -1.0*v1.x*v2.z,
+				 v1.x*v2.y - v1.y*v2.x );
+}
+
+inline float cross(vec2 v1, vec2 v2) {
+	return v1.x*v2.y - v1.y*v2.x;
 }
 
 inline float PointLineDistance(vec2 x1, vec2 x2, vec2 x0) {
