@@ -70,6 +70,9 @@ namespace avt_341 {
         using TwistStamped = geometry_msgs::TwistStamped;
         using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;
 
+        using Imu = sensor_msgs::Imu;
+        using ImuPtr = const sensor_msgs::Imu::ConstPtr &;
+
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;
 
