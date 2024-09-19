@@ -79,7 +79,7 @@ def tf2_nodes():
             output='screen',
             parameters=[{
                 'publish_odom': True,
-                'rate': 20.0,
+                'rate': 60.0,
                 'odom_topic': 'avt_341/odometry',
             }],
             remappings=[

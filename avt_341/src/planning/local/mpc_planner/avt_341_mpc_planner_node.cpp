@@ -46,6 +46,8 @@ void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
 
 void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
 {
+    if (!is_initialized) return;
+    
     jl_value_t* obs_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
     double* obs_arr = const_cast<double*>(&obs_msg->data[0]);
     jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_msg->data.size(), 0);
@@ -353,10 +355,7 @@ void InitialiseJuliaAPI()
     j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
     j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
     // -------------------------------
-}
 
-void InitialisePlanner()
-{
     // Convert params to Julia types
     jl_value_t *j_tire_model = jl_cstr_to_string(tire_model.c_str());
     jl_value_t *j_num_col_points = jl_box_int32(num_col_points);
@@ -399,7 +398,10 @@ void InitialisePlanner()
     jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
     jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
     CATCH_JULIA_EXCEPTION;
+}
 
+void InitialisePlanner()
+{
     // Initialise the planner
     // ----------------------
     jl_call0(j_setup);

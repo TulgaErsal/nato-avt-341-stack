@@ -1,6 +1,6 @@
 # Global Planner
 # ======================================================================================================================
-goal_dist: 5.0                                # Lookahead threshold within which next waypoint selected.
+goal_dist: 10.0                                # Lookahead threshold within which next waypoint selected.
 global_lookahead: 75.0                        # Global path lookahead
 debug_visualize: True                         # Enables debug visualization of global planner.
 w_distance: 1.0                               # Weight for distance cost.

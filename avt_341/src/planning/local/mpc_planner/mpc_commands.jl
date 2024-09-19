@@ -71,6 +71,9 @@ end
 
 function SetMaxNumObs(num_obs::Int32)
 	global maxNumObs = num_obs
+	global Robs = fill(1.0, maxNumObs)
+	global Xobs = fill(1000.0, maxNumObs)
+	global Yobs = fill(0.0, maxNumObs)
 end
 
 function SetMinSpeed(min_speed::Float64)
