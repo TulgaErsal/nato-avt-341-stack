@@ -6,7 +6,7 @@ debug_visualize: True                         # Enables debug visualization of g
 w_distance: 1.0                               # Weight for distance cost.
 w_occupancy: 1.0                              # Weight for occupancy cost.
 w_segmentation: 1.0                           # Weight for segmentation cost.
-search_diagonals: False                        # If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered.
+search_diagonals: True                        # If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered.
 los_max_iterations: 1                         # Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges.
 los_break_on_first: False                     # If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection.
 shutdown_behavior: 1                          # behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown).

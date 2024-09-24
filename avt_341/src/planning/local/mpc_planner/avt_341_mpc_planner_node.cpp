@@ -182,6 +182,7 @@ void DeclareParameters()
     node->get_parameter("~w_distance_to_obstacles", w_distance_to_obstacles, 5.);
     node->get_parameter("~w_distance_to_goal", w_distance_to_goal, 100.);
     node->get_parameter("~w_deviation_in_yaw", w_deviation_in_yaw, 1.);
+    node->get_parameter("~w_yaw_accel", w_yaw_accel, 1.);
     node->get_parameter("~w_traversability_cost", w_traversability_cost, 0.1);
     node->get_parameter("~safety_margin", safety_margin, 0.0);
     node->get_parameter("~grid_resolution", grid_resolution, 0.25);
@@ -346,6 +347,7 @@ void InitialiseJuliaAPI()
     j_set_w_distance_to_obstacles = jl_get_function(mpc_module, "SetWDistanceToObstacles");
     j_set_w_distance_to_goal = jl_get_function(mpc_module, "SetWDistanceToGoal");
     j_set_w_deviation_in_yaw = jl_get_function(mpc_module, "SetWDeviationInYaw");
+    j_set_w_yaw_accel = jl_get_function(mpc_module, "SetWYawAccel");
     j_set_w_traversability_cost = jl_get_function(mpc_module, "SetWTraversabilityCost");
     j_set_safety_margin = jl_get_function(mpc_module, "SetSafetyMargin");
     j_set_grid_resolution = jl_get_function(mpc_module, "SetGridResolution");
@@ -368,6 +370,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_w_distance_to_obstacles = jl_box_float64(w_distance_to_obstacles);
     jl_value_t *j_w_distance_to_goal = jl_box_float64(w_distance_to_goal);
     jl_value_t *j_w_deviation_in_yaw = jl_box_float64(w_deviation_in_yaw);
+    jl_value_t *j_w_yaw_accel = jl_box_float64(w_yaw_accel);
     jl_value_t *j_w_traversability_cost = jl_box_float64(w_traversability_cost);
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
@@ -389,6 +392,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_distance_to_obstacles, j_w_distance_to_obstacles);
     jl_call1(j_set_w_distance_to_goal, j_w_distance_to_goal);
     jl_call1(j_set_w_deviation_in_yaw, j_w_deviation_in_yaw);
+    jl_call1(j_set_w_yaw_accel, j_w_yaw_accel);
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
