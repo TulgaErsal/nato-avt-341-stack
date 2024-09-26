@@ -45,6 +45,7 @@ set(AVT341_SOURCE_FILES
     "control/control"
     "control/speed_control"
     "control/speed_control_test"
+    "control/speed_zones"
     "daq/data_acquisition"
     "mission/formation_control"
     "mission/mission_manager"

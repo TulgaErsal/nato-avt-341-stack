@@ -478,6 +478,17 @@ def launch_setup(context, *args, **kwargs):
                 {'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx))},
                 {k: LaunchConfiguration(f'socket_comms_{k}') for k in params['socket_comms'].keys()}
             ]
+        ),
+
+        # Speed Zones
+        Node(
+            package='avt_341',
+            executable='avt_341_speed_zones_node',
+            name='speed_zones_node',
+            output='screen',
+            parameters=[
+                {k: LaunchConfiguration(f'speed_zones_{k}') for k in params['speed_zones'].keys()}
+            ]
         )
 
     ])
