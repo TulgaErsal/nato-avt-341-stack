@@ -1,0 +1,11 @@
+zones_filepath: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_speed_zones - NAD83_m.csv')"
+zones_frame: "nad83"
+local_frame: "map"
+# Zone:       0    1    2     3    4
+zone_speeds: [4.0, 8.0, 12.0, 4.0, 8.0]   # [m/s]
+# Zones from "krc_speed_zones - NAD83_m.csv"
+#   - 0:  North lot
+#   - 1:  Entry gate road / VDA 1
+#   - 2:  Access road south of VDA 1
+#   - 3:  Offroad trail
+#   - 4:  Loop 1 / RMS Lanes / VDA 2 / Circle Tracks / Access road from RMS lanes to Peat Pit

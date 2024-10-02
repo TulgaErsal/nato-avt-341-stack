@@ -71,6 +71,9 @@ end
 
 function SetMaxNumObs(num_obs::Int32)
 	global maxNumObs = num_obs
+	global Robs = fill(1.0, maxNumObs)
+	global Xobs = fill(1000.0, maxNumObs)
+	global Yobs = fill(0.0, maxNumObs)
 end
 
 function SetMinSpeed(min_speed::Float64)
@@ -99,6 +102,10 @@ end
 
 function SetWDeviationInYaw(w_dev_yaw::Float64)
 	global w_deviationInYaw = w_dev_yaw
+end
+
+function SetWYawAccel(w_yaw_accel::Float64)
+	global w_yawAccel = w_yaw_accel
 end
 
 function SetWTraversabilityCost(w_traversability_cost::Float64)
@@ -238,6 +245,7 @@ function Setup()
 	global w_distanceToObstacles
 	global w_distanceToGoal
 	global w_deviationInYaw
+	global w_yawAccel
 	global w_traversability
 
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
@@ -288,7 +296,7 @@ function Setup()
 	dynamics!(n,dx);
 	configure!(n,N=numColPoints;(:integrationScheme=>:bkwEuler),(:tf=>predictionTimeHorizon));
 
-	x = n.r.ocp.x[:,1];y = n.r.ocp.x[:,2];ux = n.r.ocp.x[:,7];psi = n.r.ocp.x[:,5];sr = n.r.ocp.u[:,2];jx = n.r.ocp.u[:,1]# pointers to JuMP variables
+	x = n.r.ocp.x[:,1];y = n.r.ocp.x[:,2];sa = n.r.ocp.x[:,6];ux = n.r.ocp.x[:,7];psi = n.r.ocp.x[:,5];sr = n.r.ocp.u[:,2];jx = n.r.ocp.u[:,1]# pointers to JuMP variables
 	timeSeq = n.ocp.tV[:,1];
 
 	global Robs = fill(1.0, maxNumObs)
@@ -321,16 +329,17 @@ function Setup()
 	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(2*obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
+	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
 	if useSegmentation
 		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumCells for j=2:n.ocp.state.pts))
 	end
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel)
 	# @NLobjective(n.ocp.mdl, Min, obj+100.0 * (distanceToGoal+1))
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_traversabilityCost*traversabilityCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel + w_traversabilityCost*traversabilityCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel)
 	end
 	n.s.ocp.save = false
 

@@ -1,0 +1,11 @@
+global_frame: map
+robot_base_frame: base_link
+update_frequency: 5.0
+publish_frequency: 5.0
+layers: ['global_layer', 'local_layer']
+global_layer:
+    enabled: True
+    map_topic: avt_341/occupancy_grid
+local_layer:
+    enabled: True
+    map_topic: avt_341/local_grid
