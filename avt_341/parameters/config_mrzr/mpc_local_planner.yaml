@@ -17,8 +17,8 @@ use_hard_constraints: False # whether to include obstacles as hard constraints i
 use_segmentation: False
 segmentation_resolution: 0.25
 
-w_distance_to_obstacles: 5. # weight on distanceToObstacles in the objective function
-w_distance_to_goal: 100. # weight on distanceToGoal in the objective function
+w_distance_to_obstacles: 10. # weight on distanceToObstacles in the objective function
+w_distance_to_goal: 150. # weight on distanceToGoal in the objective function
 w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
 w_yaw_accel: 0.8 #  weight on yawAccel in the objective function
 w_traversability_cost: 0.1  #weight on traversabilityCost in the objective function
