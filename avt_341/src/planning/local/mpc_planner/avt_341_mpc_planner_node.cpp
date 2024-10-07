@@ -24,10 +24,9 @@ JULIA_DEFINE_FAST_TLS();
 void CatchJuliaException()
 {
     // Catch exceptions from the Julia function call.
-    if (jl_exception_occurred())
-    {
-        node->log_error("Julia module has thrown an exception: %s",
-                        jl_typeof_str(jl_exception_occurred()));
+    if (jl_exception_occurred()) {
+        const char *p = jl_string_ptr(jl_eval_string("sprint(showerror, ccall(:jl_exception_occurred, Any, ()))"));
+        node->log_error("Julia module has thrown an exception: %s", p);
         has_error = true;
     }
 }
@@ -100,6 +99,8 @@ void SinkageCallback(avt_341::msg::SinkagePtr sinkage_msg)
 
 void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
 {
+    if (!is_initialized) return;
+
     jl_value_t* seg_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
     double* seg_arr = const_cast<double*>(&seg_msg->data[0]);
     jl_array_t *seg_arg = jl_ptr_to_array_1d(seg_type, seg_arr, seg_msg->data.size(), 0);
@@ -156,7 +157,7 @@ avt_341::msg::Float64 GetMPCSteering()
 }
 
 bool NewInputAvailable() {
-    return recv_veh_input && (!use_segmentation || recv_seg_input);
+    return recv_veh_input;
 }
 
 void PublishPath() {}
@@ -174,6 +175,7 @@ void DeclareParameters()
     node->get_parameter("~num_col_points", num_col_points, 10);
     node->get_parameter("~prediction_time_horizon", prediction_time_horizon, 2.0);
     node->get_parameter("~max_num_obs", max_num_obs, 500);
+    node->get_parameter("~max_num_seg", max_num_seg, 500);
     node->get_parameter("~min_speed", min_speed, 0.5);
     node->get_parameter("~max_speed", max_speed, 3.5);
     node->get_parameter("~use_hard_constraints", use_hard_constraints, false);
@@ -340,6 +342,8 @@ void InitialiseJuliaAPI()
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
     j_set_prediction_time_horizon = jl_get_function(mpc_module, "SetPredictionTimeHorizon");
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
+    j_set_max_num_seg = jl_get_function(mpc_module, "SetMaxNumSeg");
+    j_set_sigma = jl_get_function(mpc_module, "SetSigma");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
     j_set_max_speed = jl_get_function(mpc_module, "SetMaxSpeed");
     j_set_use_hard_constraints = jl_get_function(mpc_module, "SetUseHardConstraints");
@@ -363,6 +367,8 @@ void InitialiseJuliaAPI()
     jl_value_t *j_num_col_points = jl_box_int32(num_col_points);
     jl_value_t *j_prediction_time_horizon = jl_box_float64(prediction_time_horizon);
     jl_value_t *j_max_num_obs = jl_box_int32(max_num_obs);
+    jl_value_t *j_max_num_seg = jl_box_int32(max_num_seg);
+    jl_value_t *j_sigma = jl_box_float64(1.414214*grid_resolution);
     jl_value_t *j_min_speed = jl_box_float64(min_speed);
     jl_value_t *j_max_speed = jl_box_float64(max_speed);
     jl_value_t *j_use_hard_constraints = jl_box_int32(use_hard_constraints);
@@ -385,6 +391,8 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_num_col_points, j_num_col_points);
     jl_call1(j_set_prediction_time_horizon, j_prediction_time_horizon);
     jl_call1(j_set_max_num_obs, j_max_num_obs);
+    jl_call1(j_set_max_num_seg, j_max_num_seg);
+    jl_call1(j_set_sigma, j_sigma);
     jl_call1(j_set_min_speed, j_min_speed);
     jl_call1(j_set_max_speed, j_max_speed);
     jl_call1(j_set_use_hard_constraints, j_use_hard_constraints);
@@ -432,12 +440,9 @@ int main(int argc, char *argv[])
     auto goal_pt_sub = node->create_subscription<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
     auto head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
-    if (adaptive) {
-        auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
-    }
-    if (use_segmentation) {
-        auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
-    }
+    auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
+    auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
+
     // Register publishers
     // -------------------.
     auto path_pub = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);

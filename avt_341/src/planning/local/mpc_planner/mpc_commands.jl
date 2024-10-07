@@ -76,6 +76,14 @@ function SetMaxNumObs(num_obs::Int32)
 	global Yobs = fill(0.0, maxNumObs)
 end
 
+function SetMaxNumSeg(num_seg::Int32)
+	global maxNumSeg = num_seg
+end
+
+function SetSigma(sig::Float64)
+	global sigma = sig
+end
+
 function SetMinSpeed(min_speed::Float64)
 	global minSpeed = min_speed
 end
@@ -180,8 +188,16 @@ function SetSegmentation(seg::Vector{Float64}, res::Float64)
 	global segmentation = seg
 	global numSegCells = Int(length(segmentation)/3)
 	global gridResolution = res
-	global maxNumCells = Int(ceil(2*((predictionTimeHorizon+0.1) * maxSpeed)^2 * frontAngleSegmentation / gridResolution))
 	global sigma = 1.414214*gridResolution
+
+	if !useSegmentation
+		return
+	end
+
+	if numSegCells > maxNumSeg
+		println("Number of segmentation cells exceeds limit [",numSegCells,">",maxNumSeg,"]. Consider increasing maxNumSeg.")
+		return
+	end
 
 	if useSegmentation
 		for i=1:numSegCells
@@ -189,7 +205,7 @@ function SetSegmentation(seg::Vector{Float64}, res::Float64)
 			JuMP.setValue(cellY[i], segmentation[3*(i-1)+2])
 			JuMP.setValue(cellZ[i], segmentation[3*(i-1)+3])
 		end
-		for i=numSegCells+1:maxNumCells
+		for i=numSegCells+1:maxNumSeg
 			JuMP.setValue(cellX[i], cellX0)
 			JuMP.setValue(cellY[i], cellY0)
 			JuMP.setValue(cellZ[i], cellZ0)
@@ -237,7 +253,7 @@ end
 function Setup()
 	global safetyMargin
 	global useSegmentation
-	global maxNumCells
+	global maxNumSeg
 	global maxNumObs
 	global mpc_path
 	global useHardConstraints
@@ -256,7 +272,7 @@ function Setup()
 	global obstacle_size_meters = grid_resolution
 	global obs_radius = 1.414*obstacle_size_meters/2.0
 
-	global n, obs_r, Xobs_0, Yobs_0, g1, g2, desiredYaw, n_f, n_r
+	global n, obs_r, Xobs_0, Yobs_0, cellX, cellY, cellZ, g1, g2, desiredYaw, n_f, n_r
 
 	XL = [NaN, NaN, NaN, NaN, psi_min, sa_min, minSpeed, -10.0]
 	XU = [NaN, NaN, NaN, NaN, psi_max, sa_max, maxSpeed,  10.0]
@@ -309,9 +325,9 @@ function Setup()
 		global cellX0 = 0.
 		global cellY0 = 0.
 		global cellZ0 = 0.
-		@NLparameter(n.ocp.mdl, cellX[i=1:maxNumCells] == cellX0)
-		@NLparameter(n.ocp.mdl, cellY[i=1:maxNumCells] == cellY0)
-		@NLparameter(n.ocp.mdl, cellZ[i=1:maxNumCells] == cellZ0)
+		@NLparameter(n.ocp.mdl, cellX[i=1:maxNumSeg] == cellX0)
+		@NLparameter(n.ocp.mdl, cellY[i=1:maxNumSeg] == cellY0)
+		@NLparameter(n.ocp.mdl, cellZ[i=1:maxNumSeg] == cellZ0)
 	end
 	@NLparameter(n.ocp.mdl, g1 == 50.0);
 	@NLparameter(n.ocp.mdl, g2 == 0.0);
@@ -331,7 +347,7 @@ function Setup()
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
 	if useSegmentation
-		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumCells for j=2:n.ocp.state.pts))
+		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumSeg for j=2:n.ocp.state.pts))
 	end
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
 	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel)
