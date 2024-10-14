@@ -55,7 +55,7 @@ class OccupancyClearingMethod{
 public:
   OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
-  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, int Nx, int Ny, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
+  OccupancyClearingMethod(std::vector< std::vector<Cell>> & costmap_cells, int Ny, int Nx, float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator);
   virtual ~OccupancyClearingMethod() = default;
 
   /**
