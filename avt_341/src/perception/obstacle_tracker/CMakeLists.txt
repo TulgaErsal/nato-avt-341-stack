@@ -1,23 +1,27 @@
-# TODO: update these links to download object tracker DLL/shared library
-# function(DownloadWindowsDll)
-#     # Download the Windows DLL
-#     message("Downloading Windows DLL for UAB terrain perception node...")
-#     file(DOWNLOAD
-#     "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=6fqeeadg&dl=1"
-#         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-#     EXPECTED_HASH SHA256=9f3aa8d240fd99300accfafa57220920b281559bfaa5a2ee5882dd7d0beb844d
-#     SHOW_PROGRESS)
-# endfunction(DownloadWindowsDll)
+function(DownloadWindowsDll)
+     # Download the Windows DLL
+     message("Downloading Windows DLL and lib for UAB tracker node...")
+     file(DOWNLOAD
+     "https://www.dropbox.com/scl/fi/zovuqornj4500d8wf0k1p/lib_tracker_wrapper.dll?rlkey=p31u05jabkz1cdbztsonwemgm&st=0dlguoes&dl=1"
+         "${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.dll"
+     EXPECTED_HASH SHA256=449f3d00e42344b918a40daf4c5158798e03bd73d4cd94aeb3b5887a095c5488
+     SHOW_PROGRESS)
+     file(DOWNLOAD
+     "https://www.dropbox.com/scl/fi/esi44d0xi5864qywryu5d/lib_tracker_wrapper.lib?rlkey=z4sb4tcxt9rd6he9gj7tlzdb6&st=4j15rao1&dl=1"
+         "${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.lib"
+     EXPECTED_HASH SHA256=115cbf87085da3ef91f5b2fdf5c5fba74962c38be84c566e6b5b0efb6b697023
+     SHOW_PROGRESS)
+endfunction(DownloadWindowsDll)
 
-# function(DownloadLinuxSharedLibrary)
-#     # Download the Linux shared library
-#     message("Downloading Linux shared library for UAB terrain perception node...")
-#     file(DOWNLOAD
-#     "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=fe9g2jvb&dl=1"
-#         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-#     EXPECTED_HASH SHA256=e32510bdbcd25e9a9f38709ac31090bc51f289ffaa676b29036030716e1134cc
-#     SHOW_PROGRESS)
-# endfunction(DownloadLinuxSharedLibrary)
+function(DownloadLinuxSharedLibrary)
+    # Download the Linux shared library
+    message("Downloading Linux shared library for UAB tracker node...")
+    file(DOWNLOAD
+    "https://www.dropbox.com/scl/fi/esi44d0xi5864qywryu5d/lib_tracker_wrapper.lib?rlkey=z4sb4tcxt9rd6he9gj7tlzdb6&st=4j15rao1&dl=1"
+        "${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.so"
+    EXPECTED_HASH SHA256=93fbfa09187bb644fe1b85874118667356fd4dcda0989964a9d5e850c67a4f13
+    SHOW_PROGRESS)
+endfunction(DownloadLinuxSharedLibrary)
 
 # Manually set MATLAB paths (optional, only needed if "find_package(Matlab)" fails)
 # These should point to the installation location of MATLAB Runtime 2023a
