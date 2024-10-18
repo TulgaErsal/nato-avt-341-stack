@@ -35,6 +35,7 @@ std::string pc_topic, robot_base_link, fixed_frame;
 float roi_max_x, roi_max_y, roi_max_z, roi_min_x, roi_min_y, roi_min_z;
 float body_max_x, body_max_y, body_max_z, body_min_x, body_min_y, body_min_z;
 float obstacle_scale;
+int obstacle_min_neighbors;
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr filterCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& cloud, const Eigen::Vector4f& min_pt, const Eigen::Vector4f& max_pt, const Eigen::Vector4f& body_min_pt, const Eigen::Vector4f& body_max_pt)
 {
@@ -71,7 +72,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr filterCloud(const pcl::PointCloud<pcl::Point
     return cloud_roi;
 }
 
-void pclComputeNorms(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_out, float scale)
+void pclComputeNorms(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointNormal>::Ptr cloud_out, float scale, int min_neighbors)
 {
 	// Create a search tree, use KDTreee for non-organized data.
 	pcl::search::Search<pcl::PointXYZ>::Ptr tree;
@@ -95,6 +96,13 @@ void pclComputeNorms(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointClo
 	copyPointCloud(*cloud_in, *cloud_out);
 	ne.setRadiusSearch(scale);
 	ne.compute(*cloud_out);
+
+	// Filter by number of neighbors
+	typename pcl::RadiusOutlierRemoval<pcl::PointNormal> outrem;
+    outrem.setInputCloud(cloud_out);
+    outrem.setRadiusSearch(scale);
+    outrem.setMinNeighborsInRadius(min_neighbors);
+	outrem.filter(*cloud_out);
 }
 
 void callback_cloud(avt_341::msg::PointCloud2Ptr msg) {
@@ -122,7 +130,7 @@ void callback_cloud(avt_341::msg::PointCloud2Ptr msg) {
 
     // Estimate cloud normals
     pcl::PointCloud<pcl::PointNormal>::Ptr normals_cloud(new pcl::PointCloud<pcl::PointNormal>);
-    pclComputeNorms(filtered_cloud, normals_cloud, obstacle_scale);
+    pclComputeNorms(filtered_cloud, normals_cloud, obstacle_scale, obstacle_min_neighbors);
 
     avt_341::msg::PointCloud2 normals_cloud_msg;
     pcl::toROSMsg(*normals_cloud, normals_cloud_msg);
@@ -151,6 +159,7 @@ int main(int argc, char* argv[]) {
     node->get_parameter("~body_min_y", body_min_y,  -0.8f);
     node->get_parameter("~body_min_z", body_min_z,  -0.3f);
     node->get_parameter("~obstacle_scale", obstacle_scale,  1.0f);
+    node->get_parameter("~obstacle_min_neighbors", obstacle_min_neighbors,  10);
     roi_max_point = Eigen::Vector4f(roi_max_x, roi_max_y, roi_max_z, 1);
     roi_min_point = Eigen::Vector4f(roi_min_x, roi_min_y, roi_min_z, 1);
     body_max_point = Eigen::Vector4f(body_max_x, body_max_y, body_max_z, 1);
