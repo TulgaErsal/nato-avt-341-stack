@@ -15,8 +15,16 @@ optional = true
 
 [tool.poetry.group.documentation.dependencies]
 breathe = "^4.35.0"
+lark = "^1.1.9"
 pydata-sphinx-theme = "^0.15.2"
 sphinx = "^7.2.6"
+sphinx-autodoc-typehints = "^2.1.0"
+
+[tool.poetry.group.object-detection]
+optional = true
+
+[tool.poetry.group.object-detection.dependencies]
+ultralytics = "^8.2.2"
 
 [build-system]
 requires = ["poetry-core"]

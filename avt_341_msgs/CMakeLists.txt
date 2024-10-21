@@ -11,8 +11,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Define the messages to be built.
-set(MESSAGE_DEFINITIONS "Communication" "FollowerStatus" "Obstacles"
-                        "OccupiedCell" "OccupiedCells" "Sinkage" "StaticObstacleArray" "StaticObstacle")
+set(MESSAGE_DEFINITIONS
+    "BoundingBox2d"
+    "Communication"
+    "Detection2d"
+    "Detection2dArray"
+    "FollowerStatus"
+    "Hypothesis"
+    "Obstacles"
+    "OccupiedCell"
+    "OccupiedCells"
+    "Sinkage"
+    "StaticObstacleArray"
+    "StaticObstacle")
 
 # Append the ".msg" extension for both builds and preprend the "msg/" prefix to
 # message definitions for the ament build.
