@@ -53,3 +53,7 @@ config/KRC_CP*.csv
 
 # iOS files
 *.DS_Store
+
+# Models
+avt_341/data/detection/models/*.names
+avt_341/data/detection/models/*.torchscript

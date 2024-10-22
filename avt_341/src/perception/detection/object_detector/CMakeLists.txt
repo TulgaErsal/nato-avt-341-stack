@@ -38,6 +38,7 @@ if(USING_AMENT)
   find_package(OpenCV REQUIRED)
   find_package(cv_bridge REQUIRED)
   find_package(rclcpp REQUIRED)
+  find_package(image_transport REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(vision_msgs REQUIRED)
 
@@ -56,7 +57,7 @@ if(USING_AMENT)
     "object_detector.cpp")
 
   ament_target_dependencies(${PROJECT_NAME}_object_detector_node cv_bridge
-                            OpenCV rclcpp sensor_msgs vision_msgs)
+                            OpenCV rclcpp image_transport sensor_msgs vision_msgs)
 
   target_link_libraries(${PROJECT_NAME}_object_detector_node
                         ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES})

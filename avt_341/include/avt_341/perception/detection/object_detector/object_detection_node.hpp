@@ -10,6 +10,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <image_transport/image_transport.hpp>
 
 #include <vision_msgs/msg/bounding_box2_d.hpp>
 #include <vision_msgs/msg/detection2_d_array.hpp>
@@ -76,6 +77,9 @@ class ObjectDetectorNode : public rclcpp::Node {
      * @brief Callback function for the detection timer.
      */
     void DetectionCallback();
+
+    rclcpp::Node::SharedPtr node_handle_;
+    image_transport::ImageTransport image_transport_;
 
     // ROS package management
     // ----------------------
@@ -225,8 +229,7 @@ class ObjectDetectorNode : public rclcpp::Node {
     // Image parsing
     // -------------
     /** @brief Shared pointer to the image subscription. */
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr
-        image_subscription_;
+    image_transport::Subscriber image_subscription_;
 
     /** @brief Whether or not a valid image has been received since the latest
      * object detector reset. */
