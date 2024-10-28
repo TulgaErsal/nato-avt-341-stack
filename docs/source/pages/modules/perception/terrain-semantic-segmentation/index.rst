@@ -58,7 +58,7 @@ estimating the probability of an obstacle located at a given cell. This grid can
 alongside other obstacle detection algorithms.
 
 .. image:: uab_terrain_perception_flow_diagram.png
-   :width: 40pt
+   :alt: UAB Terrain Perception Flow Diagram
 
 The model is dependent on the sensor transform between camera and LiDAR sensors since the data is fused together for mapping in 3-D space. The default sensor transform
 matches what is used on the MRZR vehicle at KRC. This information must be included at compile time, so a new build must be done to work with other sensor configurations.
