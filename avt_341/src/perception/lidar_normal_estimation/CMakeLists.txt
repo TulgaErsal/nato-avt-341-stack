@@ -11,6 +11,7 @@ if(USING_CATKIN)
     ${PROJECT_NAME}_lidar_normal_estimation_node
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_lidar_normal_estimation_node
+                        ${PROJECT_NAME}_proxy
                         ${catkin_LIBRARIES} ${${PROJECT_NAME}_LIBRARY})
   install(
     TARGETS ${PROJECT_NAME}_lidar_normal_estimation_node
