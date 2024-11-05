@@ -4,3 +4,4 @@ Name, Type (Default value), Description
 "grid_llx", "double, (-250.0)", "The ENU coordinate of the lower-left corner of the grid in the x/east direction, in meters."
 "grid_lly", "double, (-250.0)", "The ENU coordinate of the lower-left corner of the grid in the y/north direction, in meters."
 "grid_res", "double, (1.0)", "The size of a grid cell, in meters."
+"publish_uab_occupancy_grid", "bool, (false)", "Enable publishing of occupancy grid generated from terrain segmentation algorithm."

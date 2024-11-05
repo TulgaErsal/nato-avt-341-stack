@@ -1,4 +1,4 @@
 Topic, Message type, Description
 "avt_341/odometry", "nav_msgs/Odometry", "Vehicle odometry."
 "avt_341/points", "sensor_msgs/PointCloud2", "Point cloud data"
-"camera/rgb/image_raw", "sensor_msgs/Image", "Image"
+"camera/rgb/image_raw", "sensor_msgs/Image", "Image (3-channel RGB)"
