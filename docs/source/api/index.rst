@@ -4,4 +4,5 @@ API
 .. toctree::
   :maxdepth: 1
 
-  dwa/index.rst
+  cpp/index.rst
+  python/index.rst

@@ -47,6 +47,9 @@ set(AVT341_SOURCE_FILES
     "control/speed_control_test"
     "mission/formation_control"
     "mission/mission_manager"
+    "perception/detection/common"
+    "perception/detection/training"
+    "perception/detection/object_detector"
     "perception/map_publisher"
     "perception/global_segmentation_grid"
     "perception/grid_compression"
@@ -232,6 +235,7 @@ if(USING_AMENT)
   find_package(visualization_msgs REQUIRED)
   find_package(avt_341_msgs REQUIRED)
   find_package(OpenCV REQUIRED)
+  find_package(rclpy REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
 
@@ -265,6 +269,9 @@ if(USING_AMENT)
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
     add_subdirectory(${SOURCE_FILE})
   endforeach()
+
+  # Install the Python package
+  ament_python_install_package(${PROJECT_NAME})
 
   # Simulation test node
   add_executable(

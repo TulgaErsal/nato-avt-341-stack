@@ -1,0 +1,6 @@
+"*Name*", "*Type (Default)*", "*Description*"
+"`model.base`", "string ('yolov8m')", "Short name of the YOLO base model to use a starting weights for training."
+"`training.size`", "int (640)", "Image size used for training."
+"`training.device`", "string ('cpu')", "Device used for training. Can be either 'cpu' for training with CPU or 'cuda' for training with the first detected CUDA-compatible device in the system (index 0)."
+"`export.size`", "int (640)", "Size of the input tensor for the exported TorchScript model."
+"`export.device`", "string ('cpu')", "Device used to trace the model. Can be either 'cpu' for training with CPU or 'cuda' for training with the first detected CUDA-compatible device in the system (index 0)."
