@@ -10,6 +10,9 @@
  *
  * \date 9/3/2020
  */
+
+#pragma once
+
 #include <vector>
 #include <limits>
 #include <string>

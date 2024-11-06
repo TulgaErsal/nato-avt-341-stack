@@ -4,13 +4,11 @@ Semantic terrain segmentation
 Overview
 --------
 
-Performs semantic segmentation on camera images using the DeepLab V3+
-architecture and fuses with point cloud data from a time-of-flight sensor to
-create a costmap based on vehicle traversability.
+Performs semantic segmentation and classification on camera images and fuses with point cloud data 
+to create a costmap based on vehicle traversability, along with an optional obstacle grid 
+containing the probability of an object being present at a given location.
 
-The `uab_perception_node` is a C++ wrapper for the machine learning model
-written in MATLAB. This is easier to build/run due to issues with ROS2 support
-in MATLAB, but decreases performance.
+The `uab_perception_node` is a C++ wrapper for the machine learning model written in MATLAB.
 
 ROS Interface
 -------------
@@ -48,27 +46,23 @@ Troubleshooting
 
     set(Matlab_INCLUDE_DIRS "<path-to-MATLAB-Runtime>/v912/extern/include")
 
-* **Issue**: The occupancy grid published by the perception node is not being
-  drawn or is out of sync.
-* **Solution**: There is an outstanding issue with the timestamps between the
-  odometry and point cloud. You can solve this by temporarily replacing the
-  `GetPoseToUse` function in `avt_341_perception_node.cpp` with
-    
-    .. code-block:: cpp
-    
-      double GetPoseToUse(avt_341::msg::Odometry & pose_to_use,
-                          avt_341::msg::PointCloud2Ptr rcv_cloud){
-          double dt = 1.0;
-        
-          for (int i = 0; i < current_pose_list.size(); i++) {
-              pose_to_use = current_pose_list[i];
-          }
-
-          return dt;
-      }
-
 Further information
 -------------------
+
+The `uab_perception_node` is capable of publishing both terrain segmentation and obstacle grids. Each cell of the terrain segmentation grid contains the cost (0-100)
+associated with the vehicle traversing over a particular area of the environment. Lower costs indicates terrain such as roads or dirt paths, while higher costs
+indicate grassy areas or even smaller vegetation (ex. tall grass or bushes). The costs are calculated by combining three separate probabilistic grids
+each containing the probability of their respective terrain type (low, medium, high) being present at each cell. The obstacle grid is similarly constructed by 
+estimating the probability of an obstacle located at a given cell. This grid can be enabled/disabled by using the `publish_uab_occupancy_grid` flag in the 
+`uab_perception.yaml` configuration file. While the grid is always built, this will prevent it from being published so the terrain segmentation grid can be used 
+alongside other obstacle detection algorithms.
+
+.. image:: uab_terrain_perception_flow_diagram.png
+   :alt: UAB Terrain Perception Flow Diagram
+
+The model is dependent on the sensor transform between camera and LiDAR sensors since the data is fused together for mapping in 3-D space. The default sensor transform
+matches what is used on the MRZR vehicle at KRC. This information must be included at compile time, so a new build must be done to work with other sensor configurations.
+Contact nicbowen@uab.edu for more information.
 
 For more information on the terrain semantic segmentation node algorithms and
 implementation, refer to the following documents:

@@ -75,7 +75,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     int cell_number = 0;
     for (int i = 0; i < grid.info.height; i++) {
         for (int j = 0; j < grid.info.width; j++) {
-            float cell_val = 100.0-grid.data[i*grid.info.width + j];
+            float cell_val = grid.data[i*grid.info.width + j];
             std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
                                             (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
             avt_341::msg_tf::Vector3 cell_vector = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
