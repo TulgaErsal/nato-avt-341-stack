@@ -58,6 +58,9 @@ class Astar {
 	/// Inherited from planner base class. Returns the number of vertical cells.
 	int GetGridHeight() { return height_; }
 
+  /// Get grid value at coordinates
+  int GetGridValue(avt_341::msg::OccupancyGrid *segmentation_grid, double x, double y);
+
 	/// Inherited from planner base class.
 	std::vector<std::vector<float> > PlanPath(avt_341::msg::OccupancyGrid *grid, avt_341::msg::OccupancyGrid *segmentation_grid, std::vector<float> goal, std::vector<float> position);
 

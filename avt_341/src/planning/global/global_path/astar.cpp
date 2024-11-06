@@ -364,6 +364,20 @@ void Astar::Display(){
   visualizer_->display();
 }
 
+int Astar::GetGridValue(avt_341::msg::OccupancyGrid *grid, double x, double y) {
+  int seg_val = 0;
+  if (x >= grid->info.origin.position.x && 
+        x < grid->info.origin.position.x + grid->info.width*grid->info.resolution &&
+        y >= grid->info.origin.position.y && 
+        y < grid->info.origin.position.y + grid->info.height*grid->info.resolution) {
+    int xj = (x-grid->info.origin.position.x) / grid->info.resolution;
+    int yj = (y-grid->info.origin.position.y) / grid->info.resolution;
+    int m = xj + yj*grid->info.width;
+    seg_val = grid->data[m];
+  }
+  return seg_val;
+}
+
 std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid *grid, avt_341::msg::OccupancyGrid *grid_segmentation, std::vector<float> goal, std::vector<float> position) {
 	if (grid->info.height<=0 || grid->info.width<=0) return path_world_;
 
@@ -391,7 +405,9 @@ std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid *gr
   int n =0;
 	for (int yi=0;yi< height_;yi++){
 		for (int xi = 0; xi < width_; xi++) {
-			SetMapValue(xi, yi, grid->data[n], has_segmentation ? grid_segmentation->data[n] : 0);
+      double x_grid = grid->info.origin.position.x + xi*grid->info.resolution;
+      double y_grid = grid->info.origin.position.y + yi*grid->info.resolution;
+			SetMapValue(xi, yi, grid->data[n], 100-GetGridValue(grid_segmentation, x_grid, y_grid));
       n++;
 		}
 	}
@@ -412,7 +428,9 @@ std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid *gr
     }
     for (int i=1;i<width_-1;i++){
       for (int j = 1; j < height_-1; j++) {
-        SetMapValue(i,j,dmap[i][j], has_segmentation ? grid_segmentation->data[FlattenIndex(i,j)] : 0);
+        double x_grid = grid->info.origin.position.x + i*grid->info.resolution;
+        double y_grid = grid->info.origin.position.y + j*grid->info.resolution;
+        SetMapValue(i,j,dmap[i][j], 100-GetGridValue(grid_segmentation, x_grid, y_grid));
       }
     }
   }

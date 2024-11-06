@@ -21,7 +21,7 @@ NormalGrid::~NormalGrid(){
 void NormalGrid::ResizeGrid(){
   nx_ = (int)ceil(width_/res_);
   ny_ = (int)ceil(height_/res_);
-  NormalCell cell(res_, avt_341::utils::vec3(0.0, 0.0, 0.0), 0, thresh_, 100);
+  NormalCell cell(res_, avt_341::utils::vec3(0.0, 0.0, 0.0), 0, thresh_, 50);
   cells_.clear();
   std::vector<NormalCell> row;
   row.resize(nx_,cell);

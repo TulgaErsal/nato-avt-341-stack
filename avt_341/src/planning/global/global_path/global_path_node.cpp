@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
   float dilation_factor, max_sep;
-  std::string map_topic;
+  std::string map_topic, seg_topic;
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~max_separation", max_sep, 1.0f);
   n->get_parameter("~use_global_path", use_global_path, true);
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
+  n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/segmentation_grid"));
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -182,7 +183,7 @@ int main(int argc, char *argv[])
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, MapCallback);
-  auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
+  auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(seg_topic, 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);

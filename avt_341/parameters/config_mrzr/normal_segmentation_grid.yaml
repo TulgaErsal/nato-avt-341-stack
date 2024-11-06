@@ -2,10 +2,10 @@
 # ======================================================================================================================
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
-grid_res: 0.25                             # Grid resolution in meters.
+grid_res: 0.5                             # Grid resolution in meters.
 limit_grid_size: True                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
-max_grid_width: 100.0                     # Maximum grid width [m] (for limit_grid_size = True)
-max_grid_height: 100.0                    # Maximum grid height [m] (for limit_grid_size = True)
+max_grid_width: 800.0                     # Maximum grid width [m] (for limit_grid_size = True)
+max_grid_height: 800.0                    # Maximum grid height [m] (for limit_grid_size = True)
 normal_threshold: 0.3                     # Threshold for lethal normals. (range=[0,1] with 1 including all normals)
 
 # Normals Point Cloud
