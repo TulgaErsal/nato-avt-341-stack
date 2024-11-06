@@ -76,44 +76,42 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     for (int i = 0; i < grid.info.height; i++) {
         for (int j = 0; j < grid.info.width; j++) {
             float cell_val = 100.0-grid.data[i*grid.info.width + j];
-            if (cell_val > 0.0) {
-                std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
-                                             (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
-                avt_341::msg_tf::Vector3 cell_vector = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
+            std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
+                                            (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
+            avt_341::msg_tf::Vector3 cell_vector = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
 
-                // Add obstacle if it is within range of prediction time horizon driving distance or within observation region
-                if (cell_vector.length() > (prediction_time_horizon + 0.1) * max_speed
-                    || cell_vector[0] * left_boundary_vector[1] - left_boundary_vector[0] * cell_vector[1] < 0
-                    ||  // Only comparing last element of cross product vector,
-                        cell_vector[0] * right_boundary_vector[1] - right_boundary_vector[0] * cell_vector[1]
-                            > 0)  // gives same result as cross(a, b)[2].
-                {
-                    continue;
-                } else {
-                    cell_number = cell_number + 1;
-                    cells.push_back(point[0]);
-                    cells.push_back(point[1]);
-                    cells.push_back(cell_val);
-                    if (viz) {
-                        avt_341::msg::Marker cell_marker;
-                        cell_marker.header.frame_id = "map";
-                        cell_marker.header.stamp = node->get_stamp();
-                        cell_marker.id = cell_number;
-                        cell_marker.type = avt_341::msg::Marker::CUBE;
-                        cell_marker.action = avt_341::msg::Marker::ADD;
-                        cell_marker.scale.x = cell_size_meters;
-                        cell_marker.scale.y = cell_size_meters;
-                        cell_marker.scale.z = cell_size_meters;
-                        float cell_color = 1.0-(cell_val / 100.0);
-                        cell_marker.color.a = 1.0;
-                        cell_marker.color.r = cell_color;
-                        cell_marker.color.g = cell_color;
-                        cell_marker.color.b = cell_color;
-                        cell_marker.pose.position.x = point[0];
-                        cell_marker.pose.position.y = point[1];
-                        cell_marker.pose.position.z = 0.0;
-                        cell_markers.push_back(cell_marker);
-                    }
+            // Add obstacle if it is within range of prediction time horizon driving distance or within observation region
+            if (cell_vector.length() > (prediction_time_horizon + 0.1) * max_speed
+                || cell_vector[0] * left_boundary_vector[1] - left_boundary_vector[0] * cell_vector[1] < 0
+                ||  // Only comparing last element of cross product vector,
+                    cell_vector[0] * right_boundary_vector[1] - right_boundary_vector[0] * cell_vector[1]
+                        > 0)  // gives same result as cross(a, b)[2].
+            {
+                continue;
+            } else {
+                cell_number = cell_number + 1;
+                cells.push_back(point[0]);
+                cells.push_back(point[1]);
+                cells.push_back(cell_val);
+                if (viz) {
+                    avt_341::msg::Marker cell_marker;
+                    cell_marker.header.frame_id = "map";
+                    cell_marker.header.stamp = node->get_stamp();
+                    cell_marker.id = cell_number;
+                    cell_marker.type = avt_341::msg::Marker::CUBE;
+                    cell_marker.action = avt_341::msg::Marker::ADD;
+                    cell_marker.scale.x = cell_size_meters;
+                    cell_marker.scale.y = cell_size_meters;
+                    cell_marker.scale.z = cell_size_meters;
+                    float cell_color = 1.0-(cell_val / 100.0);
+                    cell_marker.color.a = 1.0;
+                    cell_marker.color.r = cell_color;
+                    cell_marker.color.g = cell_color;
+                    cell_marker.color.b = cell_color;
+                    cell_marker.pose.position.x = point[0];
+                    cell_marker.pose.position.y = point[1];
+                    cell_marker.pose.position.z = 0.0;
+                    cell_markers.push_back(cell_marker);
                 }
             }
         }
