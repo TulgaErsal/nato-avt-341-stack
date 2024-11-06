@@ -63,6 +63,8 @@ set(AVT341_SOURCE_FILES
     "perception/lidar_normal_estimation"
     "perception/normal_segmentation_grid"
     "perception/segmentation_grid_processor"
+    #"perception/obstacle_tracker"
+    "perception/geotiff_map"
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"

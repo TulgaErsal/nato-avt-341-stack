@@ -401,18 +401,27 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='avt_341',
             executable='avt_341_grid_compression_node',
-            name='grid_compression'
+            name='grid_compression_local'
         ),
 
-        # Costmap Layered
-        #Node(
-        #    package='avt_341',
-        #    executable='avt_341_costmap_layered_node',
-        #    name='avt_341_costmap_layered_node',
-        #    output='screen',
-        #    parameters=[
-        #        {k: LaunchConfiguration(f'costmap_layered_{k}') for k in params['costmap_layered'].keys()}],
-        #),
+        # Grid Commpression (Global)
+        Node(
+            package='avt_341',
+            executable='avt_341_grid_compression_node',
+            name='grid_compression_global',
+            remappings=[
+                ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+                ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res')
+            ]
+        ),
+
+        # Static Grid
+        Node(
+            package='avt_341',
+            executable='avt_341_geotiff_map_publisher_node',
+            name='static_grid_publisher_node',
+            parameters=[{k: LaunchConfiguration(f'static_grid_{k}') for k in params['static_grid'].keys()}]
+        ),
 
         # Speed Controller
         *evaluate_speed_controller(params, context=context, args=args, kwargs=kwargs),
@@ -422,15 +431,6 @@ def launch_setup(context, *args, **kwargs):
 
         # Local Planner
         *evaluate_local_planner(params, context=context, args=args, kwargs=kwargs),
-
-        # Local Grid
-#        Node(
-#            package='avt_341',
-#            executable='avt_341_local_occupancy_grid_node',
-#            name='avt_341_local_occupancy_grid_node',
-#            output='log',
-#            parameters=[{k: LaunchConfiguration(f'local_occupancy_{k}') for k in params['local_occupancy'].keys()}]
-#        ),
 
         # Visualization
         Node(
@@ -489,6 +489,23 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {k: LaunchConfiguration(f'speed_zones_{k}') for k in params['speed_zones'].keys()}
             ]
+        ),
+
+        # UAB Perception
+        Node(
+            package='avt_341',
+            executable='uab_perception_node',
+            name='uab_perception_node',
+            parameters=[
+                {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+            ],
+            remappings=[
+                ('avt_341/points','/ouster/points'),
+                ('camera/rgb/image_raw','/flir_camera/image_raw'),
+                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
+                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
+            ],
+            output='screen'
         )
 
     ])

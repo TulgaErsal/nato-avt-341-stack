@@ -15,13 +15,13 @@
 #include <cmath>
 
 
-void BuildOccupancyGrid(avt_341::msg::OccupancyGrid& grid, std::vector<double> data, int rows, int cols, float res) {
+void BuildOccupancyGrid(avt_341::msg::OccupancyGrid& grid, std::vector<double> data, int rows, int cols, double llx, double lly, float res) {
     grid.info.resolution = res;
     //rows and columns are swapped since the map is transposed
     grid.info.height = rows;
     grid.info.width = cols;
-    grid.info.origin.position.x = 0.0;
-    grid.info.origin.position.y = 0.0;
+    grid.info.origin.position.x = llx;
+    grid.info.origin.position.y = lly;
     grid.info.origin.position.z = 0.0;
     grid.info.origin.orientation.w = 1.0;
     grid.info.origin.orientation.x = 0.0;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
         // Publish occupancy grid
         avt_341::msg::OccupancyGrid grid;
-        BuildOccupancyGrid(grid, costmap, tiff.rows, tiff.cols, tiff.resolution);
+        BuildOccupancyGrid(grid, costmap, tiff.rows, tiff.cols, map_origin_x, map_origin_y, tiff.resolution);
         grid.header.frame_id = map_frame;
         map_pub->publish(grid);
 

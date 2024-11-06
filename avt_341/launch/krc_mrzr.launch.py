@@ -72,6 +72,12 @@ def tf2_nodes():
             arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "os_sensor"]
         ),
         Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='nad83_link_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "nad83", "epsg_6495"]
+        ),
+        Node(
             package='mrzr_tools',
             executable='mrzr_tf2_server.py',
             name='mrzr_tf2_server',
