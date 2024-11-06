@@ -1,0 +1,6 @@
+# Communication node
+# ======================================================================================================================
+host: localhost                             # Hostname of the communication server
+port: 9000                                  # port number for connecting to the communication server
+broadcast_over_ros: False                   # If true, comm node publishes to other vehicles on ros network instead of using tcp client
+verbose_comm_log: False                     # If true, comm node includes verbose logging

@@ -136,23 +136,18 @@ int main(int argc, char *argv[]) {
 
   n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
   n->initialize_tf_listener();
-  auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>("avt_341/points",10,PointCloudCallback);
-  auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
-  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-  auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
-  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-  auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
   float grid_width, grid_height, visualization_range;
-  n->get_parameter("~grid_width", grid_width, 200.0f);
-  n->get_parameter("~grid_height", grid_height, 200.0f);
+  n->get_parameter("/grid_width", grid_width, 200.0f);
+  n->get_parameter("/grid_height", grid_height, 200.0f);
   grid.SetSize(grid_width,grid_height);
 
-  float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;
-  bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation;
+  float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter,max_grid_width,max_grid_height;
+  bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation, limit_grid_size;
   int sampled_threshold;
   std::string clear_method;
   double perception_rate;
+  std::string perception_points_topic;
 
   n->get_parameter("~grid_res", grid_res, 1.0f);
   n->get_parameter("~grid_llx", grid_llx, -100.0f);
@@ -167,22 +162,25 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~grid_dilate_proportion", grid_dilate_proportion, 0.8f);
   n->get_parameter("~overhead_clearance", overhead_clearance, 100.0f);
   n->get_parameter("~perception_rate", perception_rate, 100.0);
+  n->get_parameter("~limit_grid_size", limit_grid_size, false);
+  n->get_parameter("~max_grid_width", max_grid_width, 800.0f);
+  n->get_parameter("~max_grid_height", max_grid_height, 800.0f);
 
-  n->get_parameter("~clear_method_type", clear_method, std::string("none"));
-  n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
-  n->get_parameter("~clear_method_visualize_range", visualization_range, 40.0f);
-  n->get_parameter("~clear_method_raytrace_range", clear_method_raytrace_range, 50.0f);
-  n->get_parameter("~clear_method_use_voxels", clear_method_use_voxels, true);
-  n->get_parameter("~clear_method_voxel_height_min", voxel_height_min, 0.0f);
-  n->get_parameter("~clear_method_voxel_height_res", voxel_height_res, 0.5f);
-  n->get_parameter("~clear_method_immediate_clear_dilation", clear_method_clear_dilation, true);
-  n->get_parameter("~clear_method_obs_filter_range", clear_method_obj_range_filter, 1.0f);
-  n->get_parameter("~clear_method_sampled_threshold", sampled_threshold, 5);
+  n->get_parameter("~clear_method/type", clear_method, std::string("none"));
+  n->get_parameter("~clear_method/visualize", clear_method_visualize, false);
+  n->get_parameter("~clear_method/visualize_range", visualization_range, 40.0f);
+  n->get_parameter("~clear_method/raytrace_range", clear_method_raytrace_range, 50.0f);
+  n->get_parameter("~clear_method/use_voxels", clear_method_use_voxels, true);
+  n->get_parameter("~clear_method/voxel_height_min", voxel_height_min, 0.0f);
+  n->get_parameter("~clear_method/voxel_height_res", voxel_height_res, 0.5f);
+  n->get_parameter("~clear_method/immediate_clear_dilation", clear_method_clear_dilation, true);
+  n->get_parameter("~clear_method/obs_filter_range", clear_method_obj_range_filter, 1.0f);
+  n->get_parameter("~clear_method/sampled_threshold", sampled_threshold, 5);
 
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
 	float max_point_age;
-	n->get_parameter("~clear_method_max_point_age",max_point_age,5.0f);
+	n->get_parameter("~clear_method/max_point_age",max_point_age,5.0f);
 	bool filter_highest_lidar;
 	n->get_parameter("~filter_highest_lidar", filter_highest_lidar, false);
   float cull_lidar_points_dist, cull_lidar_points_dist_min;
@@ -191,6 +189,15 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~cull_lidar_dist_min", cull_lidar_points_dist_min, 0.0f);
   cull_lidar_points_dist_sqr = cull_lidar_points_dist * cull_lidar_points_dist;
   cull_lidar_points_dist_min_sqr = cull_lidar_points_dist_min * cull_lidar_points_dist_min;
+
+  n->get_parameter("~perception_points_topic", perception_points_topic, std::string("avt_341/points"));
+
+  auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>(perception_points_topic,10,PointCloudCallback);
+  auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
+  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
+  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+  auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
 	grid.SetSlopeThreshold(thresh);
 	grid.SetRes(grid_res);
@@ -210,14 +217,20 @@ int main(int argc, char *argv[]) {
   int nloops = 0;
 	while (avt_341::node::ok()){
 		double elapsed_time = (n->get_now_seconds()-start_time);
-		if (grid_created && elapsed_time > warmup_time) {
+		if (odom_rcvd && elapsed_time > warmup_time) {//if (grid_created && elapsed_time > warmup_time) {
 			avt_341::msg::OccupancyGrid grd;
-      		grd = grid.GetGrid();
+      if (limit_grid_size)
+        grd = grid.GetGrid(current_pose.pose.pose.position.x,current_pose.pose.pose.position.y,max_grid_width,max_grid_height);
+      else
+        grd = grid.GetGrid();
 			grd.header.stamp = n->get_stamp();
 			grid_pub->publish(grd);
 
 			if(grid.has_segmentation()){
-				grd = grid.GetGrid(true);
+        if (limit_grid_size)
+				  grd = grid.GetGrid(current_pose.pose.pose.position.x,current_pose.pose.pose.position.y,max_grid_width,max_grid_height,true);
+        else
+          grd = grid.GetGrid(true);
 				grd.header.stamp = n->get_stamp();
 				grid_segmentation_pub->publish(grd);
 			}

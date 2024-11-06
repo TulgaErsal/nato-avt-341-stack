@@ -9,6 +9,7 @@
 #include "sensor_msgs/PointCloud.h"
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/Imu.h"
 
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Point32.h"
@@ -35,6 +36,8 @@
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
+#include "avt_341_msgs/Obstacles.h"
+#include "avt_341_msgs/Sinkage.h"
 
 namespace avt_341 {
     namespace msg {
@@ -52,6 +55,9 @@ namespace avt_341 {
 
         using Image = sensor_msgs::Image;
         using ImagePtr = const sensor_msgs::Image::ConstPtr &;
+
+        using Imu = sensor_msgs::Imu;
+        using ImuPtr = const sensor_msgs::Imu::ConstPtr &;
 
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;
@@ -118,6 +124,12 @@ namespace avt_341 {
         using OccupiedCells = avt_341_msgs::OccupiedCells;
         using OccupiedCellsPtr = const avt_341_msgs::OccupiedCells::ConstPtr &;
 
+        using Obstacles = avt_341_msgs::Obstacles;
+        using ObstaclesPtr = const avt_341_msgs::Obstacles::ConstPtr &;
+
+        using Sinkage = avt_341_msgs::Sinkage;
+        using SinkagePtr = const avt_341_msgs::Sinkage::ConstPtr &;
+
         using Time = ros::Time;
     }
     namespace msg_tf{
@@ -136,6 +148,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/point32.hpp"
@@ -162,6 +175,8 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
+#include "avt_341_msgs/msg/obstacles.hpp"
+#include "avt_341_msgs/msg/sinkage.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -179,6 +194,9 @@ namespace avt_341 {
 
     using Image = sensor_msgs::msg::Image;
     using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
+
+    using Imu = sensor_msgs::msg::Imu;
+    using ImuPtr = sensor_msgs::msg::Imu::ConstSharedPtr;
 
     using Twist = geometry_msgs::msg::Twist;
     using TwistPtr = const geometry_msgs::msg::Twist::SharedPtr;
@@ -235,6 +253,12 @@ namespace avt_341 {
 
     using OccupiedCells = avt_341_msgs::msg::OccupiedCells;
     using OccupiedCellsPtr = avt_341_msgs::msg::OccupiedCells::SharedPtr;
+
+    using Obstacles = avt_341_msgs::msg::Obstacles;
+    using ObstaclesPtr = avt_341_msgs::msg::Obstacles::SharedPtr;
+
+    using Sinkage = avt_341_msgs::msg::Sinkage;
+    using SinkagePtr = avt_341_msgs::msg::Sinkage::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;

@@ -1,0 +1,28 @@
+# Normal Estimation
+# ======================================================================================================================
+roi_max_x: 70.0                                                 # Maximum x for obstacle detection [m]
+roi_max_y: 30.0                                                 # Maximum y for obstacle detection [m]
+roi_max_z: 3.0                                                  # Maximum z for obstacle detection [m]
+
+roi_min_x: -5.0                                                 # Minimum x for obstacle detection [m]
+roi_min_y: -30.0                                                # Minimum y for obstacle detection [m]
+roi_min_z: -2.5                                                 # Minimum z for obstacle detection [m]
+
+body_max_x: 1.3                                                 # Maximum x for vehicle body bounding box, to exclude from obstacle detection [m]
+body_max_y: 1.0                                                 # Maximum y for vehicle body bounding box, to exclude from obstacle detection [m]
+body_max_z: 2.0                                                 # Maximum z for vehicle body bounding box, to exclude from obstacle detection [m]
+
+body_min_x: -2.2                                                # Minimum x for vehicle body bounding box, to exclude from obstacle detection [m]
+body_min_y: -1.0                                                # Minimum y for vehicle body bounding box, to exclude from obstacle detection [m]
+body_min_z: -0.3                                                # Minimum z for vehicle body bounding box, to exclude from obstacle detection [m]
+
+obstacle_scale: 1.0                                             # Scale to search for neighnor obstacle points [m]
+
+# Frames
+# ======================================================================================================================
+robot_base_link: 'mrzr/base_link'                               # Base link of the robot
+fixed_frame: 'map'                                              # World-fixed frame used for normal filtering
+
+# Pointcloud Topics
+# ======================================================================================================================
+pc_topic: '/ouster/points'                            # Input sensor point cloud topic

@@ -1,0 +1,7 @@
+image: ../../maps/KRC Test Course 2019 - Normals - NAD83_M - 231002.tif
+resolution: 1.0
+origin: [0.0, 0.0, 0.0]
+occupied_thresh: 75
+free_thresh: 25
+negate: 0
+mode: raw

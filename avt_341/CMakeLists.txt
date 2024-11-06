@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_MODULE_PATH
+     ${CMAKE_MODULE_PATH}
+     ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(WIN32 OR WIN64)
@@ -52,9 +56,16 @@ set(AVT341_SOURCE_FILES
     "perception/lidar_obstacle_detector"
     "perception/perception"
     "perception/uab_terrain_perception"
+    "perception/obstacles_processor"
+    "perception/lidar_normal_estimation"
+    "perception/normal_segmentation_grid"
+    "perception/segmentation_grid_processor"
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"
+    "planning/local/goal_point_processor"
+    "planning/local/vehicle_converter"
+    "planning/local/mpc_planner"
     "planning/global/global_path")
 
 # Append src/ subdirectory to the path of each target.

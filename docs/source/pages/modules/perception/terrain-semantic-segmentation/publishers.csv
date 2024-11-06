@@ -1,2 +1,3 @@
 Topic, Message type, Description
 "avt_341/segmentation_grid", "nav_msgs/OccupancyGrid", "Semantic segmentation grid encoded in integer occupancy grid values."
+"avt_341/occupancy_grid", "nav_msgs/OccupancyGrid", "Grid containing the probability of an object being present at a location. Can be enabled/disabled using the 'publish_uab_occupancy_grid' flag in 'perception.yaml'."
