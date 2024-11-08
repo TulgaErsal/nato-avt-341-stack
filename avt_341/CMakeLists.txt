@@ -10,6 +10,13 @@ set(CMAKE_MODULE_PATH
      ${CMAKE_MODULE_PATH}
      ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+
+set(BUILD_SLAM OFF)
+
+if (BUILD_SLAM)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(WIN32 OR WIN64)
@@ -60,6 +67,9 @@ set(AVT341_SOURCE_FILES
     "perception/lidar_normal_estimation"
     "perception/normal_segmentation_grid"
     "perception/segmentation_grid_processor"
+    "perception/slam/imu_preintegration"
+    "perception/slam/image_projection"
+    "perception/slam/map_optimization"
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"
@@ -98,17 +108,39 @@ if(USING_CATKIN)
   find_package(PCL REQUIRED)
   add_definitions(${PCL_DEFINITIONS})
 
+  if (BUILD_SLAM)
+    find_package(GTSAM REQUIRED QUIET)
+    find_package(Boost REQUIRED COMPONENTS timer)
+    find_package(OpenCV REQUIRED QUIET)
+    find_package(OpenMP REQUIRED)
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
+    find_package(GeographicLib REQUIRED)
+  endif()
+
   # Generate dynamic reconfigure parameters in the 'cfg' folder
   generate_dynamic_reconfigure_options("config/lidar_obstacle_detector.cfg")
 
   catkin_package(
     # INCLUDE_DIRS include LIBRARIES nato_avt_341
+    DEPENDS PCL GTSAM
     CATKIN_DEPENDS avt_341_msgs # DEPENDS system_lib
   )
 
   # Build
-  include_directories(include ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
-  link_directories(${PCL_LIBRARY_DIRS})
+  include_directories(
+    include
+    lib
+    ${catkin_INCLUDE_DIRS} 
+    ${PCL_INCLUDE_DIRS}
+	  ${GTSAM_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
+    )
+  link_directories(
+    lib
+    ${PCL_LIBRARY_DIRS}
+    ${GTSAM_LIBRARY_DIRS}
+    ${OpenCV_LIBRARY_DIRS}
+    )
 
   # Proxy library
   add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp")

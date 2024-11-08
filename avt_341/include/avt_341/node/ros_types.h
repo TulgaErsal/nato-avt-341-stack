@@ -10,6 +10,7 @@
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/Imu.h"
+#include "sensor_msgs/NavSatFix.h"
 
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Point32.h"
@@ -27,6 +28,7 @@
 
 #include "tf/LinearMath/Transform.h"
 
+#include "std_msgs/Header.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Int32.h"
@@ -38,6 +40,8 @@
 #include "avt_341_msgs/OccupiedCells.h"
 #include "avt_341_msgs/Obstacles.h"
 #include "avt_341_msgs/Sinkage.h"
+#include "avt_341_msgs/LiorfCloudInfo.h"
+#include "avt_341_msgs/LiorfSaveMap.h"
 
 namespace avt_341 {
     namespace msg {
@@ -58,6 +62,9 @@ namespace avt_341 {
 
         using Imu = sensor_msgs::Imu;
         using ImuPtr = const sensor_msgs::Imu::ConstPtr &;
+
+        using NavSatFix = sensor_msgs::NavSatFix;
+        using NavSatFixPtr = const sensor_msgs::NavSatFix::ConstPtr &;
 
         using Twist = geometry_msgs::Twist;
         using TwistPtr = const geometry_msgs::Twist::ConstPtr &;
@@ -109,6 +116,9 @@ namespace avt_341 {
         using Int32 = std_msgs::Int32;
         using Int32Ptr = const std_msgs::Int32::ConstPtr &;
 
+        using Header = std_msgs::Header;
+        using HeaderPtr = const std_msgs::Header::ConstPtr &;
+
         using String = std_msgs::String;
         using StringPtr = const std_msgs::String::ConstPtr &;
 
@@ -129,6 +139,12 @@ namespace avt_341 {
 
         using Sinkage = avt_341_msgs::Sinkage;
         using SinkagePtr = const avt_341_msgs::Sinkage::ConstPtr &;
+
+        using LiorfCloudInfo = avt_341_msgs::LiorfCloudInfo;
+        using LiorfCloudInfoPtr = const avt_341_msgs::LiorfCloudInfo::ConstPtr &;
+
+        using LiorfSaveMapRequest = avt_341_msgs::LiorfSaveMapRequest;
+        using LiorfSaveMapResponse = avt_341_msgs::LiorfSaveMapResponse;
 
         using Time = ros::Time;
     }
