@@ -30,6 +30,7 @@ bool verbose_gp_log = false;
 bool shutdown_condition = false;
 
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
+bool use_segmentation = false;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -43,7 +44,9 @@ void MapCallback(avt_341::msg::OccupancyGridPtr rcv_grid)
 }
 
 void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
-    segmentation_grid = *rcv_grid;
+    if (use_segmentation) {
+      segmentation_grid = *rcv_grid;
+    }
 }
 
 // From mission planner
@@ -151,6 +154,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
   n->get_parameter("~max_separation", max_sep, 1.0f);
   n->get_parameter("~use_global_path", use_global_path, true);
+  n->get_parameter("~use_segmentation", use_segmentation, false);
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
   n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/segmentation_grid"));
 
