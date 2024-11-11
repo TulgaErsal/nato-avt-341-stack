@@ -1,0 +1,18 @@
+<launch>
+
+    <arg name="project" default="avt_341"/>
+    <arg name="config" default="ouster_krc"/>
+    <arg name="run_rviz" default="true"/>
+    
+    <!-- Parameters -->
+    <rosparam file="$(dirname)/slam/config/params_$(arg config).yaml" command="load" />
+
+    <!--- LOAM -->
+    <include file="$(dirname)/slam/module_loam.launch" />
+
+    <!--- Run Rviz-->
+    <group if="$(arg run_rviz)">
+      <include file="$(dirname)/slam/module_rviz.launch" />
+    </group>
+
+</launch>

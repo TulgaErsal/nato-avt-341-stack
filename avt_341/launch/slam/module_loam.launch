@@ -1,0 +1,9 @@
+<launch>
+
+    <arg name="project" default="avt_341"/>
+    
+    <node pkg="$(arg project)" type="$(arg project)_slam_image_projection_node"     name="$(arg project)_slam"      output="screen"     respawn="true" clear_params="true"/>
+    <node pkg="$(arg project)" type="$(arg project)_slam_imu_preintegration_node"   name="$(arg project)_slam_imu_preintegration"    output="screen" 	respawn="true"/>
+    <node pkg="$(arg project)" type="$(arg project)_slam_map_optimization_node"      name="$(arg project)_slam_map_optmization"       output="screen"     respawn="true"/>
+    
+</launch>
