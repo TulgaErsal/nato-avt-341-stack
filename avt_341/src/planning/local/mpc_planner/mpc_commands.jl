@@ -342,7 +342,7 @@ function Setup()
 	distanceToGoal=@NLexpression(n.ocp.mdl,(((x[end]-g1)^2+(y[end]-g2)^2)/((x[1]-g1)^2+(y[1]-g2)^2)))
 	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum(1/((x[j]-Xobs_0[i])^2+(y[j]-Yobs_0[i])^2+0.1) for i=1:maxNumObs for j=2:n.ocp.state.pts))
 	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum((tanh(-1.3*((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
-	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(2*obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
+	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
