@@ -12,11 +12,11 @@ if(USING_CATKIN)
 
   add_dependencies(
     ${PROJECT_NAME}_lidar_normal_estimation_node
-    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PCL_LIBRARIES})
 
   target_link_libraries(
     ${PROJECT_NAME}_lidar_normal_estimation_node ${PROJECT_NAME}_proxy
-    ${catkin_LIBRARIES} ${${PROJECT_NAME}_LIBRARY})
+    ${catkin_LIBRARIES} ${${PROJECT_NAME}_LIBRARY} ${PCL_LIBRARIES})
 
   install(
     TARGETS ${PROJECT_NAME}_lidar_normal_estimation_node

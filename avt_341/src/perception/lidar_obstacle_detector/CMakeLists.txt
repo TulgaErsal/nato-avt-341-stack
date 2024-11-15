@@ -7,7 +7,7 @@ if(USING_CATKIN)
     ${PROJECT_NAME}_lidar_obstacle_detector_node
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_lidar_obstacle_detector_node
-                        ${catkin_LIBRARIES} ${${PROJECT_NAME}_LIBRARY})
+                        ${catkin_LIBRARIES} ${${PROJECT_NAME}_LIBRARY} ${PCL_LIBRARIES})
   install(
     TARGETS ${PROJECT_NAME}_lidar_obstacle_detector_node
     RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
