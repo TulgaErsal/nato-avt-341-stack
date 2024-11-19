@@ -25,14 +25,14 @@ liorf:
   # Transformations between the sensors
   # T_lb (lidar -> imu)
   extrinsicTrans: [-0.006, 0.012, -0.029]
-  extrinsicRot: [-1, 0, 0,
-                 0, -1, 0,
-                 0, 0, 1]
+  extrinsicRot: [-1., 0., 0.,
+                 0., -1., 0.,
+                 0., 0., 1.]
 
   # This parameter is set only when the 9-axis IMU is used, but it must be a high-precision IMU. e.g. MTI-680
-  extrinsicRPY: [-1, 0, 0,
-                 0, -1, 0,
-                 0, 0, 1]
+  extrinsicRPY: [-1., 0., 0.,
+                 0., -1., 0.,
+                 0., 0., 1.]
 
   # extrinsicTrans: [-0.002441, -0.009725, 0.007533]
 
@@ -108,8 +108,8 @@ liorf:
   savePCDDirectory: "/Downloads/LOAM/"          # in your home folder, starts and ends with "/". Warning: the code deletes "LOAM" folder then recreates it. See "mapOptimization" for implementation
 
   # robot motion constraint (in case you are using a 2D robot)
-  z_tollerance: 1000                            # meters
-  rotation_tollerance: 1000                     # radians
+  z_tollerance: 1000.                            # meters
+  rotation_tollerance: 1000.                     # radians
 
   # CPU Params
   numberOfCores: 16                             # number of cores for mapping optimization

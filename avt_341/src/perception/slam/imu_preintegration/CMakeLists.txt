@@ -13,6 +13,7 @@ if(USING_CATKIN)
       )
     target_link_libraries(
       ${PROJECT_NAME}_slam_imu_preintegration_node
+      ${PROJECT_NAME}_proxy 
       Boost::timer
       libCommonLib.so 
       ${catkin_LIBRARIES}
@@ -30,5 +31,24 @@ if(USING_CATKIN)
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
-  message( WARNING "SLAM is currently not supported in ROS2" )
+  if(BUILD_SLAM)
+    add_executable(
+      ${PROJECT_NAME}_slam_imu_preintegration_node
+      "imu_preintegration.cpp"
+      )
+    
+    target_link_libraries(
+      ${PROJECT_NAME}_slam_imu_preintegration_node
+      ${PROJECT_NAME}_proxy 
+      #Boost::timer
+      ${catkin_LIBRARIES}
+      ${PCL_LIBRARIES}
+      ${OpenCV_LIBRARIES}
+      gtsam
+      )
+    install(
+      TARGETS ${PROJECT_NAME}_slam_imu_preintegration_node
+      EXPORT export_${PROJECT_NAME}
+      DESTINATION "lib/${PROJECT_NAME}")
+  endif() # if(BUILD_SLAM)
 endif() # if(USING_AMENT)

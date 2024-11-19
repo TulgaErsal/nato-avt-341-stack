@@ -46,6 +46,12 @@ namespace avt_341 {
             return ros::Duration(sec, nsec);
         }
 
+
+        inline double seconds_from_duration(ros::Duration d)
+        {
+          return d.toSec();
+         }
+
         template<typename MessageT>
         class Publisher {
         public:
@@ -173,10 +179,14 @@ namespace avt_341 {
             double get_now_seconds() const;
             void spin_some();
             void spin();
+            void shutdown() { ros::shutdown(); }
+
+            void broadcast_tf(geometry_msgs::TransformStamped tfs) {tf_broadcaster_->sendTransform(tfs);}
 
         private:
             ros::NodeHandle node_;
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+            std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
         };
 
@@ -224,6 +234,11 @@ namespace avt_341 {
       return rclcpp::Duration(sec, nsec);
     }
 
+    inline double seconds_from_duration(rclcpp::Duration d)
+    {
+      return d.seconds();
+    }
+
     template<
         typename MessageT,
         typename AllocatorT = std::allocator<void>,
@@ -261,6 +276,11 @@ namespace avt_341 {
 
     inline double seconds_from_header(const std_msgs::msg::Header & header){
       return rclcpp::Time(header.stamp).seconds();
+    }
+
+
+    inline rclcpp::Time time_from_seconds(double sec){
+            return rclcpp::Time(sec);
     }
 
     inline void inc_seq(const std_msgs::msg::Header & header){
@@ -308,7 +328,7 @@ namespace avt_341 {
             return;
         }
 
-        node_->declare_parameter(name_local, default_value);
+        if (!node_->has_parameter(name_local)) node_->declare_parameter(name_local, default_value);
         node_->get_parameter(name_local, parameter_out);
       }
 
@@ -365,6 +385,10 @@ namespace avt_341 {
       double get_now_seconds() const;
       void spin_some();
       void spin();
+            
+      void shutdown() { rclcpp::shutdown(); }
+
+      void broadcast_tf(geometry_msgs::msg::TransformStamped tfs) {tf_broadcaster_->sendTransform(tfs);}
 
     private:
       std::shared_ptr<rclcpp::Node> node_;

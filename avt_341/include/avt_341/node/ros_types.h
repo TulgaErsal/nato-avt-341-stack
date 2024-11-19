@@ -86,6 +86,9 @@ namespace avt_341 {
         using PointStamped = geometry_msgs::PointStamped;
         using PointStampedPtr = const geometry_msgs::PointStamped::ConstPtr &;
 
+        using Transform = geometry_msgs::Transform;
+        using TransformPtr = const geometry_msgs::TransformConstPtr &;
+
         using TransformStamped = geometry_msgs::TransformStamped;
         using TransformStampedPtr = const geometry_msgs::TransformStampedConstPtr &;
 
@@ -149,6 +152,7 @@ namespace avt_341 {
         using Time = ros::Time;
     }
     namespace msg_tf{
+        using Transform = tf::Transform;
         using Matrix3x3 = tf::Matrix3x3;
         using Quaternion = tf::Quaternion;
         using Vector3 = tf::Vector3;
@@ -165,6 +169,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/nav_sat_fix.hpp"
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/point32.hpp"
@@ -181,7 +186,9 @@ namespace avt_341 {
 
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Transform.h"
 
+#include "std_msgs/msg/header.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -193,6 +200,7 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
+#include "avt_341_msgs/msg/liorf_cloud_info.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -214,6 +222,9 @@ namespace avt_341 {
     using Imu = sensor_msgs::msg::Imu;
     using ImuPtr = sensor_msgs::msg::Imu::ConstSharedPtr;
 
+    using NavSatFix = sensor_msgs::msg::NavSatFix;
+    using NavSatFixPtr = sensor_msgs::msg::NavSatFix::ConstSharedPtr;
+
     using Twist = geometry_msgs::msg::Twist;
     using TwistPtr = const geometry_msgs::msg::Twist::SharedPtr;
 
@@ -234,6 +245,9 @@ namespace avt_341 {
     using PointStamped = geometry_msgs::msg::PointStamped;
     using PointStampedPtr = const geometry_msgs::msg::PointStamped::SharedPtr;
 
+    using Transform = geometry_msgs::msg::Transform;
+    using TransformPtr = geometry_msgs::msg::Transform::SharedPtr;
+
     using TransformStamped = geometry_msgs::msg::TransformStamped;
     using TransformStampedPtr = geometry_msgs::msg::TransformStamped::SharedPtr;
 
@@ -251,6 +265,9 @@ namespace avt_341 {
 
     using MarkerArray = visualization_msgs::msg::MarkerArray;
     using MarkerArrayPtr = const visualization_msgs::msg::MarkerArray::SharedPtr;
+
+    using Header = std_msgs::msg::Header;
+    using HeaderPtr = std_msgs::msg::Header::SharedPtr;
 
     using Float64 = std_msgs::msg::Float64;
     using Float64Ptr = std_msgs::msg::Float64::SharedPtr;
@@ -283,9 +300,13 @@ namespace avt_341 {
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
 
+    using LiorfCloudInfo = avt_341_msgs::msg::LiorfCloudInfo;
+    using LiorfCloudInfoPtr = avt_341_msgs::msg::LiorfCloudInfo::SharedPtr;
+
     using Time = rclcpp::Time;
   }
   namespace msg_tf{
+    using Transform = tf2::Transform;
     using Matrix3x3 = tf2::Matrix3x3;
     using Quaternion = tf2::Quaternion;
     using Vector3 = tf2::Vector3;

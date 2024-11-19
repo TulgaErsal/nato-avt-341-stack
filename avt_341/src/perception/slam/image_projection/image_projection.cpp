@@ -1,119 +1,26 @@
-#include "avt_341/perception/slam/utility.h"
+#include "avt_341/perception/slam/image_projection.h"
 // <!-- liorf_localization_yjz_lucky_boy -->
-struct VelodynePointXYZIRT
-{
-    PCL_ADD_POINT4D
-    PCL_ADD_INTENSITY;
-    uint16_t ring;
-    float time;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-} EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT (VelodynePointXYZIRT,
-    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-    (uint16_t, ring, ring) (float, time, time)
-)
 
-struct OusterPointXYZIRT {
-    PCL_ADD_POINT4D;
-    float intensity;
-    uint32_t t;
-    uint16_t reflectivity;
-    uint8_t ring;
-    uint16_t noise;
-    uint32_t range;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-} EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPointXYZIRT,
-    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-    (uint32_t, t, t) (uint16_t, reflectivity, reflectivity)
-    (uint8_t, ring, ring) (uint16_t, noise, noise) (uint32_t, range, range)
-)
+std::shared_ptr<avt_341::node::NodeProxy> node_proxy = nullptr;
 
-struct RobosensePointXYZIRT
-{
-    PCL_ADD_POINT4D
-    float intensity;
-    uint16_t ring;
-    double timestamp;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-} EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT(RobosensePointXYZIRT, 
-      (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)
-      (uint16_t, ring, ring)(double, timestamp, timestamp)
-)
+std::shared_ptr<ImageProjection> globalIP = nullptr;
+void globalIP_imuHandler(avt_341::msg::ImuPtr imuMsg) {
+  //node_proxy->log_info(">>> callback imu at %lf with ts %lf",node_proxy->get_now_seconds(),avt_341::node::seconds_from_header(imuMsg->header));
+  globalIP->imuHandler(imuMsg);
+  //node_proxy->log_info("<<< callback imu done");
+}
+void globalIP_odometryHandler(avt_341::msg::OdometryPtr odomMsg) {
+  //node_proxy->log_info(">>> callback odom at %lf with ts %lf",node_proxy->get_now_seconds(),avt_341::node::seconds_from_header(odomMsg->header));
+  globalIP->odometryHandler(odomMsg);
+  //node_proxy->log_info("<<< callback odom done");
+}
+void globalIP_cloudHandler(avt_341::msg::PointCloud2Ptr pc2Msg) {
+  //node_proxy->log_info(">>> callback pc2 at %lf with ts %lf",node_proxy->get_now_seconds(),avt_341::node::seconds_from_header(pc2Msg->header));
+  globalIP->cloudHandler(pc2Msg);
+  //node_proxy->log_info("<<< callback pc2 done");
+}
 
-// mulran datasets
-struct MulranPointXYZIRT {
-    PCL_ADD_POINT4D
-    float intensity;
-    uint32_t t;
-    int ring;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
- }EIGEN_ALIGN16;
- POINT_CLOUD_REGISTER_POINT_STRUCT (MulranPointXYZIRT,
-     (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-     (uint32_t, t, t) (int, ring, ring)
- )
-
-// Use the Velodyne point format as a common representation
-using PointXYZIRT = VelodynePointXYZIRT;
-
-const int queueLength = 2000;
-
-class ImageProjection : public ParamServer
-{
-private:
-
-    std::mutex imuLock;
-    std::mutex odoLock;
-
-    ros::Subscriber subLaserCloud;
-    ros::Publisher  pubLaserCloud;
-    
-    ros::Publisher pubExtractedCloud;
-    ros::Publisher pubLaserCloudInfo;
-
-    ros::Subscriber subImu;
-    std::deque<avt_341::msg::Imu> imuQueue;
-
-    ros::Subscriber subOdom;
-    std::deque<avt_341::msg::Odometry> odomQueue;
-
-    std::deque<avt_341::msg::PointCloud2> cloudQueue;
-    avt_341::msg::PointCloud2 currentCloudMsg;
-
-    double *imuTime = new double[queueLength];
-    double *imuRotX = new double[queueLength];
-    double *imuRotY = new double[queueLength];
-    double *imuRotZ = new double[queueLength];
-
-    int imuPointerCur;
-    bool firstPointFlag;
-    Eigen::Affine3f transStartInverse;
-
-    pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
-    pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
-    pcl::PointCloud<MulranPointXYZIRT>::Ptr tmpMulranCloudIn;
-    pcl::PointCloud<PointType>::Ptr   fullCloud;
-
-    int deskewFlag;
-
-    bool odomDeskewFlag;
-    float odomIncreX;
-    float odomIncreY;
-    float odomIncreZ;
-
-    avt_341::msg::LiorfCloudInfo cloudInfo;
-    double timeScanCur;
-    double timeScanEnd;
-    avt_341::msg::Header cloudHeader;
-
-    bool imuReceived{false};
-    float initRoll{0}, initPitch{0};
-
-public:
-    ImageProjection():
-    deskewFlag(0)
+ImageProjection::ImageProjection(std::shared_ptr<avt_341::node::NodeProxy> node_proxy_) : deskewFlag(0), ParamServer(node_proxy_)
     {
         if (imuType || (!calculateInitRollPitch)){
             imuReceived = true;
@@ -121,14 +28,8 @@ public:
             imuReceived = false;
         }
 
-        subImu        = nh.subscribe<avt_341::msg::Imu>(imuTopic, 2000, &ImageProjection::imuHandler, this, ros::TransportHints().tcpNoDelay());
-        subOdom       = nh.subscribe<avt_341::msg::Odometry>(odomTopic+"_incremental", 2000, &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
-        subLaserCloud = nh.subscribe<avt_341::msg::PointCloud2>(pointCloudTopic, 5, &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
 
-        pubExtractedCloud = nh.advertise<avt_341::msg::PointCloud2> ("avt_341/slam/deskew/cloud_deskewed", 1);
-        pubLaserCloudInfo = nh.advertise<avt_341::msg::LiorfCloudInfo> ("avt_341/slam/deskew/cloud_info", 1);
-
-        ROS_INFO("useIMU: %d", useIMU);
+        node_proxy->log_info("useIMU: %d", useIMU);
 
         allocateMemory();
         resetParameters();
@@ -136,7 +37,7 @@ public:
         pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
     }
 
-    void allocateMemory()
+void ImageProjection::allocateMemory()
     {
         laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
         tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
@@ -146,7 +47,7 @@ public:
         resetParameters();
     }
 
-    void resetParameters()
+void ImageProjection::resetParameters()
     {
         laserCloudIn->clear();
         fullCloud->clear();
@@ -165,9 +66,7 @@ public:
 
     }
 
-    ~ImageProjection(){}
-
-    void imuHandler(avt_341::msg::ImuPtr imuMsg)
+void ImageProjection::imuHandler(avt_341::msg::ImuPtr imuMsg)
     {
         avt_341::msg::Imu thisImu = imuConverter(*imuMsg);
 
@@ -192,7 +91,7 @@ public:
                 pitch = asin(-accelerationVector(0));
                 initRoll = roll;
                 initPitch = pitch;
-                ROS_INFO("initial roll: %f, pitch: %f", roll, pitch);
+                node_proxy->log_info("initial roll: %f, pitch: %f", roll, pitch);
                 imuReceived = true;
             }
         } else {
@@ -201,11 +100,12 @@ public:
         }        
     }
 
-    void odometryHandler(avt_341::msg::OdometryPtr odometryMsg)
+void ImageProjection::odometryHandler(avt_341::msg::OdometryPtr odometryMsg)
     {
         if (!imuReceived)
         {
-            ROS_INFO_THROTTLE(1000, "IMU not received, aborting scan");
+            //ROS_INFO_THROTTLE(1000, "IMU not received, aborting scan");
+            node_proxy->log_info("IMU not received, aborting scan");
             return;
         }
 
@@ -213,15 +113,16 @@ public:
         odomQueue.push_back(*odometryMsg);
     }
 
-    void cloudHandler(avt_341::msg::PointCloud2Ptr laserCloudMsg)
+void ImageProjection::cloudHandler(avt_341::msg::PointCloud2Ptr laserCloudMsg)
     {
         if (!imuReceived)
         {
-            ROS_INFO_THROTTLE(1000, "IMU not received, aborting scan");
+            //ROS_INFO_THROTTLE(1000, "IMU not received, aborting scan");
+            node_proxy->log_info("IMU not received, aborting scan");
             return;
         }
         if (!cachePointCloud(laserCloudMsg)){
-            ROS_INFO("Cloud not cached, aborting scan");
+            node_proxy->log_info("Cloud not cached, aborting scan");
             return;
         }
         static int cloudCounter = 0;
@@ -229,7 +130,8 @@ public:
         cloudCounter++;
         if (!deskewInfo()){
             deskewCounter++;
-            ROS_INFO_THROTTLE(10, "Deskew info not available, aborting scan (%d/%d)", deskewCounter, cloudCounter);
+            //ROS_INFO_THROTTLE(10, "Deskew info not available, aborting scan (%d/%d)", deskewCounter, cloudCounter);
+            node_proxy->log_info("Deskew info not available, aborting scan (%d/%d)", deskewCounter, cloudCounter);
             return;
         }
 
@@ -240,7 +142,7 @@ public:
         resetParameters();
     }
 
-    bool cachePointCloud(avt_341::msg::PointCloud2Ptr laserCloudMsg)
+bool ImageProjection::cachePointCloud(avt_341::msg::PointCloud2Ptr laserCloudMsg)
     {
         // cache point cloud
         cloudQueue.push_back(*laserCloudMsg);
@@ -311,20 +213,21 @@ public:
             }
         } 
         else {
-            ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
-            ros::shutdown();
+            //ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
+            node_proxy->log_error("Unknown sensor type: %d", int(sensor));
+            node_proxy->shutdown();
         }
 
         // get timestamp
         cloudHeader = currentCloudMsg.header;
-        timeScanCur = cloudHeader.stamp.toSec();
+        timeScanCur = avt_341::node::seconds_from_header(cloudHeader);
         timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
 
         // check dense flag
         if (laserCloudIn->is_dense == false)
         {
-            ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
-            ros::shutdown();
+            node_proxy->log_error("Point cloud is not in dense format, please remove NaN points first!");
+            node_proxy->shutdown();
         }
 
         // check ring channel
@@ -360,21 +263,22 @@ public:
                 }
             }
             if (deskewFlag == -1)
-                ROS_WARN("Point cloud timestamp not available, deskew function disabled, system will drift significantly!");
+                node_proxy->log_warning("Point cloud timestamp not available, deskew function disabled, system will drift significantly!");
         }
 
         return true;
     }
 
-    bool deskewInfo()
+bool ImageProjection::deskewInfo()
     {
         std::lock_guard<std::mutex> lock1(imuLock);
         std::lock_guard<std::mutex> lock2(odoLock);
 
         // make sure IMU data available for the scan
-        if ( useIMU && (imuQueue.empty() || imuQueue.front().header.stamp.toSec() > timeScanCur || imuQueue.back().header.stamp.toSec() < timeScanEnd) )
+        if ( useIMU && (imuQueue.empty() || avt_341::node::seconds_from_header(imuQueue.front().header) > timeScanCur || avt_341::node::seconds_from_header(imuQueue.back().header) < timeScanEnd) )
         {
-            ROS_INFO_THROTTLE(10, "Waiting for IMU data ...");
+            //ROS_INFO_THROTTLE(10, "Waiting for IMU data ...");
+            node_proxy->log_info("Waiting for IMU data ...");
             return false;
         }
 
@@ -385,13 +289,13 @@ public:
         return true;
     }
 
-    void imuDeskewInfo()
+void ImageProjection::imuDeskewInfo()
     {
-        cloudInfo.imuAvailable = false;
+        cloudInfo.imu_available = false;
 
         while (!imuQueue.empty())
         {
-            if (imuQueue.front().header.stamp.toSec() < timeScanCur - 0.01)
+            if (avt_341::node::seconds_from_header(imuQueue.front().header) < timeScanCur - 0.01)
                 imuQueue.pop_front();
             else
                 break;
@@ -405,16 +309,16 @@ public:
         for (int i = 0; i < (int)imuQueue.size(); ++i)
         {
             avt_341::msg::Imu thisImuMsg = imuQueue[i];
-            double currentImuTime = thisImuMsg.header.stamp.toSec();
+            double currentImuTime = avt_341::node::seconds_from_header(thisImuMsg.header);
 
             if (imuType) {
                 // get roll, pitch, and yaw estimation for this scan
                 if (currentImuTime <= timeScanCur){
-                    imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imuRollInit, &cloudInfo.imuPitchInit, &cloudInfo.imuYawInit);
+                    imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imu_roll_init, &cloudInfo.imu_pitch_init, &cloudInfo.imu_yaw_init);
                 }
             } else {
-                 cloudInfo.imuRollInit = initRoll;
-                 cloudInfo.imuPitchInit = initPitch;
+                 cloudInfo.imu_roll_init = initRoll;
+                 cloudInfo.imu_pitch_init = initPitch;
             }
 
             if (currentImuTime > timeScanEnd + 0.01)
@@ -447,28 +351,30 @@ public:
         if (imuPointerCur <= 0)
             return;
 
-        cloudInfo.imuAvailable = true;
+        cloudInfo.imu_available = true;
     }
 
-    void odomDeskewInfo()
+void ImageProjection::odomDeskewInfo()
     {
-        cloudInfo.odomAvailable = false;
+        cloudInfo.odom_available = false;
         static float sync_diff_time = (imuRate >= 300) ? 0.01 : 0.20;
         while (!odomQueue.empty())
         {
-            if (odomQueue.front().header.stamp.toSec() < timeScanCur - sync_diff_time)
+            if (avt_341::node::seconds_from_header(odomQueue.front().header) < timeScanCur - sync_diff_time)
                 odomQueue.pop_front();
             else
                 break;
         }
 
         if (odomQueue.empty()){
-            ROS_WARN_THROTTLE(10, "no odom");
+            //ROS_WARN_THROTTLE(10, "no odom");
+            node_proxy->log_warning("no odom");
             return;
         } 
 
-        if (odomQueue.front().header.stamp.toSec() > timeScanCur){
-            ROS_WARN_THROTTLE(10, "odom start time is ahead of scan time");
+        if (avt_341::node::seconds_from_header(odomQueue.front().header) > timeScanCur){
+            //ROS_WARN_THROTTLE(10, "odom start time is ahead of scan time");
+            node_proxy->log_warning("odom start time is ahead of scan time");
             return;
         }
 
@@ -485,27 +391,27 @@ public:
                 break;
         }
 
-        tf::Quaternion orientation;
-        tf::quaternionMsgToTF(startOdomMsg.pose.pose.orientation, orientation);
+        avt_341::msg_tf::Quaternion orientation = to_tf_quaterion(startOdomMsg.pose.pose.orientation);
 
         double roll, pitch, yaw;
-        tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+        avt_341::msg_tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
 
         // Initial guess used in mapOptimization
-        cloudInfo.initialGuessX = startOdomMsg.pose.pose.position.x;
-        cloudInfo.initialGuessY = startOdomMsg.pose.pose.position.y;
-        cloudInfo.initialGuessZ = startOdomMsg.pose.pose.position.z;
-        cloudInfo.initialGuessRoll  = roll;
-        cloudInfo.initialGuessPitch = pitch;
-        cloudInfo.initialGuessYaw   = yaw;
+        cloudInfo.initial_guess_x = startOdomMsg.pose.pose.position.x;
+        cloudInfo.initial_guess_y = startOdomMsg.pose.pose.position.y;
+        cloudInfo.initial_guess_z = startOdomMsg.pose.pose.position.z;
+        cloudInfo.initial_guess_roll  = roll;
+        cloudInfo.initial_guess_pitch = pitch;
+        cloudInfo.initial_guess_yaw   = yaw;
 
-        cloudInfo.odomAvailable = true;
+        cloudInfo.odom_available = true;
 
         // get end odometry at the end of the scan
         odomDeskewFlag = false;
 
-        if (odomQueue.back().header.stamp.toSec() < timeScanEnd){
-            ROS_WARN_THROTTLE(10, "odom end time is behind of scan time");
+        if (avt_341::node::seconds_from_header(odomQueue.back().header) < timeScanEnd){
+            //ROS_WARN_THROTTLE(10, "odom end time is behind of scan time");
+            node_proxy->log_warning("odom end time is behind of scan time");
             return;
         }
 
@@ -526,8 +432,8 @@ public:
 
         Eigen::Affine3f transBegin = pcl::getTransformation(startOdomMsg.pose.pose.position.x, startOdomMsg.pose.pose.position.y, startOdomMsg.pose.pose.position.z, roll, pitch, yaw);
 
-        tf::quaternionMsgToTF(endOdomMsg.pose.pose.orientation, orientation);
-        tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+        orientation = to_tf_quaterion(endOdomMsg.pose.pose.orientation);
+        avt_341::msg_tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
         Eigen::Affine3f transEnd = pcl::getTransformation(endOdomMsg.pose.pose.position.x, endOdomMsg.pose.pose.position.y, endOdomMsg.pose.pose.position.z, roll, pitch, yaw);
 
         Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
@@ -538,7 +444,7 @@ public:
         odomDeskewFlag = true;
     }
 
-    void findRotation(double pointTime, float *rotXCur, float *rotYCur, float *rotZCur)
+void ImageProjection::findRotation(double pointTime, float *rotXCur, float *rotYCur, float *rotZCur)
     {
         *rotXCur = 0; *rotYCur = 0; *rotZCur = 0;
 
@@ -565,7 +471,7 @@ public:
         }
     }
 
-    void findPosition(double relTime, float *posXCur, float *posYCur, float *posZCur)
+void ImageProjection::findPosition(double relTime, float *posXCur, float *posYCur, float *posZCur)
     {
         *posXCur = 0; *posYCur = 0; *posZCur = 0;
 
@@ -581,9 +487,9 @@ public:
         // *posZCur = ratio * odomIncreZ;
     }
 
-    PointType deskewPoint(PointType *point, double relTime)
+    PointType ImageProjection::deskewPoint(PointType *point, double relTime)
     {
-        if (deskewFlag == -1 || cloudInfo.imuAvailable == false)
+        if (deskewFlag == -1 || cloudInfo.imu_available == false)
             return *point;
 
         double pointTime = timeScanCur + relTime;
@@ -613,7 +519,7 @@ public:
         return newPoint;
     }
 
-    void projectPointCloud()
+void ImageProjection::projectPointCloud()
     {
         int cloudSize = laserCloudIn->points.size();
         int width = laserCloudIn->width;
@@ -653,26 +559,32 @@ public:
         }
     }
     
-    void publishClouds()
+void ImageProjection::publishClouds()
     {
         cloudInfo.header = cloudHeader;
         cloudInfo.cloud_deskewed  = publishCloud(pubExtractedCloud, fullCloud, cloudHeader.stamp, lidarFrame);
-        pubLaserCloudInfo.publish(cloudInfo);
+        pubLaserCloudInfo->publish(cloudInfo);
     }
-};
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "liorf");
+    node_proxy = avt_341::node::init_node(argc, argv, "liorf");
 
     common_lib_ = std::make_shared<CommonLib::common_lib>("mapping");
 
-    ImageProjection IP;
-    
-    ROS_INFO("\033[1;32m----> Image Projection Started.\033[0m");
+    globalIP = std::make_shared<ImageProjection>(node_proxy);
+    globalIP->pubExtractedCloud = node_proxy->create_publisher<avt_341::msg::PointCloud2> ("avt_341/slam/deskew/cloud_deskewed", 1);
+    globalIP->pubLaserCloudInfo = node_proxy->create_publisher<avt_341::msg::LiorfCloudInfo> ("avt_341/slam/deskew/cloud_info", 1);
+    //TODO transport hind tcpnodelay
+    auto globalIP_subImu = node_proxy->create_subscription<avt_341::msg::Imu>(globalIP->imuTopic, 2000, globalIP_imuHandler);
+    auto globalIP_subOdom = node_proxy->create_subscription<avt_341::msg::Odometry>(globalIP->odomTopic+"_incremental", 2000, globalIP_odometryHandler);
+    auto globalIP_subLaserCloud = node_proxy->create_subscription<avt_341::msg::PointCloud2>(globalIP->pointCloudTopic, 5, globalIP_cloudHandler);
 
-    ros::MultiThreadedSpinner spinner(3);
-    spinner.spin();
+    node_proxy->log_info("\033[1;32m----> Image Projection Started.\033[0m");
+
+    //ros::MultiThreadedSpinner spinner(3); TODO
+    //spinner.spin();
+    node_proxy->spin();
     
     return 0;
 }

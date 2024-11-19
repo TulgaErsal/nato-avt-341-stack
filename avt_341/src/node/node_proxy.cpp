@@ -31,6 +31,7 @@ void NodeProxy::initialize_tf_listener() {
 
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+  tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>();
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
@@ -202,7 +203,9 @@ void NodeProxy::spin() {
     }
 
     void NodeProxy::spin() {
+      log_info("starting spin");
       rclcpp::spin(node_);
+      log_info("ending spin");
     }
 
 #endif

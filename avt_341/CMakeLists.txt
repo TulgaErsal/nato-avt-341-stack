@@ -11,13 +11,14 @@ set(CMAKE_MODULE_PATH
      ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 
-set(BUILD_SLAM OFF)
+set(BUILD_SLAM ON)
 
 if (BUILD_SLAM)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(WARNING "compiler: ${CMAKE_CXX_COMPILER}")
 
 if(WIN32 OR WIN64)
   add_compile_definitions(-D _USE_MATH_DEFINES)
@@ -116,6 +117,7 @@ if(USING_CATKIN)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
     find_package(GeographicLib REQUIRED)
   endif()
+
 
   # Generate dynamic reconfigure parameters in the 'cfg' folder
   generate_dynamic_reconfigure_options("config/lidar_obstacle_detector.cfg")
@@ -223,9 +225,6 @@ if(USING_CATKIN)
       "src/planning/local/spline_plotter.cpp"
       "src/visualization/image_visualizer.cpp")
 
-  # add_library(avt_341 ${LIB_SOURCES}) add_dependencies(avt_341
-  # ${catkin_EXPORTED_TARGETS}) target_link_libraries(avt_341
-  # ${PROJECT_NAME}_proxy ${PCL_LIBRARIES} X11)
 
   catkin_package(INCLUDE_DIRS "include" LIBRARIES ${PROJECT_NAME})
 
@@ -270,6 +269,20 @@ if(USING_AMENT)
   find_package(rclpy REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
+  
+  if (BUILD_SLAM)
+    file(GLOB CommonLib_FILES "lib/*.cpp")
+    find_package(PCL REQUIRED)
+    add_definitions(${PCL_DEFINITIONS})
+    find_package(pcl_conversions REQUIRED)
+    find_package(GTSAM REQUIRED QUIET)
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
+    message(WARNING "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+    message(WARNING "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+    #set(GeographicLib_LIBRARIES "/usr/lib/x86_64-linux-gnu/libGeographic.so")
+    find_package(GeographicLib REQUIRED)
+    message(WARNING "GeographicLib at ${GeographicLib_LIBRARIES}")
+  endif()
 
   if(WIN32 OR WIN64)
     set(link_libs ${OpenCV_LIBS})
@@ -283,7 +296,14 @@ if(USING_AMENT)
   endif()
 
   # Build
-  include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
+  include_directories(
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/lib
+    ${OpenCV_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
+	  ${GTSAM_INCLUDE_DIR}
+    )
+
 
   # Node proxy library
   # ------------------
@@ -294,9 +314,12 @@ if(USING_AMENT)
     PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
            $<INSTALL_INTERFACE:include>)
 
-  ament_target_dependencies(
-    ${PROJECT_NAME}_proxy avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
-    visualization_msgs)
+  ament_target_dependencies(${PROJECT_NAME}_proxy
+    avt_341_msgs rclcpp
+    tf2_geometry_msgs tf2_sensor_msgs
+    visualization_msgs
+    "pcl_conversions"
+    )
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
     add_subdirectory(${SOURCE_FILE})
@@ -339,5 +362,8 @@ if(USING_AMENT)
     DESTINATION "lib/${PROJECT_NAME}")
 
   install(DIRECTORY launch config rviz DESTINATION "share/${PROJECT_NAME}")
+  
+  
+  ament_export_include_directories(include)
   ament_package()
 endif() # if(USING_AMENT)

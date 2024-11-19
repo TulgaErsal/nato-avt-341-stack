@@ -13,6 +13,7 @@ if(USING_CATKIN)
       )
     target_link_libraries(
       ${PROJECT_NAME}_slam_image_projection_node
+      ${PROJECT_NAME}_proxy 
       libCommonLib.so 
       ${catkin_LIBRARIES}
       ${PCL_LIBRARIES}
@@ -28,5 +29,23 @@ if(USING_CATKIN)
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
-  message( WARNING "SLAM is currently not supported in ROS2" )
+    add_executable(
+      ${PROJECT_NAME}_slam_image_projection_node
+      "image_projection.cpp"
+      ${CommonLib_FILES}
+      )
+    message(WARNING "image_projection: ${CommonLib_FILES}")
+    target_link_libraries(
+      ${PROJECT_NAME}_slam_image_projection_node
+      ${PROJECT_NAME}_proxy 
+      #CommonLib
+      #${CommonLib_LIBRARIES}
+      ${catkin_LIBRARIES}
+      ${PCL_LIBRARIES}
+      ${OpenCV_LIBRARIES}
+      )
+    install(
+      TARGETS ${PROJECT_NAME}_slam_image_projection_node
+      EXPORT export_${PROJECT_NAME}
+      DESTINATION "lib/${PROJECT_NAME}")
 endif() # if(USING_AMENT)
