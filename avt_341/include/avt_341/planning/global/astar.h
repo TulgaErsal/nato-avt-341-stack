@@ -22,7 +22,7 @@ class Astar {
         float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first);//, bool dubins_smoothing, float dubins_radius);
 
   /// Destructor
-  ~Astar();
+  virtual ~Astar();
 
   /// Inherited from base class
   void Display();
@@ -104,7 +104,7 @@ class Astar {
   /**
    * Solve the A* map. Returns true if a path was found.
    */
-  bool Solve();
+  virtual bool Solve();
 
   std::vector<std::vector<float> > GetPathWorldPreSmoothing(){
     std::vector<std::vector<float>> path_world_pre_smoothing;
@@ -182,7 +182,7 @@ class Astar {
    */
   void SetDilationFactor(int dfac){dfac_ = dfac;}
 
- private:
+ protected:
   std::vector<int> FoldIndex(int n);
   
   int FlattenIndex(int i, int j){return j*width_+i;}

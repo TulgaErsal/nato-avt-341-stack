@@ -16,7 +16,9 @@
 // local includes
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/global/astar.h"
+#include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/visualization/visualization_factory.h"
+#include <chrono>
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
 avt_341::msg::OccupancyGrid current_grid;
@@ -123,26 +125,27 @@ int main(int argc, char *argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
 
-  float goal_dist, global_lookahead,  w_distance, w_occupancy, w_segmentation;
+  float goal_accept_radius, global_lookahead,  w_distance, w_occupancy, w_segmentation;
   double local_origin_x, local_origin_y;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
-  float dilation_factor, max_sep;
+  float dilation_factor, max_separation;
   std::string map_topic, seg_topic;
+  bool use_fastmarching;
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
 
-  n->get_parameter("~goal_dist", goal_dist, 3.0f);
+  n->get_parameter("~goal_dist", goal_accept_radius, 3.0f);
   n->get_parameter("~display", display_type, avt_341::visualization::default_display);
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
   n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
   n->get_parameter("/map_origin_x", local_origin_x, 0.0);
   n->get_parameter("/map_origin_y", local_origin_y, 0.0);
-  n->get_parameter("~debug_visualize", debug_visualize, false);
+  n->get_parameter("~debug_visualize", debug_visualize, true);
   n->get_parameter("~search_diagonals", search_diagonals, false);
   n->get_parameter("~los_max_iterations", los_max_iterations, 1);
   n->get_parameter("~los_break_on_first", los_break_on_first, true);
@@ -152,11 +155,12 @@ int main(int argc, char *argv[])
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
   n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
-  n->get_parameter("~max_separation", max_sep, 1.0f);
+  n->get_parameter("~max_separation", max_separation, 1.0f);
   n->get_parameter("~use_global_path", use_global_path, true);
-  n->get_parameter("~use_segmentation", use_segmentation, false);
-  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
-  n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/segmentation_grid"));
+  n->get_parameter("~use_segmentation", use_segmentation, true);
+  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid_low_res"));
+  n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
+  n->get_parameter("~use_fastmarching", use_fastmarching, true);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -173,7 +177,7 @@ int main(int argc, char *argv[])
   {
     std::cerr << "WARNING: " << waypoints_x_list.size() << " X COORDINATES WERE PROVIDED FOR " << waypoints_y_list.size() << " Y COORDINATES." << std::endl;
   }
-  if (waypoints_x_list.size() == 0 || waypoints_y_list.size() == 0)
+  if (waypoints_x_list.empty() || waypoints_y_list.empty())
   {
     std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN /waypoints_x OR /waypoints_y." << std::endl;
     //return 2;
@@ -233,12 +237,19 @@ int main(int argc, char *argv[])
   }
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
-  avt_341::planning::Astar astar_planner(visualizer, w_distance, w_occupancy, w_segmentation,
-                                         search_diagonals, los_max_iterations, los_break_on_first);
+
+  avt_341::planning::Astar* path_planner;
+  if (use_fastmarching) {
+    path_planner = new avt_341::planning::FastMarching(visualizer, w_distance, w_occupancy, w_segmentation,
+                                    search_diagonals, los_max_iterations, los_break_on_first);
+  } else {
+    path_planner = new avt_341::planning::Astar(visualizer, w_distance, w_occupancy, w_segmentation,
+                             search_diagonals, los_max_iterations, los_break_on_first);
+  }
 
   if (dilation_factor > 0.0)
   {
-    astar_planner.SetDilationFactor(dilation_factor);
+    path_planner->SetDilationFactor(dilation_factor);
   }
 
   avt_341::node::Rate r(20.0f); // Hz
@@ -305,28 +316,29 @@ int main(int argc, char *argv[])
         }
       }
 
-      if (odom_rcvd && state.data != avt_341::utils::NavStackState::NotInit && current_waypoints.poses.size() > 0){ // data received and not in startup mode
+      if (odom_rcvd && state.data != avt_341::utils::NavStackState::NotInit && !current_waypoints.poses.empty()){ // data received and not in startup mode
         std::vector<float> pos;
         pos.push_back(odom.pose.pose.position.x);
         pos.push_back(odom.pose.pose.position.y);
 
 
         // check the progression along the path
-        float dx = goal[0] - odom.pose.pose.position.x;
-        float dy = goal[1] - odom.pose.pose.position.y;
-        double d = sqrt(dx * dx + dy * dy);
-        avt_341::msg::Float64 dist_to_goal;
-        dist_to_goal.data = d;
+        float current_goal_dist_x = goal[0] - odom.pose.pose.position.x;
+        float current_goal_dist_y = goal[1] - odom.pose.pose.position.y;
+        double current_goal_dist = sqrt(current_goal_dist_x * current_goal_dist_x + current_goal_dist_y * current_goal_dist_y);
+        avt_341::msg::Float64 dist_to_goal_msg;
+        dist_to_goal_msg.data = current_goal_dist;
 
-        std::vector<std::vector<float>> path = astar_planner.PlanPath(&current_grid, &segmentation_grid, goal, pos);
+        std::vector<std::vector<float>> path = path_planner->PlanPath(&current_grid, &segmentation_grid, goal, pos);
+        n->log_info("Planned path of size %d", path.size());
 
         avt_341::msg::Path ros_path = ToROSPath(path);
         // ctg 8/19/21
         // if not on the last waypoint, add a straight path to the next waypoint to the global path
         // this helps the local planner make smooth transitions between waypoints
-        if (d<goal_dist || ros_path.poses.size()>1) {
-          int cp =current_waypoint;
-          while (cp<current_waypoints.poses.size()-1){
+        if (current_goal_dist < goal_accept_radius || ros_path.poses.size() > 1) {
+          int cp = current_waypoint;
+          while (cp < current_waypoints.poses.size()-1){
             avt_341::utils::vec2 wp1(static_cast<float>(current_waypoints.poses[cp].pose.position.x),
                                      static_cast<float>(current_waypoints.poses[cp].pose.position.y));
             avt_341::utils::vec2 wp2(static_cast<float>(current_waypoints.poses[cp+1].pose.position.x),
@@ -334,12 +346,12 @@ int main(int argc, char *argv[])
             avt_341::utils::vec2 wp_diff = wp2-wp1;
             avt_341::utils::vec2 wp_diff_norm = wp_diff;
             wp_diff_norm.normalize();
-            if(wp_diff.mag() > max_sep) {
+            if(wp_diff.mag() > max_separation) {
               // Add intermediate waypoints
-              for(int d = max_sep; d < wp_diff.mag(); d+=max_sep){
+              for(int step = max_separation; step < wp_diff.mag(); step += max_separation){
                 avt_341::msg::PoseStamped pose;
-                pose.pose.position.x = wp1.x + d*wp_diff_norm.x;
-                pose.pose.position.y = wp1.y + d*wp_diff_norm.y;
+                pose.pose.position.x = wp1.x + step * wp_diff_norm.x;
+                pose.pose.position.y = wp1.y + step * wp_diff_norm.y;
                 pose.pose.position.z = 0.0f;
                 pose.pose.orientation.w = 1.0f;
                 pose.pose.orientation.x = 0.0f;
@@ -368,9 +380,11 @@ int main(int argc, char *argv[])
           ros_path.poses[i].header = ros_path.header;
         }
 
-        if (use_global_path)
+        if (use_global_path) {
           path_pub->publish(ros_path);
+        }
         waypoint_pub->publish(current_waypoints);
+//        n->log_info("Published path with %d waypoints", ros_path.poses.size());
 
         if(debug_visualize){
           auto path_pre_smoothing = astar_planner.GetPathWorldPreSmoothing();
@@ -378,7 +392,7 @@ int main(int argc, char *argv[])
           ros_path_pre_smoothing.header.stamp = n->get_stamp();
           global_path_pre_smooth_pub->publish(ros_path_pre_smoothing);
 
-          auto path_pre_fill = astar_planner.GetPathWorldPreFill();
+          auto path_pre_fill = path_planner->GetPathWorldPreFill();
           auto ros_path_pre_fill = ToROSPath(*path_pre_fill);
           ros_path_pre_fill.header.stamp = n->get_stamp();
           global_path_pre_fill_pub->publish(ros_path_pre_fill);
@@ -388,16 +402,17 @@ int main(int argc, char *argv[])
           current_waypoint_pub->publish(current_waypoints.poses[current_waypoint]);
         }
 
-        dist_to_current_waypoint_pub->publish(dist_to_goal);
+        dist_to_current_waypoint_pub->publish(dist_to_goal_msg);
         if (nl % 20 == 0 && verbose_gp_log){ //update every second
-          auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - t1);
-          t1 = std::chrono::system_clock::now();
-          n->log_info("Global Path [%f]: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f", duration.count(),
-                      odom.pose.pose.position.x, odom.pose.pose.position.y, goal[0], goal[1], current_waypoint, current_waypoints.poses.size() - 1, d);
+          auto t_now = std::chrono::system_clock::now();
+          auto calc_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t1);
+          n->log_info("Global Path [%d]: Pos (%.2f, %.2f) Distance to goal (%.2f, %.2f) for %d of %d = %.2f", calc_duration_ms.count(),
+                      odom.pose.pose.position.x, odom.pose.pose.position.y, goal[0], goal[1], current_waypoint, current_waypoints.poses.size() - 1, current_goal_dist);
+          t1 = t_now;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
-          if (d<goal_dist || shutdown_condition){   // reached the goal
+          if (current_goal_dist < goal_accept_radius || shutdown_condition){   // reached the goal
 		  	    // send arrival notification
             shutdown_condition = true;
             state.data = shutdown_behavior; // request shutdown behavior
@@ -417,7 +432,7 @@ int main(int argc, char *argv[])
 		      }
         }
         else{     // intermediate waypoint
-          if (d<goal_dist){   // reached the waypoint
+          if (current_goal_dist < goal_accept_radius){   // reached the waypoint
             goal_reached_pub->publish(current_waypoints.poses[current_waypoint]);
 
             current_waypoint++;
@@ -445,5 +460,6 @@ int main(int argc, char *argv[])
     nl++;
   }
 
+  delete path_planner;
   return 0;
 }
