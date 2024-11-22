@@ -98,7 +98,8 @@ public:
         lidarOdomAffine = odom2affine(*odomMsg);
 
         lidarOdomTime = odomMsg->header.stamp.toSec();
-        if (!imuType)
+        // if (!imuType)
+        if (ignoreAccelerationPrediction)
         {
             broadcastTransformation(*odomMsg);
         }
@@ -166,7 +167,8 @@ public:
         //     tf::StampedTransform odom_2_baselink = tf::StampedTransform(tCur, odomMsg->header.stamp, odometryFrame, baselinkFrame);
         //     tfOdom2BaseLink.sendTransform(odom_2_baselink);
         // }
-        if (imuType)
+        // if (imuType)
+        if (!ignoreAccelerationPrediction)
         {
             broadcastTransformation(laserOdometry);
         }
@@ -457,7 +459,8 @@ public:
         // 2. after optiization, re-propagate imu odometry preintegration
         prePrevStateOdom = prevStateOdom;
         prevStateOdom = prevState_;
-        if (!imuType)
+        // if (!imuType)
+        if (ignoreAccelerationPrediction)
         {
             prevStateOdom = gtsam::NavState(prevState_.pose().rotation(), gtsam::Point3(p_x, p_y, p_z), prevState_.velocity());
         }
@@ -556,7 +559,8 @@ public:
         gtsam::Pose3 imuPose = gtsam::Pose3(currentState.quaternion(), currentState.position());
         gtsam::Pose3 lidarPose = imuPose.compose(imu2Lidar);
 
-        if (imuType)
+        // if (imuType)
+        if (!ignoreAccelerationPrediction)
         {
             odometry.pose.pose.position.x = lidarPose.translation().x();
             odometry.pose.pose.position.y = lidarPose.translation().y();

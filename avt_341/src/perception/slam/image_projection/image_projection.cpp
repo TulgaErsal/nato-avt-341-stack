@@ -408,10 +408,13 @@ public:
             double currentImuTime = thisImuMsg.header.stamp.toSec();
 
             if (imuType) {
+                // std::cout << "here" << std::endl;
                 // get roll, pitch, and yaw estimation for this scan
-                if (currentImuTime <= timeScanCur){
+                //if (currentImuTime <= timeScanCur){
                     imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imuRollInit, &cloudInfo.imuPitchInit, &cloudInfo.imuYawInit);
-                }
+                // } else {
+                    // std::cout << "but not here" << std::endl;
+                // }
             } else {
                  cloudInfo.imuRollInit = initRoll;
                  cloudInfo.imuPitchInit = initPitch;
