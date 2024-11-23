@@ -387,7 +387,7 @@ int main(int argc, char *argv[])
 //        n->log_info("Published path with %d waypoints", ros_path.poses.size());
 
         if(debug_visualize){
-          auto path_pre_smoothing = astar_planner.GetPathWorldPreSmoothing();
+          auto path_pre_smoothing = path_planner->GetPathWorldPreSmoothing();
           auto ros_path_pre_smoothing = ToROSPath(path_pre_smoothing);
           ros_path_pre_smoothing.header.stamp = n->get_stamp();
           global_path_pre_smooth_pub->publish(ros_path_pre_smoothing);

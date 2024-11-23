@@ -27,6 +27,10 @@ public:
    * Solve the FM map. Returns true if a path was found.
    */
   bool Solve() override;
+  bool ExtractPath(float* costs);
+  std::vector<float> get_gradient(const std::vector<float>& position, const float* costs);
+  static std::vector<float> Normalize(const std::vector<float>& v);
+  float Distance(const std::vector<float>& v1, const std::vector<float>& v2);
 };
 
 }

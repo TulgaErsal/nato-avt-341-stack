@@ -1,4 +1,3 @@
-
 #include <queue>
 #include <limits>
 #include <cmath>
@@ -11,158 +10,163 @@
 //#include "avt_341/planning/global/dubins_smoothing.h"
 
 namespace avt_341 {
-namespace planning{
+namespace planning {
 
 const int Astar::EdgeDistanceCost;
 
-Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float w_occupancy,
-             float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first)//, bool dubins_smoothing, float dubins_radius)
-    : w_distance_(w_distance), w_occupancy_(w_occupancy), w_segmentation_(w_segmentation),
-    search_diagonals_(search_diagonals), los_max_iterations_(los_max_iterations), los_break_on_first_(los_break_on_first) {//,dubins_smoothing_(dubins_smoothing), dubins_radius_(dubins_radius) {
+Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
+             float w_distance,
+             float w_occupancy,
+             float w_segmentation,
+             bool search_diagonals,
+             int los_max_iterations,
+             bool los_break_on_first)//, bool dubins_smoothing, float dubins_radius)
+  : w_distance_(w_distance),
+    w_occupancy_(w_occupancy),
+    w_segmentation_(w_segmentation),
+    search_diagonals_(search_diagonals),
+    los_max_iterations_(los_max_iterations),
+    los_break_on_first_(los_break_on_first) {//,dubins_smoothing_(dubins_smoothing), dubins_radius_(dubins_radius) {
   dfac_ = 0;
   visualizer_ = visualizer;
 }
 
-Astar::~Astar(){
+Astar::~Astar() {
 
 }
 
-std::vector<int> Astar::FoldIndex(int n){
+std::vector<int> Astar::FoldIndex(int n) {
   std::vector<int> c;
-	c.resize(2);
-  c[0] = n%width_;
-  c[1] = (int)floor( (1.0*n)/(1.0*width_) );
+  c.resize(2);
+  c[0] = n % width_;
+  c[1] = (int) floor((1.0 * n) / (1.0 * width_));
   return c;
 }
 
-void Astar::AllocateMap(int h, int w, int init_val){
+void Astar::AllocateMap(int h, int w, int init_val) {
   height_ = h;
   width_ = w;
   weights_.clear();
   weights_.resize(height_ * width_, init_val);
   paths_.clear();
   paths_.resize(height_ * width_, -1);
-  for (int i = 0; i < width_; i++){
-    for (int j = 0; j < height_; j++){
+  for (int i = 0; i < width_; i++) {
+    for (int j = 0; j < height_; j++) {
       if (i == 0 || j == 0 ||
-          i == (width_ - 1) ||
-          j == (height_ - 1)){
+      i == (width_ - 1) ||
+      j == (height_ - 1)) {
         int n = FlattenIndex(i, j);
         weights_[n] = 0;
       }
     }
   }
 
-	std::vector<float> column;
-	column.resize(height_, 0.0f);
-	map_.resize(width_, column);
+  std::vector<float> column;
+  column.resize(height_, 0.0f);
+  map_.resize(width_, column);
 }
 
-void Astar::SetMapValue(int i, int j, int val_height, int val_seg){
-  weights_[FlattenIndex(i,j)] = w_distance_*Astar::EdgeDistanceCost
-                                + w_occupancy_*static_cast<float>(val_height)
-                                + w_segmentation_*static_cast<float>(val_seg);
-  map_[i][j] = (float)val_height;   // only used for obstacles (dilation, line of sight)
+void Astar::SetMapValue(int i, int j, int val_height, int val_seg) {
+  weights_[FlattenIndex(i, j)] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * static_cast<float>(val_height)
+    + w_segmentation_ * static_cast<float>(val_seg);
+  map_[i][j] = (float) val_height;   // only used for obstacles (dilation, line of sight)
 }
 
-bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1){
-  if (p0.size()!=2 || p1.size()!=2) return false;
+bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1) {
+  if (p0.size() != 2 || p1.size() != 2) return false;
   // see: https://news.movel.ai/theta-star/
   int x0 = p0[0];
   int y0 = p0[1];
   int x1 = p1[0];
   int y1 = p1[1];
 
-  int dy = y1-y0;
-  int dx = x1-x0;
+  int dy = y1 - y0;
+  int dx = x1 - x0;
 
   int f = 0;
 
   int sx = p0[0];
   int sy = p0[1];
-  if (dy < 0){
+  if (dy < 0) {
     dy = -dy;
     sy = -1;
-  }
-  else{
+  } else {
     sy = 1;
   }
-      
+
   if (dx < 0) {
     dx = -dx;
     sx = -1;
-  }
-  else{
+  } else {
     sx = 1;
   }
 
-  if (dx >= dy){
-    while (x0 != x1){
+  if (dx >= dy) {
+    while (x0 != x1) {
       f = f + dy;
-      if (f >= dx ){
-        if (map_[x0+((sx-1)/2)][y0 + ((sy-1)/2)]>0 ){
+      if (f >= dx) {
+        if (map_[x0 + ((sx - 1) / 2)][y0 + ((sy - 1) / 2)] > 0) {
           return false;
         }
         y0 = y0 + sy;
         f = f - dx;
       }
-      if (f != 0 && map_[x0+((sx-1)/2)][y0 + ((sy-1.0f)/2.0f)]>0) {
+      if (f != 0 && map_[x0 + ((sx - 1) / 2)][y0 + ((sy - 1.0f) / 2.0f)] > 0) {
         return false;
       }
-      if (dy== 0 && map_[x0 + ((sx-1)/2)][y0]>0 && map_[x0 + ((sx-1)/2)][ y0-1]>0){
+      if (dy == 0 && map_[x0 + ((sx - 1) / 2)][y0] > 0 && map_[x0 + ((sx - 1) / 2)][y0 - 1] > 0) {
         return false;
       }
       x0 = x0 + sx;
     }
-  }  
-  else{
-    while (y0 != y1){
+  } else {
+    while (y0 != y1) {
       f = f + dx;
-      if (f >= dy){
-          if ( map_[x0 + ((sx - 1)/2)][ y0 + ((sy-1)/2)]>0 ){
-              return false;
-          }
-          x0 = x0 + sx;
-          f = f - dy;
+      if (f >= dy) {
+        if (map_[x0 + ((sx - 1) / 2)][y0 + ((sy - 1) / 2)] > 0) {
+          return false;
+        }
+        x0 = x0 + sx;
+        f = f - dy;
       }
-      if (f!=0 && map_[x0+((sx-1)/2)][ y0 + ((sy-1)/2)]>0 ){
+      if (f != 0 && map_[x0 + ((sx - 1) / 2)][y0 + ((sy - 1) / 2)] > 0) {
         return false;
       }
-      if (dx==0 && map_[x0][y0+((sy-1)/2)]>0 && map_[x0-1 ][ y0 + ((sy-1)/2)]>0 ){
+      if (dx == 0 && map_[x0][y0 + ((sy - 1) / 2)] > 0 && map_[x0 - 1][y0 + ((sy - 1) / 2)] > 0) {
         return false;
       }
       y0 = y0 + sy;
     }
   }
-  
-  return true; 
+
+  return true;
 }
 
 // For path of length n
-void Astar::PostSmoothing(const std::vector<std::vector<int>> & in_path, std::vector<std::vector<int>> & out_path){
-  if (in_path.size()>2){
+void Astar::PostSmoothing(const std::vector<std::vector<int>>& in_path, std::vector<std::vector<int>>& out_path) {
+  if (in_path.size() > 2) {
     int k = 0;
     out_path.push_back(in_path[0]);
-    if(los_break_on_first_){
-      for (int i =1;i<in_path.size()-1;i++){
-        if (!LineOfSight(out_path[k], in_path[i+1])){
+    if (los_break_on_first_) {
+      for (int i = 1; i < in_path.size() - 1; i++) {
+        if (!LineOfSight(out_path[k], in_path[i + 1])) {
           k++;
           out_path.push_back(in_path[i]);
         }
       }
       out_path.push_back(in_path.back());
-    }else{
+    } else {
       // Find last in line of sight
-      while(k < in_path.size()-1){
-        int i = in_path.size()-1;
-        while (i>k+1 && !LineOfSight(in_path[k], in_path[i])){
+      while (k < in_path.size() - 1) {
+        int i = in_path.size() - 1;
+        while (i > k + 1 && !LineOfSight(in_path[k], in_path[i])) {
           i--;
         }
         out_path.push_back(in_path[i]);
         k = i;
       }
     }
-  }else{
+  } else {
     out_path = in_path;
   }
 }
@@ -170,9 +174,9 @@ void Astar::PostSmoothing(const std::vector<std::vector<int>> & in_path, std::ve
 // manhattan distance: requires each move to cost >= 1
 float Astar::Heuristic(int i0, int j0, int i1, int j1) {
   //straight line distance
-  int x = i1-i0;
-  int y = j1-j0;
-  return w_distance_*(float)sqrt(x*x+y*y);
+  int x = i1 - i0;
+  int y = j1 - j0;
+  return w_distance_ * (float) sqrt(x * x + y * y);
 
   //return std::max(std::abs(x),std::abs(y));
   //manhattan distance
@@ -186,98 +190,91 @@ float Astar::Heuristic(int i0, int j0, int i1, int j1) {
 }
 
 bool Astar::Solve() {
-  std::fill(paths_.begin(), paths_.end(),-1);
-  
-  const float INF = std::numeric_limits<float>::infinity();
+  std::fill(paths_.begin(), paths_.end(), -1);
 
   AStarCell start_node(start_, 0.);
   AStarCell goal_node(goal_, 0.);
 
   float* costs = new float[height_ * width_];
-  for (int i = 0; i < height_ * width_; ++i)
+  for (int i = 0; i < height_ * width_; ++i) {
     costs[i] = INF;
+  }
   costs[start_] = 0.;
 
   std::priority_queue<AStarCell> nodes_to_visit;
   nodes_to_visit.push(start_node);
   const int N_adj = search_diagonals_ ? 8 : 4;
-  int* nbrs = new int[N_adj];
+  int* neighbors = new int[N_adj];
 
   bool solution_found = false;
   while (!nodes_to_visit.empty()) {
     // .top() doesn't actually remove the node
-    AStarCell cur = nodes_to_visit.top();
+    AStarCell current = nodes_to_visit.top();
 
-    if (cur == goal_node) {
+    if (current == goal_node) {
       solution_found = true;
       break;
     }
 
     nodes_to_visit.pop();
 
-    // check bounds and find up to four neighbors
-    bool has_down = (cur.idx / width_ > 0);
-    bool has_left = (cur.idx % width_ > 0);
-    bool has_up = (cur.idx / width_ + 1 < height_);
-    bool has_right = (cur.idx % width_ + 1 < width_);
-    nbrs[0] = has_down ? (cur.idx - width_) : -1;
-    nbrs[1] = has_left ? (cur.idx - 1) : -1;
-    nbrs[2] = has_up ? (cur.idx + width_) : -1;
-    nbrs[3] = has_right ? (cur.idx + 1) : -1;
-    if(search_diagonals_){
-      nbrs[4] = has_down && has_left ? (cur.idx - width_-1) : -1;
-      nbrs[5] = has_down && has_right ? (cur.idx - width_+1) : -1;
-      nbrs[6] = has_up && has_left ? (cur.idx + width_-1) : -1;
-      nbrs[7] = has_up && has_left ? (cur.idx + 1) : -1;
+    // check bounds and find up to eight neighbors
+    neighbors[0] = HasDown(current.idx) ? Down(current.idx) : -1;
+    neighbors[1] = HasLeft(current.idx) ? Left(current.idx) : -1;
+    neighbors[2] = HasUp(current.idx) ? Up(current.idx) : -1;
+    neighbors[3] = HasRight(current.idx) ? Right(current.idx) : -1;
+    if (search_diagonals_) {
+      neighbors[4] = HasDown(current.idx) && HasLeft(current.idx) ? DownLeft(current.idx) : -1;
+      neighbors[5] = HasDown(current.idx) && HasRight(current.idx) ? DownRight(current.idx) : -1;
+      neighbors[6] = HasUp(current.idx) && HasLeft(current.idx) ? UpLeft(current.idx) : -1;
+      neighbors[7] = HasUp(current.idx) && HasLeft(current.idx) ? UpRight(current.idx) : -1;
     }
     for (int i = 0; i < N_adj; ++i) {
-      if (nbrs[i] >= 0) {
+      if (neighbors[i] >= 0) {
         // the sum of the cost so far and the cost of this move
-        float new_cost = costs[cur.idx] + weights_[nbrs[i]];
-        if (new_cost < costs[nbrs[i]]) {
-          costs[nbrs[i]] = new_cost;
-          float priority = new_cost + Heuristic(nbrs[i] / width_,
-                                                nbrs[i] % width_,
-                                                goal_ / width_,
-                                                goal_ % width_);
+        float new_cost = costs[current.idx] + weights_[neighbors[i]];
+        if (new_cost < costs[neighbors[i]]) {
+          costs[neighbors[i]] = new_cost;
+          float priority =
+            new_cost + Heuristic(neighbors[i] / width_, neighbors[i] % width_, goal_ / width_, goal_ % width_);
           // paths with lower expected cost are explored first
-          nodes_to_visit.push(AStarCell(nbrs[i], priority));
-          paths_[nbrs[i]] = cur.idx;
+          nodes_to_visit.emplace(neighbors[i], priority);
+          paths_[neighbors[i]] = current.idx;
         }
       }
     }
   }
 
   delete[] costs;
-  delete[] nbrs;
+  delete[] neighbors;
 
-  if (solution_found){
+  if (solution_found) {
     solution_found = ExtractPath();
   }
   return solution_found;
 }
 
-bool Astar::ExtractPath(){
+bool Astar::ExtractPath() {
   path_.clear();
-	path_world_.clear();
+  path_world_.clear();
   int path_idx = goal_;
-	std::vector<float> point;
-	point.resize(2);
-  while (path_idx!=start_){
+  std::vector<float> point;
+  point.resize(2);
+  while (path_idx != start_) {
     std::vector<int> c = FoldIndex(path_idx);
     path_.push_back(c);
     path_idx = paths_[path_idx];
   }
-	
+
   //smooth path out
   std::vector<std::vector<int>> path_smoothed;
   PostSmoothing(path_, path_smoothed);
-  for(int k = 1; k < los_max_iterations_; k++){
+  for (int k = 1; k < los_max_iterations_; k++) {
     std::vector<std::vector<int>> path_smoothed_it;
     PostSmoothing(path_smoothed, path_smoothed_it);
     // pre-emptive break if unchanged
-    if(path_smoothed.size() == path_smoothed_it.size()
-      && std::equal(path_smoothed.begin(), path_smoothed.end(), path_smoothed_it.begin())){
+    if (path_smoothed.size() == path_smoothed_it.size()
+      && std::equal(path_smoothed.begin(), path_smoothed.end(), path_smoothed_it.begin())) {
       break;
     }
     path_smoothed = path_smoothed_it;
@@ -285,39 +282,39 @@ bool Astar::ExtractPath(){
 
   // put the smoothed path in world coordinates
   path_world_pre_fill_.clear();
-  for (int i=0;i<path_smoothed.size();i++){
-		point = IndexToPoint(path_smoothed[i]);
+  for (int i = 0; i < path_smoothed.size(); i++) {
+    point = IndexToPoint(path_smoothed[i]);
     path_world_pre_fill_.push_back(point);
   }
-  
-  if (path_world_pre_fill_.size()<=0) return false;
+
+  if (path_world_pre_fill_.size() <= 0) return false;
 
   // the smoothed path may have much fewer points. Fill in the missing parts
   std::vector<std::vector<float> > filled_in_path_world;
-  for (int i=0;i<path_world_pre_fill_.size()-1;i++){
+  for (int i = 0; i < path_world_pre_fill_.size() - 1; i++) {
     float px = path_world_pre_fill_[i][0];
     float py = path_world_pre_fill_[i][1];
-    float dx = path_world_pre_fill_[i+1][0]-px;
-    float dy = path_world_pre_fill_[i+1][1]-py;
-    double d = sqrt(dx*dx + dy*dy);
-    double ltx = map_res_*dx/d;
-    double lty = map_res_*dy/d;
-    while (d>2.0*map_res_){
+    float dx = path_world_pre_fill_[i + 1][0] - px;
+    float dy = path_world_pre_fill_[i + 1][1] - py;
+    double d = sqrt(dx * dx + dy * dy);
+    double ltx = map_res_ * dx / d;
+    double lty = map_res_ * dy / d;
+    while (d > 2.0 * map_res_) {
       std::vector<float> point;
       point.push_back(px);
       point.push_back(py);
       filled_in_path_world.push_back(point);
       px += ltx;
       py += lty;
-      dx = path_world_pre_fill_[i+1][0]-px;
-      dy = path_world_pre_fill_[i+1][1]-py;
-      d = sqrt(dx*dx + dy*dy);
+      dx = path_world_pre_fill_[i + 1][0] - px;
+      dy = path_world_pre_fill_[i + 1][1] - py;
+      d = sqrt(dx * dx + dy * dy);
     }
   }
   path_world_ = filled_in_path_world;
 
   std::reverse(path_.begin(), path_.end());
-	std::reverse(path_world_.begin(), path_world_.end());
+  std::reverse(path_world_.begin(), path_world_.end());
 
   /*if (dubins_smoothing_) {
     DubinsSmoothing dubins(path_world_);
@@ -328,18 +325,18 @@ bool Astar::ExtractPath(){
   return true;
 }
 
-void Astar::SaveMap(std::string imname){
-	visualizer_->save(imname);
+void Astar::SaveMap(std::string imname) {
+  visualizer_->save(imname);
 }
 
-void Astar::Display(){
-  if (map_.size()==0) return;
-  if (map_[0].size()==0)return;
+void Astar::Display() {
+  if (map_.size() == 0) return;
+  if (map_[0].size() == 0)return;
   int nx = map_.size();
   int ny = map_[0].size();
-	if(!visualizer_->initialize_display(nx, ny)){
-	  return;
-	}
+  if (!visualizer_->initialize_display(nx, ny)) {
+    return;
+  }
   avt_341::utils::vec3 red(255.0f, 0.0f, 0.0f);
   avt_341::utils::vec3 green(0.0f, 255.0f, 0.0f);
   avt_341::utils::vec3 yellow(255.0f, 255.0f, 0.0f);
@@ -355,7 +352,7 @@ void Astar::Display(){
     visualizer_->draw_point(ix,iy,yellow);
 	}
 
-  std::vector<float> goal = GetCurrentGoal(); 
+std::vector<float> goal = GetCurrentGoal();
 
 	int gx = (int)floor((goal[0] - llx_) / map_res_);
 	int gy = (int)floor((goal[1] - lly_) / map_res_);
@@ -364,86 +361,88 @@ void Astar::Display(){
   visualizer_->display();
 }
 
-int Astar::GetGridValue(avt_341::msg::OccupancyGrid *grid, double x, double y) {
+int Astar::GetGridValue(avt_341::msg::OccupancyGrid* grid, double x, double y) {
   int seg_val = 0;
-  if (x >= grid->info.origin.position.x && 
-        x < grid->info.origin.position.x + grid->info.width*grid->info.resolution &&
-        y >= grid->info.origin.position.y && 
-        y < grid->info.origin.position.y + grid->info.height*grid->info.resolution) {
-    int xj = (x-grid->info.origin.position.x) / grid->info.resolution;
-    int yj = (y-grid->info.origin.position.y) / grid->info.resolution;
-    int m = xj + yj*grid->info.width;
+  if (x >= grid->info.origin.position.x && x < grid->info.origin.position.x + grid->info.width * grid->info.resolution
+    && y >= grid->info.origin.position.y
+    && y < grid->info.origin.position.y + grid->info.height * grid->info.resolution) {
+    int xj = (x - grid->info.origin.position.x) / grid->info.resolution;
+    int yj = (y - grid->info.origin.position.y) / grid->info.resolution;
+    int m = xj + yj * grid->info.width;
     seg_val = grid->data[m];
   }
   return seg_val;
 }
 
-std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid *grid, avt_341::msg::OccupancyGrid *grid_segmentation, std::vector<float> goal, std::vector<float> position) {
-	if (grid->info.height<=0 || grid->info.width<=0) return path_world_;
+std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid* grid,
+                                                 avt_341::msg::OccupancyGrid* grid_segmentation,
+                                                 std::vector<float> goal,
+                                                 std::vector<float> position) {
+  if (grid->info.height <= 0 || grid->info.width <= 0) {
+    return path_world_;
+  }
 
-    bool has_segmentation = grid_segmentation->info.height>0 && grid_segmentation->info.width>0;
+  bool has_segmentation = grid_segmentation->info.height > 0 && grid_segmentation->info.width > 0;
   SetCornerCoords(grid->info.origin.position.x, grid->info.origin.position.y);
-	SetMapRes(grid->info.resolution);
+  SetMapRes(grid->info.resolution);
 
-	std::vector<int> gi = PointToIndex(goal[0], goal[1]);
-	std::vector<int> si = PointToIndex(position[0], position[1]);
+  std::vector<int> gi = PointToIndex(goal[0], goal[1]);
+  std::vector<int> si = PointToIndex(position[0], position[1]);
 
-  if (si[0]<0)si[0]=0;
-  if (si[0]>=grid->info.width) si[0] = grid->info.width-1;
-  if (si[1]<0)si[1]=0;
-  if (si[1]>=grid->info.height) si[1] = grid->info.height-1;
-  if (gi[0]<0)gi[0]=0;
-  if (gi[0]>=grid->info.width) gi[0] = grid->info.width-1;
-  if (gi[1]<0)gi[1]=0;
-  if (gi[1]>=grid->info.height) gi[1] = grid->info.height-1;
+  if (si[0] < 0)si[0] = 0;
+  if (si[0] >= grid->info.width) si[0] = grid->info.width - 1;
+  if (si[1] < 0)si[1] = 0;
+  if (si[1] >= grid->info.height) si[1] = grid->info.height - 1;
+  if (gi[0] < 0)gi[0] = 0;
+  if (gi[0] >= grid->info.width) gi[0] = grid->info.width - 1;
+  if (gi[1] < 0)gi[1] = 0;
+  if (gi[1] >= grid->info.height) gi[1] = grid->info.height - 1;
 
-	AllocateMap(grid->info.height, grid->info.width, 0);
-	SetGoal(gi[0], gi[1]);
-	SetStart(si[0], si[1]);
-	std::vector<float> gr;
-	gr = GetCurrentGoal();
-  int n =0;
-	for (int yi=0;yi< height_;yi++){
-		for (int xi = 0; xi < width_; xi++) {
-      double x_grid = grid->info.origin.position.x + xi*grid->info.resolution;
-      double y_grid = grid->info.origin.position.y + yi*grid->info.resolution;
-			SetMapValue(xi, yi, grid->data[n], 100-GetGridValue(grid_segmentation, x_grid, y_grid));
+  AllocateMap(grid->info.height, grid->info.width, 0);
+  SetGoal(gi[0], gi[1]);
+  SetStart(si[0], si[1]);
+  std::vector<float> gr;
+  gr = GetCurrentGoal();
+  int n = 0;
+  for (int yi = 0; yi < height_; yi++) {
+    for (int xi = 0; xi < width_; xi++) {
+      double x_grid = grid->info.origin.position.x + xi * grid->info.resolution;
+      double y_grid = grid->info.origin.position.y + yi * grid->info.resolution;
+      SetMapValue(xi, yi, grid->data[n], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
       n++;
-		}
-	}
+    }
+  }
 
   // dilate
-  if (dfac_>0){
+  if (dfac_ > 0) {
     std::vector<std::vector<float> > dmap = map_;
-    for (int i=dfac_;i<width_-dfac_;i++){
-      for (int j = dfac_; j < height_-dfac_; j++) {
+    for (int i = dfac_; i < width_ - dfac_; i++) {
+      for (int j = dfac_; j < height_ - dfac_; j++) {
         int val = 0;
-        for (int ii=i-dfac_;ii<=i+dfac_;ii++){
-          for (int jj=j-dfac_;jj<=j+dfac_;jj++){
-            if (map_[ii][jj]>0) val = 100;
+        for (int ii = i - dfac_; ii <= i + dfac_; ii++) {
+          for (int jj = j - dfac_; jj <= j + dfac_; jj++) {
+            if (map_[ii][jj] > 0) val = 100;
           }
         }
         dmap[i][j] = val;
       }
     }
-    for (int i=1;i<width_-1;i++){
-      for (int j = 1; j < height_-1; j++) {
-        double x_grid = grid->info.origin.position.x + i*grid->info.resolution;
-        double y_grid = grid->info.origin.position.y + j*grid->info.resolution;
-        SetMapValue(i,j,dmap[i][j], 100-GetGridValue(grid_segmentation, x_grid, y_grid));
+    for (int i = 1; i < width_ - 1; i++) {
+      for (int j = 1; j < height_ - 1; j++) {
+        double x_grid = grid->info.origin.position.x + i * grid->info.resolution;
+        double y_grid = grid->info.origin.position.y + j * grid->info.resolution;
+        SetMapValue(i, j, dmap[i][j], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
       }
     }
   }
-  
 
-	bool solved = Solve();
-	if (!solved) {
-		std::cerr << "WARNING: A* failed to solve map " << std::endl;
-	}
-
-
+  bool solved = Solve();
+  if (!solved) {
+    std::cerr << "WARNING: Path planner failed to solve map " << std::endl;
+  }
 
   return path_world_;
 }
+
 } // namespace planning
 } // namespace avt_341

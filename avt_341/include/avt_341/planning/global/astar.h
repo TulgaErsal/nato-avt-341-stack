@@ -6,20 +6,25 @@
 #include "avt_341/node/ros_types.h"
 
 namespace avt_341 {
-namespace planning{
+namespace planning {
 
 /**
  * Astar map class with solve functions and map accessor methods.
  * The map holds obstacle values from 0 to 100. 0=no obstacle, 100=impassable.
  */
 class Astar {
- public:
+public:
 
   static const int EdgeDistanceCost = 1;
 
   /// Constructor
-  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, float w_distance, float  w_occupancy,
-        float w_segmentation, bool search_diagonals, int los_max_iterations, bool los_break_on_first);//, bool dubins_smoothing, float dubins_radius);
+  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
+        float w_distance,
+        float w_occupancy,
+        float w_segmentation,
+        bool search_diagonals,
+        int los_max_iterations,
+        bool los_break_on_first);//, bool dubins_smoothing, float dubins_radius);
 
   /// Destructor
   virtual ~Astar();
@@ -29,40 +34,43 @@ class Astar {
 
   /// Inherited from base class
   void SaveMap(std::string ofname);
-  
-	/// Inherited from base class, return path in world coordinates
-	std::vector<std::vector<float> > *GetCurrentPath() { return &path_world_; }
 
-	/// Inherited from base class, return the current map
-	std::vector<std::vector<float> > *GetCurrentMap() { return &map_; }
+  /// Inherited from base class, return path in world coordinates
+  std::vector<std::vector<float> >* GetCurrentPath() { return &path_world_; }
 
-	/// Inherited from base class, return goal in world coordinates
-	std::vector<float> GetCurrentGoal() {
-		std::vector<int> gi = FoldIndex(goal_);
-		std::vector<float> goal_world = IndexToPoint(gi);
-		return goal_world;
-	}
+  /// Inherited from base class, return the current map
+  std::vector<std::vector<float> >* GetCurrentMap() { return &map_; }
 
-	/// Inherited from planner base class.
-	float GetXMin() { return llx_; }
+  /// Inherited from base class, return goal in world coordinates
+  std::vector<float> GetCurrentGoal() {
+    std::vector<int> gi = FoldIndex(goal_);
+    std::vector<float> goal_world = IndexToPoint(gi);
+    return goal_world;
+  }
 
-	/// Inherited from planner base class.
-	float GetYMin() { return lly_; }
+  /// Inherited from planner base class.
+  float GetXMin() { return llx_; }
 
-	/// Inherited from planner base class.
-	float GetGridResolution() { return map_res_; }
+  /// Inherited from planner base class.
+  float GetYMin() { return lly_; }
 
-	/// Inherited from planner base class. Returns the number of horizontal cells.
-	int GetGridWidth() { return width_; }
+  /// Inherited from planner base class.
+  float GetGridResolution() { return map_res_; }
 
-	/// Inherited from planner base class. Returns the number of vertical cells.
-	int GetGridHeight() { return height_; }
+  /// Inherited from planner base class. Returns the number of horizontal cells.
+  int GetGridWidth() { return width_; }
+
+  /// Inherited from planner base class. Returns the number of vertical cells.
+  int GetGridHeight() { return height_; }
 
   /// Get grid value at coordinates
-  int GetGridValue(avt_341::msg::OccupancyGrid *segmentation_grid, double x, double y);
+  int GetGridValue(avt_341::msg::OccupancyGrid* segmentation_grid, double x, double y);
 
-	/// Inherited from planner base class.
-	std::vector<std::vector<float> > PlanPath(avt_341::msg::OccupancyGrid *grid, avt_341::msg::OccupancyGrid *segmentation_grid, std::vector<float> goal, std::vector<float> position);
+  /// Inherited from planner base class.
+  std::vector<std::vector<float> > PlanPath(avt_341::msg::OccupancyGrid* grid,
+                                            avt_341::msg::OccupancyGrid* segmentation_grid,
+                                            std::vector<float> goal,
+                                            std::vector<float> position);
 
   /**
    * Allocate memory for the map and initialize
@@ -85,44 +93,47 @@ class Astar {
    * \param i Vertical index of cell to get
    * \param j Horizontal index of cell to get
    */
-  int GetMapValue(int i, int j){return weights_[FlattenIndex(i,j)];}
+  int GetMapValue(int i, int j) { return weights_[FlattenIndex(i, j)]; }
 
   /**
    * Sets cell (i,j) as the goal point.
    * \param i Vertical index of goal cell
    * \param j Horizontal index of goal cell
    */
-  void SetGoal(int i, int j){goal_ = FlattenIndex(i,j);}
+  void SetGoal(int i, int j) { goal_ = FlattenIndex(i, j); }
 
   /**
    * Sets cell (i,j) as the current location of the vehicle
    * \param i Vertical index of the vehicle location
    * \param j Horizontal index of the vehicle location
    */
-  void SetStart(int i, int j){start_ = FlattenIndex(i,j);}
+  void SetStart(int i, int j) { start_ = FlattenIndex(i, j); }
 
   /**
    * Solve the A* map. Returns true if a path was found.
    */
   virtual bool Solve();
 
-  std::vector<std::vector<float> > GetPathWorldPreSmoothing(){
+  std::vector<std::vector<float> > GetPathWorldPreSmoothing() {
     std::vector<std::vector<float>> path_world_pre_smoothing;
-    std::transform(path_.begin(), path_.end(), std::back_inserter(path_world_pre_smoothing),
-                   [this](const std::vector<int> & p){ return IndexToPoint(p); }) ;
+    std::transform(path_.begin(),
+                   path_.end(),
+                   std::back_inserter(path_world_pre_smoothing),
+                   [this](const std::vector<int>& p) { return IndexToPoint(p); });
     return path_world_pre_smoothing;
   }
-  std::vector<std::vector<float> > *GetPathWorldPreFill() { return &path_world_pre_fill_; }
+
+  std::vector<std::vector<float> >* GetPathWorldPreFill() { return &path_world_pre_fill_; }
 
   /// Return a list of indices specifying the current path.
-  std::vector<std::vector<int> > GetPath(){return path_;}
+  std::vector<std::vector<int> > GetPath() { return path_; }
 
   /**
    * Set the ENU coordinates of the bottom left corner
    * \param x The East ENU coordinate
    * \param y The North ENU coordinate
    */
-  void SetCornerCoords(float x, float y){
+  void SetCornerCoords(float x, float y) {
     llx_ = x;
     lly_ = y;
   }
@@ -131,23 +142,23 @@ class Astar {
    * Set the resolution of the map cells in meters
    * \param res The resolution in meters 
    */
-  void SetMapRes(float res){
+  void SetMapRes(float res) {
     map_res_ = res;
   }
 
   /// Get the resolution of the map in meters
-  float GetRes(){return map_res_;}
-  
+  float GetRes() { return map_res_; }
+
   /**
    * Convert a point in global ENU to map coordinates
    * \param x The East ENU coordiante
    * \param y The North ENU coordinate 
    */
-  std::vector<int> PointToIndex(float x, float y){
+  std::vector<int> PointToIndex(float x, float y) {
     std::vector<int> c;
-		c.resize(2);
-    c[0] = (int)((x-llx_)/map_res_);
-    c[1] = (int)((y-lly_)/map_res_);
+    c.resize(2);
+    c[0] = (int) ((x - llx_) / map_res_);
+    c[1] = (int) ((y - lly_) / map_res_);
     return c;
   }
 
@@ -155,47 +166,50 @@ class Astar {
    * Convert a point in map coordinates to global ENU
    * \param c The index of the map cell 
    */
-  std::vector<float> IndexToPoint(std::vector<int> c){
+  std::vector<float> IndexToPoint(std::vector<int> c) {
     std::vector<float> p;
     p.resize(2);
-    p[0] = (c[0]+0.5f)*map_res_ + llx_;
-    p[1] = (c[1]+0.5f)*map_res_ + lly_;
+    p[0] = (c[0] + 0.5f) * map_res_ + llx_;
+    p[1] = (c[1] + 0.5f) * map_res_ + lly_;
     return p;
   }
 
-    /**
-   * Determine if a point is in the map. 
-   * Return false in the point is not in the map
-   * \param c The index of the map cell 
-   */
-  bool IsInMap(std::vector<int> c){
+  /**
+ * Determine if a point is in the map.
+ * Return false in the point is not in the map
+ * \param c The index of the map cell
+ */
+  bool IsInMap(std::vector<int> c) {
     bool isin = false;
-    if (c[0]>=0 && c[0]<width_ && c[1]>=0 && c[1]<height_){
+    if (c[0] >= 0 && c[0] < width_ && c[1] >= 0 && c[1] < height_) {
       isin = true;
     }
     return isin;
   }
-  
+
   /**
    * Set the factor by which to dilate the map
    * \param dfac The dilation factor 
    */
-  void SetDilationFactor(int dfac){dfac_ = dfac;}
+  void SetDilationFactor(int dfac) { dfac_ = dfac; }
 
- protected:
+protected:
+  static constexpr float INF = std::numeric_limits<float>::infinity();
+
   std::vector<int> FoldIndex(int n);
-  
-  int FlattenIndex(int i, int j){return j*width_+i;}
-  
+
+  int FlattenIndex(int i, int j) const { return j * width_ + i; }
+
+  int FlattenIndex(const std::vector<int>& index) const { return index[1] * width_ + index[0]; }
+
   /// Heuristic
   float Heuristic(int i0, int j0, int i1, int j1);
 
   /// Flattened occupancy grid
   std::vector<float> weights_;
 
-	/// unflattened occupancy grid
-	std::vector<std::vector<float> > map_;
-
+  /// unflattened occupancy grid
+  std::vector<std::vector<float> > map_;
 
   ///height of the grid
   int height_;
@@ -220,11 +234,11 @@ class Astar {
   std::vector<std::vector<float> > path_world_pre_fill_;  // path world (smoothed) before filled in
   std::vector<std::vector<float> > path_world_;           // final output path in world coordinates
 
-  bool ExtractPath();
-  void PostSmoothing(const std::vector<std::vector<int>> & in_path, std::vector<std::vector<int>> & out_path);
+  virtual bool ExtractPath();
+  void PostSmoothing(const std::vector<std::vector<int>>& in_path, std::vector<std::vector<int>>& out_path);
   bool LineOfSight(std::vector<int> p0, std::vector<int> p1);
 
-  float llx_,lly_;
+  float llx_, lly_;
   float map_res_;
   float w_distance_;
   float w_occupancy_;
@@ -236,6 +250,30 @@ class Astar {
   //float dubins_radius_;
 
   std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer_;
+
+  bool HasUp(int index) const { return index / width_ + 1 < height_; }
+
+  bool HasDown(int index) const { return index / width_ > 0; }
+
+  bool HasLeft(int index) const { return index % width_ > 0; }
+
+  bool HasRight(int index) const { return index % width_ + 1 < width_; }
+
+  int Up(int index) const { return index + width_; }
+
+  int Down(int index) const { return index - width_; }
+
+  static int Left(int index) { return index - 1; }
+
+  static int Right(int index) { return index + 1; }
+
+  int UpLeft(int index) const { return index + width_ - 1; }
+
+  int UpRight(int index) const { return index + width_ + 1; }
+
+  int DownLeft(int index) const { return index - width_ - 1; }
+
+  int DownRight(int index) const { return index - width_ + 1; }
 };
 
 } // namespace planning
