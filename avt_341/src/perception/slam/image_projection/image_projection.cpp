@@ -387,7 +387,7 @@ public:
 
     void imuDeskewInfo()
     {
-        cloudInfo.imuAvailable = false;
+        cloudInfo.imu_available = false;
 
         while (!imuQueue.empty())
         {
@@ -411,13 +411,13 @@ public:
                 // std::cout << "here" << std::endl;
                 // get roll, pitch, and yaw estimation for this scan
                 //if (currentImuTime <= timeScanCur){
-                    imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imuRollInit, &cloudInfo.imuPitchInit, &cloudInfo.imuYawInit);
+                    imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imu_roll_init, &cloudInfo.imu_pitch_init, &cloudInfo.imu_yaw_init);
                 // } else {
                     // std::cout << "but not here" << std::endl;
                 // }
             } else {
-                 cloudInfo.imuRollInit = initRoll;
-                 cloudInfo.imuPitchInit = initPitch;
+                 cloudInfo.imu_roll_init = initRoll;
+                 cloudInfo.imu_pitch_init = initPitch;
             }
 
             if (currentImuTime > timeScanEnd + 0.01)
@@ -450,12 +450,12 @@ public:
         if (imuPointerCur <= 0)
             return;
 
-        cloudInfo.imuAvailable = true;
+        cloudInfo.imu_available = true;
     }
 
     void odomDeskewInfo()
     {
-        cloudInfo.odomAvailable = false;
+        cloudInfo.odom_available = false;
         static float sync_diff_time = (imuRate >= 300) ? 0.01 : 0.20;
         while (!odomQueue.empty())
         {
@@ -495,14 +495,14 @@ public:
         tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
 
         // Initial guess used in mapOptimization
-        cloudInfo.initialGuessX = startOdomMsg.pose.pose.position.x;
-        cloudInfo.initialGuessY = startOdomMsg.pose.pose.position.y;
-        cloudInfo.initialGuessZ = startOdomMsg.pose.pose.position.z;
-        cloudInfo.initialGuessRoll  = roll;
-        cloudInfo.initialGuessPitch = pitch;
-        cloudInfo.initialGuessYaw   = yaw;
+        cloudInfo.initial_guess_x = startOdomMsg.pose.pose.position.x;
+        cloudInfo.initial_guess_y = startOdomMsg.pose.pose.position.y;
+        cloudInfo.initial_guess_z = startOdomMsg.pose.pose.position.z;
+        cloudInfo.initial_guess_roll  = roll;
+        cloudInfo.initial_guess_pitch = pitch;
+        cloudInfo.initial_guess_yaw   = yaw;
 
-        cloudInfo.odomAvailable = true;
+        cloudInfo.odom_available = true;
 
         // get end odometry at the end of the scan
         odomDeskewFlag = false;
@@ -574,7 +574,7 @@ public:
 
         // If the sensor moves relatively slow, like walking speed, positional deskew seems to have little benefits. Thus code below is commented.
 
-        // if (cloudInfo.odomAvailable == false || odomDeskewFlag == false)
+        // if (cloudInfo.odom_available == false || odomDeskewFlag == false)
         //     return;
 
         // float ratio = relTime / (timeScanEnd - timeScanCur);
@@ -586,7 +586,7 @@ public:
 
     PointType deskewPoint(PointType *point, double relTime)
     {
-        if (deskewFlag == -1 || cloudInfo.imuAvailable == false)
+        if (deskewFlag == -1 || cloudInfo.imu_available == false)
             return *point;
 
         double pointTime = timeScanCur + relTime;
