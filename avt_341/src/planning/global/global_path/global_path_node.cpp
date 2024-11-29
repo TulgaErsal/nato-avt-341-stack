@@ -19,6 +19,10 @@
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/visualization/visualization_factory.h"
 #include <chrono>
+#include <utility>
+
+using avt_341::planning::Point;
+
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
 avt_341::msg::OccupancyGrid current_grid;

@@ -35,12 +35,10 @@ Astar::~Astar() {
 
 }
 
-std::vector<int> Astar::FoldIndex(int n) {
-  std::vector<int> c;
-  c.resize(2);
-  c[0] = n % width_;
-  c[1] = (int) floor((1.0 * n) / (1.0 * width_));
-  return c;
+Index Astar::FoldIndex(int n) const {
+  int ix = n % width_;
+  int iy = (int) floor((1.0 * n) / (1.0 * width_));
+  return {ix, iy};
 }
 
 void Astar::AllocateMap(int h, int w, int init_val) {
@@ -66,39 +64,38 @@ void Astar::AllocateMap(int h, int w, int init_val) {
   map_.resize(width_, column);
 }
 
-void Astar::SetMapValue(int i, int j, int val_height, int val_seg) {
-  weights_[FlattenIndex(i, j)] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * static_cast<float>(val_height)
+void Astar::SetMapValue(const Index& index, int val_height, int val_seg) {
+  weights_[FlattenIndex(index)] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * static_cast<float>(val_height)
     + w_segmentation_ * static_cast<float>(val_seg);
-  map_[i][j] = (float) val_height;   // only used for obstacles (dilation, line of sight)
+  map_[index.ix][index.iy] = (float) val_height;   // only used for obstacles (dilation, line of sight)
 }
 
-bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1) {
-  if (p0.size() != 2 || p1.size() != 2) return false;
+bool Astar::LineOfSight(const Index& i0, const Index& i1) {
   // see: https://news.movel.ai/theta-star/
-  int x0 = p0[0];
-  int y0 = p0[1];
-  int x1 = p1[0];
-  int y1 = p1[1];
 
-  int dy = y1 - y0;
-  int dx = x1 - x0;
+  int x0 = i0.ix;
+  int y0 = i0.iy;
+  int x1 = i1.ix;
+  int y1 = i1.iy;
+
+  int dx = i1.ix - i0.ix;
+  int dy = i1.iy - i0.iy;
 
   int f = 0;
 
-  int sx = p0[0];
-  int sy = p0[1];
-  if (dy < 0) {
-    dy = -dy;
-    sy = -1;
-  } else {
-    sy = 1;
-  }
-
+  int sx, sy;
   if (dx < 0) {
     dx = -dx;
     sx = -1;
   } else {
     sx = 1;
+  }
+
+  if (dy < 0) {
+    dy = -dy;
+    sy = -1;
+  } else {
+    sy = 1;
   }
 
   if (dx >= dy) {
@@ -111,7 +108,7 @@ bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1) {
         y0 = y0 + sy;
         f = f - dx;
       }
-      if (f != 0 && map_[x0 + ((sx - 1) / 2)][y0 + ((sy - 1.0f) / 2.0f)] > 0) {
+      if (f != 0 && map_[x0 + ((sx - 1) / 2)][y0 + ((sy - 1) / 2)] > 0) {
         return false;
       }
       if (dy == 0 && map_[x0 + ((sx - 1) / 2)][y0] > 0 && map_[x0 + ((sx - 1) / 2)][y0 - 1] > 0) {
@@ -143,7 +140,7 @@ bool Astar::LineOfSight(std::vector<int> p0, std::vector<int> p1) {
 }
 
 // For path of length n
-void Astar::PostSmoothing(const std::vector<std::vector<int>>& in_path, std::vector<std::vector<int>>& out_path) {
+void Astar::PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>& out_path) {
   if (in_path.size() > 2) {
     int k = 0;
     out_path.push_back(in_path[0]);
@@ -172,10 +169,10 @@ void Astar::PostSmoothing(const std::vector<std::vector<int>>& in_path, std::vec
 }
 
 // manhattan distance: requires each move to cost >= 1
-float Astar::Heuristic(int i0, int j0, int i1, int j1) {
+float Astar::Heuristic(const Index& i0, const Index& i1) const {
   //straight line distance
-  int x = i1 - i0;
-  int y = j1 - j0;
+  int x = i1.ix - i0.ix;
+  int y = i1.iy - i0.iy;
   return w_distance_ * (float) sqrt(x * x + y * y);
 
   //return std::max(std::abs(x),std::abs(y));
@@ -195,7 +192,7 @@ bool Astar::Solve() {
   AStarCell start_node(start_, 0.);
   AStarCell goal_node(goal_, 0.);
 
-  float* costs = new float[height_ * width_];
+  auto* costs = new float[height_ * width_];
   for (int i = 0; i < height_ * width_; ++i) {
     costs[i] = INF;
   }
@@ -236,7 +233,7 @@ bool Astar::Solve() {
         if (new_cost < costs[neighbors[i]]) {
           costs[neighbors[i]] = new_cost;
           float priority =
-            new_cost + Heuristic(neighbors[i] / width_, neighbors[i] % width_, goal_ / width_, goal_ % width_);
+            new_cost + Heuristic(FoldIndex(neighbors[i]), FoldIndex(goal_));
           // paths with lower expected cost are explored first
           nodes_to_visit.emplace(neighbors[i], priority);
           paths_[neighbors[i]] = current.idx;
@@ -258,19 +255,18 @@ bool Astar::ExtractPath() {
   path_.clear();
   path_world_.clear();
   int path_idx = goal_;
-  std::vector<float> point;
-  point.resize(2);
+  Point point;
   while (path_idx != start_) {
-    std::vector<int> c = FoldIndex(path_idx);
+    Index c = FoldIndex(path_idx);
     path_.push_back(c);
     path_idx = paths_[path_idx];
   }
 
   //smooth path out
-  std::vector<std::vector<int>> path_smoothed;
+  std::vector<Index> path_smoothed;
   PostSmoothing(path_, path_smoothed);
   for (int k = 1; k < los_max_iterations_; k++) {
-    std::vector<std::vector<int>> path_smoothed_it;
+    std::vector<Index> path_smoothed_it;
     PostSmoothing(path_smoothed, path_smoothed_it);
     // pre-emptive break if unchanged
     if (path_smoothed.size() == path_smoothed_it.size()
@@ -282,32 +278,29 @@ bool Astar::ExtractPath() {
 
   // put the smoothed path in world coordinates
   path_world_pre_fill_.clear();
-  for (int i = 0; i < path_smoothed.size(); i++) {
-    point = IndexToPoint(path_smoothed[i]);
+  for (auto index: path_smoothed) {
+    point = IndexToPoint(index);
     path_world_pre_fill_.push_back(point);
   }
 
-  if (path_world_pre_fill_.size() <= 0) return false;
+  if (path_world_pre_fill_.empty()) return false;
 
   // the smoothed path may have much fewer points. Fill in the missing parts
-  std::vector<std::vector<float> > filled_in_path_world;
+  std::vector<Point> filled_in_path_world;
   for (int i = 0; i < path_world_pre_fill_.size() - 1; i++) {
-    float px = path_world_pre_fill_[i][0];
-    float py = path_world_pre_fill_[i][1];
-    float dx = path_world_pre_fill_[i + 1][0] - px;
-    float dy = path_world_pre_fill_[i + 1][1] - py;
+    float px = path_world_pre_fill_[i].x;
+    float py = path_world_pre_fill_[i].y;
+    float dx = path_world_pre_fill_[i + 1].x - px;
+    float dy = path_world_pre_fill_[i + 1].y - py;
     double d = sqrt(dx * dx + dy * dy);
     double ltx = map_res_ * dx / d;
     double lty = map_res_ * dy / d;
     while (d > 2.0 * map_res_) {
-      std::vector<float> point;
-      point.push_back(px);
-      point.push_back(py);
-      filled_in_path_world.push_back(point);
+      filled_in_path_world.push_back({px, py});
       px += ltx;
       py += lty;
-      dx = path_world_pre_fill_[i + 1][0] - px;
-      dy = path_world_pre_fill_[i + 1][1] - py;
+      dx = path_world_pre_fill_[i + 1].x - px;
+      dy = path_world_pre_fill_[i + 1].y - py;
       d = sqrt(dx * dx + dy * dy);
     }
   }
@@ -330,8 +323,8 @@ void Astar::SaveMap(std::string imname) {
 }
 
 void Astar::Display() {
-  if (map_.size() == 0) return;
-  if (map_[0].size() == 0)return;
+  if (map_.empty()) return;
+  if (map_[0].empty()) return;
   int nx = map_.size();
   int ny = map_[0].size();
   if (!visualizer_->initialize_display(nx, ny)) {
@@ -340,23 +333,23 @@ void Astar::Display() {
   avt_341::utils::vec3 red(255.0f, 0.0f, 0.0f);
   avt_341::utils::vec3 green(0.0f, 255.0f, 0.0f);
   avt_341::utils::vec3 yellow(255.0f, 255.0f, 0.0f);
-  for (int i=0;i<nx;i++){
-    for (int j=0;j<ny;j++){
-      if (map_[i][j]>0) visualizer_->draw_point(i,j,red);
+  for (int i = 0; i < nx; i++) {
+    for (int j = 0; j < ny; j++) {
+      if (map_[i][j] > 0) visualizer_->draw_point(i, j, red);
     }
   }
 
-	for (int i=0;i<path_world_.size();i++){
-		int ix = (int)floor((path_world_[i][0] - llx_) / map_res_);
-		int iy = (int)floor((path_world_[i][1] - lly_) / map_res_);
-    visualizer_->draw_point(ix,iy,yellow);
-	}
+  for (auto& index: path_world_) {
+    int ix = (int) floor((index.x - llx_) / map_res_);
+    int iy = (int) floor((index.y - lly_) / map_res_);
+    visualizer_->draw_point(ix, iy, yellow);
+  }
 
-std::vector<float> goal = GetCurrentGoal();
+  Point goal = GetCurrentGoal();
 
-	int gx = (int)floor((goal[0] - llx_) / map_res_);
-	int gy = (int)floor((goal[1] - lly_) / map_res_);
-  visualizer_->draw_circle(gx,gy,2,green);
+  int goal_ix = (int) floor((goal.x - llx_) / map_res_);
+  int goal_iy = (int) floor((goal.y - lly_) / map_res_);
+  visualizer_->draw_circle(goal_ix, goal_iy, 2, green);
 
   visualizer_->display();
 }
@@ -374,10 +367,10 @@ int Astar::GetGridValue(avt_341::msg::OccupancyGrid* grid, double x, double y) {
   return seg_val;
 }
 
-std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid* grid,
-                                                 avt_341::msg::OccupancyGrid* grid_segmentation,
-                                                 std::vector<float> goal,
-                                                 std::vector<float> position) {
+std::vector<Point> Astar::PlanPath(avt_341::msg::OccupancyGrid* grid,
+                                   avt_341::msg::OccupancyGrid* grid_segmentation,
+                                   Point goal,
+                                   Point position) {
   if (grid->info.height <= 0 || grid->info.width <= 0) {
     return path_world_;
   }
@@ -386,29 +379,29 @@ std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid* gr
   SetCornerCoords(grid->info.origin.position.x, grid->info.origin.position.y);
   SetMapRes(grid->info.resolution);
 
-  std::vector<int> gi = PointToIndex(goal[0], goal[1]);
-  std::vector<int> si = PointToIndex(position[0], position[1]);
+  Index goal_idx = PointToIndex(goal);
+  Index start_idx = PointToIndex(position);
 
-  if (si[0] < 0)si[0] = 0;
-  if (si[0] >= grid->info.width) si[0] = grid->info.width - 1;
-  if (si[1] < 0)si[1] = 0;
-  if (si[1] >= grid->info.height) si[1] = grid->info.height - 1;
-  if (gi[0] < 0)gi[0] = 0;
-  if (gi[0] >= grid->info.width) gi[0] = grid->info.width - 1;
-  if (gi[1] < 0)gi[1] = 0;
-  if (gi[1] >= grid->info.height) gi[1] = grid->info.height - 1;
+  if (start_idx.ix < 0) start_idx.ix = 0;
+  if (start_idx.ix >= grid->info.width) start_idx.ix = grid->info.width - 1;
+  if (start_idx.iy < 0) start_idx.iy = 0;
+  if (start_idx.iy >= grid->info.height) start_idx.iy = grid->info.height - 1;
+  if (goal_idx.ix < 0) goal_idx.ix = 0;
+  if (goal_idx.ix >= grid->info.width) goal_idx.ix = grid->info.width - 1;
+  if (goal_idx.iy < 0) goal_idx.iy = 0;
+  if (goal_idx.iy >= grid->info.height) goal_idx.iy = grid->info.height - 1;
 
   AllocateMap(grid->info.height, grid->info.width, 0);
-  SetGoal(gi[0], gi[1]);
-  SetStart(si[0], si[1]);
-  std::vector<float> gr;
-  gr = GetCurrentGoal();
+  SetGoal(goal_idx);
+  SetStart(start_idx);
+  Point goal_r;
+  goal_r = GetCurrentGoal();
   int n = 0;
-  for (int yi = 0; yi < height_; yi++) {
-    for (int xi = 0; xi < width_; xi++) {
-      double x_grid = grid->info.origin.position.x + xi * grid->info.resolution;
-      double y_grid = grid->info.origin.position.y + yi * grid->info.resolution;
-      SetMapValue(xi, yi, grid->data[n], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
+  for (int iy = 0; iy < height_; iy++) {
+    for (int ix = 0; ix < width_; ix++) {
+      double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
+      double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
+      SetMapValue({ix, iy}, grid->data[n], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
       n++;
     }
   }
@@ -431,7 +424,7 @@ std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid* gr
       for (int j = 1; j < height_ - 1; j++) {
         double x_grid = grid->info.origin.position.x + i * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + j * grid->info.resolution;
-        SetMapValue(i, j, dmap[i][j], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
+        SetMapValue({i, j}, dmap[i][j], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
       }
     }
   }
@@ -443,6 +436,7 @@ std::vector<std::vector<float> > Astar::PlanPath(avt_341::msg::OccupancyGrid* gr
 
   return path_world_;
 }
+
 
 } // namespace planning
 } // namespace avt_341

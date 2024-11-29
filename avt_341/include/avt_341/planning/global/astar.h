@@ -8,6 +8,23 @@
 namespace avt_341 {
 namespace planning {
 
+typedef struct {
+  float x;
+  float y;
+} Point;
+
+typedef Point Vec2;
+
+class Index {
+public:
+  int ix;
+  int iy;
+
+  bool operator==(const Index& i) {
+    return this->ix == i.ix && this->iy == i.iy;
+  }
+};
+
 /**
  * Astar map class with solve functions and map accessor methods.
  * The map holds obstacle values from 0 to 100. 0=no obstacle, 100=impassable.
@@ -36,15 +53,16 @@ public:
   void SaveMap(std::string ofname);
 
   /// Inherited from base class, return path in world coordinates
-  std::vector<std::vector<float> >* GetCurrentPath() { return &path_world_; }
+//  std::vector<std::vector<float> >* GetCurrentPath() { return &path_world_; }
+  std::vector<Point>& GetCurrentPath() { return path_world_; }
 
   /// Inherited from base class, return the current map
   std::vector<std::vector<float> >* GetCurrentMap() { return &map_; }
 
   /// Inherited from base class, return goal in world coordinates
-  std::vector<float> GetCurrentGoal() {
-    std::vector<int> gi = FoldIndex(goal_);
-    std::vector<float> goal_world = IndexToPoint(gi);
+  Point GetCurrentGoal() {
+    Index goal_index = FoldIndex(goal_);
+    Point goal_world = IndexToPoint(goal_index);
     return goal_world;
   }
 
@@ -64,13 +82,13 @@ public:
   int GetGridHeight() { return height_; }
 
   /// Get grid value at coordinates
-  int GetGridValue(avt_341::msg::OccupancyGrid* segmentation_grid, double x, double y);
+  static int GetGridValue(avt_341::msg::OccupancyGrid* segmentation_grid, double x, double y);
 
   /// Inherited from planner base class.
-  std::vector<std::vector<float> > PlanPath(avt_341::msg::OccupancyGrid* grid,
-                                            avt_341::msg::OccupancyGrid* segmentation_grid,
-                                            std::vector<float> goal,
-                                            std::vector<float> position);
+  std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
+                              avt_341::msg::OccupancyGrid* segmentation_grid,
+                              Point goal,
+                              Point position);
 
   /**
    * Allocate memory for the map and initialize
@@ -81,52 +99,60 @@ public:
   void AllocateMap(int height, int width, int init_val);
 
   /**
-   * Set the value of cell (i,j).
-   * \param i Vertical index of the cell to set
-   * \param j Horizontal index of the cell to set
+   * Set the map value of cell Index(i,j) to val height and set weight using weight parameters.
+   * \param index index of the cell to set
    * \param val_height Value to set, [0,100]
+   * \param val_seg Segmentation value for weights [0,100]
    */
-  void SetMapValue(int i, int j, int val_height, int val_seg);
+  void SetMapValue(const Index& index, int val_height, int val_seg);
 
   /**
-   * Returns the map value of cell (i,j).
-   * \param i Vertical index of cell to get
-   * \param j Horizontal index of cell to get
+   * Returns the map value of cell Index(i,j).
+   * \param index index of cell to get
    */
-  int GetMapValue(int i, int j) { return weights_[FlattenIndex(i, j)]; }
+  int GetMapValue(const Index& index) { return weights_[FlattenIndex(index)]; }
 
   /**
-   * Sets cell (i,j) as the goal point.
-   * \param i Vertical index of goal cell
-   * \param j Horizontal index of goal cell
+   * Sets cell Index(i,j) as the goal point.
+   * \param index index of goal cell
    */
-  void SetGoal(int i, int j) { goal_ = FlattenIndex(i, j); }
+  void SetGoal(const Index& index) { goal_ = FlattenIndex(index); }
 
   /**
-   * Sets cell (i,j) as the current location of the vehicle
-   * \param i Vertical index of the vehicle location
-   * \param j Horizontal index of the vehicle location
+   * Sets cell Index(i,j) as the current location of the vehicle
+   * \param index index of goal cell
    */
-  void SetStart(int i, int j) { start_ = FlattenIndex(i, j); }
+  void SetStart(const Index& index) { start_ = FlattenIndex(index); }
 
   /**
    * Solve the A* map. Returns true if a path was found.
    */
   virtual bool Solve();
 
-  std::vector<std::vector<float> > GetPathWorldPreSmoothing() {
-    std::vector<std::vector<float>> path_world_pre_smoothing;
+
+  virtual float* ExtractCosts() {
+    return nullptr;
+  }
+
+  /**
+   * Get A* path solution before smoothing is applied.
+   */
+  std::vector<Point> GetPathWorldPreSmoothing() {
+    std::vector<Point> path_world_pre_smoothing;
     std::transform(path_.begin(),
                    path_.end(),
                    std::back_inserter(path_world_pre_smoothing),
-                   [this](const std::vector<int>& p) { return IndexToPoint(p); });
+                   [this](const Index& i) { return IndexToPoint(i); });
     return path_world_pre_smoothing;
   }
 
-  std::vector<std::vector<float> >* GetPathWorldPreFill() { return &path_world_pre_fill_; }
+  /**
+   * Get A* path solution after smoothing but before path is interpolated.
+   */
+  std::vector<Point>* GetPathWorldPreFill() { return &path_world_pre_fill_; }
 
   /// Return a list of indices specifying the current path.
-  std::vector<std::vector<int> > GetPath() { return path_; }
+  std::vector<Index> GetPath() { return path_; }
 
   /**
    * Set the ENU coordinates of the bottom left corner
@@ -146,42 +172,39 @@ public:
     map_res_ = res;
   }
 
-  /// Get the resolution of the map in meters
+  /**
+   * Get the resolution of the map cells in meters
+   */
   float GetRes() { return map_res_; }
 
   /**
-   * Convert a point in global ENU to map coordinates
-   * \param x The East ENU coordiante
-   * \param y The North ENU coordinate 
+   * Convert a point in global ENU to point map index.
+   * \param point The ENU coordiante
    */
-  std::vector<int> PointToIndex(float x, float y) {
-    std::vector<int> c;
-    c.resize(2);
-    c[0] = (int) ((x - llx_) / map_res_);
-    c[1] = (int) ((y - lly_) / map_res_);
-    return c;
+  Index PointToIndex(const Point& point) const {
+    int ix = (int) ((point.x - llx_) / map_res_);
+    int iy = (int) ((point.y - lly_) / map_res_);
+    return {ix, iy};
   }
 
   /**
-   * Convert a point in map coordinates to global ENU
-   * \param c The index of the map cell 
+   * Convert a point map index to global ENU point
+   * \param index The index of the map cell
    */
-  std::vector<float> IndexToPoint(std::vector<int> c) {
-    std::vector<float> p;
-    p.resize(2);
-    p[0] = (c[0] + 0.5f) * map_res_ + llx_;
-    p[1] = (c[1] + 0.5f) * map_res_ + lly_;
-    return p;
+  Point IndexToPoint(const Index& index) const {
+    float px = (index.ix + 0.5f) * map_res_ + llx_;
+    float py = (index.iy + 0.5f) * map_res_ + lly_;
+    return {px, py};
   }
 
   /**
- * Determine if a point is in the map.
+ * Determine if a point map index is in the map.
  * Return false in the point is not in the map
- * \param c The index of the map cell
+ * \param index The index of the map cell
  */
-  bool IsInMap(std::vector<int> c) {
+  bool IsInMap(Index index) const {
     bool isin = false;
-    if (c[0] >= 0 && c[0] < width_ && c[1] >= 0 && c[1] < height_) {
+    if (index.ix >= 0 && index.ix < width_ && index.iy >= 0 && index.iy < height_) {
       isin = true;
     }
     return isin;
@@ -196,14 +219,14 @@ public:
 protected:
   static constexpr float INF = std::numeric_limits<float>::infinity();
 
-  std::vector<int> FoldIndex(int n);
+  Index FoldIndex(int n) const;
 
   int FlattenIndex(int i, int j) const { return j * width_ + i; }
 
-  int FlattenIndex(const std::vector<int>& index) const { return index[1] * width_ + index[0]; }
+  int FlattenIndex(const Index& i) const { return i.iy * width_ + i.ix; }
 
   /// Heuristic
-  float Heuristic(int i0, int j0, int i1, int j1);
+  float Heuristic(const Index& i0, const Index& i1) const;
 
   /// Flattened occupancy grid
   std::vector<float> weights_;
@@ -230,13 +253,13 @@ protected:
   std::vector<int> paths_;
 
   //std::vector<MapIndex> path_;
-  std::vector<std::vector<int> > path_;                   // raw path before smoothing by line of sight processing
-  std::vector<std::vector<float> > path_world_pre_fill_;  // path world (smoothed) before filled in
-  std::vector<std::vector<float> > path_world_;           // final output path in world coordinates
+  std::vector<Index> path_;                   // raw path before smoothing by line of sight processing
+  std::vector<Point> path_world_pre_fill_;  // path world (smoothed) before filled in
+  std::vector<Point> path_world_;           // final output path in world coordinates
 
   virtual bool ExtractPath();
-  void PostSmoothing(const std::vector<std::vector<int>>& in_path, std::vector<std::vector<int>>& out_path);
-  bool LineOfSight(std::vector<int> p0, std::vector<int> p1);
+  void PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>& out_path);
+  bool LineOfSight(const Index& i0, const Index& i1);
 
   float llx_, lly_;
   float map_res_;

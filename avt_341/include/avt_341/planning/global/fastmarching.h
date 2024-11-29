@@ -27,10 +27,21 @@ public:
    * Solve the FM map. Returns true if a path was found.
    */
   bool Solve() override;
+
+  float* ExtractCosts() {
+    return costs_;
+  }
+
+private:
   bool ExtractPath(float* costs);
-  std::vector<float> get_gradient(const std::vector<float>& position, const float* costs);
-  static std::vector<float> Normalize(const std::vector<float>& v);
-  float Distance(const std::vector<float>& v1, const std::vector<float>& v2);
+  static Vec2 Normalize(const Vec2& v);
+  static float Distance(const Point& p1, const Point& p2);
+  float HandleGradientNaNs(float cost_0, float cost_1);
+  float ComputeGradientX(const float* costs, const Index& index);
+  float ComputeGradientY(const float* costs, const Index& index);
+  Vec2 BilinearInterpolateGradient(const float* costs, const Point& position);
+
+  float* costs_;
 };
 
 }
