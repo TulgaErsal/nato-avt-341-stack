@@ -1,39 +1,51 @@
 ##### partams FOR INDOOR, for outdoor change :voxel filter paprams" to 0.4; 0.2; 0.4;
 liorf:
   # General
-  isImuNed: false                             # TODO: check if this is true (no)
+  isImuNed: false
   doCorrectRPY: true
   useIMU: true                                # Use IMU data
+  useImuHeadingInitialization: true           # if using GPS data, set to "true"
+  logCalibrationData: false                   # Log calibration data to the file (for IMU-LiDAR calibration)
+
   useBestOdom: false                          # Robustness setings. If true, use the best odom source including additionalOdomTopic, otherwise use the LiDAR odometruy only
-  loopClosureEnableFlag: false                # Loop closure settings
+  additionalOdomTopic: "/odom_wheels"         # Additional odometry topic, if you have oneloopClosureEnableFlag: false                # Loop closure settings
   debug: false                                # Debug mode. If true, print debug messages on additional odometry usage to std::out
 
   # Topics
   ## Input topics
-  pointCloudTopic: "/ouster/points"                  # Point cloud data
-  imuTopic: "/ouster/imu"                         # IMU data
-  additionalOdomTopic: "/odom_wheels"         # Additional odometry topic, if you have one
+  pointCloudTopic: "/ouster/points"           # Point cloud data
+  imuTopic: "/vectornav/imu"              # IMU data
   gpsTopic: "odometry/gpsz"                   # GPS odometry topic from navsat, see module_navsat.launch file
   ## Output topics
   odomTopic: "odometry/imu"                   # IMU pre-preintegration odometry, same frequency as IMU
 
   # Frames. Used for output only
   lidarFrame: "os_lidar" # comment oin case base_link is not known
-  baselinkFrame: "os_lidar"                  
+  baselinkFrame: "os_lidar"                
   odometryFrame: "odom" # TODO: maybe set to map?
   mapFrame: "map"
 
   # Transformations between the sensors
   # T_lb (lidar -> imu)
-  extrinsicTrans: [-0.006, 0.012, -0.029]
-  extrinsicRot: [-1, 0, 0,
-                 0, -1, 0,
-                 0, 0, 1]
+  extrinsicTrans: [0.024, 0.092, 0.162]
+  extrinsicRot: [0.028, -0.945, 0.327,
+                  0.999, 0.020, -0.026,
+                  0.018, 0.328, 0.945]
 
   # This parameter is set only when the 9-axis IMU is used, but it must be a high-precision IMU. e.g. MTI-680
-  extrinsicRPY: [-1, 0, 0,
-                 0, -1, 0,
-                 0, 0, 1]
+  extrinsicRPY: [0.028, -0.945, 0.327,
+                  0.999, 0.020, -0.026,
+                  0.018, 0.328, 0.945]
+
+  # T_lb (lidar -> imu)
+  # extrinsicTrans: [0.0, 0.0, 0.0]
+  # extrinsicRot: [  -0.9398212,  -0.0315925, -0.3402028,
+  #                 0.0329072,  -0.9994566,  0.0019060,
+  #                  -0.3400781,  -0.0094038,  0.9403502 ]
+  
+  # extrinsicRPY: [  -0.9398212,  -0.0315925, -0.3402028,
+  #                 0.0329072,  -0.9994566,  0.0019060,
+  #                  -0.3400781,  -0.0094038,  0.9403502 ]
 
   # extrinsicTrans: [-0.002441, -0.009725, 0.007533]
 
@@ -70,7 +82,7 @@ liorf:
   scaleQueueSize: 500                         # size of the queue for the scale adjustment
 
   # IMU Settings
-  imuType: 0                                  # 0: 6-axis  1: 9-axis
+  imuType: 1                                  # 0: 6-axis  1: 9-axis
   imuRate: 123.0
   imuAccNoise: 3.9939570888238808e-03
   imuGyrNoise: 1.5636343949698187e-03

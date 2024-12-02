@@ -109,6 +109,7 @@ public:
 
     // IMU
     int imuType;
+    bool ignoreAccelerationPrediction{true};
     float imuRate;
     float imuAccNoise;
     float imuGyrNoise;
@@ -177,6 +178,7 @@ public:
     bool calculateInitRollPitch{true};
     int initRollPitchWindow{50};
     bool isImuNed{false};
+    bool doCorrectRPY{false};
 
     Eigen::Quaterniond ned_q_enu{};
 
@@ -246,6 +248,7 @@ public:
         nh.param<int>("liorf/additionalUncertainty", additionalUncertainty, 10);
 
         nh.param<int>("liorf/imuType", imuType, 0);
+        nh.param<bool>("liorf/ignoreAccelerationPrediction", ignoreAccelerationPrediction, true);
         nh.param<float>("liorf/imuRate", imuRate, 500.0);
         nh.param<float>("liorf/imuAccNoise", imuAccNoise, 0.01);
         nh.param<float>("liorf/imuGyrNoise", imuGyrNoise, 0.001);

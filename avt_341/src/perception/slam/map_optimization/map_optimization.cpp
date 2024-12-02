@@ -38,6 +38,7 @@ using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 
 std::ofstream myfile;
+std::ofstream calibration_file;
 
 /*
  * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
@@ -1092,28 +1093,28 @@ public:
         if (cloudKeyPoses3D->points.empty())
         {
             ROS_INFO("INITIALIZATION");
-            ROS_INFO("roll pitch yaw %f %f %f", cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
+            ROS_INFO("roll pitch yaw %f %f %f", cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init);
 
-            transformTobeMapped[0] = cloudInfo.imuRollInit;
-            transformTobeMapped[1] = cloudInfo.imuPitchInit;
-            transformTobeMapped[2] = cloudInfo.imuYawInit;
+            transformTobeMapped[0] = cloudInfo.imu_roll_init;
+            transformTobeMapped[1] = cloudInfo.imu_pitch_init;
+            transformTobeMapped[2] = cloudInfo.imu_yaw_init;
 
             if (!useImuHeadingInitialization)
                 transformTobeMapped[2] = 0;
 
-            lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+            lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init); // save imu before return;
             return;
         }
 
         // use imu pre-integration estimation for pose guess
         static bool lastImuPreTransAvailable = false;
         static Eigen::Affine3f lastImuPreTransformation;
-        if (cloudInfo.odomAvailable == true)
+        if (cloudInfo.odom_available == true)
         {
             ROS_INFO_THROTTLE(10, "Odometry available in cloudInfo");
-            double initX = cloudInfo.initialGuessX;
-            double initY = cloudInfo.initialGuessY;
-            double initZ = cloudInfo.initialGuessZ;
+            double initX = cloudInfo.initial_guess_x;
+            double initY = cloudInfo.initial_guess_y;
+            double initZ = cloudInfo.initial_guess_z;
             // if (!imuType)
             // {
             //     initX = 0;
@@ -1121,7 +1122,7 @@ public:
             //     initZ = 0;
             // }
             Eigen::Affine3f transBack = pcl::getTransformation(initX, initY, initZ,
-                                                               cloudInfo.initialGuessRoll, cloudInfo.initialGuessPitch, cloudInfo.initialGuessYaw);
+                                                               cloudInfo.initial_guess_roll, cloudInfo.initial_guess_pitch, cloudInfo.initial_guess_yaw);
             if (lastImuPreTransAvailable == false)
             {
                 lastImuPreTransformation = transBack;
@@ -1140,16 +1141,25 @@ public:
 
                 lastImuPreTransformation = transBack;
 
-                lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.initialGuessRoll, cloudInfo.initialGuessPitch, cloudInfo.initialGuessYaw); // save imu before return;
+                lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.initial_guess_roll, cloudInfo.initial_guess_pitch, cloudInfo.initial_guess_yaw); // save imu before return;
                 return;
             }
         }
 
         // use imu incremental estimation for pose guess (only rotation)
-        if (cloudInfo.imuAvailable == true && imuType)
+        if (cloudInfo.imu_available == true && imuType)
         {
+            double initX = cloudInfo.initial_guess_x;
+            double initY = cloudInfo.initial_guess_y;
+            double initZ = cloudInfo.initial_guess_z;
+            if (!ignoreAccelerationPrediction)
+            {
+                initX = 0;
+                initY = 0;
+                initZ = 0;
+            }
             ROS_INFO_THROTTLE(10, "IMU available in cloudInfo");
-            Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
+            Eigen::Affine3f transBack = pcl::getTransformation(initX, initY, initZ, cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init);
             transIncre = lastImuTransformation.inverse() * transBack;
 
             Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
@@ -1687,6 +1697,7 @@ public:
             tuple_t rpyIMU = quatToRPY(quatIMU);
 
             // roll
+            double angleDiff = angleDist(quatICP, quatIMU);
             if (debug){
                 ROS_INFO("ROLL , ICP: %.3f IMU: %.3f Diff: %.3f", std::get<0>(rpyICP), std::get<0>(rpyIMU), std::get<0>(rpyICP) - std::get<0>(rpyIMU));
                 // pitch
@@ -1696,6 +1707,13 @@ public:
                 double angleDiff = angleDist(quatICP, quatIMU);
                 ROS_INFO("ICP: %.3f IMU: %f Diff: %f", angleICP, angleIMU, angleDiff);
             }
+
+            // write the IMU increment and ICP increment to the calibration file
+
+            calibration_file << std::fixed;
+            calibration_file << std::setprecision(4);
+            calibration_file << angleICP << " " << angleIMU << " " << angleDiff << " " << std::get<0>(rpyICP) << " " << std::get<0>(rpyIMU) << " " << std::get<1>(rpyICP) << " " << std::get<1>(rpyIMU) << " " << std::get<2>(rpyICP) << " " << std::get<2>(rpyIMU) << " " << dxyzICP(0) << " " << dxyzICP(1) << " " << dxyzICP(2) << " " << std::endl;
+            calibration_file.close();
 
             if (debug)
             {
@@ -1725,6 +1743,7 @@ public:
             static double startTime = 0;
 
             myfile.open("errors.txt", std::ifstream::app);
+            calibration_file.open("calibration.txt", std::ifstream::app);
 
             double time = timeLaserInfoCur;
 
@@ -1792,19 +1811,21 @@ public:
                 // get rotation quaternion component from lastImuPreTransformation
                 Eigen::Quaternionf q_imu(lastImuTransformation.rotation());
                 // get roll and pitch angles
-                double roll_imu, pitch_imu;
+                double roll_imu, pitch_imu, yaw_imu;
                 tuple<double, double, double> rpy_imu = quatToRPY(q_imu);
                 roll_imu = get<0>(rpy_imu);
                 pitch_imu = get<1>(rpy_imu);
+                yaw_imu = get<2>(rpy_imu);
+                ROS_INFO_THROTTLE(10, "roll_imu:  %.3f, pitch_imu:  %.3f, yaw_imu:  %.3f", roll_imu, pitch_imu, yaw_imu);
                 
                 // get rotation quaternion component from lastPose
                 Eigen::Quaternionf q_pose(lastPose.rotation());
                 // get roll and pitch angles
-                double roll_pose, pitch_pose, yaw;
+                double roll_pose, pitch_pose, yaw_pose;
                 tuple<double, double, double> rpy_pose = quatToRPY(q_pose);
                 roll_pose = get<0>(rpy_pose);
                 pitch_pose = get<1>(rpy_pose);
-                yaw = get<2>(rpy_pose);
+                yaw_pose = get<2>(rpy_pose);
 
                 // print the two roll and pitch angles
                 // ROS_INFO_THROTTLE(1, "roll_imu:  %.3f, pitch_imu:  %.3f", roll_imu, pitch_imu);
@@ -1813,15 +1834,25 @@ public:
                 static int offsetEstimationWindow = 10;
                 static OffsetQueue rollOffsetQueue(offsetEstimationWindow);
                 static OffsetQueue pitchOffsetQueue(offsetEstimationWindow);
+                static OffsetQueue yawOffsetQueue(offsetEstimationWindow);
+
                 double currentRollOffset = roll_imu - roll_pose;
+                currentRollOffset = atan2(sin(currentRollOffset), cos(currentRollOffset));
                 double currentPitchOffset = pitch_imu - pitch_pose;
+                currentPitchOffset = atan2(sin(currentPitchOffset), cos(currentPitchOffset));
+                double currentYawOffset = yaw_imu - yaw_pose;
+                currentYawOffset = atan2(sin(currentYawOffset), cos(currentYawOffset));
                 rollOffsetQueue.push(currentRollOffset);
                 pitchOffsetQueue.push(currentPitchOffset);
+                if(imuType){
+                    yawOffsetQueue.push(currentYawOffset);
+                }
 
-                double last_roll_offset = 0;
-                double last_pitch_offset = 0;
+                static double last_roll_offset = 0;
+                static double last_pitch_offset = 0;
+                static double last_yaw_offset = 0;
                 constexpr double alpha_rollpitch{0.3};
-                if ( rollOffsetQueue.isFull() ){
+                if ( rollOffsetQueue.isFull() && doCorrectRPY ){
                     double smoothedRollOffset = rollOffsetQueue.getMedian();
                     // roll_pose += smoothedRollOffset * alpha_rollpitch;
                     last_roll_offset = smoothedRollOffset;
@@ -1830,20 +1861,29 @@ public:
                     ROS_INFO_THROTTLE(5, "roll offset: %.3f", smoothedRollOffset);
 
                 }
-                if ( pitchOffsetQueue.isFull() ){
-                    last_pitch_offset = pitchOffsetQueue.getMedian();
+                if ( pitchOffsetQueue.isFull() && doCorrectRPY ){
                     double smoothedPitchOffset = pitchOffsetQueue.getMedian();
-                    pitch_pose += smoothedPitchOffset * alpha_rollpitch;
+                    last_pitch_offset = smoothedPitchOffset;
+                    
                     // pitchOffsetQueue.applyOffset(smoothedPitchOffset*alpha_rollpitch);
                     pitchOffsetQueue.reset();
-                    ROS_INFO_THROTTLE(5, "pitch offset: %.3f", smoothedPitchOffset);
+                    ROS_INFO_THROTTLE(5, "pitch offset: %.3f", last_pitch_offset);
+                }
+                if ( yawOffsetQueue.isFull() && doCorrectRPY ){
+                    double smoothedYawOffset = yawOffsetQueue.getMedian();
+                    last_yaw_offset = smoothedYawOffset;
+                    // yaw_pose += smoothedYawOffset * alpha_rollpitch;
+                    // yawOffsetQueue.applyOffset(smoothedYawOffset*alpha_rollpitch);
+                    yawOffsetQueue.reset();
+                    ROS_INFO_THROTTLE(5, "yaw offset: %.3f", smoothedYawOffset);
                 }
                 roll_pose = roll_pose + last_roll_offset/offsetEstimationWindow;
                 pitch_pose = pitch_pose + last_pitch_offset/offsetEstimationWindow;
+                yaw_pose = yaw_pose + last_yaw_offset/offsetEstimationWindow;
 
                 Eigen::AngleAxisf rollAngle(roll_pose, Eigen::Vector3f::UnitX());
                 Eigen::AngleAxisf pitchAngle(pitch_pose, Eigen::Vector3f::UnitY());
-                Eigen::AngleAxisf yawAngle(yaw, Eigen::Vector3f::UnitZ());
+                Eigen::AngleAxisf yawAngle(yaw_pose, Eigen::Vector3f::UnitZ());
                 Eigen::Quaternionf q_new = yawAngle * pitchAngle * rollAngle;
                 lastPose.linear() = q_new.toRotationMatrix();
 
@@ -1955,9 +1995,9 @@ public:
 
     void transformUpdate()
     {
-        if (cloudInfo.imuAvailable == true && imuType)
+        if (cloudInfo.imu_available == true && imuType)
         {
-            if (std::abs(cloudInfo.imuPitchInit) < 1.4)
+            if (std::abs(cloudInfo.imu_pitch_init) < 1.4)
             {
                 double imuWeight = imuRPYWeight;
                 tf::Quaternion imuQuaternion;
@@ -1966,13 +2006,13 @@ public:
 
                 // slerp roll
                 transformQuaternion.setRPY(transformTobeMapped[0], 0, 0);
-                imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
+                imuQuaternion.setRPY(cloudInfo.imu_roll_init, 0, 0);
                 tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
                 transformTobeMapped[0] = rollMid;
 
                 // slerp pitch
                 transformQuaternion.setRPY(0, transformTobeMapped[1], 0);
-                imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
+                imuQuaternion.setRPY(0, cloudInfo.imu_pitch_init, 0);
                 tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
                 transformTobeMapped[1] = pitchMid;
             }
@@ -2373,9 +2413,9 @@ public:
             increOdomAffine = increOdomAffine * affineIncre;
             float x, y, z, roll, pitch, yaw;
             pcl::getTranslationAndEulerAngles(increOdomAffine, x, y, z, roll, pitch, yaw);
-            if (cloudInfo.imuAvailable == true && imuType)
+            if (cloudInfo.imu_available == true && imuType)
             {
-                if (std::abs(cloudInfo.imuPitchInit) < 1.4)
+                if (std::abs(cloudInfo.imu_pitch_init) < 1.4)
                 {
                     double imuWeight = 0.1;
                     tf::Quaternion imuQuaternion;
@@ -2384,13 +2424,13 @@ public:
 
                     // slerp roll
                     transformQuaternion.setRPY(roll, 0, 0);
-                    imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
+                    imuQuaternion.setRPY(cloudInfo.imu_roll_init, 0, 0);
                     tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
                     roll = rollMid;
 
                     // slerp pitch
                     transformQuaternion.setRPY(0, pitch, 0);
-                    imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
+                    imuQuaternion.setRPY(0, cloudInfo.imu_pitch_init, 0);
                     tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
                     pitch = pitchMid;
                 }
@@ -2498,6 +2538,35 @@ int main(int argc, char **argv)
            << "isAltLidar"
            << std::endl;
     myfile.close();
+    calibration_file.open("calibration.txt", std::ifstream::out | std::ifstream::trunc);
+    // create a header for             calibration_file << angleICP << " " << angleIMU << " " << angleDiff << " " << std::get<0>(rpyICP) << " " << std::get<0>(rpyIMU) << " " << std::get<1>(rpyICP) << " " << std::get<1>(rpyIMU) << " " << std::get<2>(rpyICP) << " " << std::get<2>(rpyIMU) << " " << dxyzICP(0) << " " << dxyzICP(1) << " " << dxyzICP(2) << " " << std::endl;
+
+    calibration_file << "angleICP"
+                     << " "
+                     << "angleIMU"
+                     << " "
+                     << "angleDiff"
+                     << " "
+                     << "rollICP"
+                     << " "
+                     << "rollIMU"
+                     << " "
+                     << "pitchICP"
+                     << " "
+                     << "pitchIMU"
+                     << " "
+                     << "yawICP"
+                     << " "
+                     << "yawIMU"
+                     << " "
+                     << "dxICP"
+                     << " "
+                     << "dyICP"
+                     << " "
+                     << "dzICP"
+                     << " "
+                     << std::endl;
+    calibration_file.close();
 
     mapOptimization MO;
 
