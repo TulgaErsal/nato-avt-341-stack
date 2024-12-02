@@ -1,3 +1,46 @@
+/**
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ +                      _    _    _    _    _    _    _                      +
+ +                     / \  / \  / \  / \  / \  / \  / \                     +
+ +                    ( A )( V )( T )( - )( 3 )( 4 )( 1 )                    +
+ +                     \_/  \_/  \_/  \_/  \_/  \_/  \_/                     +
+ +       _    _    _    _    _    _    _    _     _    _    _    _    _      +
+ +      / \  / \  / \  / \  / \  / \  / \  / \   / \  / \  / \  / \  / \     +
+ +     ( A )( U )( T )( O )( N )( O )( M )( Y ) ( S )( T )( A )( C )( K )    +
+ +      \_/  \_/  \_/  \_/  \_/  \_/  \_/  \_/   \_/  \_/  \_/  \_/  \_/     +
+ +                                                                           +
+ +  AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles  +
+ +                                                                           +
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+* @file      bounding_box_2d.hpp
+* @author    Dario Sirangelo (dsi@aarhusrobotics.com)
+* @brief     Header file for a two-dimensional bounding box class.
+* @copyright MIT License
+
+             NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
+             Copyright (c) 2024 Dario Sirangelo (dsi@aarhusrobotics.com).
+
+             NOTE: The above copyright only applies to the contents of this file. The source code contained in this file
+             is a direct port from the GitHub repository aarhus-robotics/navi, released by the copyright holder under
+             the MIT license.
+
+             Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+             associated documentation files (the "Software"), to deal in the Software without restriction, including
+             without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+             copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+             following conditions:
+
+             The above copyright notice and this permission notice shall be included in all copies or substantial
+             portions of the Software.
+
+             THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+             LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+             EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+             IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+             THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 #pragma once
 
 #include <cmath>
@@ -10,9 +53,8 @@ namespace perception {
 
 /**
  * @brief A two-dimensional bounding box.
- * @details Bounding boxes can be degenerate, e.g. have one or more sides with
- * null length. Be aware that the default constructor of this class provides a
- * degenerate bounding box with null width and height.
+ * @details Bounding boxes can be degenerate, e.g. have one or more sides with null length. Be aware that the default
+ * constructor of this class provides a degenerate bounding box with null width and height.
  */
 class BoundingBox2D {
   public:
@@ -29,22 +71,19 @@ class BoundingBox2D {
      * @param y_min Bounding box minimum coordinate in the vertical direction.
      * @param y_max Bounding box maximum coordinate in the vertical direction.
      */
-    BoundingBox2D(const int x_min,
-                  const int x_max,
-                  const int y_min,
-                  const int y_max);
+    BoundingBox2D(const int x_min, const int x_max, const int y_min, const int y_max);
 
     /**
-     * @brief Get the x coordinate of the bounding box center point, in pixel
-     * coordinates and floored to the nearest integer.
+     * @brief Get the x coordinate of the bounding box center point, in pixel coordinates and floored to the nearest
+     * integer.
      *
      * @return int X coordinate of the bounding box center point.
      */
     int GetCenterX();
 
     /**
-     * @brief Get the y coordinate of the bounding box center point, in pixel
-     * coordinates and floored to the nearest integer.
+     * @brief Get the y coordinate of the bounding box center point, in pixel coordinates and floored to the nearest
+     * integer.
      *
      * @return int Y coordinate of the bounding box center point.
      */
@@ -93,20 +132,16 @@ class BoundingBox2D {
     int GetYMin();
 
     /**
-     * @brief Serialize the two-dimensional bounding box to a ROS
-     * sensor_msgs/RegionOfInterest message.
+     * @brief Serialize the two-dimensional bounding box to a ROS sensor_msgs/RegionOfInterest message.
      *
-     * @return sensor_msgs::msg::RegionOfInterest ROS
-     * sensor_msgs/RegionOfInterest message matching the bounding box.
+     * @return sensor_msgs::msg::RegionOfInterest ROS sensor_msgs/RegionOfInterest message matching the bounding box.
      */
     sensor_msgs::msg::RegionOfInterest ToROSRegionOfInterestMessage();
 
     /**
-     * @brief Serialize the two-dimensional bounding box to a ROS
-     * vision_msgs/BoundingBox2D message.
+     * @brief Serialize the two-dimensional bounding box to a ROS vision_msgs/BoundingBox2D message.
      *
-     * @return vision_msgs::msg::BoundingBox2D ROS vision_msgs/BoundingBox2D
-     * message matching the bounding box.
+     * @return vision_msgs::msg::BoundingBox2D ROS vision_msgs/BoundingBox2D message matching the bounding box.
      */
     vision_msgs::msg::BoundingBox2D ToROSVisionMessage();
 

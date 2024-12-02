@@ -6,9 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_MODULE_PATH
-     ${CMAKE_MODULE_PATH}
-     ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 
 set(BUILD_SLAM OFF)
@@ -57,6 +55,7 @@ set(AVT341_SOURCE_FILES
     "perception/detection/common"
     "perception/detection/training"
     "perception/detection/object_detector"
+    "perception/tracking"
     "perception/map_publisher"
     "perception/global_segmentation_grid"
     "perception/grid_compression"

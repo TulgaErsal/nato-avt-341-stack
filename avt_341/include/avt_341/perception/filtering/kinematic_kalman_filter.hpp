@@ -13,9 +13,9 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      detection_2d.cpp
+* @file      kinematic_kalman_filter.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
-* @brief     Source file for a two-dimensional object detection.
+* @brief     Header file for templated linear Kalman filters for Brownian motion models.
 * @copyright MIT License
 
              NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
@@ -41,29 +41,63 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/detection_2d.hpp>
+#pragma once
+
+#include <memory>
+
+#include <Eigen/Dense>
+#include <boost/math/special_functions/factorials.hpp>
+
+#include <avt_341/perception/filtering/kalman_filter.hpp>
+
+using avt_341::perception::filtering::KalmanFilter;
 
 namespace avt_341 {
 namespace perception {
+namespace filtering {
 
-Detection2D::Detection2D(BoundingBox2D bounding_box, Hypothesis hypothesis)
-    : bounding_box_(bounding_box),
-      hypothesis_(hypothesis) {}
+template <int order>
+Eigen::Matrix<double, (order + 1), (order + 1)> CreateStateTransitionMatrix(double time_step) {
+    // Initialise the state transition matrix
+    Eigen::Matrix<double, (order + 1), (order + 1)> F = Eigen::Matrix<double, (order + 1), (order + 1)>::Zero();
 
-BoundingBox2D Detection2D::GetBoundingBox() { return bounding_box_; }
+    for(int i = 0; i < (order + 1); ++i) { F(0, i) = std::pow(time_step, i) / boost::math::factorial<double>(i); }
 
-Hypothesis Detection2D::GetHypothesis() { return hypothesis_; }
+    for(int i = 1; i < (order + 1); ++i) { F(i, Eigen::seq(i, Eigen::last)) = F(0, Eigen::seq(0, Eigen::last - i)); }
 
-vision_msgs::msg::Detection2D Detection2D::ToROSVisionMessage() {
-    vision_msgs::msg::Detection2D detection_2d_message;
-    detection_2d_message.bbox = bounding_box_.ToROSVisionMessage();
-    vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
-    hypothesis.hypothesis = hypothesis_.ToROSVisionHypothesisMessage();
-    detection_2d_message.results.push_back(hypothesis);
-    detection_2d_message.id = std::to_string(-1);
-
-    return detection_2d_message;
+    return F;
 }
 
+template <int state_size, int order, int measurement_vector_size>
+class KinematicKalmanFilter : public KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)> {
+  public:
+    KinematicKalmanFilter(double time_step)
+        : KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)>() {
+        const int size_x = state_size * (order + 1);
+
+        // The state transition matrix by default is the identity matrix. Here
+        // we set it to a null matrix instead.
+        KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)>::F_ =
+            Eigen::Matrix<double, size_x, size_x>::Zero();
+
+        auto F = CreateStateTransitionMatrix<order>(time_step);
+
+        int size = state_size;
+
+        for(int i = 0; i < order + 2; ++i) {
+            KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)>::F_
+                .template block<(order + 1), (order + 1)>((order + 1) * i, (order + 1) * i) = F;
+        }
+
+        KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)>::H_.template setZero();
+
+        for(int i = 0; i < state_size; ++i) {
+            KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)>::H_(i * (order + 1),
+                                                                                          i * (order + 1)) = 1.0;
+        }
+    }
+};
+
+} // namespace filtering
 } // namespace perception
 } // namespace avt_341

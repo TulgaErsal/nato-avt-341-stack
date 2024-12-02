@@ -5,10 +5,10 @@
   <name>avt_341</name>
   <version>0.0.0</version>
   <description> AVT-341 autonomy stack. Released under BSD-III license. MIT license included as part
-    of "SS47816/lidar_obstacle_detector".</description>
+    of "SS47816/lidar_obstacle_detector" and "aarhus-robotics/navi".</description>
 
   <maintainer email="cgoodin@cavs.msstate.edu">Chris Goodin</maintainer>
-  <maintainer email="dsi@mpe.au.dk">Dario Sirangelo</maintainer>
+  <maintainer email="dsi@aarhusrobotics.com">Dario Sirangelo</maintainer>
 
   <license>BSD-III</license>
   <license>MIT</license>

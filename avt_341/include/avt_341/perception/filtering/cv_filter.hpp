@@ -13,9 +13,9 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      detection_2d.cpp
+* @file      cv_filter.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
-* @brief     Source file for a two-dimensional object detection.
+* @brief     Header file for a Kalman filter with a constant velocity Brownian motion model.
 * @copyright MIT License
 
              NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
@@ -41,29 +41,68 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/detection_2d.hpp>
+#pragma once
+
+#include <avt_341/perception/filtering/kinematic_kalman_filter.hpp>
+#include <avt_341/perception/filtering/process_covariance.hpp>
 
 namespace avt_341 {
 namespace perception {
+namespace filtering {
 
-Detection2D::Detection2D(BoundingBox2D bounding_box, Hypothesis hypothesis)
-    : bounding_box_(bounding_box),
-      hypothesis_(hypothesis) {}
+template <int state_size>
+/**
+ * @brief Templated class for a constant velocity Kalman filter.
+ *
+ * @details This is a Kalman filter with first-order (i.e. position and velocity
+ * estimation) Netwonian particle kinematic model. The class provides
+ * convenience function for providing measurements for position alone or for
+ * position and velocity.
+ */
+class CVFilter : public KinematicKalmanFilter<state_size, 2, state_size> {
+  public:
+    typedef KinematicKalmanFilter<state_size, 2, state_size> KinematicFilter;
+    typedef Eigen::Vector<double, state_size> StateVector;
+    typedef Eigen::Vector<double, 3 * state_size> MeasurementVector;
+    typedef Eigen::Matrix<double, 3 * state_size, 3 * state_size> MeasurementUncertaintyMatrix;
 
-BoundingBox2D Detection2D::GetBoundingBox() { return bounding_box_; }
+    CVFilter(const double& time_step, const double& process_variance, const double& measurement_variance)
+        : KinematicFilter(time_step),
+          process_variance_(process_variance) {
+        InitializeMeasurementUncertainty(measurement_variance);
+        InitializeProcessUncertainty(time_step);
+    }
 
-Hypothesis Detection2D::GetHypothesis() { return hypothesis_; }
+    void InitializeMeasurementUncertainty(const double& measurement_variance) {
+        // Set measurement uncertainty.
+        auto measurement_uncertainty = MeasurementUncertaintyMatrix::Identity() * std::pow(measurement_variance, 2.0);
+        KinematicFilter::SetMeasurementUncertainty(measurement_uncertainty);
+    }
 
-vision_msgs::msg::Detection2D Detection2D::ToROSVisionMessage() {
-    vision_msgs::msg::Detection2D detection_2d_message;
-    detection_2d_message.bbox = bounding_box_.ToROSVisionMessage();
-    vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
-    hypothesis.hypothesis = hypothesis_.ToROSVisionHypothesisMessage();
-    detection_2d_message.results.push_back(hypothesis);
-    detection_2d_message.id = std::to_string(-1);
+    void InitializeProcessUncertainty(const double& time_step) {
+        auto process_uncertainty =
+            avt_341::perception::filtering::ProcessCovariance<state_size, 2>::GetDiscreteWhiteNoise(
+                time_step,
+                std::pow(process_variance_, 2.0));
+        KinematicFilter::SetProcessUncertainty(process_uncertainty);
+    }
 
-    return detection_2d_message;
-}
+    void SetInitialState(const StateVector& initial_state) { KinematicFilter::x_ = initial_state; }
 
+    void SetInitialPosition(const StateVector& initial_position) {
+        for(int i = 0; i < 2; ++i) { KinematicFilter::x_(i * state_size) = initial_position(i); }
+    }
+
+    void SetInitialVelocity(const StateVector& initial_velocity) {
+        for(int i = 0; i < 2; ++i) { KinematicFilter::x_(i * state_size + 1) = initial_velocity(i); }
+    }
+
+    void Update(const MeasurementVector& measurement) { KinematicFilter::Update(measurement); }
+
+  private:
+    double process_variance_;
+};
+
+} // namespace filtering
 } // namespace perception
 } // namespace avt_341

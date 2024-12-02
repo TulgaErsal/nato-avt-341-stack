@@ -13,7 +13,8 @@ file(
 message(STATUS "Installing custom models ...")
 install(
   DIRECTORY "${PROJECT_SOURCE_DIR}/data/detection/models/"
-  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/data/detection/models/"
+  DESTINATION
+    "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/data/detection/models/"
   FILES_MATCHING
   PATTERN "*.torchscript"
   PATTERN "*.names")
@@ -23,15 +24,6 @@ if(USING_CATKIN)
     WARNING
       "Object detector node not yet supported in the catkin build - skipping..."
   )
-
-  # add_executable( ${PROJECT_NAME}_object_detector_node
-  # "costmap_clearing_method.cpp" "elevation_grid.cpp" "perception_node.cpp")
-  # add_dependencies(${PROJECT_NAME}_object_detector_node
-  # ${catkin_EXPORTED_TARGETS})
-  # target_link_libraries(${PROJECT_NAME}_object_detector_node
-  # ${PROJECT_NAME}_proxy) install( TARGETS ${PROJECT_NAME}_object_detector_node
-  # RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}" LIBRARY DESTINATION
-  # "${CATKIN_PACKAGE_LIB_DESTINATION}")
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
