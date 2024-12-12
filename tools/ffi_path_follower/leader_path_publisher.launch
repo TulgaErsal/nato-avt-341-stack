@@ -1,0 +1,18 @@
+<launch>
+
+    <arg name="follower_odom_sub_topic" value="/warpath/navigation/odometry_local_center_enu"/>
+    <arg name="leader_odom_sub_topic" value="/avt_341/leader_filtered"/>
+    <arg name="follow_point_pub_topic" value="/avt_341/follow_path"/>
+    <arg name="node_rate" value="5"/>
+    <arg name="min_distance" value="10"/>
+
+    <!-- Launch the twist_publisher_node -->
+    <node name="leader_odom_publisher_node" pkg="ffi_avt_tools" type="leader_odom_publisher.py" output="screen">
+        <param name="follower_odom_sub_topic" value="$(arg follower_odom_sub_topic)"/>
+        <param name="leader_odom_sub_topic" value="$(arg leader_odom_sub_topic)"/>
+        <param name="node_rate" value="$(arg node_rate)"/>
+        <param name="follow_point_pub_topic" value="$(arg follow_point_pub_topic)"/>
+        <param name="min_distance" value="$(arg min_distance)"/>
+    </node>
+
+</launch>
