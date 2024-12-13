@@ -42,6 +42,8 @@
 #include "avt_341_msgs/Sinkage.h"
 #include "avt_341_msgs/LiorfCloudInfo.h"
 #include "avt_341_msgs/LiorfSaveMap.h"
+#include "avt_341_msgs/Detection2d.h"
+#include "avt_341_msgs/Hypothesis.h"
 
 namespace avt_341 {
     namespace msg {
@@ -146,6 +148,12 @@ namespace avt_341 {
         using LiorfSaveMapRequest = avt_341_msgs::LiorfSaveMapRequest;
         using LiorfSaveMapResponse = avt_341_msgs::LiorfSaveMapResponse;
 
+        using Detection2d = avt_341_msgs::Detection2d;
+        using Detection2dPtr = const avt_341_msgs::Detection2d::ConstPtr &;
+
+        using Hypothesis = avt_341_msgs::Hypothesis;
+        using HypothesisPtr = const avt_341_msgs::Hypothesis::ConstPtr &;
+
         using Time = ros::Time;
     }
     namespace msg_tf{
@@ -193,6 +201,8 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
+#include "avt_341_msgs/msg/detection2d.h"
+#include "avt_341_msgs/msg/hypothesis.h"
 
 namespace avt_341 {
   namespace msg {
@@ -275,6 +285,12 @@ namespace avt_341 {
 
     using Sinkage = avt_341_msgs::msg::Sinkage;
     using SinkagePtr = avt_341_msgs::msg::Sinkage::SharedPtr;
+
+    using Detection2d = avt_341_msgs::msg::Detection2d;
+    using Detection2dPtr = avt_341_msgs::msg::Detection2d::SharedPtr;
+
+    using Hypothesis = avt_341_msgs::msg::Hypothesis;
+    using HypothesisPtr = avt_341_msgs::msg::Hypothesis::SharedPtr;
 
     using Float64MultiArray = std_msgs::msg::Float64MultiArray;
     using Float64MultiArrayPtr = std_msgs::msg::Float64MultiArray::SharedPtr;

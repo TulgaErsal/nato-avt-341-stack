@@ -40,6 +40,8 @@
 # Clion
 .idea
 cmake-build-debug*
+source
+devel
 
 # Visual Studio
 .vs

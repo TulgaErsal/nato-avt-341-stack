@@ -57,6 +57,7 @@ set(AVT341_SOURCE_FILES
     "perception/detection/common"
     "perception/detection/training"
     "perception/detection/object_detector"
+    "perception/detection/uab_tracker"
     "perception/map_publisher"
     "perception/global_segmentation_grid"
     "perception/grid_compression"
