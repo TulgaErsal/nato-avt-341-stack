@@ -11,6 +11,13 @@
         Section Mechatronics & Dynamics
 """
 
+# Install the required dependencies
+import Pkg
+Pkg.add("PackageCompiler")
+Pkg.add(url="https://github.com/JuliaMPC/NLOptControl.jl")
+Pkg.add("JuMP")
+Pkg.add("Ipopt")
+
 using PackageCompiler
 
 # Generate the sysimage.
