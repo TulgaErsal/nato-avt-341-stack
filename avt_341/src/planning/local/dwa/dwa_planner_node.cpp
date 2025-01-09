@@ -183,6 +183,7 @@ main(int argc, char* argv[]) {
     auto pub_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
     auto pub_ctrl_speed = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
     auto pub_ctrl_steer = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 10);
+    auto pub_ctrl_drive = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 10);
 
     // Declare and read node parameters from the ROS parameter server.
     float wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72f);
@@ -283,6 +284,13 @@ main(int argc, char* argv[]) {
             avt_341::msg::Float64 msg_ctrl_steer;
             msg_ctrl_steer.data = steer;
             pub_ctrl_steer->publish(msg_ctrl_steer);
+
+            avt_341::msg::AckermannDriveStamped msg_ctrl_drive;
+            msg_ctrl_drive.header.frame_id = "avt_341";
+            msg_ctrl_drive.header.stamp = node->get_stamp();
+            msg_ctrl_drive.drive.speed = speed;
+            msg_ctrl_drive.drive.steering_angle = steer;
+            pub_ctrl_drive->publish(msg_ctrl_drive);
         }
 
         if(reset_called){

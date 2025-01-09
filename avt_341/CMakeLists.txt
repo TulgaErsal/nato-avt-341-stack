@@ -83,6 +83,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
 
 if(USING_CATKIN)
   set(REQUIRED_ROS_PACKAGES
+      ackermann_msgs
       avt_341_msgs
       dynamic_reconfigure
       jsk_recognition_msgs
@@ -259,6 +260,7 @@ if(USING_CATKIN)
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
+  find_package(ackermann_msgs)
   find_package(ament_cmake REQUIRED)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
@@ -294,7 +296,7 @@ if(USING_AMENT)
            $<INSTALL_INTERFACE:include>)
 
   ament_target_dependencies(
-    ${PROJECT_NAME}_proxy avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
+    ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
     visualization_msgs)
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})

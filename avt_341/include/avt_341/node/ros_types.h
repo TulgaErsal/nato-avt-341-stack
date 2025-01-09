@@ -160,6 +160,8 @@ namespace avt_341 {
 #include <cstring>
 #include <rclcpp/time.hpp>
 
+#include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
+
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
@@ -196,6 +198,9 @@ namespace avt_341 {
 
 namespace avt_341 {
   namespace msg {
+    using AckermannDriveStamped = ackermann_msgs::msg::AckermannDriveStamped;
+    using AckermannDriveStampedPtr = ackermann_msgs::msg::AckermannDriveStamped::SharedPtr;
+
     using PointCloud = sensor_msgs::msg::PointCloud;
     using PointCloudPtr = sensor_msgs::msg::PointCloud::SharedPtr;
 

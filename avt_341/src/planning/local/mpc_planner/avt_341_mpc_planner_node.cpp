@@ -156,6 +156,20 @@ avt_341::msg::Float64 GetMPCSteering()
     return steering_msg;
 }
 
+avt_341::msg::AckermannDriveStamped GetMPCDrive()
+{
+    double speed = jl_unbox_float64(jl_call0(j_get_speed));
+    double steering = jl_unbox_float64(jl_call0(j_get_steering));
+    CATCH_JULIA_EXCEPTION;
+    
+    avt_341::msg::AckermannDriveStamped drive_msg;
+    drive_msg.header.frame_id = "avt_341";
+    drive_msg.header.stamp = node->get_stamp();
+    drive_msg.drive.speed = speed;
+    drive_msg.drive.steering_angle = steering;
+    return drive_msg;
+}
+
 bool NewInputAvailable() {
     return recv_veh_input;
 }
@@ -448,6 +462,8 @@ int main(int argc, char *argv[])
     auto path_pub = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
     auto speed_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",1);
     auto steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
+
 
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
@@ -465,6 +481,9 @@ int main(int argc, char *argv[])
             path_pub->publish(GetMPCPath());
             speed_pub->publish(GetMPCSpeed());
             steer_pub->publish(GetMPCSteering());
+            drive_pub->publish(GetMPCDrive());
+
+
         }
 
         node->spin_some();
