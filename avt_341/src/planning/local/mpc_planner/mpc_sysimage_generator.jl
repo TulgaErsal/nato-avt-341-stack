@@ -16,7 +16,7 @@ import Pkg
 Pkg.add("PackageCompiler")
 Pkg.add(url="https://github.com/JuliaMPC/NLOptControl.jl")
 Pkg.add("JuMP")
-Pkg.add("Ipopt")
+Pkg.add(Pkg.PackageSpec(;name="Ipopt", version="0.7.0"))
 
 using PackageCompiler
 

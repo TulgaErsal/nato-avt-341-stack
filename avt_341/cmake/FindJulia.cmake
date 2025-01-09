@@ -4,7 +4,7 @@
 #     > Released under the BSD-3 license.
 # - Updated FindJulia.cmake from:
 #     > https://github.com/JuliaInterop/libcxxwrap-julia
-#     > Releasedunder the MIT "Expat" license
+#     > Released under the MIT "Expat" license
 # cmake-format: on
 
 if(Julia_FOUND)

@@ -10,6 +10,10 @@ Further below, the original license texts for all licenses are included.
 
 ## Merged source code
 
+* Modules from [JuliaInterop/libcxxwrap-julia](https://github.com/JuliaInterop/libcxxwrap-julia) are
+  released under the [MIT License](#mit-license), copyright holder Bart Janssens.
+  * [FindJulia.cmake](avt_341/cmake/FindJulia.cmake)
+
 * Modules from [github.com/SS47816/lidar_obstacle_detector](https://github.comSS47816/lidar_obstacle_detector/) are
   released under the [MIT License](#mit-license), copyright holder Shuo Sun.
   * [lidar_obstacle_detector_node.hpp](avt_341/include/avt_341/perception/lidar_obstacle_detector.hpp)
