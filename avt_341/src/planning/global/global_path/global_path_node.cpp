@@ -202,6 +202,8 @@ int main(int argc, char *argv[])
     //nav_msgs::Path loaded_waypoints;
     for (int32_t i=0;i<num_waypoints;i++){
       avt_341::msg::PoseStamped pose;
+      pose.header.frame_id = "map";
+      pose.header.stamp = n->get_stamp();
       pose.pose.position.x = static_cast<float>(waypoints_x_list[i]);
       pose.pose.position.y = static_cast<float>(waypoints_y_list[i]);
       pose.pose.position.z = 0.0f;
@@ -307,6 +309,7 @@ int main(int argc, char *argv[])
           int cp =current_waypoint;
           while (cp<current_waypoints.poses.size()-1){
             avt_341::msg::PoseStamped pose;
+            pose.header = current_waypoints.poses[cp+1].header;
             pose.pose.position.x = static_cast<float>(current_waypoints.poses[cp+1].pose.position.x);
             pose.pose.position.y = static_cast<float>(current_waypoints.poses[cp+1].pose.position.y);
             pose.pose.position.z = 0.0f;
