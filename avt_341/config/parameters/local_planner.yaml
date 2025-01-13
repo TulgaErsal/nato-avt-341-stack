@@ -47,8 +47,8 @@ dwa:
   speed_ang_steps: 40                   # Number of intervals to partition the angular variable range into. Higher values allow for finer control, but significantly impact performance.
   ang_accel_max: 4.0                    # Maximum rate of change of the angular variable (yaw acceleration for synchro drive, steering rate for Ackermann)
   lat_accel_max: 9.81                   # Maximum lateral acceleration.
-  horizon: 'adaptive'                   # Time prediction horizon - may be `fixed` or `adaptive` for prediction windows proportional to the longitudinal speed of the AGV.
-  time_span_min: 2.5                    # Minimum time span for the prediction window.
+  horizon: 'fixed'                   # Time prediction horizon - may be `fixed` or `adaptive` for prediction windows proportional to the longitudinal speed of the AGV.
+  time_span_min: 5.0                    # Minimum time span for the prediction window.
   time_span_max: 10.0                   # Maximum time span for the prediction window.
   time_span_var: 4.5                    # Size of the variable component of the prediction window.
   time_span_gain: 1.1                   # Longitudinal speed proportionality constant for the variable prediction window.
@@ -66,3 +66,5 @@ dwa:
   w_cost_seg: 0.0                       # Objective function segmentation cost term weight. Higher values will promote planned trajectories which stay far from cells with higher cost.
   w_cost_dev: 0.75                      # Objective function deviation term weight. Higher values will promote planned trajectories with smaller deviations from the current one.
   print_summary: False                  # Whether or not to print the results of each planner iteration to console. Has an impact on performance and should only be used for debugging purposes.
+  use_current_waypoint: False           # Whether or not to use the currently active navigation waypoint as goal.
+  global_path_lookahead: 15.0           # Lookahead distance when selecting the global path goal pose.

@@ -21,6 +21,7 @@ avt_341::msg::Odometry msg_odom;
 avt_341::msg::OccupancyGrid msg_grid_occ;
 avt_341::msg::OccupancyGrid msg_grid_seg;
 avt_341::msg::Path msg_waypoints;
+avt_341::msg::PoseStamped msg_waypoint_pose;
 avt_341::msg::Path msg_path;
 
 // Initialise receive flags.
@@ -28,7 +29,13 @@ bool rcvd_odom = false;
 bool rcvd_grid_occ = false;
 bool rcvd_grid_seg = false;
 bool rcvd_path = false;
+bool rcvd_waypoint = false;
 bool reset_called = false;
+bool use_current_waypoint = false;
+
+double state_x = 0.0;
+double state_y = 0.0;
+double global_path_lookahead = 15.0;
 
 // Initialise ROS node parameters.
 unsigned int loop_count = 0;
@@ -77,6 +84,12 @@ CallbackWaypoints(avt_341::msg::PathPtr msg_rcvd_path){
     rcvd_path = true;
 }
 
+void
+CallbackWaypoint(avt_341::msg::PoseStampedPtr msg_rcvd_waypoint_pose){
+    msg_waypoint_pose = *msg_rcvd_waypoint_pose;
+    rcvd_waypoint = true;
+}
+
 /**
  * @brief Store the global path and mark it as received.
  *
@@ -104,6 +117,9 @@ UpdateState(avt_341::planning::DwaPlanner& planner) {
     tf2::Matrix3x3 rotation(orientation);
     rotation.getRPY(roll, pitch, yaw);
 
+    state_x = msg_odom.pose.pose.position.x;
+    state_y = msg_odom.pose.pose.position.y;
+
     // Update the AGV state.
     planner.SetState(
         msg_odom.pose.pose.position.x,
@@ -119,11 +135,23 @@ UpdateGoal(avt_341::planning::DwaPlanner& planner) {
     float goal_x, goal_y;
 
     if (planner.GetUseGlobalPath()) {
-        // Set the goal to the last pose in the global path.
-        // TODO: Integrate with the mission planner to pass the next mission waypoint as goal.
-        goal_x = msg_path.poses.back().pose.position.x;
-        goal_y = msg_path.poses.back().pose.position.y;
-      
+        if (use_current_waypoint && rcvd_waypoint) {
+            goal_x = msg_waypoint_pose.pose.position.x;
+            goal_y = msg_waypoint_pose.pose.position.y;
+        } else {
+            double min_distance = global_path_lookahead;
+            int optimal_pose_index = 0;
+            for (int i = 0; i < int(msg_path.poses.size()); ++i) {
+                auto curr_distance = std::hypot(state_x - msg_path.poses[i].pose.position.x, state_y - msg_path.poses[i].pose.position.y);
+                if(curr_distance > min_distance) { optimal_pose_index = i; break; }
+            }
+
+            // Set the goal to the last pose in the global path.
+            // TODO: Integrate with the mission planner to pass the next mission waypoint as goal.
+            goal_x = msg_path.poses[optimal_pose_index].pose.position.x;
+            goal_y = msg_path.poses[optimal_pose_index].pose.position.y;
+        }
+
         // Initialise a new global path in the planner and populate it with the global path poses.
         avt_341::planning::DwaPath path;
         for (auto& pose : msg_path.poses) {
@@ -132,10 +160,15 @@ UpdateGoal(avt_341::planning::DwaPlanner& planner) {
 
         planner.SetGlobalPath(path);
     } else {
-        // Set the goal to the last waypoint in the list of waypoints.
-        // TODO: Integrate with the mission planner to pass the next mission waypoint as goal.
-        goal_x = msg_waypoints.poses.back().pose.position.x;
-        goal_y = msg_waypoints.poses.back().pose.position.y;
+        if (use_current_waypoint && rcvd_waypoint) {
+            goal_x = msg_waypoint_pose.pose.position.x;
+            goal_y = msg_waypoint_pose.pose.position.y;
+        } else {
+            // Set the goal to the last waypoint in the list of waypoints.
+            // TODO: Integrate with the mission planner to pass the next mission waypoint as goal.
+            goal_x = msg_waypoints.poses.back().pose.position.x;
+            goal_y = msg_waypoints.poses.back().pose.position.y;
+        }
     }
 
     // Set the planner goal waypoint.
@@ -175,6 +208,7 @@ main(int argc, char* argv[]) {
     auto sub_grid_occ = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, CallbackGridOccupancy);
     auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, CallbackGridSegmentation);
     auto sub_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, CallbackPath);
+    auto sub_waypoint = node->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CallbackWaypoint);
     auto sub_waypoints = node->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, CallbackWaypoints);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
@@ -217,6 +251,8 @@ main(int argc, char* argv[]) {
     int thresh_seg; node->get_parameter("~dwa_thresh_seg", thresh_seg, 100);
     float w_cost_dev; node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75f);
     bool print_summary; node->get_parameter("~dwa_print_summary", print_summary, false);
+    node->get_parameter("~dwa_use_current_waypoint", use_current_waypoint, false);
+    node->get_parameter("~dwa_global_path_lookahead", global_path_lookahead, 15.0);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
     avt_341::planning::DwaPlanner planner;
