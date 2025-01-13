@@ -99,6 +99,13 @@ class DwaState {
             msg_posestamped.pose.position.x = x_;
             msg_posestamped.pose.position.y = y_;
 
+            avt_341::msg_tf::Quaternion quaternion;
+            quaternion.setRPY(0.0, 0.0, yaw_);
+            msg_posestamped.pose.orientation.x = quaternion.x();
+            msg_posestamped.pose.orientation.y = quaternion.y();
+            msg_posestamped.pose.orientation.z = quaternion.z();
+            msg_posestamped.pose.orientation.w = quaternion.w();
+
             return msg_posestamped;
         }
 
