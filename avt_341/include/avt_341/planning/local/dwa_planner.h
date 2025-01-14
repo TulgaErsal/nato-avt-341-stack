@@ -37,8 +37,6 @@ class DwaCost {
             cost_.resize(i);
         }
 
-        ~DwaCost() {}
-
         void Add(int i, double cost) { cost_[i] = cost; }
 
         double GetCost(int i) const { return cost_[i]; }
@@ -69,8 +67,6 @@ class DwaState {
 
         DwaState(double x, double y, double yaw, double speed, double speed_ang) :
         x_(x), y_(y), yaw_(yaw), speed_(speed), speed_ang_(speed_ang) {}
-
-        ~DwaState() {}
 
         double GetX() { return x_; }
 
@@ -121,8 +117,6 @@ class DwaTrajectory {
     public:
         DwaTrajectory() {}
 
-        ~DwaTrajectory() {}
-
         void Add(DwaState state) { states_.push_back(state); }
 
         int GetNumberOfStates() { return (int)states_.size(); }
@@ -158,8 +152,6 @@ class DwaPath {
     public:
         DwaPath() {}
 
-        ~DwaPath() {}
-
         void
         Add(double x, double y) {
             x_.push_back(x);
@@ -191,8 +183,6 @@ class DwaObstacles {
     public:
         DwaObstacles() {}
 
-        ~DwaObstacles() {}
-
         void Add(double x, double y) {
             x_.push_back(x);
             y_.push_back(y);
@@ -216,8 +206,6 @@ class DwaObstacles {
 class DwaCells {
     public:
         DwaCells() {}
-
-        ~DwaCells() {}
 
         void Add(double x, double y, double cost) {
             x_.push_back(x);
@@ -243,8 +231,6 @@ class DwaPlanner {
 
     public:
         DwaPlanner();
-
-        ~DwaPlanner();
 
         void Plan();
 

@@ -5,8 +5,6 @@ namespace planning {
 
 DwaPlanner::DwaPlanner() {}
 
-DwaPlanner::~DwaPlanner() {}
-
 DwaWindow
 DwaPlanner::EvaluateDynamicWindow() {
     double model_speed_lin_min = state_.GetSpeed() - accel_max_ * time_span_;
