@@ -95,7 +95,6 @@ DwaPlanner::Plan() {
     auto cost_dev = DwaCost(window_size);
 
     // Iterate through the speed/yaw rate pairs in the dynamic window
-    #pragma omp parallel for schedule(static)
     for (int k = 0; k < (int)search_actions.size(); k++) {
         int i = search_actions[k].x;
         int j = search_actions[k].y;
@@ -244,7 +243,6 @@ DwaPlanner::EvaluateCostObstacle(DwaTrajectory traj) {
     // Initialise the minimum distance to an obstacle to a very large value.
     float d_min = std::numeric_limits<float>::infinity();
 
-    #pragma omp parallel for schedule(static) collapse(2)
     for (int j = 0; j < traj.GetNumberOfStates(); j++) {
         for (int i = 0; i < obs_occ_.GetNumberOfObstacles(); ++i) {
             float d = obs_occ_.GetDistance(i, traj.GetState(j).GetX(), traj.GetState(j).GetY());
@@ -321,7 +319,6 @@ DwaPlanner::GetObstacles() {
         dis_cutoff = collision_radius_ + 0.75f * (speed_lin_max_ * time_span_ + 0.5 * accel_max_ * time_span_ * time_span_);
     }
 
-    #pragma omp parallel for schedule(static) collapse(2)
 	for (int i = 0; i < grid_occ_width_; ++i) {
         for (int j = 0; j < grid_occ_height_; ++j) {
             float x = grid_occ_origin_x_ + (i + 0.5f) * grid_occ_res_;
