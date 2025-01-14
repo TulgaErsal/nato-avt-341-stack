@@ -13,9 +13,9 @@ class Obstacles {
 
     void Add(double x, double y);
 
-    int GetNumberOfObstacles();
+    size_t GetNumberOfObstacles() const;
 
-    double GetDistance(int i, double x, double y);
+    double GetDistance(int i, double x, double y) const;
 
     void Clear();
 

@@ -7,7 +7,7 @@
  * \contact dsirangelo@aarhusdynamics.com
  *
  * \date 1/23/2023
-*/
+ */
 
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -46,8 +46,7 @@ unsigned int loop_count = 0;
  *
  * @param msg_rcvd_odom Pointer to the odometry ROS nav_msgs/Odometry message.
  */
-void
-CallbackOdometry(avt_341::msg::OdometryPtr msg_rcvd_odom) {
+void CallbackOdometry(avt_341::msg::OdometryPtr msg_rcvd_odom) {
     msg_odom = *msg_rcvd_odom;
     rcvd_odom = true;
 }
@@ -55,10 +54,10 @@ CallbackOdometry(avt_341::msg::OdometryPtr msg_rcvd_odom) {
 /**
  * @brief Store the occupancy grid and mark it as received.
  *
- * @param msg_rcvd_grid Pointer to the occupancy grid ROS nav_msgs/OccupancyGrid message.
+ * @param msg_rcvd_grid Pointer to the occupancy grid ROS nav_msgs/OccupancyGrid
+ * message.
  */
-void
-CallbackGridOccupancy(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
+void CallbackGridOccupancy(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
     msg_grid_occ = *msg_rcvd_grid;
     rcvd_grid_occ = true;
 }
@@ -66,10 +65,10 @@ CallbackGridOccupancy(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
 /**
  * @brief Store the segmentation grid and mark it as received.
  *
- * @param msg_rcvd_grid Pointer to the segmentation grid ROS nav_msgs/OccupancyGrid message.
+ * @param msg_rcvd_grid Pointer to the segmentation grid ROS
+ * nav_msgs/OccupancyGrid message.
  */
-void
-CallbackGridSegmentation(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
+void CallbackGridSegmentation(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
     msg_grid_seg = *msg_rcvd_grid;
     rcvd_grid_seg = true;
 }
@@ -77,16 +76,15 @@ CallbackGridSegmentation(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
 /**
  * @brief Store the navigation waypoints and mark them as received.
  *
- * @param msg_rcvd_path Pointer to the navigation waypoints ROS nav_msgs/Path message.
+ * @param msg_rcvd_path Pointer to the navigation waypoints ROS nav_msgs/Path
+ * message.
  */
-void
-CallbackWaypoints(avt_341::msg::PathPtr msg_rcvd_path){
+void CallbackWaypoints(avt_341::msg::PathPtr msg_rcvd_path) {
     msg_waypoints = *msg_rcvd_path;
     rcvd_path = true;
 }
 
-void
-CallbackWaypoint(avt_341::msg::PoseStampedPtr msg_rcvd_waypoint_pose){
+void CallbackWaypoint(avt_341::msg::PoseStampedPtr msg_rcvd_waypoint_pose) {
     msg_waypoint_pose = *msg_rcvd_waypoint_pose;
     rcvd_waypoint = true;
 }
@@ -96,21 +94,17 @@ CallbackWaypoint(avt_341::msg::PoseStampedPtr msg_rcvd_waypoint_pose){
  *
  * @param msg_rcvd_path Pointer to the global path ROS nav_msgs/Path message.
  */
-void
-CallbackPath(avt_341::msg::PathPtr msg_rcvd_path) {
+void CallbackPath(avt_341::msg::PathPtr msg_rcvd_path) {
     msg_path = *msg_rcvd_path;
     rcvd_path = true;
 }
 
-void
-UpdateState(avt_341::planning::dwa::Planner& planner) {
+void UpdateState(avt_341::planning::dwa::Planner& planner) {
     // Initialise the pose orientation quaternion.
-    tf2::Quaternion orientation(
-        msg_odom.pose.pose.orientation.x,
-        msg_odom.pose.pose.orientation.y,
-        msg_odom.pose.pose.orientation.z,
-        msg_odom.pose.pose.orientation.w
-    );
+    tf2::Quaternion orientation(msg_odom.pose.pose.orientation.x,
+                                msg_odom.pose.pose.orientation.y,
+                                msg_odom.pose.pose.orientation.z,
+                                msg_odom.pose.pose.orientation.w);
 
     // Get the rotation matrix from the quaternion.
     double roll, pitch, yaw;
@@ -121,51 +115,56 @@ UpdateState(avt_341::planning::dwa::Planner& planner) {
     state_y = msg_odom.pose.pose.position.y;
 
     // Update the AGV state.
-    planner.SetState(
-        msg_odom.pose.pose.position.x,
-        msg_odom.pose.pose.position.y,
-        yaw,
-        msg_odom.twist.twist.linear.x,
-        msg_odom.twist.twist.angular.z
-    );
+    planner.SetState(msg_odom.pose.pose.position.x,
+                     msg_odom.pose.pose.position.y,
+                     yaw,
+                     msg_odom.twist.twist.linear.x,
+                     msg_odom.twist.twist.angular.z);
 }
 
-void
-UpdateGoal(avt_341::planning::dwa::Planner& planner) {
+void UpdateGoal(avt_341::planning::dwa::Planner& planner) {
     double goal_x, goal_y;
 
-    if (planner.GetUseGlobalPath()) {
-        if (use_current_waypoint && rcvd_waypoint) {
+    if(planner.GetUseGlobalPath()) {
+        if(use_current_waypoint && rcvd_waypoint) {
             goal_x = msg_waypoint_pose.pose.position.x;
             goal_y = msg_waypoint_pose.pose.position.y;
         } else {
             double min_distance = global_path_lookahead;
             int optimal_pose_index = 0;
-            for (int i = 0; i < int(msg_path.poses.size()); ++i) {
-                auto curr_distance = std::hypot(state_x - msg_path.poses[i].pose.position.x, state_y - msg_path.poses[i].pose.position.y);
-                if(curr_distance > min_distance) { optimal_pose_index = i; break; }
+            for(int i = 0; i < int(msg_path.poses.size()); ++i) {
+                auto curr_distance =
+                    std::hypot(state_x - msg_path.poses[i].pose.position.x,
+                               state_y - msg_path.poses[i].pose.position.y);
+                if(curr_distance > min_distance) {
+                    optimal_pose_index = i;
+                    break;
+                }
             }
 
             // Set the goal to the last pose in the global path.
-            // TODO: Integrate with the mission planner to pass the next mission waypoint as goal.
+            // TODO: Integrate with the mission planner to pass the next mission
+            // waypoint as goal.
             goal_x = msg_path.poses[optimal_pose_index].pose.position.x;
             goal_y = msg_path.poses[optimal_pose_index].pose.position.y;
         }
 
-        // Initialise a new global path in the planner and populate it with the global path poses.
+        // Initialise a new global path in the planner and populate it with the
+        // global path poses.
         avt_341::planning::dwa::Path path;
-        for (auto& pose : msg_path.poses) {
+        for(auto& pose : msg_path.poses) {
             path.Add(pose.pose.position.x, pose.pose.position.y);
         }
 
         planner.SetGlobalPath(path);
     } else {
-        if (use_current_waypoint && rcvd_waypoint) {
+        if(use_current_waypoint && rcvd_waypoint) {
             goal_x = msg_waypoint_pose.pose.position.x;
             goal_y = msg_waypoint_pose.pose.position.y;
         } else {
             // Set the goal to the last waypoint in the list of waypoints.
-            // TODO: Integrate with the mission planner to pass the next mission waypoint as goal.
+            // TODO: Integrate with the mission planner to pass the next mission
+            // waypoint as goal.
             goal_x = msg_waypoints.poses.back().pose.position.x;
             goal_y = msg_waypoints.poses.back().pose.position.y;
         }
@@ -175,9 +174,8 @@ UpdateGoal(avt_341::planning::dwa::Planner& planner) {
     planner.SetGoal(goal_x, goal_y);
 }
 
-void
-UpdateGrids(avt_341::planning::dwa::Planner& planner) {
-    if (rcvd_grid_occ) {
+void UpdateGrids(avt_341::planning::dwa::Planner& planner) {
+    if(rcvd_grid_occ) {
         planner.SetOccupancyGridWidth(msg_grid_occ.info.width);
         planner.SetOccupancyGridHeight(msg_grid_occ.info.height);
         planner.SetOccupancyGridOriginX(msg_grid_occ.info.origin.position.x);
@@ -186,74 +184,142 @@ UpdateGrids(avt_341::planning::dwa::Planner& planner) {
         planner.SetOccupancyGridData(msg_grid_occ.data);
     }
 
-    if (rcvd_grid_seg) {
-        // TODO: Add support for segmentation grids differing in size from the occupancy grid.
+    if(rcvd_grid_seg) {
+        // TODO: Add support for segmentation grids differing in size from the
+        // occupancy grid.
         planner.SetSegmentationGridData(msg_grid_seg.data);
     }
 }
 
-void ResetCallback(avt_341::msg::StringPtr msg){
-  if(msg->data.find(avt_341::node::NodeType::LocalPlanner) != std::string::npos){
-    reset_called = true;
-  }
+void ResetCallback(avt_341::msg::StringPtr msg) {
+    if(msg->data.find(avt_341::node::NodeType::LocalPlanner) !=
+       std::string::npos) {
+        reset_called = true;
+    }
 }
 
-int
-main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
     // Initialize ROS node.
-    auto node = avt_341::node::init_node(argc, argv, "avt_341_dwa_planner_node");
+    auto node =
+        avt_341::node::init_node(argc, argv, "avt_341_dwa_planner_node");
 
     // Create node subscribers.
-    auto sub_odom = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, CallbackOdometry);
-    auto sub_grid_occ = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, CallbackGridOccupancy);
-    auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, CallbackGridSegmentation);
-    auto sub_path = node->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, CallbackPath);
-    auto sub_waypoint = node->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CallbackWaypoint);
-    auto sub_waypoints = node->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, CallbackWaypoints);
-    auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-    auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+    auto sub_odom =
+        node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",
+                                                          10,
+                                                          CallbackOdometry);
+    auto sub_grid_occ = node->create_subscription<avt_341::msg::OccupancyGrid>(
+        "avt_341/occupancy_grid",
+        10,
+        CallbackGridOccupancy);
+    auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>(
+        "avt_341/segmentation_grid",
+        10,
+        CallbackGridSegmentation);
+    auto sub_path =
+        node->create_subscription<avt_341::msg::Path>("avt_341/global_path",
+                                                      10,
+                                                      CallbackPath);
+    auto sub_waypoint = node->create_subscription<avt_341::msg::PoseStamped>(
+        "avt_341/current_waypoint",
+        10,
+        CallbackWaypoint);
+    auto sub_waypoints =
+        node->create_subscription<avt_341::msg::Path>("avt_341/waypoints",
+                                                      10,
+                                                      CallbackWaypoints);
+    auto reset_sub =
+        node->create_subscription<avt_341::msg::String>("avt_341/reset",
+                                                        10,
+                                                        ResetCallback);
+    auto reset_ack_pub =
+        node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
     // Create node publishers.
-    auto pub_path = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
-    auto pub_ctrl_speed = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
-    auto pub_ctrl_steer = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 10);
-    auto pub_ctrl_drive = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 10);
-    auto pub_markers = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/markers", 10);
+    auto pub_path =
+        node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
+    auto pub_ctrl_speed =
+        node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",
+                                                      10);
+    auto pub_ctrl_steer =
+        node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 10);
+    auto pub_ctrl_drive =
+        node->create_publisher<avt_341::msg::AckermannDriveStamped>(
+            "avt_341/drive",
+            10);
+    auto pub_markers =
+        node->create_publisher<avt_341::msg::MarkerArray>("avt_341/markers",
+                                                          10);
 
     // Declare and read node parameters from the ROS parameter server.
-    double wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72);
-    double speed_lin_min; node->get_parameter("~dwa_speed_lin_min", speed_lin_min, 0.15);
-    double speed_lin_max; node->get_parameter("~dwa_speed_lin_max", speed_lin_max, 4.0);
-    int speed_lin_steps; node->get_parameter("~dwa_speed_lin_steps", speed_lin_steps, 10);
-    double accel_max; node->get_parameter("~dwa_accel_max", accel_max, 3.0);
-    double speed_ang_min; node->get_parameter("~dwa_speed_ang_min", speed_ang_min, -0.58);
-    double speed_ang_max; node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58);
-    int speed_ang_steps; node->get_parameter("~dwa_speed_ang_steps", speed_ang_steps, 40);
-    double ang_accel_max; node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0);
-    double lat_accel_max; node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81);
-    std::string horizon; node->get_parameter("~dwa_horizon", horizon, std::string("adaptive"));
-    double time_span_min; node->get_parameter("~dwa_time_span_min", time_span_min, 2.5);
-    double time_span_max; node->get_parameter("~dwa_time_span_max", time_span_max, 10.0);
-    double time_span_var; node->get_parameter("~dwa_time_span_var", time_span_var, 4.5);
-    double time_span_gain; node->get_parameter("~dwa_time_span_gain", time_span_gain, 1.1);
-    double time_step_min; node->get_parameter("~dwa_time_step_min", time_step_min, 0.2);
-    double w_cost_goal; node->get_parameter("~dwa_w_cost_goal", w_cost_goal, 1.0);
-    double w_cost_head; node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001);
-    int thresh_obs; node->get_parameter("~dwa_thresh_obs", thresh_obs, 0);
-    double collision_radius; node->get_parameter("~dwa_collision_radius", collision_radius, 2.25);
-    std::string obs_search; node->get_parameter("~dwa_obs_search", obs_search, std::string("fixed"));
-    double search_radius; node->get_parameter("~dwa_search_radius", search_radius, 10.0);
-    double w_cost_obs; node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5);
-    double w_cost_speed; node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0);
-    bool use_global_path; node->get_parameter("~dwa_use_global_path", use_global_path, false);
-    double w_cost_path; node->get_parameter("~dwa_w_cost_path", w_cost_path, 0.0);
-    bool use_segmentation; node->get_parameter("~dwa_use_segmentation", use_segmentation, false);
-    double w_cost_seg; node->get_parameter("~dwa_w_cost_seg", w_cost_seg, 0.0);
-    int thresh_seg; node->get_parameter("~dwa_thresh_seg", thresh_seg, 100);
-    double w_cost_dev; node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75);
-    bool print_summary; node->get_parameter("~dwa_print_summary", print_summary, false);
-    node->get_parameter("~dwa_use_current_waypoint", use_current_waypoint, false);
-    node->get_parameter("~dwa_global_path_lookahead", global_path_lookahead, 15.0);
+    double wheelbase;
+    node->get_parameter("~dwa_wheelbase", wheelbase, 2.72);
+    double speed_lin_min;
+    node->get_parameter("~dwa_speed_lin_min", speed_lin_min, 0.15);
+    double speed_lin_max;
+    node->get_parameter("~dwa_speed_lin_max", speed_lin_max, 4.0);
+    int speed_lin_steps;
+    node->get_parameter("~dwa_speed_lin_steps", speed_lin_steps, 10);
+    double accel_max;
+    node->get_parameter("~dwa_accel_max", accel_max, 3.0);
+    double speed_ang_min;
+    node->get_parameter("~dwa_speed_ang_min", speed_ang_min, -0.58);
+    double speed_ang_max;
+    node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58);
+    int speed_ang_steps;
+    node->get_parameter("~dwa_speed_ang_steps", speed_ang_steps, 40);
+    double ang_accel_max;
+    node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0);
+    double lat_accel_max;
+    node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81);
+    std::string horizon;
+    node->get_parameter("~dwa_horizon", horizon, std::string("adaptive"));
+    double time_span_min;
+    node->get_parameter("~dwa_time_span_min", time_span_min, 2.5);
+    double time_span_max;
+    node->get_parameter("~dwa_time_span_max", time_span_max, 10.0);
+    double time_span_var;
+    node->get_parameter("~dwa_time_span_var", time_span_var, 4.5);
+    double time_span_gain;
+    node->get_parameter("~dwa_time_span_gain", time_span_gain, 1.1);
+    double time_step_min;
+    node->get_parameter("~dwa_time_step_min", time_step_min, 0.2);
+    double w_cost_goal;
+    node->get_parameter("~dwa_w_cost_goal", w_cost_goal, 1.0);
+    double w_cost_head;
+    node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001);
+    int thresh_obs;
+    node->get_parameter("~dwa_thresh_obs", thresh_obs, 0);
+    double collision_radius;
+    node->get_parameter("~dwa_collision_radius", collision_radius, 2.25);
+    std::string obs_search;
+    node->get_parameter("~dwa_obs_search", obs_search, std::string("fixed"));
+    double search_radius;
+    node->get_parameter("~dwa_search_radius", search_radius, 10.0);
+    double w_cost_obs;
+    node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5);
+    double w_cost_speed;
+    node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0);
+    bool use_global_path;
+    node->get_parameter("~dwa_use_global_path", use_global_path, false);
+    double w_cost_path;
+    node->get_parameter("~dwa_w_cost_path", w_cost_path, 0.0);
+    bool use_segmentation;
+    node->get_parameter("~dwa_use_segmentation", use_segmentation, false);
+    double w_cost_seg;
+    node->get_parameter("~dwa_w_cost_seg", w_cost_seg, 0.0);
+    int thresh_seg;
+    node->get_parameter("~dwa_thresh_seg", thresh_seg, 100);
+    double w_cost_dev;
+    node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75);
+    bool print_summary;
+    node->get_parameter("~dwa_print_summary", print_summary, false);
+    node->get_parameter("~dwa_use_current_waypoint",
+                        use_current_waypoint,
+                        false);
+    node->get_parameter("~dwa_global_path_lookahead",
+                        global_path_lookahead,
+                        15.0);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
     avt_341::planning::dwa::Planner planner;
@@ -292,10 +358,11 @@ main(int argc, char* argv[]) {
     // Set the node spin rate to 50 Hz.
     avt_341::node::Rate rosrate(50.0f);
 
-    while (avt_341::node::ok()) {
-        if (msg_path.poses.size() > 0 && rcvd_odom && msg_grid_occ.data.size() > 0) {
-            if (use_segmentation && !(msg_grid_seg.data.size() > 0)) break;
-            // Update the planner with the latest information.            
+    while(avt_341::node::ok()) {
+        if(msg_path.poses.size() > 0 && rcvd_odom &&
+           msg_grid_occ.data.size() > 0) {
+            if(use_segmentation && !(msg_grid_seg.data.size() > 0)) break;
+            // Update the planner with the latest information.
             UpdateState(planner);
             UpdateGoal(planner);
             UpdateGrids(planner);
@@ -303,6 +370,7 @@ main(int argc, char* argv[]) {
             // Run the planning step.
             planner.Plan();
             auto trajectories = planner.GetTrajectories();
+            auto optimal_trajectory = planner.GetOptimalTrajectory();
 
             // Serialise and publish the local path.
             avt_341::msg::Path msg_path = planner.GetPlannedPathRos();
@@ -356,34 +424,35 @@ main(int argc, char* argv[]) {
                 msg_marker.pose.orientation.x = 0.0;
                 msg_marker.pose.orientation.x = 0.0;
                 msg_marker.pose.orientation.w = 1.0;
-                msg_marker.color.r = trajectories[i].GetCost() / planner.GetMaxCost();
-                msg_marker.color.g = 1.0 - trajectories[i].GetCost() / planner.GetMaxCost();
+                msg_marker.color.r =
+                    trajectories[i].GetTotalCost() / planner.GetMaxCost();
+                msg_marker.color.g =
+                    1.0 - trajectories[i].GetTotalCost() / planner.GetMaxCost();
                 msg_marker.color.b = 0.0;
-                msg_marker.color.a = 1.0 - 1.0 - trajectories[i].GetCost() / planner.GetMaxCost();
+                msg_marker.color.a = 1.0;//1.0 - 1.0 -
+                    //trajectories[i].GetTotalCost() / planner.GetMaxCost();
                 msg_marker.scale.x = 0.05;
                 msg_marker.scale.y = 1.0;
                 msg_marker.scale.z = 1.0;
-                
-                for (int ipose = 0; ipose < trajectories[i].GetNumberOfStates(); ++ipose) {
+
+                for(int ipose = 0; ipose < trajectories[i].GetNumberOfStates();
+                    ++ipose) {
                     avt_341::msg::Point point;
                     point.x = trajectories[i].GetState(ipose).GetX();
                     point.y = trajectories[i].GetState(ipose).GetY();
                     msg_marker.points.push_back(point);
-                    
                 }
                 msg_marker_array.markers.push_back(msg_marker);
-                
             }
             pub_markers->publish(msg_marker_array);
-
         }
 
-        if(reset_called){
-          planner.Reset();
-          avt_341::msg::String reset_ack_msg;
-          reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
-          reset_ack_pub->publish(reset_ack_msg);
-          reset_called = false;
+        if(reset_called) {
+            planner.Reset();
+            avt_341::msg::String reset_ack_msg;
+            reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
+            reset_ack_pub->publish(reset_ack_msg);
+            reset_called = false;
         }
 
         // Advance the sequence counter.

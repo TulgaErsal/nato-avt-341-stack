@@ -6,7 +6,6 @@
 
 #include <avt_341/avt_341_utils.h>
 #include <avt_341/node/ros_types.h>
-#include <avt_341/planning/local/dwa/cost.hpp>
 #include <avt_341/planning/local/dwa/dynamic_window.hpp>
 #include <avt_341/planning/local/dwa/obstacles.hpp>
 #include <avt_341/planning/local/dwa/path.hpp>
@@ -26,6 +25,8 @@ class Planner {
     double GetPlannedLinearSpeed();
 
     double GetPlannedAngularSpeed();
+
+    const Trajectory& GetOptimalTrajectory() const;
 
     avt_341::msg::Path GetPlannedPathRos();
 
@@ -118,9 +119,9 @@ class Planner {
 
     void Reset();
 
-    std::vector<Trajectory> GetTrajectories();
+    const std::vector<Trajectory>& GetTrajectories() const;
 
-    double GetMaxCost();
+    const double& GetMaxCost() const;
 
   private:
     void GetObstacles();
@@ -131,20 +132,6 @@ class Planner {
     PredictMotion(State state, double v, double thetadot, double time_step);
 
     Trajectory PredictTrajectory(double speed, double speed_ang);
-
-    double EvaluateCostGoal(Trajectory traj);
-
-    double EvaluateCostHeading(Trajectory traj);
-
-    double EvaluateCostObstacle(Trajectory traj);
-
-    double EvaluateCostSegmentation(Trajectory traj);
-
-    double EvaluateCostSpeed(Trajectory traj);
-
-    double EvaluateCostGlobalPath(Trajectory traj);
-
-    double EvaluateCostDeviation(Trajectory traj);
 
     template <typename T>
     std::vector<double> GetInterval(T start_in, T end_in, int num_in) {

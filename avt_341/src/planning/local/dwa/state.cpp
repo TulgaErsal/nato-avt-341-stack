@@ -13,11 +13,11 @@ State::State(double x, double y, double yaw, double speed, double speed_ang)
       speed_(speed),
       speed_ang_(speed_ang) {}
 
-double State::GetX() { return x_; }
+double State::GetX() const { return x_; }
 
 void State::SetX(double x) { x_ = x; }
 
-double State::GetY() { return y_; }
+double State::GetY() const { return y_; }
 
 void State::SetY(double y) { y_ = y; }
 

@@ -14,7 +14,7 @@ class Path {
 
     void Add(double x, double y);
 
-    int FindClosestDistance(double x, double y);
+    int FindClosestDistance(double x, double y) const;
 
   private:
     std::vector<double> x_;

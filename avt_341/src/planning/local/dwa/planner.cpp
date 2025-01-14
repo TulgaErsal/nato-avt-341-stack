@@ -10,15 +10,6 @@ void Planner::Plan() {
     // Update the obstacles collection based on the latest occupancy data.
     GetObstacles();
 
-    // Initialise a path/control output pair (defaults to an empty trajectory
-    // and zero speed).
-    Trajectory traj_best;
-    double speed_best = 0.0;
-
-    // Initialise the cost to infinity (any planned path not intersecting with
-    // an obstacle will have a lower cost than this).
-    double cost_min = std::numeric_limits<double>::infinity();
-
     // Update prediction time span
     double speed_norm = 1.0f / (speed_lin_max_ - speed_lin_min_) *
             (state_.GetSpeed() - speed_lin_max_) +
@@ -79,69 +70,69 @@ void Planner::Plan() {
     }
 
     int obs_size = obs_occ_.GetNumberOfObstacles();
-    int window_size = (int)search_actions.size();
-
-    auto cost_speed = Cost(window_size);
-    auto cost_obs = Cost(window_size);
-    auto cost_goal = Cost(window_size);
-    auto cost_head = Cost(window_size);
-    auto cost_seg = Cost(window_size);
-    auto cost_path = Cost(window_size);
-    auto cost_dev = Cost(window_size);
 
     trajectories_.clear();
+    trajectories_.resize(search_actions.size());
 
     // Iterate through the speed/yaw rate pairs in the dynamic window
-    for(int k = 0; k < (int)search_actions.size(); k++) {
+    for(size_t k = 0; k < search_actions.size(); k++) {
         int i = search_actions[k].x;
         int j = search_actions[k].y;
 
         // Compute the predicted trajectory for this speed/yaw rate pair by
         // integrating the motion model.
-        Trajectory traj =
+        trajectories_[k] =
             PredictTrajectory(candidate_speeds[i], candidate_steering_rates[j]);
 
-        trajectories_.push_back(traj);
+        // Evaluate the individual weighted cost terms of the objective
+        // function and compute the cumulative objective function value.
+        trajectories_[k].EvaluateGoalCost(w_cost_goal_, goal_x_, goal_y_);
 
-        // Evaluate the cost terms
-        cost_goal.Add(k, EvaluateCostGoal(traj));
-        cost_head.Add(k, EvaluateCostHeading(traj));
-        if(obs_size > 0) cost_obs.Add(k, EvaluateCostObstacle(traj));
-        cost_speed.Add(k, EvaluateCostSpeed(traj));
-        if(use_segmentation_) cost_seg.Add(k, EvaluateCostSegmentation(traj));
+        if(obs_size > 0)
+            trajectories_[k].EvaluateObstacleCost(w_cost_obs_,
+                                                  obs_occ_,
+                                                  collision_radius_);
 
-        // Evaluate the optional cost terms
-        // If at least one planning step was performed, use it to penalise
-        // deviations from the current path.
-        if(use_global_path_) cost_path.Add(k, EvaluateCostGlobalPath(traj));
-        if(has_plan_) cost_dev.Add(k, EvaluateCostDeviation(traj));
+        if(use_segmentation_)
+            trajectories_[k].EvaluateSegmentationCost(w_cost_seg_,
+                                                      grid_seg_data_,
+                                                      grid_occ_width_,
+                                                      grid_occ_height_,
+                                                      grid_occ_origin_x_,
+                                                      grid_occ_origin_y_,
+                                                      grid_occ_res_,
+                                                      thresh_seg_);
+
+        trajectories_[k].EvaluateHeadingCost(w_cost_head_, goal_x_, goal_y_);
+
+        trajectories_[k].EvaluateSpeedCost(w_cost_speed_, speed_lin_min_);
+
+        if(use_global_path_)
+            trajectories_[k].EvaluateGlobalPathCost(w_cost_global_path_,
+                                                    global_path_);
+
+        if(has_plan_)
+            trajectories_[k].EvaluateDeviationCost(w_cost_dev_, traj_last_);
+
+        trajectories_[k].EvaluateTotalCost();
     }
 
     // Find the minimum of the objective function.
-    // Assume the initial speed/yaw pair is optimal
     int k_min = 0;
-    for(int k = 0; k < window_size; ++k) {
-        double cost = w_cost_goal_ * cost_goal.GetCost(k) +
-            w_cost_head_ * cost_head.GetCost(k) +
-            w_cost_speed_ * cost_speed.GetCost(k);
-
-        if(obs_size > 0) cost += w_cost_obs_ * cost_obs.GetCost(k);
-        if(use_segmentation_) cost += w_cost_seg_ * cost_seg.GetCost(k);
-        if(use_global_path_ > 0)
-            cost += w_cost_global_path_ * cost_path.GetCost(k);
-        if(has_plan_) cost += w_cost_dev_ * cost_dev.GetCost(k);
-
-        trajectories_[k].SetCost(cost);
+    double minimum_cost = std::numeric_limits<double>::infinity();
+    // max_cost_ = -std::numeric_limits<double>::infinity();
+    for(size_t k = 0; k < search_actions.size(); ++k) {
+        auto cost = trajectories_[k].GetTotalCost();
 
         if(cost > max_cost_) { max_cost_ = cost; }
 
-        if(cost_min >= cost) {
-            cost_min = cost;
+        if(cost <= minimum_cost) {
+            minimum_cost = cost;
             k_min = k;
         }
     }
 
-    if(cost_min == std::numeric_limits<double>::infinity()) {
+    if(minimum_cost == std::numeric_limits<double>::infinity()) {
         std::cout << "WARNING: ALL PLANNED PATHS INTERSECT WITH AT LEAST ONE "
                      "OBSTACLE!\n";
     }
@@ -152,8 +143,7 @@ void Planner::Plan() {
     // trajectories in memory.
     int i_min = search_actions[k_min].x;
     int j_min = search_actions[k_min].y;
-    traj_best_ = PredictTrajectory(candidate_speeds[i_min],
-                                   candidate_steering_rates[j_min]);
+    traj_best_ = trajectories_[k_min];
     speed_lin_best_ = candidate_speeds[i_min];
     speed_ang_best_ = candidate_steering_rates[j_min];
 
@@ -162,12 +152,13 @@ void Planner::Plan() {
     has_plan_ = true;
     traj_last_ = traj_best_;
 
+    /*
     // Print summary of the planning step
     if(print_summary_) {
         std::cout << std::fixed << std::setfill('0')
                   << "\nDWA PLANNER RESULTS\n===================\nObjective "
                      "function >> OF: "
-                  << cost_min << "\nDynamic window:\n\t"
+                  << minimum_cost << "\nDynamic window:\n\t"
                   << "\n\tLSMIN:\t" << dynamic_window_.GetMinimumSpeed()
                   << "\n\tLSMAX:\t" << dynamic_window_.GetMaximumSpeed()
                   << "\n\tYRMIN:\t" << dynamic_window_.GetMinimumSteeringRate()
@@ -200,11 +191,14 @@ void Planner::Plan() {
                   << cost_dev.GetCost(k_min) << "] {"
                   << "}\n";
     }
+    */
 }
 
 double Planner::GetPlannedLinearSpeed() { return speed_lin_best_; }
 
 double Planner::GetPlannedAngularSpeed() { return speed_ang_best_; }
+
+const Trajectory& Planner::GetOptimalTrajectory() const { return traj_best_; }
 
 avt_341::msg::Path Planner::GetPlannedPathRos() {
     return traj_best_.ToRosPath();
@@ -384,9 +378,11 @@ void Planner::SetVehicleWheelbase(double wheelbase) { wheelbase_ = wheelbase; }
 
 void Planner::Reset() { traj_best_.Reset(); }
 
-std::vector<Trajectory> Planner::GetTrajectories() { return trajectories_; }
+const std::vector<Trajectory>& Planner::GetTrajectories() const {
+    return trajectories_;
+}
 
-double Planner::GetMaxCost() { return max_cost_; }
+const double& Planner::GetMaxCost() const { return max_cost_; }
 
 void Planner::GetObstacles() {
     // Clear the previous obstacle list.
@@ -446,10 +442,10 @@ State Planner::PredictMotion(State state,
 
 Trajectory Planner::PredictTrajectory(double speed, double speed_ang) {
     // Initialise an empty trajectory.
-    Trajectory traj;
+    Trajectory trajectory;
 
     // Add current pose to the trajectory.
-    traj.Add(state_);
+    trajectory.Add(state_);
 
     // Predict the AGV motion through the current horizon starting from the
     // current pose.
@@ -458,97 +454,10 @@ Trajectory Planner::PredictTrajectory(double speed, double speed_ang) {
     while(time < time_span_) {
         state_curr = PredictMotion(state_curr, speed, speed_ang, time_step_);
         time += time_step_;
-        traj.Add(state_curr);
+        trajectory.Add(state_curr);
     }
 
-    return traj;
-}
-
-double Planner::EvaluateCostGoal(Trajectory traj) {
-    double dx = goal_x_ - traj.GetLastState().GetX();
-    double dy = goal_y_ - traj.GetLastState().GetY();
-
-    return std::hypot(dx, dy);
-}
-
-double Planner::EvaluateCostHeading(Trajectory traj) {
-    double dx = goal_x_ - traj.GetLastState().GetX();
-    double dy = goal_y_ - traj.GetLastState().GetY();
-
-    double error_angle = std::atan2(dy, dx);
-
-    double cost_angle = error_angle - traj.GetLastState().GetYaw();
-
-    return std::abs(std::atan2(std::sin(cost_angle), std::cos(cost_angle)));
-}
-
-double Planner::EvaluateCostObstacle(Trajectory traj) {
-    // Initialise the minimum distance to an obstacle to a very large value.
-    double d_min = std::numeric_limits<double>::infinity();
-
-    for(int j = 0; j < traj.GetNumberOfStates(); j++) {
-        for(int i = 0; i < obs_occ_.GetNumberOfObstacles(); ++i) {
-            double d = obs_occ_.GetDistance(i,
-                                            traj.GetState(j).GetX(),
-                                            traj.GetState(j).GetY());
-
-            if(d < d_min) { d_min = d; }
-        }
-    }
-
-    // Trajectories intersecting collision radii are significantly higher cost
-    // than others. Note that these must still yield a finite cost, as the
-    // planner must rely on the other terms to discern between all
-    // obstacles-intersecting trajectories.
-    if(d_min <= collision_radius_) {
-        return 1000.0f * (1 / (d_min * d_min * d_min));
-    }
-
-    return 1 / (d_min * d_min);
-}
-
-double Planner::EvaluateCostSegmentation(Trajectory traj) {
-    double segmentation_cost = 0.0;
-    for(int k = 0; k < traj.GetNumberOfStates(); k++) {
-        int i = (traj.GetState(k).GetX() - grid_occ_origin_x_) / grid_occ_res_ -
-            0.5f;
-        int j = (traj.GetState(k).GetY() - grid_occ_origin_y_) / grid_occ_res_ -
-            0.5f;
-        if(i < 0) continue;
-        if(j < 0) continue;
-        if(i >= grid_occ_width_) continue;
-        if(j >= grid_occ_height_) continue;
-        unsigned int ndx = j * grid_occ_width_ + i;
-        int cost = (int)grid_seg_data_[ndx];
-        if(cost > thresh_seg_) {
-            segmentation_cost = 1000000000.0;
-            return segmentation_cost;
-        }
-        segmentation_cost += cost;
-    }
-    return segmentation_cost;
-}
-
-double Planner::EvaluateCostSpeed(Trajectory traj) {
-    return std::max(speed_lin_max_ - traj.GetLastState().GetSpeed(), 0.0);
-}
-
-double Planner::EvaluateCostGlobalPath(Trajectory traj) {
-    double cost_path = 0.0f;
-
-    for(int i = 0; i < traj.GetNumberOfStates(); ++i) {
-        cost_path += global_path_.FindClosestDistance(traj.GetState(i).GetX(),
-                                                      traj.GetState(i).GetY());
-    }
-
-    return cost_path;
-}
-
-double Planner::EvaluateCostDeviation(Trajectory traj) {
-    double dx = traj_last_.GetLastState().GetX() - traj.GetLastState().GetX();
-    double dy = traj_last_.GetLastState().GetY() - traj.GetLastState().GetY();
-
-    return std::hypot(dx, dy);
+    return trajectory;
 }
 
 int Planner::FindClosest(std::vector<double> const& v, int value) {

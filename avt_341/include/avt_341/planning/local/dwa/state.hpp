@@ -12,11 +12,11 @@ class State {
 
     State(double x, double y, double yaw, double speed, double speed_ang);
 
-    double GetX();
+    double GetX() const;
 
     void SetX(double x);
 
-    double GetY();
+    double GetY() const;
 
     void SetY(double y);
 

@@ -11,7 +11,7 @@ void Path::Add(double x, double y) {
     y_.push_back(y);
 }
 
-int Path::FindClosestDistance(double x, double y) {
+int Path::FindClosestDistance(double x, double y) const {
     double d_min = std::numeric_limits<double>::infinity();
 
     for(int i = 0; i < (int)x_.size(); ++i) {

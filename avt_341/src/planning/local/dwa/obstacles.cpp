@@ -11,9 +11,9 @@ void Obstacles::Add(double x, double y) {
     y_.push_back(y);
 }
 
-int Obstacles::GetNumberOfObstacles() { return (int)x_.size(); }
+size_t Obstacles::GetNumberOfObstacles() const { return x_.size(); }
 
-double Obstacles::GetDistance(int i, double x, double y) {
+double Obstacles::GetDistance(int i, double x, double y) const {
     return std::hypot(x - x_[i], y - y_[i]);
 }
 
