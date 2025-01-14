@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include <boost/algorithm/clamp.hpp>
+
 #include <avt_341/avt_341_utils.h>
 #include <avt_341/node/ros_types.h>
 #include <avt_341/planning/local/dwa/cost.hpp>
@@ -45,7 +47,7 @@ class Planner {
 
     void SetLateralAccelerationMax(double lat_accel_max);
 
-    void SetWindowTimeStepMin(double time_step_min);
+    void SetTimeStep(double time_step);
 
     void SetWindowTimeSpanMin(double time_span_min);
 
@@ -123,7 +125,7 @@ class Planner {
   private:
     void GetObstacles();
 
-    DynamicWindow EvaluateDynamicWindow();
+    void EvaluateDynamicWindow();
 
     State
     PredictMotion(State state, double v, double thetadot, double time_step);
@@ -181,7 +183,6 @@ class Planner {
     double ang_accel_max_;
     double lat_accel_max_;
     double time_step_;
-    double time_step_min_;
     double time_span_;
     double time_span_min_;
     double time_span_max_;
@@ -224,6 +225,7 @@ class Planner {
     bool print_summary_;
     std::vector<Trajectory> trajectories_;
     double max_cost_ = std::numeric_limits<double>::min();
+    DynamicWindow dynamic_window_;
 };
 
 } // namespace dwa

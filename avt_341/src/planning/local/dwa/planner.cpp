@@ -34,40 +34,44 @@ void Planner::Plan() {
         : time_span_min_;
     if(time_span_ > time_span_max_) { time_span_ = time_span_max_; }
 
-    time_step_ = time_step_min_;
+    boost::algorithm::clamp(time_span_, time_span_min_, time_span_max_);
 
-    // Evaluate the dynamic window based on the current AGV state.
-    DynamicWindow window = EvaluateDynamicWindow();
-
-    // Collect the speeds_lin/yaw rates.
-    std::vector<double> speeds_win_lin =
-        GetInterval(window.speed_min_, window.speed_max_, speed_lin_steps_);
-    std::vector<double> speeds_win_ang = GetInterval(window.speed_ang_min_,
-                                                     window.speed_ang_max_,
-                                                     speed_ang_steps_);
+    // Update the dynamic window based on the current vehicle state and collect
+    // the candidate speeds and steering rates based on the updated thresholds.
+    EvaluateDynamicWindow();
+    auto candidate_speeds = GetInterval(dynamic_window_.GetMinimumSpeed(),
+                                        dynamic_window_.GetMaximumSpeed(),
+                                        speed_lin_steps_);
+    auto candidate_steering_rates =
+        GetInterval(dynamic_window_.GetMinimumSteeringRate(),
+                    dynamic_window_.GetMaximumSteeringRate(),
+                    speed_ang_steps_);
 
     // Add a zero angular speed state to preserve the current heading.
     // Keep the angular speed vector sorted to allow for easier debugging.
-    if(!(std::find(speeds_win_ang.begin(), speeds_win_ang.end(), 0.0f) !=
-         speeds_win_ang.end())) {
-        speeds_win_ang.insert(speeds_win_ang.begin() +
-                                  FindClosest(speeds_win_ang, 0.0f),
-                              0.0f);
+    if(!(std::find(candidate_steering_rates.begin(),
+                   candidate_steering_rates.end(),
+                   0.0f) != candidate_steering_rates.end())) {
+        candidate_steering_rates.insert(
+            candidate_steering_rates.begin() +
+                FindClosest(candidate_steering_rates, 0.0f),
+            0.0f);
     }
 
     // Filter out trajectories which exceed the maximum lateral acceleration.
     bool not_ackermann = model_ != "ackermann";
     std::vector<utils::ivec2> search_actions;
-    for(int i = 0; i < (int)speeds_win_lin.size(); ++i) {
-        for(int j = 0; j < (int)speeds_win_ang.size(); ++j) {
+    for(int i = 0; i < (int)candidate_speeds.size(); ++i) {
+        for(int j = 0; j < (int)candidate_steering_rates.size(); ++j) {
             // Compute the lateral acceleration for a kinematic bicycle
             // model.
             // NOTE: Recall the angular speed variable does not hold
             // an angular speed, but rather a steering angle in the
             // Ackermann motion model for this planner.
             if(not_ackermann ||
-               !(std::abs((speeds_win_lin[i] * speeds_win_lin[i]) /
-                          (wheelbase_ / std::tan(speeds_win_ang[j]))) >
+               !(std::abs(
+                     (candidate_speeds[i] * candidate_speeds[i]) /
+                     (wheelbase_ / std::tan(candidate_steering_rates[j]))) >
                  lat_accel_max_)) {
                 search_actions.push_back(utils::ivec2(i, j));
             }
@@ -95,7 +99,7 @@ void Planner::Plan() {
         // Compute the predicted trajectory for this speed/yaw rate pair by
         // integrating the motion model.
         Trajectory traj =
-            PredictTrajectory(speeds_win_lin[i], speeds_win_ang[j]);
+            PredictTrajectory(candidate_speeds[i], candidate_steering_rates[j]);
 
         trajectories_.push_back(traj);
 
@@ -148,10 +152,10 @@ void Planner::Plan() {
     // trajectories in memory.
     int i_min = search_actions[k_min].x;
     int j_min = search_actions[k_min].y;
-    traj_best_ =
-        PredictTrajectory(speeds_win_lin[i_min], speeds_win_ang[j_min]);
-    speed_lin_best_ = speeds_win_lin[i_min];
-    speed_ang_best_ = speeds_win_ang[j_min];
+    traj_best_ = PredictTrajectory(candidate_speeds[i_min],
+                                   candidate_steering_rates[j_min]);
+    speed_lin_best_ = candidate_speeds[i_min];
+    speed_ang_best_ = candidate_steering_rates[j_min];
 
     // Mark the planner as executed at least once and save the optimal path to
     // penalise deviations in future planning steps.
@@ -164,12 +168,12 @@ void Planner::Plan() {
                   << "\nDWA PLANNER RESULTS\n===================\nObjective "
                      "function >> OF: "
                   << cost_min << "\nDynamic window:\n\t"
-                  << "\n\tLSMIN:\t" << window.speed_min_ << "\n\tLSMAX:\t"
-                  << window.speed_max_ << "\n\tYRMIN:\t"
-                  << window.speed_ang_min_ << "\n\tYRMAX:\t"
-                  << window.speed_ang_max_
-                  << "\nOptimal control >> LS: " << speeds_win_lin[i_min]
-                  << " YR: " << speeds_win_ang[j_min]
+                  << "\n\tLSMIN:\t" << dynamic_window_.GetMinimumSpeed()
+                  << "\n\tLSMAX:\t" << dynamic_window_.GetMaximumSpeed()
+                  << "\n\tYRMIN:\t" << dynamic_window_.GetMinimumSteeringRate()
+                  << "\n\tYRMAX:\t" << dynamic_window_.GetMaximumSteeringRate()
+                  << "\nOptimal control >> LS: " << candidate_speeds[i_min]
+                  << " YR: " << candidate_steering_rates[j_min]
                   << "\n\nNumber of obstacles: " << obs_size
                   << "\nCosts:\n\tName (Weight) "
                      "[Cost]\n\t=====================================\n\tGoal "
@@ -242,9 +246,7 @@ void Planner::SetLateralAccelerationMax(double lat_accel_max) {
     lat_accel_max_ = lat_accel_max;
 }
 
-void Planner::SetWindowTimeStepMin(double time_step_min) {
-    time_step_min_ = time_step_min;
-}
+void Planner::SetTimeStep(double time_step) { time_step_ = time_step; }
 
 void Planner::SetWindowTimeSpanMin(double time_span_min) {
     time_span_min_ = time_span_min;
@@ -419,18 +421,14 @@ void Planner::GetObstacles() {
     }
 }
 
-DynamicWindow Planner::EvaluateDynamicWindow() {
-    double model_speed_lin_min = state_.GetSpeed() - accel_max_ * time_span_;
-    double model_speed_lin_max = state_.GetSpeed() + accel_max_ * time_span_;
-    double model_speed_ang_min =
-        state_.GetAngularSpeed() - ang_accel_max_ * time_span_;
-    double model_speed_ang_max =
-        state_.GetAngularSpeed() + ang_accel_max_ * time_span_;
-
-    return DynamicWindow(std::max(speed_lin_min_, model_speed_lin_min),
-                         std::min(speed_lin_max_, model_speed_lin_max),
-                         std::max(speed_ang_min_, model_speed_ang_min),
-                         std::min(speed_ang_max_, model_speed_ang_max));
+void Planner::EvaluateDynamicWindow() {
+    dynamic_window_.Update(
+        std::max(speed_lin_min_, state_.GetSpeed() - accel_max_ * time_span_),
+        std::min(speed_lin_max_, state_.GetSpeed() + accel_max_ * time_span_),
+        std::max(speed_ang_min_,
+                 state_.GetAngularSpeed() - ang_accel_max_ * time_span_),
+        std::min(speed_ang_max_,
+                 state_.GetAngularSpeed() + ang_accel_max_ * time_span_));
 }
 
 State Planner::PredictMotion(State state,

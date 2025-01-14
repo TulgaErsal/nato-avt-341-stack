@@ -267,7 +267,7 @@ main(int argc, char* argv[]) {
     planner.SetWindowAccelerationMax(accel_max);
     planner.SetWindowAngularAccelerationMax(ang_accel_max);
     planner.SetLateralAccelerationMax(lat_accel_max);
-    planner.SetWindowTimeStepMin(time_step_min);
+    planner.SetTimeStep(time_step_min);
     planner.SetWindowTimeSpanMin(time_span_min);
     planner.SetWindowTimeSpanMax(time_span_max);
     planner.SetWindowTimeSpanVariable(time_span_var);

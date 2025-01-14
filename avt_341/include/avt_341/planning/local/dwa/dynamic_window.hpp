@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cassert>
+#include <limits>
+
 namespace avt_341 {
 namespace planning {
 namespace dwa {
@@ -8,15 +11,32 @@ class DynamicWindow {
   public:
     DynamicWindow();
 
-    DynamicWindow(double speed_min,
-                  double speed_max,
-                  double speed_ang_min,
-                  double speed_ang_max);
+    DynamicWindow(double minimum_speed,
+                  double maximum_speed,
+                  double minimum_steering_rate,
+                  double maximum_steering_rate);
 
-    double speed_min_;
-    double speed_max_;
-    double speed_ang_min_;
-    double speed_ang_max_;
+    void Update(double minimum_speed,
+                double maximum_speed,
+                double minimum_steering_rate,
+                double maximum_steering_rate);
+
+    const double& GetMinimumSpeed();
+
+    const double& GetMaximumSpeed();
+
+    const double& GetMinimumSteeringRate();
+
+    const double& GetMaximumSteeringRate();
+
+  private:
+    double minimum_speed_;
+
+    double maximum_speed_;
+
+    double minimum_steering_rate_;
+
+    double maximum_steering_rate_;
 };
 
 } // namespace dwa
