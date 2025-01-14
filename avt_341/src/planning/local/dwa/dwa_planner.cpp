@@ -9,10 +9,10 @@ DwaPlanner::~DwaPlanner() {}
 
 DwaWindow
 DwaPlanner::EvaluateDynamicWindow() {
-    float model_speed_lin_min = state_.GetSpeed() - accel_max_ * time_span_;
-    float model_speed_lin_max = state_.GetSpeed() + accel_max_ * time_span_;
-    float model_speed_ang_min = state_.GetAngularSpeed() - ang_accel_max_ * time_span_;
-    float model_speed_ang_max = state_.GetAngularSpeed() + ang_accel_max_ * time_span_;
+    double model_speed_lin_min = state_.GetSpeed() - accel_max_ * time_span_;
+    double model_speed_lin_max = state_.GetSpeed() + accel_max_ * time_span_;
+    double model_speed_ang_min = state_.GetAngularSpeed() - ang_accel_max_ * time_span_;
+    double model_speed_ang_max = state_.GetAngularSpeed() + ang_accel_max_ * time_span_;
 
     return DwaWindow(
         std::max(speed_lin_min_, model_speed_lin_min),
@@ -34,13 +34,13 @@ DwaPlanner::Plan() {
 
     // Initialise a path/control output pair (defaults to an empty trajectory and zero speed).
     DwaTrajectory traj_best;
-    float speed_best = 0.0;
+    double speed_best = 0.0;
 
     // Initialise the cost to infinity (any planned path not intersecting with an obstacle will have a lower cost than this).
-    float cost_min = std::numeric_limits<float>::infinity();
+    double cost_min = std::numeric_limits<double>::infinity();
 
     // Update prediction time span
-    float speed_norm = 1.0f / (speed_lin_max_ - speed_lin_min_) * (state_.GetSpeed() - speed_lin_max_ ) + 1.0f;
+    double speed_norm = 1.0f / (speed_lin_max_ - speed_lin_min_) * (state_.GetSpeed() - speed_lin_max_ ) + 1.0f;
     if (speed_norm > speed_lin_max_) {
         speed_norm = 1.0f;
     } else if (speed_norm <= speed_lin_min_) {
@@ -58,8 +58,8 @@ DwaPlanner::Plan() {
     DwaWindow window = EvaluateDynamicWindow();
 
     // Collect the speeds_lin/yaw rates.
-    std::vector<float> speeds_win_lin = GetInterval(window.speed_min_, window.speed_max_, speed_lin_steps_);
-    std::vector<float> speeds_win_ang = GetInterval(window.speed_ang_min_, window.speed_ang_max_, speed_ang_steps_);
+    std::vector<double> speeds_win_lin = GetInterval(window.speed_min_, window.speed_max_, speed_lin_steps_);
+    std::vector<double> speeds_win_ang = GetInterval(window.speed_ang_min_, window.speed_ang_max_, speed_ang_steps_);
 
     // Add a zero angular speed state to preserve the current heading.
     // Keep the angular speed vector sorted to allow for easier debugging.
@@ -123,7 +123,7 @@ DwaPlanner::Plan() {
     // Assume the initial speed/yaw pair is optimal
     int k_min = 0;
     for (int k = 0; k < window_size; ++k) {
-        float cost =
+        double cost =
             w_cost_goal_ * cost_goal.GetCost(k) +
             w_cost_head_ * cost_head.GetCost(k) +
             w_cost_speed_ * cost_speed.GetCost(k);
@@ -143,7 +143,7 @@ DwaPlanner::Plan() {
         }
     }
 
-    if (cost_min == std::numeric_limits<float>::infinity()) {
+    if (cost_min == std::numeric_limits<double>::infinity()) {
         std::cout << "WARNING: ALL PLANNED PATHS INTERSECT WITH AT LEAST ONE OBSTACLE!\n";
     }
 
@@ -195,7 +195,7 @@ DwaPlanner::Plan() {
     }
 }
 DwaState
-DwaPlanner::PredictMotion(DwaState state, float v, float steer, float time_step) {
+DwaPlanner::PredictMotion(DwaState state, double v, double steer, double time_step) {
     return DwaState(
         state.GetX() + v * std::cos(state.GetYaw()) * time_step,
         state.GetY() + v * std::sin(state.GetYaw()) * time_step,
@@ -206,7 +206,7 @@ DwaPlanner::PredictMotion(DwaState state, float v, float steer, float time_step)
 }
 
 DwaTrajectory
-DwaPlanner::PredictTrajectory(float speed, float speed_ang) {
+DwaPlanner::PredictTrajectory(double speed, double speed_ang) {
     // Initialise an empty trajectory.
     DwaTrajectory traj;
 
@@ -214,7 +214,7 @@ DwaPlanner::PredictTrajectory(float speed, float speed_ang) {
     traj.Add(state_);
 
     // Predict the AGV motion through the current horizon starting from the current pose.
-    float time = 0.0;
+    double time = 0.0;
     DwaState state_curr = state_;
     while (time < time_span_) {
         state_curr = PredictMotion(state_curr, speed, speed_ang, time_step_);
@@ -225,9 +225,9 @@ DwaPlanner::PredictTrajectory(float speed, float speed_ang) {
     return traj;
 }
 
-float
+double
 DwaPlanner::EvaluateCostSegmentation(DwaTrajectory traj) {
-    float segmentation_cost = 0.0;
+    double segmentation_cost = 0.0;
     for (int k = 0; k < traj.GetNumberOfStates(); k++) {
         int i = (traj.GetState(k).GetX() - grid_occ_origin_x_) / grid_occ_res_ - 0.5f;
         int j = (traj.GetState(k).GetY() - grid_occ_origin_y_) / grid_occ_res_ - 0.5f;
@@ -246,14 +246,14 @@ DwaPlanner::EvaluateCostSegmentation(DwaTrajectory traj) {
     return segmentation_cost;
 }
 
-float
+double
 DwaPlanner::EvaluateCostObstacle(DwaTrajectory traj) {
     // Initialise the minimum distance to an obstacle to a very large value.
-    float d_min = std::numeric_limits<float>::infinity();
+    double d_min = std::numeric_limits<double>::infinity();
 
     for (int j = 0; j < traj.GetNumberOfStates(); j++) {
         for (int i = 0; i < obs_occ_.GetNumberOfObstacles(); ++i) {
-            float d = obs_occ_.GetDistance(i, traj.GetState(j).GetX(), traj.GetState(j).GetY());
+            double d = obs_occ_.GetDistance(i, traj.GetState(j).GetX(), traj.GetState(j).GetY());
 
             if (d < d_min) {
                 d_min = d;
@@ -270,13 +270,13 @@ DwaPlanner::EvaluateCostObstacle(DwaTrajectory traj) {
     return 1 / (d_min * d_min);
 }
 
-float
-DwaPlanner::EvaluateCostSpeed(DwaTrajectory traj) { return std::max(speed_lin_max_ - traj.GetLastState().GetSpeed(), 0.0f); }
+double
+DwaPlanner::EvaluateCostSpeed(DwaTrajectory traj) { return std::max(speed_lin_max_ - traj.GetLastState().GetSpeed(), 0.0); }
 
-float
+double
 DwaPlanner::EvaluateCostHeading(DwaTrajectory traj) {
-    float dx = goal_x_ - traj.GetLastState().GetX();
-    float dy = goal_y_ - traj.GetLastState().GetY();
+    double dx = goal_x_ - traj.GetLastState().GetX();
+    double dy = goal_y_ - traj.GetLastState().GetY();
 
     double error_angle = std::atan2(dy, dx);
 
@@ -285,25 +285,25 @@ DwaPlanner::EvaluateCostHeading(DwaTrajectory traj) {
     return std::abs(std::atan2(std::sin(cost_angle), std::cos(cost_angle)));
 }
 
-float
+double
 DwaPlanner::EvaluateCostGoal(DwaTrajectory traj) {
-    float dx = goal_x_ - traj.GetLastState().GetX();
-    float dy = goal_y_ - traj.GetLastState().GetY();
+    double dx = goal_x_ - traj.GetLastState().GetX();
+    double dy = goal_y_ - traj.GetLastState().GetY();
 
     return std::hypot(dx, dy);
 }
 
-float
+double
 DwaPlanner::EvaluateCostDeviation(DwaTrajectory traj) {
-    float dx = traj_last_.GetLastState().GetX() - traj.GetLastState().GetX();
-    float dy = traj_last_.GetLastState().GetY() - traj.GetLastState().GetY();
+    double dx = traj_last_.GetLastState().GetX() - traj.GetLastState().GetX();
+    double dy = traj_last_.GetLastState().GetY() - traj.GetLastState().GetY();
 
     return std::hypot(dx, dy);
 }
 
-float
+double
 DwaPlanner::EvaluateCostGlobalPath(DwaTrajectory traj) {
-    float cost_path = 0.0f;
+    double cost_path = 0.0f;
 
     for (int i = 0; i < traj.GetNumberOfStates(); ++i) {
         cost_path += global_path_.FindClosestDistance(
@@ -320,7 +320,7 @@ DwaPlanner::GetObstacles() {
     // Clear the previous obstacle list.
     obs_occ_.Clear();
 
-    float dis_cutoff = search_radius_;
+    double dis_cutoff = search_radius_;
     if (obs_search_ == "adaptive")
     {
         // The cutoff distance is selected based on the maximum travel distance throughout the window (with a constant bias term equal to the collision radius).
@@ -329,15 +329,15 @@ DwaPlanner::GetObstacles() {
 
 	for (int i = 0; i < grid_occ_width_; ++i) {
         for (int j = 0; j < grid_occ_height_; ++j) {
-            float x = grid_occ_origin_x_ + (i + 0.5f) * grid_occ_res_;
-            float y = grid_occ_origin_y_ + (j + 0.5f) * grid_occ_res_;
+            double x = grid_occ_origin_x_ + (i + 0.5f) * grid_occ_res_;
+            double y = grid_occ_origin_y_ + (j + 0.5f) * grid_occ_res_;
 
 			unsigned int ndx = j * grid_occ_width_ + i;
 
 			int cost = (int)grid_occ_data_[ndx];
 
 			if (cost > thresh_obs_) {
-				float d = std::hypot(
+				double d = std::hypot(
                     state_.GetX() - x,
                     state_.GetY() - y);
 

@@ -39,58 +39,58 @@ class DwaCost {
 
         ~DwaCost() {}
 
-        void Add(int i, float cost) { cost_[i] = cost; }
+        void Add(int i, double cost) { cost_[i] = cost; }
 
-        float GetCost(int i) const { return cost_[i]; }
+        double GetCost(int i) const { return cost_[i]; }
 
     private:
-        std::vector<float> cost_;
-        std::vector<float> cost_norm_;
-        float min_ = -std::numeric_limits<float>::quiet_NaN();
-        float max_ = std::numeric_limits<float>::quiet_NaN();
+        std::vector<double> cost_;
+        std::vector<double> cost_norm_;
+        double min_ = -std::numeric_limits<double>::quiet_NaN();
+        double max_ = std::numeric_limits<double>::quiet_NaN();
 };
 
 /** @brief Prediction window in the dynamic window approach (DWA) planner. */
 struct DwaWindow {
     DwaWindow() {}
 
-    DwaWindow(float speed_min, float speed_max, float speed_ang_min, float speed_ang_max) :
+    DwaWindow(double speed_min, double speed_max, double speed_ang_min, double speed_ang_max) :
     speed_min_(speed_min), speed_max_(speed_max), speed_ang_min_(speed_ang_min), speed_ang_max_(speed_ang_max) {}
 
-    float speed_min_;
-    float speed_max_;
-    float speed_ang_min_;
-    float speed_ang_max_;
+    double speed_min_;
+    double speed_max_;
+    double speed_ang_min_;
+    double speed_ang_max_;
 };
 
 class DwaState {
     public:
         DwaState() {}
 
-        DwaState(float x, float y, float yaw, float speed, float speed_ang) :
+        DwaState(double x, double y, double yaw, double speed, double speed_ang) :
         x_(x), y_(y), yaw_(yaw), speed_(speed), speed_ang_(speed_ang) {}
 
         ~DwaState() {}
 
-        float GetX() { return x_; }
+        double GetX() { return x_; }
 
-        void SetX(float x) { x_ = x; }
+        void SetX(double x) { x_ = x; }
 
-        float GetY() { return y_; }
+        double GetY() { return y_; }
 
-        void SetY(float y) { y_ = y; }
+        void SetY(double y) { y_ = y; }
 
-        float GetYaw() { return yaw_; }
+        double GetYaw() { return yaw_; }
 
-        void SetYaw(float yaw) { yaw_ = yaw; }
+        void SetYaw(double yaw) { yaw_ = yaw; }
 
-        float GetSpeed() { return speed_; }
+        double GetSpeed() { return speed_; }
 
-        void SetSpeed(float speed) { speed_ = speed; }
+        void SetSpeed(double speed) { speed_ = speed; }
 
-        float GetAngularSpeed() { return speed_ang_; }
+        double GetAngularSpeed() { return speed_ang_; }
 
-        void SetAngularSpeed(float speed_ang) { speed_ang_ = speed_ang; }
+        void SetAngularSpeed(double speed_ang) { speed_ang_ = speed_ang; }
 
         avt_341::msg::PoseStamped
         ToRosPoseStamped() {
@@ -110,11 +110,11 @@ class DwaState {
         }
 
     private:
-        float x_;
-        float y_;
-        float yaw_;
-        float speed_;
-        float speed_ang_;
+        double x_;
+        double y_;
+        double yaw_;
+        double speed_;
+        double speed_ang_;
 };
 
 class DwaTrajectory {
@@ -145,12 +145,12 @@ class DwaTrajectory {
 
       void Reset(){ states_.clear(); }
 
-      float GetCost() { return cost_; }
+      double GetCost() { return cost_; }
 
-      void SetCost(float cost){ cost_ =  cost; }
+      void SetCost(double cost){ cost_ =  cost; }
 
     private:
-        float cost_ = 0.0;
+        double cost_ = 0.0;
         std::vector<DwaState> states_;
 };
 
@@ -161,17 +161,17 @@ class DwaPath {
         ~DwaPath() {}
 
         void
-        Add(float x, float y) {
+        Add(double x, double y) {
             x_.push_back(x);
             y_.push_back(y);
         }
 
         int
-        FindClosestDistance(float x, float y) {
-            float d_min = std::numeric_limits<float>::infinity();
+        FindClosestDistance(double x, double y) {
+            double d_min = std::numeric_limits<double>::infinity();
 
             for (int i = 0; i < (int)x_.size(); ++i) {
-                float d_curr = std::hypot(x - x_[i], y - y_[i]);
+                double d_curr = std::hypot(x - x_[i], y - y_[i]);
 
                 if (d_curr < d_min) {
                     d_min = d_curr;
@@ -182,8 +182,8 @@ class DwaPath {
         }
 
     private:
-        std::vector<float> x_;
-        std::vector<float> y_;
+        std::vector<double> x_;
+        std::vector<double> y_;
 };
 
 class DwaObstacles {
@@ -193,14 +193,14 @@ class DwaObstacles {
 
         ~DwaObstacles() {}
 
-        void Add(float x, float y) {
+        void Add(double x, double y) {
             x_.push_back(x);
             y_.push_back(y);
         }
 
         int GetNumberOfObstacles() { return (int)x_.size(); }
 
-        float GetDistance(int i, float x, float y) { return std::hypot(x - x_[i], y - y_[i]); }
+        double GetDistance(int i, double x, double y) { return std::hypot(x - x_[i], y - y_[i]); }
 
         void
         Clear() {
@@ -209,8 +209,8 @@ class DwaObstacles {
         }
 
     private:
-        std::vector<float> x_;
-        std::vector<float> y_;
+        std::vector<double> x_;
+        std::vector<double> y_;
 };
 
 class DwaCells {
@@ -219,7 +219,7 @@ class DwaCells {
 
         ~DwaCells() {}
 
-        void Add(float x, float y, float cost) {
+        void Add(double x, double y, double cost) {
             x_.push_back(x);
             y_.push_back(y);
             costs_.push_back(cost);
@@ -234,8 +234,8 @@ class DwaCells {
         }
 
     private:
-        std::vector<float> x_;
-        std::vector<float> y_;
+        std::vector<double> x_;
+        std::vector<double> y_;
         std::vector<int> costs_;
 };
 
@@ -248,57 +248,57 @@ class DwaPlanner {
 
         void Plan();
 
-        float GetPlannedLinearSpeed() { return speed_lin_best_; }
+        double GetPlannedLinearSpeed() { return speed_lin_best_; }
 
-        float GetPlannedAngularSpeed() { return speed_ang_best_; }
+        double GetPlannedAngularSpeed() { return speed_ang_best_; }
 
         avt_341::msg::Path GetPlannedPathRos() { return traj_best_.ToRosPath(); }
 
-        void SetWindowLinearSpeedMin(float speed_lin_min) { speed_lin_min_ = speed_lin_min; }
+        void SetWindowLinearSpeedMin(double speed_lin_min) { speed_lin_min_ = speed_lin_min; }
 
-        void SetWindowLinearSpeedMax(float speed_lin_max) { speed_lin_max_ = speed_lin_max; }
+        void SetWindowLinearSpeedMax(double speed_lin_max) { speed_lin_max_ = speed_lin_max; }
 
         void SetWindowLinearSpeedSteps(int speed_lin_steps) { speed_lin_steps_ = speed_lin_steps; }
 
-        void SetWindowAccelerationMax(float accel_max) { accel_max_ = accel_max; }
+        void SetWindowAccelerationMax(double accel_max) { accel_max_ = accel_max; }
 
-        void SetWindowAngularSpeedMin(float speed_ang_min) { speed_ang_min_ = speed_ang_min; }
+        void SetWindowAngularSpeedMin(double speed_ang_min) { speed_ang_min_ = speed_ang_min; }
 
-        void SetWindowAngularSpeedMax(float speed_ang_max) { speed_ang_max_ = speed_ang_max; }
+        void SetWindowAngularSpeedMax(double speed_ang_max) { speed_ang_max_ = speed_ang_max; }
 
         void SetWindowAngularSpeedSteps(int speed_ang_steps) { speed_ang_steps_ = speed_ang_steps; }
 
-        void SetWindowAngularAccelerationMax(float ang_accel_max) { ang_accel_max_ = ang_accel_max; }
+        void SetWindowAngularAccelerationMax(double ang_accel_max) { ang_accel_max_ = ang_accel_max; }
 
-        void SetLateralAccelerationMax(float lat_accel_max) { lat_accel_max_ = lat_accel_max; }
+        void SetLateralAccelerationMax(double lat_accel_max) { lat_accel_max_ = lat_accel_max; }
 
-        void SetWindowTimeStepMin(float time_step_min) { time_step_min_ = time_step_min; }
+        void SetWindowTimeStepMin(double time_step_min) { time_step_min_ = time_step_min; }
 
-        void SetWindowTimeSpanMin(float time_span_min) { time_span_min_ = time_span_min; }
+        void SetWindowTimeSpanMin(double time_span_min) { time_span_min_ = time_span_min; }
 
-        void SetWindowTimeSpanMax(float time_span_max) { time_span_max_ = time_span_max; }
+        void SetWindowTimeSpanMax(double time_span_max) { time_span_max_ = time_span_max; }
 
-        void SetWindowTimeSpanVariable(float time_span_var) { time_span_var_ = time_span_var; }
+        void SetWindowTimeSpanVariable(double time_span_var) { time_span_var_ = time_span_var; }
 
-        void SetWindowTimeSpanGain(float time_span_gain) { time_span_gain_ = time_span_gain; }
+        void SetWindowTimeSpanGain(double time_span_gain) { time_span_gain_ = time_span_gain; }
 
-        void SetCostGoalWeight(float w_cost_goal) { w_cost_goal_ = w_cost_goal; }
+        void SetCostGoalWeight(double w_cost_goal) { w_cost_goal_ = w_cost_goal; }
 
-        void SetCostHeadingWeight(float w_cost_head) { w_cost_head_ = w_cost_head; }
+        void SetCostHeadingWeight(double w_cost_head) { w_cost_head_ = w_cost_head; }
 
-        void SetCostSpeedWeight(float w_cost_speed) { w_cost_speed_ = w_cost_speed; }
+        void SetCostSpeedWeight(double w_cost_speed) { w_cost_speed_ = w_cost_speed; }
 
-        void SetCostObstacleWeight(float w_cost_obs) { w_cost_obs_ = w_cost_obs; }
+        void SetCostObstacleWeight(double w_cost_obs) { w_cost_obs_ = w_cost_obs; }
 
-        void SetCostGlobalPathWeight(float w_cost_path) { w_cost_global_path_ = w_cost_path; }
+        void SetCostGlobalPathWeight(double w_cost_path) { w_cost_global_path_ = w_cost_path; }
 
-        void SetCostDeviationWeight(float w_cost_dev) { w_cost_dev_ = w_cost_dev; }
+        void SetCostDeviationWeight(double w_cost_dev) { w_cost_dev_ = w_cost_dev; }
 
-        void SetCostSegmentationWeight(float w_cost_seg) { w_cost_seg_ = w_cost_seg; }
+        void SetCostSegmentationWeight(double w_cost_seg) { w_cost_seg_ = w_cost_seg; }
 
         void SetObstacleThreshold(int thresh_obs) { thresh_obs_ = thresh_obs; }
 
-        void SetCollisionRadius(float collision_radius) { collision_radius_ = collision_radius; }
+        void SetCollisionRadius(double collision_radius) { collision_radius_ = collision_radius; }
 
         void SetObstacleSearch(std::string obs_search) {
             // Search modality defaults to adaptive when providing a wrong parameter.
@@ -309,23 +309,23 @@ class DwaPlanner {
             }
         }
 
-        void SetObstacleSearchRadius(float search_radius) { search_radius_ = search_radius; }
+        void SetObstacleSearchRadius(double search_radius) { search_radius_ = search_radius; }
 
         void
-        SetGoal(float x, float y) {
+        SetGoal(double x, double y) {
             goal_x_ = x;
             goal_y_ = y;
         };
 
-        void SetOccupancyGridWidth(float grid_width) { grid_occ_width_ = grid_width; }
+        void SetOccupancyGridWidth(double grid_width) { grid_occ_width_ = grid_width; }
 
-        void SetOccupancyGridHeight(float grid_height) { grid_occ_height_ = grid_height; }
+        void SetOccupancyGridHeight(double grid_height) { grid_occ_height_ = grid_height; }
 
-        void SetOccupancyGridOriginX(float grid_origin_x) { grid_occ_origin_x_ = grid_origin_x; }
+        void SetOccupancyGridOriginX(double grid_origin_x) { grid_occ_origin_x_ = grid_origin_x; }
 
-        void SetOccupancyGridOriginY(float grid_origin_y) { grid_occ_origin_y_ = grid_origin_y; }
+        void SetOccupancyGridOriginY(double grid_origin_y) { grid_occ_origin_y_ = grid_origin_y; }
 
-        void SetOccupancyGridResolution(float grid_res) { grid_occ_res_ = grid_res; }
+        void SetOccupancyGridResolution(double grid_res) { grid_occ_res_ = grid_res; }
 
         void SetOccupancyGridData(std::vector<signed char> grid_data) { grid_occ_data_ = grid_data; }
 
@@ -338,7 +338,7 @@ class DwaPlanner {
         void SetPrintSummary(bool print_summary) { print_summary_ = print_summary; }
 
         void
-        SetState(float x, float y, float yaw, float speed, float speed_ang) {
+        SetState(double x, double y, double yaw, double speed, double speed_ang) {
             state_.SetX(x);
             state_.SetY(y);
             state_.SetYaw(yaw);
@@ -357,46 +357,46 @@ class DwaPlanner {
 
         void SetUseSegmentation(bool use_segmentation) { use_segmentation_ = use_segmentation; }
 
-        void SetVehicleWheelbase(float wheelbase) { wheelbase_ = wheelbase; }
+        void SetVehicleWheelbase(double wheelbase) { wheelbase_ = wheelbase; }
 
         void Reset();
 
         std::vector<DwaTrajectory> GetTrajectories() { return trajectories_; }
 
-        float GetMaxCost() { return max_cost_; }
+        double GetMaxCost() { return max_cost_; }
 
     private:
         void GetObstacles();
 
         DwaWindow EvaluateDynamicWindow();
 
-        DwaState PredictMotion(DwaState state, float v, float thetadot, float time_step);
+        DwaState PredictMotion(DwaState state, double v, double thetadot, double time_step);
 
-        DwaTrajectory PredictTrajectory(float speed, float speed_ang);
+        DwaTrajectory PredictTrajectory(double speed, double speed_ang);
 
-        float EvaluateCostGoal(DwaTrajectory traj);
+        double EvaluateCostGoal(DwaTrajectory traj);
 
-        float EvaluateCostHeading(DwaTrajectory traj);
+        double EvaluateCostHeading(DwaTrajectory traj);
 
-        float EvaluateCostObstacle(DwaTrajectory traj);
+        double EvaluateCostObstacle(DwaTrajectory traj);
 
-        float EvaluateCostSegmentation(DwaTrajectory traj);
+        double EvaluateCostSegmentation(DwaTrajectory traj);
 
-        float EvaluateCostSpeed(DwaTrajectory traj);
+        double EvaluateCostSpeed(DwaTrajectory traj);
 
-        float EvaluateCostGlobalPath(DwaTrajectory traj);
+        double EvaluateCostGlobalPath(DwaTrajectory traj);
 
-        float EvaluateCostDeviation(DwaTrajectory traj);
+        double EvaluateCostDeviation(DwaTrajectory traj);
 
         template<typename T>
-        std::vector<float>
+        std::vector<double>
         GetInterval(T start_in, T end_in, int num_in) {
 
-            std::vector<float> linspaced;
+            std::vector<double> linspaced;
 
-            float start = static_cast<float>(start_in);
-            float end = static_cast<float>(end_in);
-            float num = static_cast<float>(num_in);
+            double start = static_cast<double>(start_in);
+            double end = static_cast<double>(end_in);
+            double num = static_cast<double>(num_in);
 
             if (num == 0) {
                 return linspaced;
@@ -406,7 +406,7 @@ class DwaPlanner {
                 return linspaced;
             }
 
-            float delta = (end - start) / (num - 1);
+            double delta = (end - start) / (num - 1);
 
             for(int i = 0; i < num - 1; ++i) {
                 linspaced.push_back(start + delta * i);
@@ -418,60 +418,60 @@ class DwaPlanner {
         }
 
         int
-        FindClosest(std::vector<float> const& v, int value) {
+        FindClosest(std::vector<double> const& v, int value) {
             auto const it = std::lower_bound(v.begin(), v.end(), value);
 
             return it - v.begin();
         }
 
-        float speed_lin_min_;
-        float speed_lin_max_;
+        double speed_lin_min_;
+        double speed_lin_max_;
         int speed_lin_steps_;
-        float accel_max_;
-        float speed_ang_min_;
-        float speed_ang_max_;
+        double accel_max_;
+        double speed_ang_min_;
+        double speed_ang_max_;
         int speed_ang_steps_;
-        float ang_accel_max_;
-        float lat_accel_max_;
-        float time_step_;
-        float time_step_min_;
-        float time_span_;
-        float time_span_min_;
-        float time_span_max_;
-        float time_span_var_;
-        float time_span_gain_;
+        double ang_accel_max_;
+        double lat_accel_max_;
+        double time_step_;
+        double time_step_min_;
+        double time_span_;
+        double time_span_min_;
+        double time_span_max_;
+        double time_span_var_;
+        double time_span_gain_;
         int thresh_obs_;
-        float collision_radius_;
+        double collision_radius_;
         std::string obs_search_;
-        float search_radius_;
-        float goal_x_;
-        float goal_y_;
-        float grid_occ_width_;
-        float grid_occ_height_;
-        float grid_occ_origin_x_;
-        float grid_occ_origin_y_;
-        float grid_occ_res_;
+        double search_radius_;
+        double goal_x_;
+        double goal_y_;
+        double grid_occ_width_;
+        double grid_occ_height_;
+        double grid_occ_origin_x_;
+        double grid_occ_origin_y_;
+        double grid_occ_res_;
         std::vector<signed char> grid_occ_data_;
         DwaObstacles obs_occ_;
         bool use_segmentation_;
         std::vector<signed char> grid_seg_data_;
         int thresh_seg_;
-        float w_cost_goal_;
-        float w_cost_head_;
-        float w_cost_speed_;
-        float w_cost_obs_;
-        float w_cost_seg_;
-        float w_cost_dev_;
+        double w_cost_goal_;
+        double w_cost_head_;
+        double w_cost_speed_;
+        double w_cost_obs_;
+        double w_cost_seg_;
+        double w_cost_dev_;
         DwaState state_;
         DwaTrajectory traj_best_;
-        float speed_lin_best_;
-        float speed_ang_best_;
+        double speed_lin_best_;
+        double speed_ang_best_;
         std::string model_;
-        float wheelbase_;
+        double wheelbase_;
         std::string horizon_;
         DwaPath global_path_;
         bool use_global_path_;
-        float w_cost_global_path_;
+        double w_cost_global_path_;
         DwaTrajectory traj_last_;
         bool has_plan_ = false;
         bool print_summary_;

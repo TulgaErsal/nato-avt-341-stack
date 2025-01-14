@@ -112,7 +112,6 @@ UpdateState(avt_341::planning::DwaPlanner& planner) {
     );
 
     // Get the rotation matrix from the quaternion.
-    // NOTE: getRPY() expects a double, hence we cast back to float when setting the state.
     double roll, pitch, yaw;
     tf2::Matrix3x3 rotation(orientation);
     rotation.getRPY(roll, pitch, yaw);
@@ -124,7 +123,7 @@ UpdateState(avt_341::planning::DwaPlanner& planner) {
     planner.SetState(
         msg_odom.pose.pose.position.x,
         msg_odom.pose.pose.position.y,
-        (float)yaw,
+        yaw,
         msg_odom.twist.twist.linear.x,
         msg_odom.twist.twist.angular.z
     );
@@ -132,7 +131,7 @@ UpdateState(avt_341::planning::DwaPlanner& planner) {
 
 void
 UpdateGoal(avt_341::planning::DwaPlanner& planner) {
-    float goal_x, goal_y;
+    double goal_x, goal_y;
 
     if (planner.GetUseGlobalPath()) {
         if (use_current_waypoint && rcvd_waypoint) {
@@ -221,36 +220,36 @@ main(int argc, char* argv[]) {
     auto pub_markers = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/markers", 10);
 
     // Declare and read node parameters from the ROS parameter server.
-    float wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72f);
-    float speed_lin_min; node->get_parameter("~dwa_speed_lin_min", speed_lin_min, 0.15f);
-    float speed_lin_max; node->get_parameter("~dwa_speed_lin_max", speed_lin_max, 4.0f);
+    double wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72);
+    double speed_lin_min; node->get_parameter("~dwa_speed_lin_min", speed_lin_min, 0.15);
+    double speed_lin_max; node->get_parameter("~dwa_speed_lin_max", speed_lin_max, 4.0);
     int speed_lin_steps; node->get_parameter("~dwa_speed_lin_steps", speed_lin_steps, 10);
-    float accel_max; node->get_parameter("~dwa_accel_max", accel_max, 3.0f);
-    float speed_ang_min; node->get_parameter("~dwa_speed_ang_min", speed_ang_min, -0.58f);
-    float speed_ang_max; node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58f);
+    double accel_max; node->get_parameter("~dwa_accel_max", accel_max, 3.0);
+    double speed_ang_min; node->get_parameter("~dwa_speed_ang_min", speed_ang_min, -0.58);
+    double speed_ang_max; node->get_parameter("~dwa_speed_ang_max", speed_ang_max, 0.58);
     int speed_ang_steps; node->get_parameter("~dwa_speed_ang_steps", speed_ang_steps, 40);
-    float ang_accel_max; node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0f);
-    float lat_accel_max; node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81f);
+    double ang_accel_max; node->get_parameter("~dwa_ang_accel_max", ang_accel_max, 4.0);
+    double lat_accel_max; node->get_parameter("~dwa_lat_accel_max", lat_accel_max, 9.81);
     std::string horizon; node->get_parameter("~dwa_horizon", horizon, std::string("adaptive"));
-    float time_span_min; node->get_parameter("~dwa_time_span_min", time_span_min, 2.5f);
-    float time_span_max; node->get_parameter("~dwa_time_span_max", time_span_max, 10.0f);
-    float time_span_var; node->get_parameter("~dwa_time_span_var", time_span_var, 4.5f);
-    float time_span_gain; node->get_parameter("~dwa_time_span_gain", time_span_gain, 1.1f);
-    float time_step_min; node->get_parameter("~dwa_time_step_min", time_step_min, 0.2f);
-    float w_cost_goal; node->get_parameter("~dwa_w_cost_goal", w_cost_goal, 1.0f);
-    float w_cost_head; node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001f);
+    double time_span_min; node->get_parameter("~dwa_time_span_min", time_span_min, 2.5);
+    double time_span_max; node->get_parameter("~dwa_time_span_max", time_span_max, 10.0);
+    double time_span_var; node->get_parameter("~dwa_time_span_var", time_span_var, 4.5);
+    double time_span_gain; node->get_parameter("~dwa_time_span_gain", time_span_gain, 1.1);
+    double time_step_min; node->get_parameter("~dwa_time_step_min", time_step_min, 0.2);
+    double w_cost_goal; node->get_parameter("~dwa_w_cost_goal", w_cost_goal, 1.0);
+    double w_cost_head; node->get_parameter("~dwa_w_cost_head", w_cost_head, 0.001);
     int thresh_obs; node->get_parameter("~dwa_thresh_obs", thresh_obs, 0);
-    float collision_radius; node->get_parameter("~dwa_collision_radius", collision_radius, 2.25f);
+    double collision_radius; node->get_parameter("~dwa_collision_radius", collision_radius, 2.25);
     std::string obs_search; node->get_parameter("~dwa_obs_search", obs_search, std::string("fixed"));
-    float search_radius; node->get_parameter("~dwa_search_radius", search_radius, 10.0f);
-    float w_cost_obs; node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5f);
-    float w_cost_speed; node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0f);
+    double search_radius; node->get_parameter("~dwa_search_radius", search_radius, 10.0);
+    double w_cost_obs; node->get_parameter("~dwa_w_cost_obs", w_cost_obs, 1.5);
+    double w_cost_speed; node->get_parameter("~dwa_w_cost_speed", w_cost_speed, 0.0);
     bool use_global_path; node->get_parameter("~dwa_use_global_path", use_global_path, false);
-    float w_cost_path; node->get_parameter("~dwa_w_cost_path", w_cost_path, 0.0f);
+    double w_cost_path; node->get_parameter("~dwa_w_cost_path", w_cost_path, 0.0);
     bool use_segmentation; node->get_parameter("~dwa_use_segmentation", use_segmentation, false);
-    float w_cost_seg; node->get_parameter("~dwa_w_cost_seg", w_cost_seg, 0.0f);
+    double w_cost_seg; node->get_parameter("~dwa_w_cost_seg", w_cost_seg, 0.0);
     int thresh_seg; node->get_parameter("~dwa_thresh_seg", thresh_seg, 100);
-    float w_cost_dev; node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75f);
+    double w_cost_dev; node->get_parameter("~dwa_w_cost_dev", w_cost_dev, 0.75);
     bool print_summary; node->get_parameter("~dwa_print_summary", print_summary, false);
     node->get_parameter("~dwa_use_current_waypoint", use_current_waypoint, false);
     node->get_parameter("~dwa_global_path_lookahead", global_path_lookahead, 15.0);
@@ -312,13 +311,13 @@ main(int argc, char* argv[]) {
             pub_path->publish(msg_path);
 
             // Serialise and publish the target speed.
-            float speed = planner.GetPlannedLinearSpeed();
+            double speed = planner.GetPlannedLinearSpeed();
             avt_341::msg::Float64 msg_ctrl_speed;
             msg_ctrl_speed.data = speed;
             pub_ctrl_speed->publish(msg_ctrl_speed);
 
             // Serialise and publish the target steering angle.
-            float steer = planner.GetPlannedAngularSpeed();
+            double steer = planner.GetPlannedAngularSpeed();
             avt_341::msg::Float64 msg_ctrl_steer;
             msg_ctrl_steer.data = steer;
             pub_ctrl_steer->publish(msg_ctrl_steer);
