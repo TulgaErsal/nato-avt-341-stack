@@ -2,8 +2,16 @@ message(STATUS "Building dynamic window planner node ...")
 
 if(USING_CATKIN)
   # Dynamic window approach planner node
-  add_executable(${PROJECT_NAME}_dwa_planner_node "dwa_planner.cpp"
-                                                  "dwa_planner_node.cpp")
+  add_executable(
+    ${PROJECT_NAME}_dwa_planner_node
+    "cells.cpp"
+    "dwa_planner_node.cpp"
+    "dynamic_window.cpp"
+    "obstacles.cpp"
+    "path.cpp"
+    "planner.cpp"
+    "state.cpp"
+    "trajectory.cpp")
   add_dependencies(${PROJECT_NAME}_dwa_planner_node ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${PROJECT_NAME}_proxy)
   install(
@@ -14,8 +22,16 @@ endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
   # Dynamic window approach planner node
-  add_executable(${PROJECT_NAME}_dwa_planner_node "dwa_planner_node.cpp"
-                                                  "dwa_planner.cpp")
+  add_executable(
+    ${PROJECT_NAME}_dwa_planner_node
+    "cells.cpp"
+    "dwa_planner_node.cpp"
+    "dynamic_window.cpp"
+    "obstacles.cpp"
+    "path.cpp"
+    "planner.cpp"
+    "state.cpp"
+    "trajectory.cpp")
   target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${link_libs}
                         ${PROJECT_NAME}_proxy)
   install(

@@ -9,12 +9,13 @@
  * \date 1/23/2023
 */
 
-#include "avt_341/node/node_proxy.h"
-#include "avt_341/node/ros_types.h"
-#include "avt_341/planning/local/dwa_planner.h"
-#include "avt_341/visualization/visualization_factory.h"
-#include "tf2/LinearMath/Matrix3x3.h"
-#include "tf2/LinearMath/Quaternion.h"
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
+
+#include <avt_341/node/node_proxy.h>
+#include <avt_341/node/ros_types.h>
+#include <avt_341/planning/local/dwa/planner.hpp>
+#include <avt_341/visualization/visualization_factory.h>
 
 // Initialise ROS messages.
 avt_341::msg::Odometry msg_odom;
@@ -102,7 +103,7 @@ CallbackPath(avt_341::msg::PathPtr msg_rcvd_path) {
 }
 
 void
-UpdateState(avt_341::planning::DwaPlanner& planner) {
+UpdateState(avt_341::planning::dwa::Planner& planner) {
     // Initialise the pose orientation quaternion.
     tf2::Quaternion orientation(
         msg_odom.pose.pose.orientation.x,
@@ -130,7 +131,7 @@ UpdateState(avt_341::planning::DwaPlanner& planner) {
 }
 
 void
-UpdateGoal(avt_341::planning::DwaPlanner& planner) {
+UpdateGoal(avt_341::planning::dwa::Planner& planner) {
     double goal_x, goal_y;
 
     if (planner.GetUseGlobalPath()) {
@@ -152,7 +153,7 @@ UpdateGoal(avt_341::planning::DwaPlanner& planner) {
         }
 
         // Initialise a new global path in the planner and populate it with the global path poses.
-        avt_341::planning::DwaPath path;
+        avt_341::planning::dwa::Path path;
         for (auto& pose : msg_path.poses) {
             path.Add(pose.pose.position.x, pose.pose.position.y);
         }
@@ -175,7 +176,7 @@ UpdateGoal(avt_341::planning::DwaPlanner& planner) {
 }
 
 void
-UpdateGrids(avt_341::planning::DwaPlanner& planner) {
+UpdateGrids(avt_341::planning::dwa::Planner& planner) {
     if (rcvd_grid_occ) {
         planner.SetOccupancyGridWidth(msg_grid_occ.info.width);
         planner.SetOccupancyGridHeight(msg_grid_occ.info.height);
@@ -255,7 +256,7 @@ main(int argc, char* argv[]) {
     node->get_parameter("~dwa_global_path_lookahead", global_path_lookahead, 15.0);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
-    avt_341::planning::DwaPlanner planner;
+    avt_341::planning::dwa::Planner planner;
     planner.SetHorizon(horizon);
     planner.SetWindowLinearSpeedMin(speed_lin_min);
     planner.SetWindowLinearSpeedMax(speed_lin_max);
