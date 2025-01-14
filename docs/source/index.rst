@@ -12,4 +12,3 @@ branch "|version|", commit "|release|".
    pages/modules/index.rst
    pages/testing/index.rst
    pages/development/index.rst
-   api/index.rst
