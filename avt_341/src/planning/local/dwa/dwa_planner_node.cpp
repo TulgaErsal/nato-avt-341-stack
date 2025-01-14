@@ -218,6 +218,7 @@ main(int argc, char* argv[]) {
     auto pub_ctrl_speed = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
     auto pub_ctrl_steer = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 10);
     auto pub_ctrl_drive = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 10);
+    auto pub_markers = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/markers", 10);
 
     // Declare and read node parameters from the ROS parameter server.
     float wheelbase; node->get_parameter("~dwa_wheelbase", wheelbase, 2.72f);
@@ -301,6 +302,7 @@ main(int argc, char* argv[]) {
 
             // Run the planning step.
             planner.Plan();
+            auto trajectories = planner.GetTrajectories();
 
             // Serialise and publish the local path.
             avt_341::msg::Path msg_path = planner.GetPlannedPathRos();
@@ -327,6 +329,53 @@ main(int argc, char* argv[]) {
             msg_ctrl_drive.drive.speed = speed;
             msg_ctrl_drive.drive.steering_angle = steer;
             pub_ctrl_drive->publish(msg_ctrl_drive);
+
+            avt_341::msg::Marker delete_marker;
+            delete_marker.header.stamp = node->get_stamp();
+            delete_marker.header.frame_id = "map";
+            delete_marker.ns = "paths";
+            delete_marker.action = avt_341::msg::Marker::DELETEALL;
+
+            avt_341::msg::MarkerArray delete_markers;
+            delete_markers.markers.push_back(delete_marker);
+            pub_markers->publish(delete_markers);
+
+            avt_341::msg::MarkerArray msg_marker_array;
+            for(int i = 0; i < trajectories.size(); ++i) {
+                avt_341::msg::Marker msg_marker;
+                msg_marker.header.stamp = node->get_stamp();
+                msg_marker.header.frame_id = "map";
+                msg_marker.ns = "dwa/paths";
+                msg_marker.id = i;
+                msg_marker.type = avt_341::msg::Marker::LINE_STRIP;
+                msg_marker.action = avt_341::msg::Marker::ADD;
+                msg_marker.pose.position.x = 0.0;
+                msg_marker.pose.position.y = 0.0;
+                msg_marker.pose.position.z = 0.0;
+                msg_marker.pose.orientation.x = 0.0;
+                msg_marker.pose.orientation.x = 0.0;
+                msg_marker.pose.orientation.x = 0.0;
+                msg_marker.pose.orientation.w = 1.0;
+                msg_marker.color.r = trajectories[i].GetCost() / planner.GetMaxCost();
+                msg_marker.color.g = 1.0 - trajectories[i].GetCost() / planner.GetMaxCost();
+                msg_marker.color.b = 0.0;
+                msg_marker.color.a = 1.0 - 1.0 - trajectories[i].GetCost() / planner.GetMaxCost();
+                msg_marker.scale.x = 0.05;
+                msg_marker.scale.y = 1.0;
+                msg_marker.scale.z = 1.0;
+                
+                for (int ipose = 0; ipose < trajectories[i].GetNumberOfStates(); ++ipose) {
+                    avt_341::msg::Point point;
+                    point.x = trajectories[i].GetState(ipose).GetX();
+                    point.y = trajectories[i].GetState(ipose).GetY();
+                    msg_marker.points.push_back(point);
+                    
+                }
+                msg_marker_array.markers.push_back(msg_marker);
+                
+            }
+            pub_markers->publish(msg_marker_array);
+
         }
 
         if(reset_called){

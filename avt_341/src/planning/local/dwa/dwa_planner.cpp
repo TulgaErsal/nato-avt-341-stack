@@ -94,6 +94,8 @@ DwaPlanner::Plan() {
     auto cost_path = DwaCost(window_size);
     auto cost_dev = DwaCost(window_size);
 
+    trajectories_.clear();
+
     // Iterate through the speed/yaw rate pairs in the dynamic window
     for (int k = 0; k < (int)search_actions.size(); k++) {
         int i = search_actions[k].x;
@@ -101,6 +103,8 @@ DwaPlanner::Plan() {
 
         // Compute the predicted trajectory for this speed/yaw rate pair by integrating the motion model.
         DwaTrajectory traj = PredictTrajectory(speeds_win_lin[i], speeds_win_ang[j]);
+
+        trajectories_.push_back(traj);
 
         // Evaluate the cost terms
         cost_goal.Add(k, EvaluateCostGoal(traj));
@@ -128,6 +132,10 @@ DwaPlanner::Plan() {
         if (use_segmentation_) cost += w_cost_seg_ * cost_seg.GetCost(k);
         if (use_global_path_ > 0) cost += w_cost_global_path_ * cost_path.GetCost(k);
         if (has_plan_) cost += w_cost_dev_ * cost_dev.GetCost(k);
+
+        trajectories_[k].SetCost(cost);
+
+        if(cost > max_cost_) { max_cost_ = cost; }
 
         if (cost_min >= cost) {
             cost_min = cost;

@@ -145,8 +145,12 @@ class DwaTrajectory {
 
       void Reset(){ states_.clear(); }
 
-    private:
+      float GetCost() { return cost_; }
 
+      void SetCost(float cost){ cost_ =  cost; }
+
+    private:
+        float cost_ = 0.0;
         std::vector<DwaState> states_;
 };
 
@@ -357,6 +361,10 @@ class DwaPlanner {
 
         void Reset();
 
+        std::vector<DwaTrajectory> GetTrajectories() { return trajectories_; }
+
+        float GetMaxCost() { return max_cost_; }
+
     private:
         void GetObstacles();
 
@@ -467,6 +475,8 @@ class DwaPlanner {
         DwaTrajectory traj_last_;
         bool has_plan_ = false;
         bool print_summary_;
+        std::vector<DwaTrajectory> trajectories_;
+        double max_cost_ = std::numeric_limits<double>::min();
 };
 
 } // end namespace planning
