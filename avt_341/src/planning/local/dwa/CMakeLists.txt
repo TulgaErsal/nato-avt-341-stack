@@ -1,6 +1,7 @@
 message(STATUS "Building dynamic window planner node ...")
 
 find_package(Boost REQUIRED)
+find_package(OpenMP)
 
 if(USING_CATKIN)
   # Dynamic window approach planner node
@@ -17,6 +18,12 @@ if(USING_CATKIN)
   add_dependencies(${PROJECT_NAME}_dwa_planner_node ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${PROJECT_NAME}_proxy
                         ${Boost_LIBRARIES})
+  if(OpenMP_FOUND)
+    target_compile_definitions(${PROJECT_NAME}_dwa_planner_node
+                               PUBLIC USE_OPENMP)
+    target_link_libraries(${PROJECT_NAME}_dwa_planner_node OpenMP::OpenMP_CXX)
+
+  endif() # if(OpenMP_FOUND)
   install(
     TARGETS ${PROJECT_NAME}_dwa_planner_node
     RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
@@ -37,6 +44,12 @@ if(USING_AMENT)
     "trajectory.cpp")
   target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${Boost_LIBRARIES}
                         ${link_libs} ${PROJECT_NAME}_proxy)
+  if(OpenMP_FOUND)
+    target_compile_definitions(${PROJECT_NAME}_dwa_planner_node
+                               PUBLIC USE_OPENMP)
+    target_link_libraries(${PROJECT_NAME}_dwa_planner_node OpenMP::OpenMP_CXX)
+
+  endif() # if(OpenMP_FOUND)
   install(
     TARGETS ${PROJECT_NAME}_dwa_planner_node
     EXPORT export_${PROJECT_NAME}

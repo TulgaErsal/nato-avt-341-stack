@@ -203,6 +203,12 @@ int main(int argc, char* argv[]) {
     auto node =
         avt_341::node::init_node(argc, argv, "avt_341_dwa_planner_node");
 
+#ifndef USE_OPENMP
+    node->log_warning("DWA planner was not compiled with OpenMP enabled.
+                       Planning will be significantly slower.");
+#endif
+
+
     // Create node subscribers.
     auto sub_odom =
         node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",

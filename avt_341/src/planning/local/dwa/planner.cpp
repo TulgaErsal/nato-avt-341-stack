@@ -74,6 +74,9 @@ void Planner::Plan() {
     trajectories_.clear();
     trajectories_.resize(search_actions.size());
 
+#ifdef USE_OPENMP
+#pragma omp parallel for
+#endif
     // Iterate through the speed/yaw rate pairs in the dynamic window
     for(size_t k = 0; k < search_actions.size(); k++) {
         int i = search_actions[k].x;
