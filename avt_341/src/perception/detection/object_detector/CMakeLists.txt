@@ -15,7 +15,7 @@ if(GET_AVT341_DETECTION_MODELS)
     "${PROJECT_SOURCE_DIR}/data/detection/models/yolov8n-cpu-640x640.names"
     EXPECTED_HASH
       SHA256=634a1132eb33f8091d60f2c346ababe8b905ae08387037aed883953b7329af84)
-  # FED Alpha To
+  # FED Alpha TorchScript traced models YOLOv8m GPU 640x640
   message(STATUS "Downloading FED-A TorchScript GPU object detection model ...")
   file(
     DOWNLOAD
@@ -29,6 +29,21 @@ if(GET_AVT341_DETECTION_MODELS)
     "${PROJECT_SOURCE_DIR}/data/detection/models/fedav8m-cuda-640x640.names"
     EXPECTED_HASH
       SHA256=9d9d7c04edb688ffb3bad0b6307945e7f86aa314c161b52dc58bb04699130f9b)
+
+  # MRZR TorchScript traced models YOLOv8m GPU 640x640
+  message(STATUS "Downloading MRZR TorchScript GPU object detection model ...")
+  file(
+    DOWNLOAD
+    https://www.dropbox.com/scl/fi/pfvht4borsie7oww93s3a/mrzrv8m-cuda-640x640.torchscript?rlkey=uhu81fg92g0r02u020cv6trcl&st=il7ex9l2&dl=1
+    "${PROJECT_SOURCE_DIR}/data/detection/models/mrzrv8m-cuda-640x640.torchscript"
+    EXPECTED_HASH
+      SHA256=24ffb7663409865054450e5152de13e5411b210e5a7c421154b86ad34d00584b)
+  file(
+    DOWNLOAD
+    https://www.dropbox.com/scl/fi/icljk1oidyyeo3oxcjcty/mrzrv8m-cuda-640x640.names?rlkey=ghs972f4hrpo2q6ch887zovq7&st=iuxv1xmn&dl=1
+    "${PROJECT_SOURCE_DIR}/data/detection/models/mrzrv8m-cuda-640x640.names"
+    EXPECTED_HASH
+      SHA256=f6ed0f280f9bc2166e5f5ab30de164516ac6f6bf6f440a0a47df302c7dfd07aa)
 endif() # if(GET_AVT341_DETECTION_MODELS)
 
 # Install the custom models
