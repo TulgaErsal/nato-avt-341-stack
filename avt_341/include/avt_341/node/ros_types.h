@@ -42,6 +42,9 @@
 #include "avt_341_msgs/Sinkage.h"
 #include "avt_341_msgs/LiorfCloudInfo.h"
 #include "avt_341_msgs/LiorfSaveMap.h"
+#include "avt_341_msgs/DwaInfo.h"
+#include "avt_341_msgs/DwaObjective.h"
+#include "avt_341_msgs/DwaTrajectory.h"
 
 namespace avt_341 {
     namespace msg {
@@ -146,6 +149,11 @@ namespace avt_341 {
         using LiorfSaveMapRequest = avt_341_msgs::LiorfSaveMapRequest;
         using LiorfSaveMapResponse = avt_341_msgs::LiorfSaveMapResponse;
 
+        using DwaInfo = avt_341_msgs::DwaInfo;
+        using DwaTrajectory = avt_341_msgs::DwaTrajectory;
+        using DwaObjective = avt_341_msgs::DwaObjective;
+
+
         using Time = ros::Time;
     }
     namespace msg_tf{
@@ -195,6 +203,9 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
+#include "avt_341_msgs/msg/dwa_info.hpp"
+#include "avt_341_msgs/msg/dwa_objective.hpp"
+#include "avt_341_msgs/msg/dwa_trajectory.hpp"
 
 namespace avt_341 {
   namespace msg {
@@ -287,6 +298,10 @@ namespace avt_341 {
     
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
+
+    using DwaInfo = avt_341_msgs::msg::DwaInfo;
+    using DwaTrajectory = avt_341_msgs::msg::DwaTrajectory;
+    using DwaObjective = avt_341_msgs::msg::DwaObjective;
 
     using Time = rclcpp::Time;
   }

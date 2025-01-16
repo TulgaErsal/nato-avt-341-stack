@@ -123,6 +123,8 @@ class Planner {
 
     const double& GetMaxCost() const;
 
+    const double& GetMinCost() const;
+
   private:
     void GetObstacles();
 
@@ -211,7 +213,8 @@ class Planner {
     bool has_plan_ = false;
     bool print_summary_;
     std::vector<Trajectory> trajectories_;
-    double max_cost_ = std::numeric_limits<double>::min();
+    double min_cost_ = std::numeric_limits<double>::infinity();
+    double max_cost_ = -std::numeric_limits<double>::infinity();
     DynamicWindow dynamic_window_;
 };
 

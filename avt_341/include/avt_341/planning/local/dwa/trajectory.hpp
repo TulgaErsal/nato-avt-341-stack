@@ -4,6 +4,7 @@
 #include <avt_341/planning/local/dwa/obstacles.hpp>
 #include <avt_341/planning/local/dwa/path.hpp>
 #include <avt_341/planning/local/dwa/state.hpp>
+#include <avt_341_msgs/msg/dwa_trajectory.hpp>
 
 namespace avt_341 {
 namespace planning {
@@ -69,6 +70,8 @@ class Trajectory {
     void EvaluateTotalCost();
 
     const double& GetTotalCost();
+
+    avt_341::msg::DwaTrajectory GetROSTrajectoryMessage() const;
 
   private:
     std::vector<State> states_;

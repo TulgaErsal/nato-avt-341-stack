@@ -122,22 +122,17 @@ void Planner::Plan() {
 
     // Find the minimum of the objective function.
     int k_min = 0;
-    double minimum_cost = std::numeric_limits<double>::infinity();
-    // max_cost_ = -std::numeric_limits<double>::infinity();
+    min_cost_ = std::numeric_limits<double>::infinity();
+    max_cost_ = -std::numeric_limits<double>::infinity();
     for(size_t k = 0; k < search_actions.size(); ++k) {
         auto cost = trajectories_[k].GetTotalCost();
 
         if(cost > max_cost_) { max_cost_ = cost; }
 
-        if(cost <= minimum_cost) {
-            minimum_cost = cost;
+        if(cost <= min_cost_) {
+            min_cost_ = cost;
             k_min = k;
         }
-    }
-
-    if(minimum_cost == std::numeric_limits<double>::infinity()) {
-        std::cout << "WARNING: ALL PLANNED PATHS INTERSECT WITH AT LEAST ONE "
-                     "OBSTACLE!\n";
     }
 
     // Compute and store the optimal trajectory and longitudinal speed.
@@ -154,47 +149,6 @@ void Planner::Plan() {
     // penalise deviations in future planning steps.
     has_plan_ = true;
     traj_last_ = traj_best_;
-
-    /*
-    // Print summary of the planning step
-    if(print_summary_) {
-        std::cout << std::fixed << std::setfill('0')
-                  << "\nDWA PLANNER RESULTS\n===================\nObjective "
-                     "function >> OF: "
-                  << minimum_cost << "\nDynamic window:\n\t"
-                  << "\n\tLSMIN:\t" << dynamic_window_.GetMinimumSpeed()
-                  << "\n\tLSMAX:\t" << dynamic_window_.GetMaximumSpeed()
-                  << "\n\tYRMIN:\t" << dynamic_window_.GetMinimumSteeringRate()
-                  << "\n\tYRMAX:\t" << dynamic_window_.GetMaximumSteeringRate()
-                  << "\nOptimal control >> LS: " << candidate_speeds[i_min]
-                  << " YR: " << candidate_steering_rates[j_min]
-                  << "\n\nNumber of obstacles: " << obs_size
-                  << "\nCosts:\n\tName (Weight) "
-                     "[Cost]\n\t=====================================\n\tGoal "
-                     "cost:\t("
-                  << std::setprecision(2) << w_cost_goal_ << ") ["
-                  << std::setprecision(3) << cost_goal.GetCost(k_min) << "] {"
-                  << "}\n\tHeading cost:\t(" << std::setprecision(2)
-                  << w_cost_head_ << ") [" << std::setprecision(3)
-                  << cost_head.GetCost(k_min) << "] {"
-                  << "}\n\tObstacle cost:\t(" << std::setprecision(2)
-                  << w_cost_obs_ << ") [" << std::setprecision(3)
-                  << cost_obs.GetCost(k_min) << "] {"
-                  << "}\n\tSegmentation cost:\t(" << std::setprecision(2)
-                  << w_cost_seg_ << ") [" << std::setprecision(3)
-                  << cost_seg.GetCost(k_min) << "] {"
-                  << "}\n\tSpeed cost:\t(" << std::setprecision(2)
-                  << w_cost_speed_ << ") [" << std::setprecision(3)
-                  << cost_speed.GetCost(k_min) << "] {"
-                  << "}\n\tGlobal path cost:\t(" << std::setprecision(2)
-                  << w_cost_global_path_ << ") [" << std::setprecision(3)
-                  << cost_path.GetCost(k_min) << "] {"
-                  << "}\n\tDeviation cost:\t(" << std::setprecision(2)
-                  << w_cost_dev_ << ") [" << std::setprecision(3)
-                  << cost_dev.GetCost(k_min) << "] {"
-                  << "}\n";
-    }
-    */
 }
 
 double Planner::GetPlannedLinearSpeed() { return speed_lin_best_; }
@@ -386,6 +340,8 @@ const std::vector<Trajectory>& Planner::GetTrajectories() const {
 }
 
 const double& Planner::GetMaxCost() const { return max_cost_; }
+
+const double& Planner::GetMinCost() const { return min_cost_; }
 
 void Planner::GetObstacles() {
     // Clear the previous obstacle list.

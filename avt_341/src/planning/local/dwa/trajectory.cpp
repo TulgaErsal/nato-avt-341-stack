@@ -154,6 +154,33 @@ void Trajectory::EvaluateTotalCost() {
 
 const double& Trajectory::GetTotalCost() { return cost_; }
 
+avt_341::msg::DwaTrajectory Trajectory::GetROSTrajectoryMessage() const {
+    avt_341::msg::DwaTrajectory trajectory_message;
+
+    avt_341::msg::Path path_message;
+    path_message.header.frame_id = "map";
+    for (auto& state : states_)  {
+        avt_341::msg::PoseStamped pose_stamped_message;
+        pose_stamped_message.header.frame_id = "map";
+        pose_stamped_message.pose.position.x = state.GetX();
+        pose_stamped_message.pose.position.y = state.GetY();
+        path_message.poses.push_back(pose_stamped_message);
+    }
+    trajectory_message.path = path_message;
+
+
+    avt_341::msg::DwaObjective objective_message;
+    objective_message.goal_cost = goal_cost_;
+    objective_message.obstacle_cost = obstacle_cost_;
+    objective_message.segmentation_cost = segmentation_cost_;
+    objective_message.heading_cost = heading_cost_;
+    objective_message.speed_cost = speed_cost_;
+    objective_message.deviation_cost = deviation_cost_;
+    trajectory_message.objective = objective_message;
+    trajectory_message.cost = cost_;
+    return trajectory_message;
+}
+
 } // namespace dwa
 } // namespace planning
 } // namespace avt_341
