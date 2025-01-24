@@ -4,6 +4,8 @@
 
 #ifdef ROS_1
 
+#include "ackermann_msgs/ackermann_drive_stamped.h"
+
 #include <geometry_msgs/Quaternion.h>
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/PointCloud.h"
@@ -48,6 +50,9 @@
 
 namespace avt_341 {
     namespace msg {
+        using AckermannDriveStamped = ackermann_msgs::AckermannDriveStamped;
+        using AckermannDriveStampedPtr = ackermann_msgs::AckermannDriveStamped::SharedPtr;
+
         using PointCloud = sensor_msgs::PointCloud;
         using PointCloudPtr = const sensor_msgs::PointCloud::ConstPtr &;
 
