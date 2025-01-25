@@ -21,6 +21,8 @@
 // code.
 JULIA_DEFINE_FAST_TLS();
 
+jl_function_t* j_get_heading = nullptr;
+
 void CatchJuliaException()
 {
     // Catch exceptions from the Julia function call.
@@ -168,6 +170,23 @@ avt_341::msg::AckermannDriveStamped GetMPCDrive()
     drive_msg.drive.speed = speed;
     drive_msg.drive.steering_angle = steering;
     return drive_msg;
+}
+
+avt_341::msg::Float64MultiArray GetMPCHeading()
+{
+  
+    jl_array_t *j_heading = (jl_array_t*)jl_call0(j_get_heading);
+    CATCH_JULIA_EXCEPTION;
+
+    double *heading_data = (double*)jl_array_data(j_heading);
+    size_t heading_len = jl_array_dim(j_heading, 0);
+    avt_341::msg::Float64MultiArray heading_msg;
+    heading_msg.data.resize(heading_len);
+
+    for (size_t i = 0; i < heading_len; i++) {
+        heading_msg.data[i] = heading_data[i];
+    }
+    return heading_msg;
 }
 
 bool NewInputAvailable() {
@@ -351,6 +370,7 @@ void InitialiseJuliaAPI()
     j_get_path = jl_get_function(mpc_module, "GetPath");
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
+    j_get_heading = jl_get_function(mpc_module, "GetHeading");
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
@@ -463,7 +483,7 @@ int main(int argc, char *argv[])
     auto speed_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",1);
     auto steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
     auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
-
+    auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
 
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
@@ -482,7 +502,7 @@ int main(int argc, char *argv[])
             speed_pub->publish(GetMPCSpeed());
             steer_pub->publish(GetMPCSteering());
             drive_pub->publish(GetMPCDrive());
-
+	    heading_pub->publish(GetMPCHeading());
 
         }
 
