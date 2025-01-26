@@ -1,10 +1,10 @@
 #pragma once
 
+#include <avt_341/node/ros_types.h>
 #include <avt_341/planning/local/dwa/cells.hpp>
 #include <avt_341/planning/local/dwa/obstacles.hpp>
 #include <avt_341/planning/local/dwa/path.hpp>
 #include <avt_341/planning/local/dwa/state.hpp>
-#include <avt_341_msgs/msg/dwa_trajectory.hpp>
 
 namespace avt_341 {
 namespace planning {
