@@ -16,206 +16,50 @@ adaptive = false
 # initial guess for sinkage exponent n in the deformable tire model
 n_guess = 0.7
 
-# define model parameters
+# vehicle parameters
+const g  = 9.81
+const la = 1.54134
+const L = 2.71534
+const lb = L-la  #2.715-la
+const h_cg = 0.634;
+const m = 1.269e+03
+const Izz = 1.620e+03
+const Fz = m*g
+const Fzf = Fz*lb/(la+lb)
+const Fzr = Fz-Fzf
+const KZX     = 1/2*m*h_cg/(la+lb) #289.5
+const FzF0    = Fzf/2.
+const FzR0    = Fzr/2.
 
-# Longitudinal Pacejka model parameters
-PCX1 = 1.18358               #Shape factor Cfx for longitudinal force
-PDX1 = 1.04493              #Longitudinal friction Mux at Fznom
-PDX2 = -0.0966588            #Variation of friction Mux with load
-PDX3 = 1.1979          #Variation of friction Mux with camber
-PEX1 = -0.320013             #Longitudinal curvature Efx at Fznom
-PEX2 = -0.476432               #Variation of curvature Efx with load
-PEX3 = 0.333948             #Variation of curvature Efx with load squared
-PEX4 = -2.22797          #Factor in curvature Efx while driving
-PKX1 = 11.0862               #Longitudinal slip stiffness Kfx/Fz at Fznom
-PKX2 = -0.746427               #Variation of slip stiffness Kfx/Fz with load
-PKX3 = 0.0359293              #Exponent in slip stiffness Kfx/Fz with load
-PHX1 = 0.002233         #Horizontal shift Shx at Fznom
-PHX2 = -0.00226917          #Variation of shift Shx with load
-PVX1 = -0.0386225         #Vertical shift Svx/Fz at Fznom
-PVX2 = -0.000258126         #Variation of shift Svx/Fz with load
-RBX1 = 100.0 #Slope factor for combined slip Fx reduction
-RBX2 = 15.1701 #Variation of slope Fx reduction with kappa
-RBX3 = 0 #Influence of camber on stiffness for Fx combined
-RCX1 = 0.598864 #Shape factor for combined slip Fx reduction
-REX1 = 0.794343 #Curvature factor of combined Fx
-REX2 = 0.102829 #Curvature factor of combined Fx with load
-RHX1 = 0.00165907 #Shift factor for combined slip Fx reduction
-PPX1 = 0.0 #Linear pressure effect on slip stiffness
-PPX2 = 0.0 #Quadratic pressure effect on slip stiffness
-PPX3 = 0.0 #Linear pressure effect on longitudinal friction
-PPX4 = 0.0 #Quadratic pressure effect on longitudinal friction
-PTX1 = 0.0   #Relaxation length SigKap0 / Fz at Fznom
-PTX2 = 0.0   #Variation of SigKap0 / Fz with load
-PTX3 = 0.0   #Variation of SigKap0 / Fz with exponent of load
-
-# Lateral_Pacejka model parameters
-PCY1 = 1.437525               #Shape factor Cfy for lateral forces
-PDY1 = -0.9277398              #Lateral friction Muy
-PDY2 = 0.0629010            #Variation of friction Muy with load
-PDY3 = -1.3139633              #Variation of friction Muy with squared camber
-PEY1 = 0.1210240              #Lateral curvature Efy at Fznom
-PEY2 = -0.0434791            #Variation of curvature Efy with load
-PEY3 = -0.0896877              #Zero order camber dependency of curvature Efy
-PEY4 = 35.937783               #Variation of curvature Efy with camber
-PEY5 = 0.0 #Camber curvature Efc
-PKY1 = -10.601958              #Maximum value of stiffness Kfy/Fznom
-PKY2 =  2.4674040               #Load at which Kfy reaches maximum value
-PKY3 = 0.6617869             #Variation of Kfy/Fznom with camber
-PKY4 = 0.0 #Peak stiffness variation with camber squared
-PKY5 = 0.0 #Lateral stiffness dependency with camber
-PKY6 = 0.0 #Camber stiffness factor
-PKY7 = 0.0 #Load dependency of camber stiffness factor
-PHY1 = -0.0014867            #Horizontal shift Shy at Fznom
-PHY2 = 5.4986956e-04            #Variation of shift Shy with load
-PHY3 = 0.1255658              #Variation of shift Shy with camber
-PVY1 = 0.0053318             #Vertical shift in Svy/Fz at Fznom
-PVY2 = -0.0047437            #Variation of shift Svy/Fz with load
-PVY3 = 0.0630867           #Variation of shift Svy/Fz with camber
-PVY4 = -0.2980209            #Variation of shift Svy/Fz with camber and load
-
-RBY1 = 8.67134               #Slope factor for combined Fy reduction
-RBY2 = 10.5608               #Variation of slope Fy reduction with alpha
-RBY3 = 0.0349066         #Shift term for alpha in slope Fy reduction
-RBY4 = 0 #Influence of camber on stiffness of Fy combined
-RCY1 = 1.14123                  #Shape factor for combined Fy reduction
-REY1 = 0.497453              #Curvature factor of combined Fy
-REY2 = -0.00951908          #Curvature factor of combined Fy with load
-RHY1 = 0.00223554             #Shift factor for combined Fy reduction
-RHY2 = 0.0154843          #Shift factor for combined Fy reduction with load
-RVY1 = 0.0           #Kappa induced side force Svyk/Muy*Fz at Fznom
-RVY2 = 0.            #Variation of Svyk/Muy*Fz with load
-RVY3 = 1.49012e-08            #Variation of Svyk/Muy*Fz with camber
-RVY4 = 0.0            #Variation of Svyk/Muy*Fz with alpha
-RVY5 = 0.0                  #Variation of Svyk/Muy*Fz with kappa
-RVY6 = 1.49012e-08             #Variation of Svyk/Muy*Fz with atan(kappa)
-PPY1 = 0.0 #Pressure effect on cornering stiffness magnitude
-PPY2 = 0.0 #Pressure effect on location of cornering stiffness peak
-PPY3 = 0.0 #Linear pressure effect on lateral friction
-PPY4 = 0 #Quadratic pressure effect on lateral friction
-PPY5 = 0.0 #Influence of inflation pressure on camber stiffness
-PTY1 = 0.0                  #Peak value of relaxation length SigAlp0/R0
-PTY2 = 0.0                  #Value of Fz/Fznom where SigAlp0 is extreme
-
-
-# Vehicle parameters
-FZ0        = 2670
-g          = 9.81
-T = 0.002
-la = 1.25
-lb = 2.019-la  #2.715-la
-h_cg = 0.596;
-m = 1.269e+03
-Izz = 1.620e+03
-Fz = m*g # 12449
-Fzf = Fz*lb/(la+lb) # 5332
-Fzr = Fz-Fzf
-
-#Fx and Fy are given in tire ref frame
-#Fy_out is the projection of forces acting on vehicle in lateral direction
-#front tire
-
-dfz_f = (Fzf-FZ0)/FZ0 # 1
-
-kappa = 0
-
-SHx_f = (PHX1 + PHX2*dfz_f)
-SVx_f = Fzf*(PVX1 + PVX2*dfz_f)
-kappa_x_f = kappa + SHx_f
-Cx_f = PCX1
-Mux_f = (PDX1 + PDX2*dfz_f)
-Dx_f = Mux_f*Fzf
-Ex_f = 0.0
-
-Kx_f = Fzf*(PKX1 + PKX2*dfz_f)*exp(PKX3*dfz_f)
-Bx_f = Kx_f / (Cx_f*Dx_f)
-
-Cy_f = PCY1 #1.4376
-SVy_f = Fzf*(PVY1+PVY2*dfz_f)
-SHy_f = PHY1+PHY2*dfz_f
-
-#rear tire
-
-dfz_r = (Fzr-FZ0)/FZ0
-
-SHx_r = (PHX1 + PHX2*dfz_r)
-SVx_r = Fzr*(PVX1 + PVX2*dfz_r)
-kappa_x_r = kappa + SHx_r
-Cx_r = PCX1
-Mux_r = (PDX1 + PDX2*dfz_r)
-Dx_r = Mux_r*Fzr
-Ex_r = 0.0
-
-Kx_r = Fzr*(PKX1 + PKX2*dfz_r)*exp(PKX3*dfz_r)
-Bx_r = Kx_r / (Cx_r*Dx_r)
-
-
-
-Cy_r = PCY1 #1.4376
-SVy_r = Fzr*(PVY1+PVY2*dfz_r)
-SHy_r = PHY1+PHY2*dfz_r
-
-# tire parameters
-KZX     = 289.5
-KZYR    = 427.
-KZYF    = 277.2
-FzF0    = 2670.
-FzR0    = 2670.
-PC1     = PCY1;
-PD1     = PDY1 - PDY2;
-PD2     = PDY2/FZ0;
-PE1     = PEY1 - PEY2;
-PE2     = PEY2/FZ0;
-PE3     = PEY3;
-PK1     = PKY1*FZ0;
-PK2     = 1/(PKY2*FZ0);
-PH1     = PHY1 - PHY2;
-PH2     = PHY2/FZ0;
-PV1     = PVY1 - PVY2;
-PV2     = PVY2/FZ0;
+# surrogatePacejka parameters
+const mu = 0.977706
+const p1 = -7.33706
+const p2 = 1.11368
+const p3 = -1.04179
 
 # vehicle Limits
-ux = 3.
-x_min    = 0.
-x_max    = 400.
-y_min    = 0.
-y_max    = 400.
-sa_min   = -0.485
-sa_max   = 0.485
-psi_min  = -2*pi
-psi_max  = 2*pi
-u_min    = 0.01   #5.
-u_max    = 30.
-sr_min   = -0.523
-sr_max   = 0.523
-jx_min   = -2.1*3
-jx_max   = 1.9*3
+const ux = 3.
+const x_min    = 0.
+const x_max    = 400.
+const y_min    = 0.
+const y_max    = 400.
+const sa_min   = -0.485
+const sa_max   = 0.485
+const psi_min  = -2*pi
+const psi_max  = 2*pi
+const u_min    = 1.0   #5.
+const u_max    = 30.
+const sr_min   = -0.523
+const sr_max   = 0.523
+const jx_min   = -2.1*3
+const jx_max   = 1.9*3
 
+# epsilon
+const EP      = 0.01
+
+# linear tire model parameters
 Caf =  -3.69554	# cornering stiffness--front axle (N/rad)
 Car =  -2.76883	# cornering stiffness-- rear axle (N/rad)
-Fy_min = -75000000
-Fy_max = 75000000
-
-# constrained initial states
-x0_     = 200.
-y0_     = 0.
-psi0_   = pi/2
-v0_     = 0.
-u0_     = 5.
-sa0_    = 0.
-sr0_    = 0.
-ax0_    = 0.
-jx0_    = 0.
-r0_     = 0.
-
-# leave these parameters here
-Fz_min  = 200.
-Fz_off  = 100.
-a_t     = Fz_min + 3*Fz_off  # soft tire force constraint constants
-b_t     = Fz_off
-EP      = 0.01
-
-dPKY = 0.
 
 
 #neural net params
