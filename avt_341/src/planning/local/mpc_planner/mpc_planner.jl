@@ -129,7 +129,7 @@ function Plan()
 	
 	solve!(n)
 	
-	global mpc_heading = [value(psi[i] for i in 1:length(psi)]
+	global mpc_heading = [value(psi[i]) for i in 1:length(psi)]
 	#@NLparameter(n.ocp.mdl, desiredYaw == 0.0); #desired yaw angle
 
 	#distanceToGoal=@NLexpression(n.ocp.mdl,(((x[end]-g1)^2+(y[end]-g2)^2)/((x[1]-g1)^2+(y[1]-g2)^2)))
