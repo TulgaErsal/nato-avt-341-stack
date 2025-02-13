@@ -38,7 +38,6 @@ const p2 = 1.11368
 const p3 = -1.04179
 
 # vehicle Limits
-const ux = 3.
 const x_min    = 0.
 const x_max    = 400.
 const y_min    = 0.
