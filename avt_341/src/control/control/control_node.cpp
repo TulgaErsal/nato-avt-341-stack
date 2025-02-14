@@ -259,7 +259,7 @@ int main(int argc, char *argv[]){
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;
 
-    // TODO: Add a better way to display this data instead of constant log (ex: rviz display or maybe just ros2 topic echo)
+    // TODO: Issue #145 Add a better way to display this data instead of constant log (ex: rviz display or maybe just ros2 topic echo)
     // if (nl % int(rate) == 0){ //update every second
     //   std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
     // }
