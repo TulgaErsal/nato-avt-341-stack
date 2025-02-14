@@ -25,6 +25,7 @@ global desiredHeading = 0.0
 global speedSetpoint = 0.0
 global est_sink = 0.0
 global new_sinkage_available = false
+global linearSolverId = "ma27"
 
 global n=0
 global XL=0
@@ -51,6 +52,7 @@ global path_prev=0
 global mpc_path = Float64[]
 global mpc_speed = Float64[]
 global mpc_steering = Float64[]
+global mpc_heading = Float64[]
 
 global skipCount = 1
 global solutionFound = false
@@ -230,8 +232,16 @@ function SetSinkage(sinkage::Float64)
 	global new_sinkage_available = true
 end
 
+function SetLinearSolver(solver::String)
+    global linearSolverId = solver
+end
+
 function GetPath()
 	return mpc_path
+end
+
+function GetHeading()
+    return mpc_heading
 end
 
 function GetSpeed()
@@ -267,6 +277,7 @@ function Setup()
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
 	global mpc_speed = Array{Float64}(undef, numColPoints+1, 1)
 	global mpc_steering = Array{Float64}(undef, numColPoints+1, 1)
+	global mpc_heading = Array{Float64}(undef, numColPoints+1, 1)
 
 	global speedSetpoint = maxSpeed
 	global obstacle_size_meters = grid_resolution
@@ -360,7 +371,7 @@ function Setup()
 	n.s.ocp.save = false
 
 	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
-		linear_solver = "ma27",
+		linear_solver = linearSolverId,
 		max_iter = 2000,
 		print_level = 0,
 		warm_start_init_point = "no",
@@ -386,7 +397,7 @@ function Setup()
 	println("Setup done. Type 'q' to quit.")
 
 	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
-		linear_solver = "ma27",
+		linear_solver = linearSolverId,
 		max_iter = 200,
 		max_cpu_time = 0.2,
 		print_level = 0,
@@ -407,7 +418,7 @@ function Setup()
 end
 
 function Plan()
-	global mpc_path, mpc_speed, mpc_steering, solutionFound, skipCount, path_prev, numobs, obstacles
+	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -470,6 +481,7 @@ function Plan()
 				mpc_path[i,2] = n.r.ocp.X[i,2]-la*sin(n.r.ocp.X[i,5])
 				mpc_speed[i] = n.r.ocp.X[i,7]
 				mpc_steering[i] = n.r.ocp.X[i,6]
+				mpc_heading[i] = n.r.ocp.X[i,5]
 				skipCount = 1
 			end
 		else

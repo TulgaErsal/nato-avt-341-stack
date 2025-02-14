@@ -259,9 +259,10 @@ int main(int argc, char *argv[]){
     current_brake_value = dc.linear.y;
     current_throttle_value = dc.linear.x;
 
-    if (nl % int(rate) == 0){ //update every second
-      std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
-    }
+    // TODO: Add a better way to display this data instead of constant log (ex: rviz display or maybe just ros2 topic echo)
+    // if (nl % int(rate) == 0){ //update every second
+    //   std::cout << " Driving Command: " << current_run_state << " Brake: " << current_brake_value << " Throttle: " << current_throttle_value << std::endl;
+    // }
       
     // break the loop when an end state is reached
     if (time_to_quit) break;

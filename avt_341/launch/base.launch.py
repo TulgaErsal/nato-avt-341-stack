@@ -65,7 +65,7 @@ class Concat(Substitution):
             self.__concat_val = concat_val
 
         def describe(self):
-            return 'StringConcate(%s %s)' % (self.__sub_val.describe(), self.__concat_val)
+            return 'StringConcat(%s %s)' % (self.__sub_val.describe(), self.__concat_val)
 
         def perform(self, context: launch.LaunchContext):
             return self.__sub_val.perform(context) + self.__concat_val
@@ -85,6 +85,19 @@ class ArrayIndexSubstitution(Substitution):
         # array_val is current a string, need to parse
         array_val = array_val.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
         return array_val[self.__idx]
+
+
+class LaunchConfigurationInList(Condition):
+
+    def __init__(self, launch_configuration_name, expected_values):
+        self.__conditions = [LaunchConfigurationEquals(launch_configuration_name, ev) for ev in expected_values]
+        super().__init__(predicate=self._predicate_func)
+
+    def _predicate_func(self, context):
+        return any([c._predicate_func(context) for c in self.__conditions])
+
+    def describe(self):
+        return f"LaunchConfigurationInList({','.join([d.describe() for d in self.__conditions])})"
 
 
 def evaluate_waypoint_parameters(context, *args, **kwargs):
@@ -144,7 +157,11 @@ def generate_launch_description():
             vi = params[k][ki]
             if type(vi) is dict:
                 for kii, vii in vi.items():
-                    params[k]['_'.join([ki, kii])] = vii
+                    # TODO: Convert to new base.launch file
+                    if k == 'perception':
+                        params[k]['/'.join([ki, kii])] = vii
+                    else:
+                        params[k]['_'.join([ki, kii])] = vii
                 del params[k][ki]
         for ki, vi in params[k].items():
             if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
@@ -214,7 +231,7 @@ def generate_launch_description():
                     executable='avt_341_control_node',
                     name='vehicle_control_node',
                     output='screen',
-                    condition=LaunchConfigurationNotEquals('local_planner_method', 'dwa'),
+                    condition=LaunchConfigurationInList('local_planner_method', ['rcc', 'pf']),
                     parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control'].keys()}],
                 ),
                 Node(
@@ -222,9 +239,61 @@ def generate_launch_description():
                     executable='avt_341_speed_control_node',
                     name='vehicle_control_node',
                     output='screen',
-                    condition=LaunchConfigurationEquals('local_planner_method', 'dwa'),
+                    condition=LaunchConfigurationInList('local_planner_method', ['dwa', 'mpc']),
                     parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control'].keys()}],
                 ),
+
+                GroupAction(condition=LaunchConfigurationEquals('local_planner_method', 'mpc'), actions=[
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_mpc_planner_node',
+                        name='mpc_planner_node',
+                        output='screen',
+                        #prefix=['xterm -e gdb -ex run --args'],
+                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
+                    ),
+                    # Obstacle Processor
+                    Node(
+                        package='avt_341',
+                        executable='obstacle_processor_node',
+                        name='obstacle_processor_node',
+                        output='screen',
+                        remappings=[
+                            #('avt_341/occupancy_grid', 'avt_341/local_grid'),
+                        ],
+                        #prefix=['xterm -e gdb -ex run --args'],
+                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
+                    ),
+                    # Segmentation Grid Processor
+                    Node(
+                        package='avt_341',
+                        executable='segmentation_grid_processor_node',
+                        name='segmentation_grid_processor_node',
+                        output='screen',
+                        remappings=[
+                            ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
+                        ],
+                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
+                    ),
+                    # Vehicle Converter
+                    Node(
+                        package='avt_341',
+                        executable='veh_converter_node',
+                        name='avt_341_veh_converter_node',
+                        output='screen',
+                    )
+                ]),
+
+                # Goal Point Processor
+                Node(
+                    package='avt_341',
+                    executable='goal_point_processor_node',
+                    name='goal_point_processor_node',
+                    output='screen',
+                    condition=LaunchConfigurationEquals('local_planner_method', 'mpc'),
+                    parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
+                ),
+
                 Node(
                     package='avt_341',
                     executable='avt_341_global_path_node',

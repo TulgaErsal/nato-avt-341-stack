@@ -21,6 +21,12 @@
 
 #include <avt_341/node/node_proxy.h>
 #include <avt_341/node/ros_types.h>
+
+// Julia header throws "No Target Architecture" error otherwise on Windows systems
+#ifdef _WIN64
+ #define _AMD64_
+#endif
+
 #include <julia.h>
 
 // TODO: I do not have a Windows environment to test whether this declaration
@@ -57,6 +63,7 @@ std::string parameters_module_path;
 std::string models_module_path;
 double rate;
 std::string tire_model;
+std::string linear_solver;
 int num_col_points;
 double prediction_time_horizon;
 int max_num_obs;
@@ -161,6 +168,7 @@ jl_function_t* j_set_front_angle_obstacle = NULL;
 jl_function_t* j_set_terrain_adaptive = NULL;
 jl_function_t* j_set_veh_front_axle_dist = NULL;
 jl_function_t* j_set_front_angle_segmentation = NULL;
+jl_function_t* j_set_linear_solver = NULL;
 
 // ---------------
 

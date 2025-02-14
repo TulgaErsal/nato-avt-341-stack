@@ -69,7 +69,9 @@ if(USING_AMENT)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(vision_msgs REQUIRED)
+  find_package(Boost REQUIRED)
 
+  include_directories(${Boost_INCLUDE_DIRS})
   # > Lookup CUDA
   include(CheckLanguage)
   check_language(CUDA)
