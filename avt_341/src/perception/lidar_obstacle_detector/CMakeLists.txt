@@ -22,7 +22,7 @@ if(USING_AMENT)
           "lidar_obstacle_detector_node.cpp"
   )
   target_link_libraries(${PROJECT_NAME}_lidar_obstacle_detector_node
-                        ${catkin_LIBRARIES} ${${PROJECT_NAME}_LIBRARY} ${PCL_LIBRARIES})
+                        ${catkin_LIBRARIES} ${PROJECT_NAME}_proxy ${${PROJECT_NAME}_LIBRARY} ${PCL_LIBRARIES})
   install(
       TARGETS ${PROJECT_NAME}_lidar_obstacle_detector_node
       EXPORT export_${PROJECT_NAME}

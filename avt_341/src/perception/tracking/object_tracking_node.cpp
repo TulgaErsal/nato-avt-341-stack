@@ -291,7 +291,7 @@ void ObjectTrackingNode::PointCloudCallback(sensor_msgs::msg::PointCloud2::Share
     }
 
     // Segment the ground plane.
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane;
     SegmentGroundPlane(point_cloud_fov, cloud_plane, sac_segmentation_max_iterations_, sac_segmentation_threshold_);
 
     if(publish_ground_cloud_) {
@@ -652,7 +652,7 @@ void ObjectTrackingNode::DensifyCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr point_
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr
 ObjectTrackingNode::ToPCLCloud(sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud;
     pcl::fromROSMsg(*point_cloud_message, *point_cloud);
 
     RCLCPP_DEBUG(get_logger(), "Number of points in the raw point cloud: %i", int(point_cloud->points.size()));

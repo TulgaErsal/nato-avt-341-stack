@@ -4,7 +4,7 @@
 
 #else
   #ifdef ROS_HUMBLE
-  #include "tf2_sensor_msgs/tf2_sensor_msgs.hpp"
+  #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
   #else
   #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
   #endif
