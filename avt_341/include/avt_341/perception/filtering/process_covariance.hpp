@@ -13,9 +13,9 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      detection_2d.cpp
+* @file      process_covariance.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
-* @brief     Source file for a two-dimensional object detection.
+* @brief     Header file for templated process covariance matrices for common noise profiles
 * @copyright MIT License
 
              NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
@@ -41,29 +41,45 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/detection_2d.hpp>
+#pragma once
+
+#include <Eigen/Dense>
 
 namespace avt_341 {
 namespace perception {
+namespace filtering {
 
-Detection2D::Detection2D(BoundingBox2D bounding_box, Hypothesis hypothesis)
-    : bounding_box_(bounding_box),
-      hypothesis_(hypothesis) {}
+template <int state_size, int order>
+class ProcessCovariance {
+  public:
+    typedef Eigen::Matrix<double, state_size*(order + 1), state_size*(order + 1)> ProcessCovarianceMatrix;
 
-BoundingBox2D Detection2D::GetBoundingBox() { return bounding_box_; }
+    static ProcessCovarianceMatrix GetDiscreteWhiteNoise(double time_step, double process_variance) {
+        ProcessCovarianceMatrix Q;
+        Q = ProcessCovarianceMatrix::Zero();
 
-Hypothesis Detection2D::GetHypothesis() { return hypothesis_; }
+        Eigen::Matrix<double, (order + 1), (order + 1)> block_q;
 
-vision_msgs::msg::Detection2D Detection2D::ToROSVisionMessage() {
-    vision_msgs::msg::Detection2D detection_2d_message;
-    detection_2d_message.bbox = bounding_box_.ToROSVisionMessage();
-    vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
-    hypothesis.hypothesis = hypothesis_.ToROSVisionHypothesisMessage();
-    detection_2d_message.results.push_back(hypothesis);
-    detection_2d_message.id = std::to_string(-1);
+        block_q = Eigen::Matrix<double, (order + 1), (order + 1)>::Zero();
+        block_q(0, 0) = 0.25 * std::pow(time_step, 4);
+        block_q(0, 1) = 0.5 * std::pow(time_step, 3);
+        block_q(0, 2) = 0.5 * std::pow(time_step, 2);
+        block_q(1, 0) = 0.5 * std::pow(time_step, 3);
+        block_q(1, 1) = std::pow(time_step, 2);
+        block_q(1, 2) = time_step;
+        block_q(2, 0) = 0.5 * std::pow(time_step, 2);
+        block_q(2, 1) = time_step;
+        block_q(2, 2) = 1;
 
-    return detection_2d_message;
-}
+        for(int block_index = 0; block_index < state_size; ++block_index) {
+            Q.template block<(order + 1), (order + 1)>(block_index * (order + 1), block_index * (order + 1)) = block_q;
+        }
 
+        Q *= std::pow(process_variance, 2.0);
+        return Q;
+    }
+};
+
+} // namespace filtering
 } // namespace perception
 } // namespace avt_341

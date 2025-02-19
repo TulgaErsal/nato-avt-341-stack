@@ -1,11 +1,29 @@
 message(STATUS "Building dynamic window planner node ...")
 
+find_package(Boost REQUIRED)
+find_package(OpenMP)
+
 if(USING_CATKIN)
   # Dynamic window approach planner node
-  add_executable(${PROJECT_NAME}_dwa_planner_node "dwa_planner.cpp"
-                                                  "dwa_planner_node.cpp")
+  add_executable(
+    ${PROJECT_NAME}_dwa_planner_node
+    "cells.cpp"
+    "dwa_planner_node.cpp"
+    "dynamic_window.cpp"
+    "obstacles.cpp"
+    "path.cpp"
+    "planner.cpp"
+    "state.cpp"
+    "trajectory.cpp")
   add_dependencies(${PROJECT_NAME}_dwa_planner_node ${catkin_EXPORTED_TARGETS})
-  target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${PROJECT_NAME}_proxy)
+  target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${PROJECT_NAME}_proxy
+                        ${Boost_LIBRARIES})
+  if(OpenMP_FOUND)
+    target_compile_definitions(${PROJECT_NAME}_dwa_planner_node
+                               PUBLIC USE_OPENMP)
+    target_link_libraries(${PROJECT_NAME}_dwa_planner_node OpenMP::OpenMP_CXX)
+
+  endif() # if(OpenMP_FOUND)
   install(
     TARGETS ${PROJECT_NAME}_dwa_planner_node
     RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
@@ -14,10 +32,24 @@ endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
   # Dynamic window approach planner node
-  add_executable(${PROJECT_NAME}_dwa_planner_node "dwa_planner_node.cpp"
-                                                  "dwa_planner.cpp")
-  target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${link_libs}
-                        ${PROJECT_NAME}_proxy)
+  add_executable(
+    ${PROJECT_NAME}_dwa_planner_node
+    "cells.cpp"
+    "dwa_planner_node.cpp"
+    "dynamic_window.cpp"
+    "obstacles.cpp"
+    "path.cpp"
+    "planner.cpp"
+    "state.cpp"
+    "trajectory.cpp")
+  target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${Boost_LIBRARIES}
+                        ${link_libs} ${PROJECT_NAME}_proxy)
+  if(OpenMP_FOUND)
+    target_compile_definitions(${PROJECT_NAME}_dwa_planner_node
+                               PUBLIC USE_OPENMP)
+    target_link_libraries(${PROJECT_NAME}_dwa_planner_node OpenMP::OpenMP_CXX)
+
+  endif() # if(OpenMP_FOUND)
   install(
     TARGETS ${PROJECT_NAME}_dwa_planner_node
     EXPORT export_${PROJECT_NAME}

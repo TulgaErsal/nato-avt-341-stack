@@ -1,3 +1,46 @@
+/**
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ +                      _    _    _    _    _    _    _                      +
+ +                     / \  / \  / \  / \  / \  / \  / \                     +
+ +                    ( A )( V )( T )( - )( 3 )( 4 )( 1 )                    +
+ +                     \_/  \_/  \_/  \_/  \_/  \_/  \_/                     +
+ +       _    _    _    _    _    _    _    _     _    _    _    _    _      +
+ +      / \  / \  / \  / \  / \  / \  / \  / \   / \  / \  / \  / \  / \     +
+ +     ( A )( U )( T )( O )( N )( O )( M )( Y ) ( S )( T )( A )( C )( K )    +
+ +      \_/  \_/  \_/  \_/  \_/  \_/  \_/  \_/   \_/  \_/  \_/  \_/  \_/     +
+ +                                                                           +
+ +  AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles  +
+ +                                                                           +
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+* @file      object_detection_node.hpp
+* @author    Dario Sirangelo (dsi@aarhusrobotics.com)
+* @brief     Header file for the YOLOv8 object detector rclcpp ROS node.
+* @copyright MIT License
+
+             NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
+             Copyright (c) 2024 Dario Sirangelo (dsi@aarhusrobotics.com).
+
+             NOTE: The above copyright only applies to the contents of this file. The source code contained in this file
+             is a direct port from the GitHub repository aarhus-robotics/navi, released by the copyright holder under
+             the MIT license.
+
+             Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+             associated documentation files (the "Software"), to deal in the Software without restriction, including
+             without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+             copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+             following conditions:
+
+             The above copyright notice and this permission notice shall be included in all copies or substantial
+             portions of the Software.
+
+             THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+             LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+             EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+             IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+             THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 #pragma once
 
 #include <random>
@@ -70,8 +113,7 @@ class ObjectDetectorNode : public rclcpp::Node {
      * message to perform detection on.
      */
 
-    void
-    ImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& image_message);
+    void ImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& image_message);
 
     /**
      * @brief Callback function for the detection timer.
@@ -91,23 +133,19 @@ class ObjectDetectorNode : public rclcpp::Node {
     // --------------------------
     /** @brief Shared pointer to the detections publisher for use with the
      * vision_msgs interface. */
-    rclcpp::Publisher<vision_msgs::msg::Detection2DArray>::SharedPtr
-        detections_vision_publisher_;
+    rclcpp::Publisher<vision_msgs::msg::Detection2DArray>::SharedPtr detections_vision_publisher_;
 
     /** @brief Shared pointer to the bounding boxes publisher for use with the
      * vision_msgs_layers interface. */
-    rclcpp::Publisher<vision_msgs::msg::BoundingBox2D>::SharedPtr
-        bounding_boxes_publisher_;
+    rclcpp::Publisher<vision_msgs::msg::BoundingBox2D>::SharedPtr bounding_boxes_publisher_;
 
     /** @brief Shared pointer to the vision info publisher for use with the
      * vision_msgs interface. */
-    rclcpp::Publisher<vision_msgs::msg::VisionInfo>::SharedPtr
-        vision_info_publisher_;
+    rclcpp::Publisher<vision_msgs::msg::VisionInfo>::SharedPtr vision_info_publisher_;
 
     /** @brief Shared pointer to the label info publisher for use with the
      * vision_msgs interface. */
-    rclcpp::Publisher<vision_msgs::msg::LabelInfo>::SharedPtr
-        label_info_publisher_;
+    rclcpp::Publisher<vision_msgs::msg::LabelInfo>::SharedPtr label_info_publisher_;
     // --------------------------
 
     // Visualization
@@ -150,14 +188,11 @@ class ObjectDetectorNode : public rclcpp::Node {
      * @param detections Vector of image detections.
      * @param frame_id Frame ID used to stamp the overlay image message header.
      */
-    void PublishDetectionImage(cv::Mat image,
-                               std::vector<Detection2D> detections,
-                               std::string frame_id);
+    void PublishDetectionImage(cv::Mat image, std::vector<Detection2D> detections, std::string frame_id);
 
     /** @brief Shared pointer to the object detections overlay image publisher.
      */
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
-        detections_image_publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr detections_image_publisher_;
     // -------------
 
     // Object detection model
@@ -229,7 +264,7 @@ class ObjectDetectorNode : public rclcpp::Node {
     // Image parsing
     // -------------
     /** @brief Shared pointer to the image subscription. */
-    image_transport::Subscriber image_subscription_;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscription_;
 
     /** @brief Whether or not a valid image has been received since the latest
      * object detector reset. */

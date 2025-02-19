@@ -13,9 +13,9 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      detection_2d.cpp
+* @file      pixel_coordinates.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
-* @brief     Source file for a two-dimensional object detection.
+* @brief     Camera pixel coordinates representation of a three-dimensional point in space.
 * @copyright MIT License
 
              NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
@@ -23,7 +23,7 @@
 
              NOTE: The above copyright only applies to the contents of this file. The source code contained in this file
              is a direct port from the GitHub repository aarhus-robotics/navi, released by the copyright holder under
-             the MIT license.
+             the MIT license. 
 
              Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
              associated documentation files (the "Software"), to deal in the Software without restriction, including
@@ -41,29 +41,19 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/detection_2d.hpp>
+#pragma once
 
 namespace avt_341 {
 namespace perception {
 
-Detection2D::Detection2D(BoundingBox2D bounding_box, Hypothesis hypothesis)
-    : bounding_box_(bounding_box),
-      hypothesis_(hypothesis) {}
+class PixelCoordinates {
+  public:
+    PixelCoordinates(int x, int y, double z) : x_(x), y_(y), z_(z) {}
 
-BoundingBox2D Detection2D::GetBoundingBox() { return bounding_box_; }
-
-Hypothesis Detection2D::GetHypothesis() { return hypothesis_; }
-
-vision_msgs::msg::Detection2D Detection2D::ToROSVisionMessage() {
-    vision_msgs::msg::Detection2D detection_2d_message;
-    detection_2d_message.bbox = bounding_box_.ToROSVisionMessage();
-    vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
-    hypothesis.hypothesis = hypothesis_.ToROSVisionHypothesisMessage();
-    detection_2d_message.results.push_back(hypothesis);
-    detection_2d_message.id = std::to_string(-1);
-
-    return detection_2d_message;
-}
+    int x_;
+    int y_;
+    double z_;
+};
 
 } // namespace perception
 } // namespace avt_341

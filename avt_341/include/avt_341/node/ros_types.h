@@ -4,6 +4,8 @@
 
 #ifdef ROS_1
 
+#include "ackermann_msgs/ackermann_drive_stamped.h"
+
 #include <geometry_msgs/Quaternion.h>
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/PointCloud.h"
@@ -51,9 +53,15 @@
 #include "avt_341_msgs/StaticObstacle.h"
 #include "avt_341_msgs/LiorfCloudInfo.h"
 #include "avt_341_msgs/LiorfSaveMap.h"
+#include "avt_341_msgs/DwaInfo.h"
+#include "avt_341_msgs/DwaObjective.h"
+#include "avt_341_msgs/DwaTrajectory.h"
 
 namespace avt_341 {
     namespace msg {
+        using AckermannDriveStamped = ackermann_msgs::AckermannDriveStamped;
+        using AckermannDriveStampedPtr = ackermann_msgs::AckermannDriveStamped::SharedPtr;
+
         using PointCloud = sensor_msgs::PointCloud;
         using PointCloudPtr = const sensor_msgs::PointCloud::ConstPtr &;
 
@@ -185,6 +193,11 @@ namespace avt_341 {
         using LiorfSaveMapRequest = avt_341_msgs::LiorfSaveMapRequest;
         using LiorfSaveMapResponse = avt_341_msgs::LiorfSaveMapResponse;
 
+        using DwaInfo = avt_341_msgs::DwaInfo;
+        using DwaTrajectory = avt_341_msgs::DwaTrajectory;
+        using DwaObjective = avt_341_msgs::DwaObjective;
+
+
         using Time = ros::Time;
         using Duration = ros::Duration;
         using DurationMsg = ros::Duration;
@@ -202,6 +215,8 @@ namespace avt_341 {
 #include <rclcpp/time.hpp>
 #include <rclcpp/duration.hpp>
 #include "builtin_interfaces/msg/duration.hpp"
+
+#include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
@@ -246,9 +261,15 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/sinkage.hpp"
 #include "avt_341_msgs/msg/static_obstacle_array.hpp"
 #include "avt_341_msgs/msg/static_obstacle.hpp"
+#include "avt_341_msgs/msg/dwa_info.hpp"
+#include "avt_341_msgs/msg/dwa_objective.hpp"
+#include "avt_341_msgs/msg/dwa_trajectory.hpp"
 
 namespace avt_341 {
   namespace msg {
+    using AckermannDriveStamped = ackermann_msgs::msg::AckermannDriveStamped;
+    using AckermannDriveStampedPtr = ackermann_msgs::msg::AckermannDriveStamped::SharedPtr;
+
     using PointCloud = sensor_msgs::msg::PointCloud;
     using PointCloudPtr = sensor_msgs::msg::PointCloud::SharedPtr;
 
@@ -365,6 +386,10 @@ namespace avt_341 {
 
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
+
+    using DwaInfo = avt_341_msgs::msg::DwaInfo;
+    using DwaTrajectory = avt_341_msgs::msg::DwaTrajectory;
+    using DwaObjective = avt_341_msgs::msg::DwaObjective;
 
     using Time = rclcpp::Time;
     using Duration = rclcpp::Duration;

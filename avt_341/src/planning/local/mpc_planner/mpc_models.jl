@@ -11,26 +11,33 @@
 """
 
 function ThreeDOF_rigid(n)
-  # lateral tire load
-  FYF=:(($PD2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))*sin($PC1*atan(((($PK1*sin(2*atan($PK2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))))/((($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)) + (($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)))/((($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))^2 + $EP^2)^(0.5))*0.001)+$EP))*((atan((v[j] + $la*r[j])/(ux[j]+$EP)) - sa[j]) + $PH2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX) + $PH1)) - (($PE2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX) + $PE1)*(1 - $PE3)*(((atan((v[j] + $la*r[j])/(ux[j]+$EP)) - sa[j]) + $PH2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX) + $PH1))/((((atan((v[j] + $la*r[j])/(ux[j]+$EP)) - sa[j]) + $PH2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX) + $PH1)^2 + $EP^2)^(0.5)))*(((($PK1*sin(2*atan($PK2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))))/((($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)) + (($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)))/((($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))^2 + $EP^2)^(0.5))*0.001)+$EP))*((atan((v[j] + $la*r[j])/(ux[j]+$EP)) - sa[j]) + $PH2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX) + $PH1)) - atan(((($PK1*sin(2*atan($PK2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))))/((($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)) + (($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)))/((($PD2*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX))^2 + $EP^2)^(0.5))*0.001)+$EP))*((atan((v[j] + $la*r[j])/(ux[j]+$EP)) - sa[j]) + $PH2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX) + $PH1)))))) + ($PV2*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)^2 + $PV1*($FzF0 - (ax[j] - v[j]*r[j])*$KZX)));
-  FYR=:(($PD2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))*sin($PC1*atan(((($PK1*sin(2*atan($PK2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))))/((($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)) + (($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)))/((($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))^2+$EP^2)^(0.5))*0.001)+$EP))*((atan((v[j] - $lb*r[j])/(ux[j]+$EP))) + $PH2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX) + $PH1)) - (($PE2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX) + $PE1)*(1 - $PE3*(((atan((v[j] - $lb*r[j])/(ux[j]+$EP))) + $PH2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX) + $PH1))/((((atan((v[j] - $lb*r[j])/(ux[j]+$EP))) + $PH2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX) + $PH1)^2 + $EP^2)^(0.5))))*(((($PK1*sin(2*atan($PK2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))))/((($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)) + (($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)))/((($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))^2+$EP^2)^(0.5))*0.001)+$EP))*((atan((v[j] - $lb*r[j])/(ux[j]+$EP))) + $PH2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX) + $PH1)) - atan(((($PK1*sin(2*atan($PK2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))))/((($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)) + (($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)))/((($PD2*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PD1*$PC1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX))^2+$EP^2)^(0.5))*0.001)+$EP))*((atan((v[j] - $lb*r[j])/(ux[j]+$EP))) + $PH2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX) + $PH1)))))) + ($PV2*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)^2 + $PV1*($FzR0 + (ax[j] - v[j]*r[j])*$KZX)));
+    # lateral tire force
+    FzF = :($FzF0 - $KZX * (-(v[j] * r[j]) + ax[j]))
+    FzR = :($FzR0 + $KZX * (-(v[j] * r[j]) + ax[j]))
+  
+    X1F = :($p1 / $mu * (atan((v[j] + $la * r[j]) / ($EP + ux[j])) - sa[j]))
+    X1R = :($p1 / $mu * (atan((v[j] - $lb * r[j]) / ($EP + ux[j]))))
 
-  dx = Array{Expr}(undef,8)
-  dx[1] = :(ux[j]*cos(psi[j]) - (v[j] + $la*r[j])*sin(psi[j]))   # X position of front axle
-  dx[2] = :(ux[j]*sin(psi[j]) + (v[j] + $la*r[j])*cos(psi[j]))   # Y position of front axle
-  dx[3] = :(($FYF + $FYR)/$m - r[j]*ux[j])                       # Lateral speed
-  dx[4] = :(($la*$FYF-$lb*$FYR)/$Izz)                            # Yaw rate
-  dx[5] = :(r[j])                                                # Yaw angle
-  dx[6] = :(sr[j])                                               # Front wheel steering angle
-  dx[7] = :(ax[j])                                               # Longitudinal speed
-  dx[8] = :(jx[j])                                               # Longitudinal acceleration
-  return dx
+    FYF = :(2 * $mu * $FzF * sin($p2 * atan($X1F - $p3 * ($X1F - atan($X1F)))))
+    FYR = :(2 * $mu * $FzR * sin($p2 * atan($X1R - $p3 * ($X1R - atan($X1R)))))
+
+    # vehicle dynamics
+    dx = Array{Expr}(undef,8)
+    dx[1] = :(ux[j]*cos(psi[j]) - (v[j] + $la*r[j])*sin(psi[j]))   # X position of front axle
+    dx[2] = :(ux[j]*sin(psi[j]) + (v[j] + $la*r[j])*cos(psi[j]))   # Y position of front axle
+    dx[3] = :(($FYF + $FYR)/$m - r[j]*ux[j])                       # Lateral speed
+    dx[4] = :(($la*$FYF-$lb*$FYR)/$Izz)                            # Yaw rate
+    dx[5] = :(r[j])                                                # Yaw angle
+    dx[6] = :(sr[j])                                               # Front wheel steering angle
+    dx[7] = :(ax[j])                                               # Longitudinal speed
+    dx[8] = :(jx[j])                                               # Longitudinal acceleration
+    return dx
 end
 
 function ThreeDOF_linear(n)
   # lateral tire load
-  FYF=:($Caf * $Fzf * (atan((v[j] + $la*r[j])/(ux[j]+$EP))-sa[j]))
-  FYR=:($Car * $Fzr * atan((v[j] - $lb*r[j])/(ux[j]+$EP)))
+  FYF=:(2 * $Caf * $Fzf * (atan((v[j] + $la*r[j])/(ux[j]+$EP))-sa[j]))
+  FYR=:(2 * $Car * $Fzr * atan((v[j] - $lb*r[j])/(ux[j]+$EP)))
 
   dx = Array{Expr}(undef,8)
   dx[1] = :(ux[j]*cos(psi[j]) - (v[j] + $la*r[j])*sin(psi[j]))   # X position of front axle

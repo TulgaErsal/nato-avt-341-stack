@@ -132,6 +132,19 @@ namespace avt_341 {
                 }
             }
 
+            template <typename ParameterT>
+            ParameterT get_parameter(const std::string& name,
+                                     const ParameterT default_value) {
+
+                if(ros::param::has(name)) {
+                    ParameterT parameter_out;
+                    ros::param::get(name, parameter_out);
+                    return parameter_out;
+                } else {
+                    return default_value;
+                }
+            }
+
             template<typename MessageT>
             std::shared_ptr<Publisher<MessageT>> create_publisher(const std::string &topic_name, int qos) {
                 return std::make_shared<Publisher<MessageT>>(topic_name, qos, node_);
@@ -335,6 +348,15 @@ namespace avt_341 {
 
         node_->declare_parameter(name_local, default_value);
         node_->get_parameter(name_local, parameter_out);
+      }
+
+      template<typename ParameterT>
+      ParameterT get_parameter(const std::string &name, const ParameterT default_value) {
+        std::string name_local = name[0] == '~' ? name.substr(1, name.size()-1) : name;
+        ParameterT parameter_out;
+        node_->declare_parameter(name_local, default_value);
+        node_->get_parameter(name_local, parameter_out);
+        return parameter_out;
       }
 
       template<typename MessageT>

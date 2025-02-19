@@ -39,6 +39,9 @@ global steer_angle = 0
 global yawrate = 0
 global longacc = 0
 
+#ADDED array that stores the heading trajectory (psi)
+global mpc_heading = Float64[]
+
 function Plan()
 	global stop = false
 	global wait
@@ -123,6 +126,10 @@ function Plan()
 		obs_con = @NLconstraint(n.ocp.mdl, ksAggregation <= 1.0)
 		newConstraint!(n,obs_con,:obs_con)
 	end
+	
+	solve!(n)
+	
+	global mpc_heading = [value(psi[i]) for i in 1:length(psi)]
 	#@NLparameter(n.ocp.mdl, desiredYaw == 0.0); #desired yaw angle
 
 	#distanceToGoal=@NLexpression(n.ocp.mdl,(((x[end]-g1)^2+(y[end]-g2)^2)/((x[1]-g1)^2+(y[1]-g2)^2)))
@@ -137,6 +144,13 @@ end
 
 Set the estimated sinkage exponent.
 """
+
+function GetHeading()
+    global mpc_heading
+    return mpc_heading
+end
+
+
 function SetSinkage(n::Float64)
     global est_sinkage = n
 end
