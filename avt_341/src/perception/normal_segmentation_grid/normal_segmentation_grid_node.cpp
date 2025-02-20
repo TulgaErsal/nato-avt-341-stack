@@ -4,7 +4,11 @@
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
+#ifdef ROS_1
 #include <tf2_eigen/tf2_eigen.h>
+#else
+#include <tf2_eigen/tf2_eigen.hpp>
+#endif
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"

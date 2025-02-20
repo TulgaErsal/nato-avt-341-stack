@@ -69,6 +69,7 @@ if(USING_AMENT)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(vision_msgs REQUIRED)
+  find_package(Boost REQUIRED)
 
   # > Lookup CUDA
   include(CheckLanguage)
@@ -86,6 +87,10 @@ if(USING_AMENT)
 
   ament_target_dependencies(${PROJECT_NAME}_object_detector_node cv_bridge
                             OpenCV rclcpp sensor_msgs vision_msgs)
+
+  target_include_directories(
+          ${PROJECT_NAME}_object_detector_node
+          PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
 
   target_link_libraries(${PROJECT_NAME}_object_detector_node
                         ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES})

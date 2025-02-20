@@ -42,6 +42,9 @@ if(USING_AMENT)
     "planner.cpp"
     "state.cpp"
     "trajectory.cpp")
+  target_include_directories(
+          ${PROJECT_NAME}_dwa_planner_node
+          PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
   target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${Boost_LIBRARIES}
                         ${link_libs} ${PROJECT_NAME}_proxy)
   if(OpenMP_FOUND)

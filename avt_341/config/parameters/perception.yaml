@@ -20,6 +20,7 @@ stitch_lidar_points: True                 # If true, lidar scans will be stitche
 filter_highest_lidar: False               # If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used.
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
 perception_rate: 20.0                     # Publish rate for perception node
+limit_grid_size: False                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
 
 # Clearing method
 # ======================================================================================================================
@@ -45,5 +46,5 @@ publish_uab_occupancy_grid: False # Whether or not to publish the occupancy grid
 # Lidar Obstacle Detector
 # ======================================================================================================================
 use_lidar_obstacle_detector: False      # If true uses lidar obstacle detector. ROS1 version only currently.
-raw_points_topic: '/avt_341/points'         # The name of the points topic listened to by the obstacle detection node.
-perception_points_topic: '/avt_341/points'  # The name of the points topic listened to by the perception node.
+raw_points_topic: 'avt_341/points'         # The name of the points topic listened to by the obstacle detection node.
+perception_points_topic: 'avt_341/points'  # The name of the points topic listened to by the perception node.

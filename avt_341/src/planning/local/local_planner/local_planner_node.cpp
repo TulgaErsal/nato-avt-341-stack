@@ -189,7 +189,8 @@ int main(int argc, char *argv[]){
       planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, steer_angle_limit, vehicle_width);
       planner.SetCenterline(path);
 
-      std::cout << "data: " << d_theta << "," << theta << "," << ci.theta << std::endl;
+      // TODO: Issue #145 Add a better way to display this data instead of constant log (ex: rviz display or maybe just ros2 topic echo)
+//      std::cout << "data: " << d_theta << "," << theta << "," << ci.theta << std::endl;
   
       // calculate bounds around the vehicle to limit grid dilation to space 10m behind and path_look_ahead distance in front of the vehicle
       float veh_heading_x = cos(theta);
