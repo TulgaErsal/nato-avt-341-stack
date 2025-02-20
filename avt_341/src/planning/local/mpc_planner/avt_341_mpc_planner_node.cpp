@@ -33,6 +33,16 @@ void CatchJuliaException()
     }
 }
 
+bool reset_called = false;
+
+void ResetCallback(avt_341::msg::StringPtr msg) {
+    if(msg->data.find(avt_341::node::NodeType::LocalPlanner) !=
+       std::string::npos) {
+        reset_called = true;
+       }
+}
+
+
 void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
 {
     jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
@@ -226,6 +236,7 @@ void DeclareParameters()
     node->get_parameter("~front_angle_segmentation", front_angle_segmentation, 1.571 );
     node->get_parameter("~adaptive", adaptive, false);
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
+    node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
 }
 
 void InitialiseJuliaAPI()
@@ -345,6 +356,7 @@ void InitialiseJuliaAPI()
     }
 
     node->log_info("Loading Julia MPC models module at: %s", MPC_MODELS_MODULE_PATH);
+    node->log_info("Using linear solver: %s", linear_solver);
 
     std::string models_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_MODELS_MODULE_PATH +
                                                   std::string("\")"));
@@ -394,6 +406,7 @@ void InitialiseJuliaAPI()
     j_set_terrain_adaptive = jl_get_function(mpc_module, "SetTerrainAdaptive");
     j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
     j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
+    j_set_linear_solver = jl_get_function(mpc_module, "SetLinearSolver");
     // -------------------------------
 
     // Convert params to Julia types
@@ -419,6 +432,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
     jl_value_t *j_vehicle_axle_distance_front = jl_box_float64(vehicle_axle_distance_front);
     jl_value_t *j_front_angle_segmentation = jl_box_float64(front_angle_segmentation);
+    jl_value_t *j_linear_solver = jl_cstr_to_string(linear_solver.c_str());
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -443,11 +457,14 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_terrain_adaptive, j_adaptive);
     jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
     jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
+    jl_call1(j_set_linear_solver, j_linear_solver);
     CATCH_JULIA_EXCEPTION;
 }
 
 void InitialisePlanner()
 {
+    node->log_info("Initializing MPC planner.");
+
     // Initialise the planner
     // ----------------------
     jl_call0(j_setup);
@@ -455,6 +472,7 @@ void InitialisePlanner()
     // ----------------------
 
     is_initialized = true;
+    node->log_info("MPC planner initialized.");
 }
 
 int main(int argc, char *argv[])
@@ -476,6 +494,7 @@ int main(int argc, char *argv[])
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
     auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
+    auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset",1,ResetCallback);
 
     // Register publishers
     // -------------------.
@@ -484,6 +503,9 @@ int main(int argc, char *argv[])
     auto steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
     auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
+    auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+
+    node->log_info("Julia API initialized. Running main loop.");
 
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
@@ -504,6 +526,15 @@ int main(int argc, char *argv[])
             drive_pub->publish(GetMPCDrive());
 	    heading_pub->publish(GetMPCHeading());
 
+        }
+
+        if(reset_called && is_initialized) {
+            // Nothing to reset currently
+            node->log_info("Resetting MPC local planner.");
+            avt_341::msg::String reset_ack_msg;
+            reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
+            reset_ack_pub->publish(reset_ack_msg);
+            reset_called = false;
         }
 
         node->spin_some();

@@ -78,7 +78,8 @@ void Planner::Plan() {
 #pragma omp parallel for
 #endif
     // Iterate through the speed/yaw rate pairs in the dynamic window
-    for(size_t k = 0; k < search_actions.size(); k++) {
+    // NOTE: Old OpenMP version on windows does not support size_t parallel for
+    for(int k = 0; k < search_actions.size(); k++) {
         int i = search_actions[k].x;
         int j = search_actions[k].y;
 
