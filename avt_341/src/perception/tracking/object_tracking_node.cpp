@@ -254,7 +254,7 @@ void ObjectTrackingNode::PointCloudCallback(sensor_msgs::msg::PointCloud2::Share
         FindPointsInCameraFOV(point_cloud, coordinates, camera_info_message_->height, camera_info_message_->width);
 
     // Find cloud points the region of interest defined by the first detection.
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_roi;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
     if(has_detection_ && detections_message_.detections.size() > 0) {
         RCLCPP_DEBUG(get_logger(), "Finding cloud points in the region of interest ...");
 
@@ -291,7 +291,7 @@ void ObjectTrackingNode::PointCloudCallback(sensor_msgs::msg::PointCloud2::Share
     }
 
     // Segment the ground plane.
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZ>);
     SegmentGroundPlane(point_cloud_fov, cloud_plane, sac_segmentation_max_iterations_, sac_segmentation_threshold_);
 
     if(publish_ground_cloud_) {
@@ -652,7 +652,7 @@ void ObjectTrackingNode::DensifyCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr point_
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr
 ObjectTrackingNode::ToPCLCloud(sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*point_cloud_message, *point_cloud);
 
     RCLCPP_DEBUG(get_logger(), "Number of points in the raw point cloud: %i", int(point_cloud->points.size()));
