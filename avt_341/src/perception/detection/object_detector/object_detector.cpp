@@ -260,7 +260,7 @@ void ObjectDetector::Load(std::string path) {
     auto classes_file = std::ifstream(path + ".names");
     classes_ = ReadClassNames(classes_file);
 
-    model_size_ = GetModelSize(GetModelSizeToken(path));
+    model_size_ = GetModelSize(GetModelSizeToken(model_name));
 
     module_ = torch::jit::load(path + ".torchscript", device_type_);
 }
