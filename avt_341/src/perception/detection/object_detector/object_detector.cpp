@@ -254,7 +254,8 @@ torch::Tensor ObjectDetector::NonMaximumSuppression(torch::Tensor& predictions) 
 }
 
 void ObjectDetector::Load(std::string path) {
-    device_type_ = GetModelDevice(GetModelDeviceToken(path));
+    std::string model_name = SplitByDelimiter(path, '/').back();
+    device_type_ = GetModelDevice(GetModelDeviceToken(model_name));
 
     auto classes_file = std::ifstream(path + ".names");
     classes_ = ReadClassNames(classes_file);
