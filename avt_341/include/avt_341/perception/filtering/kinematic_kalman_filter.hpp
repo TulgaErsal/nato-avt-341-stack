@@ -84,7 +84,7 @@ class KinematicKalmanFilter : public KalmanFilter<state_size*(order + 1), measur
 
         int size = state_size;
 
-        for(int i = 0; i < order + 2; ++i) {
+        for(int i = 0; i < order + 1; ++i) {
             KalmanFilter<state_size*(order + 1), measurement_vector_size*(order + 1)>::F_
                 .template block<(order + 1), (order + 1)>((order + 1) * i, (order + 1) * i) = F;
         }
