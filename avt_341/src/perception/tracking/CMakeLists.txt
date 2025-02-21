@@ -9,7 +9,7 @@ endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
   find_package(PCL REQUIRED QUIET)
-
+  find_package(Eigen3 REQUIRED)
   find_package(cv_bridge REQUIRED)
   find_package(nav_msgs REQUIRED)
   find_package(OpenCV REQUIRED)
@@ -34,6 +34,7 @@ if(USING_AMENT)
 
   ament_target_dependencies(
     ${PROJECT_NAME}_object_tracking_node
+    Eigen3
     cv_bridge
     OpenCV
     nav_msgs

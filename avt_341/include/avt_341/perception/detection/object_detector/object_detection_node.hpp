@@ -260,7 +260,8 @@ class ObjectDetectorNode : public rclcpp::Node {
     // Image parsing
     // -------------
     /** @brief Shared pointer to the image subscription. */
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscription_;
+    //rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscription_;
+    image_transport::Subscriber image_subscription_;
 
     /** @brief Whether or not a valid image has been received since the latest
      * object detector reset. */
