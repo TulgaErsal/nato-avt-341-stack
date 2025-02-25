@@ -20,6 +20,12 @@ Pkg.add(Pkg.PackageSpec(;name="Ipopt", version="0.7.0"))
 
 using PackageCompiler
 
+# Create directory if not already existing
+output_dir=dirname(ENV["JULIA_SYSIMAGE_OUTPUT_PATH"])
+if !isdir(output_dir)
+    mkdir(output_dir)
+end
+
 # Generate the sysimage.
 create_sysimage([:NLOptControl,:JuMP,:Ipopt],
                 sysimage_path=ENV["JULIA_SYSIMAGE_OUTPUT_PATH"],

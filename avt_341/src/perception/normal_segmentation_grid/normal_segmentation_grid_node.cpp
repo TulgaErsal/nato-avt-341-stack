@@ -4,7 +4,12 @@
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
+#ifdef GTE_ROS_HUMBLE
+#include <tf2_eigen/tf2_eigen.hpp>
+#else
 #include <tf2_eigen/tf2_eigen.h>
+#endif
+
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
