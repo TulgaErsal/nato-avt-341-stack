@@ -282,8 +282,9 @@ if(USING_AMENT)
     set(link_libs ${OpenCV_LIBS} X11)
   endif()
 
-  if($ENV{ROS_DISTRO} STREQUAL "humble")
-    add_definitions(-DROS_HUMBLE)
+  # Since ROS Humble several header file endpoints changed (tf2_sensor_msgs, tf2_geometry_msgs, tf2_eigen, etc.)
+  if($ENV{ROS_DISTRO} STREQUAL "humble" OR $ENV{ROS_DISTRO} STREQUAL "jazzy")
+    add_definitions(-DGTE_ROS_HUMBLE)
   endif()
 
   # Build

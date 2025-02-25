@@ -3,8 +3,8 @@
 #ifdef ROS_1
 
 #else
-  #ifdef ROS_HUMBLE
-  #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+  #ifdef GTE_ROS_HUMBLE
+  #include "tf2_sensor_msgs/tf2_sensor_msgs.hpp"
   #else
   #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
   #endif

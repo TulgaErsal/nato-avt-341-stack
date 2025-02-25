@@ -58,7 +58,7 @@
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/label_info.hpp>
 #include <vision_msgs/msg/vision_info.hpp>
-
+#include <image_transport/image_transport.hpp>
 #include <avt_341/perception/detection/common/bounding_box_2d.hpp>
 #include <avt_341/perception/detection/common/detection_2d.hpp>
 #include <avt_341/perception/detection/common/hypothesis.hpp>
@@ -262,6 +262,9 @@ class ObjectDetectorNode : public rclcpp::Node {
     /** @brief Shared pointer to the image subscription. */
     //rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscription_;
     image_transport::Subscriber image_subscription_;
+
+    /** @brief Image transport instance */
+    image_transport::ImageTransport image_transport_;
 
     /** @brief Whether or not a valid image has been received since the latest
      * object detector reset. */
