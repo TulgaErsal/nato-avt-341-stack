@@ -46,7 +46,7 @@
 namespace avt_341 {
 namespace perception {
 
-ObjectDetectorNode::ObjectDetectorNode() : rclcpp::Node("object_detector") {
+ObjectDetectorNode::ObjectDetectorNode() : image_transport_(std::shared_ptr<ObjectDetectorNode>(this)), rclcpp::Node("object_detector") {
     GetParameters();
     Initialize();
 
@@ -180,11 +180,13 @@ void ObjectDetectorNode::Initialize() {
     if(visualizer_seed_ != 0) { visualizer_->ShuffleColors(visualizer_seed_); }
 }
 
+
 void ObjectDetectorNode::CreateSubscriptions() {
-    image_subscription_ = create_subscription<sensor_msgs::msg::Image>(
-        "image",
-        RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-        std::bind(&ObjectDetectorNode::ImageCallback, this, std::placeholders::_1));
+    image_subscription_ = image_transport_.subscribe("image", 1, std::bind(&ObjectDetectorNode::ImageCallback, this, std::placeholders::_1));
+    // image_subscription_ = create_subscription<sensor_msgs::msg::Image>(
+    //     "image",
+    //     RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+    //     std::bind(&ObjectDetectorNode::ImageCallback, this, std::placeholders::_1));
 }
 
 void ObjectDetectorNode::CreateTimers() {

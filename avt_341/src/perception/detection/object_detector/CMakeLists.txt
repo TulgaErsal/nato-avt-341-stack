@@ -69,6 +69,7 @@ if(USING_AMENT)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(vision_msgs REQUIRED)
+  find_package(image_transport REQUIRED)
   find_package(Boost REQUIRED)
 
   # > Lookup CUDA
@@ -86,7 +87,7 @@ if(USING_AMENT)
     "object_detector.cpp")
 
   ament_target_dependencies(${PROJECT_NAME}_object_detector_node cv_bridge
-                            OpenCV rclcpp sensor_msgs vision_msgs)
+                            OpenCV rclcpp sensor_msgs vision_msgs image_transport)
 
   target_include_directories(
           ${PROJECT_NAME}_object_detector_node

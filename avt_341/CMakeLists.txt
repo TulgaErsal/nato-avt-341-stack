@@ -282,8 +282,9 @@ if(USING_AMENT)
     set(link_libs ${OpenCV_LIBS} X11)
   endif()
 
-  if($ENV{ROS_DISTRO} STREQUAL "humble")
-    add_definitions(-DROS_HUMBLE)
+  # Since ROS Humble several header file endpoints changed (tf2_sensor_msgs, tf2_geometry_msgs, tf2_eigen, etc.)
+  if($ENV{ROS_DISTRO} STREQUAL "humble" OR $ENV{ROS_DISTRO} STREQUAL "jazzy")
+    add_definitions(-DGTE_ROS_HUMBLE)
   endif()
 
   # Build
@@ -343,10 +344,9 @@ if(USING_AMENT)
     DESTINATION "lib/${PROJECT_NAME}")
   
   install(
-    PROGRAMS "launch/mpc_planner_ros1.sh"
-    "launch/vehicle_logging.py"
+    PROGRAMS "launch/vehicle_logging.py"
     DESTINATION lib/${PROJECT_NAME})
   
-  install(DIRECTORY launch config rviz parameters maps DESTINATION "share/${PROJECT_NAME}")
+  install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
   ament_package()
 endif() # if(USING_AMENT)
