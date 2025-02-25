@@ -235,6 +235,9 @@ if(USING_CATKIN)
 
   catkin_package(INCLUDE_DIRS "include" LIBRARIES ${PROJECT_NAME})
 
+  catkin_install_python(PROGRAMS "launch/vehicle_logging.py"
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
   # Install proxy library
   install(
     TARGETS ${PROJECT_NAME}_proxy
@@ -355,6 +358,7 @@ if(USING_AMENT)
   
   install(
     PROGRAMS "launch/mpc_planner_ros1.sh"
+    "launch/vehicle_logging.py"
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters maps DESTINATION "share/${PROJECT_NAME}")
