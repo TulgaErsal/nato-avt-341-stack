@@ -12,6 +12,7 @@
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/point_cloud2_iterator.h"
 #include "sensor_msgs/Imu.h"
+#include "sensor_msgs/Image.h"
 #include "sensor_msgs/NavSatFix.h"
 
 #include "geometry_msgs/TwistStamped.h"
@@ -78,6 +79,9 @@ namespace avt_341 {
 
         using Imu = sensor_msgs::Imu;
         using ImuPtr = const sensor_msgs::Imu::ConstPtr &;
+
+        using Image = sensor_msgs::Image;
+        using ImagePtr = const sensor_msgs::Image::ConstPtr &;
 
         using TwistStamped = geometry_msgs::TwistStamped;
         using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;
