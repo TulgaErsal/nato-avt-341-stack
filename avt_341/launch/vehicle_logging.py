@@ -18,7 +18,10 @@ from datetime import datetime
 
 # Parse args
 if len(sys.argv) < 3 or any(s in sys.argv for s in ['-h','--help']):
-    print("Usage: ros2 run avt_341 vehicle_logging.py [config_file] [save_dir] [save_prefix=\"AVT_341_DATALOG\"]")
+    if os.environ['ROS_VERSION'] == '1':
+        print("Usage: rosrun avt_341 vehicle_logging.py [config_file] [save_dir] [save_prefix=\"AVT_341_DATALOG\"]")
+    else:
+        print("Usage: ros2 run avt_341 vehicle_logging.py [config_file] [save_dir] [save_prefix=\"AVT_341_DATALOG\"]")
     sys.exit(0)
 config_file = os.path.abspath(sys.argv[1])
 save_dir = sys.argv[2]
