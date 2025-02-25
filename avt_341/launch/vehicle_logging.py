@@ -48,7 +48,7 @@ if __name__ == "__main__":
     try:
         # Record rosbag using CLI
         command = []
-        if os.environ['ROS_VERSION'] == 1:
+        if os.environ['ROS_VERSION'] == '1':
             os.mkdir(save_path)
             command = ['rosbag', 'record', '-O', os.path.join(save_path,save_name), *record_topics]
         else:
