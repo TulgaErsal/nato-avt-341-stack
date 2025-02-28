@@ -120,9 +120,6 @@ class ObjectDetectorNode : public rclcpp::Node {
      */
     void DetectionCallback();
 
-    rclcpp::Node::SharedPtr node_handle_;
-    image_transport::ImageTransport image_transport_;
-
     // ROS package management
     // ----------------------
     /** @brief Prefix of the node package. */
