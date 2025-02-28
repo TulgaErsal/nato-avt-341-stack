@@ -350,9 +350,6 @@ namespace avt_341 {
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time &time);
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
-      template<typename... Args> inline void log_debug(const char * format, Args... args){
-        RCLCPP_DEBUG(node_->get_logger(), format, args...);
-      }
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
 
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud,
@@ -364,6 +361,10 @@ namespace avt_341 {
         RCLCPP_INFO(node_->get_logger(), format, args...);
       }
 
+      template<typename... Args> inline void log_debug(const char * format, Args... args){
+        RCLCPP_DEBUG(node_->get_logger(), format, args...);
+      }
+
       template<typename... Args> inline void log_warning(const char * format, Args... args){
         RCLCPP_WARN(node_->get_logger(), format, args...);
       }
@@ -371,6 +372,23 @@ namespace avt_341 {
       template<typename... Args> inline void log_error(const char * format, Args... args){
         RCLCPP_ERROR(node_->get_logger(), format, args...);
       }
+
+      template<typename... Args> inline void log_debug_once(const char * format, Args... args){
+        RCLCPP_DEBUG_ONCE(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_info_once(const char * format, Args... args){
+        RCLCPP_INFO_ONCE(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_warning_once(const char * format, Args... args){
+        RCLCPP_WARN_ONCE(node_->get_logger(), format, args...);
+      }
+
+      template<typename... Args> inline void log_error_once(const char * format, Args... args){
+        RCLCPP_ERROR_ONCE(node_->get_logger(), format, args...);
+      }
+
 
       template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
         RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);

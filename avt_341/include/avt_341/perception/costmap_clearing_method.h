@@ -116,7 +116,7 @@ public:
 
   RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells,
                          float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator, bool handle_dilation=true);
-  RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Nx, int Ny,
+  RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Ny, int Nx,
                          float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculatorr, bool handle_dilation=true);
   virtual ~RaytraceClearingMethod() override;
   void ClearOccupancy(const avt_341::msg::PointCloud &point_cloud) override;
