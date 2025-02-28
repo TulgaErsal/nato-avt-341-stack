@@ -119,7 +119,7 @@ namespace avt_341 {
                                                               std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
 
       if (formation_poses.find(my_name_) == formation_poses.end()) {
-        std::cout << "FormationSpeedController " << my_name_ << " not found in formation_poses " << std::endl;
+        node_proxy_->log_error_once("FormationSpeedController %s not found in formation_poses", my_name_.c_str());
         return 1.0;
       }
 

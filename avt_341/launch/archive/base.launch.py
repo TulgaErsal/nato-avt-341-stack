@@ -350,6 +350,7 @@ def generate_launch_description():
                         output='screen',
                         parameters=[{
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
+                            'vehicle_namespaces': LaunchConfiguration('vehicle_namespaces'),
                             },
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager'].keys()},
                             {k: launch.substitutions.LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
@@ -362,6 +363,7 @@ def generate_launch_description():
                         output='screen',
                         parameters=[{
                             'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
+                            'vehicle_namespaces': LaunchConfiguration('vehicle_namespaces'),
                             },
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['socket_comms'].keys()}
                         ]

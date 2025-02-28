@@ -19,7 +19,7 @@ namespace perception{
   }
 
   OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells, int Ny, int Nx, float visualization_range, bool visualize, const RaytraceSettings & settings, CellObstacleCalculator* cell_obstacle_calculator)
-                                              : cells_(cells), Nx_(Nx), Ny_(Ny), config_(settings), cell_obstacle_calculator_(cell_obstacle_calculator), visualization_range_(visualization_range), visualize_(visualize)
+                                              : cells_(cells), Ny_(Ny), Nx_(Nx), config_(settings), cell_obstacle_calculator_(cell_obstacle_calculator), visualization_range_(visualization_range), visualize_(visualize)
   {
   }
 
@@ -45,8 +45,8 @@ namespace perception{
   }
 
   void TimedClearingMethod::AgeCells(const float dt){
-    for (int i=0; i<Nx_;i++){
-      for (int j=0; j<Ny_; j++){
+    for (int i=0; i<Ny_;i++){
+      for (int j=0; j<Nx_; j++){
         cells_[i][j].AgeCell(dt);
       }
     }
@@ -59,8 +59,8 @@ namespace perception{
     }
     last_timestamp_ = now;
     Cell empty_cell;
-    for (int i=0; i<Nx_;i++){
-      for (int j=0; j<Ny_; j++){
+    for (int i=0; i<Ny_;i++){
+      for (int j=0; j<Nx_; j++){
         if (cells_[i][j].low.age > max_point_age_ ||
             cells_[i][j].highest.age > max_point_age_ ||
             cells_[i][j].second_highest.age > max_point_age_ ||
@@ -85,9 +85,9 @@ namespace perception{
                                                  : RaytraceClearingMethod(node_ref, cells, cells.size(), cells[0].size(), visualization_range, visualize, config, obs_calculator, handle_dilation){
   }
 
-  RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Nx, int Ny,
+  RaytraceClearingMethod::RaytraceClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::vector< std::vector<Cell>> & cells, int Ny, int Nx,
                                                  float visualization_range, bool visualize, const RaytraceSettings & config, CellObstacleCalculator* obs_calculator, bool handle_dilation)
-      : node_(node_ref), handle_dilation_(handle_dilation), OccupancyClearingMethod(cells, Nx, Ny, visualization_range, visualize, config, obs_calculator){
+      : node_(node_ref), handle_dilation_(handle_dilation), OccupancyClearingMethod(cells, Ny, Nx, visualization_range, visualize, config, obs_calculator){
 
     std::string node_ns = std::string(node_->get_namespace());
     node_ns = node_ns.empty() || node_ns == "/" ? "" : (node_ns.substr(1, node_ns.size() - 1) + "/"); // Remove leading slash + add slash at end (/)
@@ -108,20 +108,20 @@ namespace perception{
     // Clean up unattached dilated cells
     int x_0, y_0, x_N, y_N;
     GetGridBounds(origin, config_.raytrace_range, x_0, y_0, x_N, y_N);
-    for(int x = x_0; x < x_N; x++){
-      for(int y = y_0; y < y_N; y++){
-        if(cells[x][y].filled() && cells[x][y].dilated_val > 0){
+    for(int y = y_0; y < y_N; y++){
+      for(int x = x_0; x < x_N; x++){
+        if(cells[y][x].filled() && cells[y][x].dilated_val > 0){
           bool found_obs = false;
-          for(int i = std::max(0, x - config_.grid_dilate_x); !found_obs && i <= std::min(Nx_ - 1, x + config_.grid_dilate_x); i++){
-            for(int j = std::max(0, y - config_.grid_dilate_y); !found_obs && j <= std::min(Ny_ - 1, y + config_.grid_dilate_y); j++){
+          for(int i = std::max(0, y - config_.grid_dilate_y); !found_obs && i <= std::min(Ny_ - 1, y + config_.grid_dilate_y); i++){
+            for(int j = std::max(0, x - config_.grid_dilate_x); !found_obs && j <= std::min(Nx_ - 1, x + config_.grid_dilate_x); j++){
 //              if(cell_obstacle_calculator_->PastSlopeThreshold(cells[i][j]) || abs(cells[x][y].high.val - cells[i][j].high.val) > thresh_){
-              if(cells[i][j].has_dilated || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) > config_.thresh)){
+              if(cells[i][j].has_dilated || (cells[i][j].filled() && abs(cells[y][x].high.val - cells[i][j].high.val) > config_.thresh)){
                 found_obs = true;
               }
             }
           }
           if(!found_obs){
-            cells[x][y].dilated_val = 0;
+            cells[y][x].dilated_val = 0;
           }
         } // if dilated_val > 0
       }
@@ -163,22 +163,22 @@ namespace perception{
       int y = static_cast<int>((point.y - config_.lly) / config_.res);
       int z = static_cast<int>((point.z - config_.voxel_height_min) / config_.voxel_height_res);
       if(x >= 0 && x < Nx_ && y >= 0 && y < Ny_ && z >= 0 && z < N_VOXELS_PER_CELL){
-        voxel_grid[x*Ny_ + y].set(z);
+        voxel_grid[y*Nx_ + x].set(z);
       }
     }
 
   }
 
   void OccupancyClearingMethod::RemoveDilationAtCell(int x, int y, std::vector< std::vector<Cell>> & cells){
-    cells[x][y].has_dilated = false;
-    for(int i = std::max(0, x - config_.grid_dilate_x); i <= std::min(Nx_ - 1, x + config_.grid_dilate_x); i++){
-      for(int j = std::max(0, y - config_.grid_dilate_y); j <= std::min(Ny_ - 1, y + config_.grid_dilate_y); j++){
+    cells[y][x].has_dilated = false;
+    for(int i = std::max(0, y - config_.grid_dilate_y); i <= std::min(Ny_ - 1, y + config_.grid_dilate_y); i++){
+      for(int j = std::max(0, x - config_.grid_dilate_x); j <= std::min(Nx_ - 1, x + config_.grid_dilate_x); j++){
         if(cells[i][j].dilated_val > 0
-        && (config_.immediate_clear_dilation || (cells[i][j].filled() && abs(cells[x][y].high.val - cells[i][j].high.val) < config_.thresh))){
+        && (config_.immediate_clear_dilation || (cells[i][j].filled() && abs(cells[y][x].high.val - cells[i][j].high.val) < config_.thresh))){
           bool found_obs = false;
           // TODO: can remove extra loops with counts or set tracking dilated cells
-          for(int ii = std::max(0, i - config_.grid_dilate_x); !found_obs && ii <= std::min(Nx_ - 1, i + config_.grid_dilate_x); ii++){
-            for(int jj = std::max(0, j - config_.grid_dilate_y); !found_obs && jj <= std::min(Ny_ - 1, j + config_.grid_dilate_y); jj++){
+          for(int ii = std::max(0, i - config_.grid_dilate_y); !found_obs && ii <= std::min(Ny_ - 1, i + config_.grid_dilate_y); ii++){
+            for(int jj = std::max(0, j - config_.grid_dilate_x); !found_obs && jj <= std::min(Nx_ - 1, j + config_.grid_dilate_x); jj++){
               found_obs = cell_obstacle_calculator_->PastSlopeThreshold(cells[ii][jj]);
             }
           }
@@ -192,35 +192,35 @@ namespace perception{
   }
 
   void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z){
-    int z_i = static_cast<int>((cells_[x][y].high.val - config_.voxel_height_min) / config_.voxel_height_res);
-    if(!cells_[x][y].filled() || (z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
+    int z_i = static_cast<int>((cells_[y][x].high.val - config_.voxel_height_min) / config_.voxel_height_res);
+    if(!cells_[y][x].filled() || (z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
 //    if((z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
       return;
     }
-    int z_min = std::max(0, static_cast<int>((cells_[x][y].low.val - config_.voxel_height_min) / config_.voxel_height_res));
+    int z_min = std::max(0, static_cast<int>((cells_[y][x].low.val - config_.voxel_height_min) / config_.voxel_height_res));
 
     if(config_.use_voxels){
       while(z_i >= z){
-        voxel_grid[x*Ny_ + y].set(z_i, false);
+        voxel_grid[y*Nx_ + x].set(z_i, false);
         z_i--;
       }
       // Find next filled cell
-      while(z_i >= z_min && !voxel_grid[x*Ny_ + y].test(z_i)){
+      while(z_i >= z_min && !voxel_grid[y*Nx_ + x].test(z_i)){
         z_i --;
       }
     }
 
-    bool was_obstacle = cell_obstacle_calculator_->PastSlopeThreshold(cells_[x][y]);
+    bool was_obstacle = cell_obstacle_calculator_->PastSlopeThreshold(cells_[y][x]);
     if(z_i < z_min){
       // Cell empty
-      cells_[x][y].high.val = cells_[x][y].low.val;
+      cells_[y][x].high.val = cells_[y][x].low.val;
     }else{
       // Update cell height
-      cells_[x][y].high.val = static_cast<float>(z_i) * config_.voxel_height_res + config_.voxel_height_min;
+      cells_[y][x].high.val = static_cast<float>(z_i) * config_.voxel_height_res + config_.voxel_height_min;
     }
 
     // Remove surrounding dilation if cell no longer obstacle
-    if(handle_dilation_ && was_obstacle && !cell_obstacle_calculator_->PastSlopeThreshold(cells_[x][y])){
+    if(handle_dilation_ && was_obstacle && !cell_obstacle_calculator_->PastSlopeThreshold(cells_[y][x])){
       RemoveDilationAtCell(x, y, cells_);
     }
 
@@ -360,32 +360,32 @@ namespace perception{
     int x_0, y_0, x_N, y_N;
     GetGridBounds(origin, visualization_range_, x_0, y_0, x_N, y_N);
 
-    for(int i = x_0; i < x_N; i++){
-      for(int j = y_0; j < y_N; j++){
-        bool has_value = cells_[i][j].low.val < max_value;
+    for(int x = x_0; x < x_N; x++){
+      for(int y = y_0; y < y_N; y++){
+        bool has_value = cells_[y][x].low.val < max_value;
         if(has_value){
-          float x_i = config_.llx + (static_cast<float>(i) + 0.5) * config_.res;
-          float y_i = config_.lly + (static_cast<float>(j) + 0.5) * config_.res;
+          float x_i = config_.llx + (static_cast<float>(x) + 0.5) * config_.res;
+          float y_i = config_.lly + (static_cast<float>(y) + 0.5) * config_.res;
 
           avt_341::msg::Point p1;
           p1.x = x_i;
           p1.y = y_i;
-          p1.z = cells_[i][j].low.val;
+          p1.z = cells_[y][x].low.val;
           mins_marker.points.push_back(p1);
 
-          if(std::abs(cells_[i][j].high.val - cells_[i][j].low.val) > 1e-1){
+          if(std::abs(cells_[y][x].high.val - cells_[y][x].low.val) > 1e-1){
             avt_341::msg::Point p0;
             p0.x = x_i;
             p0.y = y_i;
-            p0.z = cells_[i][j].high.val;
+            p0.z = cells_[y][x].high.val;
             maxes_marker.points.push_back(p0);
           }
 
           if(config_.use_voxels){
-            auto z_pos = std::max(0, static_cast<int>((cells_[i][j].low.val - config_.voxel_height_min) / config_.voxel_height_res));
-            auto max_z_pos = std::min(N_VOXELS_PER_CELL, static_cast<int>((cells_[i][j].high.val - config_.voxel_height_min) / config_.voxel_height_res));
+            auto z_pos = std::max(0, static_cast<int>((cells_[y][x].low.val - config_.voxel_height_min) / config_.voxel_height_res));
+            auto max_z_pos = std::min(N_VOXELS_PER_CELL, static_cast<int>((cells_[y][x].high.val - config_.voxel_height_min) / config_.voxel_height_res));
             while(z_pos <= max_z_pos){
-              if(voxel_grid[i*Ny_ + j].test(z_pos)){
+              if(voxel_grid[y*Nx_ + x].test(z_pos)){
                 avt_341::msg::Point p2;
                 p2.x = x_i;
                 p2.y = y_i;
@@ -407,10 +407,10 @@ namespace perception{
 
   void RaytraceClearingMethod::Reset(){
     OccupancyClearingMethod::Reset();
-    for(int i = 0; i < Nx_; i++){
-      for(int j = 0; j < Ny_; j++){
+    for(int x = 0; x < Nx_; x++){
+      for(int y = 0; y < Ny_; y++){
         if(config_.use_voxels){
-          voxel_grid[i*Ny_ + j].reset();
+          voxel_grid[y*Nx_ + x].reset();
         }
       }
     }
@@ -426,8 +426,8 @@ namespace perception{
         cells[0].size(), visualization_range, visualize, config, obs_calculator, false){
 
     std::vector<Cell> row;
-    row.resize(Ny_);
-    cells_with_clearing_.resize(Nx_,row);
+    row.resize(Nx_);
+    cells_with_clearing_.resize(Ny_,row);
 
     const int N = 2*static_cast<int>(config_.raytrace_range/config_.res);
     occupancy_delta_ = std::vector<std::vector<bool>>(N, std::vector<bool>(N, false));
@@ -452,7 +452,7 @@ namespace perception{
 
     for(int x = x_0; x < x_N; x++){
       for(int y = y_0; y < y_N; y++){
-        bool candidate_clear = cell_obstacle_calculator_->PastSlopeThreshold(cells_without_clearing_[x][y]) && !cell_obstacle_calculator_->PastSlopeThreshold(cells_with_clearing_[x][y]);
+        bool candidate_clear = cell_obstacle_calculator_->PastSlopeThreshold(cells_without_clearing_[y][x]) && !cell_obstacle_calculator_->PastSlopeThreshold(cells_with_clearing_[y][x]);
         occupancy_delta_[x-x_0][y-y_0] = candidate_clear;
         if(candidate_clear){
           bool found_obs = false;
@@ -462,13 +462,13 @@ namespace perception{
           const int j_N = std::min(Ny_ - 1, y + search_range);
           for(int i = i_0; i <= i_N && !found_obs; i++){
             for(int j = j_0; j <= j_N && !found_obs; j++){
-              found_obs |= cell_obstacle_calculator_->PastSlopeThreshold(cells_with_clearing_[i][j]);
+              found_obs |= cell_obstacle_calculator_->PastSlopeThreshold(cells_with_clearing_[j][i]);
             }
           }
           if(!found_obs){
             // Apply cleared cell
-            cells_without_clearing_[x][y].high = cells_with_clearing_[x][y].high;
-            cells_without_clearing_[x][y].low = cells_with_clearing_[x][y].low;
+            cells_without_clearing_[y][x].high = cells_with_clearing_[y][x].high;
+            cells_without_clearing_[y][x].low = cells_with_clearing_[y][x].low;
             RemoveDilationAtCell(x, y, cells_without_clearing_);
           }
         }
@@ -498,7 +498,7 @@ namespace perception{
     occupancy_grid.data.resize(N_size*N_size);
     for(int i = 0; i < N_size; i++){
       for(int j = 0; j < N_size; j++){
-        occupancy_grid.data[j*N_size + i] = (uint8_t)(occupancy_delta_[i][j] ? 100 : 0);
+        occupancy_grid.data[i*N_size + j] = (uint8_t)(occupancy_delta_[i][j] ? 100 : 0);
       }
     }
     occupancy_delta_publisher_->publish(occupancy_grid);
@@ -508,8 +508,8 @@ namespace perception{
     RaytraceClearingMethod::Reset();
 
     Cell empty_cell;
-    for(int i = 0; i < Nx_; i++){
-      for(int j = 0; j < Ny_; j++){
+    for(int i = 0; i < Ny_; i++){
+      for(int j = 0; j < Nx_; j++){
         cells_with_clearing_[i][j] = empty_cell;
       }
     }
@@ -529,12 +529,12 @@ namespace perception{
       : time_config_(time_config), OccupancyClearingMethod(cells, visualization_range, visualize, config, obs_calculator){
 
     std::vector<Cell> row;
-    row.resize(Ny_);
-    timed_cells_.resize(Nx_,row);
+    row.resize(Nx_);
+    timed_cells_.resize(Ny_,row);
 
     std::vector<TimedNoObsData> row_data;
-    row_data.resize(Ny_);
-    timed_cells_data.resize(Nx_, row_data);
+    row_data.resize(Nx_);
+    timed_cells_data.resize(Ny_, row_data);
     for(auto& row : timed_cells_data){
       for(auto& elem : row){
         elem.obs_time = std::numeric_limits<float>::max();
@@ -551,20 +551,20 @@ namespace perception{
       int xi = (int)floor((point_cloud.points[i].x - config_.llx)/config_.res);
       int yi = (int)floor((point_cloud.points[i].y - config_.lly)/config_.res);
       if (xi>=0 && xi<Nx_ && yi>=0 &&yi<Ny_) {
-        if(cell_obstacle_calculator_->PastSlopeThreshold(timed_cells_[xi][yi])) {
-          timed_cells_data[xi][yi].num_samples = 0;
-          timed_cells_data[xi][yi].obs_time = node::seconds_from_header(point_cloud.header);
-          timed_cells_[xi][yi].ResetHeight();
-        }else if(cell_obstacle_calculator_->PastSlopeThreshold(cells_[xi][yi])){
-          timed_cells_data[xi][yi].num_samples += 1;
-          if(timed_cells_data[xi][yi].num_samples >= time_config_.sample_threshold
-            && node::seconds_from_header(point_cloud.header) - timed_cells_data[xi][yi].obs_time > time_config_.time_threshold)
+        if(cell_obstacle_calculator_->PastSlopeThreshold(timed_cells_[yi][xi])) {
+          timed_cells_data[yi][xi].num_samples = 0;
+          timed_cells_data[yi][xi].obs_time = node::seconds_from_header(point_cloud.header);
+          timed_cells_[yi][xi].ResetHeight();
+        }else if(cell_obstacle_calculator_->PastSlopeThreshold(cells_[yi][xi])){
+          timed_cells_data[yi][xi].num_samples += 1;
+          if(timed_cells_data[yi][xi].num_samples >= time_config_.sample_threshold
+            && node::seconds_from_header(point_cloud.header) - timed_cells_data[yi][xi].obs_time > time_config_.time_threshold)
           {
-            cells_[xi][yi].ResetHeight();
-            timed_cells_[xi][yi].ResetHeight();
+            cells_[yi][xi].ResetHeight();
+            timed_cells_[yi][xi].ResetHeight();
             RemoveDilationAtCell(xi, yi, cells_);
-            timed_cells_data[xi][yi].num_samples = 0;
-            timed_cells_data[xi][yi].obs_time = std::numeric_limits<float>::max();
+            timed_cells_data[yi][xi].num_samples = 0;
+            timed_cells_data[yi][xi].obs_time = std::numeric_limits<float>::max();
           }
         }
       }
@@ -575,8 +575,8 @@ namespace perception{
   void TimedNoObsClearingMethod::Reset(){
     OccupancyClearingMethod::Reset();
     Cell empty_cell;
-    for(int i = 0; i < Nx_; i++){
-      for(int j = 0; j < Ny_; j++){
+    for(int i = 0; i < Ny_; i++){
+      for(int j = 0; j < Nx_; j++){
         timed_cells_[i][j] = empty_cell;
         timed_cells_data[i][j].num_samples = 0;
         timed_cells_data[i][j].obs_time = std::numeric_limits<float>::max();
