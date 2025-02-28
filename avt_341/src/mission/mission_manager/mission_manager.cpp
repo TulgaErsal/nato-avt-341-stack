@@ -136,7 +136,9 @@ bool MissionManager::loadMissionPaths(std::string filename) {
         }    
     } else {
         node_proxy_->log_info("Error reading mission paths %s", filename.c_str());
+        return false;
     }
+    return true;
 }
 
 bool MissionManager::getMissionPath(MissionPath& mission_path, std::string name) {
