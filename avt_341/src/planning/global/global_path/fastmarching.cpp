@@ -51,6 +51,12 @@ bool FastMarching::Solve() {
     neighbors[1] = HasLeft(current.idx) ? Left(current.idx) : -1;
     neighbors[2] = HasUp(current.idx) ? Up(current.idx) : -1;
     neighbors[3] = HasRight(current.idx) ? Right(current.idx) : -1;
+    if (search_diagonals_) {
+      neighbors[4] = HasDown(current.idx) && HasLeft(current.idx) ? DownLeft(current.idx) : -1;
+      neighbors[5] = HasDown(current.idx) && HasRight(current.idx) ? DownRight(current.idx) : -1;
+      neighbors[6] = HasUp(current.idx) && HasLeft(current.idx) ? UpLeft(current.idx) : -1;
+      neighbors[7] = HasUp(current.idx) && HasLeft(current.idx) ? UpRight(current.idx) : -1;
+    }
 
     for (int i = 0; i < N_adj; ++i) {
       int current_neighbor = neighbors[i];
