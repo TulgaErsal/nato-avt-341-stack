@@ -176,8 +176,48 @@ namespace avt_341 {
               ROS_ERROR(format, args...);
             }
 
+            template<typename... Args> inline void log_fatal(const char * format, Args... args){
+              ROS_FATAL(format, args...);
+            }
+
+            template<typename... Args> inline void log_debug_throttle(float period, const char * format, Args... args){
+               ROS_DEBUG_THROTTLE(period, format, args...);
+            }
+
             template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
               ROS_INFO_THROTTLE(period, format, args...);
+            }
+
+            template<typename... Args> inline void log_warning_throttle(float period, const char * format, Args... args){
+              ROS_WARN_THROTTLE(period, format, args...);
+            }
+
+            template<typename... Args> inline void log_error_throttle(float period, const char * format, Args... args){
+              ROS_ERROR_THROTTLE(period, format, args...);
+            }
+
+            template<typename... Args> inline void log_fatal_throttle(float period, const char * format, Args... args){
+              ROS_FATAL_THROTTLE(period, format, args...);
+            }
+
+            template<typename... Args> inline void log_debug_once(const char * format, Args... args){
+              ROS_DEBUG_ONCE(format, args...);
+            }
+
+            template<typename... Args> inline void log_info_once(const char * format, Args... args){
+              ROS_INFO_ONCE(format, args...);
+            }
+
+            template<typename... Args> inline void log_warning_once(const char * format, Args... args){
+              ROS_WARN_ONCE(format, args...);
+            }
+
+            template<typename... Args> inline void log_error_once(const char * format, Args... args){
+              ROS_ERROR_ONCE(format, args...);
+            }
+
+            template<typename... Args> inline void log_fatal_once(const char * format, Args... args){
+              ROS_FATAL_ONCE(format, args...);
             }
 
             inline const char* get_name() const{ return ros::this_node::getName().c_str(); }
