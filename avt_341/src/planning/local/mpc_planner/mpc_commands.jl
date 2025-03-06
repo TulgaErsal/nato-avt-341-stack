@@ -142,9 +142,9 @@ function SetTerrainAdaptive(use_adaptive::Int32)
 	global adaptive = Bool(use_adaptive)
 end
 
-function SetVehFrontAxleDist(front_axle_dist::Float64)
-	global la = front_axle_dist
-end
+# function SetVehFrontAxleDist(front_axle_dist::Float64)
+# 	global la = front_axle_dist
+# end
 
 function SetFrontAngleSeg(angle_seg::Float64)
 	global frontAngleSegmentation = angle_seg
@@ -393,8 +393,8 @@ function Setup()
 
 	# println("Goal: ",JuMP.getvalue(g1)," ",JuMP.getvalue(g2))
 	optimize!(n)
-	println("Initialization status: ",n.r.ocp.status)
-	println("Setup done. Type 'q' to quit.")
+	# println("Initialization status: ",n.r.ocp.status)
+	# println("Setup done. Type 'q' to quit.")
 
 	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
 		linear_solver = linearSolverId,
@@ -473,17 +473,16 @@ function Plan()
 
 		optimize!(n)
 
-		println(n.r.ocp.status," (",round(1000*n.r.ocp.tSolve; digits = 1)," ms)")
+		# println(n.r.ocp.status," (",round(1000*n.r.ocp.tSolve; digits = 1)," ms)")
 		if n.r.ocp.status == :Optimal
 			solutionFound = true
-			for i=1:numColPoints+1
-				mpc_path[i,1] = n.r.ocp.X[i,1]-la*cos(n.r.ocp.X[i,5])
-				mpc_path[i,2] = n.r.ocp.X[i,2]-la*sin(n.r.ocp.X[i,5])
-				mpc_speed[i] = n.r.ocp.X[i,7]
-				mpc_steering[i] = n.r.ocp.X[i,6]
-				mpc_heading[i] = n.r.ocp.X[i,5]
-				skipCount = 1
-			end
+			@views X = n.r.ocp.X;  # Create views to avoid unnecessary copying
+			mpc_path[:,1] = X[:,1] .- (la .* cos.(X[:,5]));
+			mpc_path[:,2] = X[:,2] .- (la .* sin.(X[:,5]));
+			mpc_speed = X[:,7]
+			mpc_steering = X[:,6]
+			mpc_heading = X[:,5]
+			skipCount = 1
 		else
 			solutionFound = false
 			if path_prev != 0
