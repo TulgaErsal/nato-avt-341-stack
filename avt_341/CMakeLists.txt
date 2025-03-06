@@ -75,7 +75,8 @@ set(AVT341_SOURCE_FILES
     "planning/local/goal_point_processor"
     "planning/local/vehicle_converter"
     "planning/local/mpc_planner"
-    "planning/global/global_path")
+    "planning/global/global_path"
+    "planning/global/pf_global_path")
 
 # Append src/ subdirectory to the path of each target.
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
@@ -254,6 +255,9 @@ if(USING_CATKIN)
 
   install(DIRECTORY "config/"
           DESTINATION "${CATKIN_PACKAGE_SHARE_DESTINATION}/config")
+
+  install(DIRECTORY "parameters/"
+          DESTINATION "${CATKIN_PACKAGE_SHARE_DESTINATION}/parameters")
 
   install(
     DIRECTORY "rviz/"
