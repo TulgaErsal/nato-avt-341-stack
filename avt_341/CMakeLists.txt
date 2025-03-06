@@ -69,6 +69,7 @@ set(AVT341_SOURCE_FILES
     "perception/slam/imu_preintegration"
     "perception/slam/image_projection"
     "perception/slam/map_optimization"
+    "perception/calibration_tf_publisher"
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"
