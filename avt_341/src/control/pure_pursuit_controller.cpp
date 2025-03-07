@@ -10,11 +10,11 @@ PurePursuitController::PurePursuitController() {
 	// set to MRZR values
 	wheelbase_ = 2.731f; // meters
 	max_steering_angle_ = 0.69f; //39.5 degrees
-	max_stable_speed_ = 35.0f; //5.0;
+	// max_stable_speed_ = 35.0f; //5.0;
 
 	// tunable parameters
-	min_lookahead_ = 7.0f;
-	max_lookahead_ = 25.0f;
+	min_lookahead_ = 5.0f;
+	max_lookahead_ = 15.0f;
 	k_ = 1.2f; //0.5;
 	throttle_coeff_ = 1.0f;
 
@@ -64,28 +64,19 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	// extract the path that the vehicle needs to follow
 	std::vector<utils::vec2> path;
 
-
 	//populate the desired path
 	path.resize(np);
-
-
 	for (int i = 0; i < np; i++) {
 		path[i] = utils::vec2(traj.poses[i].pose.position.x, traj.poses[i].pose.position.y);
 	}
 
-
-
-
 	//calculate the lookahead distance based on current speed
 	utils::vec2 currpos(veh_x_, veh_y_);
 	float path_length = utils::length(path[np - 1] - currpos);
-	float overwrite_k = 1.2;
-	float lookahead = overwrite_k * veh_speed_;
+	float lookahead = k_ * veh_speed_;
 
-	float overwrite_max_lookahead = 15.0;
-	float overwrite_min_lookahead = 5.0;
-	if (lookahead > overwrite_max_lookahead) lookahead = overwrite_max_lookahead;
-	if (lookahead < overwrite_min_lookahead) lookahead = overwrite_min_lookahead;
+	if (lookahead > max_lookahead_)lookahead = max_lookahead_;
+	if (lookahead < min_lookahead_)lookahead = min_lookahead_;
 	// if (lookahead > path_length)lookahead = path_length - 0.01;
 
 
@@ -125,7 +116,7 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	float delta_angle = 0.003;
 	float derr = err - err_last_;
 	float err_accum_ = err + err_accum_;
-	sangle = 0.015 * (-err) + 0.00000 * -err_accum_ + -0.00003/10.0*derr; //PID?
+	sangle = -(pursuit_kp_ * err + pursuit_ki_ * err_accum_ + pursuit_kd_ * derr); //PID
 	err_last_ = err;
 
 	if (fabs(sangle - steer_cur_)> delta_angle) {
@@ -133,19 +124,16 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	}
 	steer_cur_ = sangle;
 
-
-
 	sangle = sangle / max_steering_angle_;
 	sangle = std::min(1.0f, sangle);
 	sangle = std::max(-1.0f, sangle);
 	dc.angular.z = sangle;
 
 	//Use the speed controller to get throttle/braking
-	//addjust the target speed so you back off during hard turns
+	//adjust the target speed so you back off during hard turns
 	float adj_speed = target_speed * exp(-0.69*pow(fabs(dc.angular.z), 4.0f));
 	speed_controller_.SetSetpoint(adj_speed);
 	float throttle = speed_controller_.GetControlVariable(veh_speed_, 0.01f);
-	//float throttle = speed_controller_.GetControlVariable(vdot, 0.01f);
 	if (throttle < 0.0f) { //braking
 		dc.linear.x = 0.0f;
 		dc.linear.y = std::max(-1.0f, throttle);
@@ -161,86 +149,7 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	return dc;
 }
 
-// avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj, utils::vec2 & goal) {
-// 	//initialize the driving command
-//   avt_341::msg::Twist dc;
 
-// 	//make sure the path contains some points
-// 	int np = traj.poses.size();
-
-// 	if (np < 2) return dc;
-
-// 	// extract the path that the vehicle needs to follow
-// 	std::vector<utils::vec2> path;
-
-// 	//populate the desired path
-// 	path.resize(np);
-// 	for (int i = 0; i < np; i++) {
-// 		path[i] = utils::vec2(traj.poses[i].pose.position.x, traj.poses[i].pose.position.y);
-// 	}
-
-// 	//calculate the lookahead distance based on current speed
-// 	utils::vec2 currpos(veh_x_, veh_y_);
-// 	float path_length = utils::length(path[np - 1] - currpos);
-// 	float lookahead = k_ * veh_speed_;
-
-// 	if (lookahead > max_lookahead_)lookahead = max_lookahead_;
-// 	if (lookahead < min_lookahead_)lookahead = min_lookahead_;
-// 	if (lookahead > path_length)lookahead = path_length - 0.01;
-
-// 	//first find the closest segment on the path , and distance to it
-// 	float closest = 1.0E9f;
-// 	int start_seg = 0;
-// 	for (int i = 0; i < np - 1; i++) {
-// 		float d0 = PointToSegmentDistance(path[i], path[i + 1], currpos);
-// 		if (d0 < closest) {
-// 			closest = d0;
-// 			start_seg = i;
-// 		}
-// 	}
-
-// 	goal = path[start_seg];
-// 	float target_speed = desired_speed_;
-// 	utils::vec2 desired_direction;
-// 	if (closest < lookahead) {
-// 		//find point on path at lookahead distance away
-// 		float accum_dist = closest;
-
-// 		//for (int i=0;i<np-1;i++){
-// 		for (int i = start_seg; i < np - 1; i++) {
-// 			utils::vec2 v = path[i + 1] - path[i];
-// 			float seg_dist = length(v);
-// 			if ((accum_dist + seg_dist) > lookahead) {
-// 				utils::vec2 dir = v / seg_dist;
-// 				float t = lookahead - accum_dist;
-// 				goal = path[i] + dir*t;
-// 				desired_direction = v;
-// 				target_speed = desired_speed_; //traj.path[i + 1].speed;
-// 				if (target_speed > max_stable_speed_)target_speed = max_stable_speed_;
-// 				break;
-// 			}
-// 			else {
-// 				accum_dist += seg_dist;
-// 			}
-// 		}
-// 	}
-
-// 	//find the angle, alpha, between the current orientation and the goal
-// 	utils::vec2 curr_dir(cos(veh_heading_), sin(veh_heading_));
-// 	utils::vec2 to_goal(goal.x - veh_x_,goal.y-veh_y_);
-// 	//to_goal = to_goal / utils::length(to_goal);
-// 	float alpha = (float)atan2(to_goal.y, to_goal.x) - (float)atan2(curr_dir.y, curr_dir.x);
-
-// 	if (skid_steered_){
-// 		float desired_heading = atan2f(desired_direction.y, desired_direction.x);
-// 		float dtheta = desired_heading - veh_heading_;
-// 		dc = GetDcSkid(to_goal.x, to_goal.y, dtheta);
-// 	}
-// 	else{
-// 		dc = GetDcAckermann(alpha, lookahead, curr_dir, target_speed);
-// 	}
-// 	return dc;
-// }
 
 avt_341::msg::Twist PurePursuitController::GetDcSkid(float dx, float dy, float dtheta){
 	// The skid steer algorithm is taken from 
