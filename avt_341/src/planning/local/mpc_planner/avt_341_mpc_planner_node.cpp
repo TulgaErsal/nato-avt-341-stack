@@ -237,6 +237,7 @@ void DeclareParameters()
     node->get_parameter("~adaptive", adaptive, false);
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
     node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
+    node->get_parameter("~publish_steering_commands", publish_steering_commands, true);
 }
 
 void InitialiseJuliaAPI()
@@ -500,7 +501,10 @@ int main(int argc, char *argv[])
     // -------------------.
     auto path_pub = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
     auto speed_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",1);
-    auto steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> steer_pub = nullptr;
+    if (publish_steering_commands) {
+        steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    }
     auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
@@ -524,7 +528,9 @@ int main(int argc, char *argv[])
             // Publish MPC outputs
             path_pub->publish(GetMPCPath());
             speed_pub->publish(GetMPCSpeed());
-            steer_pub->publish(GetMPCSteering());
+            if (publish_steering_commands) {
+                steer_pub->publish(GetMPCSteering());
+            }
             drive_pub->publish(GetMPCDrive());
 	        heading_pub->publish(GetMPCHeading());
 

@@ -87,6 +87,7 @@ double front_angle_segmentation;
 bool adaptive;
 double vehicle_axle_distance_front;
 bool obstacles_vizualize;
+bool publish_steering_commands;
 // --------------
 
 // Globals
