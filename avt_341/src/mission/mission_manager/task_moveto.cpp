@@ -18,8 +18,8 @@ const std::string MoveTo::ACTOR = "ACTOR";
 
 // MoveTo
 MoveTo::MoveTo(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def,
-               double x_offset, double y_offset, double d_approach)
-: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), d_approach_(d_approach) {
+               double x_offset, double y_offset, double d_approach, double desired_speed)
+: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), d_approach_(d_approach), desired_speed_(desired_speed) {
     setGoalInternal(avt_341::msg::PoseStamped(), "", MoveTo::NONE);
     terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
 }
@@ -84,6 +84,8 @@ void MoveTo::init_() {
     mgr->publishGoal(target_pose);
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
+    if (desired_speed_ > 0.0)
+      mgr->handleSetSpeed(SetSpeedMsg{sender_name, msg_id, name, desired_speed_, PriorityType::PREEMPT});
 
 }
 

@@ -18,13 +18,16 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     task_list.clear();
     mission_contacts.clear();
 
+    node_proxy_->get_parameter("/map_origin_x", local_origin_x, 0.0);
+    node_proxy_->get_parameter("/map_origin_y", local_origin_y, 0.0);
+
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
     reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
     gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_proxy_->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
-    speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10);
+    speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
 }
 
 MissionManager::~MissionManager() {
@@ -99,6 +102,53 @@ bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string na
     return true;
 }
 
+bool MissionManager::loadMissionPaths(std::string filename) {
+    std::string line;
+    std::vector<std::string> contents;
+    MissionPoint missionPt;
+    MissionPath missionPath;
+    int row = 0;
+
+    // Load the mission from file
+    std::ifstream infile(filename);
+    if(infile.is_open()) {
+        mission_paths.clear();
+        while(std::getline(infile, line))
+        {
+            std::istringstream iss(line);
+            contents = getLine(iss);
+            if(!contents.empty() && row>0) {
+                missionPath.poses.clear();
+                for(int col=0; col < contents.size(); col++) {
+                    std::string val = contents[col];
+                    if (col == 0) {
+                        missionPath.name = val;
+                    }
+                    else if (getMissionPoint(missionPt, val)) {
+                        missionPath.poses.push_back(missionPt);
+                    }
+                }
+                mission_paths.push_back(missionPath);
+            }
+            row++;
+        }    
+    } else {
+        node_proxy_->log_info("Error reading mission paths %s", filename.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool MissionManager::getMissionPath(MissionPath& mission_path, std::string name) {
+    auto it = std::find_if(std::begin(mission_paths), std::end(mission_paths), 
+                [&](const auto& e) {return e.name == name; });
+    if(it == mission_paths.end()) {
+        node_proxy_->log_info("Missing Mission Path %s", name.c_str());
+        return false;
+    }
+    mission_path = *it;
+    return true;
+}
 
 bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     // if no active task, put it on the list
@@ -132,11 +182,23 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
 
 void MissionManager::publishGoal(const avt_341::msg::PoseStamped & target_pose){
     avt_341::msg::Path goal_msg;
+    
+    // Offset to local map frame
+    avt_341::msg::PoseStamped target_pose_msg = target_pose;
+
     goal_msg.poses.clear();
-    goal_msg.poses.push_back(target_pose);
+    goal_msg.poses.push_back(target_pose_msg);
     goal_msg.header.stamp = node_proxy_->get_stamp();
     goal_msg.header.frame_id = "map";
     waypoint_pub->publish(goal_msg);
+}
+
+void MissionManager::publishGoalPath(const avt_341::msg::Path& path) {
+    avt_341::msg::Path path_msg;
+    path_msg.header.stamp = node_proxy_->get_stamp();
+    path_msg.header.frame_id = "map";
+    path_msg.poses = path.poses;
+    waypoint_pub->publish(path);
 }
 
 void MissionManager::publishPath(const avt_341::msg::Path& path){
@@ -356,14 +418,14 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
     auto formation_def = new FormationDefinition(msg, mp, formation_params);
     if(formation_def->isLeader() || formation_def->formationAtGoal()){
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
-        handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def);
+        handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
     } else if(formation_def->isFollowing()) {
         Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def);
         addTask(followTask, msg.priority_type);
     }
 
     // handle set speed
-    handleSetSpeed(msg.speedMsg());
+    //handleSetSpeed(msg.speedMsg());
 }
 
 void MissionManager::handleAcknowledge(const AcknowledgeMsg & msg) {
@@ -388,10 +450,10 @@ void MissionManager::handleTaskComplete(const TaskCompleteMsg & msg) {
     task_completions_.push_back(msg);
 }
 
-void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def) {
+void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def, double desired_speed) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset, y_offset + msg.goal_y_offset, msg.approach_distance);
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset, y_offset + msg.goal_y_offset, msg.approach_distance, desired_speed);
         moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {
@@ -399,10 +461,22 @@ void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double
     }
 }
 
+void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinition* formation_def) {
+    // only applies if I'm the leader, otherwise decline
+    if(msg.receiver_name == my_name) {
+        PathFollow* pathTask = new PathFollow(this, msg.sender_name, msg.msg_id, formation_def, msg.desired_speed);
+        pathTask->setPathByDef(msg.objective_name);
+        addTask(pathTask, msg.priority_type);
+    } else {
+        node_proxy_->log_info("Ignoring PathFollow (not for me)");
+    }
+}
+
 void MissionManager::handleSetSpeed(const SetSpeedMsg & msg) {
     avt_341::msg::Float64 speed_msg;
     speed_msg.data = msg.desired_speed;
     speed_pub->publish(speed_msg);
+    node_proxy_->log_info("SET SPEED TO %lf", msg.desired_speed);
 }
 
 void MissionManager::onGoalReached(const avt_341::msg::PoseStamped & pose){

@@ -87,7 +87,7 @@ int main(int argc, char **argv){
     n->get_parameter("~formation_prune_gp", formation_prune_gp, false);
 
     bool is_speed_up_follower = fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER;
-    auto speed_pub = is_speed_up_follower ? n->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed", 10) : nullptr;
+    auto speed_pub = is_speed_up_follower ? n->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10) : nullptr;
 
     n->log_info("Formation Controller:\n  fsc_type=%s\n  use_leader_breadcrumbs=%d\n  x_offset_on_path=%d\n  formation_prune_gp=%d", fsc_type.c_str(), use_breadcrumbs, x_offset_on_path, formation_prune_gp);
 

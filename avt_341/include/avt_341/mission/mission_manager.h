@@ -53,11 +53,16 @@ class MissionManager{
 
     bool getMissionPoint(MissionPoint& mission_point, std::string posename);
 
+    bool loadMissionPaths(std::string filename);
+
+    bool getMissionPath(MissionPath& mission_path, std::string pathname);
+
     // internal messages
     void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
 
     // external messages
-    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr);
+    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr, double desired_speed = 0.0);
+    void handlePathFollow(const PathFollowMsg& msg, FormationDefinition* formation_def = nullptr);
     void handleFormationRequest(FormationMsg msg);
     void handleAcknowledge(const AcknowledgeMsg &);
     void handleArrive(const ArrivedMsg & msg);
@@ -75,6 +80,8 @@ class MissionManager{
     float desired_speed;
     bool goal_changed;
     bool arrival_announced;
+    double local_origin_x;
+    double local_origin_y;
 
     // Task management
     void updateTasks();
@@ -82,6 +89,7 @@ class MissionManager{
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(const avt_341::msg::Path& path);
     void publishGoal(const avt_341::msg::PoseStamped & target_pose);
+    void publishGoalPath(const avt_341::msg::Path& path);
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
     void publishArrival(const std::string & sender_name, const std::string & objective);
@@ -102,6 +110,7 @@ class MissionManager{
     const ToiParameters & toi_params_;
     std::vector<MissionPoint> mission_data;
     std::vector<MissionPoint> overwatch_positions;
+    std::vector<MissionPath> mission_paths;
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;

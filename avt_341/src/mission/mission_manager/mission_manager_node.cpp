@@ -15,7 +15,7 @@ bool odom_rcvd = false;
 avt_341::msg::Int32 nav_state;
 bool nav_state_rcvd = false;
 
-std::string mission_definition_filename;
+std::string mission_definition_filename, mission_paths_file;
 float sodist_threshold;
 
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
@@ -103,7 +103,6 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std
   bool target_veh_present = target_idx < veh_namespaces.size();
   std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
   std::string sub_postfix = my_name == tracking_veh && !tracked_veh.empty() && toUpper(target_veh_ns) == tracked_veh ? "/tracked" : "";
-
   return target_veh_present
     ? nh->create_subscription<avt_341::msg::Odometry>("/" + target_veh_ns + "/avt_341/odometry" + sub_postfix, 10, VehicleOdometryCallback)
     : nullptr;
@@ -126,6 +125,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~name", formation_params.my_name, std::string("AGV1"));
     formation_params.my_name = toUpper(formation_params.my_name);
     nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
+    nh->get_parameter("~mission_paths_file", mission_paths_file, std::string("mission_paths.csv"));
     nh->get_parameter("~follow_scale_x", formation_params.follow_scale_x, 1.0f);
     nh->get_parameter("~follow_scale_y", formation_params.follow_scale_y, 1.0f);
     nh->get_parameter("~global_path_point_dist", formation_params.global_path_points_dist, 1.0f);
@@ -136,11 +136,11 @@ int main(int argc, char **argv) {
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
 
 
-    nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
+    nh->get_parameter("~oof/threshold", fsc_params.oof_threshold, 15.0);
     nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
-    nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
-    nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
-    nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
+    nh->get_parameter("~oof/const_term", fsc_params.oof_const_term, 0.3);
+    nh->get_parameter("~oof/lin_slope", fsc_params.oof_lin_slope, 0.03);
+    nh->get_parameter("~oof/mult", fsc_params.oof_mult, 1.5);
     nh->get_parameter("~formation_debug_visualize", fsc_params.debug_visualize, false);
     nh->get_parameter("~offsets_from_leader", formation_params.offsets_from_leader, true);
     nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
@@ -149,14 +149,14 @@ int main(int argc, char **argv) {
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
-    nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
-    nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
-    nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
-    nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
-    nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
+    nh->get_parameter("~toi/approach_dist", toi_params.approach_dist, 15.0f);
+    nh->get_parameter("~toi/encircle_radius",  toi_params.encircle_radius, 10.0f);
+    nh->get_parameter("~toi/encircle_degrees", toi_params.encircle_degrees, 180.0f);
+    nh->get_parameter("~toi/encircle_cw", toi_params.encircle_cw, true);
+    nh->get_parameter("~toi/goal_threshold", toi_params.goal_threshold, 5.0f);
 
-    nh->get_parameter("~ot_tracking_veh", tracking_veh, std::string(""));
-    nh->get_parameter("~ot_tracked_veh", tracked_veh, std::string(""));
+    nh->get_parameter("~ot/tracking_veh", tracking_veh, std::string(""));
+    nh->get_parameter("~ot/tracked_veh", tracked_veh, std::string(""));
     tracking_veh = toUpper(tracking_veh);
     tracked_veh = toUpper(tracked_veh);
 
@@ -169,6 +169,8 @@ int main(int argc, char **argv) {
                 fsc_type.c_str(), formation_params.use_breadcrumbs, formation_params.x_offset_on_path, formation_params.prune_global_path);
     nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
     mgr->loadMissionDefinition(mission_definition_filename);
+    nh->log_info("%s loading paths file %s", mgr->my_name.c_str(), mission_paths_file.c_str());
+    mgr->loadMissionPaths(mission_paths_file);
 
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
@@ -215,10 +217,12 @@ int main(int argc, char **argv) {
         while(!comm_msgs.empty()){
             auto rcvd_msg = comm_msgs.front();
             comm_msgs.pop();
+            std::string msg_text = rosToSerializedMsg(rcvd_msg);
             if(!isMsgFor(mgr->my_name, rcvd_msg)){
+              nh->log_info("%s ignoring message: %s", mgr->my_name.c_str(), msg_text.c_str());
               continue;
             }
-            std::string msg_text = rosToSerializedMsg(rcvd_msg);
+            //std::string msg_text = rosToSerializedMsg(rcvd_msg);
             nh->log_info("%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
             if(rcvd_msg.type == MissionMsgType::Formation) {
@@ -242,6 +246,8 @@ int main(int argc, char **argv) {
                 mgr->handleCancelAllTask(CancelAllMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Overwatch){
                 mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::PathFollow){
+                mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
             }
             else{
               nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
