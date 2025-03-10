@@ -36,11 +36,33 @@ void NodeProxy::initialize_tf_listener() {
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
-  return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
+  try {
+    return tf_buffer_->lookupTransform(target_frame, source_frame, ros::Time(0));
+  } catch (const tf2::TransformException & ex) {
+    //n->log_warning("Could not transform %s to %s: %s", frame_world.c_str(), frame_cg.c_str(), ex.what());
+    return geometry_msgs::TransformStamped();
+  }
+  
 }
 
 geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame, const ros::Time &stamp){
-  return tf_buffer_->lookupTransform(target_frame, source_frame, stamp, ros::Duration(0.2));
+  try {
+    return tf_buffer_->lookupTransform(target_frame, source_frame, stamp, ros::Duration(0.2));
+  } catch (const tf2::TransformException & ex) {
+    //n->log_warning("Could not transform %s to %s: %s", frame_world.c_str(), frame_cg.c_str(), ex.what());
+    return geometry_msgs::TransformStamped();
+  }
+}
+
+geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string& target_frame, const ros::Time& target_time,
+                                                            const std::string& source_frame, const ros::Time& source_time,
+                                                            const std::string& fixed_frame){
+  try {
+    return tf_buffer_->lookupTransform(target_frame, target_time, source_frame, source_time, fixed_frame, ros::Duration(0.2));
+  } catch (const tf2::TransformException & ex) {
+    //n->log_warning("Could not transform %s to %s: %s", frame_world.c_str(), frame_cg.c_str(), ex.what());
+    return geometry_msgs::TransformStamped();
+  }
 }
 
 bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame){
@@ -64,9 +86,9 @@ bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, senso
    return true;
 }
 
-bool NodeProxy::transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame) {
+bool NodeProxy::transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame, float duration) {
 	try {
-		tf_buffer_->transform(in_pose, out_pose, target_frame, ros::Duration(0.2));
+		tf_buffer_->transform(in_pose, out_pose, target_frame, ros::Duration(duration));
 	} catch (const tf2::TransformException & ex) {
 		log_warning("Could not transform pose %s to %s: %s", out_pose.header.frame_id.c_str(), target_frame.c_str(), ex.what());
 		return false;
@@ -75,6 +97,26 @@ bool NodeProxy::transform_pose(const geometry_msgs::PoseStamped & in_pose, geome
 }
 
 void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose) {
+      if(tf_buffer_ == nullptr) {
+        initialize_tf_listener();
+      }
+
+      geometry_msgs::TransformStamped tf_msg;
+      tf_msg.header.frame_id = parent_frame;
+      tf_msg.child_frame_id = child_frame;
+
+      tf_msg.transform.translation.x = target_pose.pose.position.x;
+      tf_msg.transform.translation.y = target_pose.pose.position.y;
+      tf_msg.transform.translation.z = target_pose.pose.position.z;
+      tf_msg.transform.rotation.x = target_pose.pose.orientation.x;
+      tf_msg.transform.rotation.y = target_pose.pose.orientation.y;
+      tf_msg.transform.rotation.z = target_pose.pose.orientation.z;
+      tf_msg.transform.rotation.w = target_pose.pose.orientation.w;
+
+      tf_broadcaster_->sendTransform(tf_msg);
+}
+
+void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose) {
   if(tf_buffer_ == nullptr) {
     initialize_tf_listener();
   }
@@ -91,27 +133,7 @@ void NodeProxy::publish_tf(const std::string &parent_frame, const std::string &c
   tf_msg.transform.rotation.z = target_pose.pose.orientation.z;
   tf_msg.transform.rotation.w = target_pose.pose.orientation.w;
 
-  tf_broadcaster_->sendTransform(tf_msg);
-}
-
-void NodeProxy::publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose) {
-if(tf_buffer_ == nullptr) {
-initialize_tf_listener();
-}
-
-geometry_msgs::TransformStamped tf_msg;
-tf_msg.header.frame_id = parent_frame;
-tf_msg.child_frame_id = child_frame;
-
-tf_msg.transform.translation.x = target_pose.pose.position.x;
-tf_msg.transform.translation.y = target_pose.pose.position.y;
-tf_msg.transform.translation.z = target_pose.pose.position.z;
-tf_msg.transform.rotation.x = target_pose.pose.orientation.x;
-tf_msg.transform.rotation.y = target_pose.pose.orientation.y;
-tf_msg.transform.rotation.z = target_pose.pose.orientation.z;
-tf_msg.transform.rotation.w = target_pose.pose.orientation.w;
-
-tf_static_broadcaster_->sendTransform(tf_msg);
+  tf_static_broadcaster_->sendTransform(tf_msg);
 }
 
 double NodeProxy::get_now_seconds() const {
@@ -194,6 +216,7 @@ void NodeProxy::spin() {
       tf_static_broadcaster_->sendTransform(tf_msg);
     }
 
+
     geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const std::string &source_frame){
       try {
         return tf_buffer_->lookupTransform(target_frame, source_frame, tf2::TimePointZero);
@@ -212,9 +235,20 @@ void NodeProxy::spin() {
       }
     }
 
+    geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,
+                                                                     const std::string &source_frame, const rclcpp::Time &source_time,
+                                                                     const std::string &fixed_frame){
+      try {
+        return tf_buffer_->lookupTransform(target_frame, target_time, source_frame, source_time, fixed_frame, tf2::durationFromSec(0.2));
+      } catch (const tf2::TransformException & ex) {
+        RCLCPP_WARN(node_->get_logger(), "Could not transform %s to %s: %s", source_frame.c_str(), target_frame.c_str(), ex.what());
+        return geometry_msgs::msg::TransformStamped();
+      }
+    }
+
     bool NodeProxy::transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame){
       try {
-        tf_buffer_->transform(in_cloud, out_cloud, target_frame, tf2::durationFromSec(0.2));
+        out_cloud = tf_buffer_->transform(in_cloud, target_frame, tf2::durationFromSec(0.2));
 //        tf2::doTransform(in_cloud, out_cloud, lookup_transform(target_frame, in_cloud.header.frame_id));
         return true;
       } catch (const tf2::TransformException & ex) {
@@ -237,9 +271,9 @@ void NodeProxy::spin() {
       }
     }
 
-    bool NodeProxy::transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame) {
+    bool NodeProxy::transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame, float duration) {
       try {
-        out_pose = tf_buffer_->transform(in_pose, target_frame, tf2::durationFromSec(0.2));
+        out_pose = tf_buffer_->transform(in_pose, target_frame, tf2::durationFromSec(duration));
         return true;
       } catch (const tf2::TransformException & ex) {
         RCLCPP_WARN(node_->get_logger(), "Could not transform pose %s to %s: %s", in_pose.header.frame_id.c_str(), target_frame.c_str(), ex.what());

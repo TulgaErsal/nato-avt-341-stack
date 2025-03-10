@@ -75,6 +75,13 @@ namespace avt_341 {
             ros::Subscriber sub_ptr_;
         };
 
+        template<typename MessageT>
+        using SubscriberPtr = std::shared_ptr<Subscriber<MessageT>>;
+
+        inline double seconds_from_time(ros::Time t){
+            return t.toSec();
+        }
+
         inline double seconds_from_header(std_msgs::Header header){
             return header.stamp.toSec();
         }
@@ -151,6 +158,9 @@ namespace avt_341 {
             void initialize_tf_listener();
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const ros::Time &stamp);
+            geometry_msgs::TransformStamped lookup_transform(const std::string& target_frame, const ros::Time& target_time,
+                                                             const std::string& source_frame, const ros::Time& source_time,
+                                                             const std::string& fixed_frame);
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
             void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
@@ -160,7 +170,7 @@ namespace avt_341 {
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud,
                                  const std::string &target_frame, const ros::Time& target_time, const std::string &fixed_frame);
 
-            bool transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame);
+            bool transform_pose(const geometry_msgs::PoseStamped & in_pose, geometry_msgs::PoseStamped & out_pose, const std::string &target_frame, float duration=0.2);
 
             template<typename... Args> inline void log_debug(const char * format, Args... args){
               ROS_DEBUG(format, args...);
@@ -316,6 +326,17 @@ namespace avt_341 {
       std::shared_ptr<rclcpp::Subscription<CallbackMessageT, AllocatorT>> sub_ptr_;
     };
 
+    template<typename MessageT, typename CallbackT>
+    using SubscriberPtr = std::shared_ptr<Subscriber<MessageT, CallbackT>>;
+
+    inline double seconds_from_time(rclcpp::Time t){
+        return t.seconds();
+    }
+
+    inline double seconds_from_time(rclcpp::Duration t){
+        return t.seconds();
+    }
+
     inline double seconds_from_header(const std_msgs::msg::Header & header){
       return rclcpp::Time(header.stamp).seconds();
     }
@@ -392,6 +413,9 @@ namespace avt_341 {
       void initialize_tf_listener();
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time &time);
+      geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,
+                                                            const std::string &source_frame, const rclcpp::Time &source_time,
+                                                            const std::string &fixed_frame);
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
       void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
@@ -401,7 +425,7 @@ namespace avt_341 {
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud,
                            const std::string &target_frame, const rclcpp::Time &target_time, const std::string &fixed_frame);
 
-      bool transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame);
+      bool transform_pose(const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose, const std::string &target_frame, float duration=0.2);
 
       template<typename... Args> inline void log_info(const char * format, Args... args){
         RCLCPP_INFO(node_->get_logger(), format, args...);
