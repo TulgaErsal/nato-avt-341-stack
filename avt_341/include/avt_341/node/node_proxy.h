@@ -153,6 +153,8 @@ namespace avt_341 {
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const ros::Time &stamp);
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
+            void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
+
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
 
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud,
@@ -230,6 +232,8 @@ namespace avt_341 {
         private:
             ros::NodeHandle node_;
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+            std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
+            std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
         };
 
@@ -390,6 +394,8 @@ namespace avt_341 {
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time &time);
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
+      void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
+
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
 
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud,
@@ -451,6 +457,7 @@ namespace avt_341 {
       bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
       std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
+      std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};
       std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     };
 

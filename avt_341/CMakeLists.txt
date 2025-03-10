@@ -66,6 +66,7 @@ set(AVT341_SOURCE_FILES
     "perception/lidar_normal_estimation"
     "perception/normal_segmentation_grid"
     "perception/segmentation_grid_processor"
+    "perception/geotiff_map"
     "perception/slam/imu_preintegration"
     "perception/slam/image_projection"
     "perception/slam/map_optimization"
