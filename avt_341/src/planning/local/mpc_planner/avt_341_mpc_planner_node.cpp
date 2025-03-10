@@ -213,7 +213,7 @@ void DeclareParameters()
     node->get_parameter("~julia_planner_planner_module_path", planner_module_path, std::string());
     node->get_parameter("~julia_parameters_module_path", parameters_module_path, std::string());
     node->get_parameter("~julia_models_module_path", models_module_path, std::string());
-    node->get_parameter("~rate", rate, 10.0);
+    node->get_parameter("~rate", rate, 20.0);
     node->get_parameter("~tire_model", tire_model, std::string("L"));
     node->get_parameter("~num_col_points", num_col_points, 10);
     node->get_parameter("~prediction_time_horizon", prediction_time_horizon, 2.0);
@@ -237,6 +237,7 @@ void DeclareParameters()
     node->get_parameter("~adaptive", adaptive, false);
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
     node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
+    node->get_parameter("~publish_steering_commands", publish_steering_commands, true);
 }
 
 void InitialiseJuliaAPI()
@@ -258,7 +259,6 @@ void InitialiseJuliaAPI()
         jl_init_with_image(NULL, sysimage_path.c_str());
     }
     CATCH_JULIA_EXCEPTION;
-    node->log_info("Julia C API is now initialised.");
     // ----------[ Initialize Julia system image. ]----------
     // ------------------------------------------------------
     
@@ -271,7 +271,7 @@ void InitialiseJuliaAPI()
     }
     else if (!strlen(MPC_PLANNER_MODULE_PATH) == 0)
     {
-        node->log_warning(
+        node->log_info(
             "No absolute path to the Julia module was defined. Reverting to "
             "CMake compile definition, defined at: %s",
             MPC_PLANNER_MODULE_PATH);
@@ -304,7 +304,7 @@ void InitialiseJuliaAPI()
     }
     else if (!strlen(MPC_PARAMETERS_MODULE_PATH) == 0)
     {
-        node->log_warning(
+        node->log_info(
             "No absolute path to the Julia MPC parameters module was defined. Reverting to "
             "CMake compile definition, defined at: %s",
             MPC_PARAMETERS_MODULE_PATH);
@@ -338,7 +338,7 @@ void InitialiseJuliaAPI()
     }
     else if (!strlen(MPC_MODELS_MODULE_PATH) == 0)
     {
-        node->log_warning(
+        node->log_info(
             "No absolute path to the Julia MPC models module was defined. Reverting to "
             "CMake compile definition, defined at: %s",
             MPC_MODELS_MODULE_PATH);
@@ -383,6 +383,7 @@ void InitialiseJuliaAPI()
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
     j_get_heading = jl_get_function(mpc_module, "GetHeading");
+    
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
@@ -404,7 +405,7 @@ void InitialiseJuliaAPI()
     j_set_front_angle_goal = jl_get_function(mpc_module, "SetFrontAngleGoal");
     j_set_front_angle_obstacle = jl_get_function(mpc_module, "SetFrontAngleObstacle");
     j_set_terrain_adaptive = jl_get_function(mpc_module, "SetTerrainAdaptive");
-    j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
+    // j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
     j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
     j_set_linear_solver = jl_get_function(mpc_module, "SetLinearSolver");
     // -------------------------------
@@ -430,7 +431,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_front_angle_goal = jl_box_float64(front_angle_goal);
     jl_value_t *j_front_angle_obstacle = jl_box_float64(front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
-    jl_value_t *j_vehicle_axle_distance_front = jl_box_float64(vehicle_axle_distance_front);
+    // jl_value_t *j_vehicle_axle_distance_front = jl_box_float64(vehicle_axle_distance_front);
     jl_value_t *j_front_angle_segmentation = jl_box_float64(front_angle_segmentation);
     jl_value_t *j_linear_solver = jl_cstr_to_string(linear_solver.c_str());
 
@@ -455,7 +456,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
     jl_call1(j_set_terrain_adaptive, j_adaptive);
-    jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
+    // jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
     jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
     jl_call1(j_set_linear_solver, j_linear_solver);
     CATCH_JULIA_EXCEPTION;
@@ -500,12 +501,17 @@ int main(int argc, char *argv[])
     // -------------------.
     auto path_pub = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
     auto speed_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",1);
-    auto steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> steer_pub = nullptr;
+    if (publish_steering_commands) {
+        steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+    }
     auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
     node->log_info("Julia API initialized. Running main loop.");
+
+    node->log_info("Node running at %.2f Hz.", rate);
 
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
@@ -522,9 +528,11 @@ int main(int argc, char *argv[])
             // Publish MPC outputs
             path_pub->publish(GetMPCPath());
             speed_pub->publish(GetMPCSpeed());
-            steer_pub->publish(GetMPCSteering());
+            if (publish_steering_commands) {
+                steer_pub->publish(GetMPCSteering());
+            }
             drive_pub->publish(GetMPCDrive());
-	    heading_pub->publish(GetMPCHeading());
+	        heading_pub->publish(GetMPCHeading());
 
         }
 

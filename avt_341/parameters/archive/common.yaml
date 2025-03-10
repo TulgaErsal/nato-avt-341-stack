@@ -11,3 +11,4 @@ robot_description_veh4: ''                                                      
 num_vehicles: 1                                                                 # Number of vehicles controlled by navigation stack
 namespace_single_vehicle: False                                                 # If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)
 vehicle_namespaces: ['agv1', 'agv2', 'cgv1', 'cgv2']                            # Vehicle namespaces
+manual_control_vehicles: ['']                                                   # List of manually controlled vehicles. Most stack components disabled for these vehicles to improvement performance.

@@ -1,5 +1,13 @@
 if(USING_CATKIN)
-    message(WARNING "Skipping vehicle converter node, not supported in ROS 1 ...")
+    message(STATUS "Building vehicle converter node with catkin ...")
+    add_executable(veh_converter_node
+        "veh_converter_node.cpp"
+    )
+    target_link_libraries(veh_converter_node ${dependencies}
+        ${PROJECT_NAME}_proxy)
+    install(
+        TARGETS veh_converter_node
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)

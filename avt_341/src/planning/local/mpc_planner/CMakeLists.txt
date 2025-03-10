@@ -1,9 +1,9 @@
 find_package(Julia 1.5.4 EXACT)
 if(NOT ${Julia_FOUND})
-  message(WARNING "Julia libraries not found. The MPC wrapper node will not be built.")
+  message(WARNING "Julia 1.5.4 libraries not found. The MPC wrapper node will not be built.")
   set(BUILD_MPC OFF)
 else()
-  message(STATUS "Julia libraries found. Adding MPC wrapper node to the build.")
+  message(STATUS "Julia 1.5.4 libraries found. Adding MPC wrapper node to the build.")
   set(BUILD_MPC ON)
 endif() # if(${Julia_FOUND})
 

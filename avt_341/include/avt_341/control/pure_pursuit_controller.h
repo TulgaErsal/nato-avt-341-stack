@@ -66,8 +66,16 @@ public:
 	/** 
 	* Set the gain factor on the steering controller
 	* \param k Desired gain factor
+	* \param pursuit_kp proportional gain in pure pursuit
+	* \param pursuit_ki integral gain in pure pursuit
+	* \param pursuit_kd derivative gain in pure pursuit
 	*/
-	void SetSteeringParam(float k) { k_ = k; }
+	void SetSteeringParams(float k, float pursuit_kp, float pursuit_ki, float pursuit_kd) { 
+		k_ = k; 
+		pursuit_kp_ = pursuit_kp;
+		pursuit_ki_ = pursuit_ki;
+		pursuit_kd_ = pursuit_kd;
+	}
 
 	/**
 	* Set the maximum allowed speed of the vehicle
@@ -170,6 +178,9 @@ private:
 	float min_lookahead_; //meters
 	float max_lookahead_; //meters
 	float k_; //unitless
+	float pursuit_kp_;
+	float pursuit_ki_;
+	float pursuit_kd_;
 	float desired_speed_; // m/s
 	float max_stable_speed_;
 	float throttle_coeff_;
