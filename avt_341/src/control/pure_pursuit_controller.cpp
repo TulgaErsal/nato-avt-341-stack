@@ -145,7 +145,7 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	float delta_angle = 0.001;
 	float derr = err - err_last_;
 	float err_accum_ = err + err_accum_;
-	sangle = pursuit_kp_ * desired_sa - pursuit_ki_ * err - pursuit_kd_ * derr;
+	sangle = pursuit_k_ * desired_sa - pursuit_kp_ * err - pursuit_kd_ * derr;
 	err_last_ = err;
 
 	if (fabs(sangle - steer_cur_)> delta_angle) {
