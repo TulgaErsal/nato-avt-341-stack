@@ -13,9 +13,9 @@ PurePursuitController::PurePursuitController() {
 	// max_stable_speed_ = 35.0f; //5.0;
 
 	// tunable parameters
-	min_lookahead_ = 5.0f;
-	max_lookahead_ = 15.0f;
-	k_ = 1.2f; //0.5;
+	min_lookahead_ = 3.0f;
+	max_lookahead_ = 10.0f;
+	k_ = 1.2f;
 	throttle_coeff_ = 1.0f;
 
 	//vehicle state parameters
@@ -81,6 +81,8 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 
 
 	utils::vec2 lookahead_pos(veh_x_ + lookahead*cosf(veh_heading_), veh_y_ + lookahead*sinf(veh_heading_));
+	utils::vec2 veh_pos(veh_x_, veh_y_);
+
 
 	float min_dist = 1.0E9f;
 	int min_idx = 0;
@@ -94,6 +96,33 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 			min_idx = i;
 		}
 	}
+
+
+	float min_dist2 = 1.0E9f;
+	int min_idx2 = 0;
+
+	utils::vec2 diff_vec2;
+	for (int i = 1; i < np - 2; i++) {
+		diff_vec2 = path[i] - veh_pos;
+		float d0 = sqrt(utils::dot(diff_vec2, diff_vec2));
+		if (d0 < min_dist2) {
+			min_dist2 = d0;
+			min_idx2 = i;
+		}
+	}
+
+	utils::vec2 dirc1;
+	dirc1 = path[min_idx2] - path[min_idx2 -1];
+	utils::vec2 dirc2;
+	dirc2 = path[min_idx2 + 1] - path[min_idx2];
+
+
+	
+
+ 	float dpsi = asin((dirc1.x * dirc2.y - dirc1.y*dirc2.x)/(sqrt(utils::dot(dirc1, dirc1))* sqrt(utils::dot(dirc2, dirc2))));//acos((utils::dot(dirc1, dirc2))/( utils::dot(dirc1, dirc1)* utils::dot(dirc2, dirc2) ));
+	float dlength = sqrt(utils::dot(dirc2, dirc2));
+	float desired_sa = atan(2.5*(dpsi/dlength));
+
 
 	utils::vec2 p2l;
 	utils::vec2 p2p;
@@ -113,10 +142,10 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 
 	//determine the desired normalized steering angle
 	float sangle;
-	float delta_angle = 0.003;
+	float delta_angle = 0.001;
 	float derr = err - err_last_;
 	float err_accum_ = err + err_accum_;
-	sangle = -(pursuit_kp_ * err + pursuit_ki_ * err_accum_ + pursuit_kd_ * derr); //PID
+	sangle = pursuit_kp_ * desired_sa - pursuit_ki_ * err - pursuit_kd_ * derr;
 	err_last_ = err;
 
 	if (fabs(sangle - steer_cur_)> delta_angle) {
