@@ -147,6 +147,9 @@ namespace avt_341 {
             std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, uint qos, void(*callback)(const boost::shared_ptr<MessageT const>&)) {
                 return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
             }
+            std::shared_ptr<tf2_ros::StaticTransformBroadcaster> create_static_transform_broadcaster(){
+                return std::make_shared<tf2_ros::StaticTransformBroadcaster>();
+            }
 
             void initialize_tf_listener();
             geometry_msgs::TransformStamped lookup_transform(const std::string &target_frame, const std::string &source_frame);
@@ -348,21 +351,21 @@ namespace avt_341 {
       NodeProxy(const std::string &node_name);
 
       template<typename ParameterT>
-      void get_parameter(const std::string &name, ParameterT &parameter_out, const ParameterT default_value) {
+      bool get_parameter(const std::string &name, ParameterT &parameter_out, const ParameterT default_value) {
         std::string name_local = name[0] == '~' ? name.substr(1, name.size()-1) : name;
 
         if(name_local == "use_sim_time"){
           // TODO: Currently not supported
           parameter_out = default_value;
-          return;
+          return false;
         }
 
         if(is_empty_waypoints_ && (name_local == "/waypoints_x" || name_local == "/waypoints_y")){
-            return;
+            return false;
         }
 
         node_->declare_parameter(name_local, default_value);
-        node_->get_parameter(name_local, parameter_out);
+        return node_->get_parameter(name_local, parameter_out);
       }
 
       template<typename ParameterT>
@@ -383,6 +386,10 @@ namespace avt_341 {
       std::shared_ptr<Subscriber<MessageT, CallbackT>>
       create_subscription(const std::string &topic_name, int qos, CallbackT &&callback) {
         return std::make_shared<Subscriber<MessageT, CallbackT>>(topic_name, qos, callback, node_);
+      }
+
+      std::shared_ptr<tf2_ros::StaticTransformBroadcaster> create_static_transform_broadcaster(){
+        return std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
       }
 
       void initialize_tf_listener();

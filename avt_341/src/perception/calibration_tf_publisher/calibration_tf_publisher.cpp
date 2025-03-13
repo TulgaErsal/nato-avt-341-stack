@@ -3,6 +3,8 @@
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <yaml-cpp/yaml.h>
 
+std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
+
 avt_341::msg::TransformStamped parseCalibrationFile(const std::string& filename) {
   YAML::Node config = YAML::LoadFile(filename);
 
@@ -10,9 +12,9 @@ avt_341::msg::TransformStamped parseCalibrationFile(const std::string& filename)
   auto T = config["cam0"]["T_cam_lidar"];
 
   avt_341::msg::TransformStamped transform_stamped;
-  transform_stamped.header.stamp = ros::Time::now();
-  transform_stamped.header.frame_id = "lidar_frame"; // Change to the correct frame
-  transform_stamped.child_frame_id = "camera_frame"; // Change to the correct frame
+  transform_stamped.header.stamp = n->get_stamp();
+  transform_stamped.header.frame_id = "os_lidar"; // Change to the correct frame
+  transform_stamped.child_frame_id = "flir_camera"; // Change to the correct frame
 
   // Set translation
   transform_stamped.transform.translation.x = T[0][3].as<double>();
@@ -37,7 +39,7 @@ avt_341::msg::TransformStamped parseCalibrationFile(const std::string& filename)
 }
 
 int main(int argc, char** argv) {
-  auto n = avt_341::node::init_node(argc, argv, "calibration_tf_publisher_node");
+  n = avt_341::node::init_node(argc, argv, "calibration_tf_publisher_node");
 
   std::string filename;
   if (!n->get_parameter("calibration_file", filename, std::string{"nofile"})) {
@@ -47,8 +49,9 @@ int main(int argc, char** argv) {
 
   const avt_341::msg::TransformStamped transform_stamped = parseCalibrationFile(filename);
 
-  tf2_ros::StaticTransformBroadcaster static_broadcaster;
-  static_broadcaster.sendTransform(transform_stamped);
+  // tf2_ros::StaticTransformBroadcaster static_broadcaster;
+  auto static_broadcaster = n->create_static_transform_broadcaster();
+  static_broadcaster->sendTransform(transform_stamped);
 
   n->log_info("Published static transform from %s to %s",
     transform_stamped.header.frame_id.c_str(),
