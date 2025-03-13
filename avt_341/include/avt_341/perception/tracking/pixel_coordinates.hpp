@@ -48,11 +48,10 @@ namespace perception {
 
 class PixelCoordinates {
   public:
-    PixelCoordinates(int x, int y, double z) : x_(x), y_(y), z_(z) {}
+    PixelCoordinates(const int& x, const int& y) : x_(x), y_(y) {}
 
     int x_;
     int y_;
-    double z_;
 };
 
 } // namespace perception
