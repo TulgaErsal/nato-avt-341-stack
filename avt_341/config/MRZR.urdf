@@ -69,10 +69,12 @@
         <child link="os_sensor" />  
     </joint>
 
+    <!-- Handled by calibration_tf_publisher which reads directly from calibration file
     <joint name="os_sensor_to_flir_optical" type="fixed">
         <origin xyz="-0.283517 0.0682941 -0.136282" rpy="-1.481708200033002 -0.017688723295176803 1.5783145437948567"/>
         <parent link="os_sensor" />  
         <child link="flir_optical" />  
     </joint>
+    -->
 
 </robot>
