@@ -15,8 +15,6 @@
 
     <link name="os_sensor" />
 
-    <link name="flir_optical" />
-
 	<link name="vlp16_top_link">
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0" />

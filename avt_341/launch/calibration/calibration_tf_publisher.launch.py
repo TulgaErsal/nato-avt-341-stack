@@ -7,7 +7,7 @@ def generate_launch_description():
     # Define file paths
     pkg_name = 'avt_341'
     default_urdf_path = os.path.join(get_package_share_directory(pkg_name), 'config', 'MRZR.urdf')
-    default_calib_path = os.path.join(get_package_share_directory(pkg_name), 'config', 'sensor_calibration', '2025-03-17-08-12-39-camera-info-matlab-ffi.yaml')
+    default_calib_path = os.path.join(get_package_share_directory(pkg_name), 'config', 'sensor_calibration', '2025-03-18-13-24-22-camera-info-matlab.yaml')
 
     # Load URDF file as a parameter
     with open(default_urdf_path, 'r') as infp:
@@ -28,6 +28,8 @@ def generate_launch_description():
             executable='calibration_tf_publisher_node',
             name='calibration_tf_publisher_node',
             output='screen',
-            parameters=[{'calibration_file': default_calib_path}]
+            parameters=[{'calibration_file': default_calib_path,
+                         'lidar_frame': 'os_sensor',
+                         'camera_frame': 'flir_optical'}]
         ),
     ])
