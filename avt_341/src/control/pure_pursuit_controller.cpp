@@ -14,9 +14,9 @@ PurePursuitController::PurePursuitController() {
 	max_stable_speed_ = 35.0f; //5.0;
 
 	// tunable parameters
-	min_lookahead_ = 2.0f;
-	max_lookahead_ = 25.0f;
-	k_ = 2.0f; //0.5;
+	min_lookahead_ = 3.0f;
+	max_lookahead_ = 10.0f;
+	k_ = 1.2f;
 	throttle_coeff_ = 1.0f;
 
 	//vehicle state parameters
@@ -75,57 +75,102 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	if (lookahead < min_lookahead_)lookahead = min_lookahead_;
 	if (lookahead > path_length)lookahead = path_length - 0.01;
 
-	//first find the closest segment on the path , and distance to it
-	float closest = 1.0E9f;
-	int start_seg = 0;
-	for (int i = 0; i < np - 1; i++) {
-		float d0 = PointToSegmentDistance(path[i], path[i + 1], currpos);
-		if (d0 < closest) {
-			closest = d0;
-			start_seg = i;
+
+	utils::vec2 lookahead_pos(veh_x_ + lookahead*cosf(veh_heading_), veh_y_ + lookahead*sinf(veh_heading_));
+	utils::vec2 veh_pos(veh_x_, veh_y_);
+
+
+	float min_dist = 1.0E9f;
+	int min_idx = 0;
+
+	utils::vec2 diff_vec;
+	for (int i = 0; i < np - 2; i++) {
+		diff_vec = path[i] - lookahead_pos;
+		float d0 = sqrt(utils::dot(diff_vec, diff_vec));
+		if (d0 < min_dist) {
+			min_dist = d0;
+			min_idx = i;
 		}
 	}
 
-	goal = path[start_seg];
+
+	float min_dist2 = 1.0E9f;
+	int min_idx2 = 0;
+
+	utils::vec2 diff_vec2;
+	for (int i = 1; i < np - 2; i++) {
+		diff_vec2 = path[i] - veh_pos;
+		float d0 = sqrt(utils::dot(diff_vec2, diff_vec2));
+		if (d0 < min_dist2) {
+			min_dist2 = d0;
+			min_idx2 = i;
+		}
+	}
+
+	utils::vec2 dirc1;
+	dirc1 = path[min_idx2] - path[min_idx2 -1];
+	utils::vec2 dirc2;
+	dirc2 = path[min_idx2 + 1] - path[min_idx2];
+
+
+	
+
+ 	float dpsi = asin((dirc1.x * dirc2.y - dirc1.y*dirc2.x)/(sqrt(utils::dot(dirc1, dirc1))* sqrt(utils::dot(dirc2, dirc2))));//acos((utils::dot(dirc1, dirc2))/( utils::dot(dirc1, dirc1)* utils::dot(dirc2, dirc2) ));
+	float dlength = sqrt(utils::dot(dirc2, dirc2));
+	float desired_sa = atan(2.5*(dpsi/dlength));
+
+
+	utils::vec2 p2l;
+	utils::vec2 p2p;
+
+	p2l = lookahead_pos - path[min_idx];
+	p2p = path[min_idx+1] - path[min_idx];
+
+	float err = p2p.x * p2l.y - p2p.y*p2l.x; //p2p x p2l
+
+	goal = path[min_idx];
+
 	float target_speed = desired_speed_;
-	utils::vec2 desired_direction;
-	if (closest < lookahead) {
-		//find point on path at lookahead distance away
-		float accum_dist = closest;
 
-		//for (int i=0;i<np-1;i++){
-		for (int i = start_seg; i < np - 1; i++) {
-			utils::vec2 v = path[i + 1] - path[i];
-			float seg_dist = length(v);
-			if ((accum_dist + seg_dist) > lookahead) {
-				utils::vec2 dir = v / seg_dist;
-				float t = lookahead - accum_dist;
-				goal = path[i] + dir*t;
-				desired_direction = v;
-				target_speed = desired_speed_; //traj.path[i + 1].speed;
-				if (target_speed > max_stable_speed_)target_speed = max_stable_speed_;
-				break;
-			}
-			else {
-				accum_dist += seg_dist;
-			}
-		}
+	dc.linear.x = 0.0;
+	dc.angular.z = 0.0;
+	dc.linear.y = 0.0;
+
+	//determine the desired normalized steering angle
+	float sangle;
+	float delta_angle = 0.001;
+	float derr = err - err_last_;
+	float err_accum_ = err + err_accum_;
+	sangle = pursuit_k_ * desired_sa - pursuit_kp_ * err - pursuit_kd_ * derr;
+	err_last_ = err;
+
+	if (fabs(sangle - steer_cur_)> delta_angle) {
+		sangle = steer_cur_ + (sangle - steer_cur_)/(fabs((sangle - steer_cur_))+0.0001)*delta_angle;
+	}
+	steer_cur_ = sangle;
+
+	sangle = sangle / max_steering_angle_;
+	sangle = std::min(1.0f, sangle);
+	sangle = std::max(-1.0f, sangle);
+	dc.angular.z = sangle;
+
+	//Use the speed controller to get throttle/braking
+	//adjust the target speed so you back off during hard turns
+	float adj_speed = target_speed * exp(-0.69*pow(fabs(dc.angular.z), 4.0f));
+	speed_controller_.SetSetpoint(adj_speed);
+	float throttle = speed_controller_.GetControlVariable(veh_speed_, 0.01f);
+	if (throttle < 0.0f) { //braking
+		dc.linear.x = 0.0f;
+		dc.linear.y = std::max(-1.0f, throttle);
+	}
+	else {
+		dc.linear.y = 0.0f;
+		dc.linear.x = std::min(1.0f, throttle);
 	}
 
-	//find the angle, alpha, between the current orientation and the goal
-	utils::vec2 curr_dir(cos(veh_heading_), sin(veh_heading_));
-	utils::vec2 to_goal(goal.x - veh_x_,goal.y-veh_y_);
-	//to_goal = to_goal / utils::length(to_goal);
-	float alpha = (float)atan2(to_goal.y, to_goal.x) - (float)atan2(curr_dir.y, curr_dir.x);
-
-	if (skid_steered_){
-		float desired_heading = atan2f(desired_direction.y, desired_direction.x);
-		float dtheta = desired_heading - veh_heading_;
-		dc = GetDcSkid(to_goal.x, to_goal.y, dtheta);
-	}
-	else{
-		dc = GetDcAckermann(alpha, lookahead, curr_dir, target_speed);
-	}
+	dc.linear.x = throttle_coeff_*dc.linear.x;
+		// dc = GetDcSkid(to_goal.x, to_goal.y, dtheta);
+		// dc = GetDcAckermann(alpha, lookahead, curr_dir, target_speed);
 	return dc;
 }
 

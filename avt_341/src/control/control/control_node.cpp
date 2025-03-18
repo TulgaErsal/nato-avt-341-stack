@@ -115,7 +115,7 @@ int main(int argc, char *argv[]){
   bool use_feed_forward;
 	float wheelbase, steer_angle, vehicle_speed, steering_coeff, throttle_coeff, time_to_max_brake, steering_gain;
   float throttle_kp, throttle_ki, throttle_kd, max_desired_lateral_g;
-  float pursuit_kp, pursuit_ki, pursuit_kd;
+  float pursuit_k, pursuit_kp, pursuit_kd;
   bool use_speed_controller, output_steering_percent;
 	std::string display;
 	n->get_parameter("~vehicle_wheelbase", wheelbase, 2.6f);
@@ -134,8 +134,8 @@ int main(int argc, char *argv[]){
   n->get_parameter("~throttle_kd", throttle_kd, 0.24f);
   n->get_parameter("~display", display, std::string("none"));
   n->get_parameter("~max_desired_lateral_g", max_desired_lateral_g, 0.75f);
-  n->get_parameter("~pursuit_kp", pursuit_kp, 0.015f);
-  n->get_parameter("~pursuit_ki", pursuit_ki, 0.0f);
+  n->get_parameter("~pursuit_k", pursuit_k, 0.8f);
+  n->get_parameter("~pursuit_kp", pursuit_kp, 0.03f);
   n->get_parameter("~pursuit_kd", pursuit_kd, 0.000003f);
   
 
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]){
     controller.SetSkidSteerParams(skid_kl, skid_kt);
   }
   else{
-    controller.SetSteeringParams(steering_coeff, pursuit_kp, pursuit_ki, pursuit_kd);
+    controller.SetSteeringParams(steering_coeff, pursuit_k, pursuit_kp, pursuit_kd);
     controller.SetThrottleCoeff(throttle_coeff);
     controller.SetWheelbase(wheelbase);
 	  controller.SetMaxSteering(steer_angle*3.14159 / 180.0);
