@@ -33,7 +33,7 @@ avt_341::msg::TransformStamped parseCalibrationFile(const std::string& filename,
       transform_data[8], transform_data[9], transform_data[10]
   );
 
-  avt_341::msg_tf::Quaternion q;
+  tf2::Quaternion q;
   rotation_matrix.getRotation(q);
   transform_stamped.transform.rotation.x = q.x();
   transform_stamped.transform.rotation.y = q.y();
