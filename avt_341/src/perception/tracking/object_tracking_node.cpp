@@ -408,8 +408,9 @@ void ObjectTrackingNode::PointCloudCallback(
     // GROUND PLANE SEGMENTATION
     // -------------------------
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane =
-        std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
+        new pcl::PointCloud<pcl::PointXYZ>);
+
     SegmentGroundPlane(point_cloud, cloud_plane);
 
     if(publish_ground_cloud_) {
@@ -482,8 +483,8 @@ void ObjectTrackingNode::PointCloudCallback(
 
     auto execution_time = (get_clock()->now() - start_time).nanoseconds();
     RCLCPP_DEBUG(get_logger(),
-                "Tracker pipeline execution time: %0.2lf ms",
-                execution_time / 1.0e6);
+                 "Tracker pipeline execution time: %0.2lf ms",
+                 execution_time / 1.0e6);
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr ObjectTrackingNode::ToPCLCloud(
