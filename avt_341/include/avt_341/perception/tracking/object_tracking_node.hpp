@@ -58,12 +58,13 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <tf2/convert.h>
-#include <tf2_eigen/tf2_eigen.hpp>
 
 #ifdef GTE_ROS_HUMBLE
+#include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
 #else
+#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 #endif
@@ -372,7 +373,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     void PublishImage();
 
     void GetOrientedBoundingBox(
-        std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> point_cloud,
+        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
         pcl::PointXYZ& bounding_box_min,
         pcl::PointXYZ& bounding_box_max,
         pcl::PointXYZ& bounding_box_centroid,
