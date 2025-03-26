@@ -13,7 +13,8 @@ ElevationGrid::ElevationGrid(){
   lly_ = -100.0f;
   res_ = 0.5f;
   ResizeGrid();
-  thresh_ = 1.0f;
+  thresh_ = 0.5f;
+  thresh_max_ = 2.5f;
   dilate_ = false;
   grid_dilate_x_ = 2.0f;
   grid_dilate_y_ = 2.0f;
@@ -32,7 +33,7 @@ void ElevationGrid::ResizeGrid(){
   nx_ = (int)ceil(width_/res_);
   ny_ = (int)ceil(height_/res_);
   //if (n_%2!=0) n_ = n_+1;
-  Cell cell(res_, thresh_, GRID_SLOPE_MULT, GRID_MAX_VALUE);
+  Cell cell(res_, thresh_, grid_slope_mult_, GRID_MAX_VALUE);
   cells_.clear();
   std::vector<Cell> row;
   row.resize(nx_,cell);
@@ -135,7 +136,7 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
   if(use_elevation_){
     return cell.high.val > thresh_ ? GRID_MAX_VALUE : 0;
   }else{
-    return PastSlopeThreshold(cell) ? static_cast<uint8_t>(std::min(std::max(0.0f, GRID_SLOPE_MULT*Slope(cell)), static_cast<float>(GRID_MAX_VALUE))) : 0;
+    return PastSlopeThreshold(cell) ? static_cast<uint8_t>(std::min(std::max(0.0f, grid_slope_mult_*Slope(cell)), static_cast<float>(GRID_MAX_VALUE))) : 0;
   }
 
 }

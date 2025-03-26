@@ -1,7 +1,8 @@
 # Occupancy grid
 # ======================================================================================================================
 use_elevation: False                      # To use elevation or slope value when making occupancy grid based on heightmap.
-slope_threshold: 0.5                      # Threshold within which next waypoint selected.
+slope_threshold: 0.5                      # Minimum slope of cells to appear on occupancy grid
+slope_threshold_max: 2.5                  # Maximum slope of cells after which they are assigned the maximum grid value
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
 grid_res: 0.25                             # Grid resolution in meters.

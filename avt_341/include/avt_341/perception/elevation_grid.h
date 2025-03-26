@@ -78,8 +78,10 @@ class ElevationGrid : public CellObstacleCalculator{
         max_point_age_ = mpa;
     }
 
-    void SetSlopeThreshold(float tr){
-        thresh_ = tr;
+    void SetSlopeThreshold(float tr, float tr_max){
+        thresh_ = std::max(0.0f, tr);
+        thresh_max_ = std::max(tr_max, tr);
+        grid_slope_mult_ = static_cast<float>(GRID_MAX_VALUE)/(thresh_max_-thresh_);
     }
 
     void SetStitchPoints(bool stitch_points){ stitch_points_ = stitch_points; }
@@ -123,6 +125,7 @@ class ElevationGrid : public CellObstacleCalculator{
     float height_;
     float res_;
     float thresh_;
+    float thresh_max_;
     int nx_,ny_;
     bool first_display_;
     bool dilate_;
@@ -135,7 +138,7 @@ class ElevationGrid : public CellObstacleCalculator{
     bool stitch_points_;
     bool filter_highest_;
     const uint8_t GRID_MAX_VALUE = 100;
-    const float GRID_SLOPE_MULT = 50.0f;
+    float grid_slope_mult_ = 50.0f;
     bool has_segmentation_ = false;
     float max_point_age_;
     bool is_resetting_ = false;
