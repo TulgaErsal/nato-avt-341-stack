@@ -26,6 +26,7 @@ if len(sys.argv) < 3 or any(s in sys.argv for s in ['-h','--help']):
 config_file = os.path.abspath(sys.argv[1])
 save_dir = sys.argv[2]
 save_prefix = sys.argv[3] if len(sys.argv) >= 4 else "AVT_341_DATALOG"
+bag_format = sys.argv[4] if len(sys.argv) >= 5 else None
 
 # Load logging config file
 params = {}
@@ -55,7 +56,7 @@ if __name__ == "__main__":
             os.mkdir(save_path)
             command = ['rosbag', 'record', '-O', os.path.join(save_path,save_name), *record_topics]
         else:
-            command = ['ros2', 'bag', 'record', '-o', save_path, *record_topics]
+            command = ['ros2', 'bag', 'record'] + (['-s', bag_format] if bag_format else []) + ['-o', save_path, *record_topics]
         process = subprocess.Popen(command, stdout=subprocess.PIPE)
 
         # Copy the logging config to the save path

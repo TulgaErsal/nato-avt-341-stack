@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
   n->get_parameter("/grid_height", grid_height, 200.0f);
   grid.SetSize(grid_width,grid_height);
 
-  float grid_res, grid_llx, grid_lly, warmup_time, thresh, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter,max_grid_width,max_grid_height;
+  float grid_res, grid_llx, grid_lly, warmup_time, thresh, thresh_max, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter,max_grid_width,max_grid_height;
   bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation, limit_grid_size;
   int sampled_threshold;
   std::string clear_method;
@@ -154,7 +154,8 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~grid_lly", grid_lly, -100.0f);
   n->get_parameter("~time_register_window", time_register_window, 0.02);
   n->get_parameter("~warmup_time", warmup_time, 1.0f);
-  n->get_parameter("~slope_threshold", thresh, 1.0f);
+  n->get_parameter("~slope_threshold", thresh, 0.5f);
+  n->get_parameter("~slope_threshold_max", thresh_max, 2.5f);
   n->get_parameter("~use_elevation", use_elevation, false);
   n->get_parameter("~grid_dilate", grid_dilate, true);
   n->get_parameter("~grid_dilate_x", grid_dilate_x, 1.0f);
@@ -199,7 +200,7 @@ int main(int argc, char *argv[]) {
   auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
   auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
-	grid.SetSlopeThreshold(thresh);
+	grid.SetSlopeThreshold(thresh, thresh_max);
 	grid.SetRes(grid_res);
 	grid.SetCorner(grid_llx,grid_lly);
 	grid.SetUseElevation(use_elevation);

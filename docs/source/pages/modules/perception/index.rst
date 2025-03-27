@@ -9,6 +9,7 @@ representations of the environment surrounding the vehicle.
 
    detection-model-gym-node/index.rst
    costmap-clearing/index.rst
+   object-tracking/index.rst
    pointcloud-occupancy/index.rst
    pointcloud-obstacle-detection/index.rst
    terrain-semantic-segmentation/index.rst

@@ -47,7 +47,7 @@ if(USING_AMENT)
           PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
   target_link_libraries(${PROJECT_NAME}_dwa_planner_node ${Boost_LIBRARIES}
                         ${link_libs} ${PROJECT_NAME}_proxy)
-  if(OpenMP_FOUND)
+  if(OpenMP_FOUND AND NOT (WIN32 OR WIN64))
     target_compile_definitions(${PROJECT_NAME}_dwa_planner_node
                                PUBLIC USE_OPENMP)
     target_link_libraries(${PROJECT_NAME}_dwa_planner_node OpenMP::OpenMP_CXX)

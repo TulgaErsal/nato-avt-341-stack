@@ -199,7 +199,7 @@ def generate_launch_description():
             if type(vi) is dict:
                 for kii, vii in vi.items():
                     # TODO: Issue #123 Convert to new base.launch file
-                    if k == 'perception':
+                    if k == 'perception' or k == 'mission_manager':
                         params[k]['/'.join([ki, kii])] = vii
                     else:
                         params[k]['_'.join([ki, kii])] = vii
