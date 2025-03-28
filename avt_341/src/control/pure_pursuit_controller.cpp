@@ -1,4 +1,3 @@
-
 #include "avt_341/control/pure_pursuit_controller.h"
 
 namespace avt_341 {
@@ -11,7 +10,7 @@ PurePursuitController::PurePursuitController() {
 	// set to MRZR values
 	wheelbase_ = 2.731f; // meters
 	max_steering_angle_ = 0.69f; //39.5 degrees
-	max_stable_speed_ = 35.0f; //5.0;
+	// max_stable_speed_ = 35.0f; //5.0;
 
 	// tunable parameters
 	min_lookahead_ = 3.0f;
@@ -29,6 +28,10 @@ PurePursuitController::PurePursuitController() {
 	k_theta_ = 1.0f;
 	kx_ = 1.0f;
 	ky_ = 1.0f;
+
+	steer_cur_ = 0.0;
+	err_last_ = 0.0;
+	err_accum_ = 0.0;
 }
 
 void PurePursuitController::SetVehicleState(avt_341::msg::Odometry state){
@@ -47,6 +50,7 @@ void PurePursuitController::SetVehicleSpeed(float speed){
 	vx_ = cosf(veh_heading_)*veh_speed_;
 	vy_ = sinf(veh_heading_)*veh_speed_;
 }
+
 
 avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj, utils::vec2 & goal) {
 	//initialize the driving command
@@ -73,7 +77,7 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 
 	if (lookahead > max_lookahead_)lookahead = max_lookahead_;
 	if (lookahead < min_lookahead_)lookahead = min_lookahead_;
-	if (lookahead > path_length)lookahead = path_length - 0.01;
+	// if (lookahead > path_length)lookahead = path_length - 0.01;
 
 
 	utils::vec2 lookahead_pos(veh_x_ + lookahead*cosf(veh_heading_), veh_y_ + lookahead*sinf(veh_heading_));
@@ -173,6 +177,8 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 		// dc = GetDcAckermann(alpha, lookahead, curr_dir, target_speed);
 	return dc;
 }
+
+
 
 avt_341::msg::Twist PurePursuitController::GetDcSkid(float dx, float dy, float dtheta){
 	// The skid steer algorithm is taken from 
