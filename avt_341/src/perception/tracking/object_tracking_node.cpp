@@ -408,8 +408,9 @@ void ObjectTrackingNode::PointCloudCallback(
     // GROUND PLANE SEGMENTATION
     // -------------------------
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane =
-        std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
+        new pcl::PointCloud<pcl::PointXYZ>);
+
     SegmentGroundPlane(point_cloud, cloud_plane);
 
     if(publish_ground_cloud_) {
@@ -482,13 +483,14 @@ void ObjectTrackingNode::PointCloudCallback(
 
     auto execution_time = (get_clock()->now() - start_time).nanoseconds();
     RCLCPP_DEBUG(get_logger(),
-                "Tracker pipeline execution time: %0.2lf ms",
-                execution_time / 1.0e6);
+                 "Tracker pipeline execution time: %0.2lf ms",
+                 execution_time / 1.0e6);
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr ObjectTrackingNode::ToPCLCloud(
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    auto point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*point_cloud_message, *point_cloud);
 
     RCLCPP_DEBUG(get_logger(),
@@ -919,7 +921,7 @@ void ObjectTrackingNode::PublishImage() {
 }
 
 void ObjectTrackingNode::GetOrientedBoundingBox(
-    std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> point_cloud,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
     pcl::PointXYZ& bounding_box_min,
     pcl::PointXYZ& bounding_box_max,
     pcl::PointXYZ& bounding_box_centroid,
