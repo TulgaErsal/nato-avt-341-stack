@@ -78,7 +78,7 @@ log_topics:
 
   # Engine speed output
   - name: '{vehicles}_engine_speed'
-    topic: '/{vehicles}/engine_speed_rpm'
+    topic: '/{vehicles}/engine_speed'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rpm'
