@@ -50,7 +50,7 @@ log_topics:
 
   # Speed of the vehicle CG in the x-axis
   - name: '{vehicles}_forward_speed'
-    topic: '/{vehicles}/mrzr_velocity'
+    topic: '/{vehicles}/avt_341/forward_speed'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'm/s'
