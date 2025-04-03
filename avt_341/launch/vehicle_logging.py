@@ -164,6 +164,7 @@ def parse_args(is_ros1):
     parser.add_argument('config_file', type=str, help="Path to the logging config file.")
     parser.add_argument('save_dir', type=str, help="Path to the directory to save rosbag data.")
     parser.add_argument('--save_prefix', type=str, default="AVT_341_DATALOG", help="Prefix for output rosbag name.")
+    parser.add_argument('--bag_name_override', type=str, default="", help="If set, overrides created bag name.")
     parser.add_argument('--bag_format', type=str, default="", help="Customize bag file format. ONLY SUPPORTED IN ROS2.\nRos2 values: sqlite3 | mcap. Pass empty string to use default format (sqlite3 for older versions)")
     parser.add_argument('--config_file_out', type=str, default="logging_config.yaml", help="Name to use for copied bag configuration file that will appear in output bag directory.")
     parser.add_argument('--vehicles_override', type=str, default="", help="Comma seperated list of vehicles to use in symbols of bag log config. Leave blank for no override.")
@@ -176,9 +177,12 @@ def parse_args(is_ros1):
         sys.exit(f"Invalid bag format [{args.bag_format}]. Use no argument to select default type or explicitly select sqlite3 | mcap")
 
     # File naming constants
-    time_YYMMDD = datetime.now().strftime('%y%m%d')
-    time_HHMMSS = datetime.now().strftime('%H%M%S')
-    args.save_name = f"{time_YYMMDD}_{args.save_prefix}_{time_HHMMSS}"
+    if args.bag_name_override:
+        args.save_name = args.bag_name_override
+    else:
+        time_YYMMDD = datetime.now().strftime('%y%m%d')
+        time_HHMMSS = datetime.now().strftime('%H%M%S')
+        args.save_name = f"{time_YYMMDD}_{args.save_prefix}_{time_HHMMSS}"
     args.save_path = os.path.join(args.save_dir, args.save_name)
     args.vehicles = [v.strip() for v in args.vehicles_override.split(',')] if args.vehicles_override else []
     return args
