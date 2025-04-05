@@ -175,7 +175,7 @@ function SetObstacles(obs::Vector{Float64})
 	end
 
 	for i=1:numobs
-		JuMP.setValue(obs_r[i], obstacles[3*i])
+		JuMP.setValue(obs_r[i], 1.414*obstacles[3*i]/2.)
 		JuMP.setValue(Xobs_0[i], obstacles[3*i-2])
 		JuMP.setValue(Yobs_0[i], obstacles[3*i-1])
 	end
