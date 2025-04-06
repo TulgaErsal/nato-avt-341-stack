@@ -225,4 +225,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         process.send_signal(signal.SIGINT)
         process.wait()
-        sys.exit("LOGGING COMPLETE")
+        sys.exit(0)
