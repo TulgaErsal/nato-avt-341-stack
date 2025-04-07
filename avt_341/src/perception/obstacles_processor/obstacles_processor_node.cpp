@@ -20,6 +20,10 @@ double obstacles_angle = 0.707107;
 
 bool viz = false;
 
+int traversability_threshold = 40;
+
+bool project_segmentation_onto_occupancy_grid = false;
+
 avt_341::msg::Time init_time;
 
 avt_341::msg::Time vehicle_odom_input_stamp;
@@ -29,6 +33,8 @@ avt_341::msg::Time last_vehicle_odom_stamp;
 avt_341::msg::Odometry vehicle_odom_input;
 
 avt_341::msg::OccupancyGrid occupancy_grid_input;
+
+avt_341::msg::OccupancyGrid segmentation_grid_input;
 
 std::vector<std::vector<bool>> obstacles;
 
@@ -49,6 +55,10 @@ void callback_veh(avt_341::msg::OdometryPtr veh) {
 
 void callback_obs(avt_341::msg::OccupancyGridPtr obs) {
     occupancy_grid_input = *obs;
+}
+
+void callback_seg(avt_341::msg::OccupancyGridPtr seg) {
+    segmentation_grid_input = *seg;
 }
 
 void callback_speed(avt_341::msg::Float64Ptr speed_setpoint) {
@@ -166,9 +176,16 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     obstacles.resize(poi_width, obstacle_row);
     obstacle_markers.clear();
     int obstacle_number = 0;
+    bool isObstacle = false;
     for (int i = 0; i < grid.info.height; i++) {
         for (int j = 0; j < grid.info.width; j++) {
-            if (grid.data[i * grid.info.width + j] > 0.0) {
+            isObstacle = grid.data[i * grid.info.width + j] > 0.0; 
+        
+            if (project_segmentation_onto_occupancy_grid) {
+                isObstacle = isObstacle || (segmentation_grid_input.data[i * segmentation_grid_input.info.width + j] < traversability_threshold);
+            }
+        
+            if (isObstacle) {
                 std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
                                              (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
                 avt_341::msg_tf::Vector3 obstacle = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
@@ -243,6 +260,9 @@ int main(int argc, char* argv[]) {
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
     auto obstacle_clusters_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
     auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
+    auto seg_grid_sub = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1, callback_seg);
+
+
 
     // Load parameters
     node->get_parameter("~max_num_obs", max_obstacle_number, 1000);
@@ -251,6 +271,8 @@ int main(int argc, char* argv[]) {
     node->get_parameter("~vehicle_axle_distance_front", axle_distance_front, 1.5521);
     node->get_parameter("~front_angle_obstacle", obstacles_angle, 0.707107);
     node->get_parameter("~obstacles_vizualize", viz, false);
+    node->get_parameter("~traversability_threshold", traversability_threshold, 40);
+    node->get_parameter("~project_segmentation_onto_occupancy_grid", project_segmentation_onto_occupancy_grid, false);
 
     int count = 0;
     prediction_horizon = (prediction_time_horizon + 0.1) * max_speed;
