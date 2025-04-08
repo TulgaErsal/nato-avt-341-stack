@@ -23,6 +23,7 @@ ElevationGrid::ElevationGrid(){
   stitch_points_ = true;
   filter_highest_ = false;
   max_point_age_ = 5.0f;
+  grid_update_region_.Reset();
 }
     
 ElevationGrid::~ElevationGrid(){
@@ -54,8 +55,8 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
   bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == "segmentation";
   has_segmentation_ = has_segmentation_local || has_segmentation_;
 
-  int dsize_x = lround(grid_dilate_x_/res_);
-  int dsize_y = lround(grid_dilate_y_/res_);
+  const int dsize_x = GetDilateXSize();
+  const int dsize_y = GetDilateYSize();
 
   // fill the cells with highest and lowest points
   for (int i=0;i<point_cloud.points.size();i++){
@@ -63,6 +64,9 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
       int xi = (int)floor((point_cloud.points[i].x - llx_)/res_);
       int yi = (int)floor((point_cloud.points[i].y - lly_)/res_);
       if (xi>=0 && xi<nx_ && yi>=0 &&yi<ny_){
+
+        grid_update_region_.Update(xi,yi);
+
         const float original_slope = Slope(cells[yi][xi]);
         float h = point_cloud.points[i].z;
         if (filter_highest_){
@@ -142,6 +146,36 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
 
 }
 
+void ElevationGrid::FillGridMsgCells(std::vector<int8_t> & data, const GridUpdateRegion region, bool is_segmentation) const {
+  data.resize(region.Width()*region.Height());
+  int c = 0;
+  for (int j = region.y_min; j < region.y_max; j++) {
+    for (int i = region.x_min; i < region.x_max; i++) {
+      data[c++] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
+    }
+  }
+}
+
+
+avt_341::msg::OccupancyGridUpdate ElevationGrid::GetGridUpdate(bool is_segmentation) {
+  avt_341::msg::OccupancyGridUpdate grid_update_msg;
+  grid_update_msg.header.frame_id = "map";
+  if (!grid_update_region_.HasData()) {
+    return grid_update_msg;
+  }
+  int dilate_x = GetDilateXSize();
+  int dilate_y = GetDilateYSize();
+  GridUpdateRegion dilated_region = grid_update_region_.Dilate(dilate_x, dilate_y, nx_, ny_);
+  grid_update_msg.x = dilated_region.x_min;
+  grid_update_msg.y = dilated_region.y_min;
+  grid_update_msg.width = dilated_region.Width();
+  grid_update_msg.height = dilated_region.Height();
+
+  FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation);
+  grid_update_region_.Reset();
+  return grid_update_msg;
+}
+
 avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
   avt_341::msg::OccupancyGrid grid;
   grid.header.frame_id = "map";
@@ -155,15 +189,7 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
   grid.info.origin.orientation.y = 0.0;
   grid.info.origin.orientation.z = 0.0;
 
-  grid.data.resize(nx_*ny_);
-  int c = 0;
-
-  for (int j = 0; j < ny_; j++) {
-    for (int i = 0; i < nx_; i++) {
-      grid.data[c++] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
-    }
-  }
-  
+  FillGridMsgCells(grid.data, GridUpdateRegion(0, nx_, 0, ny_), is_segmentation);
   return grid;
 }
 
@@ -180,8 +206,8 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double wi
     avt_341::msg::OccupancyGrid grid;
     grid.header.frame_id = "map";
     grid.info.resolution = res_;
-    grid.info.width = local_nx;
-    grid.info.height = local_ny;
+    grid.info.width = xi_max-xi_min;
+    grid.info.height = yi_max-yi_min;
     grid.info.origin.position.x = xi_min*res_+llx_;
     grid.info.origin.position.y = yi_min*res_+lly_;
     grid.info.origin.orientation.w = 1.0;
@@ -189,16 +215,7 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double wi
     grid.info.origin.orientation.y = 0.0;
     grid.info.origin.orientation.z = 0.0;
 
-    grid.data.resize(local_nx*local_ny);
-
-    int c = 0;
-    for (int j = yi_min; j < yi_max; j++) {
-        for (int i = xi_min; i < xi_max; i++) {
-            //grid.data[nx_*j+i] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
-            grid.data[c++] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
-        }
-    }
-
+    FillGridMsgCells(grid.data, GridUpdateRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation);
     return grid;
 }
 
@@ -282,7 +299,6 @@ void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<avt_341::node::Node
   clear_methods_.push_back(CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, timed_clearing_settings, visualization_range, visualize));
   node_ref->log_info("Costmap clearing methods: %s (%d)", clear_methods_orig.c_str(), clear_methods_.size());
 }
-
 
 } // namespace perception
 } //namespace avt_341
