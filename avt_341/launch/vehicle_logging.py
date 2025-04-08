@@ -166,6 +166,7 @@ def parse_args(is_ros1):
     parser.add_argument('--save_prefix', type=str, default="AVT_341_DATALOG", help="Prefix for output rosbag name.")
     parser.add_argument('--bag_name_override', type=str, default="", help="If set, overrides created bag name.")
     parser.add_argument('--bag_format', type=str, default="", help="Customize bag file format. ONLY SUPPORTED IN ROS2.\nRos2 values: sqlite3 | mcap. Pass empty string to use default format (sqlite3 for older versions)")
+    parser.add_argument('--storage_config_file', type=str, default="", help="Yaml file containing storage options for bag. ONLY SUPPORTED IN ROS2.")
     parser.add_argument('--config_file_out', type=str, default="logging_config.yaml", help="Name to use for copied bag configuration file that will appear in output bag directory.")
     parser.add_argument('--vehicles_override', type=str, default="", help="Comma seperated list of vehicles to use in symbols of bag log config. Leave blank for no override.")
     args = parser.parse_args()
@@ -206,7 +207,10 @@ if __name__ == "__main__":
             os.mkdir(args.save_path)
             command = ['rosbag', 'record', '-O', os.path.join(args.save_path, args.save_name), *record_topics]
         else:
-            command = ['ros2', 'bag', 'record'] + (['-s', args.bag_format] if args.bag_format else []) + ['-o', args.save_path, *record_topics]
+            command = (['ros2', 'bag', 'record']
+                       + (['-s', args.bag_format] if args.bag_format else [])
+                       + (['--storage-config-file', args.storage_config_file] if args.storage_config_file else [])
+                       + ['-o', args.save_path, *record_topics])
         process = subprocess.Popen(command, stdout=subprocess.PIPE)
 
         # Copy the logging config to the save path
