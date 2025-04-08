@@ -109,7 +109,7 @@ int main(int argc, char *argv[]){
   auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
-  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",10,SpeedCallback);
+  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",10,SpeedCallback);
 
   planner.SetArcLengthIntegrationStep(path_int_step);
   planner.SetComfortabilityWeight(w_c);

@@ -513,6 +513,10 @@ int main(int argc, char *argv[])
 
     node->log_info("Node running at %.2f Hz.", rate);
 
+    node->log_info("Number of collocation points: %d.", num_col_points);
+
+    node->log_info("Prediction time horizon: %.1f.", prediction_time_horizon);
+
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
     {

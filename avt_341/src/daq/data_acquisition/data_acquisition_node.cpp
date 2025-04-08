@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
     auto cg_accel_pub = n->create_publisher<avt_341::msg::AccelStamped>("avt_341/vehicle_cg/accel", 10);
     auto cg_lat_g_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/lateral_g", 10);
     auto cmd_vel_sub = n->create_subscription<avt_341::msg::Twist>("avt_341/cmd_vel",1,cmd_vel_callback);
-    auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",1,speed_callback);
+    auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,speed_callback);
 
     // Timestep variables
     int64_t loop_count = 0;

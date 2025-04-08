@@ -262,7 +262,7 @@ def generate_launch_description():
         "max_speed":	            ["5.0",	                                        "Maximum speed limit for the vehicle"],
         "record":	                ["False",	                                    "Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"],
         "record_select_topic":	    ["False",	                                    "Record only topics defined in 'record_topics'"],
-        "record_topics":	        ["/cmd_vel /vectornav/GPS /mrzr/mrzr_velocity", "Topics to record as a space separated list (only for record_select_topic=true)"],
+        "record_topics":	        ["/cmd_vel /vectornav/GPS /mrzr/avt_341/forward_speed", "Topics to record as a space separated list (only for record_select_topic=true)"],
         "use_sim_time":	            ["False",	                                    "Use simulation time, usefull for running stack on recorded telemetry bag file"],
         "separate_camera_bag":	    ["True",	                                    "Separate camera topics into a separate bag file"],
         "compress_cameras":	        ["True",	                                    "Only save compressed camera topics (only for separate_camera_bag=true)"],

@@ -33,7 +33,7 @@ void ElevationGrid::ResizeGrid(){
   nx_ = (int)ceil(width_/res_);
   ny_ = (int)ceil(height_/res_);
   //if (n_%2!=0) n_ = n_+1;
-  Cell cell(res_, thresh_, grid_slope_mult_, GRID_MAX_VALUE);
+  Cell cell;
   cells_.clear();
   std::vector<Cell> row;
   row.resize(nx_,cell);
@@ -97,7 +97,7 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
         if(dilate){
           if( (!cells[yi][xi].has_dilated || Slope(cells[yi][xi]) > original_slope) && PastSlopeThreshold(cells[yi][xi])){
             cells[yi][xi].has_dilated = true;
-            uint8_t grid_val = (uint8_t) (grid_dilate_proportion_ * cells[yi][xi]);
+            uint8_t grid_val = static_cast<uint8_t>(grid_dilate_proportion_ * static_cast<float>(GetGridCellValue(cells[yi][xi])));
             for (int xii=std::max(0, xi-dsize_x); xii <= std::min(xi+dsize_x, nx_-1); xii++){
               for (int yii=std::max(0, yi-dsize_y); yii <= std::min(yi+dsize_y, ny_-1); yii++){
                 cells[yii][xii].dilated_val = std::max(grid_val, cells[yii][xii].dilated_val);
@@ -136,7 +136,8 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
   if(use_elevation_){
     return cell.high.val > thresh_ ? GRID_MAX_VALUE : 0;
   }else{
-    return PastSlopeThreshold(cell) ? static_cast<uint8_t>(std::min(std::max(0.0f, grid_slope_mult_*Slope(cell)), static_cast<float>(GRID_MAX_VALUE))) : 0;
+    const auto slope = cell.height()/res_;
+    return slope > thresh_ ? static_cast<uint8_t>(std::min(std::max(0.0f, grid_slope_mult_*slope), static_cast<float>(GRID_MAX_VALUE))) : 0;
   }
 
 }
@@ -153,18 +154,14 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation){
   grid.info.origin.orientation.x = 0.0;
   grid.info.origin.orientation.y = 0.0;
   grid.info.origin.orientation.z = 0.0;
-  
-  /*grid.data.resize(nx_*ny_);
+
+  grid.data.resize(nx_*ny_);
   int c = 0;
 
   for (int j = 0; j < ny_; j++) {
-      for (int i = 0; i < nx_; i++) {
-          grid.data[c++] = is_segmentation ? (uint8_t)(cells_[i][j].terrain) : std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val);
-      }
-  }*/
-  
-  for (auto& row : cells_) {
-    grid.data.insert(std::end(grid.data), std::begin(row), std::end(row));
+    for (int i = 0; i < nx_; i++) {
+      grid.data[c++] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
+    }
   }
   
   return grid;

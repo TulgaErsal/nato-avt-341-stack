@@ -24,9 +24,44 @@ class BagConfigKeys:
     TOPIC = 'topic'
 
 
+class FieldSymbol:
+
+    def __init__(self, key, raw_key, values):
+        self.key = key
+        self.slice_op = re.findall(r"\[(.*?)\]", raw_key)
+        self.values = values if type(values) is list else [values]
+        self.has_symbol_properties = any([type(v) is dict for v in self.values])
+
+    def get_values(self, symbol_str):
+        if self.slice_op:
+            return eval(f"self.values[{self.slice_op[0]}]")
+
+        # Symbol property
+        symbol_property_key = symbol_str.split('.')[-1]
+        if symbol_property_key != symbol_str:
+            return [sv[symbol_property_key] for sv in self.values]
+
+        return self.values
+
+    def expansion_size(self):
+        return len(self.get_values(self.key))
+
+    def matches_raw_key(self, key_str):
+        if self.has_symbol_properties:
+            return any([f"{self.key}.{k}" == key_str for sv in self.values for k in sv.keys()])
+        key_str = key_str.split('[')[0]     # Handles slicing operator
+        return self.key == key_str
+
+    def get_templated_values(self, field_str):
+        for raw_key in re.findall(r"{(.*?)}", field_str):
+            if self.matches_raw_key(raw_key):
+                return raw_key, self.get_values(raw_key)
+        return None, []
+
+
 class BagConfigLoader:
 
-    def __init__(self, config_path):
+    def __init__(self, config_path, vehicles_override):
         self.input_yaml = None
         self._config_yaml = None
         self._error = None
@@ -39,7 +74,7 @@ class BagConfigLoader:
             return
 
         try:
-            self._parse_yaml()
+            self._parse_yaml(vehicles_override)
         except Exception as e:
             self._error = f"Error parsing config [{args.config_file}]: {str(e)}"
             return
@@ -54,7 +89,7 @@ class BagConfigLoader:
     def has_template(self):
         return BagConfigKeys.SYMBOLS in self.input_yaml
 
-    def _parse_yaml(self):
+    def _parse_yaml(self, vehicles_override):
 
         # Already parsed
         if self._config_yaml:
@@ -66,44 +101,44 @@ class BagConfigLoader:
             return
 
         self._config_yaml = {BagConfigKeys.LOG_TOPICS: []}
-        symbols = self.input_yaml[BagConfigKeys.SYMBOLS]
+        all_symbol_values = self.input_yaml[BagConfigKeys.SYMBOLS]
+        all_symbol_values['vehicles'] = vehicles_override or all_symbol_values['vehicles']
 
         for topic_i_dict in self.input_yaml[BagConfigKeys.LOG_TOPICS]:
 
+            # Find all unique symbols in all fields of topic dict
+            raw_field_symbols = set([s for l in (re.findall(r"{(.*?)}", v) for v in topic_i_dict.values()) for s in l])
+            symbols_map = {}
+            for rs in raw_field_symbols:
+                s = rs.split('[')[0].split('.')[0]
+                if s not in all_symbol_values:
+                    raise ValueError(f"Symbol definition {s} missing. Did you forget to update the symbols dictionary?")
+                if s not in symbols_map:
+                    symbols_map[s] = FieldSymbol(s, rs, all_symbol_values[s])
+
+            # Make all items in topic_i_dict a list to accommodate template expansions
+            for k, v in topic_i_dict.items():
+                topic_i_dict[k] = [v]
+
+            expanded_size = 1
             # Expand symbols in fields
-            # - name: {vehicles}_x                  ->   name: [veh1_x, veh2_x, veh3_x, veh4_x]
-            #   topic: /avt_341/{vehicles}/x        ->   topic: [/avt_341/veh1/x, /avt_341/veh2/x, /avt_341/veh3/x, /avt_341/veh4/x]
-            for k, v in topic_i_dict.items():
-                field_value = [v]
-                if isinstance(v, str):
-                    matches = [m for m in re.findall(r"{(.*?)}", v) if m in symbols]
-                    for m in matches:
-                        replace_value = symbols[m]
-                        if type(replace_value) is list:
-                            field_value = [v.replace(f"{{{m}}}", rv_i) for v in field_value for rv_i in replace_value]
-                        else:
-                            field_value = [v.replace(f"{{{m}}}", replace_value) for v in field_value]
-                topic_i_dict[k] = field_value
+            for s_key, symbol_obj in symbols_map.items():
 
-            unique_expanded_lengths = set([len(v) for v in topic_i_dict.values() if len(v) > 1])
+                for k, v in topic_i_dict.items():
+                    symbol_template, symbol_values = symbol_obj.get_templated_values(v[0])
+                    if symbol_template:
+                        # [{vehicles}_x, {vehicles}_y] -> [veh1_x, veh1_y, veh2_x, veh2_y]
+                        # Order important in double for loop to play nicely with v * len(symbol_obj.values)
+                        field_value = [vi.replace(f"{{{symbol_template}}}", sv) for sv in symbol_values for vi in v]
+                    else:
+                        field_value = v * symbol_obj.expansion_size()
+                    topic_i_dict[k] = field_value
+                    expanded_size = len(field_value)
 
-            if len(unique_expanded_lengths) > 1:
-                raise ValueError("All fields after symbol expansion must have the same length" + os.linesep +
-                                 os.linesep.join([f"{k}:{len(v)}" for k, v in topic_i_dict.items()]))
+            for _, v in topic_i_dict.items():
+                assert len(v) == expanded_size
 
-            expand_to_size = unique_expanded_lengths.pop() if unique_expanded_lengths else 1
-
-            # Expand fields with only 1 element to size of expanded fields
-            #   - name: [a,b,c]                 -->     [a,b,c]
-            #     value: 1                      -->     [1,1,1]
-            #     field: w                      -->     [w,w,w]
-            #     topic: [x, y, z]              -->     [x,y,z]
-            for k, v in topic_i_dict.items():
-                if len(v) == 1:
-                    topic_i_dict[k] = v * expand_to_size
-
-            # Expand sub-lists into individual topic dictionaries
-            for j in range(expand_to_size):
+            for j in range(expanded_size):
                 expanded_fields = {k: v[j] for k, v in topic_i_dict.items()}
                 self._config_yaml[BagConfigKeys.LOG_TOPICS].append(expanded_fields)
 
@@ -111,7 +146,7 @@ class BagConfigLoader:
         name_list = [topic_i['name'] for topic_i in self._config_yaml[BagConfigKeys.LOG_TOPICS]]
         duplicated_names = [name for name in set(name_list) if name_list.count(name) > 1]
         if duplicated_names:
-            raise ValueError(f"All topics should have unique names after parsing. Duplicated names: {duplicated_names}")
+            raise ValueError(f"All entries should have unique names after parsing. Duplicated names: {duplicated_names}")
 
 
     @property
@@ -129,8 +164,10 @@ def parse_args(is_ros1):
     parser.add_argument('config_file', type=str, help="Path to the logging config file.")
     parser.add_argument('save_dir', type=str, help="Path to the directory to save rosbag data.")
     parser.add_argument('--save_prefix', type=str, default="AVT_341_DATALOG", help="Prefix for output rosbag name.")
+    parser.add_argument('--bag_name_override', type=str, default="", help="If set, overrides created bag name.")
     parser.add_argument('--bag_format', type=str, default="", help="Customize bag file format. ONLY SUPPORTED IN ROS2.\nRos2 values: sqlite3 | mcap. Pass empty string to use default format (sqlite3 for older versions)")
     parser.add_argument('--config_file_out', type=str, default="logging_config.yaml", help="Name to use for copied bag configuration file that will appear in output bag directory.")
+    parser.add_argument('--vehicles_override', type=str, default="", help="Comma seperated list of vehicles to use in symbols of bag log config. Leave blank for no override.")
     args = parser.parse_args()
 
     if args.bag_format and is_ros1:
@@ -140,11 +177,14 @@ def parse_args(is_ros1):
         sys.exit(f"Invalid bag format [{args.bag_format}]. Use no argument to select default type or explicitly select sqlite3 | mcap")
 
     # File naming constants
-    time_YYMMDD = datetime.now().strftime('%y%m%d')
-    time_HHMMSS = datetime.now().strftime('%H%M%S')
-    args.save_name = f"{time_YYMMDD}_{args.save_prefix}_{time_HHMMSS}"
+    if args.bag_name_override:
+        args.save_name = args.bag_name_override
+    else:
+        time_YYMMDD = datetime.now().strftime('%y%m%d')
+        time_HHMMSS = datetime.now().strftime('%H%M%S')
+        args.save_name = f"{time_YYMMDD}_{args.save_prefix}_{time_HHMMSS}"
     args.save_path = os.path.join(args.save_dir, args.save_name)
-
+    args.vehicles = [v.strip() for v in args.vehicles_override.split(',')] if args.vehicles_override else []
     return args
 
 
@@ -153,7 +193,7 @@ if __name__ == "__main__":
     is_ros1 = os.environ['ROS_VERSION'] == '1'
     args = parse_args(is_ros1)
 
-    bag_config_loader = BagConfigLoader(args.config_file)
+    bag_config_loader = BagConfigLoader(args.config_file, args.vehicles)
     if bag_config_loader.in_error():
         sys.exit(bag_config_loader.error)
 
@@ -185,4 +225,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         process.send_signal(signal.SIGINT)
         process.wait()
-        sys.exit("LOGGING COMPLETE")
+        sys.exit(0)

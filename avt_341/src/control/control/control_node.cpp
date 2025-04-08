@@ -99,7 +99,7 @@ int main(int argc, char *argv[]){
 
   auto control_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/state",1,StateCallback);
 
-  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("mrzr_velocity",1,SpeedCallback);
+  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
 
   auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,DesiredSpeedCallback);
 
