@@ -184,3 +184,9 @@ log_topics:
     field: ''
     type: ''
     units: 'm/s'
+
+  # Occupancy Grid
+  - name: '{vehicles}_occupancy_grid'
+    topic: '/{vehicles}/avt_341/occupancy_grid'
+    field: ''
+    type: 'nav_msgs/msg/OccupancyGrid'
