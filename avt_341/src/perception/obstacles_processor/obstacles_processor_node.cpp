@@ -172,7 +172,20 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
             isObstacle = grid.data[i * grid.info.width + j] > 0.0; 
         
             if (project_segmentation_onto_occupancy_grid) {
-                isObstacle = isObstacle || (segmentation_grid_input.data[i * segmentation_grid_input.info.width + j] < traversability_threshold);
+                // Compute the world coordinates of the current occupancy grid cell
+                double world_x = (j + 0.5) * grid.info.resolution + grid.info.origin.position.x;
+                double world_y = (i + 0.5) * grid.info.resolution + grid.info.origin.position.y;
+            
+                // Compute corresponding indices in the segmentation grid
+                int seg_j = (int)((world_x - segmentation_grid_input.info.origin.position.x) / segmentation_grid_input.info.resolution);
+                int seg_i = (int)((world_y - segmentation_grid_input.info.origin.position.y) / segmentation_grid_input.info.resolution);
+            
+                // Check if calculated indices are within the bounds of the segmentation grid
+                // If yes, check if the cell is non-traversable
+                // If yes, consider as obstacle
+                if (seg_i >= 0 && seg_i < segmentation_grid_input.info.height && seg_j >= 0 && seg_j < segmentation_grid_input.info.width) {
+                    isObstacle = isObstacle || (segmentation_grid_input.data[seg_i * segmentation_grid_input.info.width + seg_j] < traversability_threshold);
+                }
             }
         
             if (isObstacle) {
