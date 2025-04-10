@@ -21,9 +21,9 @@ namespace avt_341 {
     bool OccupancyGridSubscriber::HasData() const { return grid_msg_ != nullptr; }
 
     void OccupancyGridSubscriber::OccupancyGridCallback(msg::OccupancyGridPtr grid_msg) {
-        grid_msg_ = grid_msg;
+        grid_msg_ = std::make_shared<msg::OccupancyGrid>(*grid_msg);
         if (external_callback_ != nullptr) {
-            external_callback_(grid_msg_);
+            external_callback_(grid_msg);
         }
     }
 

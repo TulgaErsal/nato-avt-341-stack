@@ -22,7 +22,7 @@ namespace node {
     private:
         node::Subscriber<msg::OccupancyGrid>::SharedPtr grid_sub_;
         node::Subscriber<msg::OccupancyGridUpdate>::SharedPtr grid_sub_updates_;
-        msg::OccupancyGridPtr grid_msg_;
+        std::shared_ptr<msg::OccupancyGrid> grid_msg_;
         void OccupancyGridCallback(msg::OccupancyGridPtr grid_msg);
         void OccupancyGridUpdateCallback(msg::OccupancyGridUpdatePtr update);
 
