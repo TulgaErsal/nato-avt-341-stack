@@ -47,6 +47,11 @@ namespace avt_341 {
         }
 
         template<typename MessageT>
+        inline boost::shared_ptr<MessageT> make_msg_shared(const MessageT & msg) {
+          return boost::make_shared<MessageT>(msg);
+        }
+
+        template<typename MessageT>
         class Publisher {
         public:
             explicit Publisher(const std::string &topic_name, int qos, ros::NodeHandle & node) {
@@ -70,6 +75,10 @@ namespace avt_341 {
         public:
             Subscriber(const std::string & topic_name, uint qos, void(*callback)(const boost::shared_ptr<MessageT const>&), ros::NodeHandle & node) {
                 sub_ptr_ = node.subscribe<MessageT>(topic_name, qos, callback);
+            }
+
+            Subscriber(const std::string & topic_name, uint qos, const boost::function<void (const boost::shared_ptr<MessageT const>&)>& callback, ros::NodeHandle & node) {
+              sub_ptr_ = node.subscribe<MessageT>(topic_name, qos, callback);
             }
 
           using SharedPtr = std::shared_ptr<Subscriber<MessageT>>;
@@ -155,6 +164,11 @@ namespace avt_341 {
             template<typename MessageT>
             std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, uint qos, void(*callback)(const boost::shared_ptr<MessageT const>&)) {
                 return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
+            }
+
+            template<typename MessageT>
+            std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, uint qos, const boost::function<void (const boost::shared_ptr<MessageT const>&)>& callback) {
+              return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
             }
 
             void initialize_tf_listener();
@@ -291,6 +305,11 @@ namespace avt_341 {
 
     inline rclcpp::Duration make_duration(int32_t sec, int32_t nsec){
       return rclcpp::Duration(sec, nsec);
+    }
+
+    template<typename MessageT>
+    inline std::shared_ptr<MessageT> make_msg_shared(const MessageT & msg) {
+      return std::make_shared<MessageT>(msg);
     }
 
     template<

@@ -1,4 +1,5 @@
 #include "avt_341/perception/elevation_grid_components.h"
+#include <algorithm>
 
 namespace avt_341{
     namespace perception{

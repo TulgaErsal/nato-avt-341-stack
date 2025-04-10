@@ -130,6 +130,7 @@ namespace avt_341 {
 
         using OccupancyGrid = nav_msgs::OccupancyGrid;
         using OccupancyGridPtr = const nav_msgs::OccupancyGrid::ConstPtr &;
+        using OccupancyGridSharedPtr = nav_msgs::OccupancyGrid::Ptr;
 
         using OccupancyGridUpdate = map_msgs::OccupancyGridUpdate;
         using OccupancyGridUpdatePtr = const map_msgs::OccupancyGridUpdate::ConstPtr &;
@@ -332,6 +333,7 @@ namespace avt_341 {
 
     using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
     using OccupancyGridPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
+    using OccupancyGridSharedPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
 
     using OccupancyGridUpdate = map_msgs::msg::OccupancyGridUpdate;
     using OccupancyGridUpdatePtr = map_msgs::msg::OccupancyGridUpdate::SharedPtr;
