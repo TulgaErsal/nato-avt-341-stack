@@ -68,6 +68,10 @@ Finally, run the build process by running `cd docs && make html`.
 Once the build process is complete, the documentation will be available under
 `build/html/index.html`.
 
+#### Editing documentation with live updates
+
+Run `sphinx-autobuild source build` in the `docs` folder to receive a live html updates when editing the documentation.  
+
 > [!WARNING]
 > Before sourcing your ROS distribution to build and/or run the stack, make sure
 > the documentation environment is deactivated (`exit` for Poetry, `deactivate`
