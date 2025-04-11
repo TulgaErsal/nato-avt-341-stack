@@ -14,7 +14,7 @@ def get_git_revision_short_hash() -> str:
 
 # General
 project = "NATO AVT-341 Autonomy Stack"
-copyright = "2024, NATO Applied Vehicle Technology (AVT)"
+copyright = "2025, NATO Applied Vehicle Technology (AVT)"
 author = "The AVT-341 Autonomy Stack Developers Team"
 version = "main"
 release = get_git_revision_short_hash()

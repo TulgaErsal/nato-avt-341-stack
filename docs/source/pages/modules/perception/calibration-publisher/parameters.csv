@@ -1,0 +1,2 @@
+"Name", "Type (Default Value)", "Example Value"
+"camera_info_url", "string ()", "package://avt-341/config/sensor_calibration/2025-03-17-08-12-39-camera-info-matlab-ffi.yaml"

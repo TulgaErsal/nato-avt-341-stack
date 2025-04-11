@@ -14,3 +14,4 @@ representations of the environment surrounding the vehicle.
    terrain-semantic-segmentation/index.rst
    scene-semantic-segmentation/index.rst
    depth-estimation/index.rst
+   calibration-publisher/index.rst
