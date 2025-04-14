@@ -29,6 +29,7 @@ exclude_patterns = []
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "navigation_with_keys": False,
+    "show_nav_level": 2
 }
 html_static_path = ["_static"]
 html_logo = "_static/img/logo.png"
