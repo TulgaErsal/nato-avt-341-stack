@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include <avt_341/node/occupancy_grid_subscriber.h>
 
 // Global variables
 std::shared_ptr<avt_341::node::NodeProxy> node;
@@ -267,13 +268,12 @@ int main(int argc, char* argv[]) {
     last_vehicle_odom_stamp = init_time;
 
     // Create publishers and subscribers
-    auto occupancy_grid_sub =
-        node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, callback_obs);
+    avt_341::node::OccupancyGridSubscriber occupancy_grid_sub(node, "avt_341/occupancy_grid", 10, callback_obs);
     auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, callback_veh);
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
     auto obstacle_clusters_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
     auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
-    auto seg_grid_sub = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1, callback_seg);
+    avt_341::node::OccupancyGridSubscriber seg_grid_sub(node, "avt_341/segmentation_grid", 1, callback_seg);
 
 
 

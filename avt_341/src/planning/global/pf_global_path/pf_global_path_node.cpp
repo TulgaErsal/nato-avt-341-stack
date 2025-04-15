@@ -13,6 +13,7 @@
 // ros includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include <avt_341/node/occupancy_grid_subscriber.h>
 // local includes
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/local/pf_planner.h"
@@ -178,8 +179,8 @@ int main(int argc, char *argv[])
   auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, MapCallback);
-  auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationMapCallback);
+  avt_341::node::OccupancyGridSubscriber map_sub(n, map_topic, 10, MapCallback);
+  avt_341::node::OccupancyGridSubscriber segmentation_map_sub(n, "avt_341/segmentation_grid", 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);

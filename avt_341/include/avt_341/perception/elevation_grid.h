@@ -18,6 +18,7 @@
 #include <string>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/perception/elevation_grid_cell.h"
+#include "avt_341/perception/elevation_grid_components.h"
 #include "avt_341/perception/costmap_clearing_method.h"
 
 namespace avt_341{
@@ -99,13 +100,16 @@ class ElevationGrid : public CellObstacleCalculator{
     }
 
     avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation=false);
-
+    avt_341::msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation);
     avt_341::msg::OccupancyGrid GetGrid(double x, double y, double width, double height, bool is_segmentation=false);
 
     void SetCorner(float llx, float lly){
         llx_ = llx;
         lly_ = lly;
     }
+
+    inline int GetDilateXSize() const { return dilate_ ? lround(grid_dilate_x_/res_) : 0;}
+    inline int GetDilateYSize() const { return dilate_ ? lround(grid_dilate_y_/res_) : 0;}
 
     void SetDilation(bool grid_dilate, float grid_dilate_x, float grid_dilate_y, float grid_dilate_proportion){
         dilate_ = grid_dilate;
@@ -114,6 +118,8 @@ class ElevationGrid : public CellObstacleCalculator{
         grid_dilate_proportion_ = grid_dilate_proportion;
     }
 
+    void FillGridMsgCells(std::vector<int8_t> & data, GridUpdateRegion region, bool is_segmentation) const;
+    void ResetUpdateRegion(){ grid_update_region_.Reset();}
     void Reset();
     bool HasData() const;
 
@@ -143,7 +149,7 @@ class ElevationGrid : public CellObstacleCalculator{
     float max_point_age_;
     bool is_resetting_ = false;
     std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
-
+    GridUpdateRegion grid_update_region_;
 };
 
 } // namespace perception

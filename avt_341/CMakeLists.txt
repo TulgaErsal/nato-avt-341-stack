@@ -21,6 +21,11 @@ if(WIN32 OR WIN64)
   add_compile_definitions(-D _USE_MATH_DEFINES)
 endif() # if(WIN32 OR WIN64)
 
+if(SET_BIG_OBJ)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+  message(STATUS "/bigobj added to CMAKE_CXX_FLAGS")
+endif(SET_BIG_OBJ)
+
 if($ENV{ROS_VERSION} EQUAL 1)
   set(USING_CATKIN ON)
 
@@ -93,6 +98,7 @@ if(USING_CATKIN)
       jsk_recognition_msgs
       message_generation
       nav_msgs
+      map_msgs
       roscpp
       rospy
       std_msgs
@@ -147,7 +153,7 @@ if(USING_CATKIN)
     )
 
   # Proxy library
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp")
+  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp" "src/node/occupancy_grid_subscriber.cpp")
   target_link_libraries(${PROJECT_NAME}_proxy ${catkin_LIBRARIES})
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
@@ -275,6 +281,7 @@ if(USING_AMENT)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(nav_msgs REQUIRED)
+  find_package(map_msgs REQUIRED)
   find_package(visualization_msgs REQUIRED)
   find_package(avt_341_msgs REQUIRED)
   find_package(OpenCV REQUIRED)
@@ -299,8 +306,7 @@ if(USING_AMENT)
 
   # Node proxy library
   # ------------------
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp")
-
+  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp" "src/node/occupancy_grid_subscriber.cpp")
   target_include_directories(
     ${PROJECT_NAME}_proxy
     PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -308,7 +314,7 @@ if(USING_AMENT)
 
   ament_target_dependencies(
     ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
-    visualization_msgs)
+    visualization_msgs map_msgs)
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
     add_subdirectory(${SOURCE_FILE})
