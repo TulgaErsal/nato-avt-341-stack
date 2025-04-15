@@ -113,3 +113,23 @@ Below is an example of creating ROS subscribers using the ROS version-independen
 
     };
 
+
+Occupancy Grid Subscriber
+-------------------------
+
+The stack provides a custom subscriber class ``avt_341::node::OccupancyGridSubscriber`` when listening to messages of type ``avt_341::msg::OccupancyGrid``.
+This class should be used instead of the normal ROS subscriber detailed above. The custom subscriber class listens
+to incremental occupancy grid updates on the ``_updates`` suffixed topic (in addition to full updates) and accumulates these grid values over time.
+Besides this internal detail, usage of this subscriber class should be transparent to the client (no change in callback syntax).
+
+.. code-block:: cpp
+
+    #include "avt_341/node/ros_types.h"
+    #include "avt_341/node/node_proxy.h"
+
+    // Example creation of occupancy grid subscriber
+    // DO NOT use node->create_subscription<avt_341::msg::OccupancyGrid>(...);
+
+    avt_341::node::OccupancyGridSubscriber map_sub(node, "occupancy_grid", qos, Callback);
+
+
