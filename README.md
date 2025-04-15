@@ -4,21 +4,14 @@ ROS package with autonomy algorithms for the NATO AVT-341.
 
 ## Documentation
 
-### Accessing the latest release
-
-The latest released documentation in PDF format can be accessed [at this
-link](https://www.dropbox.com/scl/fi/swf6yi9j3yf84bh7go59j/nato-avt-341-stack.pdf?rlkey=2vm9q1yyanwebyf3sjnyc7ku7&e=1&st=sw1z7q8h&dl=0).
+Latest documentation can be found here:
+  - [Website](https://d1nxz9z3nv7fn1.cloudfront.net)
+  - [PDF](https://d1nxz9z3nv7fn1.cloudfront.net/nato-avt-341-stack.pdf)
 
 > [!NOTE]
-> The features documented in the PDF version of the documentation may differ
-> from the ones available in the latest commit. Refer to the title page for the
-> hash of the commit the documentation was built against.
+> Documentation is automatically built and published by a Github Action whenever contents under `./docs` changes in the `main` branch.
 
-If you would like to access the documentation for the latest commit or would
-like a browseable web version instead, follow the instructions in the [Building
-the documentation from source](#building-the-documentation-from-source) section.
-
-### Building the documentation from source
+### Building and editing documentation locally
 
 To build the documentation from source, you will need:
 
