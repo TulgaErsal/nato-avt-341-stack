@@ -4,9 +4,13 @@ ROS package with autonomy algorithms for the NATO AVT-341.
 
 ## Documentation
 
-Latest documentation can be found here:
-  - [Website](https://d1nxz9z3nv7fn1.cloudfront.net)
+Latest documentation can be found at:
+  - [Website](https://d1nxz9z3nv7fn1.cloudfront.net/pages/getting-started/index.html)
   - [PDF](https://d1nxz9z3nv7fn1.cloudfront.net/nato-avt-341-stack.pdf)
+
+__Documentation credentials:__    
+username: `user`  
+password: `aVt408_PW$`
 
 > [!NOTE]
 > Documentation is automatically built and published by a Github Action whenever contents under `./docs` changes in the `main` branch.
