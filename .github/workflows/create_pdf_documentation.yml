@@ -1,0 +1,58 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Create PDF Documentation
+
+on:
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: documentation
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment: documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+          cache: 'pip' # caching pip dependencies
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install doxygen latexmk texlive-latex-extra
+          pip install -r requirements.txt
+
+      - name: Build PDF documentation
+        run: cd docs && make latexpdf
+
+      - name: Publish to AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Copy HTML Documentation to S3
+        run: |
+          aws s3 cp docs/build/latex/nato-avt-341-stack.pdf s3://${{ secrets.AWS_S3_BUCKET_NAME }} --acl public-read
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+#      - uses: actions/upload-artifact@v4
+#        with:
+#          path: docs/build/latex/nato-avt-341-stack.pdf
+
+
+

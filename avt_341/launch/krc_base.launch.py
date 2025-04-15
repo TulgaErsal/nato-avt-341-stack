@@ -222,7 +222,7 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 name='obstacle_processor_node',
                 output='screen',
                 remappings=[
-                    #('avt_341/occupancy_grid', 'avt_341/local_grid'),
+                    ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
                 ],
                 #prefix=['xterm -e gdb -ex run --args'],
                 parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],

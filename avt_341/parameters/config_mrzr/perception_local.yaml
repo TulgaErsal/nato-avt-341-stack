@@ -41,7 +41,7 @@ clear_method:
 
 # Segmentation
 # ======================================================================================================================
-global_grid_csv_path: '$(find avt_341)/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv'      # Path to CSV containing KRC global segmentation grid.
+global_grid_csv_path: '$(find avt_341)/config/20230816_KRC_CP06_sfv.csv'      # Path to CSV containing KRC global segmentation grid.
 
 # Lidar Obstacle Detector
 # ======================================================================================================================
