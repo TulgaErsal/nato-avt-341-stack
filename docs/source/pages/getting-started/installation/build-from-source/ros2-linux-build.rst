@@ -50,8 +50,8 @@ Add the following to ``~/.bashrc``:
 
 .. code-block:: shell
 
-    export TORCH_DIR='<location_to_unzip>/libtorch'
-    # ex: export TORCH_DIR='/home/username/libtorch'
+    export Torch_DIR='<location_to_unzip>/libtorch'
+    # ex: export Torch_DIR='/home/username/libtorch'
 
 In the previous steps, the CPU version of libtorch was downloaded and installed for ease of use.
 For the GPU accelerated version,  `download the CUDA version <https://pytorch.org/get-started/locally/>`_, unzip the package and set the ``Torch_CUDA_DIR`` environment variable.
