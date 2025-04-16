@@ -77,7 +77,7 @@ set(AVT341_SOURCE_FILES
     "planning/local/dwa"
     "planning/local/goal_point_processor"
     "planning/local/vehicle_converter"
-    "planning/local/mpc_planner"
+    #"planning/local/mpc_planner"
     "planning/global/global_path"
     "planning/global/pf_global_path")
 

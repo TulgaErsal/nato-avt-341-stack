@@ -1,0 +1,18 @@
+<launch>
+
+  
+
+<include file="$(find mavs_ros)/launch/mavs_sim.launch">
+	<arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
+	<arg name="point_cloud_topic_arg" default="avt_341/points" />
+	<arg name="odometry_topic_arg" default="avt_341/odometry" />
+	<arg name="scene_file_arg" default="/mavs/data/scenes/odoa_scene.json" />
+	<arg name="vehicle_file_arg" default="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
+	<arg name="x_start_arg" default="-50.0" />
+	<arg name="y_start_arg" default="0.0" />
+	<arg name="heading_start_arg" default="0.0" />
+	<arg name="lidar_type_arg" default="OS1" />
+</include>
+
+
+</launch>
