@@ -12,7 +12,7 @@
 		<arg name="odometry_topic_arg" value="avt_341/odometry" />
 		<arg name="scene_file_arg" value="/mavs/data/scenes/odoa_scene.json" />
 		<arg name="vehicle_file_arg" value="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
-		<arg name="x_start_arg" value="-50.0" />
+		<arg name="x_start_arg" value="-45.0" />
 		<arg name="y_start_arg" value="0.0" />
 		<arg name="heading_start_arg" value="0.0" />
 		<arg name="lidar_type_arg" value="OS1" />
