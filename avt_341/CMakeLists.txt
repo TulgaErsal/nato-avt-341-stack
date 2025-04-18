@@ -334,8 +334,8 @@ if(USING_AMENT)
     EXPORT export_${PROJECT_NAME}
     DESTINATION "lib/${PROJECT_NAME}")
 
-  # Testing
-  # =======
+  # Test Nodes
+  # ===============
 
   # Target detection test node
   add_executable(test_target_detection_node
@@ -361,5 +361,12 @@ if(USING_AMENT)
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
+
+  # Automated Tests
+  # ===============
+  if(BUILD_TESTING)
+    add_subdirectory(test)
+  endif()
+
   ament_package()
 endif() # if(USING_AMENT)
