@@ -66,3 +66,19 @@ jobs:
           source /opt/ros/humble/setup.bash
           cd ros_ws
           colcon build --packages-select avt_341_msgs avt_341
+          echo "BUILD_DONE=true" >> $GITHUB_ENV
+          colcon test --ctest-args tests --packages-select avt_341
+          colcon test-result --all --verbose
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        if: always() && env.BUILD_DONE == 'true'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Upload Test results
+        if: always() && env.BUILD_DONE == 'true'
+        run: |
+          aws s3 cp ros_ws/build/avt_341/test_results s3://${{ secrets.AWS_S3_BUCKET_NAME }}/test_results --recursive --acl public-read
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
