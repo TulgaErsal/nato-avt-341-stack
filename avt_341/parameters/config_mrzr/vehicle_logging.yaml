@@ -92,7 +92,7 @@ log_topics:
 
   # Rotational speed of the wheels
   - name: '{vehicles}_wheel_rot_speed_{wheels}'
-    topic: '/{vehicles}/wheel_speed/{wheels}'
+    topic: '/{vehicles}/wheel_speed_{wheels}'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rpm'
@@ -122,9 +122,16 @@ log_topics:
     type: 'geometry_msgs/msg/Twist'
     units: '%'
 
-  # Local Planned Path Way Points X, Y
+  # Local Planned Path X, Y
   - name: '{vehicles}_local_planned_path_{position_keys[:2]}'
     topic: '/{vehicles}/avt_341/local_path'
+    field: 'poses.pose.position.{position_keys[:2]}'
+    type: 'nav_msgs/msg/Path'
+    units: 'm'
+
+  # Global Planned Path X, Y
+  - name: '{vehicles}_global_planned_path_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/global_path'
     field: 'poses.pose.position.{position_keys[:2]}'
     type: 'nav_msgs/msg/Path'
     units: 'm'
