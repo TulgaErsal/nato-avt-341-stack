@@ -4,7 +4,7 @@ if(AVT341_DISABLE_MPC)
 endif()
 
 find_package(Julia 1.5.4 EXACT)
-if(NOT ${Julia_FOUND})
+if(NOT "${Julia_FOUND}")
   message(WARNING "Julia 1.5.4 libraries not found. The MPC wrapper node will not be built.")
   set(BUILD_MPC OFF)
 else()

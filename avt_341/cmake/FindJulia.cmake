@@ -33,9 +33,11 @@ if(Julia_EXECUTABLE)
                   OUTPUT_VARIABLE Julia_VERSION_STRING)
 else()
   find_file(Julia_VERSION_INCLUDE julia_version.h PATH_SUFFIXES include/julia)
-  file(READ ${Julia_VERSION_INCLUDE} Julia_VERSION_STRING)
-  string(REGEX MATCH "JULIA_VERSION_STRING.*" Julia_VERSION_STRING
-               ${Julia_VERSION_STRING})
+  if("${Julia_VERSION_INCLUDE}")
+    file(READ ${Julia_VERSION_INCLUDE} Julia_VERSION_STRING)
+    string(REGEX MATCH "JULIA_VERSION_STRING.*" Julia_VERSION_STRING
+               "${Julia_VERSION_STRING}")
+  endif()
 endif()
 
 string(REGEX REPLACE ".*([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1"
@@ -48,7 +50,7 @@ message(STATUS "Julia_VERSION_STRING: ${Julia_VERSION_STRING}")
 # ##############################################################################
 
 set(JULIA_HOME_NAME "Sys.BINDIR")
-if(${Julia_VERSION_STRING} VERSION_LESS "0.7.0")
+if("${Julia_VERSION_STRING}" VERSION_LESS "0.7.0")
   set(JULIA_HOME_NAME "JULIA_HOME")
 else()
   set(USING_LIBDL "using Libdl")
@@ -123,7 +125,7 @@ else()
     CMAKE_FIND_ROOT_PATH_BOTH)
 endif()
 
-get_filename_component(Julia_LIBRARY_DIR ${Julia_LIBRARY} DIRECTORY)
+get_filename_component(Julia_LIBRARY_DIR "${Julia_LIBRARY}" DIRECTORY)
 
 message(STATUS "Julia_LIBRARY_DIR:    ${Julia_LIBRARY_DIR}")
 message(STATUS "Julia_LIBRARY:        ${Julia_LIBRARY}")
