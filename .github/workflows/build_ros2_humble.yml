@@ -34,7 +34,8 @@ jobs:
         name: Set if Last Commit Within 24 Hours
         continue-on-error: true
         if: ${{ github.event_name == 'schedule' }}
-        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) &amp;&amp; echo "::set-output name=should_run::false"
+        run: |
+          test -z $(git rev-list --after="24 hours" ${{ github.sha }}) && echo "::set-output name=should_run::false"
 
   build:
     needs: check_date
