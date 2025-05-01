@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-docker build -t cdt-humble -f cdt-humble.Dockerfile ../.. 
+docker build -t ekf3d-humble -f ekf3d-humble.Dockerfile ../.. 

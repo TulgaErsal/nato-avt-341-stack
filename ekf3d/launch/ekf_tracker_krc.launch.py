@@ -1,11 +1,12 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
+import os
 
 GLOBAL_FRAME = 'map'
-EKF_TRACKER_DIR = get_package_share_directory('ekf3d')
 TRACKER_CONFIG = "ekf_tracker_krc"
-CFG_PATH = "/data/repos/crl-cdt/ekf3d/cfg/%s.yaml" % (TRACKER_CONFIG)
+CFG_PATH = os.path.dirname(os.path.abspath(__file__))+"/../cfg/%s.yaml" % (TRACKER_CONFIG)
+print(CFG_PATH)
 
 USE_SIM_TIME = True
 
