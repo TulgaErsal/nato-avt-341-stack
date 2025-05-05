@@ -4,9 +4,9 @@
 }
 
 /* Hide captions. */
-.caption-text {
-    display: none;
-}
+/*.caption-text {*/
+/*    display: none;*/
+/*}*/
 
 /* Wrap long table entries. */
 .wy-table-responsive table td,

@@ -2,7 +2,9 @@ Getting started
 ===============
 
 .. toctree::
-   :hidden:
+    :maxdepth: 2
 
-   building/index.rst
-   running-with-mavs/running-with-mavs.rst
+    installation/index.rst
+    usage/index.rst
+    simulator-envs/index.rst
+

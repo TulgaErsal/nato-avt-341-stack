@@ -22,6 +22,7 @@ class BagConfigKeys:
     SYMBOLS = 'symbols'
     LOG_TOPICS = 'log_topics'
     TOPIC = 'topic'
+    TYPE = 'type'
 
 
 class FieldSymbol:
@@ -153,9 +154,12 @@ class BagConfigLoader:
     def config_yaml(self):
         return self._config_yaml
 
-    @property
-    def record_topics(self):
-        return [t[BagConfigKeys.TOPIC] for t in self._config_yaml[BagConfigKeys.LOG_TOPICS] if t[BagConfigKeys.TOPIC]] if self._config_yaml else []
+    def get_record_topics(self, exlude_occupancy_grid):
+        if not self._config_yaml:
+            return []
+
+        return [t[BagConfigKeys.TOPIC] for t in self._config_yaml[BagConfigKeys.LOG_TOPICS]
+                if t[BagConfigKeys.TOPIC] and (not exlude_occupancy_grid or t[BagConfigKeys.TYPE] != 'nav_msgs/msg/OccupancyGrid')]
 
 def parse_args(is_ros1):
     parser = ArgumentParser(prog="rosrun avt_341 vehicle_logging.py" if is_ros1 else "ros2 run avt_341 vehicle_logging.py",
@@ -169,6 +173,7 @@ def parse_args(is_ros1):
     parser.add_argument('--storage_config_file', type=str, default="", help="Yaml file containing storage options for bag. ONLY SUPPORTED IN ROS2.")
     parser.add_argument('--config_file_out', type=str, default="logging_config.yaml", help="Name to use for copied bag configuration file that will appear in output bag directory.")
     parser.add_argument('--vehicles_override', type=str, default="", help="Comma seperated list of vehicles to use in symbols of bag log config. Leave blank for no override.")
+    parser.add_argument('--exclude_occupancy_grid', type=bool, default=False, help="If set, occupancy grids will be excluded from the bag file. Inclusion of occupancy grid may cause large bag file sizes if no compression used.")
     args = parser.parse_args()
 
     if args.bag_format and is_ros1:
@@ -198,7 +203,7 @@ if __name__ == "__main__":
     if bag_config_loader.in_error():
         sys.exit(bag_config_loader.error)
 
-    record_topics = bag_config_loader.record_topics
+    record_topics = bag_config_loader.get_record_topics(args.exclude_occupancy_grid)
 
     try:
         # Record rosbag using CLI

@@ -95,7 +95,8 @@ if(USING_AMENT)
           PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
 
   target_link_libraries(${PROJECT_NAME}_object_detector_node
-                        ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES})
+                        ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES}
+                        ament_index_cpp::ament_index_cpp)
 
   install(
     TARGETS ${PROJECT_NAME}_object_detector_node

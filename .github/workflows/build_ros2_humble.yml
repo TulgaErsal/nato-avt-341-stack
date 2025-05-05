@@ -1,0 +1,85 @@
+# Workflow to run the ROS2 Humble build every night if source code changed within the day
+name: Build ROS2 Humble Linux
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+
+  # Based on https://github.com/orgs/community/discussions/27128
+  check_date:
+    runs-on: ubuntu-22.04
+    name: Check for Recent Commit
+    outputs:
+      should_run: ${{ steps.should_run.outputs.should_run }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Print Repository Last Commit
+        run: echo ${{ github.sha }}
+
+      - id: should_run
+        name: Set if Last Commit Within 24 Hours
+        continue-on-error: true
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          test -z $(git rev-list --after="24 hours" ${{ github.sha }}) && echo "::set-output name=should_run::false"
+
+  build:
+    needs: check_date
+    if: ${{ needs.check_date.outputs.should_run != 'false' }}
+    name: Build AVT341 Stack
+    runs-on: ubuntu-22.04
+    steps:
+
+      - name: Install ROS2 Humble
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          path: ros_ws/src
+
+      - name: Install ROS Dependencies
+        run: |
+          sudo apt install -y ros-humble-pcl-ros ros-humble-ackermann-msgs ros-humble-vision-msgs unzip
+          wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
+          unzip libtorch-shared-with-deps-latest.zip
+
+      # Note: Environment variables do not seem to persist through job steps, need to call source here
+      - name: Build repository
+        run: |
+          export Torch_DIR="$(pwd)/libtorch"
+          source /opt/ros/humble/setup.bash
+          cd ros_ws
+          colcon build --packages-select avt_341_msgs avt_341
+          echo "BUILD_DONE=true" >> $GITHUB_ENV
+          colcon test --ctest-args tests --packages-select avt_341
+          colcon test-result --all --verbose
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        if: always() && env.BUILD_DONE == 'true'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Upload Test results
+        if: always() && env.BUILD_DONE == 'true'
+        run: |
+          aws s3 cp ros_ws/build/avt_341/test_results s3://${{ secrets.AWS_S3_BUCKET_NAME }}/test_results --recursive --acl public-read
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

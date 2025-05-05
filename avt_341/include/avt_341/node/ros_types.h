@@ -32,6 +32,8 @@
 #include "nav_msgs/Odometry.h"
 #include "nav_msgs/GridCells.h"
 
+#include "map_msgs/OccupancyGridUpdate.h"
+
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 
@@ -130,6 +132,10 @@ namespace avt_341 {
 
         using OccupancyGrid = nav_msgs::OccupancyGrid;
         using OccupancyGridPtr = const nav_msgs::OccupancyGrid::ConstPtr &;
+        using OccupancyGridSharedPtr = nav_msgs::OccupancyGrid::Ptr;
+
+        using OccupancyGridUpdate = map_msgs::OccupancyGridUpdate;
+        using OccupancyGridUpdatePtr = const map_msgs::OccupancyGridUpdate::ConstPtr &;
 
         using Path = nav_msgs::Path;
         using PathPtr = const nav_msgs::Path::ConstPtr &;
@@ -246,6 +252,8 @@ namespace avt_341 {
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/grid_cells.hpp"
 
+#include "map_msgs/msg/occupancy_grid_update.hpp"
+
 #include "visualization_msgs/msg/marker_array.hpp"
 
 #include "tf2/LinearMath/Quaternion.h"
@@ -335,6 +343,10 @@ namespace avt_341 {
 
     using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
     using OccupancyGridPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
+    using OccupancyGridSharedPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
+
+    using OccupancyGridUpdate = map_msgs::msg::OccupancyGridUpdate;
+    using OccupancyGridUpdatePtr = map_msgs::msg::OccupancyGridUpdate::SharedPtr;
 
     using Path = nav_msgs::msg::Path;
     using PathPtr = nav_msgs::msg::Path::SharedPtr;

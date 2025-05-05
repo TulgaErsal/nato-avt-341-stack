@@ -34,12 +34,12 @@
 # custom
 *mavs_config.txt
 *__pycache__
-*20230816_KRC_CP06_Scaled_FlippedVertical.csv
+*20230816_KRC_CP06_sfv.csv
 *Identifier
 
 # Clion
 .idea
-cmake-build-debug*
+cmake-build*
 
 # Visual Studio
 .vs
