@@ -85,8 +85,10 @@ float ElevationGrid::GetTerrainSlopeAtCell(int xi, int yi) {
         int yh = std::min(yi + 1, ny_ - 1);
         float dx = (xh - xl) * res_;
         float dy = (yh - yl) * res_;
-        float dz_dx = (cells_[yi][xh].low.val - cells_[yi][xl].low.val) / dx;
-        float dz_dy = (cells_[yh][xi].low.val - cells_[yl][xi].low.val) / dy;
+        float dz_dx = 0.0f;
+        if (dx != 0.0f && cells_[yi][xh].num_points > 0 && cells_[yi][xl].num_points > 0) dz_dx = (cells_[yi][xh].low.val - cells_[yi][xl].low.val) / dx;
+        float dz_dy = 0.0f;
+        if (dy != 0.0f && cells_[yh][xi].num_points > 0 && cells_[yl][xi].num_points > 0) dz_dy = (cells_[yh][xi].low.val - cells_[yl][xi].low.val) / dy;
         slope = sqrtf(dz_dx * dz_dx + dz_dy * dz_dy);
     }
     return slope;
@@ -142,10 +144,16 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
         // CTG 5/8/25, add calculations necessary for tracking RMS
         cells_[yi][xi].summed_elev += h;
         cells_[yi][xi].num_points += 1;
-        cells_[yi][xi].avg_elev = cells_[yi][xi].summed_elev / cells_[yi][xi].num_points;
-        float dh = h - cells_[yi][xi].avg_elev;
-        cells_[yi][xi].sum_of_squares += dh * dh;
-        cells_[yi][xi].rms = sqrtf(cells_[yi][xi].sum_of_squares / cells_[yi][xi].num_points);
+        if (cells_[yi][xi].num_points > 0) {
+            cells_[yi][xi].avg_elev = cells_[yi][xi].summed_elev / cells_[yi][xi].num_points;
+            float dh = h - cells_[yi][xi].avg_elev;
+            cells_[yi][xi].sum_of_squares += dh * dh;
+            cells_[yi][xi].rms = sqrtf(cells_[yi][xi].sum_of_squares / cells_[yi][xi].num_points);
+        }
+        else {
+            cells_[yi][xi].avg_elev = 0.0f;
+            cells_[yi][xi].rms = 0.0f;
+        }
 
         // Optional dilation
         if(dilate){
