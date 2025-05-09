@@ -424,16 +424,15 @@ def generate_launch_description():
             name='static_transform_publisher',
             arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]),
         *vehicle_node_list,
-        # DeclareLaunchArgument('rviz_config', default_value=rviz_config_single_vehicle, description='Full path to rviz config file'),
-        # SetLaunchConfiguration('rviz_config', rviz_config_multi_vehicle, condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1']))),
+        DeclareLaunchArgument('rviz_config', default_value=TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
+                                                                               false_val=TextSubstitution(text=rviz_config_single_vehicle),
+                                                                               condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))),
         Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
             condition=IfCondition(auto_launch_rviz),
-            arguments=["-d", TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
-                                                 false_val=TextSubstitution(text=rviz_config_single_vehicle),
-                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
+            arguments=["-d", LaunchConfiguration('rviz_config')]
         )
     ])
 
