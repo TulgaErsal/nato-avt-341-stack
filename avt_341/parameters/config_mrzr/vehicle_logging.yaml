@@ -57,7 +57,7 @@ log_topics:
 
   # Front wheel angle position
   - name: '{vehicles}_steering_angle'
-    topic: '/{vehicles}/steering_angle'
+    topic: '/{vehicles}/avt_341/steering_angle'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rad'
@@ -110,16 +110,16 @@ log_topics:
 
   # Desired Throttle Position
   - name: '{vehicles}_desired_throttle'
-    topic: '/{vehicles}/avt_341/cmd_vel'
-    field: 'linear.x'
-    type: 'geometry_msgs/msg/Twist'
+    topic: ''
+    field: ''
+    type: ''
     units: '%'
 
   # Desired Brake pressure or Pedal Position
   - name: '{vehicles}_desired_brake'
-    topic: '/{vehicles}/avt_341/cmd_vel'
-    field: 'linear.y'
-    type: 'geometry_msgs/msg/Twist'
+    topic: ''
+    field: ''
+    type: ''
     units: '%'
 
   # Local Planned Path X, Y

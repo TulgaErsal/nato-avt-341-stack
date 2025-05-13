@@ -203,6 +203,14 @@ def launch_setup(context, *args, **kwargs):
             namespace='/mrzr'
         ),
 
+        # Logging topic remapping
+        Node(
+            package='mrzr_tools',
+            executable='avt_341_topic_remaps.py',
+            name='mrzr_logging_remap_node',
+            namespace='/mrzr'
+        ),
+
         # Controller
         launch.actions.IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(mrzr_tools_dir, 'launch', 'stack_controller.launch.py')),
