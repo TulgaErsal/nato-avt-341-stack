@@ -36,6 +36,11 @@ namespace perception{
       dilated_val = 0;
       terrain = 0.0f;
       dilated_age = 0.0f;
+      num_points = 0;
+      summed_elev = 0.0f;
+      avg_elev = 0.0f;
+      rms = 0.0f;
+      sum_of_squares = 0.0f;
     }
 
     void AgeCell(float dt){
@@ -62,6 +67,11 @@ namespace perception{
     uint8_t dilated_val; //  = 0;
     float dilated_age;
     float terrain; //  = 0.0f;
+    int num_points;
+    float summed_elev;
+    float avg_elev;
+    float rms;
+    float sum_of_squares;
   };
 
   class CellObstacleCalculator {

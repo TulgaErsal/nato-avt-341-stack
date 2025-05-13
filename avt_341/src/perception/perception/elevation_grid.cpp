@@ -50,6 +50,50 @@ Cell empty_cell;
  }
 }
 
+// CTG, 5/8/25
+float ElevationGrid::GetRmsAtCoordinate(float x, float y) {
+    int xi = (int)floor((x - llx_) / res_);
+    int yi = (int)floor((y - lly_) / res_);
+    float rms = GetRmsAtCell(xi, yi);
+    return rms;
+}
+
+// CTG, 5/8/25
+float ElevationGrid::GetRmsAtCell(int xi, int yi) {
+    float rms = 0.0f;
+    if (xi >= 0 && xi < nx_ && yi >= 0 && yi < ny_) {
+        rms = cells_[yi][xi].rms;
+    }
+    return rms;
+}
+
+// CTG, 5/8/25
+float ElevationGrid::GetTerrainSlopeAtCoordinate(float x, float y) {
+    int xi = (int)floor((x - llx_) / res_);
+    int yi = (int)floor((y - lly_) / res_);
+    float slope = GetTerrainSlopeAtCell(xi, yi);
+    return slope;
+}
+
+// CTG, 5/8/25
+float ElevationGrid::GetTerrainSlopeAtCell(int xi, int yi) {
+    float slope = 0.0f;
+    if (xi >= 0 && xi < nx_ && yi >= 0 && yi < ny_) {
+        int xl = std::max(xi - 1, 0);
+        int xh = std::min(xi + 1, nx_ - 1);
+        int yl = std::max(yi - 1, 0);
+        int yh = std::min(yi + 1, ny_ - 1);
+        float dx = (xh - xl) * res_;
+        float dy = (yh - yl) * res_;
+        float dz_dx = 0.0f;
+        if (dx != 0.0f && cells_[yi][xh].num_points > 0 && cells_[yi][xl].num_points > 0) dz_dx = (cells_[yi][xh].low.val - cells_[yi][xl].low.val) / dx;
+        float dz_dy = 0.0f;
+        if (dy != 0.0f && cells_[yh][xi].num_points > 0 && cells_[yl][xi].num_points > 0) dz_dy = (cells_[yh][xi].low.val - cells_[yl][xi].low.val) / dy;
+        slope = sqrtf(dz_dx * dz_dx + dz_dy * dz_dy);
+    }
+    return slope;
+}
+
 void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) {
 
   bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == "segmentation";
@@ -95,6 +139,20 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud &point_cloud, st
         if (has_segmentation_local){
           float terr_val = point_cloud.channels[0].values[i];
           cells[yi][xi].terrain = fmax(cells[yi][xi].terrain, terr_val);
+        }
+
+        // CTG 5/8/25, add calculations necessary for tracking RMS
+        cells_[yi][xi].summed_elev += h;
+        cells_[yi][xi].num_points += 1;
+        if (cells_[yi][xi].num_points > 0) {
+            cells_[yi][xi].avg_elev = cells_[yi][xi].summed_elev / cells_[yi][xi].num_points;
+            float dh = h - cells_[yi][xi].avg_elev;
+            cells_[yi][xi].sum_of_squares += dh * dh;
+            cells_[yi][xi].rms = sqrtf(cells_[yi][xi].sum_of_squares / cells_[yi][xi].num_points);
+        }
+        else {
+            cells_[yi][xi].avg_elev = 0.0f;
+            cells_[yi][xi].rms = 0.0f;
         }
 
         // Optional dilation

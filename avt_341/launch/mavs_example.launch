@@ -28,14 +28,6 @@
   <node name="state_publisher" pkg="avt_341" type="avt_bot_state_publisher_node" />
 
 
-  <node name="mrak_broadcaster_node" pkg="mrzr_speed_tuning" type="mrak_broadcaster_node" required="true" output="screen" >
-  <!--broadcast the mrak speed message -->
-  </node>
-
-  <node name="mrzr_speed_republish_node" pkg="mrzr_speed_tuning" type="mrzr_speed_republish_node" required="true" output="screen" >
-  <!--republish the mrak speed message as a float64 -->
-  </node>
-
   <!-- Lidar perception algorithms  -->
   <node name="perception_node" pkg="avt_341" type="avt_341_perception_node" required="true" output="screen">
     <param name="use_elevation" value="false" />
@@ -109,13 +101,24 @@
   <node name="grid_compression_node" pkg="avt_341" type="avt_341_grid_compression_node" required="true" output="screen"/>
 
   <include file="$(find mavs_ros)/launch/mavs_sim.launch">
-    <arg name="cmd_vel_topic_arg" default="avt_341/cmd_vel" />
-    <arg name="point_cloud_topic_arg" default="avt_341/points" />
-    <arg name="odometry_topic_arg" default="avt_341/odometry" />
+    <arg name="cmd_vel_topic_arg" value="avt_341/cmd_vel" />
+	<arg name="point_cloud_topic_arg" value="avt_341/points" />
+	<arg name="odometry_topic_arg" value="avt_341/odometry" />
+	<arg name="scene_file_arg" value="/mavs/data/scenes/cavs_proving_ground_surface_only.json" />
+	<arg name="vehicle_file_arg" value="/mavs/data/vehicles/rp3d_vehicles/mrzr4_tires_low_gear.json" />
+	<arg name="x_start_arg" value="-45.0" />
+	<arg name="y_start_arg" value="0.0" />
+	<arg name="heading_start_arg" value="0.0" />
+	<arg name="lidar_type_arg" value="OS1" />
+	<arg name="lidar_offset_x_arg" value="1.0" />
+	<arg name="lidar_offset_y_arg" value="0.0" />
+	<arg name="lidar_offset_z_arg" value="1.5" />
+	<arg name="blanking_dist_arg" value="2.0" />
+	<arg name="register_lidar_to_world_arg" value="true" />
   </include>
 
-  <group if="$(eval arg('display') == 'rviz' and arg('auto_launch_rviz'))">
+ <!-- <group if="$(eval arg('display') == 'rviz' and arg('auto_launch_rviz'))">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find avt_341)/rviz/avt_341.rviz" />
-  </group>
+  </group> -->
 
 </launch>
