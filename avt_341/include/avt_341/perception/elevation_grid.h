@@ -117,6 +117,16 @@ class ElevationGrid : public CellObstacleCalculator{
     void Reset();
     bool HasData() const;
 
+    /// x and y in local ENU meters
+    float GetRmsAtCoordinate(float x, float y);
+    /// xi and yi as grid cell indices
+    float GetRmsAtCell(int xi, int yi);
+
+    /// x and y in local ENU meters
+    float GetTerrainSlopeAtCoordinate(float x, float y);
+    /// xi and yi as grid cell indices
+    float GetTerrainSlopeAtCell(int xi, int yi);
+
   private:
     uint8_t GetGridCellValue(const Cell & cell) const;
     void ResizeGrid();

@@ -200,6 +200,9 @@ int main(int argc, char *argv[]) {
   auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
   auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
+  auto rms_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_rms", 1);
+  auto terrain_slope_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_slope", 1);
+
 	grid.SetSlopeThreshold(thresh, thresh_max);
 	grid.SetRes(grid_res);
 	grid.SetCorner(grid_llx,grid_lly);
@@ -236,9 +239,16 @@ int main(int argc, char *argv[]) {
 				grid_segmentation_pub->publish(grd);
 			}
 
-      if(clear_method_visualize && nloops % 20 == 0){
-        grid.Visualize();
-      }
+			// get the slope and RMS
+			avt_341::msg::Float64 rms_msg, slope_msg;
+			rms_msg.data = (double)grid.GetRmsAtCoordinate(current_pose.pose.pose.position.x, current_pose.pose.pose.position.y);
+			slope_msg.data = (double)grid.GetTerrainSlopeAtCoordinate(current_pose.pose.pose.position.x, current_pose.pose.pose.position.y);
+			rms_pub->publish(rms_msg);
+			terrain_slope_pub->publish(slope_msg);
+
+	      if(clear_method_visualize && nloops % 20 == 0){
+	        grid.Visualize();
+	      }
 
 			nloops++;
 
