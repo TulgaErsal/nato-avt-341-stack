@@ -195,14 +195,6 @@ def launch_setup(context, *args, **kwargs):
             ]
         ),
 
-        # Wheelspeed publisher
-        Node(
-            package='mrzr_tools',
-            executable='wheelspeed_pub_node.py',
-            name='wheelspeed_pub_node',
-            namespace='/mrzr'
-        ),
-
         # Logging topic remapping
         Node(
             package='mrzr_tools',
