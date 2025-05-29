@@ -519,8 +519,8 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/points','/ouster/points'),
                 #('camera/rgb/image_raw','/flir_camera/image_raw'),
                 ('camera/rgb/image_raw','/flir_camera/image_color'),
-                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid_new'),
-                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid_new'),
+                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
+                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
             ],
             output='screen'
         ),
