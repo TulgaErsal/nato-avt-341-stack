@@ -155,6 +155,7 @@ def launch_setup(context, *args, **kwargs):
     record = LaunchConfiguration('record')
     record_select_topic = LaunchConfiguration('record_select_topic')
     record_topics = LaunchConfiguration('record_topics')
+    enable_logging = LaunchConfiguration('enable_logging')
     use_sim_time = LaunchConfiguration('use_sim_time')
     separate_camera_bag = LaunchConfiguration('separate_camera_bag')
     compress_cameras = LaunchConfiguration('compress_cameras')
@@ -245,6 +246,7 @@ def launch_setup(context, *args, **kwargs):
                 "waypoint_mode":	            waypoint_mode.perform(context),
                 "simulation_mode":	            simulation_mode.perform(context),
                 "use_global_path":	            use_global_path.perform(context),
+                "enable_logging":               enable_logging.perform(context),
             }.items()
         )
     ]
@@ -263,6 +265,7 @@ def generate_launch_description():
         "record":	                ["False",	                                    "Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"],
         "record_select_topic":	    ["False",	                                    "Record only topics defined in 'record_topics'"],
         "record_topics":	        ["/cmd_vel /vectornav/GPS /mrzr/avt_341/forward_speed", "Topics to record as a space separated list (only for record_select_topic=true)"],
+        "enable_logging":           ["False",                                       "Enable standardized vehicle logging for V&V efforts"],
         "use_sim_time":	            ["False",	                                    "Use simulation time, usefull for running stack on recorded telemetry bag file"],
         "separate_camera_bag":	    ["True",	                                    "Separate camera topics into a separate bag file"],
         "compress_cameras":	        ["True",	                                    "Only save compressed camera topics (only for separate_camera_bag=true)"],
