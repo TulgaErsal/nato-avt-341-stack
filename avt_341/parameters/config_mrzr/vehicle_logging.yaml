@@ -83,6 +83,13 @@ log_topics:
     type: 'std_msgs/msg/Float64'
     units: 'rpm'
 
+  # Driveshaft speed output
+  - name: '{vehicles}_driveshaft_speed'
+    topic: '/{vehicles}/driveshaft_speed'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'rpm'
+
   # Brake position
   - name: '{vehicles}_brake'
     topic: '/{vehicles}/brake'
