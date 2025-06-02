@@ -41,7 +41,7 @@ if(USING_AMENT)
   target_link_libraries(${PROJECT_NAME}_vesi_bridge_node ${VESIAPI_LIB})
 
   if(WIN32 OR WIN64)
-    install(FILES "$ENV{<VESIAPI_DIR}/lib/windows/VESIAPI.dll"
+    install(FILES "$ENV{VESIAPI_DIR}/lib/windows/VESIAPI.dll"
             DESTINATION "lib/${PROJECT_NAME}")
   else()
     install(FILES ${VESIAPI_DIR}/linux/libVESIAPI.so
