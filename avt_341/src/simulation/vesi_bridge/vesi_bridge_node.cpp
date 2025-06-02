@@ -5,51 +5,37 @@ using namespace std::chrono_literals;
 
 namespace bridge {
 
+template<typename T>
+T SensorBridgeNode::getDeclareParam(const std::string &name, char const * envVarKey, const T & defaultVal) {
+    auto env_variable_value = std::getenv(envVarKey);
+    this->declare_parameter(name, env_variable_value ? str_to_type<T>(env_variable_value) : defaultVal);
+    T out_param;
+    this->get_parameter(name, out_param);
+    return out_param;
+}
+
+
 SensorBridgeNode::SensorBridgeNode() : Node("sensor_bridge_node") {
+
+
     //-----------------------------Configuration--------------------------------
-    if(std::getenv("VESI_SENSOR_IP")) {
-        this->sensorApi.setSimManagerHost(std::getenv("VESI_SENSOR_IP"));
-        std::cout << "Set V-ESI sensor IP to: " << std::getenv("VESI_SENSOR_IP")
-                  << std::endl;
-    } else {
-        this->sensorApi.setSimManagerHost("127.0.0.1");
-        std::cout << "Set V-ESI sensor IP to: 127.0.0.1 (default)" << std::endl;
-    }
+    auto vesi_sensor_ip = getDeclareParam<std::string>("vesi/sensor_ip", "VESI_SENSOR_IP", "127.0.0.1");
+    this->sensorApi.setSimManagerHost(vesi_sensor_ip);
+    std::cout << "Set V-ESI sensor IP to: " << vesi_sensor_ip << std::endl;
 
-    if(std::getenv("VESI_SENSOR_PORT")) {
-        this->sensorApi.setSimManagerPort(
-            std::stoi(std::getenv("VESI_SENSOR_PORT")));
-        std::cout << "Set V-ESI sensor Port to: "
-                  << std::getenv("VESI_SENSOR_PORT") << std::endl;
-    } else {
-        this->sensorApi.setSimManagerPort(12345);
-        std::cout << "Set V-ESI sensor Port to: 12345 (default)" << std::endl;
-    }
+    auto vesi_sensor_port = getDeclareParam<int>("vesi/sensor_port", "VESI_SENSOR_PORT", 12345);
+    this->sensorApi.setSimManagerPort(vesi_sensor_port);
+    std::cout << "Set V-ESI sensor Port to: " << vesi_sensor_port << std::endl;
 
-    if(std::getenv("SENSOR_TYPE")) {
-        this->sensorType = std::string(std::getenv("SENSOR_TYPE"));
-        std::cout << "Sensor type: " << this->sensorType << std::endl;
-    }
+    this->sensorType = getDeclareParam<std::string>("vesi/sensor_type", "SENSOR_TYPE");
+    this->sensorId = static_cast<uint8_t>(getDeclareParam<int>("vesi/sensor_id", "SENSOR_ID", 0));
+    this->rosTopic = getDeclareParam<std::string>("vesi/ros_topic", "ROS_TOPIC", "sensor_data");
+    this->verbosePrinting == getDeclareParam<bool>("vesi/verbose_print", "VERBOSE_PRINT", false);
 
-    if(std::getenv("SENSOR_ID")) {
-        this->sensorId =
-            static_cast<uint8_t>(std::stoi(std::getenv("SENSOR_ID")));
-        std::cout << "Sensor Id: " << static_cast<int>(this->sensorId)
-                  << std::endl;
-    }
-
-    if(std::getenv("ROS_TOPIC")) {
-        this->rosTopic = std::string(std::getenv("ROS_TOPIC"));
-        std::cout << "ROS topic: " << std::getenv("ROS_TOPIC") << std::endl;
-    } else {
-        this->rosTopic = "sensor_data";
-        std::cout << "Warning: No ROS topic name specified" << std::endl;
-    }
-
-    if(std::getenv("VERBOSE_PRINT") &&
-       (std::string(std::getenv("VERBOSE_PRINT")) == "true")) {
-        this->verbosePrinting = true;
-    }
+    std::cout << "Sensor type: " << this->sensorType << std::endl;
+    std::cout << "Sensor ID: " << std::to_string(this->sensorId) << std::endl;
+    std::cout << "ROS topic: " << this->rosTopic << std::endl;
+    std::cout << "Verbose printing: " << this->verbosePrinting << std::endl;
 
     //-----------------------------Connect to
     // V-ESI--------------------------------

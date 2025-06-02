@@ -54,6 +54,25 @@ class SensorBridgeNode : public rclcpp::Node {
     uint8_t sensorId;
     std::string rosTopic;
     int cameraImageType;
+
+    template<typename T>
+    T getDeclareParam(const std::string &name, char const * envVarKey, const T & defaultVal = T());
+
+    template<typename T>
+    T str_to_type(const std::string &str) {
+        return T(str);
+    }
+
+    template<>
+    int str_to_type(const std::string &str) {
+        return std::stoi(str);
+    }
+
+    template<>
+    bool str_to_type(const std::string &str) {
+        return str == "true";
+    }
+
 };
 
 } // namespace bridge
