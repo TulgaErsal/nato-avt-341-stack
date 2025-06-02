@@ -19,12 +19,12 @@ namespace dSPACE	//NOLINT
 			0	// Minor
 		};
 
+#pragma pack(push, 1)
 		struct Detection : public PPRadarDetectionsBase::Detection
 		{
 			//just use default fields.
 		};
 
-#pragma pack(push, 1)
 		struct RadarDetectionsHeader : public DeserializerBase::OptixSensorBaseHeader
 		{
 			uint16_t NumDetections{};

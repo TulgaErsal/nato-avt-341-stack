@@ -19,6 +19,7 @@ namespace dSPACE	// NOLINT
 			0	// Minor
 		};
 
+#pragma pack(push, 1)
 		struct AdcSample
 		{
 			float Real = 0.0f;
@@ -35,7 +36,6 @@ namespace dSPACE	// NOLINT
 			}
 		};
 
-#pragma pack(push, 1)
 		struct RawDataConfig
 		{
 			uint32_t NumRxas = 0;
