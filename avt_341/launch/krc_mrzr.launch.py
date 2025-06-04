@@ -162,6 +162,7 @@ def launch_setup(context, *args, **kwargs):
     disable_sensor_drivers = LaunchConfiguration('disable_sensor_drivers')
     enable_joystick = LaunchConfiguration('enable_joystick')
     auto_launch_rviz = LaunchConfiguration('auto_launch_rviz')
+    vehicle_name = LaunchConfiguration('vehicle_name')
 
     avt_341_dir = get_package_share_directory('avt_341')
     mrzr_tools_dir = get_package_share_directory('mrzr_tools')
@@ -234,7 +235,7 @@ def launch_setup(context, *args, **kwargs):
                 "robot_description_veh4_file":	"",
                 "num_vehicles":	                "1",
                 "namespace_single_vehicle":	    "True",
-                "vehicle_namespaces":	        "['mrzr']",
+                "vehicle_namespaces":	        f"['{vehicle_name.perform(context)}']",
                 "vehicle_config_folders":	    f"['{avt_341_dir}/parameters/config_mrzr']",
                 "veh_index":	                "0",
                 "use_rqt_display":	            "False",
@@ -271,7 +272,8 @@ def generate_launch_description():
         "compress_cameras":	        ["True",	                                    "Only save compressed camera topics (only for separate_camera_bag=true)"],
         "disable_sensor_drivers":   ["False",	                                    "Disable sensor drivers from launching. Drivers are already disabled if simulation_mode is set to true."],
         "enable_joystick":	        ["True",	                                    "Enable the stack controller joystick. WARNING: This will enable the avt-341 stack to publish directly to /cmd_vel"],
-        "auto_launch_rviz":	        ["True",	                                    "Automatically launch rviz"]
+        "auto_launch_rviz":	        ["True",	                                    "Automatically launch rviz"],
+        "vehicle_name":	            ["mrzr",	                                    "Vehicle namespace"]
     }
     launch_args = []
     for arg,[default,desc] in launch_arg_dict.items():
