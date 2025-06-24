@@ -146,16 +146,16 @@ log_topics:
 
   # Desired Throttle Position
   - name: '{vehicles}_desired_throttle'
-    topic: ''
-    field: ''
-    type: ''
+    topic: '/{vehicles}/throttle_rqst'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: '%'
 
   # Desired Brake pressure or Pedal Position
   - name: '{vehicles}_desired_brake'
-    topic: ''
-    field: ''
-    type: ''
+    topic: '/mrzr/brake_rqst'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: '%'
 
   # Local Planned Path X, Y
