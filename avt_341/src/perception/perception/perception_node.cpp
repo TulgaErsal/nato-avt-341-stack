@@ -167,21 +167,21 @@ int main(int argc, char *argv[]) {
   n->get_parameter("~max_grid_width", max_grid_width, 800.0f);
   n->get_parameter("~max_grid_height", max_grid_height, 800.0f);
 
-  n->get_parameter("~clear_method/type", clear_method, std::string("none"));
-  n->get_parameter("~clear_method/visualize", clear_method_visualize, false);
-  n->get_parameter("~clear_method/visualize_range", visualization_range, 40.0f);
-  n->get_parameter("~clear_method/raytrace_range", clear_method_raytrace_range, 50.0f);
-  n->get_parameter("~clear_method/use_voxels", clear_method_use_voxels, true);
-  n->get_parameter("~clear_method/voxel_height_min", voxel_height_min, 0.0f);
-  n->get_parameter("~clear_method/voxel_height_res", voxel_height_res, 0.5f);
-  n->get_parameter("~clear_method/immediate_clear_dilation", clear_method_clear_dilation, true);
-  n->get_parameter("~clear_method/obs_filter_range", clear_method_obj_range_filter, 1.0f);
-  n->get_parameter("~clear_method/sampled_threshold", sampled_threshold, 5);
+  n->get_parameter("~clear_method_type", clear_method, std::string("none"));
+  n->get_parameter("~clear_method_visualize", clear_method_visualize, false);
+  n->get_parameter("~clear_method_visualize_range", visualization_range, 40.0f);
+  n->get_parameter("~clear_method_raytrace_range", clear_method_raytrace_range, 50.0f);
+  n->get_parameter("~clear_method_use_voxels", clear_method_use_voxels, true);
+  n->get_parameter("~clear_method_voxel_height_min", voxel_height_min, 0.0f);
+  n->get_parameter("~clear_method_voxel_height_res", voxel_height_res, 0.5f);
+  n->get_parameter("~clear_method_immediate_clear_dilation", clear_method_clear_dilation, true);
+  n->get_parameter("~clear_method_obs_filter_range", clear_method_obj_range_filter, 1.0f);
+  n->get_parameter("~clear_method_sampled_threshold", sampled_threshold, 5);
 
 	bool stitch_points;
 	n->get_parameter("~stitch_lidar_points", stitch_points, true);
 	float max_point_age;
-	n->get_parameter("~clear_method/max_point_age",max_point_age,5.0f);
+	n->get_parameter("~clear_method_max_point_age",max_point_age,5.0f);
 	bool filter_highest_lidar;
 	n->get_parameter("~filter_highest_lidar", filter_highest_lidar, false);
   float cull_lidar_points_dist, cull_lidar_points_dist_min;

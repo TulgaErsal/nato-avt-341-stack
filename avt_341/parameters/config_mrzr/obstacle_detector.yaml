@@ -33,7 +33,8 @@ iou_threshold: 1.0                                              # Intersection o
 ground_normal_x: 0.0                                            # Normal vector for ground points segmentation - x component
 ground_normal_y: 0.0                                            # Normal vector for ground points segmentation - y component
 ground_normal_z: 1.0                                            # Normal vector for ground points segmentation - z component
-ground_normal_threshold: 0.4                                    # Threshold for ground point segmentation
+#ground_normal_threshold: 0.4                                    # Threshold for ground point segmentation
+ground_normal_threshold: 0.0 # Disable filtering
 
 obstacle_scale: 1.0                                             # Scale to search for neighnor obstacle points [m]
 obstacle_min_neighbors: 10                                       # Minimum neighboring obstacle points [points]
