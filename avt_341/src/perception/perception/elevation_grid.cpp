@@ -187,6 +187,12 @@ void ElevationGrid::AddPoints(avt_341::msg::PointCloud &point_cloud){
 
 }
 
+void ElevationGrid::ClearPoints(avt_341::msg::PointCloud &point_cloud){
+  for(auto & cm: clear_methods_){
+    cm->ClearOccupancy(point_cloud);
+  }
+}
+
 uint8_t ElevationGrid::GetGridCellValue(const Cell & cell) const{
   if(!cell.filled())
     return 0;

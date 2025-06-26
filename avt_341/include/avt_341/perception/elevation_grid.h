@@ -35,6 +35,12 @@ class ElevationGrid : public CellObstacleCalculator{
      */
     void AddPoints(avt_341::msg::PointCloud &point_cloud);
 
+    /**
+     * Clear points in point cloud
+     * \param point_cloud PointCloud message
+     */
+    void ClearPoints(avt_341::msg::PointCloud &point_cloud);
+
     bool has_segmentation() const { return has_segmentation_; }
 
     void SetSize(float s){

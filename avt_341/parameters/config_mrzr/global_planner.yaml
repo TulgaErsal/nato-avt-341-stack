@@ -15,7 +15,7 @@ verbose_gp_log: True                          # Activates verbose logging for gl
 dilation_factor: 0.0                          # Dilation to costmap to apply during planning.
 max_separation: 1.0                           # Maximum separation between waypoints [m].
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
-use_segmentation: True                       # Whether to use segmentation grid data or not
+use_segmentation: False                       # Whether to use segmentation grid data or not
 map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
 seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
 use_fastmarching: True                        # Switches solver from AStar to Fastmarching

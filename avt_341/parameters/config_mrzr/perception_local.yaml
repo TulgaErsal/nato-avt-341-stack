@@ -22,20 +22,21 @@ perception_rate: 100.0                    # Publish rate for perception node
 limit_grid_size: True                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
 max_grid_width: 100.0                     # Maximum grid width [m] (for limit_grid_size = True)
 max_grid_height: 100.0                    # Maximum grid height [m] (for limit_grid_size = True)
+clear_ground_points: True                 # Clears all grid cells containing points in "ground_points_topic"
 
 # Clearing method
 # ======================================================================================================================
 clear_method:
-  type: 'no_obs_time'                     # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time.
+  type: 'raytrace'                     # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time.
   visualize: False                        # If true, visualizes costmap clearing method.
   visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
   raytrace_range: 50.0                    # Maximum range for raytrace clearing.
   use_voxels: True                        # Maximum range for raytrace clearing.
-  voxel_height_min: 0.0                   # Voxel grid height min used in raytrace_voxel clearing method.
-  voxel_height_res: 0.5                   # Voxel grid height resolution used in raytrace_voxel clearing method.
+  voxel_height_min: -5.0                   # Voxel grid height min used in raytrace_voxel clearing method.
+  voxel_height_res: 0.25                   # Voxel grid height resolution used in raytrace_voxel clearing method.
   immediate_clear_dilation: True          # If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values.
   obs_filter_range: 1.0                   # Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option.
-  max_point_age: 5.0                      # Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time set.
+  max_point_age: 0.5                      # Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time set.
   sampled_threshold: 5                    # Minimum samples before cell cleared when clear_method_type=no_obs_time set.
 
 # Segmentation
@@ -45,3 +46,4 @@ global_grid_csv_path: '$(find avt_341)/config/20230816_KRC_CP06_Scaled_FlippedVe
 # Lidar Obstacle Detector
 # ======================================================================================================================
 perception_points_topic: '/avt_341/lidar_detector/cloud_clusters'  # The name of the points topic listened to by the perception node.
+ground_points_topic: '/avt_341/lidar_detector/cloud_ground'  # The name of the ground points topic for clearing cells when clear_ground_points=True.
