@@ -100,9 +100,9 @@ log_topics:
 
   # Engine torque output
   - name: '{vehicles}_engine_torque'
-    topic: '/{vehicles}/engine_torque'
-    field: 'data'
-    type: 'std_msgs/msg/Float64'
+    topic: ''
+    field: ''
+    type: ''
     units: 'Nm'
 
   # Engine speed output
