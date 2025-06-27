@@ -124,6 +124,26 @@ void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
     recv_seg_input = true;
 }
 
+void TerrainSlopeCallback(avt_341::msg::Float64Ptr terrain_slope_msg)
+{
+    double terrain_slope = terrain_slope_msg->data;
+
+    jl_value_t *j_terrain_slope = jl_box_float64(terrain_slope);
+
+    jl_call1(j_set_terrain_slope, j_terrain_slope);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void TerrainRMSCallback(avt_341::msg::Float64Ptr terrain_rms_msg)
+{
+    double terrain_rms = terrain_rms_msg->data;
+
+    jl_value_t *j_terrain_rms = jl_box_float64(terrain_rms);
+
+    jl_call1(j_set_terrain_rms, j_terrain_rms);
+    CATCH_JULIA_EXCEPTION;
+}
+
 avt_341::msg::Path GetMPCPath()
 {
     jl_array_t *j_path = (jl_array_t*)jl_call0(j_get_path);
@@ -238,6 +258,10 @@ void DeclareParameters()
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
     node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
     node->get_parameter("~publish_steering_commands", publish_steering_commands, true);
+    node->get_parameter("~slope_threshold", slope_threshold, 0.2);
+    node->get_parameter("~rms_threshold", rms_threshold, 0.05);
+    node->get_parameter("~speed_around_large_slopes_and_rms", speed_around_large_slopes_and_rms, 4.0);
+
 }
 
 void InitialiseJuliaAPI()
@@ -378,6 +402,8 @@ void InitialiseJuliaAPI()
     j_set_heading = jl_get_function(mpc_module, "SetHeading");
     j_set_speed = jl_get_function(mpc_module, "SetSpeedSetpoint");
     j_set_sinkage = jl_get_function(mpc_module, "SetSinkage");
+    j_set_terrain_slope = jl_get_function(mpc_module, "SetTerrainSlope");
+    j_set_terrain_rms = jl_get_function(mpc_module, "SetTerrainRMS");
     j_set_segmentation = jl_get_function(mpc_module, "SetSegmentation");
     j_get_path = jl_get_function(mpc_module, "GetPath");
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
@@ -408,6 +434,9 @@ void InitialiseJuliaAPI()
     // j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
     j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
     j_set_linear_solver = jl_get_function(mpc_module, "SetLinearSolver");
+    j_set_slope_threshold = jl_get_function(mpc_module, "SetSlopeThreshold");
+    j_set_rms_threshold = jl_get_function(mpc_module, "SetRMSThreshold");
+    j_set_speed_around_large_slopes_and_rms = jl_get_function(mpc_module, "SetSpeedAroundLargeSlopesAndRMS");
     // -------------------------------
 
     // Convert params to Julia types
@@ -434,6 +463,9 @@ void InitialiseJuliaAPI()
     // jl_value_t *j_vehicle_axle_distance_front = jl_box_float64(vehicle_axle_distance_front);
     jl_value_t *j_front_angle_segmentation = jl_box_float64(front_angle_segmentation);
     jl_value_t *j_linear_solver = jl_cstr_to_string(linear_solver.c_str());
+    jl_value_t *j_slope_threshold = jl_box_float64(slope_threshold);
+    jl_value_t *j_rms_threshold = jl_box_float64(rms_threshold);
+    jl_value_t *j_speed_around_large_slopes_and_rms = jl_box_float64(speed_around_large_slopes_and_rms);
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -459,6 +491,9 @@ void InitialiseJuliaAPI()
     // jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
     jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
     jl_call1(j_set_linear_solver, j_linear_solver);
+    jl_call1(j_set_slope_threshold, j_slope_threshold);
+    jl_call1(j_set_rms_threshold, j_rms_threshold);
+    jl_call1(j_set_speed_around_large_slopes_and_rms, j_speed_around_large_slopes_and_rms);
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -496,6 +531,8 @@ int main(int argc, char *argv[])
     auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset",1,ResetCallback);
+    auto terrain_slope_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
+    auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
 
     // Register publishers
     // -------------------.

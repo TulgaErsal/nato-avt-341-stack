@@ -59,6 +59,26 @@ global solutionFound = false
 
 # ---------- (START) PARAMETER SETTERS ----------
 # Note: Must be called before Setup()
+function SetTerrainSlope(terrain_slope::Float64)
+	global terrainSlope = terrain_slope
+end
+
+function SetTerrainRMS(terrain_rms::String)
+	global terrainRMS = terrain_rms
+end
+
+function SetSlopeThreshold(slope_threshold::Float64)
+	global slopeThreshold = slope_threshold
+end
+
+function SetRMSThreshold(rms_threshold::Float64)
+	global rmsThreshold = rms_threshold
+end
+
+function SetSpeedAroundLargeSlopesAndRMS(speed_around_large_slopes_and_rms::Float64)
+	global speedAroundLargeSlopesAndRMS = speed_around_large_slopes_and_rms
+end
+
 function SetTireModel(tire_model::String)
 	global tireModel = tire_model
 end
@@ -450,6 +470,11 @@ function Plan()
 		n.ocp.X0 = X0
 		push!(n.r.ocp.X0, n.ocp.X0)
 		# setvalue(n.ocp.t0, copy(t0))
+
+		# modify speed setpoint if there is significant slope or rms
+		if terrainSlope > slopeThreshold || terrainRMS > rmsThreshold
+			speedSetpoint = speedAroundLargeSlopesAndRMS
+		end
 
 		#set the new speed limit
 		n.ocp.XU[7]=speedSetpoint

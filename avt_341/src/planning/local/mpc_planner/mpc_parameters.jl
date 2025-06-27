@@ -56,6 +56,11 @@ const jx_max   = 1.9*3
 # epsilon
 const EP      = 0.01
 
+# handling large slopes and RMS
+slopeThreshold = 0.2
+rmsThreshold = 0.05 # in meters
+speedAroundLargeSlopesAndRMS = 4.0 # in m/s
+
 # linear tire model parameters
 Caf =  -3.69554	# cornering stiffness--front axle (N/rad)
 Car =  -2.76883	# cornering stiffness-- rear axle (N/rad)
