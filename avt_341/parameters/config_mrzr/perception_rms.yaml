@@ -5,7 +5,7 @@ slope_threshold: 0.5                      # Minimum slope of cells to appear on 
 slope_threshold_max: 2.5                  # Maximum slope of cells after which they are assigned the maximum grid value
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
-grid_res: 3.0                             # Grid resolution in meters.
+grid_res: 1.0                             # Grid resolution in meters.
 overhead_clearance: 5.0                   # Overhead clearance from vehicle after which lidar points ignored
 grid_dilate: False                         # Whether or not to apply dilation.
 grid_dilate_x: 0.5                        # Amount of dilation in x.

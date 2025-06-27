@@ -364,7 +364,11 @@ def launch_setup(context, *args, **kwargs):
             executable='avt_341_perception_node',
             name='perception_local_node',
             output='screen',
-            parameters=[{k: LaunchConfiguration(f'perception_local_{k}') for k in params['perception_local'].keys()}]
+            parameters=[{k: LaunchConfiguration(f'perception_local_{k}') for k in params['perception_local'].keys()}],
+            remappings=[
+                ('avt_341/terrain_slope', 'avt_341/terrain_slope_local'),
+                ('avt_341/terrain_rms', 'avt_341/terrain_rms_local'),
+            ]
         ),
         Node(
             package='avt_341',
@@ -373,6 +377,8 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[{k: LaunchConfiguration(f'perception_global_{k}') for k in params['perception_global'].keys()}],
             remappings=[
+                ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
+                ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
             ]
         ),
@@ -385,8 +391,6 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 ('avt_341/occupancy_grid', 'avt_341/rms_perception/occupancy_grid'),
                 ('avt_341/segmentation_grid', 'avt_341/rms_perception/segmentation_grid'),
-                ('avt_341/terrain_rms', 'avt_341/rms_perception/terrain_rms'),
-                ('avt_341/terrain_slope', 'avt_341/rms_perception/terrain_slope'),
             ]
         ),
         Node(
