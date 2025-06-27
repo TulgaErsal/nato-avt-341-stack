@@ -23,6 +23,7 @@ global count = 0
 global goal = [0. 0.]
 global desiredHeading = 0.0
 global speedSetpoint = 0.0
+global cmdSpeedSetpoint = 0.0
 global est_sink = 0.0
 global new_sinkage_available = false
 global linearSolverId = "ma27"
@@ -49,6 +50,9 @@ global obs_con=0
 global obj=0
 global path_prev=0
 
+global terrainSlope=0.0
+global terrainRMS=0.0
+
 global mpc_path = Float64[]
 global mpc_speed = Float64[]
 global mpc_steering = Float64[]
@@ -63,7 +67,7 @@ function SetTerrainSlope(terrain_slope::Float64)
 	global terrainSlope = terrain_slope
 end
 
-function SetTerrainRMS(terrain_rms::String)
+function SetTerrainRMS(terrain_rms::Float64)
 	global terrainRMS = terrain_rms
 end
 
@@ -245,6 +249,7 @@ end
 
 function SetSpeedSetpoint(ss::Float64)
 	global speedSetpoint = ss
+	global cmdSpeedSetpoint = ss
 end
 
 function SetSinkage(sinkage::Float64)
@@ -300,6 +305,7 @@ function Setup()
 	global mpc_heading = Array{Float64}(undef, numColPoints+1, 1)
 
 	global speedSetpoint = maxSpeed
+	global cmdSpeedSetpoint = maxSpeed
 	global obstacle_size_meters = grid_resolution
 	global obs_radius = 1.414*obstacle_size_meters/2.0
 
@@ -438,7 +444,7 @@ function Setup()
 end
 
 function Plan()
-	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles
+	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -474,6 +480,8 @@ function Plan()
 		# modify speed setpoint if there is significant slope or rms
 		if terrainSlope > slopeThreshold || terrainRMS > rmsThreshold
 			speedSetpoint = speedAroundLargeSlopesAndRMS
+		elseif speedSetpoint != cmdSpeedSetpoint
+			speedSetpoint = cmdSpeedSetpoint
 		end
 
 		#set the new speed limit
