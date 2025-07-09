@@ -1,0 +1,1385 @@
+/usr/bin/cmake -S/home/vlad/catkin_ws/src -B/home/vlad/catkin_ws/build --check-build-system CMakeFiles/Makefile.cmake 0
+/usr/bin/cmake -S/home/vlad/catkin_ws/src -B/home/vlad/catkin_ws/build --check-build-system CMakeFiles/Makefile.cmake 0
+/usr/bin/cmake -E cmake_progress_start /home/vlad/catkin_ws/build/CMakeFiles /home/vlad/catkin_ws/build/CMakeFiles/progress.marks
+make -f CMakeFiles/Makefile2 all
+make[1]: Entering directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2d.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2d.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2d.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2d.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2d.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg avt_341_msgs/Hypothesis:std_msgs/Header:avt_341_msgs/BoundingBox2d
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_Detection2d
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfCloudInfo.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfCloudInfo.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfCloudInfo.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfCloudInfo.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfCloudInfo.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg std_msgs/Header:sensor_msgs/PointField:sensor_msgs/PointCloud2
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_LiorfCloudInfo
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Sinkage.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Sinkage.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Sinkage.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Sinkage.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Sinkage.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Sinkage.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_Sinkage
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCells.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCells.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCells.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCells.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCells.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg std_msgs/Header:nav_msgs/MapMetaData:geometry_msgs/Point:geometry_msgs/Pose:avt_341_msgs/OccupiedCell:geometry_msgs/Quaternion
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_OccupiedCells
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCell.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCell.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCell.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCell.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_OccupiedCell.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_OccupiedCell
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Hypothesis.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Hypothesis.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Hypothesis.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Hypothesis.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Hypothesis.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_Hypothesis
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaObjective.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaObjective.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaObjective.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaObjective.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaObjective.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_DwaObjective
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfSaveMap.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfSaveMap.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfSaveMap.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfSaveMap.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_LiorfSaveMap.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/srv/LiorfSaveMap.srv 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_LiorfSaveMap
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaTrajectory.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaTrajectory.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaTrajectory.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaTrajectory.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaTrajectory.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg std_msgs/Header:nav_msgs/Path:geometry_msgs/Point:avt_341_msgs/DwaObjective:geometry_msgs/Pose:geometry_msgs/PoseStamped:geometry_msgs/Quaternion
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_DwaTrajectory
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Communication.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Communication.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Communication.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Communication.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Communication.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Communication.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_Communication
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Obstacles.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Obstacles.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Obstacles.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Obstacles.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Obstacles.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Obstacles.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_Obstacles
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_FollowerStatus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_FollowerStatus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_FollowerStatus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_FollowerStatus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_FollowerStatus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/FollowerStatus.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_FollowerStatus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target sensor_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target nav_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target std_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_BoundingBox2d.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_BoundingBox2d.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_BoundingBox2d.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_BoundingBox2d.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_BoundingBox2d.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg 
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_BoundingBox2d
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaInfo.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaInfo.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaInfo.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaInfo.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_DwaInfo.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg std_msgs/Header:nav_msgs/Path:geometry_msgs/Point:avt_341_msgs/DwaTrajectory:avt_341_msgs/DwaObjective:geometry_msgs/Pose:geometry_msgs/PoseStamped:geometry_msgs/Quaternion
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_DwaInfo
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2dArray.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2dArray.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2dArray.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2dArray.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/_avt_341_msgs_generate_messages_check_deps_Detection2dArray.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py avt_341_msgs /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg avt_341_msgs/Hypothesis:std_msgs/Header:avt_341_msgs/BoundingBox2d:avt_341_msgs/Detection2d
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  0%] Built target _avt_341_msgs_generate_messages_check_deps_Detection2dArray
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  9%] Built target avt_341_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  9%] Built target nav_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  9%] Built target std_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[  9%] Built target sensor_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 16%] Built target avt_341_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 16%] Built target std_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 16%] Built target nav_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 16%] Built target sensor_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 25%] Built target avt_341_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 25%] Built target std_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 25%] Built target nav_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 25%] Built target sensor_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 33%] Built target avt_341_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/nav_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 33%] Built target nav_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/sensor_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 33%] Built target sensor_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/std_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 33%] Built target std_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target avt_341_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target avt_341_msgs_generate_messages
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target tf2_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target geometry_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target geometry_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target geometry_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target actionlib_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target actionlib_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target geometry_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/geometry_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target geometry_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target actionlib_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target actionlib_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341_msgs/CMakeFiles/actionlib_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target actionlib_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target topic_tools_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target topic_tools_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target topic_tools_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target std_srvs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target std_srvs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target std_srvs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_topic_tools_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_topic_tools_gencfg.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/nodelet_topic_tools_gencfg.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_topic_tools_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_topic_tools_gencfg.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/nodelet_topic_tools_gencfg.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target nodelet_topic_tools_gencfg
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target bond_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target bond_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target bond_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target bond_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target std_srvs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target nodelet_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target nodelet_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target nodelet_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target map_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target map_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_footstep_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_recognition_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_footstep_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target topic_tools_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_footstep_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target pcl_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_footstep_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_recognition_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_gencfg.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_gencfg.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_gencfg.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_gencfg.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target dynamic_reconfigure_gencfg
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target dynamic_reconfigure_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target nodelet_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target ackermann_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target actionlib_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target ackermann_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target ackermann_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target tf2_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target pcl_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target pcl_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target dynamic_reconfigure_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target ackermann_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target jsk_recognition_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target map_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target tf_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target pcl_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/pcl_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target pcl_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/topic_tools_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target topic_tools_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 41%] Built target roscpp_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_proxy.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_proxy.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/avt_341_proxy.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_proxy.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_proxy.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/avt_341_proxy.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target avt_341_proxy
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target dynamic_reconfigure_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target roscpp_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf2_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target jsk_recognition_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target map_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/map_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target map_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target roscpp_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target actionlib_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_footstep_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target jsk_footstep_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target roscpp_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/jsk_recognition_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target jsk_recognition_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/roscpp_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target roscpp_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target actionlib_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target rosgraph_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/std_srvs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target std_srvs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target rosgraph_msgs_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_ros_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_ros_gencfg.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/pcl_ros_gencfg.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/pcl_ros_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/pcl_ros_gencfg.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/pcl_ros_gencfg.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target pcl_ros_gencfg
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target rosgraph_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target actionlib_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_py.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target rosgraph_msgs_generate_messages_py
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/rosgraph_msgs_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target rosgraph_msgs_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_lisp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_lisp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_lisp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_lisp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_lisp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target dynamic_reconfigure_generate_messages_lisp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf2_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/ackermann_msgs_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target ackermann_msgs_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/actionlib_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target actionlib_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_eus.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_eus.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_eus.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_eus.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/nodelet_generate_messages_eus.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target nodelet_generate_messages_eus
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/tf2_msgs_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target tf2_msgs_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_cpp.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_cpp.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_cpp.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_cpp.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/bond_generate_messages_cpp.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target bond_generate_messages_cpp
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_nodejs.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_nodejs.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_nodejs.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_nodejs.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/dynamic_reconfigure_generate_messages_nodejs.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 43%] Built target dynamic_reconfigure_generate_messages_nodejs
+make -f nato-avt-341-stack/avt_341/CMakeFiles/test_target_detection_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/test_target_detection_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/test_target_detection_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/test_target_detection_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/test_target_detection_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/test_target_detection_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 44%] Built target test_target_detection_node
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_sim_test_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_sim_test_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/avt_341_sim_test_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_sim_test_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_sim_test_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/avt_341_sim_test_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 46%] Built target avt_341_sim_test_node
+make -f nato-avt-341-stack/avt_341/CMakeFiles/gps_spoof_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/gps_spoof_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/gps_spoof_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/gps_spoof_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/gps_spoof_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/gps_spoof_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 47%] Built target gps_spoof_node
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_test_formation_control_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_test_formation_control_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/avt_341_test_formation_control_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_test_formation_control_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_test_formation_control_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/avt_341_test_formation_control_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 48%] Built target avt_341_test_formation_control_node
+make -f nato-avt-341-stack/avt_341/CMakeFiles/gps_to_enu_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/gps_to_enu_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/gps_to_enu_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/gps_to_enu_node.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/gps_to_enu_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/gps_to_enu_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 51%] Built target gps_to_enu_node
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_gencfg.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341 /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/CMakeFiles/avt_341_gencfg.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/CMakeFiles/avt_341_gencfg.dir/build.make nato-avt-341-stack/avt_341/CMakeFiles/avt_341_gencfg.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/CMakeFiles/avt_341_gencfg.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 51%] Built target avt_341_gencfg
+make -f nato-avt-341-stack/avt_341/src/communication/comms_publisher/CMakeFiles/avt_341_comm_publisher_node.dir/build.make nato-avt-341-stack/avt_341/src/communication/comms_publisher/CMakeFiles/avt_341_comm_publisher_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/communication/comms_publisher /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/communication/comms_publisher /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/communication/comms_publisher/CMakeFiles/avt_341_comm_publisher_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/communication/comms_publisher/CMakeFiles/avt_341_comm_publisher_node.dir/build.make nato-avt-341-stack/avt_341/src/communication/comms_publisher/CMakeFiles/avt_341_comm_publisher_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/communication/comms_publisher/CMakeFiles/avt_341_comm_publisher_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 52%] Built target avt_341_comm_publisher_node
+make -f nato-avt-341-stack/avt_341/src/communication/communication/CMakeFiles/avt_341_comm_node.dir/build.make nato-avt-341-stack/avt_341/src/communication/communication/CMakeFiles/avt_341_comm_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/communication/communication /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/communication/communication /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/communication/communication/CMakeFiles/avt_341_comm_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/communication/communication/CMakeFiles/avt_341_comm_node.dir/build.make nato-avt-341-stack/avt_341/src/communication/communication/CMakeFiles/avt_341_comm_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/communication/communication/CMakeFiles/avt_341_comm_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 54%] Built target avt_341_comm_node
+make -f nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher/CMakeFiles/avt_bot_state_publisher_node.dir/build.make nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher/CMakeFiles/avt_bot_state_publisher_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher/CMakeFiles/avt_bot_state_publisher_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher/CMakeFiles/avt_bot_state_publisher_node.dir/build.make nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher/CMakeFiles/avt_bot_state_publisher_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/control/avt_bot_state_publisher/CMakeFiles/avt_bot_state_publisher_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 55%] Built target avt_bot_state_publisher_node
+make -f nato-avt-341-stack/avt_341/src/control/control/CMakeFiles/avt_341_control_node.dir/build.make nato-avt-341-stack/avt_341/src/control/control/CMakeFiles/avt_341_control_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/control/control /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/control /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/control/CMakeFiles/avt_341_control_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/control/control/CMakeFiles/avt_341_control_node.dir/build.make nato-avt-341-stack/avt_341/src/control/control/CMakeFiles/avt_341_control_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/control/control/CMakeFiles/avt_341_control_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 57%] Built target avt_341_control_node
+make -f nato-avt-341-stack/avt_341/src/control/speed_control/CMakeFiles/avt_341_speed_control_node.dir/build.make nato-avt-341-stack/avt_341/src/control/speed_control/CMakeFiles/avt_341_speed_control_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/control/speed_control /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/speed_control /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/speed_control/CMakeFiles/avt_341_speed_control_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/control/speed_control/CMakeFiles/avt_341_speed_control_node.dir/build.make nato-avt-341-stack/avt_341/src/control/speed_control/CMakeFiles/avt_341_speed_control_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/control/speed_control/CMakeFiles/avt_341_speed_control_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 59%] Built target avt_341_speed_control_node
+make -f nato-avt-341-stack/avt_341/src/control/speed_zones/CMakeFiles/avt_341_speed_zones_node.dir/build.make nato-avt-341-stack/avt_341/src/control/speed_zones/CMakeFiles/avt_341_speed_zones_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/control/speed_zones /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/speed_zones /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/control/speed_zones/CMakeFiles/avt_341_speed_zones_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/control/speed_zones/CMakeFiles/avt_341_speed_zones_node.dir/build.make nato-avt-341-stack/avt_341/src/control/speed_zones/CMakeFiles/avt_341_speed_zones_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/control/speed_zones/CMakeFiles/avt_341_speed_zones_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 60%] Built target avt_341_speed_zones_node
+make -f nato-avt-341-stack/avt_341/src/mission/formation_control/CMakeFiles/avt_341_formation_control_node.dir/build.make nato-avt-341-stack/avt_341/src/mission/formation_control/CMakeFiles/avt_341_formation_control_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/mission/formation_control /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/mission/formation_control /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/mission/formation_control/CMakeFiles/avt_341_formation_control_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/mission/formation_control/CMakeFiles/avt_341_formation_control_node.dir/build.make nato-avt-341-stack/avt_341/src/mission/formation_control/CMakeFiles/avt_341_formation_control_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/mission/formation_control/CMakeFiles/avt_341_formation_control_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 62%] Built target avt_341_formation_control_node
+make -f nato-avt-341-stack/avt_341/src/mission/mission_manager/CMakeFiles/avt_341_mission_manager_node.dir/build.make nato-avt-341-stack/avt_341/src/mission/mission_manager/CMakeFiles/avt_341_mission_manager_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/mission/mission_manager /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/mission/mission_manager /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/mission/mission_manager/CMakeFiles/avt_341_mission_manager_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/mission/mission_manager/CMakeFiles/avt_341_mission_manager_node.dir/build.make nato-avt-341-stack/avt_341/src/mission/mission_manager/CMakeFiles/avt_341_mission_manager_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/mission/mission_manager/CMakeFiles/avt_341_mission_manager_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 70%] Built target avt_341_mission_manager_node
+make -f nato-avt-341-stack/avt_341/src/perception/map_publisher/CMakeFiles/avt_341_map_publisher_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/map_publisher/CMakeFiles/avt_341_map_publisher_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/map_publisher /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/map_publisher /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/map_publisher/CMakeFiles/avt_341_map_publisher_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/map_publisher/CMakeFiles/avt_341_map_publisher_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/map_publisher/CMakeFiles/avt_341_map_publisher_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/map_publisher/CMakeFiles/avt_341_map_publisher_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 71%] Built target avt_341_map_publisher_node
+make -f nato-avt-341-stack/avt_341/src/perception/grid_compression/CMakeFiles/avt_341_grid_compression_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/grid_compression/CMakeFiles/avt_341_grid_compression_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/grid_compression /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/grid_compression /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/grid_compression/CMakeFiles/avt_341_grid_compression_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/grid_compression/CMakeFiles/avt_341_grid_compression_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/grid_compression/CMakeFiles/avt_341_grid_compression_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/grid_compression/CMakeFiles/avt_341_grid_compression_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 72%] Built target avt_341_grid_compression_node
+make -f nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector/CMakeFiles/avt_341_lidar_obstacle_detector_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector/CMakeFiles/avt_341_lidar_obstacle_detector_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector/CMakeFiles/avt_341_lidar_obstacle_detector_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector/CMakeFiles/avt_341_lidar_obstacle_detector_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector/CMakeFiles/avt_341_lidar_obstacle_detector_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/lidar_obstacle_detector/CMakeFiles/avt_341_lidar_obstacle_detector_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 73%] Built target avt_341_lidar_obstacle_detector_node
+make -f nato-avt-341-stack/avt_341/src/perception/perception/CMakeFiles/avt_341_perception_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/perception/CMakeFiles/avt_341_perception_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/perception /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/perception /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/perception/CMakeFiles/avt_341_perception_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/perception/CMakeFiles/avt_341_perception_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/perception/CMakeFiles/avt_341_perception_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/perception/CMakeFiles/avt_341_perception_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 76%] Built target avt_341_perception_node
+make -f nato-avt-341-stack/avt_341/src/perception/obstacles_processor/CMakeFiles/obstacle_processor_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/obstacles_processor/CMakeFiles/obstacle_processor_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/obstacles_processor /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/obstacles_processor /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/obstacles_processor/CMakeFiles/obstacle_processor_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/obstacles_processor/CMakeFiles/obstacle_processor_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/obstacles_processor/CMakeFiles/obstacle_processor_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/obstacles_processor/CMakeFiles/obstacle_processor_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 77%] Built target obstacle_processor_node
+make -f nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation/CMakeFiles/avt_341_lidar_normal_estimation_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation/CMakeFiles/avt_341_lidar_normal_estimation_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation/CMakeFiles/avt_341_lidar_normal_estimation_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation/CMakeFiles/avt_341_lidar_normal_estimation_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation/CMakeFiles/avt_341_lidar_normal_estimation_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/lidar_normal_estimation/CMakeFiles/avt_341_lidar_normal_estimation_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 79%] Built target avt_341_lidar_normal_estimation_node
+make -f nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid/CMakeFiles/avt_341_normal_segmentation_grid_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid/CMakeFiles/avt_341_normal_segmentation_grid_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid/CMakeFiles/avt_341_normal_segmentation_grid_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid/CMakeFiles/avt_341_normal_segmentation_grid_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid/CMakeFiles/avt_341_normal_segmentation_grid_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/normal_segmentation_grid/CMakeFiles/avt_341_normal_segmentation_grid_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 81%] Built target avt_341_normal_segmentation_grid_node
+make -f nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor/CMakeFiles/segmentation_grid_processor_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor/CMakeFiles/segmentation_grid_processor_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor/CMakeFiles/segmentation_grid_processor_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor/CMakeFiles/segmentation_grid_processor_node.dir/build.make nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor/CMakeFiles/segmentation_grid_processor_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/perception/segmentation_grid_processor/CMakeFiles/segmentation_grid_processor_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 82%] Built target segmentation_grid_processor_node
+make -f nato-avt-341-stack/avt_341/src/planning/local/local_planner/CMakeFiles/avt_341_local_planner_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/local_planner/CMakeFiles/avt_341_local_planner_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/local_planner /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/local_planner /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/local_planner/CMakeFiles/avt_341_local_planner_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/planning/local/local_planner/CMakeFiles/avt_341_local_planner_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/local_planner/CMakeFiles/avt_341_local_planner_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/planning/local/local_planner/CMakeFiles/avt_341_local_planner_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 85%] Built target avt_341_local_planner_node
+make -f nato-avt-341-stack/avt_341/src/planning/local/potential_field/CMakeFiles/avt_341_pf_planner_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/potential_field/CMakeFiles/avt_341_pf_planner_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/potential_field /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/potential_field /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/potential_field/CMakeFiles/avt_341_pf_planner_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/planning/local/potential_field/CMakeFiles/avt_341_pf_planner_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/potential_field/CMakeFiles/avt_341_pf_planner_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/planning/local/potential_field/CMakeFiles/avt_341_pf_planner_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 86%] Built target avt_341_pf_planner_node
+make -f nato-avt-341-stack/avt_341/src/planning/local/dwa/CMakeFiles/avt_341_dwa_planner_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/dwa/CMakeFiles/avt_341_dwa_planner_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/dwa /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/dwa /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/dwa/CMakeFiles/avt_341_dwa_planner_node.dir/DependInfo.cmake --color=
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/planning/local/dwa/CMakeFiles/avt_341_dwa_planner_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/dwa/CMakeFiles/avt_341_dwa_planner_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+make[2]: Nothing to be done for 'nato-avt-341-stack/avt_341/src/planning/local/dwa/CMakeFiles/avt_341_dwa_planner_node.dir/build'.
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+[ 91%] Built target avt_341_dwa_planner_node
+make -f nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/depend
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+cd /home/vlad/catkin_ws/build && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /home/vlad/catkin_ws/src /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor /home/vlad/catkin_ws/build /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/DependInfo.cmake --color=
+Scanning dependencies of target goal_point_processor_node
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make -f nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/build.make nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/build
+make[2]: Entering directory '/home/vlad/catkin_ws/build'
+[ 91%] Building CXX object nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/goal_point_processor_node.cpp.o
+cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor && /usr/bin/c++  -DDISABLE_LIBUSB_1_0 -DDISABLE_PCAP -DDISABLE_PNG -DROSCONSOLE_BACKEND_LOG4CXX -DROS_1 -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\"avt_341\" -Dqh_QHpointer -DvtkRenderingContext2D_AUTOINIT="1(vtkRenderingContextOpenGL2)" -DvtkRenderingCore_AUTOINIT="3(vtkInteractionStyle,vtkRenderingFreeType,vtkRenderingOpenGL2)" -I/home/vlad/catkin_ws/devel/include -I/usr/include/vtk-7.1 -I/usr/include/freetype2 -I/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/include -I/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/lib -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/eigen3 -I/usr/include/pcl-1.10 -I/usr/include/ni -I/usr/include/openni2  -std=c++14 -o CMakeFiles/goal_point_processor_node.dir/goal_point_processor_node.cpp.o -c /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/goal_point_processor_node.cpp
+/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/goal_point_processor_node.cpp: In function ‘int main(int, char**)’:
+/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/goal_point_processor_node.cpp:229:24: error: ‘createNode’ is not a member of ‘avt_341::node’
+  229 |     n = avt_341::node::createNode("goal_point_processor");
+      |                        ^~~~~~~~~~
+make[2]: *** [nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/build.make:66: nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/goal_point_processor_node.cpp.o] Error 1
+make[2]: Leaving directory '/home/vlad/catkin_ws/build'
+make[1]: *** [CMakeFiles/Makefile2:8096: nato-avt-341-stack/avt_341/src/planning/local/goal_point_processor/CMakeFiles/goal_point_processor_node.dir/all] Error 2
+make[1]: Leaving directory '/home/vlad/catkin_ws/build'
+make: *** [Makefile:144: all] Error 2
+Base path: /home/vlad/catkin_ws
+Source space: /home/vlad/catkin_ws/src
+Build space: /home/vlad/catkin_ws/build
+Devel space: /home/vlad/catkin_ws/devel
+Install space: /home/vlad/catkin_ws/install
+####
+#### Running command: "make cmake_check_build_system" in "/home/vlad/catkin_ws/build"
+####
+####
+#### Running command: "make -j1" in "/home/vlad/catkin_ws/build"
+####
+Invoking "make -j1" failed

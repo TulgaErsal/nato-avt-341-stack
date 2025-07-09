@@ -1,0 +1,2 @@
+nato-avt-341-stack/avt_341:nato-avt-341-stack/avt_341_msgs
+-DCATKIN_DEVEL_PREFIX=/home/vlad/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/vlad/catkin_ws/install -G Unix Makefiles

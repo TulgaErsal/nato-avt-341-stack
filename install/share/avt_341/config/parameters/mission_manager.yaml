@@ -1,0 +1,39 @@
+# Mission Manager
+# ======================================================================================================================
+follow_scale_x: 15.0                                                                    # X scale distance between vehicles in formation in vehicle coordinates
+follow_scale_y: 10.0                                                                    # Y Scale distance between vehicles in formation in vehicle coordinates
+mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'mission_points.csv')"     # Mission Manager - file describing mission reference points
+fsc_type: 'slow_down_leader'                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
+x_offset_on_path: False                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
+formation_prune_gp: True                                                                # If true prunes the formation controller generated follower global path to the closer point
+follow_goal_threshold: 10.0                                                             # Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal
+
+formation_debug_visualize: False                                                        # Debug visualize formation speed control
+offsets_from_leader: True                                                               # If true, formation offsets calculated from lead vehicle. If false, offsets calculated from next vehicle in column formation
+follower_dist_break: 10.0                                                               # If follower global path distance is less than this amount, follower waits
+follower_dot_threshold: 0.0                                                             # Heading dot product threshold of heading vectors of follower and lead vehicle below which follower vehicle waits
+follower_dot_range: 30.0                                                                # Range within which to apply heading dot product filter
+
+# Mission Manager - Out of formation speed control
+oof:
+  threshold: 15.0                                                                       # Distance threshold after which vehicle considered out of formation
+  const_term: 0.3                                                                       # Initial speed factor subtraction if past threshold
+  lin_slope: 0.03                                                                       # Slope in linear portion of out of formation speed control
+  mult: 1.5                                                                             # Multiplier applied to vehicles out of formation
+
+# Mission Manager - Target of interest
+toi:
+  approach_dist: 15.0                                                                   # Approach distance to target of interest before encircling
+  encircle_radius: 10.0                                                                 # Encircle radius around target of interest
+  encircle_degrees: 180.0                                                               # Encircle degrees around target of interest
+  encircle_cw: True                                                                     # If encircle should be in clock-wise (cw) direction around target of interest
+  goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
+
+# Mission Manager - Object Tracking
+ot:
+  tracking_veh: ""                                                                      # Vehicle doing the tracking. Disabled if empty
+  tracked_veh: ""                                                                       # Vehicle to track. Disabled if empty
+
+# Formation Control
+# ======================================================================================================================
+use_leader_breadcrumbs: True                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.

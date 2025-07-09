@@ -1,0 +1,8 @@
+prefix=/home/vlad/catkin_ws/devel
+
+Name: avt_341
+Description: Description of avt_341
+Version: 0.0.0
+Cflags: -I/home/vlad/catkin_ws/devel/include -I/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341/include
+Libs: -L${prefix}/lib -lavt_341
+Requires: 

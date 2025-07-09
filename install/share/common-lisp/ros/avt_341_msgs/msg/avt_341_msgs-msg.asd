@@ -1,0 +1,38 @@
+
+(cl:in-package :asdf)
+
+(defsystem "avt_341_msgs-msg"
+  :depends-on (:roslisp-msg-protocol :roslisp-utils :nav_msgs-msg
+               :sensor_msgs-msg
+               :std_msgs-msg
+)
+  :components ((:file "_package")
+    (:file "BoundingBox2d" :depends-on ("_package_BoundingBox2d"))
+    (:file "_package_BoundingBox2d" :depends-on ("_package"))
+    (:file "Communication" :depends-on ("_package_Communication"))
+    (:file "_package_Communication" :depends-on ("_package"))
+    (:file "Detection2d" :depends-on ("_package_Detection2d"))
+    (:file "_package_Detection2d" :depends-on ("_package"))
+    (:file "Detection2dArray" :depends-on ("_package_Detection2dArray"))
+    (:file "_package_Detection2dArray" :depends-on ("_package"))
+    (:file "DwaInfo" :depends-on ("_package_DwaInfo"))
+    (:file "_package_DwaInfo" :depends-on ("_package"))
+    (:file "DwaObjective" :depends-on ("_package_DwaObjective"))
+    (:file "_package_DwaObjective" :depends-on ("_package"))
+    (:file "DwaTrajectory" :depends-on ("_package_DwaTrajectory"))
+    (:file "_package_DwaTrajectory" :depends-on ("_package"))
+    (:file "FollowerStatus" :depends-on ("_package_FollowerStatus"))
+    (:file "_package_FollowerStatus" :depends-on ("_package"))
+    (:file "Hypothesis" :depends-on ("_package_Hypothesis"))
+    (:file "_package_Hypothesis" :depends-on ("_package"))
+    (:file "LiorfCloudInfo" :depends-on ("_package_LiorfCloudInfo"))
+    (:file "_package_LiorfCloudInfo" :depends-on ("_package"))
+    (:file "Obstacles" :depends-on ("_package_Obstacles"))
+    (:file "_package_Obstacles" :depends-on ("_package"))
+    (:file "OccupiedCell" :depends-on ("_package_OccupiedCell"))
+    (:file "_package_OccupiedCell" :depends-on ("_package"))
+    (:file "OccupiedCells" :depends-on ("_package_OccupiedCells"))
+    (:file "_package_OccupiedCells" :depends-on ("_package"))
+    (:file "Sinkage" :depends-on ("_package_Sinkage"))
+    (:file "_package_Sinkage" :depends-on ("_package"))
+  ))

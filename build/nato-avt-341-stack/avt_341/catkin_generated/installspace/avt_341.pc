@@ -1,0 +1,8 @@
+prefix=/home/vlad/catkin_ws/install
+
+Name: avt_341
+Description: Description of avt_341
+Version: 0.0.0
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib -lavt_341
+Requires: 

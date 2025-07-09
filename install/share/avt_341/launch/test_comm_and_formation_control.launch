@@ -1,0 +1,159 @@
+<launch>
+<!-- Launch file to test the formation control node.
+It creates one leader and two followers.
+Each vehicle has its own formation controller.
+Each vehicle also has it's own tester.
+The follower nodes will subscribe to the "leader_odometry" topic and their own odometry topic.
+-->
+
+<!-- __________________ Launch the leader node and tester __________________________________________________________________________-->
+  <node name="l_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/veh1_odometry"/> 
+    <remap from="avt_341/follower_status" to="avt_341/veh1_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/veh1_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/veh1_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/veh1_leader_odometry"/>
+    <param name="is_leader" value="true" />
+    <param name="name" value="AGV1"/>
+  </node>
+
+  <node name="l_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for the leader -->
+    <remap from="avt_341/odometry" to="avt_341/veh1_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/veh1_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/veh1_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/veh1_desired_speed"/>
+    <param name="is_leader" value="true" /> 
+    <param name="x_offset" value="0.0" />
+    <param name="y_offset" value="0.0" />
+    <param name="leader_speed" value="5.0" />
+    <param name="name" value="AGV1"/>
+  </node>
+
+<!-- Launch the comm node -->
+  <node name="veh1_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/veh1_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/veh1_recv_comms"/>
+    <remap from="avt_341/follower_status" to="avt_341/veh1_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/veh1_leader_odometry"/>
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="AGV1"/>
+    <param name="scale" value="10.0"/>
+  </node>
+
+<!-- __________________ Launch the first follower and the test node for the first follower __________________________________________-->
+  <node name="f1_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower1_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower1_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower1_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/follower1_leader_odometry"/>
+    <param name="is_leader" value="false" />
+    <param name="follower_dist_gain" value="1.0" />
+    <param name="global_path_point_dist" value="1.0" />
+    <param name="name" value="AGV2"/>
+  </node>
+
+  <node name="f1_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for follower 1 -->
+    <remap from="avt_341/odometry" to="avt_341/follower1_odometry"/> 
+    <remap from="avt_341/follower_status" to="avt_341/follower1_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower1_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower1_desired_speed"/> 
+    <param name="is_leader" value="false" />
+    <param name="x_offset" value="10.0" />
+    <param name="y_offset" value="10.0" />
+    <param name="name" value="AGV2"/>
+  </node>
+
+<!-- Launch the comm node -->
+  <node name="f1_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/follower1_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/follower1_recv_comms"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower1_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/follower1_leader_odometry"/>
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="AGV2"/>
+    <param name="scale" value="10.0"/>
+  </node>
+
+
+<!-- __________________ Launch the 2nd follower and the test node for the 2nd follower _____________________________________________-->
+  <node name="f2_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower2_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower2_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower2_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/follower2_leader_odometry"/>
+    <param name="is_leader" value="false" />
+    <param name="follower_dist_gain" value="1.0" />
+    <param name="global_path_point_dist" value="1.0" />
+    <param name="name" value="CGV1"/>
+  </node>
+
+  <node name="f2_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for follower 2 -->
+    <remap from="avt_341/odometry" to="avt_341/follower2_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower2_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower2_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower2_desired_speed"/>
+    <param name="is_leader" value="false" /> 
+    <param name="x_offset" value="10.0" />
+    <param name="y_offset" value="-10.0" />
+    <param name="name" value="CGV1"/>
+  </node>
+
+  <!-- Launch the comm node -->
+  <node name="f2_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/f2_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/f2_recv_comms"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower2_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/follower2_leader_odometry"/>
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="CGV1"/>
+    <param name="scale" value="10.0"/>
+  </node>
+
+
+<!-- __________________ Launch the 2nd follower and the test node for the 2nd follower _____________________________________________-->
+  <node name="f3_formation_control_node" pkg="avt_341" type="avt_341_formation_control_node" required="true" output="screen" >
+    <remap from="avt_341/odometry" to="avt_341/follower3_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower3_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower3_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower3_desired_speed"/> 
+    <remap from="avt_341/leader_odometry" to="avt_341/follower3_leader_odometry"/>
+    <param name="is_leader" value="false" />
+    <param name="follower_dist_gain" value="1.0" />
+    <param name="global_path_point_dist" value="1.0" />
+    <param name="name" value="CGV2"/>
+  </node>
+
+  <node name="f3_test_formation_control_node" pkg="avt_341" type="avt_341_test_formation_control_node" required="true" output="screen" >
+    <!-- Test node for follower 2 -->
+    <remap from="avt_341/odometry" to="avt_341/follower3_odometry"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower3_status"/> 
+    <remap from="avt_341/global_path" to="avt_341/follower3_global_path"/>
+    <remap from="avt_341/desired_speed" to="avt_341/follower3_desired_speed"/>
+    <param name="is_leader" value="false" /> 
+    <param name="x_offset" value="10.0" />
+    <param name="y_offset" value="-10.0" />
+    <param name="name" value="CGV2"/>
+  </node>
+
+  <!-- Launch the comm node -->
+  <node name="f3_comm_node" pkg="avt_341" type="avt_341_comm_node" required="true" output="screen">
+    <remap from="avt_341/comm_messages" to="avt_341/f3_comm_messages"/>
+    <remap from="avt_341/recv_comms" to="avt_341/f3_recv_comms"/>
+    <remap from="avt_341/follower_status" to="avt_341/follower3_status"/>
+    <remap from="avt_341/leader_odometry" to="avt_341/follower3_leader_odometry"/>
+    <param name="host" value="localhost"/>
+    <param name="port" value="9000"/>
+    <param name="name" value="CGV2"/>
+    <param name="scale" value="10.0"/>
+  </node>
+
+</launch>
+
