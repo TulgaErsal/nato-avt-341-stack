@@ -60,6 +60,7 @@ global mpc_heading = Float64[]
 
 global skipCount = 1
 global solutionFound = false
+global slopeLimited = false
 
 # ---------- (START) PARAMETER SETTERS ----------
 # Note: Must be called before Setup()
@@ -285,6 +286,10 @@ function GetSteering()
 	return 0.0
 end
 
+function GetSlopeLimited()
+	return slopeLimited
+end
+
 function Setup()
 	global safetyMargin
 	global useSegmentation
@@ -444,7 +449,7 @@ function Setup()
 end
 
 function Plan()
-	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint
+	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint, slopeLimited
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -480,8 +485,12 @@ function Plan()
 		# modify speed setpoint if there is significant slope or rms
 		if terrainSlope > slopeThreshold || terrainRMS > rmsThreshold
 			speedSetpoint = speedAroundLargeSlopesAndRMS
+			slopeLimited = true
 		elseif speedSetpoint != cmdSpeedSetpoint
 			speedSetpoint = cmdSpeedSetpoint
+			slopeLimited = false
+		else
+			slopeLimited = false	# For when the limit is the same as commanded
 		end
 
 		#set the new speed limit
