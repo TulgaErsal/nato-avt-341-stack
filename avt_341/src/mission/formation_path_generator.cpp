@@ -39,13 +39,33 @@ void FormationPathGenerator::GenerateLeaderPath(const avt_341::msg::Odometry & l
 
   auto & target_path = params_.x_offset_on_path ? leader_path_history_ : desired_global_path_;
 
+  // 07/10/2025 - EvanVandermate: Moved path pruning before global_path_points_dist check to prune path when leader is not moving.
+  if(params_.prune_global_path){
+    // Remove all poses before closest location in desired_global_path_
+    double min_dist2 = 1e10;
+    int min_index = -1;
+    for(int i = 0; i < desired_global_path_.poses.size(); i++){
+      double dx_i = desired_global_path_.poses[i].pose.position.x - odom.pose.pose.position.x;
+      double dy_i = desired_global_path_.poses[i].pose.position.y - odom.pose.pose.position.y;
+      double dist2_i = dx_i*dx_i + dy_i*dy_i;
+      if(dist2_i < min_dist2){
+        min_dist2 = dist2_i;
+        min_index = i;
+      }
+    }
+    if(min_index > 0){
+      desired_global_path_.poses = std::vector<avt_341::msg::PoseStamped>(desired_global_path_.poses.begin()+min_index,
+                                                                          desired_global_path_.poses.end());
+    }
+  }
+
   const auto & last_pose = target_path.poses.back();
   double dx = target_pose.pose.position.x - last_pose.pose.position.x;
   double dy = target_pose.pose.position.y - last_pose.pose.position.y;
   double dz = target_pose.pose.position.z - last_pose.pose.position.z;
 
   double dist2 = dx*dx + dy*dy + dz*dz;
-  if(dist2 < gpp2_) return;
+  //if(dist2 < gpp2_) return;
 
   target_path.poses.push_back(target_pose);
 
@@ -68,25 +88,6 @@ void FormationPathGenerator::GenerateLeaderPath(const avt_341::msg::Odometry & l
       }
       leader_path_history_.poses = std::vector<avt_341::msg::PoseStamped>(leader_path_history_.poses.begin()+cutoff_index,
                                                                           leader_path_history_.poses.end());
-    }
-  }
-
-  if(params_.prune_global_path){
-    // Remove all poses before closest location in desired_global_path_
-    double min_dist2 = 1e10;
-    int min_index = -1;
-    for(int i = 0; i < desired_global_path_.poses.size(); i++){
-      double dx_i = desired_global_path_.poses[i].pose.position.x - odom.pose.pose.position.x;
-      double dy_i = desired_global_path_.poses[i].pose.position.y - odom.pose.pose.position.y;
-      double dist2_i = dx_i*dx_i + dy_i*dy_i;
-      if(dist2_i < min_dist2){
-        min_dist2 = dist2_i;
-        min_index = i;
-      }
-    }
-    if(min_index > 0){
-      desired_global_path_.poses = std::vector<avt_341::msg::PoseStamped>(desired_global_path_.poses.begin()+min_index,
-                                                                          desired_global_path_.poses.end());
     }
   }
 
