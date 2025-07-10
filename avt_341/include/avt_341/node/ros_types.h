@@ -45,6 +45,7 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Header.h"
+#include "std_msgs/Bool.h"
 
 #include "avt_341_msgs/Communication.h"
 #include "avt_341_msgs/FollowerStatus.h"
@@ -171,6 +172,9 @@ namespace avt_341 {
         using Header = std_msgs::Header;
         using HeaderPtr = const std_msgs::Header::ConstPtr &;
 
+        using Bool = std_msgs::Bool;
+        using BoolPtr = const std_msgs::Bool::ConstPtr &;
+
         using FollowerStatus = avt_341_msgs::FollowerStatus;
         using FollowerStatusPtr = const avt_341_msgs::FollowerStatus::ConstPtr &;
         
@@ -256,6 +260,7 @@ namespace avt_341 {
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
@@ -386,6 +391,9 @@ namespace avt_341 {
 
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
+
+    using Bool = std_msgs::msg::Bool;
+    using BoolPtr = const std_msgs::msg::Bool::SharedPtr;
 
     using DwaInfo = avt_341_msgs::msg::DwaInfo;
     using DwaTrajectory = avt_341_msgs::msg::DwaTrajectory;

@@ -219,6 +219,16 @@ avt_341::msg::Float64MultiArray GetMPCHeading()
     return heading_msg;
 }
 
+avt_341::msg::Bool GetSlopeLimited()
+{
+    bool slope_limited = jl_unbox_bool(jl_call0(j_get_slope_limited));
+    CATCH_JULIA_EXCEPTION;
+    
+    avt_341::msg::Bool slope_limited_msg;
+    slope_limited_msg.data = slope_limited;
+    return slope_limited_msg;
+}
+
 bool NewInputAvailable() {
     return recv_veh_input;
 }
@@ -409,6 +419,7 @@ void InitialiseJuliaAPI()
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
     j_get_heading = jl_get_function(mpc_module, "GetHeading");
+    j_get_slope_limited = jl_get_function(mpc_module, "GetSlopeLimited");
     
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
@@ -545,6 +556,7 @@ int main(int argc, char *argv[])
     auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+    auto slope_limited_pub = node->create_publisher<avt_341::msg::Bool>("avt_341/mpc_slope_limited", 1);
 
     node->log_info("Julia API initialized. Running main loop.");
 
@@ -574,7 +586,7 @@ int main(int argc, char *argv[])
             }
             drive_pub->publish(GetMPCDrive());
 	        heading_pub->publish(GetMPCHeading());
-
+            slope_limited_pub->publish(GetSlopeLimited());
         }
 
         if(reset_called && is_initialized) {

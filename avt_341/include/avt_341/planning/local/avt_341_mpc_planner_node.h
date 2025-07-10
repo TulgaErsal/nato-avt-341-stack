@@ -154,6 +154,9 @@ jl_function_t* j_get_speed = NULL;
 /** @brief Pointer to the Julia function to get the MPC steering */
 jl_function_t* j_get_steering = NULL;
 
+/** @brief Pointer to the Julia function to get slope limiting flag */
+jl_function_t* j_get_slope_limited = NULL;
+
 /** PARAMETER SETTERS */
 jl_function_t* j_set_tire_model = NULL;
 jl_function_t* j_set_num_col_points = NULL;
