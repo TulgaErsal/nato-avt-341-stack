@@ -29,17 +29,17 @@ add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg" NAME_WE)
 add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg" "std_msgs/Header:avt_341_msgs/BoundingBox2d:avt_341_msgs/Hypothesis"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg" "avt_341_msgs/BoundingBox2d:avt_341_msgs/Hypothesis:std_msgs/Header"
 )
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg" NAME_WE)
 add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg" "std_msgs/Header:avt_341_msgs/BoundingBox2d:avt_341_msgs/Hypothesis:avt_341_msgs/Detection2d"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg" "avt_341_msgs/BoundingBox2d:avt_341_msgs/Hypothesis:std_msgs/Header:avt_341_msgs/Detection2d"
 )
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg" NAME_WE)
 add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg" "nav_msgs/Path:geometry_msgs/Point:geometry_msgs/Quaternion:geometry_msgs/PoseStamped:std_msgs/Header:avt_341_msgs/DwaObjective:geometry_msgs/Pose:avt_341_msgs/DwaTrajectory"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg" "geometry_msgs/Quaternion:avt_341_msgs/DwaTrajectory:geometry_msgs/Point:geometry_msgs/Pose:nav_msgs/Path:avt_341_msgs/DwaObjective:std_msgs/Header:geometry_msgs/PoseStamped"
 )
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg" NAME_WE)
@@ -49,7 +49,7 @@ add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg" NAME_WE)
 add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg" "nav_msgs/Path:geometry_msgs/Point:geometry_msgs/Quaternion:geometry_msgs/PoseStamped:std_msgs/Header:avt_341_msgs/DwaObjective:geometry_msgs/Pose"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg" "geometry_msgs/Quaternion:geometry_msgs/Point:geometry_msgs/Pose:nav_msgs/Path:avt_341_msgs/DwaObjective:std_msgs/Header:geometry_msgs/PoseStamped"
 )
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/FollowerStatus.msg" NAME_WE)
@@ -74,7 +74,7 @@ add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg" NAME_WE)
 add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg" "geometry_msgs/Point:geometry_msgs/Quaternion:std_msgs/Header:nav_msgs/MapMetaData:geometry_msgs/Pose:avt_341_msgs/OccupiedCell"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg" "geometry_msgs/Quaternion:geometry_msgs/Point:geometry_msgs/Pose:avt_341_msgs/OccupiedCell:nav_msgs/MapMetaData:std_msgs/Header"
 )
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Sinkage.msg" NAME_WE)
@@ -84,7 +84,7 @@ add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg" NAME_WE)
 add_custom_target(_avt_341_msgs_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg" "sensor_msgs/PointField:std_msgs/Header:sensor_msgs/PointCloud2"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "avt_341_msgs" "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg" "sensor_msgs/PointField:sensor_msgs/PointCloud2:std_msgs/Header"
 )
 
 get_filename_component(_filename "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/srv/LiorfSaveMap.srv" NAME_WE)
@@ -113,19 +113,19 @@ _generate_msg_cpp(avt_341_msgs
 _generate_msg_cpp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_cpp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_cpp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_cpp(avt_341_msgs
@@ -137,7 +137,7 @@ _generate_msg_cpp(avt_341_msgs
 _generate_msg_cpp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_cpp(avt_341_msgs
@@ -167,7 +167,7 @@ _generate_msg_cpp(avt_341_msgs
 _generate_msg_cpp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_cpp(avt_341_msgs
@@ -179,7 +179,7 @@ _generate_msg_cpp(avt_341_msgs
 _generate_msg_cpp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg"
+  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/avt_341_msgs
 )
 
@@ -258,19 +258,19 @@ _generate_msg_eus(avt_341_msgs
 _generate_msg_eus(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_eus(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_eus(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_eus(avt_341_msgs
@@ -282,7 +282,7 @@ _generate_msg_eus(avt_341_msgs
 _generate_msg_eus(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_eus(avt_341_msgs
@@ -312,7 +312,7 @@ _generate_msg_eus(avt_341_msgs
 _generate_msg_eus(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_eus(avt_341_msgs
@@ -324,7 +324,7 @@ _generate_msg_eus(avt_341_msgs
 _generate_msg_eus(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg"
+  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/avt_341_msgs
 )
 
@@ -403,19 +403,19 @@ _generate_msg_lisp(avt_341_msgs
 _generate_msg_lisp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_lisp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_lisp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_lisp(avt_341_msgs
@@ -427,7 +427,7 @@ _generate_msg_lisp(avt_341_msgs
 _generate_msg_lisp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_lisp(avt_341_msgs
@@ -457,7 +457,7 @@ _generate_msg_lisp(avt_341_msgs
 _generate_msg_lisp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_lisp(avt_341_msgs
@@ -469,7 +469,7 @@ _generate_msg_lisp(avt_341_msgs
 _generate_msg_lisp(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg"
+  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/avt_341_msgs
 )
 
@@ -548,19 +548,19 @@ _generate_msg_nodejs(avt_341_msgs
 _generate_msg_nodejs(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_nodejs(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_nodejs(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_nodejs(avt_341_msgs
@@ -572,7 +572,7 @@ _generate_msg_nodejs(avt_341_msgs
 _generate_msg_nodejs(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_nodejs(avt_341_msgs
@@ -602,7 +602,7 @@ _generate_msg_nodejs(avt_341_msgs
 _generate_msg_nodejs(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_nodejs(avt_341_msgs
@@ -614,7 +614,7 @@ _generate_msg_nodejs(avt_341_msgs
 _generate_msg_nodejs(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg"
+  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/avt_341_msgs
 )
 
@@ -693,19 +693,19 @@ _generate_msg_py(avt_341_msgs
 _generate_msg_py(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_py(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
+  "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_py(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_py(avt_341_msgs
@@ -717,7 +717,7 @@ _generate_msg_py(avt_341_msgs
 _generate_msg_py(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/Path.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/PoseStamped.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_py(avt_341_msgs
@@ -747,7 +747,7 @@ _generate_msg_py(avt_341_msgs
 _generate_msg_py(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg"
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Point.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Pose.msg;/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg;/opt/ros/noetic/share/nav_msgs/cmake/../msg/MapMetaData.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/avt_341_msgs
 )
 _generate_msg_py(avt_341_msgs
@@ -759,7 +759,7 @@ _generate_msg_py(avt_341_msgs
 _generate_msg_py(avt_341_msgs
   "/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg"
+  "/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointField.msg;/opt/ros/noetic/share/sensor_msgs/cmake/../msg/PointCloud2.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/avt_341_msgs
 )
 

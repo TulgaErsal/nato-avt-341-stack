@@ -85,31 +85,31 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs
 
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2d.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2d.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2d.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2d.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2d.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2d.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Generating Javascript code from avt_341_msgs/Detection2d.msg"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg
 
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/Detection2dArray.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Generating Javascript code from avt_341_msgs/Detection2dArray.msg"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg
 
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaInfo.js: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Generating Javascript code from avt_341_msgs/DwaInfo.msg"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg
 
@@ -120,13 +120,13 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs
 
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/DwaTrajectory.js: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Generating Javascript code from avt_341_msgs/DwaTrajectory.msg"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg
 
@@ -152,12 +152,12 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs
 
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/nav_msgs/msg/MapMetaData.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/nav_msgs/msg/MapMetaData.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/OccupiedCells.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Generating Javascript code from avt_341_msgs/OccupiedCells.msg"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg
 
@@ -169,8 +169,8 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_nodejs
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/LiorfCloudInfo.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/LiorfCloudInfo.js: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/LiorfCloudInfo.js: /opt/ros/noetic/share/sensor_msgs/msg/PointField.msg
-/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/LiorfCloudInfo.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/LiorfCloudInfo.js: /opt/ros/noetic/share/sensor_msgs/msg/PointCloud2.msg
+/home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg/LiorfCloudInfo.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Generating Javascript code from avt_341_msgs/LiorfCloudInfo.msg"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/share/gennodejs/ros/avt_341_msgs/msg
 

@@ -87,31 +87,31 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py: /h
 
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2d.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2d.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2d.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2d.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2d.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2d.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Generating Python from MSG avt_341_msgs/Detection2d"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg
 
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/BoundingBox2d.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Hypothesis.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_Detection2dArray.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2d.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Generating Python from MSG avt_341_msgs/Detection2dArray"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/Detection2dArray.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg
 
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaInfo.py: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Generating Python from MSG avt_341_msgs/DwaInfo"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaInfo.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg
 
@@ -122,13 +122,13 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py: /h
 
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/nav_msgs/msg/Path.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaObjective.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_DwaTrajectory.py: /opt/ros/noetic/share/geometry_msgs/msg/PoseStamped.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Generating Python from MSG avt_341_msgs/DwaTrajectory"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/DwaTrajectory.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg
 
@@ -154,12 +154,12 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py: /h
 
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/nav_msgs/msg/MapMetaData.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/geometry_msgs/msg/Point.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/geometry_msgs/msg/Pose.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCell.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/nav_msgs/msg/MapMetaData.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_OccupiedCells.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Generating Python from MSG avt_341_msgs/OccupiedCells"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/OccupiedCells.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg
 
@@ -171,8 +171,8 @@ nato-avt-341-stack/avt_341_msgs/CMakeFiles/avt_341_msgs_generate_messages_py: /h
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_LiorfCloudInfo.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_LiorfCloudInfo.py: /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_LiorfCloudInfo.py: /opt/ros/noetic/share/sensor_msgs/msg/PointField.msg
-/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_LiorfCloudInfo.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_LiorfCloudInfo.py: /opt/ros/noetic/share/sensor_msgs/msg/PointCloud2.msg
+/home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg/_LiorfCloudInfo.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/vlad/catkin_ws/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Generating Python from MSG avt_341_msgs/LiorfCloudInfo"
 	cd /home/vlad/catkin_ws/build/nato-avt-341-stack/avt_341_msgs && ../../catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg/LiorfCloudInfo.msg -Iavt_341_msgs:/home/vlad/catkin_ws/src/nato-avt-341-stack/avt_341_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Inav_msgs:/opt/ros/noetic/share/nav_msgs/cmake/../msg -Isensor_msgs:/opt/ros/noetic/share/sensor_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -Iactionlib_msgs:/opt/ros/noetic/share/actionlib_msgs/cmake/../msg -p avt_341_msgs -o /home/vlad/catkin_ws/devel/lib/python3/dist-packages/avt_341_msgs/msg
 
