@@ -7,16 +7,17 @@
 #include "avt_341/avt_341_utils.h"
 #include <std_msgs/Float64.h>
 #include <std_msgs/String.h>
+#include <memory>
 // Globals
-ros::Publisher pub_steering_angle;
-ros::Publisher pub_steering_rate;
-ros::Publisher pub_time_gap;
-ros::Publisher pub_scenario_tag;
-ros::Publisher pub_segment_start;
-ros::Publisher pub_segment_end;
-std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
-ros::Publisher pub_goalPoint;
-ros::Publisher pub_desiredHeading;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>>pub_steering_angle;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>>pub_steering_rate;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>>pub_time_gap;
+std::shared_ptr<avt_341::node::Publisher<std_msgs::String>>pub_scenario_tag;
+std::shared_ptr<avt_341::node::Publisher<std_msgs::Bool>>pub_segment_start;
+std::shared_ptr<avt_341::node::Publisher<std_msgs::Bool>>pub_segment_end;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointStamped>> pub_goalPoint;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_desiredHeading;
+std::shared_ptr<avt_341::node::NodeProxy> n;
 avt_341::msg::Path global_path_input;
 avt_341::msg::Float64MultiArray veh_input;
 avt_341::msg::Float64 speedSetpoint_input;
@@ -39,15 +40,15 @@ void callback_global_path(avt_341::msg::PathPtr global_path) {
 
     std_msgs::String scenario_msg;
     scenario_msg.data = "path_update";
-    pub_scenario_tag.publish(scenario_msg);
+    pub_scenario_tag->publish(scenario_msg);
 
     std_msgs::Bool seg_start_msg;
     seg_start_msg.data = true;
-    pub_segment_start.publish(seg_start_msg);
+    pub_segment_start->publish(seg_start_msg);
 
     std_msgs::Bool seg_end_msg;
     seg_end_msg.data = true;
-    pub_segment_end.publish(seg_end_msg);
+    pub_segment_end->publish(seg_end_msg);
 }
 
 void callback_veh(avt_341::msg::Float64MultiArrayPtr veh) {
@@ -70,7 +71,7 @@ void publishSteeringRate(double current_angle) {
             double steer_rate = (current_angle - last_steer_angle) / dt.toSec();
             std_msgs::Float64 msg;
             msg.data = steer_rate;
-            pub_steering_rate.publish(msg);
+            pub_steering_rate->publish(msg);
         }
     }
     last_steer_angle = current_angle;
@@ -102,7 +103,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 	//Steering angle publishing; could be set in a better place
 	std_msgs::Float64 steer_msg;
 	steer_msg.data = steer_angle;
-	pub_steering_angle.publish(steer_msg);
+	pub_steering_angle->publish(steer_msg);
 
 	//Steering rate
 	publishSteeringRate(steer_angle);
@@ -168,7 +169,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			    float time_gap = speedSetpoint > 0.1f ? distanceToGlobalPoint / speedSetpoint : 0.0f;
 			    std_msgs::Float64 gap_msg;
 			    gap_msg.data = time_gap;
-			    pub_time_gap.publish(gap_msg);
+			    pub_time_gap->publish(gap_msg);
 			}
 			// Check prediction horizon
 			if (distanceToGlobalPoint > (predictionTimeHorizon+0.1)*speedSetpoint){
@@ -224,25 +225,26 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 int main(int argc, char* argv[]) {
     // Initialize ROS node.
      ros::init(argc, argv, "goal_point_processor");
-    ros::NodeHandle nh("~");
+    n = std::make_shared<avt_341::node::NodeProxy>("goal_point_processor");
     // Crate node subscribers
-    auto sub_path = nh.subscribe("/avt_341/global_path", 1, callback_global_path);
-    auto sub_veh = nh.subscribe("/avt_341/veh", 1, callback_veh);
-    auto sub_speed = nh.subscribe("/avt_341/speed_setpoint", 1, callback_speedSetpoint);
-    auto sub_follower_status = nh.subscribe("/avt_341/follower_status", 1, callback_follower_status);
+    auto sub_path = n->create_subscription<avt_341::msg::Path>("avt_341/global_path",1,callback_global_path);
+    auto sub_veh = n->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
+    auto sub_speed = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
+    auto sub_follow = n->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
 
-    pub_time_gap = nh.advertise<std_msgs::Float64>("time_gap", 10);
-    pub_steering_angle = nh.advertise<std_msgs::Float64>("steering_angle", 10);
-    pub_steering_rate = nh.advertise<std_msgs::Float64>("steering_rate", 10);
-    pub_scenario_tag = nh.advertise<std_msgs::String>("scenario_tag", 10); 
-    pub_segment_start = nh.advertise<std_msgs::Bool>("segment_start_tag", 10); 
-    pub_segment_end = nh.advertise<std_msgs::Bool>("segment_end_tag", 10); 
-    pub_goalPoint = nh.advertise<avt_341::msg::PointStamped>("goal_point", 1);
-    pub_desiredHeading = nh.advertise<avt_341::msg::Float64>("desired_heading", 1);
-    nh.param("max_speed", max_speed, 5.0f);
-    nh.param("vehicle_axle_distance_front", la, 1.25f);
-    nh.param("prediction_time_horizon", predictionTimeHorizon, 2.0f);
-    nh.param("front_angle_goal", frontAngleGoal, 1.571f);
+    pub_time_gap = n->create_publisher<avt_341::msg::Float64>("time_gap",10);
+    pub_steering_angle = n->create_publisher<avt_341::msg::Float64>("steering_angle",10);
+    pub_steering_rate = n->create_publisher<avt_341::msg::Float64>("steering_rate",10);
+    pub_scenario_tag = n->create_publisher<std_msgs::String>("scenario_tag",10);
+    pub_segment_start = n->create_publisher<std_msgs::Bool>("segment_start_tag",10);
+    pub_segment_end = n->create_publisher<std_msgs::Bool>("segment_end_tag",10);
+    pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("goal_point",1);
+    pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("desired_heading",1);
+ 
+    n->get_parameter("~max_speed", max_speed, 5.0f);
+    n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
+    n->get_parameter("~prediction_time_horizon", predictionTimeHorizon, 2.0f);
+    n->get_parameter("~front_angle_goal", frontAngleGoal, 1.571f);
     
 
     // Initialize variables
@@ -265,11 +267,10 @@ int main(int argc, char* argv[]) {
             ros_goalPoint.point.y = goal.y;
             ros_goalPoint.point.z = 0.0f;
             ros_goalPoint.header.frame_id = "map";
-            pub_goalPoint.publish(ros_goalPoint);
-
+            pub_goalPoint->publish(ros_goalPoint);
             avt_341::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
-            pub_desiredHeading.publish(ros_desiredHeading);
+            pub_desiredHeading->publish(ros_desiredHeading);
         }
         rosrate.sleep();
         n->spin_some();
