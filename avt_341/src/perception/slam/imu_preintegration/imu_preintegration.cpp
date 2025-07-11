@@ -15,6 +15,38 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+#include "std_msgs/Float64.h"
+
+ros::Publisher pub_pitch_angle;
+ros::Publisher pub_yaw_rate;
+ros::Publisher pub_yaw_angle;
+ros::Publisher pub_forward_accel;
+ros::Publisher pub_roll_angle;
+ros::Publisher pub_lateral_accel;
+ros::Publisher pub_longitudinal_velocity;
+ros::Publisher pub_lateral_velocity;
+ros::Publisher pub_heading_angle;
+ros::Publisher pub_path_curvature;
+ros::Publisher pub_curvature_derivative;
+ros::Publisher pub_forward_speed;
+ros::Publisher pub_actual_forward_speed;
+double last_velocity = 0.0;
+ros::Time last_time;
+std::deque<double> accel_buffer;
+const size_t buffer_size = 50;
+ros::Publisher pub_accel_profile;
+std::deque<double> speed_buffer;
+const size_t speed_buffer_size = 50;
+ros::Publisher pub_speed_profile;
+
+double last_curvature = 0.0;
+ros::Time last_time;
+bool has_last = false;
+
+ros::Publisher pub_jerk;
+double last_accel = 0.0;
+ros::Time last_accel_time;
+bool accel_initialized = false;
 
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
@@ -77,6 +109,22 @@ public:
 
         pubImuOdometry = nh.advertise<avt_341::msg::Odometry>(odomTopic, 2000);
         pubImuPath = nh.advertise<avt_341::msg::Path>("avt_341/slam/imu/path", 1);
+        pub_forward_accel = nh.advertise<std_msgs::Float64>("forward_acceleration", 10);
+        pub_lateral_accel = nh.advertise<std_msgs::Float64>("lateral_acceleration", 10);
+        pub_longitudinal_velocity = nh.advertise<std_msgs::Float64>("longitudinal_velocity", 10);
+        pub_lateral_velocity = nh.advertise<std_msgs::Float64>("lateral_velocity", 10);
+        pub_heading_angle = nh.advertise<std_msgs::Float64>("heading_angle", 10);
+        pub_path_curvature = nh.advertise<std_msgs::Float64>("path_curvature", 10);
+        pub_curvature_derivative = nh.advertise<std_msgs::Float64>("curvature_derivative", 10);
+        pub_yaw_rate = nh.advertise<std_msgs::Float64>("yaw_rate", 10);
+        pub_accel_profile = nh.advertise<std_msgs::Float64>("acceleration_profile", 10);
+        pub_speed_profile = nh.advertise<std_msgs::Float64>("speed_profile", 10);
+        pub_jerk = nh.advertise<std_msgs::Float64>("jerk", 10);
+        pub_yaw_angle = nh.advertise<std_msgs::Float64>("yaw_angle", 10);
+        pub_roll_angle = nh.advertise<std_msgs::Float64>("roll_angle", 10);
+        pub_pitch_angle = nh.advertise<std_msgs::Float64>("pitch_angle", 10);
+        pub_forward_speed = nh.advertise<std_msgs::Float64>("forward_speed", 10);
+        pub_actual_forward_speed = nh.advertise<std_msgs::Float64>("actual_forward_speed", 10);
     }
 
     Eigen::Affine3f odom2affine(avt_341::msg::Odometry odom)
@@ -88,6 +136,20 @@ public:
         tf::Quaternion orientation;
         tf::quaternionMsgToTF(odom.pose.pose.orientation, orientation);
         tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+        
+        //Publishing RPY
+        std_msgs::Float64 roll_msg;
+	roll_msg.data = roll;
+	pub_roll_angle.publish(roll_msg);
+        
+        std_msgs::Float64 pitch_msg;
+	pitch_msg.data = pitch;
+	pub_pitch_angle.publish(pitch_msg);
+
+        std_msgs::Float64 heading_msg;
+	heading_msg.data = yaw;
+	pub_heading_angle.publish(heading_msg);
+        
         return pcl::getTransformation(x, y, z, roll, pitch, yaw);
     }
 
@@ -545,16 +607,124 @@ public:
 
         imuIntegratorImu_->integrateMeasurement(gtsam::Vector3(thisImu.linear_acceleration.x, thisImu.linear_acceleration.y, thisImu.linear_acceleration.z),
                                                 gtsam::Vector3(thisImu.angular_velocity.x, thisImu.angular_velocity.y, thisImu.angular_velocity.z), dt);
+                                                
+        std_msgs::Float64 accel_msg;
+	accel_msg.data = thisImu->linear_acceleration.x;
+	pub_forward_accel.publish(accel_msg);
+	
+	//Acceleration derivative (Jerk)
+	if (accel_initialized) {
+	    ros::Duration dt = thisImu->header.stamp - last_accel_time;
+	    if (dt.toSec() > 0.001) {
+		double jerk_val = (thisImu->linear_acceleration.x - last_accel) / dt.toSec();
+		std_msgs::Float64 jerk_msg;
+		jerk_msg.data = jerk_val;
+		pub_jerk.publish(jerk_msg);
+	    }
+	}
 
+	last_accel = thisImu->linear_acceleration.x;
+	last_accel_time = thisImu->header.stamp;
+	accel_initialized = true;
+	
+	//Acceleration
+	accel_buffer.push_back(thisImu->linear_acceleration.x);
+	if (accel_buffer.size() > buffer_size) accel_buffer.pop_front();
+
+	double sum = std::accumulate(accel_buffer.begin(), accel_buffer.end(), 0.0);
+	double avg_accel = sum / accel_buffer.size();
+
+	std_msgs::Float64 profile_msg;
+	profile_msg.data = avg_accel;
+	pub_accel_profile.publish(profile_msg);
+	std_msgs::Float64 lateral_msg;
+	lateral_msg.data = thisImu->linear_acceleration.y;
+	pub_lateral_accel.publish(lateral_msg);
         // predict odometry
         gtsam::NavState currentState = imuIntegratorImu_->predict(prevStateOdom, prevBiasOdom);
 
         // publish odometry
         avt_341::msg::Odometry odometry;
+        
+        //Yaw rate
+        std_msgs::Float64 yaw_rate_msg;
+	yaw_rate_msg.data = thisImu->angular_velocity.z;
+	pub_yaw_rate.publish(yaw_rate_msg);
+		
+        //Curvature derivative
+        if (has_last) {
+	    ros::Duration dt = thisImu->header.stamp - last_time;
+	    if (dt.toSec() > 0.001) {
+		double k_dot = (curvature_msg.data - last_curvature) / dt.toSec();
+		std_msgs::Float64 kdot_msg;
+		kdot_msg.data = k_dot;
+		pub_curvature_derivative.publish(kdot_msg);
+	    }
+	}
+	last_curvature = curvature_msg.data;
+	last_time = thisImu->header.stamp;
+	has_last = true;
+		
         odometry.header.stamp = thisImu.header.stamp;
         odometry.header.frame_id = odometryFrame;
         odometry.child_frame_id = "odom_imu";
+	std_msgs::Float64 accel_msg;
+	accel_msg.data = thisImu->linear_acceleration.x;
+	
+	//Publishing actual acceleration
+	std_msgs::Float64 actual_speed_msg;
+	actual_speed_msg.data = forward_velocity;
+	pub_actual_forward_speed.publish(actual_speed_msg);
+	
+	//Path curvature approximation
+	double yaw_rate = thisImu->angular_velocity.z;
+	double forward_velocity = odometry.twist.twist.linear.x;
 
+	if (std::abs(forward_velocity) > 0.01) {
+	    std_msgs::Float64 curvature_msg;
+	    curvature_msg.data = yaw_rate / forward_velocity;
+	    pub_path_curvature.publish(curvature_msg);
+	}
+		
+	pub_forward_accel.publish(accel_msg);
+
+	//Speed profile
+	speed_buffer.push_back(odometry.twist.twist.linear.x);
+	if (speed_buffer.size() > speed_buffer_size) speed_buffer.pop_front();
+
+	double speed_sum = std::accumulate(speed_buffer.begin(), speed_buffer.end(), 0.0);
+	double avg_speed = speed_sum / speed_buffer.size();
+
+	std_msgs::Float64 speed_profile_msg;
+	speed_profile_msg.data = avg_speed;
+	pub_speed_profile.publish(speed_profile_msg);
+
+	std_msgs::Float64 lateral_msg;
+	lateral_msg.data = thisImu->linear_acceleration.y;
+	pub_lateral_accel.publish(lateral_msg);
+	
+	std_msgs::Float64 lon_vel_msg;
+	lon_vel_msg.data = odometry.twist.twist.linear.x;
+	pub_longitudinal_velocity.publish(lon_vel_msg);
+	
+	std_msgs::Float64 lat_vel_msg;
+	lat_vel_msg.data = odometry.twist.twist.linear.y;
+	pub_lateral_velocity.publish(lat_vel_msg);
+	
+	//Publish linear acceleration
+	if (!last_time.isZero()) {
+	    ros::Duration dt = thisImu->header.stamp - last_time;
+	    double accel_x = thisImu->linear_acceleration.x;
+
+	    // Integrate acceleration to estimate speed
+	    last_velocity += accel_x * dt.toSec();
+
+	    std_msgs::Float64 speed_msg;
+	    speed_msg.data = last_velocity;
+	    pub_forward_speed.publish(speed_msg);
+	}
+	last_time = thisImu->header.stamp;
+		
         // transform imu pose to ldiar
         gtsam::Pose3 imuPose = gtsam::Pose3(currentState.quaternion(), currentState.position());
         gtsam::Pose3 lidarPose = imuPose.compose(imu2Lidar);

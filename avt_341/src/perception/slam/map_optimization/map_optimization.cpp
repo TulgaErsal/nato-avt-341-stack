@@ -14,7 +14,6 @@
 #include <gtsam/inference/Symbol.h>
 
 #include <set>
-
 #include <message_filters/subscriber.h>
 #include <message_filters/cache.h>
 // #include <message_filters/time_synchronizer.h>
@@ -26,10 +25,35 @@
 #include <GeographicLib/LocalCartesian.hpp>
 #include <eigen_conversions/eigen_msg.h>
 #include <algorithm>
-
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/convert.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include "std_msgs/msg/float64.hpp"
+#include <nav_msgs/Path.h>
 
+ros::Publisher pub_cg_x;
+ros::Publisher pub_cg_y;
+ros::Publisher pub_cg_z;
+ros::Publisher pub_roll;
+ros::Publisher pub_pitch;
+ros::Publisher pub_yaw;
+ros::Publisher pub_trajectory_deviation;
+ros::Publisher pub_position_profile;
+ros::Publisher pub_lateral_deviation;
+ros::Publisher pub_heading_deviation;
+extern nav_msgs::Path global_path;
+
+std::deque<double> heading_buffer;
+const size_t heading_buffer_size = 50;
+ros::Publisher pub_heading_profile;
+nav_msgs::Path global_path;
+
+ros::Publisher pub_path_curvature;
+std::deque<std::pair<geometry_msgs::Point, double>> pose_heading_buffer;
+const size_t curvature_window = 3;
+
+
+ros::Subscriber global_path_sub;
 using namespace gtsam;
 
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
@@ -134,6 +158,7 @@ public:
     ros::Subscriber subGPS;
     ros::Subscriber subLoop;
     ros::Subscriber subAditionalOdom;
+    
     message_filters::Cache<avt_341::msg::Odometry> *cacheAdditionalOdom;
 
     ros::ServiceServer srvSaveMap;
@@ -285,7 +310,19 @@ public:
 
         pubSLAMInfo = nh.advertise<avt_341::msg::LiorfCloudInfo>("avt_341/slam/mapping/slam_info", 1);
         pubGpsOdom = nh.advertise<avt_341::msg::Odometry>("avt_341/slam/mapping/gps_odom", 1);
-
+	pub_cg_x = nh.advertise<std_msgs::Float64>("chassis_cg_x", 10);
+	pub_cg_y = nh.advertise<std_msgs::Float64>("chassis_cg_y", 10);
+	pub_cg_z = nh.advertise<std_msgs::Float64>("chassis_cg_z", 10);
+	pub_roll = nh.advertise<std_msgs::Float64>("chassis_roll", 10);
+	pub_pitch = nh.advertise<std_msgs::Float64>("chassis_pitch", 10);
+	pub_yaw = nh.advertise<std_msgs::Float64>("chassis_yaw", 10);
+	pub_heading_profile = nh.advertise<std_msgs::Float64>("heading_profile", 10);
+	pub_path_curvature = nh.advertise<std_msgs::Float64>("path_curvature", 10);
+	pub_lateral_deviation = nh.advertise<std_msgs::Float64>("lateral_deviation", 10);
+	pub_heading_deviation = nh.advertise<std_msgs::Float64>("heading_deviation", 10);
+	global_path_sub = nh.subscribe<nav_msgs::Path>("/avt_341/global_path", 1, globalPathCallback);
+	pub_trajectory_deviation = nh.advertise<std_msgs::Float64>("trajectory_deviation", 10);
+	pub_position_profile = nh.advertise<geometry_msgs::PointStamped>("position_profile", 10);
         downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
         downSizeFilterLocalMapSurf.setLeafSize(surroundingKeyframeMapLeafSize, surroundingKeyframeMapLeafSize, surroundingKeyframeMapLeafSize);
         downSizeFilterICP.setLeafSize(loopClosureICPSurfLeafSize, loopClosureICPSurfLeafSize, loopClosureICPSurfLeafSize);
@@ -540,12 +577,154 @@ public:
         avt_341::msg::Odometry gps_odom;
         gps_odom.header = gpsMsg->header;
         gps_odom.header.frame_id = "map";
+        
         gps_odom.pose.pose.position.x = trans_local_[0];
+        std_msgs::msg::Float64 cg_x_msg;
+	cg_x_msg.data = gps_odom.pose.pose.position.x;
+	pub_cg_x->publish(cg_x_msg);
+
+        
         gps_odom.pose.pose.position.y = trans_local_[1];
+        std_msgs::msg::Float64 cg_y_msg;
+	cg_y_msg.data = gps_odom.pose.pose.position.y;
+	pub_cg_y->publish(cg_y_msg);
+
+
         gps_odom.pose.pose.position.z = trans_local_[2];
-        gps_odom.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, 0.0);
-        pubGpsOdom.publish(gps_odom);
-        gpsQueue.push_back(gps_odom);
+        
+        if (!global_path.poses.empty()) {
+	    geometry_msgs::Point actual = gps_odom.pose.pose.position;
+	    double min_dist = std::numeric_limits<double>::max();
+
+	    for (const auto& pose_stamped : global_path.poses) {
+		const geometry_msgs::Point& ref = pose_stamped.pose.position;
+		double dx = ref.x - actual.x;
+		double dy = ref.y - actual.y;
+		double dist = std::hypot(dx, dy);
+		if (dist < min_dist) min_dist = dist;
+	    }
+
+	    std_msgs::Float64 deviation_msg;
+	    deviation_msg.data = min_dist;
+	    pub_trajectory_deviation.publish(deviation_msg);
+	}
+        std_msgs::msg::Float64 cg_z_msg;
+	cg_z_msg.data = gps_odom.pose.pose.position.z;
+	pub_cg_z->publish(cg_z_msg);
+       gps_odom.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, 0.0);
+
+	tf2::Quaternion quat_tf;
+	tf2::fromMsg(gps_odom.pose.pose.orientation, quat_tf);
+
+	double roll_val, pitch_val, yaw_val;
+	tf2::Matrix3x3(quat_tf).getRPY(roll_val, pitch_val, yaw_val);
+	
+	//Heading profile
+	heading_buffer.push_back(yaw);
+	if (heading_buffer.size() > heading_buffer_size)
+	    heading_buffer.pop_front();
+
+	double sum_heading = std::accumulate(heading_buffer.begin(), heading_buffer.end(), 0.0);
+	double avg_heading = sum_heading / heading_buffer.size();
+	
+	//Path curvature profile
+	pose_heading_buffer.push_back({gps_odom.pose.pose.position, yaw_val});
+	if (pose_heading_buffer.size() > curvature_window)
+	    pose_heading_buffer.pop_front();
+
+	if (pose_heading_buffer.size() == curvature_window) {
+	    const auto& p1 = pose_heading_buffer[0];
+	    const auto& p3 = pose_heading_buffer[2];
+
+	    double dx = p3.first.x - p1.first.x;
+	    double dy = p3.first.y - p1.first.y;
+	    double ds = std::hypot(dx, dy);
+	    double dtheta = p3.second - p1.second;
+
+	    if (ds > 1e-3) {
+		std_msgs::Float64 curvature_msg;
+		curvature_msg.data = dtheta / ds;
+		pub_path_curvature.publish(curvature_msg);
+	    }
+	}
+
+	
+	//Lateral deviation
+	if (!global_path.poses.empty()) {
+	    const geometry_msgs::Point& actual = gps_odom.pose.pose.position;
+	    double min_dist = std::numeric_limits<double>::max();
+
+	    for (const auto& pose_stamped : global_path.poses) {
+		const geometry_msgs::Point& ref = pose_stamped.pose.position;
+		double dx = ref.x - actual.x;
+		double dy = ref.y - actual.y;
+		double dist = std::hypot(dx, dy);
+		if (dist < min_dist) min_dist = dist;
+	    }
+
+	    std_msgs::Float64 lateral_dev_msg;
+	    lateral_dev_msg.data = min_dist;
+	    pub_lateral_deviation.publish(lateral_dev_msg);
+	}
+		
+	std_msgs::Float64 profile_msg;
+	profile_msg.data = avg_heading;
+	pub_heading_profile.publish(profile_msg);
+
+	std_msgs::msg::Float64 roll_msg;
+	roll_msg.data = roll_val;
+	pub_roll->publish(roll_msg);
+
+	std_msgs::msg::Float64 pitch_msg;
+	pitch_msg.data = pitch_val;
+	pub_pitch->publish(pitch_msg);
+
+	std_msgs::msg::Float64 yaw_msg;
+	yaw_msg.data = yaw_val;
+	pub_yaw->publish(yaw_msg);
+	
+	geometry_msgs::PointStamped pos_msg;
+	pos_msg.header = gps_odom.header;
+	pos_msg.point = gps_odom.pose.pose.position;
+	pub_position_profile.publish(pos_msg);
+	
+	//Deviation from path heading
+	if (!global_path.poses.empty()) {
+	    const geometry_msgs::Point& current_pos = gps_odom.pose.pose.position;
+
+	    double min_dist = std::numeric_limits<double>::max();
+	    int closest_idx = -1;
+
+	    for (int i = 0; i < global_path.poses.size(); ++i) {
+		const geometry_msgs::Point& ref = global_path.poses[i].pose.position;
+		double dx = ref.x - current_pos.x;
+		double dy = ref.y - current_pos.y;
+		double dist = std::hypot(dx, dy);
+		if (dist < min_dist) {
+		    min_dist = dist;
+		    closest_idx = i;
+		}
+	    }
+
+	    if (closest_idx >= 1 && closest_idx < global_path.poses.size()) {
+		const auto& prev = global_path.poses[closest_idx - 1].pose.position;
+		const auto& next = global_path.poses[closest_idx].pose.position;
+
+		double path_heading = std::atan2(next.y - prev.y, next.x - prev.x);
+		double heading_deviation = yaw_val - path_heading;
+
+		// Normalize to [-π, π]
+		while (heading_deviation > M_PI) heading_deviation -= 2 * M_PI;
+		while (heading_deviation < -M_PI) heading_deviation += 2 * M_PI;
+
+		std_msgs::Float64 heading_dev_msg;
+		heading_dev_msg.data = heading_deviation;
+		pub_heading_deviation.publish(heading_dev_msg);
+	    }
+	}
+
+	pubGpsOdom.publish(gps_odom);
+	gpsQueue.push_back(gps_odom);
     }
 
     void pointAssociateToMap(PointType const *const pi, PointType *const po)
@@ -2504,6 +2683,11 @@ public:
     }
 };
 
+
+void globalPathCallback(const nav_msgs::Path::ConstPtr& msg) {
+    global_path = *msg;
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "liorf");
@@ -2538,6 +2722,9 @@ int main(int argc, char **argv)
            << "isAltLidar"
            << std::endl;
     myfile.close();
+    pub_cg_x = node->create_publisher<std_msgs::msg::Float64>("chassis_cg_x", 10);
+    pub_cg_y = node->create_publisher<std_msgs::msg::Float64>("chassis_cg_y", 10);
+    pub_cg_z = node->create_publisher<std_msgs::msg::Float64>("chassis_cg_z", 10);
     calibration_file.open("calibration.txt", std::ifstream::out | std::ifstream::trunc);
     // create a header for             calibration_file << angleICP << " " << angleIMU << " " << angleDiff << " " << std::get<0>(rpyICP) << " " << std::get<0>(rpyIMU) << " " << std::get<1>(rpyICP) << " " << std::get<1>(rpyIMU) << " " << std::get<2>(rpyICP) << " " << std::get<2>(rpyIMU) << " " << dxyzICP(0) << " " << dxyzICP(1) << " " << dxyzICP(2) << " " << std::endl;
 

@@ -71,7 +71,7 @@
   <arg name="ff_a2" default="0.0" doc="2nd order coeff in the feed-forward model"/>
   <arg name="max_desired_lateral_g" default="0.75" doc="Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2" />
 
-  <rosparam file="$(arg waypoints_file)" />
+  <param name="waypoints_file" value="$(arg waypoints_file)"/>
   <param name="robot_description" command="cat $(arg robot_description_file)" />
 
   <group if="$(eval env('ROS_DISTRO') =='noetic')"> 
