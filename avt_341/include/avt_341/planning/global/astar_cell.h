@@ -12,17 +12,17 @@ class AStarCell {
      * \param c The cost associated with the cell
      */
     AStarCell(int i, float c) : idx(i),cost(c) {}
-};
 
 // the top of the priority queue is the greatest element by default,
 // but we want the smallest, so flip the sign
-bool operator<(const AStarCell &n1, const AStarCell &n2) {
-  return n1.cost > n2.cost;
-}
+  inline friend bool operator<(const AStarCell &n1, const AStarCell &n2) {
+    return n1.cost > n2.cost;
+  }
 
-bool operator==(const AStarCell &n1, const AStarCell &n2) {
-  return n1.idx == n2.idx;
-}
+  inline friend bool operator==(const AStarCell &n1, const AStarCell &n2) {
+    return n1.idx == n2.idx;
+  }
+};
 
 #endif
 
