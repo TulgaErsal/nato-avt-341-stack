@@ -159,9 +159,6 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
 			float distanceToGlobalPoint = (globalPoint-vehiclePosition).mag();
-			avt_341::utils::vec2 v1(cos(yaw), sin(yaw));
-			avt_341::utils::vec2 v2 = globalPoint-vehiclePosition;
-			float angleToGlobalPoint = acos(dot(v1,v2)/(v1.mag()*v2.mag()));
 			// Check prediction horizon
 			if (distanceToGlobalPoint > (predictionTimeHorizon+0.1)*speedSetpoint){
 				break;
