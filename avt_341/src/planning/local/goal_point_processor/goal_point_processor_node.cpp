@@ -112,40 +112,28 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
     if (follower_status_input.use_leader) { //asked to follow a leader
 		if (!priorUseLeader){
-			priorUseLeader = true;
+            priorUseLeader = true;
         }
-        //if there is a reduction in global path length, assume the leader changed and reset the priorIndex
-		if (global_path.poses.size() < priorPathLength) {
-			priorIndex = 0;
+        // Find nearest index on global path starting from the beginning
+        float distanceToGlobalPoint = -1;
+        int closestIndex = 0;
+        for (int gp = 0; gp < global_path.poses.size(); gp++) {
+            globalPoint.x = global_path.poses[gp].pose.position.x;
+            globalPoint.y = global_path.poses[gp].pose.position.y;
+            float currentDistance = (globalPoint - vehiclePosition).mag();
+            if (distanceToGlobalPoint < 0 || currentDistance < distanceToGlobalPoint) {
+                distanceToGlobalPoint = currentDistance;
+                closestIndex = gp;
+            }
         }
-		priorPathLength = global_path.poses.size();
 
-		//find nearest index on global path starting from priorIndex
-		float distanceToGlobalPoint = -1;
-		int closestIndex = priorIndex;
-		for (int gp=priorIndex;gp<global_path.poses.size();gp++) {
-			globalPoint.x = global_path.poses[gp].pose.position.x;
+        // move along global path starting from closestIndex until you exceed prediction horizon
+        for (int gp = closestIndex; gp < global_path.poses.size(); gp++) {
+            globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
-			float currentDistance = (globalPoint-vehiclePosition).mag();
-			if (distanceToGlobalPoint < 0) {
-				distanceToGlobalPoint = currentDistance;
-				closestIndex = gp;
-				continue;
-            }
-			if (currentDistance < distanceToGlobalPoint) {
-				distanceToGlobalPoint = currentDistance;
-				closestIndex = gp;
-            }
-		}
-		priorIndex = closestIndex;
-
-		// move along global path starting from closestIndex until you exceed prediction horizon
-		for (int gp=priorIndex;gp<global_path.poses.size();gp++) {
-			globalPoint.x = global_path.poses[gp].pose.position.x;
-            globalPoint.y = global_path.poses[gp].pose.position.y;
-			distanceToGlobalPoint = (globalPoint-vehiclePosition).mag();
-			if (distanceToGlobalPoint > (predictionTimeHorizon+0.1)*speedSetpoint) {
-				break;
+            distanceToGlobalPoint = (globalPoint - vehiclePosition).mag();
+            if (distanceToGlobalPoint > (predictionTimeHorizon + 0.1) * speedSetpoint) {
+                break;
             }
         }
     }
