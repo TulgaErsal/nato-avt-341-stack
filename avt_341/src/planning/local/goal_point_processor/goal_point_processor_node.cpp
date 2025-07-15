@@ -162,12 +162,6 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			avt_341::utils::vec2 v1(cos(yaw), sin(yaw));
 			avt_341::utils::vec2 v2 = globalPoint-vehiclePosition;
 			float angleToGlobalPoint = acos(dot(v1,v2)/(v1.mag()*v2.mag()));
-			if (follower_status_input.use_leader) {
-			    float time_gap = speedSetpoint > 0.1f ? distanceToGlobalPoint / speedSetpoint : 0.0f;
-			    avt_341::msg::Float64 gap_msg;
-			    gap_msg.data = time_gap;
-			    pub_time_gap->publish(gap_msg);
-			}
 			// Check prediction horizon
 			if (distanceToGlobalPoint > (predictionTimeHorizon+0.1)*speedSetpoint){
 				break;
