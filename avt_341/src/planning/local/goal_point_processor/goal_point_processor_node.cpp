@@ -64,8 +64,9 @@ void callback_follower_status(avt_341::msg::FollowerStatusPtr follower_status) {
 void publishSteeringRate(double current_angle) {
     if (steer_initialized) {
         avt_341::msg::Duration dt = n->get_stamp() - last_steer_time;
-        if (dt.seconds() > 0.001) {
-            double steer_rate = (current_angle - last_steer_angle) / dt.seconds();
+        double seconds_since_last_update = avt_341::node::seconds_from_time(dt);
+        if (seconds_since_last_update > 0.001) {
+            double steer_rate = (current_angle - last_steer_angle) / seconds_since_last_update;
             avt_341::msg::Float64 msg;
             msg.data = steer_rate;
             pub_steering_rate->publish(msg);

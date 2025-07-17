@@ -93,6 +93,10 @@ namespace avt_341 {
             return t.toSec();
         }
 
+        inline double seconds_from_time(ros::Duration t){
+            return t.toSec();
+        }
+
         inline double seconds_from_header(std_msgs::Header header){
             return header.stamp.toSec();
         }
