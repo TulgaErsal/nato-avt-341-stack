@@ -14,6 +14,11 @@ from launch.some_substitutions_type import SomeSubstitutionsType
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess, GroupAction
 from launch_ros.actions import Node, SetParameter
 
+
+# Global Constants
+avt_341_dir = get_package_share_directory('avt_341')
+mrzr_tools_dir = get_package_share_directory('mrzr_tools')
+
 # Global Params
 global_params = {
     '/map_origin_x': 7885314.3400268555, #7885721.697, #7885314.3400268555,
@@ -21,6 +26,23 @@ global_params = {
     '/grid_height': 2290.0, #877.0 #2290.0                       # Grid height.
     '/grid_width': 2955.0 #759.0 #2955.0                        # Grid width.
 }
+vehicle_namespaces = ['mrzr','mrzr2','feda']
+vehicle_config_folders = [f'{avt_341_dir}/parameters/config_mrzr',f'{avt_341_dir}/parameters/config_mrzr',f'{avt_341_dir}/parameters/config_mrzr']
+
+class ArrayIndexSubstitution(Substitution):
+
+    def __init__(self, sub_val: SomeSubstitutionsType, idx: int):
+        self.__sub_val = sub_val
+        self.__idx = idx
+
+    def describe(self):
+        return 'ArrayIndexSubstitution(%s %d)' % (self.__sub_val.describe(), self.__idx)
+
+    def perform(self, context: launch.LaunchContext):
+        array_val = self.__sub_val.perform(context)
+        # array_val is current a string, need to parse
+        array_val = array_val.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
+        return array_val[self.__idx]
 
 class TernarySubstitution(Substitution):
 
@@ -39,7 +61,10 @@ class TernarySubstitution(Substitution):
             return self.__false_val.perform(context)
 
 # tf publishers
-def tf2_nodes():
+def tf2_nodes(context):
+    veh_index = LaunchConfiguration('veh_index')
+    idx = int(veh_index.perform(context))
+    vehicle_name = vehicle_namespaces[idx]
     return [
         Node(
             package='tf2_ros',
@@ -72,10 +97,16 @@ def tf2_nodes():
             arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "os_sensor"]
         ),
         Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='nad83_link_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "nad83", "epsg_6495"]
+        ),
+        Node(
             package='mrzr_tools',
             executable='mrzr_tf2_server.py',
             name='mrzr_tf2_server',
-            namespace='/mrzr',
+            namespace=f'/{vehicle_name}',
             output='screen',
             parameters=[{
                 'publish_odom': True,
@@ -83,9 +114,9 @@ def tf2_nodes():
                 'odom_topic': 'avt_341/odometry',
             }],
             remappings=[
-                ("/mrzr/vectornav/gnss", "/vectornav/gnss"),
-                ("/mrzr/vectornav/pose", "/vectornav/pose"),
-                ("/mrzr/steering_status", "/steering_status")
+                ("vectornav/gnss", "/vectornav/gnss"),
+                ("vectornav/pose", "/vectornav/pose"),
+                ("steering_status", "/steering_status")
             ]
         )
     ]
@@ -149,19 +180,21 @@ def launch_setup(context, *args, **kwargs):
     record = LaunchConfiguration('record')
     record_select_topic = LaunchConfiguration('record_select_topic')
     record_topics = LaunchConfiguration('record_topics')
+    enable_logging = LaunchConfiguration('enable_logging')
     use_sim_time = LaunchConfiguration('use_sim_time')
     separate_camera_bag = LaunchConfiguration('separate_camera_bag')
     compress_cameras = LaunchConfiguration('compress_cameras')
     disable_sensor_drivers = LaunchConfiguration('disable_sensor_drivers')
     enable_joystick = LaunchConfiguration('enable_joystick')
     auto_launch_rviz = LaunchConfiguration('auto_launch_rviz')
+    veh_index = LaunchConfiguration('veh_index')
 
-    avt_341_dir = get_package_share_directory('avt_341')
-    mrzr_tools_dir = get_package_share_directory('mrzr_tools')
+    idx = int(veh_index.perform(context))
+    vehicle_name = vehicle_namespaces[idx]
 
     mrzr_nodes = [
         # Transform servers
-        *tf2_nodes(),
+        *tf2_nodes(context),
 
         # Recording node
         *recording_node(context),
@@ -171,7 +204,7 @@ def launch_setup(context, *args, **kwargs):
             package='mrzr_tools',
             executable='mrzr_speed_republish_node',
             name='mrzr_speed_republish_node',
-            namespace='/mrzr',
+            namespace=f'/{vehicle_name}',
             remappings=[
                 ("/mrzr/speed_actual", "/speed_actual")
             ]
@@ -182,19 +215,19 @@ def launch_setup(context, *args, **kwargs):
             package='mrzr_tools',
             executable='compressed_occupancy_viz_node.py',
             name='compressed_grid_viz_node',
-            namespace='/mrzr',
+            namespace=f'/{vehicle_name}',
             remappings=[
                 ("map_in", "avt_341/occupied_cells"),
                 ("markers_out", "avt_341/occupied_cells_markers")
             ]
         ),
 
-        # Wheelspeed publisher
+        # Logging topic remapping
         Node(
             package='mrzr_tools',
-            executable='wheelspeed_pub_node.py',
-            name='wheelspeed_pub_node',
-            namespace='/mrzr'
+            executable='avt_341_topic_remaps.py',
+            name='mrzr_logging_remap_node',
+            namespace=f'/{vehicle_name}'
         ),
 
         # Controller
@@ -227,9 +260,9 @@ def launch_setup(context, *args, **kwargs):
                 "robot_description_veh4_file":	"",
                 "num_vehicles":	                "1",
                 "namespace_single_vehicle":	    "True",
-                "vehicle_namespaces":	        "['mrzr']",
-                "vehicle_config_folders":	    f"['{avt_341_dir}/parameters/config_mrzr']",
-                "veh_index":	                "0",
+                "vehicle_namespaces":	        str(vehicle_namespaces),
+                "vehicle_config_folders":	    str(vehicle_config_folders),
+                "veh_index":	                f"{veh_index.perform(context)}",
                 "use_rqt_display":	            "False",
                 "rviz_config":	                f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
                 "rviz_mult_config":	            f"{avt_341_dir}/rviz/avt_341_multi_vehicle.rviz",
@@ -239,6 +272,7 @@ def launch_setup(context, *args, **kwargs):
                 "waypoint_mode":	            waypoint_mode.perform(context),
                 "simulation_mode":	            simulation_mode.perform(context),
                 "use_global_path":	            use_global_path.perform(context),
+                "enable_logging":               enable_logging.perform(context),
             }.items()
         )
     ]
@@ -257,12 +291,14 @@ def generate_launch_description():
         "record":	                ["False",	                                    "Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"],
         "record_select_topic":	    ["False",	                                    "Record only topics defined in 'record_topics'"],
         "record_topics":	        ["/cmd_vel /vectornav/GPS /mrzr/avt_341/forward_speed", "Topics to record as a space separated list (only for record_select_topic=true)"],
+        "enable_logging":           ["False",                                       "Enable standardized vehicle logging for V&V efforts"],
         "use_sim_time":	            ["False",	                                    "Use simulation time, usefull for running stack on recorded telemetry bag file"],
         "separate_camera_bag":	    ["True",	                                    "Separate camera topics into a separate bag file"],
         "compress_cameras":	        ["True",	                                    "Only save compressed camera topics (only for separate_camera_bag=true)"],
         "disable_sensor_drivers":   ["False",	                                    "Disable sensor drivers from launching. Drivers are already disabled if simulation_mode is set to true."],
         "enable_joystick":	        ["True",	                                    "Enable the stack controller joystick. WARNING: This will enable the avt-341 stack to publish directly to /cmd_vel"],
-        "auto_launch_rviz":	        ["True",	                                    "Automatically launch rviz"]
+        "auto_launch_rviz":	        ["True",	                                    "Automatically launch rviz"],
+        "veh_index":	            ["0",	                                        f"Vehicle index of {vehicle_namespaces}"]
     }
     launch_args = []
     for arg,[default,desc] in launch_arg_dict.items():
