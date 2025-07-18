@@ -136,11 +136,11 @@ int main(int argc, char **argv) {
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
 
 
-    nh->get_parameter("~oof/threshold", fsc_params.oof_threshold, 15.0);
+    nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
     nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
-    nh->get_parameter("~oof/const_term", fsc_params.oof_const_term, 0.3);
-    nh->get_parameter("~oof/lin_slope", fsc_params.oof_lin_slope, 0.03);
-    nh->get_parameter("~oof/mult", fsc_params.oof_mult, 1.5);
+    nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
+    nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
+    nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
     nh->get_parameter("~formation_debug_visualize", fsc_params.debug_visualize, false);
     nh->get_parameter("~offsets_from_leader", formation_params.offsets_from_leader, true);
     nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
@@ -149,14 +149,14 @@ int main(int argc, char **argv) {
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
-    nh->get_parameter("~toi/approach_dist", toi_params.approach_dist, 15.0f);
-    nh->get_parameter("~toi/encircle_radius",  toi_params.encircle_radius, 10.0f);
-    nh->get_parameter("~toi/encircle_degrees", toi_params.encircle_degrees, 180.0f);
-    nh->get_parameter("~toi/encircle_cw", toi_params.encircle_cw, true);
-    nh->get_parameter("~toi/goal_threshold", toi_params.goal_threshold, 5.0f);
+    nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
+    nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
+    nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
+    nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
+    nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
 
-    nh->get_parameter("~ot/tracking_veh", tracking_veh, std::string(""));
-    nh->get_parameter("~ot/tracked_veh", tracked_veh, std::string(""));
+    nh->get_parameter("~ot_tracking_veh", tracking_veh, std::string(""));
+    nh->get_parameter("~ot_tracked_veh", tracked_veh, std::string(""));
     tracking_veh = toUpper(tracking_veh);
     tracked_veh = toUpper(tracked_veh);
 
