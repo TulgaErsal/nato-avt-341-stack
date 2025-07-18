@@ -214,8 +214,8 @@ int main(int argc, char* argv[]) {
     pub_scenario_tag = n->create_publisher<avt_341::msg::String>("scenario_tag",10);
     pub_segment_start = n->create_publisher<avt_341::msg::Bool>("segment_start_tag",10);
     pub_segment_end = n->create_publisher<avt_341::msg::Bool>("segment_end_tag",10);
-    pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("goal_point",1);
-    pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("desired_heading",1);
+    pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1);
+    pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1);
  
     n->get_parameter("~max_speed", max_speed, 5.0f);
     n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);

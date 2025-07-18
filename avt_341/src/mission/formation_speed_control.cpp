@@ -88,15 +88,10 @@ namespace avt_341 {
 
       //If distance between vehicles is less than followerHeadingDistLimit_ meters, the vehicles are too close and distance cannot be used.
       double speed_factor = 1.0;
-      if(dist < fsc_params_.oof_threshold){
-        if(dotP > 0){
-          speed_factor = dotP * fsc_params_.oof_mult + speedHeading;
-        }
-        else{
-          return 0.0; //Follower Vehicle is heading in the wrong direction. So stop.
-        }
+      if(dotP <= 0){
+        return 0.0; //Follower Vehicle is heading in the wrong direction. So stop.
       }
-      else{
+      else if(dist > fsc_params_.oof_threshold){
         speed_factor = dist * fsc_params_.oof_mult + speedHeading;
       }
       return std::min(std::max(speed_factor, 0.0), fsc_params_.max_speed_factor);

@@ -17,6 +17,7 @@ body_min_y: -1.0                                                # Minimum y for 
 body_min_z: -0.3                                                # Minimum z for vehicle body bounding box, to exclude from obstacle detection [m]
 
 obstacle_scale: 1.0                                             # Scale to search for neighnor obstacle points [m]
+obstacle_min_neighbors: 20                                      # Minimum neighboring obstacle points [points]
 
 # Frames
 # ======================================================================================================================

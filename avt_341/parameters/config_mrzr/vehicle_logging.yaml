@@ -35,29 +35,58 @@ log_topics:
     type: 'nav_msgs/msg/Odometry'
     units: 'm'
 
-  # Orientation of the vehicle body about x,y,z axis (roll, pitch, yaw)
-  - name: '{vehicles}_{orientation_keys}'
-    topic: '/{vehicles}/avt_341/odometry'
-    field: 'pose.pose.orientation'
-    type: 'nav_msgs/msg/Odometry'
+  # Orientation of the vehicle body about x axis (roll)
+  - name: '{vehicles}_roll'
+    topic: '/vbox/roll'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'deg'
 
-  # Acceleration of the vehicle CG in the x,y,z axis
-  - name: '{vehicles}_{accel_items.name}'
-    topic: '/{vehicles}/avt_341/vehicle_cg/accel'
-    field: 'accel.linear.{accel_items.field}'
-    type: 'geometry_msgs/msg/AccelStamped'
-    units: 'm/s^2'
+  # Orientation of the vehicle body about y axis (pitch)
+  - name: '{vehicles}_pitch'
+    topic: '/vbox/pitch'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'deg'
+
+  # Orientation of the vehicle body about z axis (yaw)
+  - name: '{vehicles}_yaw'
+    topic: '/vbox/yaw'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'deg'
+
+  # Acceleration of the vehicle CG in the x axis
+  - name: '{vehicles}_forward_accel'
+    topic: '/vbox/forwardaccel'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'g'
+
+  # Acceleration of the vehicle CG in the y axis
+  - name: '{vehicles}_lateral_accel'
+    topic: '/vbox/lateralaccel'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'g'
+
+  # Acceleration of the vehicle CG in the z axis
+  - name: '{vehicles}_vertical_accel'
+    topic: '/vbox/verticalaccel'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'g'
 
   # Speed of the vehicle CG in the x-axis
   - name: '{vehicles}_forward_speed'
-    topic: '/{vehicles}/avt_341/forward_speed'
+    topic: '/vbox/forwardspeed'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'm/s'
+    units: 'km/h'
 
   # Front wheel angle position
   - name: '{vehicles}_steering_angle'
-    topic: '/{vehicles}/steering_angle'
+    topic: '/{vehicles}/avt_341/steering_angle'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rad'
@@ -71,14 +100,21 @@ log_topics:
 
   # Engine torque output
   - name: '{vehicles}_engine_torque'
-    topic: '/{vehicles}/engine_torque'
-    field: 'data'
-    type: 'std_msgs/msg/Float64'
+    topic: ''
+    field: ''
+    type: ''
     units: 'Nm'
 
   # Engine speed output
   - name: '{vehicles}_engine_speed'
     topic: '/{vehicles}/engine_speed'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'rpm'
+
+  # Driveshaft speed output
+  - name: '{vehicles}_driveshaft_speed'
+    topic: '/{vehicles}/driveshaft_speed'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rpm'
@@ -110,16 +146,16 @@ log_topics:
 
   # Desired Throttle Position
   - name: '{vehicles}_desired_throttle'
-    topic: '/{vehicles}/avt_341/cmd_vel'
-    field: 'linear.x'
-    type: 'geometry_msgs/msg/Twist'
+    topic: '/{vehicles}/throttle_rqst'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: '%'
 
   # Desired Brake pressure or Pedal Position
   - name: '{vehicles}_desired_brake'
-    topic: '/{vehicles}/avt_341/cmd_vel'
-    field: 'linear.y'
-    type: 'geometry_msgs/msg/Twist'
+    topic: '/mrzr/brake_rqst'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: '%'
 
   # Local Planned Path X, Y
@@ -152,10 +188,10 @@ log_topics:
 
   # Desired heading angle (desiredHeading)
   - name: '{vehicles}_desired_heading_angle'
-    topic: ''
-    field: ''
-    type: ''
-    units: 'deg'
+    topic: '/{vehicles}/avt_341/mpc_desiredHeading'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'rad'
 
   # Desired longitudinal speed
   - name: '{vehicles}_desired_longitudinal_speed'
