@@ -494,9 +494,11 @@ function Plan()
 		end
 
 		#set the new speed limit
-		n.ocp.XU[7]=speedSetpoint
+		n.ocp.XU[7]= 1.1 * speedSetpoint
+		n.ocp.XL[7]= 0.9 * speedSetpoint
 		for i=1:n.ocp.state.pts
 			setupperbound(n.r.ocp.xUnscaled[i,7],n.ocp.XU[7])
+			setlowerbound(n.r.ocp.xUnscaled[i,7],n.ocp.XL[7])
 		end
 
 		if n.s.mpc.shiftX0
