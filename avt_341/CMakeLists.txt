@@ -288,6 +288,7 @@ if(USING_AMENT)
   find_package(rclpy REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
+  find_package(Eigen3 3.4 REQUIRED)
 
   if(WIN32 OR WIN64)
     set(link_libs ${OpenCV_LIBS})
