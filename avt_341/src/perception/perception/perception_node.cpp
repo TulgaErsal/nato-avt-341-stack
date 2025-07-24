@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <deque>
 #include <algorithm>
 // ros includes
 #include "avt_341/node/ros_types.h"
