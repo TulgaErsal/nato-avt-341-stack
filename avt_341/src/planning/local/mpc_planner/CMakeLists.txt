@@ -65,27 +65,21 @@ if(BUILD_MPC)
         $<BUILD_INTERFACE:${Julia_LIBRARY}>)
     target_compile_definitions(${PROJECT_NAME}_mpc_planner_node
       PUBLIC
-        "MPC_PLANNER_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_commands.jl\""
-        "MPC_PARAMETERS_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_parameters.jl\""
-        "MPC_MODELS_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/mpc_models.jl\""
-        "MPC_SYSIMAGE_PATH=\"${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/sysimage.so\""
+        "MPC_PLANNER_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_commands.jl\""
+        "MPC_PARAMETERS_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_parameters.jl\""
+        "MPC_MODELS_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_models.jl\""
+        "MPC_SYSIMAGE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so\""
         -DJULIA_ENABLE_THREADING)
     install(TARGETS ${PROJECT_NAME}_mpc_planner_node
             EXPORT export_${PROJECT_NAME}
             DESTINATION lib/${PROJECT_NAME})
-    # Copy the Julia modules to the install folder.
-    install(FILES
-              "mpc_models.jl"
-              "mpc_commands.jl"
-              "mpc_parameters.jl"
-            DESTINATION share/${PROJECT_NAME})
     # Try to generate a Julia sysimage (if not already present).
-    if(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/sysimage.so")
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so")
       message(STATUS "Generating Julia sysimage to improve MPC node startup time - this may take a while...")
 
       # Set the input template and output file absolute paths as environment
       # variables so the Julia REPL can access them.
-      set(ENV{JULIA_SYSIMAGE_OUTPUT_PATH} "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/sysimage.so")
+      set(ENV{JULIA_SYSIMAGE_OUTPUT_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so")
       set(ENV{JULIA_SYSIMAGE_TEMPLATE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/mpc_sysimage_template.jl")
 
       # Set the path to the Julia sysimage generator script.
