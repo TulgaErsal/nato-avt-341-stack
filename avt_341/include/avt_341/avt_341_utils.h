@@ -11,6 +11,9 @@
 #include "avt_341/node/ros_types.h"
 #include <iomanip>
 #include <sstream>
+#include <array>
+#include <iostream>
+#include <numeric> // for std::accumulate
 
 namespace avt_341 {
 namespace utils {
@@ -38,10 +41,10 @@ struct vec2{
 		y = y_;
 	}
 
-	vec2 operator+(const vec2& b) { return vec2(this->x + b.x, this->y + b.y); }
-	vec2 operator-(const vec2& b) { return vec2(this->x - b.x, this->y - b.y); }
-	vec2 operator*(const float s) { return vec2(s*this->x, s*this->y); }
-	vec2 operator/(const float s) { return vec2(this->x/s, this->y/s); }
+	vec2 operator+(const vec2& b) const { return vec2(this->x + b.x, this->y + b.y); }
+	vec2 operator-(const vec2& b) const { return vec2(this->x - b.x, this->y - b.y); }
+	vec2 operator*(const float s) const { return vec2(s*this->x, s*this->y); }
+	vec2 operator/(const float s) const { return vec2(this->x/s, this->y/s); }
 
 	void normalize() {
 		float mag = sqrt(x*x + y*y);
@@ -69,10 +72,10 @@ struct vec3{
 		z = z_;
 	}
 
-	vec3 operator+(const vec3& b) { return vec3(this->x + b.x, this->y + b.y, this->z + b.z); }
-	vec3 operator-(const vec3& b) { return vec3(this->x - b.x, this->y - b.y, this->z - b.z); }
-	vec3 operator*(const float s) { return vec3(s*this->x, s*this->y, s*this->z); }
-	vec3 operator/(const float s) { return vec3(this->x/s, this->y/s, this->z/s); }
+	vec3 operator+(const vec3& b) const { return vec3(this->x + b.x, this->y + b.y, this->z + b.z); }
+	vec3 operator-(const vec3& b) const { return vec3(this->x - b.x, this->y - b.y, this->z - b.z); }
+	vec3 operator*(const float s) const { return vec3(s*this->x, s*this->y, s*this->z); }
+	vec3 operator/(const float s) const { return vec3(this->x/s, this->y/s, this->z/s); }
 	float operator[](const int idx) const {
 		return idx == 0 ? x : (idx == 1 ? y : z);
 	};
@@ -95,10 +98,10 @@ struct ivec2{
 		x = x_; 
 		y = y_;
 	}
-	ivec2 operator+(const ivec2& b) { return ivec2(this->x + b.x, this->y + b.y); }
-	ivec2 operator-(const ivec2& b) { return ivec2(this->x - b.x, this->y - b.y); }
-	ivec2 operator*(const int s) { return ivec2(s*this->x, s*this->y); }
-	ivec2 operator/(const int s) { return ivec2(this->x/s, this->y/s); }
+	ivec2 operator+(const ivec2& b) const { return ivec2(this->x + b.x, this->y + b.y); }
+	ivec2 operator-(const ivec2& b) const { return ivec2(this->x - b.x, this->y - b.y); }
+	ivec2 operator*(const int s) const { return ivec2(s*this->x, s*this->y); }
+	ivec2 operator/(const int s) const { return ivec2(this->x/s, this->y/s); }
 	int x;
 	int y;
 };
