@@ -62,99 +62,99 @@ ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracker") {
 }
 
 void ObjectTrackingNode::GetParameters() {
-    declare_parameter("camera.frame", "camera_optical");
-    camera_frame_ = get_parameter("camera.frame").as_string();
+    declare_parameter("camera_frame", "camera_optical");
+    camera_frame_ = get_parameter("camera_frame").as_string();
 
-    declare_parameter("filters.downsampling.leaf_size", 0.3);
-    leaf_size_ = get_parameter("filters.downsampling.leaf_size").as_double();
+    declare_parameter("filters_downsampling_leaf_size", 0.3);
+    leaf_size_ = get_parameter("filters_downsampling_leaf_size").as_double();
 
-    declare_parameter("filters.passthrough.min", 3.0);
+    declare_parameter("filters_passthrough_min", 3.0);
     passthrough_distance_min_ =
-        get_parameter("filters.passthrough.min").as_double();
+        get_parameter("filters_passthrough_min").as_double();
 
-    declare_parameter("filters.passthrough.max", 30.0);
+    declare_parameter("filters_passthrough_max", 30.0);
     passthrough_distance_max_ =
-        get_parameter("filters.passthrough.max").as_double();
+        get_parameter("filters_passthrough_max").as_double();
 
-    declare_parameter("filters.clustering.tolerance", 0.6);
+    declare_parameter("filters_clustering_tolerance", 0.6);
     clustering_tolerance_ =
-        get_parameter("filters.clustering.tolerance").as_double();
+        get_parameter("filters_clustering_tolerance").as_double();
 
-    declare_parameter("filters.clustering.size.minimum", 50);
+    declare_parameter("filters_clustering_size_minimum", 50);
     cluster_size_min_ =
-        get_parameter("filters.clustering.size.minimum").as_int();
+        get_parameter("filters_clustering_size_minimum").as_int();
 
-    declare_parameter("filters.clustering.size.maximum", 500);
+    declare_parameter("filters_clustering_size_maximum", 500);
     cluster_size_max_ =
-        get_parameter("filters.clustering.size.maximum").as_int();
+        get_parameter("filters_clustering_size_maximum").as_int();
 
-    declare_parameter("filters.ground.max_iterations", 50);
+    declare_parameter("filters_ground_max_iterations", 50);
     sac_segmentation_max_iterations_ =
-        get_parameter("filters.ground.max_iterations").as_int();
+        get_parameter("filters_ground_max_iterations").as_int();
 
-    declare_parameter("filters.ground.threshold", 0.2);
+    declare_parameter("filters_ground_threshold", 0.2);
     sac_segmentation_threshold_ =
-        get_parameter("filters.ground.threshold").as_double();
+        get_parameter("filters_ground_threshold").as_double();
 
-    declare_parameter("filters.ground.angle", 3.0);
-    sac_segmentation_angle_ = get_parameter("filters.ground.angle").as_double();
+    declare_parameter("filters_ground_angle", 3.0);
+    sac_segmentation_angle_ = get_parameter("filters_ground_angle").as_double();
 
-    declare_parameter("filters.kalman.rate", 20.0);
-    estimator_rate_ = get_parameter("filters.kalman.rate").as_double();
+    declare_parameter("filters_kalman_rate", 20.0);
+    estimator_rate_ = get_parameter("filters_kalman_rate").as_double();
 
-    declare_parameter("filters.kalman.process", 0.01);
+    declare_parameter("filters_kalman_process", 0.01);
     filter_process_variance_ =
-        get_parameter("filters.kalman.process").as_double();
+        get_parameter("filters_kalman_process").as_double();
 
-    declare_parameter("filters.kalman.measurement", 1.0);
+    declare_parameter("filters_kalman_measurement", 1.0);
     filter_measurement_variance_ =
-        get_parameter("filters.kalman.measurement").as_double();
+        get_parameter("filters_kalman_measurement").as_double();
 
-    declare_parameter("tracker.target_class", 0);
+    declare_parameter("tracker_target_class", 0);
     target_class_ =
-        std::to_string(get_parameter("tracker.target_class").as_int());
+        std::to_string(get_parameter("tracker_target_class").as_int());
 
-    declare_parameter("tracker.timeout", 5.0);
-    target_timeout_ = get_parameter("tracker.timeout").as_double();
+    declare_parameter("tracker_timeout", 5.0);
+    target_timeout_ = get_parameter("tracker_timeout").as_double();
 
-    declare_parameter("sync.enable", true);
-    sync_messages_ = get_parameter("sync.enable").as_bool();
+    declare_parameter("sync_enable", true);
+    sync_messages_ = get_parameter("sync_enable").as_bool();
 
-    declare_parameter("sync.use_callback", false);
-    use_callback_time_ = get_parameter("sync.use_callback").as_bool();
+    declare_parameter("sync_use_callback", false);
+    use_callback_time_ = get_parameter("sync_use_callback").as_bool();
 
-    declare_parameter("sync.detection", 0.1);
-    max_detection_skew_ = get_parameter("sync.detection").as_double();
+    declare_parameter("sync_detection", 0.1);
+    max_detection_skew_ = get_parameter("sync_detection").as_double();
 
-    declare_parameter("publish.clouds.fov", false);
-    publish_fov_cloud_ = get_parameter("publish.clouds.fov").as_bool();
+    declare_parameter("publish_clouds_fov", false);
+    publish_fov_cloud_ = get_parameter("publish_clouds_fov").as_bool();
 
-    declare_parameter("publish.clouds.roi", false);
-    publish_roi_cloud_ = get_parameter("publish.clouds.roi").as_bool();
+    declare_parameter("publish_clouds_roi", false);
+    publish_roi_cloud_ = get_parameter("publish_clouds_roi").as_bool();
 
-    declare_parameter("publish.clouds.ground", false);
-    publish_ground_cloud_ = get_parameter("publish.clouds.ground").as_bool();
+    declare_parameter("publish_clouds_ground", false);
+    publish_ground_cloud_ = get_parameter("publish_clouds_ground").as_bool();
 
-    declare_parameter("publish.clouds.cluster", false);
-    publish_cluster_cloud_ = get_parameter("publish.clouds.cluster").as_bool();
+    declare_parameter("publish_clouds_cluster", false);
+    publish_cluster_cloud_ = get_parameter("publish_clouds_cluster").as_bool();
 
-    declare_parameter("publish.pose", true);
-    publish_pose_ = get_parameter("publish.pose").as_bool();
+    declare_parameter("publish_pose", true);
+    publish_pose_ = get_parameter("publish_pose").as_bool();
 
-    declare_parameter("filters.pose", true);
-    use_filtered_pose_ = get_parameter("filters.pose").as_bool();
+    declare_parameter("filters_pose", true);
+    use_filtered_pose_ = get_parameter("filters_pose").as_bool();
 
-    declare_parameter("publish.odometry", false);
-    publish_odometry_ = get_parameter("publish.odometry").as_bool();
+    declare_parameter("publish_odometry", false);
+    publish_odometry_ = get_parameter("publish_odometry").as_bool();
 
-    declare_parameter("filters.odometry", true);
-    use_filtered_odometry_ = get_parameter("filters.odometry").as_bool();
+    declare_parameter("filters_odometry", true);
+    use_filtered_odometry_ = get_parameter("filters_odometry").as_bool();
 
-    declare_parameter("publish.detection", false);
-    publish_detection_3d_ = get_parameter("publish.detection").as_bool();
+    declare_parameter("publish_detection", false);
+    publish_detection_3d_ = get_parameter("publish_detection").as_bool();
 
-    declare_parameter("publish.image", false);
-    publish_image_ = get_parameter("publish.image").as_bool();
+    declare_parameter("publish_image", false);
+    publish_image_ = get_parameter("publish_image").as_bool();
 }
 
 void ObjectTrackingNode::CreateSubscriptions() {
