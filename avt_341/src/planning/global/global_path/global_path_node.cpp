@@ -208,6 +208,7 @@ int main(int argc, char* argv[])
   auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
   auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
   auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
+  auto mpc_goal_pub = n->create_publisher<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, MapCallback);
@@ -328,6 +329,15 @@ int main(int argc, char* argv[])
         current_waypoint = 0;
         goal.x = current_waypoints.poses[current_waypoint].pose.position.x;
         goal.y = current_waypoints.poses[current_waypoint].pose.position.y;
+
+        // Publish mpc goal
+        avt_341::msg::PointStamped mpc_goalPoint;
+        mpc_goalPoint.point.x = goal.x;
+        mpc_goalPoint.point.y = goal.y;
+        mpc_goalPoint.point.z = 0.0f;
+        mpc_goalPoint.header.frame_id = "map";
+        mpc_goal_pub->publish(mpc_goalPoint);
+
         if (verbose_gp_log) {
           n->log_info("New waypoints! Updated goal %f, %f", goal.x, goal.y);
         }

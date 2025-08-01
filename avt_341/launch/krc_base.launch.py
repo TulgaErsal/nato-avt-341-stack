@@ -247,13 +247,13 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 output='screen'
             ),
             # Goal Point Processor
-            Node(
-                package='avt_341',
-                executable='goal_point_processor_node',
-                name='goal_point_processor_node',
-                output='screen',
-                parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
-            )
+#            Node(
+#                package='avt_341',
+#                executable='goal_point_processor_node',
+#                name='goal_point_processor_node',
+#                output='screen',
+#                parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
+#            )
         ]
     else: # local_planner_method == 'pf':
         return [Node(

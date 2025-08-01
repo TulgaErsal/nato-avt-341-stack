@@ -391,7 +391,7 @@ function Setup()
 	if useSegmentation
 		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumSeg for j=2:n.ocp.state.pts))
 	end
-	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
+	obj = integrate!(n,:( 1.0*sr[j]^2. + 0.01*jx[j]^2.))
 	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel)
 	# @NLobjective(n.ocp.mdl, Min, obj+100.0 * (distanceToGoal+1))
 	if useSegmentation
