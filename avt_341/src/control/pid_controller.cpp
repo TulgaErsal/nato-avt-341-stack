@@ -7,7 +7,7 @@ namespace avt_341 {
 namespace control{
 
 const std::string AntiWindupMethod::ResetOnSetpoint = "reset_on_setpoint";
-const std::string AntiWindupMethod::OutputClamping = "output_clamping";
+const std::string AntiWindupMethod::IntegralClamping = "integral_clamping";
 const std::string AntiWindupMethod::Disabled = "disabled";
 
 
@@ -28,7 +28,7 @@ PidController::PidController(const std::string & anti_windup_method, double outp
   previous_error_ = 0.0;
   integral_ = 0.0;
   overshoot_limiter_ = anti_windup_method == AntiWindupMethod::ResetOnSetpoint;
-  output_clamping_ = anti_windup_method == AntiWindupMethod::OutputClamping;
+  integral_clamping_ = anti_windup_method == AntiWindupMethod::IntegralClamping;
   crossed_setpoint_ = false;
   stay_positive_ = false;
   ff_a2_ = 0.0;
@@ -48,11 +48,13 @@ PidController::~PidController(){
 double PidController::GetControlVariable(double measured_value, double dt){
   double error = setpoint_ - measured_value;
 
+  // compute feed-forward contribution
   double output = 0.0;
   if (use_feed_forward_){
-    output = ff_a2_*setpoint_*setpoint_ + ff_a1_*setpoint_ + ff_a0_;
+    output = ff_a2_*setpoint_*setpoint_ + ff_a1_*setpoint_ + std::copysign(ff_a0_, setpoint_);
   }
 
+  //// compute integral
   // if overshoot limiter turned on, set integral to zero each time it crosses the setpoint
   // see: https://en.wikipedia.org/wiki/Integral_windup
   if (overshoot_limiter_){
@@ -63,30 +65,30 @@ double PidController::GetControlVariable(double measured_value, double dt){
   }
   // if overshoot limiter turned on, set ki to zero until it crosses the setpoint the first time
   double ki = ki_;
-  double kp = kp_;
   if ((!crossed_setpoint_) && overshoot_limiter_){
     ki = 0.0;
-    //kp = 0.0;
   }
   else{
     integral_ += error*dt;
   }
-  double derivative = (error - previous_error_)/dt;
-  //double output = kp_*error + ki*integral_ + kd_*derivative;
-  //output += kp_*error + ki*integral_ + kd_*derivative;
-
-  double p_val = kp*error;
-  double d_val = kd_*derivative;
-  double i_val = ki*integral_;
-
-  if(output_clamping_){
-    i_val= std::min(std::max(i_val, output_min_ - 0.2*(p_val+d_val)), output_max_-0.2*(p_val+d_val));
+  // if integral clamping turned on, limit maximum magnitude of integral
+  if (integral_clamping_){
+    integral_ = std::min(std::max(integral_, -integral_abs_max_), +integral_abs_max_)
   }
 
-  output += p_val + i_val + d_val;
+  // compute derivative
+  double derivative = (error - previous_error_)/dt;
+
+  // compute PID contributions
+  output += kp_*error;
+  output += ki*integral_;
+  output += kd_*derivative;
+
+  // perform output clamping
+  output = std::min(std::max(output, output_min_), output_max_);
 
   if (stay_positive_){
-    output = 0.5f*(1.0f+output);
+    output = 0.5*(1.0+output);
   }
   //fout_<<crossed_setpoint_<<" "
   //     <<setpoint_<<" "
