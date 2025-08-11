@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
   double throttle_kp, throttle_ki, throttle_kd;
 	std::string display, anti_windup_method;
   double vehicle_max_steer_angle_degrees, steering_gain, wheelbase, max_lat_g;
-  double output_max, output_min;
+  double output_max, output_min, integral_abs_max;
   bool use_speed_controller, output_steering_percent;
   n->get_parameter("~vehicle_wheelbase", wheelbase, 2.019f);
   n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
@@ -105,6 +105,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~pid_output_max", output_max, 1.0);
   n->get_parameter("~pid_output_min", output_min, 0.0);
   n->get_parameter("~anti_windup_method", anti_windup_method, avt_341::control::AntiWindupMethod::ResetOnSetpoint);
+  n->get_parameter("~integral_abs_max", integral_abs_max, 1.0);
   n->get_parameter("~display", display, std::string("none"));
   n->get_parameter("~use_speed_controller", use_speed_controller, true);
   n->get_parameter("~output_steering_percent", output_steering_percent, true);
@@ -122,6 +123,9 @@ int main(int argc, char *argv[]){
   controller.SetUseFeedForward(use_feed_forward);
   if (use_feed_forward){
     controller.SetForwardModelParams(ff_a0, ff_a1, ff_a2);
+  }
+  if (anti_windup_method == avt_341::control::AntiWindupMethod::IntegralClamping){
+    controller.SetIntegralAbsMax(integral_abs_max);
   }
 
 
