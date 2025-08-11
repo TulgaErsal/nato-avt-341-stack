@@ -22,6 +22,7 @@ throttle_ki: 0.0                              # integral coeff for the PID speed
 throttle_kd: 0.0                              # derivative coeff for the PID speed controller
 max_desired_lateral_g: 0.5                    # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
 turn_off_velocity_overshoot_corrector: False  # Disable velocity overshoot corrector
-anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'
-pid_output_max: 1.0                           # Max value for PID output. Only active when anti_windup_method = 'output_clamping'
-pid_output_min: 0.0                           # Min value for PID output. Only active when anti_windup_method = 'output_clamping'
+anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'integral_clamping'
+integral_abs_max: 1.0                         # Max absolute value for PID integral. Only active when anti_windup_method = 'integral_clamping'
+pid_output_max: 1.0                           # Max value for PID output
+pid_output_min: 0.0                           # Min value for PID output
