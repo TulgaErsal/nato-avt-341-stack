@@ -6,9 +6,6 @@ steering_gain: 1.0                            # Steering angle multiplier
 steering_coefficient: 2.0                     # Steering coefficient.
 vehicle_speed: 5.0                            # Vehicle_speed m/s.
 throttle_coefficient: 1.0                     # Scale factor for the commanded steering. l.t. 1.0 will make the acceleration less agressive, g.t. 1.0 will make it more agressive
-throttle_kp: 1.1                              # proportional coeff for the PID speed controller
-throttle_ki: 0.0                              # integral coeff for the PID speed controller
-throttle_kd: 0.0                              # derivative coeff for the PID speed controller
 
 # Speed Control
 # ======================================================================================================================
@@ -20,6 +17,9 @@ output_steering_percent: False                # Set to true to output steering c
 ff_a0: 0.2856                                 # 0th order coeff in the feed-forward model
 ff_a1: 0.0321                                 # 1st order coeff in the feed-forward model
 ff_a2: 0.0                                    # 2nd order coeff in the feed-forward model
+throttle_kp: 1.1                              # proportional coeff for the PID speed controller
+throttle_ki: 0.0                              # integral coeff for the PID speed controller
+throttle_kd: 0.0                              # derivative coeff for the PID speed controller
 max_desired_lateral_g: 0.5                    # Controller will limit the speed to try to keep the lateral g-forces under this amount. In fractional units of 9.806 m/s^2
 turn_off_velocity_overshoot_corrector: False  # Disable velocity overshoot corrector
 anti_windup_method: 'disabled'                # ID integral windup correction method:  'disabled' | 'reset_on_setpoint' | 'output_clamping'
