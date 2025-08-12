@@ -51,7 +51,7 @@ double PidController::GetControlVariable(double measured_value, double dt){
   // compute feed-forward contribution
   double output = 0.0;
   if (use_feed_forward_){
-    output = ff_a2_*setpoint_*setpoint_ + ff_a1_*setpoint_ + std::copysign(ff_a0_, setpoint_);
+    output = ff_a2_*setpoint_*setpoint_ + ff_a1_*setpoint_ + (setpoint_ > 0.0 ? ff_a0_ : 0.0);
   }
 
   //// compute integral
