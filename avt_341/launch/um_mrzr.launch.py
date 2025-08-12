@@ -301,7 +301,7 @@ def generate_launch_description():
         "use_sim_time":	            ["False",	                                    "Use simulation time, usefull for running stack on recorded telemetry bag file"],
         "separate_camera_bag":	    ["True",	                                    "Separate camera topics into a separate bag file"],
         "compress_cameras":	        ["True",	                                    "Only save compressed camera topics (only for separate_camera_bag=true)"],
-        "disable_sensor_drivers":   ["False",	                                    "Disable sensor drivers from launching. Drivers are already disabled if simulation_mode is set to true."],
+        "disable_sensor_drivers":   ["True",	                                    "Disable sensor drivers from launching. Drivers are already disabled if simulation_mode is set to true."],
         # "enable_joystick":	        ["True",	                                    "Enable the stack controller joystick. WARNING: This will enable the avt-341 stack to publish directly to /cmd_vel"],
         "auto_launch_rviz":	        ["True",	                                    "Automatically launch rviz"],
         "veh_index":	            ["0",	                                        f"Vehicle index of {vehicle_namespaces}"]
