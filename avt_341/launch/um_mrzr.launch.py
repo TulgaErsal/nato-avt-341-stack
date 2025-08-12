@@ -69,38 +69,44 @@ def tf2_nodes(context):
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='map_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]
+            name='cg_to_cage_publisher',
+            arguments=["0.8", "0", "1.2", "0", "0", "0", "cg_link", "cage_link"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='mrzr_odom_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "odom", "mrzr/odom"]
+            name='cage_to_cage_pitched_publisher',
+            arguments=["0", "0", "0", "0", "0.209440", "0", "cage_link", "cage_link_pitched"] # 12 degrees
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='master_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "base_link", "mrzr/base_link"]
+            name='caged_pitched_to_plate_publisher',
+            arguments=["0", "0", "0.04", "0", "0", "0", "cage_link_pitched", "plate_link"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='lidar_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "mrzr/lidar"]
+            name='plate_to_ouster_publisher',
+            arguments=["0", "-0.0425", "0.1115", "0", "0", "0", "plate_link", "ouster_link"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='lidar_ns_fix_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "os_sensor"]
+            name='ouster_to_ouster_optical_publisher',
+            arguments=["0", "0", "0", "3.141593", "0", "0", "ouster_link", "ouster_link_optical"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='nad83_link_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "nad83", "epsg_6495"]
+            name='plate_to_flir_publisher',
+            arguments=["0.046", "0.0615", "0.03", "0", "0", "0", "plate_link", "flir_link"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='flir_to_flir_optical_publisher',
+            arguments=["0", "0", "0", "-1.570796", "0", "1.570796", "flir_link", "flir_link_optical"]
         ),
         # SKIP Node(
         #     package='mrzr_tools',
