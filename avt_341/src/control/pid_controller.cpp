@@ -73,7 +73,7 @@ double PidController::GetControlVariable(double measured_value, double dt){
   }
   // if integral clamping turned on, limit maximum magnitude of integral
   if (integral_clamping_){
-    integral_ = std::min(std::max(integral_, -integral_abs_max_), +integral_abs_max_)
+    integral_ = std::min(std::max(integral_, -integral_abs_max_), +integral_abs_max_);
   }
 
   // compute derivative
