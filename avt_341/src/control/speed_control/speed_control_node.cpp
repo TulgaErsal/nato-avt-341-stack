@@ -216,7 +216,7 @@ int main(int argc, char *argv[]){
       dc.angular.z = std::max(-1.0,std::min(1.0,(180.0*desired_steer_radians/3.14159265358979)/vehicle_max_steer_angle_degrees*steering_gain));
     }
     else {
-      float vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979 / 180.0;
+      double vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979 / 180.0;
       dc.angular.z = std::max(-vehicle_max_steer_angle_rad,std::min(vehicle_max_steer_angle_rad,desired_steer_radians*steering_gain));
     }
 
