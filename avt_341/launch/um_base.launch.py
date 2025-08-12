@@ -463,14 +463,14 @@ def launch_setup(context, *args, **kwargs):
                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
         ),
 
-        # Data Acquisition
-        Node(
-            package='avt_341',
-            executable='data_acquisition_node',
-            name='data_acquisition_node',
-            output='log',
-            parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}]
-        ),
+        # SKIP Data Acquisition
+        # Node(
+        #     package='avt_341',
+        #     executable='data_acquisition_node',
+        #     name='data_acquisition_node',
+        #     output='log',
+        #     parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}]
+        # ),
 
         # Mission Manager
         Node(
