@@ -512,22 +512,22 @@ def launch_setup(context, *args, **kwargs):
         ),
 
         # UAB Perception
-        Node(
-            package='avt_341',
-            executable='uab_perception_node',
-            name='uab_perception_node',
-            parameters=[
-                {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
-            ],
-            remappings=[
-                ('avt_341/points','/ouster/points'),
-                #('camera/rgb/image_raw','/flir_camera/image_raw'),
-                ('camera/rgb/image_raw','/flir_camera/image_color'),
-                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
-                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
-            ],
-            output='screen'
-        ),
+#        Node(
+#            package='avt_341',
+#            executable='uab_perception_node',
+#            name='uab_perception_node',
+#            parameters=[
+#                {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+#            ],
+#            remappings=[
+#                ('avt_341/points','/ouster/points'),
+#                #('camera/rgb/image_raw','/flir_camera/image_raw'),
+#                ('camera/rgb/image_raw','/flir_camera/image_color'),
+#                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
+#                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
+#            ],
+#            output='screen'
+#        ),
 
         # Vehicle Logging
         GroupAction(condition=IfCondition(enable_logging), actions=[

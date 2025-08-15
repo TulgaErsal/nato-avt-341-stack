@@ -22,7 +22,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <avt_341/lidar_obstacle_detectorConfig.h>
 
-#include "avt_341/perception/lidar_obstacle_detector.hpp"
+#include "avt_341/perception/lidar_obstacle_detector/ros1/lidar_obstacle_detector.hpp"
 
 namespace avt_341 {
 namespace perception {
