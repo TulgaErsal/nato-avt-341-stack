@@ -272,7 +272,7 @@ def launch_setup(context, *args, **kwargs):
                 "use_rqt_display":	            "False",
                 "rviz_config":	                f"{avt_341_dir}/rviz/avt_341_mrzr_ros2.rviz",
                 "rviz_mult_config":	            f"{avt_341_dir}/rviz/avt_341_multi_vehicle_ros2.rviz",
-                "use_lidar_obstacle_detector":  "False",
+                "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":	        "mpc",
                 "global_planner_method":        "a_star",
                 "waypoint_mode":	            waypoint_mode.perform(context),
