@@ -26,6 +26,7 @@ bool clear_ground_points;
 bool grid_created = false;
 double start_time = 0.0;
 bool odom_rcvd = false;
+bool deskew_lidar = false;
 std::vector<avt_341::msg::Odometry> current_pose_list;
 float overhead_clearance = 100.0f;
 double time_register_window = 0.02;
@@ -61,7 +62,7 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 	bool converted = false;
 	if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
 		avt_341::msg::PointCloud2 out_cloud;
-		if (!n->transform_cloud(*rcv_cloud, out_cloud, "map")) {
+		if (!n->transform_cloud(*rcv_cloud, out_cloud, "map"), deskew_lidar) {
 			return;
 		}
 		converted = sensor_msgs::convertPointCloud2ToPointCloud(out_cloud, point_cloud);
@@ -124,7 +125,7 @@ void GroundCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 	bool converted = false;
 	if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
 		avt_341::msg::PointCloud2 out_cloud;
-		if (!n->transform_cloud(*rcv_cloud, out_cloud, "map")) {
+		if (!n->transform_cloud(*rcv_cloud, out_cloud, "map"), deskew_lidar) {
 			return;
 		}
 		converted = sensor_msgs::convertPointCloud2ToPointCloud(out_cloud, point_cloud);
@@ -203,6 +204,7 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~max_grid_width", max_grid_width, 800.0f);
 	n->get_parameter("~max_grid_height", max_grid_height, 800.0f);
 	n->get_parameter("~clear_ground_points", clear_ground_points, false);
+	n->get_parameter("~deskew_lidar", deskew_lidar, false);
 
 	n->get_parameter("~clear_method_type", clear_method, std::string("none"));
 	n->get_parameter("~clear_method_visualize", clear_method_visualize, false);

@@ -185,7 +185,7 @@ namespace avt_341 {
 
             void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
-            bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame);
+            bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame, bool deskew_lidar=false);
 
             bool transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud,
                                  const std::string &target_frame, const ros::Time& target_time, const std::string &fixed_frame);
@@ -443,7 +443,7 @@ namespace avt_341 {
 
       void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
-      bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame);
+      bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud, const std::string &target_frame, bool deskew_lidar=false);
 
       bool transform_cloud(const sensor_msgs::msg::PointCloud2 & in_cloud, sensor_msgs::msg::PointCloud2 & out_cloud,
                            const std::string &target_frame, const rclcpp::Time &target_time, const std::string &fixed_frame);
@@ -499,7 +499,23 @@ namespace avt_341 {
       void spin_some();
       void spin();
 
+      bool deskew(
+          const sensor_msgs::msg::PointCloud2 & input,
+          sensor_msgs::msg::PointCloud2 & output,
+          const std::string & fixedFrameId,
+          double waitForTransform,
+          bool slerp = false);
+
+      inline double timestampFromROS(const rclcpp::Time & stamp) {return stamp.seconds();}
+      inline rclcpp::Time timestampToROS(const double & t) {int32_t sec= (int32_t)floor(t); return rclcpp::Time(sec, (uint32_t)std::round((t-sec) * 1e9));}
+
     private:
+      geometry_msgs::msg::TransformStamped NodeProxy::getMovingTransform(
+        const std::string & movingFrame,
+        const std::string & fixedFrame,
+        const rclcpp::Time & stampFrom,
+        const rclcpp::Time & stampTo,
+        double waitForTransform) const;
       std::shared_ptr<rclcpp::Node> node_;
       bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
