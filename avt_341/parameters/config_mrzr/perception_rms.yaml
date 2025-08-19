@@ -22,6 +22,9 @@ perception_rate: 100.0                    # Publish rate for perception node
 limit_grid_size: True                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
 max_grid_width: 800.0                     # Maximum grid width [m] (for limit_grid_size = True)
 max_grid_height: 800.0                    # Maximum grid height [m] (for limit_grid_size = True)
+rms_calc_horizontal_fov_radians: 1.0472   # Horizontal field of view in radians for calculating slope and RMS values
+rms_calc_range_meters: 15.0               # Range in meters for calculating slope and RMS values
+rms_calc_time_average_window: 0.05        # Time window for averaging RMS and slope values
 
 # Clearing method
 # ======================================================================================================================

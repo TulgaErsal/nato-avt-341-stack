@@ -68,8 +68,12 @@ std::vector<utils::ivec2> ElevationGrid::GetCellsInFov(float x, float y, float h
 	float angle = 0.5f * hfov;
 	utils::vec2 v(cosf(heading), sinf(heading));
 	std::vector<utils::ivec2> cells_in_fov;
-	for (int j = 0; j < ny_; j++) {
-		for (int i = 0; i < nx_; i++) {
+	int xi0 = std::max(0,(int)floor((x - range) / res_));
+	int xi1 = std::min(nx_,(int)floor((x + range) / res_));
+	int yi0 = std::max(0,(int)floor((y - range) / res_));
+	int yi1 = std::min(ny_,(int)floor((y + range) / res_));
+	for (int j = yi0; j < yi1; j++) {
+		for (int i = xi0; i < xi1; i++) {
 			utils::vec2 point = CellToPoint(i, j);
 			bool in_view = IsPointInCone(point, p, v, range, angle);
 			if (in_view) {
