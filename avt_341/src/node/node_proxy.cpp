@@ -366,7 +366,7 @@ void NodeProxy::spin() {
 
 			if(nsecFirst > nsecLast)
 			{
-				RCLCPP_WARN_ONCE(node_->get_logger(), "Timestamp channel is not ordered, we will have to parse every scans to "
+				RCLCPP_WARN(node_->get_logger(), "Timestamp channel is not ordered, we will have to parse every scans to "
 					  "determinate first and last time offsets. This will add computation time.");
 				if(timeOnColumns)
 				{
@@ -411,7 +411,7 @@ void NodeProxy::spin() {
 			if(secFirst > secLast)
 			{
 				// scans are not ordered, we need to search min/max
-				RCLCPP_WARN_ONCE(node_->get_logger(), "Timestamp channel is not ordered, we will have to parse every scans to "
+				RCLCPP_WARN(node_->get_logger(), "Timestamp channel is not ordered, we will have to parse every scans to "
 					  "determinate first and last time offsets. This will add computation time.");
 				if(timeOnColumns)
 				{
@@ -447,6 +447,7 @@ void NodeProxy::spin() {
 
 			firstStamp = rclcpp::Time(input.header.stamp)+rclcpp::Duration::from_seconds(secFirst);
 			lastStamp = rclcpp::Time(input.header.stamp)+rclcpp::Duration::from_seconds(secLast);
+			RCLCPP_WARN(node_->get_logger(), "TIME IS FLOAT TOT-START=%f TOT-END=%f.", firstStamp.nanoseconds(), lastStamp.nanoseconds());
 		}
 		else if(timeDatatype == 8) // FLOAT64
 		{
@@ -455,7 +456,7 @@ void NodeProxy::spin() {
 			if(secFirst > secLast)
 			{
 				// scans are not ordered, we need to search min/max
-				RCLCPP_WARN_ONCE(node_->get_logger(), "Timestamp channel is not ordered, we will have to parse every scans to "
+				RCLCPP_WARN(node_->get_logger(), "Timestamp channel is not ordered, we will have to parse every scans to "
 					  "determinate first and last time offsets. This will add computation time.");
 				if(timeOnColumns)
 				{
@@ -513,23 +514,23 @@ void NodeProxy::spin() {
 		}
 		else
 		{
-			RCLCPP_WARN_ONCE(node_->get_logger(), "Not supported time datatype %d!", timeDatatype);
+			RCLCPP_WARN(node_->get_logger(), "Not supported time datatype %d!", timeDatatype);
 			return false;
 		}
 
 		if(!(timeDatatype >=6 && timeDatatype<=8))
 		{
-			RCLCPP_WARN_ONCE(node_->get_logger(), "Only lidar timestamp channel data type 6, 7 or 8 is supported! (received %d)", timeDatatype);
+			RCLCPP_WARN(node_->get_logger(), "Only lidar timestamp channel data type 6, 7 or 8 is supported! (received %d)", timeDatatype);
 			return false;
 		}
 		if(lastStamp < firstStamp)
 		{
-			RCLCPP_WARN_ONCE(node_->get_logger(), "Last stamp (%f) is smaller than first stamp (%f) (header=%f)!", timestampFromROS(lastStamp), timestampFromROS(firstStamp), timestampFromROS(input.header.stamp));
+			RCLCPP_WARN(node_->get_logger(), "Last stamp (%f) is smaller than first stamp (%f) (header=%f)!", timestampFromROS(lastStamp), timestampFromROS(firstStamp), timestampFromROS(input.header.stamp));
 			return false;
 		}
-		else if(lastStamp == firstStamp)
+		if(lastStamp == firstStamp)
 		{
-			RCLCPP_WARN_ONCE(node_->get_logger(), "First and last stamps in the scan are the same (%f) (header=%f)!", timestampFromROS(lastStamp), timestampFromROS(input.header.stamp));
+			RCLCPP_WARN(node_->get_logger(), "First and last stamps in the scan are the same (%f) (header=%f)!", timestampFromROS(lastStamp), timestampFromROS(input.header.stamp));
 			return false;
 		}
 		std::string errorMsg;
@@ -630,6 +631,7 @@ void NodeProxy::spin() {
 			// ring2  ring2 ...
 			// ring3  ring4 ...
 			// ring4  ring3 ...
+			RCLCPP_INFO(node_->get_logger(), "Time on columns!");
 			for(size_t u=0; u<output.width; ++u)
 			{
 				if(timeDatatype == 6) // UINT32
@@ -641,6 +643,7 @@ void NodeProxy::spin() {
 				{
 					float sec = *((const float*)(&output.data[u*output.point_step]+offsetTime));
 					stamp = rclcpp::Time(input.header.stamp)+rclcpp::Duration::from_seconds(sec);
+					RCLCPP_WARN(node_->get_logger(), "POINT STAMP=%f.", stamp.nanoseconds());
 				}
 				else if(timeDatatype == 8) //float64
 				{
@@ -722,6 +725,7 @@ void NodeProxy::spin() {
 			// t3     ring1 ring2 ring3 ring4
 			// t4     ring1 ring2 ring3 ring4
 			// ...    ...   ...   ...   ...
+			RCLCPP_INFO(node_->get_logger(), "Time on rows!");
 			for(size_t v=0; v<output.height; ++v)
 			{
 				if(timeDatatype == 6) // UINT32
@@ -806,6 +810,7 @@ void NodeProxy::spin() {
 				}
 			}
 		}
+		RCLCPP_INFO(node_->get_logger(), "Return true!");
 		return true;
 	}
 
