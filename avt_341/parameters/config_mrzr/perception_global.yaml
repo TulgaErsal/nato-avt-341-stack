@@ -23,6 +23,9 @@ limit_grid_size: True                     # Enable limiting the global occupancy
 max_grid_width: 800.0                     # Maximum grid width [m] (for limit_grid_size = True)
 max_grid_height: 800.0                    # Maximum grid height [m] (for limit_grid_size = True)
 clear_ground_points: True                 # Clears all grid cells containing points in "ground_points_topic"
+rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians for calculating slope and RMS values
+rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
+rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
 
 # Clearing method
 # ======================================================================================================================
