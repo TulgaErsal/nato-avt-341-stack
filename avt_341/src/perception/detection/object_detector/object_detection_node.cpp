@@ -62,43 +62,43 @@ void ObjectDetectorNode::GetParameters() {
     declare_parameter("rate", 1.0);
     detection_rate_ = get_parameter("rate").as_double();
 
-    declare_parameter("model.external", std::string(""));
-    external_model_path_ = get_parameter("model.external").as_string();
+    declare_parameter("model_external", std::string(""));
+    external_model_path_ = get_parameter("model_external").as_string();
 
-    declare_parameter("model.name", std::string(""));
-    model_name_ = get_parameter("model.name").as_string();
+    declare_parameter("model_name", std::string(""));
+    model_name_ = get_parameter("model_name").as_string();
 
-    declare_parameter("model.warmup", 30);
-    warmup_iterations_ = get_parameter("model.warmup").as_int();
+    declare_parameter("model_warmup", 30);
+    warmup_iterations_ = get_parameter("model_warmup").as_int();
 
-    declare_parameter("model.classes", std::vector<std::string>());
-    valid_classes_ = get_parameter("model.classes").as_string_array();
+    declare_parameter("model_classes", std::vector<std::string>());
+    valid_classes_ = get_parameter("model_classes").as_string_array();
 
-    declare_parameter("thresholds.score", 0.5);
-    score_threshold_ = get_parameter("thresholds.score").as_double();
+    declare_parameter("thresholds_score", 0.5);
+    score_threshold_ = get_parameter("thresholds_score").as_double();
 
-    declare_parameter("thresholds.iou", 0.5);
-    iou_threshold_ = get_parameter("thresholds.iou").as_double();
+    declare_parameter("thresholds_iou", 0.5);
+    iou_threshold_ = get_parameter("thresholds_iou").as_double();
 
-    declare_parameter("thresholds.count", 300);
-    count_threshold_ = get_parameter("thresholds.count").as_int();
+    declare_parameter("thresholds_count", 300);
+    count_threshold_ = get_parameter("thresholds_count").as_int();
 
-    declare_parameter("visualizer.enabled", true);
-    use_visualizer_ = get_parameter("visualizer.enabled").as_bool();
+    declare_parameter("visualizer_enabled", true);
+    use_visualizer_ = get_parameter("visualizer_enabled").as_bool();
 
-    declare_parameter("visualizer.textbox", true);
-    use_visualizer_textbox_ = get_parameter("visualizer.textbox").as_bool();
+    declare_parameter("visualizer_textbox", true);
+    use_visualizer_textbox_ = get_parameter("visualizer_textbox").as_bool();
 
-    declare_parameter("visualizer.seed", 0);
-    visualizer_seed_ = get_parameter("visualizer.seed").as_int();
+    declare_parameter("visualizer_seed", 0);
+    visualizer_seed_ = get_parameter("visualizer_seed").as_int();
 
     // Using the key "size.font" in order to keep size options sorted, despite
     // this option affecting the font scale.
-    declare_parameter("visualizer.size.font", 0.75);
-    visualizer_font_scale_ = get_parameter("visualizer.size.font").as_double();
+    declare_parameter("visualizer_size_font", 0.75);
+    visualizer_font_scale_ = get_parameter("visualizer_size_font").as_double();
 
-    declare_parameter("visualizer.size.border", 2);
-    visualizer_border_size_ = get_parameter("visualizer.size.border").as_int();
+    declare_parameter("visualizer_size_border", 2);
+    visualizer_border_size_ = get_parameter("visualizer_size_border").as_int();
 }
 
 void ObjectDetectorNode::Initialize() {
