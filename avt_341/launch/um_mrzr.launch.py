@@ -69,6 +69,18 @@ def tf2_nodes(context):
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
+            name='map_to_odom_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_link_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "cg_link", "mrzr/base_link"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
             name='cg_to_cage_publisher',
             arguments=["0.8", "0", "1.2", "0", "0", "0", "cg_link", "cage_link"]
         ),
@@ -88,25 +100,19 @@ def tf2_nodes(context):
             package='tf2_ros',
             executable='static_transform_publisher',
             name='plate_to_ouster_publisher',
-            arguments=["0", "-0.0425", "0.1115", "0", "0", "0", "plate_link", "ouster_link"]
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='ouster_to_ouster_optical_publisher',
-            arguments=["0", "0", "0", "3.141593", "0", "0", "ouster_link", "ouster_link_optical"]
+            arguments=["0", "-0.0425", "0.0735", "0", "0", "0", "plate_link", "os_sensor"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='plate_to_flir_publisher',
-            arguments=["0.046", "0.0615", "0.03", "0", "0", "0", "plate_link", "flir_link"]
+            arguments=["0.046", "0.0615", "0.03", "0", "0", "0", "plate_link", "flir_sensor_link"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='flir_to_flir_optical_publisher',
-            arguments=["0", "0", "0", "-1.570796", "0", "1.570796", "flir_link", "flir_link_optical"]
+            name='flir_to_flir_rgb_publisher',
+            arguments=["0", "0", "0", "-1.570796", "0", "-1.570796", "flir_sensor_link", "flir_rgb_link"]
         ),
         # SKIP Node(
         #     package='mrzr_tools',
