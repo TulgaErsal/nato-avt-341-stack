@@ -1,6 +1,6 @@
 # Local Occupancy Grid
 # ======================================================================================================================
-local_grid_frame: 'mrzr/base_link'                                            # Local (vehicle) frame
+local_grid_frame: 'cg_link'                                            # Local (vehicle) frame
 global_grid_frame: 'map'                                                      # Global (fixed) frame
 obstacle_points_topic: '/avt_341/lidar_detector/cloud_clusters'               # PointCloud2 topic with detected obstacle points
 local_grid_width: 50.0                                                        # Width of the occupancy grid [m]

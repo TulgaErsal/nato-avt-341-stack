@@ -21,7 +21,7 @@ obstacle_min_neighbors: 20                                      # Minimum neighb
 
 # Frames
 # ======================================================================================================================
-robot_base_link: 'mrzr/base_link'                               # Base link of the robot
+robot_base_link: 'cg_link'                               # Base link of the robot
 fixed_frame: 'map'                                              # World-fixed frame used for normal filtering
 
 # Pointcloud Topics
