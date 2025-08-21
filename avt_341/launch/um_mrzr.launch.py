@@ -69,6 +69,18 @@ def tf2_nodes(context):
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
+            name='lidar_to_lidar_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "os_lidar", "lidar"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='map_to_nad83_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "map", "nad83"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
             name='map_to_odom_publisher',
             arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]
         ),
