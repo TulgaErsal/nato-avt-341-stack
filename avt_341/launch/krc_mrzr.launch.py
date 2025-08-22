@@ -114,8 +114,7 @@ def tf2_nodes(context):
                 'odom_topic': 'avt_341/odometry',
             }],
             remappings=[
-                ("vectornav/gnss", "/vectornav/gnss"),
-                ("vectornav/pose", "/vectornav/pose"),
+                ("vectornav/pose_transformed", "/vectornav/pose_transformed"),
                 ("steering_status", "/steering_status")
             ]
         )
@@ -228,6 +227,20 @@ def launch_setup(context, *args, **kwargs):
             executable='avt_341_topic_remaps.py',
             name='mrzr_logging_remap_node',
             namespace=f'/{vehicle_name}'
+        ),
+
+        # Vectornav transformer
+        Node(
+            package='mrzr_tools',
+            executable='vectornav_transformer.py',
+            name='vectornav_transformer',
+            namespace=f'/{vehicle_name}',
+            parameters=[{
+                'vehicle_frame': 'mrzr/base_link',
+                'sensor_frame': 'mrzr/vectornav_link',
+                'flip_pitch': True,
+                'flip_yaw': True,
+            }]
         ),
 
         # Controller
