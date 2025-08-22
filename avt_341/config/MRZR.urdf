@@ -11,11 +11,7 @@
 
 	<link name="vbox_link" />
 
-    <link name="os_lidar" />
-
     <link name="os_sensor" />
-
-    <link name="flir_optical" />
 
 	<link name="vlp16_top_link">
         <visual>
@@ -56,12 +52,6 @@
         <child link="vlp16_top_link" />  
     </joint>
 
-    <joint name="vlp16_top_to_os_lidar" type="fixed">
-        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-        <parent link="vlp16_top_link" />  
-        <child link="os_lidar" />  
-    </joint>
-
     <!-- Fix offset from new ouster os1-64 sensor -->
     <joint name="vlp16_top_to_os_sensor" type="fixed">
         <origin xyz="0.0 0.0 0.0" rpy="0.0 -0.017453292519943295 -0.06981317007977318"/>
@@ -69,10 +59,11 @@
         <child link="os_sensor" />  
     </joint>
 
-    <joint name="os_sensor_to_flir_optical" type="fixed">
+    <!-- Moved to krc_mrzr.launch.py to fix 2 root link error -->
+    <!--joint name="os_sensor_to_flir_optical" type="fixed">
         <origin xyz="-0.283517 0.0682941 -0.136282" rpy="-1.481708200033002 -0.017688723295176803 1.5783145437948567"/>
         <parent link="os_sensor" />  
         <child link="flir_optical" />  
-    </joint>
+    </joint-->
 
 </robot>
