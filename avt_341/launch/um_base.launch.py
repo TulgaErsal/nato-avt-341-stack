@@ -393,20 +393,20 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/segmentation_grid', 'avt_341/rms_perception/segmentation_grid'),
             ]
         ),
-        Node(
-            package='avt_341',
-            executable='avt_341_lidar_normal_estimation_node',
-            name='lidar_normal_estimation_node',
-            output='screen',
-            parameters=[{k: LaunchConfiguration(f'normal_estimation_{k}') for k in params['normal_estimation'].keys()}]
-        ),
-        Node(
-            package='avt_341',
-            executable='avt_341_normal_segmentation_grid_node',
-            name='normal_segmentation_grid_node',
-            output='screen',
-            parameters=[{k: LaunchConfiguration(f'normal_segmentation_grid_{k}') for k in params['normal_segmentation_grid'].keys()}]
-        ),
+        # Node(
+        #     package='avt_341',
+        #     executable='avt_341_lidar_normal_estimation_node',
+        #     name='lidar_normal_estimation_node',
+        #     output='screen',
+        #     parameters=[{k: LaunchConfiguration(f'normal_estimation_{k}') for k in params['normal_estimation'].keys()}]
+        # ),
+        # Node(
+        #     package='avt_341',
+        #     executable='avt_341_normal_segmentation_grid_node',
+        #     name='normal_segmentation_grid_node',
+        #     output='screen',
+        #     parameters=[{k: LaunchConfiguration(f'normal_segmentation_grid_{k}') for k in params['normal_segmentation_grid'].keys()}]
+        # ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(
                 package='avt_341',
