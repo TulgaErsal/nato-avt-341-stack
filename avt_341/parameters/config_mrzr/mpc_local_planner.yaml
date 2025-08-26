@@ -5,7 +5,7 @@ models_module_path: "" # Filepath to the Julia MPC models module
 
 rate: 20.0 # Planner update rate
 
-tire_model: "L" # L for linear, P for Pacejka, N for neural network for deformable terrain
+tire_model: "P" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
 num_col_points: 10 # number of collocation points to use in MPC
 prediction_time_horizon: 2.0 # MPC prediction time horizon [s]
