@@ -13,6 +13,7 @@
 // ros includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include <avt_341/node/occupancy_grid_subscriber.h>
 // local includes
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/global/astar.h"
@@ -203,6 +204,9 @@ int main(int argc, char* argv[])
     //return 2;
   }
 
+  n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n use_fastmarching: %d",
+    w_distance, w_occupancy, w_segmentation, static_cast<int>(use_fastmarching));
+
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 1);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
   auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
@@ -210,8 +214,8 @@ int main(int argc, char* argv[])
   auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(map_topic, 10, MapCallback);
-  auto segmentation_map_sub = n->create_subscription<avt_341::msg::OccupancyGrid>(seg_topic, 10, SegmentationMapCallback);
+  auto map_sub = avt_341::node::OccupancyGridSubscriber(n, map_topic, 10, MapCallback);
+  auto segmentation_map_sub = avt_341::node::OccupancyGridSubscriber(n, seg_topic, 10, SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
@@ -441,8 +445,8 @@ int main(int argc, char* argv[])
                       odom.pose.pose.position.y,
                       goal.x,
                       goal.y,
-                      current_waypoint,
-                      current_waypoints.poses.size() - 1,
+                      current_waypoint+1,
+                      current_waypoints.poses.size(),
                       current_goal_dist);
           t1 = t_now;
         }

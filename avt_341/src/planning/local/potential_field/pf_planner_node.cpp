@@ -11,6 +11,7 @@
 // ROS includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include <avt_341/node/occupancy_grid_subscriber.h>
 // avt_341 includes
 #include "avt_341/planning/local/pf_planner.h"
 #include "avt_341/visualization/visualization_factory.h"
@@ -54,8 +55,8 @@ int main(int argc, char *argv[]){
   // Create publishers and subscribers
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, GridCallback);
-  auto segmentation_grid_sub = n->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 10, SegmentationGridCallback);
+  auto grid_sub = avt_341::node::OccupancyGridSubscriber(n, "avt_341/occupancy_grid", 10, GridCallback);
+  auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(n, "avt_341/segmentation_grid", 10, SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
