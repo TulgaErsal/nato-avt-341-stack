@@ -115,7 +115,7 @@ int main(int argc, char *argv[]){
 
   avt_341::control::PidController controller(anti_windup_method, output_min, output_max);
 
-  n->log_info("PID Values:\n  kp=%.2f\n  ki=%.2f\n  kd=%.2f\n  anti_windup_method=%s", throttle_kp, throttle_ki, throttle_kd, anti_windup_method.c_str());
+  n->log_info("\nSpeed Control PID Values:\n kp=%.2f\n ki=%.2f\n kd=%.2f\n anti_windup_method=%s", throttle_kp, throttle_ki, throttle_kd, anti_windup_method.c_str());
 
   controller.SetKp(throttle_kp);
   controller.SetKi(throttle_ki);
