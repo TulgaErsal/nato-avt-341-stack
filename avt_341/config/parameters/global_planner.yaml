@@ -13,5 +13,5 @@ shutdown_behavior: 2                          # behavior upon reaching goal (1 -
 auto_active_on_new_waypoint: True             # Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint.
 verbose_gp_log: False                         # Activates verbose logging for global planner.
 map_topic: 'avt_341/occupancy_grid'           # Global planner occupancy grid topic name
-seg_topic: 'avt_341/segmentation_grid'           # Global planner segmentation grid topic name
+seg_topic: 'avt_341/segmentation_grid'        # Global planner segmentation grid topic name
 use_fastmarching: True                        # Switches solver from AStar to Fastmarching

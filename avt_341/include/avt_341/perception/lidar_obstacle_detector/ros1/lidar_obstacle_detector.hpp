@@ -25,7 +25,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/segmentation/extract_clusters.h>
 
-#include "box.hpp"
+#include "avt_341/perception/box.hpp"
 
 namespace avt_341{
 namespace perception{
