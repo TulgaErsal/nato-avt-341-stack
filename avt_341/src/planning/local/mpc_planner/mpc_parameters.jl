@@ -50,8 +50,8 @@ const u_min    = 1.0   #5.
 const u_max    = 30.
 const sr_min   = -0.523
 const sr_max   = 0.523
-const jx_min   = -2.1*3
-const jx_max   = 1.9*3
+const jx_min   = -2.0
+const jx_max   = 2.0
 
 # epsilon
 const EP      = 0.01
