@@ -3,11 +3,11 @@
  *
  * ROS node to subscribe to a steering and speed message and do the throttle control
  * Intended to be used with MPC or DWA controller that output desired speed and steering angle
- * 
+ *
  * \author Chris Goodin
  *
  * \contact cgoodin@cavs.msstate.edu
- * 
+ *
  * \date 2/9/23
  */
 // avt - ros includes
@@ -23,17 +23,17 @@ int current_run_state = avt_341::utils::NavStackState::NotInit;   // startup sta
 bool shutdown_condition = false;
 double mrzr_speedometer = 0.0;
 bool speedometer_rcvd = false;
-float desired_speed = 0.0f;
-float desired_speed_factor = 1.0f;
-float desired_steer_radians = 0.0f;
+double desired_speed = 0.0;
+double desired_speed_factor = 1.0;
+double desired_steer_radians = 0.0;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_state) {
-	state = *rcv_state; 
+	state = *rcv_state;
 }
 
 void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
 	mrzr_speedometer = rcv_speed->data;
-  speedometer_rcvd = true; 
+  speedometer_rcvd = true;
 }
 
 void DesiredSpeedCallback(avt_341::msg::Float64Ptr rcv_des_speed) {
@@ -80,42 +80,42 @@ int main(int argc, char *argv[]){
 
   // The PID params are tuned with this value in mind
   // so it's not a good idea to change it
-  float time_to_max_throttle = 3.0f; //seconds
+  double time_to_max_throttle; //seconds
 	// Set controller parameters
-  float ff_a0, ff_a1, ff_a2;
+  double ff_a0, ff_a1, ff_a2;
   bool use_feed_forward;
-	float throttle_coeff, time_to_max_brake;
-  float throttle_kp, throttle_ki, throttle_kd;
+	double throttle_coeff, time_to_max_brake;
+  double throttle_kp, throttle_ki, throttle_kd;
 	std::string display, anti_windup_method;
-  float vehicle_max_steer_angle_degrees, steering_gain, wheelbase, max_lat_g;
-  double output_max, output_min;
+  double vehicle_max_steer_angle_degrees, steering_gain, wheelbase, max_lat_g;
+  double output_max, output_min, integral_abs_max;
   bool use_speed_controller, output_steering_percent;
-  n->get_parameter("~vehicle_wheelbase", wheelbase, 2.019f);
-  n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0f);
-  n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0f);
-  n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0f);
-  n->get_parameter("~time_to_max_throttle", time_to_max_throttle, 3.0f);
-  n->get_parameter("~ff_a0", ff_a0, 0.0402f);
-  n->get_parameter("~ff_a1", ff_a1, 0.0814f);
-  n->get_parameter("~ff_a2", ff_a2, -0.0023f);
+  n->get_parameter("~vehicle_wheelbase", wheelbase, 2.019);
+  n->get_parameter("~vehicle_max_steer_angle_degrees", vehicle_max_steer_angle_degrees, 25.0);
+  n->get_parameter("~throttle_coefficient", throttle_coeff, 1.0);
+  n->get_parameter("~time_to_max_brake", time_to_max_brake, 4.0);
+  n->get_parameter("~time_to_max_throttle", time_to_max_throttle, 3.0);
+  n->get_parameter("~ff_a0", ff_a0, 0.0402);
+  n->get_parameter("~ff_a1", ff_a1, 0.0814);
+  n->get_parameter("~ff_a2", ff_a2, -0.0023);
   n->get_parameter("~use_feed_forward", use_feed_forward, true);
-  n->get_parameter("~throttle_kp", throttle_kp, 0.462f);
-  n->get_parameter("~throttle_ki", throttle_ki, 0.222f);
-  n->get_parameter("~throttle_kd", throttle_kd, 0.24f);
+  n->get_parameter("~throttle_kp", throttle_kp, 0.462);
+  n->get_parameter("~throttle_ki", throttle_ki, 0.222);
+  n->get_parameter("~throttle_kd", throttle_kd, 0.24);
   n->get_parameter("~pid_output_max", output_max, 1.0);
   n->get_parameter("~pid_output_min", output_min, 0.0);
   n->get_parameter("~anti_windup_method", anti_windup_method, avt_341::control::AntiWindupMethod::ResetOnSetpoint);
+  n->get_parameter("~integral_abs_max", integral_abs_max, 1.0);
   n->get_parameter("~display", display, std::string("none"));
   n->get_parameter("~use_speed_controller", use_speed_controller, true);
   n->get_parameter("~output_steering_percent", output_steering_percent, true);
-  n->get_parameter("~max_desired_lateral_g", max_lat_g, 1.0f);
-  
-  //n->get_parameter("~steering_gain", steering_gain, 1.0f);
-  steering_gain = 1.0f;
+  n->get_parameter("~max_desired_lateral_g", max_lat_g, 1.0);
+
+  n->get_parameter("~steering_gain", steering_gain, 1.0);
 
   avt_341::control::PidController controller(anti_windup_method, output_min, output_max);
 
-  n->log_info("\nSpeed Control PID Values:\n kp=%.2f\n ki=%.2f\n kd=%.2f\n anti_windup_method=%s", throttle_kp, throttle_ki, throttle_kd, anti_windup_method.c_str());
+  n->log_info("PID Values:\n  kp=%.2f\n  ki=%.2f\n  kd=%.2f\n  anti_windup_method=%s", throttle_kp, throttle_ki, throttle_kd, anti_windup_method.c_str());
 
   controller.SetKp(throttle_kp);
   controller.SetKi(throttle_ki);
@@ -124,17 +124,20 @@ int main(int argc, char *argv[]){
   if (use_feed_forward){
     controller.SetForwardModelParams(ff_a0, ff_a1, ff_a2);
   }
+  if (anti_windup_method == avt_341::control::AntiWindupMethod::IntegralClamping){
+    controller.SetIntegralAbsMax(integral_abs_max);
+  }
 
 
   bool display_rviz = display == "rviz";
   auto next_waypoint_pub = display_rviz ? n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1) : nullptr;
 
-  float rate = 100.0f;
-  float dt = 1.0f/rate;
-  float brake_step = dt/time_to_max_brake;
-  float max_throttle_step = dt/time_to_max_throttle;
-  float current_brake_value = 0.0f;
-  float current_throttle_value = 0.0f;
+  double rate = 100.0;
+  double dt = 1.0/rate;
+  double brake_step = dt/time_to_max_brake;
+  double max_throttle_step = dt/time_to_max_throttle;
+  double current_brake_value = 0.0;
+  double current_throttle_value = 0.0;
   avt_341::node::Rate r(rate);
 
   while (avt_341::node::ok()){
@@ -143,7 +146,7 @@ int main(int argc, char *argv[]){
 
     if(reset_called){
       controller.Reset();
-      desired_speed = 0.0f;
+      desired_speed = 0.0;
       current_run_state = avt_341::utils::NavStackState::NotInit;
       avt_341::msg::String reset_ack_msg;
       reset_ack_msg.data = avt_341::node::NodeType::Control;
@@ -152,7 +155,7 @@ int main(int argc, char *argv[]){
     }
 
     // tell the controller the current vehicle state
-    float vel = 0.0f;
+    double vel = 0.0;
     if (speedometer_rcvd){
       vel = mrzr_speedometer;
     }
@@ -160,12 +163,12 @@ int main(int argc, char *argv[]){
       vel = sqrtf(state.twist.twist.linear.x*state.twist.twist.linear.x + state.twist.twist.linear.y*state.twist.twist.linear.y);
     }
 
-    if (shutdown_condition){  // current_run_state = 2 
+    if (shutdown_condition){  // current_run_state = 2
       // bring to a smooth stop and shut down
-      controller.SetSetpoint(0.0f);
-      if (vel<0.5f)time_to_quit = true;
-      dc.linear.x = 0.0f;
-      dc.angular.z = 0.0f;
+      controller.SetSetpoint(0.0);
+      if (vel<0.5)time_to_quit = true;
+      dc.linear.x = 0.0;
+      dc.angular.z = 0.0;
 
     }
     else if (current_run_state==avt_341::utils::NavStackState::Active){    // active running state
@@ -174,14 +177,14 @@ int main(int argc, char *argv[]){
     }
     else if (current_run_state==avt_341::utils::NavStackState::NotInit || current_run_state==avt_341::utils::NavStackState::Stopped){
       // bring to a smooth stop and wait / idle
-      controller.SetSetpoint(0.0f);
-       dc.linear.x = (use_speed_controller) ? controller.GetControlVariable(vel,dt) : 0.0f;
+      controller.SetSetpoint(0.0);
+      dc.linear.x = (use_speed_controller) ? controller.GetControlVariable(vel,dt) : 0.0;
     }
     else if (current_run_state==avt_341::utils::NavStackState::HardShutdown){
       // bring to a hard stop and shut down
-      dc.linear.x = 0.0f;
-      dc.linear.y = (use_speed_controller) ? 1.0f : 0.0f;
-      dc.angular.z = 0.0f;
+      dc.linear.x = 0.0;
+      dc.linear.y = (use_speed_controller) ? 1.0 : 0.0;
+      dc.angular.z = 0.0;
       time_to_quit = true;
     }
 
@@ -198,7 +201,7 @@ int main(int argc, char *argv[]){
           if (dc.linear.y>0.0)dc.linear.y = 0.0;
         }
         // make sure the throttle is zero when braking
-        dc.linear.x = 0.0f;
+        dc.linear.x = 0.0;
       }
       // apply the throttle ramp up
       if (dc.linear.x-current_throttle_value > max_throttle_step){
@@ -210,10 +213,10 @@ int main(int argc, char *argv[]){
 
     // Enforce bounds
     if (output_steering_percent) {
-      dc.angular.z = std::max(-1.0f,std::min(1.0f,(180.0f*desired_steer_radians/3.14159265358979f)/vehicle_max_steer_angle_degrees*steering_gain));
+      dc.angular.z = std::max(-1.0,std::min(1.0,(180.0*desired_steer_radians/3.14159265358979)/vehicle_max_steer_angle_degrees*steering_gain));
     }
     else {
-      float vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979f / 180.0f;
+      double vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979 / 180.0;
       dc.angular.z = std::max(-vehicle_max_steer_angle_rad,std::min(vehicle_max_steer_angle_rad,desired_steer_radians*steering_gain));
     }
 
@@ -236,7 +239,7 @@ int main(int argc, char *argv[]){
 
     // break the loop when an end state is reached
     if (time_to_quit)break;
-    
+
     if(display_rviz){
       avt_341::msg::PointStamped next_waypoint_msg;
       next_waypoint_msg.point.x = state.pose.pose.position.x;
