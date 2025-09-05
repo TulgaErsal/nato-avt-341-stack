@@ -11,6 +11,8 @@
   <author email="cgoodin@cavs.msstate.edu">Chris Goodin</author>
   <author email="dwc2@cavs.msstate.edu">Daniel Carruth</author>
 
+  <license>TODO</license>
+
   <depend>geometry_msgs</depend>
   <depend condition="$ROS_VERSION == 1">message_runtime</depend>
   <depend>nav_msgs</depend>
