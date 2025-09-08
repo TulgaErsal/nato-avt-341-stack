@@ -4,7 +4,7 @@ model:
   external: ''
   name: 'fedav8m-cuda-640x640'
   warmup: 30
-  classes: ['FedAlpha']
+  classes: ["FED Alpha"]
 
 thresholds:
   score: 0.5
