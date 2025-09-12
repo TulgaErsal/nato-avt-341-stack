@@ -24,7 +24,7 @@ __Editing documentation:__
 [See instructions for editing documentation](https://d1nxz9z3nv7fn1.cloudfront.net/pages/development/documentation/editing-docs.html).
 
 > [!NOTE]
-> Documentation is automatically built and published by a Github Action whenever contents under `./docs` changes in the `main` branch.
+> Documentation is automatically built and published by a Github Action whenever contents under `./docs` change in the `main` branch.
 
 ## Acknowledgements
 
