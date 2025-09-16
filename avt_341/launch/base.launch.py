@@ -170,7 +170,7 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
 
 PYTHON_EVAL_STR = '$Python:'
 
-
+# TODO: Issue #123 Convert to new base.launch file
 def generate_launch_description():
 
     MAX_VEHICLES = 4
@@ -198,11 +198,7 @@ def generate_launch_description():
             vi = params[k][ki]
             if type(vi) is dict:
                 for kii, vii in vi.items():
-                    # TODO: Issue #123 Convert to new base.launch file
-                    if k == 'perception' or k == 'mission_manager':
-                        params[k]['/'.join([ki, kii])] = vii
-                    else:
-                        params[k]['_'.join([ki, kii])] = vii
+                    params[k]['_'.join([ki, kii])] = vii
                 del params[k][ki]
         for ki, vi in params[k].items():
             if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
