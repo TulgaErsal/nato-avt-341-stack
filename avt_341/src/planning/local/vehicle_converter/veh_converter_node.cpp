@@ -61,6 +61,11 @@ void callbackImu(avt_341::msg::ImuPtr msg_received_imu) {
     g_received_acceleration = true;
 }
 
+void callbackAccel(avt_341::msg::AccelStampedPtr msg_accel) {
+    g_acceleration = msg_accel->accel.linear.x;
+    g_received_acceleration = true;
+}
+
 void callbackSteeringAngle(avt_341::msg::Float64Ptr msg_received_steering_angle) {
     g_steering_angle = msg_received_steering_angle->data;
     g_received_steering_angle = true;
@@ -75,7 +80,7 @@ int main(int argc, char* argv[]) {
     auto sub_steering_angle =
         node->create_subscription<avt_341::msg::Float64>("avt_341/steering_angle", 1, callbackSteeringAngle);
     auto sub_imu = node->create_subscription<avt_341::msg::Imu>("/mavs_ros/imu", 1, callbackImu);
-
+    auto sub_accel = node->create_subscription<avt_341::msg::AccelStamped>("/avt_341/acceleration", 1, callbackAccel);
 
     // Create node publishers.
     pub_veh = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/veh", 1);

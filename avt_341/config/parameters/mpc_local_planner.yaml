@@ -37,4 +37,9 @@ adaptive: False # whether to use the terrain adaptive formulation or not
 vehicle_axle_distance_front: 1.38599  # [m]
 
 obstacles_vizualize: True # Publish obstacle visualization messages
+  
+sa_min: -0.485        # Minimum steering angle constraint for MPC planner
+sa_max: 0.485         # Maximum steering angle constraint for MPC planner
+sr_min: -0.523        # Minimum steering rate constraint for MPC planner
+sr_max: 0.523         # Maximum steering rate constraint for MPC planner
 

@@ -44,3 +44,8 @@ project_segmentation_onto_occupancy_grid: True
 slope_threshold: 0.2
 rms_threshold: 0.05
 speed_around_large_slopes_and_rms: 4.0
+
+sa_min: -0.485        # Minimum steering angle constraint for MPC planner
+sa_max: 0.485         # Maximum steering angle constraint for MPC planner
+sr_min: -0.523        # Minimum steering rate constraint for MPC planner
+sr_max: 0.523         # Maximum steering rate constraint for MPC planner

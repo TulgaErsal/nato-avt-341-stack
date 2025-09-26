@@ -91,6 +91,10 @@ bool publish_steering_commands;
 double slope_threshold;
 double rms_threshold;
 double speed_around_large_slopes_and_rms;
+double sa_min;
+double sa_max;
+double sr_min;
+double sr_max;
 // --------------
 
 // Globals
@@ -185,6 +189,10 @@ jl_function_t* j_set_linear_solver = NULL;
 jl_function_t* j_set_slope_threshold = NULL;
 jl_function_t* j_set_rms_threshold = NULL;
 jl_function_t* j_set_speed_around_large_slopes_and_rms = NULL;
+jl_function_t* j_set_sa_min = NULL;
+jl_function_t* j_set_sa_max = NULL;
+jl_function_t* j_set_sr_min = NULL;
+jl_function_t* j_set_sr_max = NULL;
 
 // ---------------
 
