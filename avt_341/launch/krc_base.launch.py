@@ -568,7 +568,7 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 ('camera_info','/flir_camera/camera_info'),
                 ('image','/flir_camera/image_raw'),
-                ('detection_2d', '/mrzr/detections/vision'),
+                ('detection_2d', '/mrzr/feda_detector/detections/vision'),
                 ('input','/ouster/points'),
                 ('pose','/feda/pose'),
                 ('odometry','/feda/avt_341/odometry')
