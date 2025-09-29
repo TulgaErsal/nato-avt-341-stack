@@ -80,6 +80,22 @@ function SetRMSThreshold(rms_threshold::Float64)
 	global rmsThreshold = rms_threshold
 end
 
+function SetSteeringAngleMin(sa_min_in::Float64)
+	global sa_min = sa_min_in
+end
+
+function SetSteeringAngleMax(sa_max_in::Float64)
+	global sa_max = sa_max_in
+end
+
+function SetSteeringRateMin(sr_min_in::Float64)
+	global sr_min = sr_min_in
+end
+
+function SetSteeringRateMax(sr_max_in::Float64)
+	global sr_max = sr_max_in
+end
+
 function SetSpeedAroundLargeSlopesAndRMS(speed_around_large_slopes_and_rms::Float64)
 	global speedAroundLargeSlopesAndRMS = speed_around_large_slopes_and_rms
 end
