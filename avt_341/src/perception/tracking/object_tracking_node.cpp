@@ -65,6 +65,9 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("camera_frame", "camera_optical");
     camera_frame_ = get_parameter("camera_frame").as_string();
 
+    declare_parameter("odometry_child_frame", "odom");
+    odometry_child_frame_ = get_parameter("odometry_child_frame").as_string();
+
     declare_parameter("filters_downsampling_leaf_size", 0.3);
     leaf_size_ = get_parameter("filters_downsampling_leaf_size").as_double();
 
@@ -996,6 +999,7 @@ void ObjectTrackingNode::PublishOdometry() {
 
     odometry_message.header.stamp = get_clock()->now();
     odometry_message.header.frame_id = camera_frame_;
+    odometry_message.child_frame_id = odometry_child_frame_;
 
     if(use_filtered_odometry_) {
         odometry_message.pose.pose.position.x =

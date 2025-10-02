@@ -1,5 +1,7 @@
 #include <vector>
 #include <algorithm>
+#include <avt_341/node/occupancy_grid_subscriber.h>
+
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 
@@ -215,6 +217,14 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
         }
     }
 
+    // Clear all previous markers
+    avt_341::msg::Marker obs_marker_clear;
+    obs_marker_clear.header.frame_id = "map";
+    obs_marker_clear.header.stamp = node->get_stamp();
+    obs_marker_clear.id = 0;
+    obs_marker_clear.action = avt_341::msg::Marker::DELETEALL;
+    obstacle_markers.push_back(obs_marker_clear);
+
     // Cluster obstacles
     obstacles_clustered = cluster_occupied_cells(obstacle_size_meters);
     if (viz) {
@@ -257,14 +267,12 @@ int main(int argc, char* argv[]) {
     last_vehicle_odom_stamp = init_time;
 
     // Create publishers and subscribers
-    auto occupancy_grid_sub =
-        node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 10, callback_obs);
+    auto occupancy_grid_sub = avt_341::node::OccupancyGridSubscriber(node, "avt_341/occupancy_grid", 10, callback_obs);
+    auto seg_grid_sub = avt_341::node::OccupancyGridSubscriber(node, "avt_341/segmentation_grid", 1, callback_seg);
     auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, callback_veh);
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
     auto obstacle_clusters_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
     auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
-    auto seg_grid_sub = node->create_subscription<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1, callback_seg);
-
 
 
     // Load parameters
