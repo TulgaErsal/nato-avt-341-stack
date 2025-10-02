@@ -30,9 +30,9 @@ clear_method:
   visualize: False                        # If true, visualizes costmap clearing method.
   visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
   raytrace_range: 50.0                    # Maximum range for raytrace clearing.
-  use_voxels: True                        # Maximum range for raytrace clearing.
-  voxel_height_min: 0.0                   # Voxel grid height min used in raytrace_voxel clearing method.
-  voxel_height_res: 0.5                   # Voxel grid height resolution used in raytrace_voxel clearing method.
+  use_voxels: True                        # Whether to use voxel representation for raytrace clearing method. Otherwise, the min and max height values associated with a cell are adjusted to the point at which the ray intersects the cell without having memory of other intermediate height values which would normally be tracked by the voxels.
+  voxel_height_min: 0.0                   # Voxel grid height min used in raytrace_voxel clearing method. Voxels will extend from voxel_height_min at increments of voxel_height_res for 1024 cells.
+  voxel_height_res: 0.5                   # Voxel grid height resolution used in raytrace_voxel clearing method. Voxels will extend from voxel_height_min at increments of voxel_height_res for 1024 cells.
   immediate_clear_dilation: True          # If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values.
   obs_filter_range: 1.0                   # Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option.
   max_point_age: 5.0                      # Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time set.
