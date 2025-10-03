@@ -15,13 +15,13 @@ namespace avt_341{
             static bool IsGridPubMethodValid(const std::string & selected_method);
         };
 
-        struct GridUpdateRegion {
+        struct GridRegion {
 
-            GridUpdateRegion(int x_min, int x_max, int y_min, int y_max);
-            GridUpdateRegion();
+            GridRegion(int x_min, int x_max, int y_min, int y_max);
+            GridRegion();
 
-            GridUpdateRegion Dilate(int dilate_x, int dilate_y, int nx, int ny) const;
-            void Update(int x, int y);
+            GridRegion Dilate(int dilate_x, int dilate_y, int nx, int ny) const;
+            void UpdateBounds(int x, int y);
             void Reset();
 
             inline bool HasData() const {return x_min < x_max; }

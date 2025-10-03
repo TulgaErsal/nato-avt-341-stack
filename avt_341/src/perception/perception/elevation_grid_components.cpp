@@ -4,15 +4,15 @@
 namespace avt_341{
     namespace perception{
 
-    GridUpdateRegion::GridUpdateRegion(int x_min, int x_max, int y_min, int y_max)
+    GridRegion::GridRegion(int x_min, int x_max, int y_min, int y_max)
         : x_min(x_min), x_max(x_max), y_min(y_min), y_max(y_max) {
     }
 
-    GridUpdateRegion::GridUpdateRegion() {
+    GridRegion::GridRegion() {
         Reset();
     }
 
-    GridUpdateRegion GridUpdateRegion::Dilate(int dilate_x, int dilate_y, int nx, int ny) const {
+    GridRegion GridRegion::Dilate(int dilate_x, int dilate_y, int nx, int ny) const {
         return {
             std::max(0, x_min - dilate_x),
             std::min(nx, x_max + dilate_x),
@@ -21,14 +21,14 @@ namespace avt_341{
             };
     }
 
-    void GridUpdateRegion::Update(const int x, const int y) {
+    void GridRegion::UpdateBounds(const int x, const int y) {
         x_min = std::min(x_min, x);
         x_max = std::max(x_max, x+1);
         y_min = std::min(y_min, y);
         y_max = std::max(y_max, y+1);
     }
 
-    void GridUpdateRegion::Reset() {
+    void GridRegion::Reset() {
         x_min = std::numeric_limits<int>::max();
         x_max = std::numeric_limits<int>::lowest();
         y_min = std::numeric_limits<int>::max();
