@@ -8,11 +8,11 @@ rate: 20.0 # Planner update rate
 tire_model: "P" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
 num_col_points: 10 # number of collocation points to use in MPC
-prediction_time_horizon: 3.0 # MPC prediction time horizon [s]
+prediction_time_horizon: 2.0 # MPC prediction time horizon [s]
 max_num_obs: 500 # maximum number of obstacles allowed in MPC
 max_num_seg: 2000 # maximum number of obstacles allowed in MPC
 min_speed: 0.5 # minimum allowed vehicle speed [m/s]
-max_speed: 5.0 # maximum allowed vehicle speed [m/s]
+max_speed: 4.0 # maximum allowed vehicle speed [m/s]
 
 use_hard_constraints: False # whether to include obstacles as hard constraints in addition to soft constraints
 use_segmentation: False
@@ -41,7 +41,7 @@ obstacles_vizualize: True # Publish obstacle visualization messages
 traversability_threshold: 40
 project_segmentation_onto_occupancy_grid: False
 
-slope_threshold: 0.05
+slope_threshold: 0.2
 rms_threshold: 0.05
 speed_around_large_slopes_and_rms: 4.0
 
