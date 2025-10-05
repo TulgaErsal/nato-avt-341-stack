@@ -5,7 +5,7 @@ models_module_path: "" # Filepath to the Julia MPC models module
 
 rate: 20.0 # Planner update rate
 
-tire_model: "L" # L for linear, P for Pacejka, N for neural network for deformable terrain
+tire_model: "P" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
 num_col_points: 10 # number of collocation points to use in MPC
 prediction_time_horizon: 3.0 # MPC prediction time horizon [s]
@@ -19,14 +19,14 @@ use_segmentation: False
 segmentation_resolution: 0.25
 linear_solver: "ma27" # See https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_linear_solver for list of linear solvers. Recommended: 'ma27'. Default: 'mumps'
 
-w_distance_to_obstacles: 10. # weight on distanceToObstacles in the objective function
+w_distance_to_obstacles: 100. # weight on distanceToObstacles in the objective function
 w_distance_to_goal: 150. # weight on distanceToGoal in the objective function
 w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
 w_yaw_accel: 0.8 #  weight on yawAccel in the objective function
 w_traversability_cost: 0.1  #weight on traversability cost in the objective function
 
 safety_margin: 0.5 # safety margin [m] around obstacles
-grid_resolution: 0.25 # resolution of the occupancy grid [m]
+grid_resolution: 0.5 # resolution of the occupancy grid [m]
 
 front_angle_goal: 1.571 # the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle [rad]
 front_angle_obstacle: 1.571 # the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle [rad]
@@ -41,7 +41,7 @@ obstacles_vizualize: True # Publish obstacle visualization messages
 traversability_threshold: 40
 project_segmentation_onto_occupancy_grid: False
 
-slope_threshold: 0.2
+slope_threshold: 0.05
 rms_threshold: 0.05
 speed_around_large_slopes_and_rms: 4.0
 
