@@ -401,11 +401,15 @@ std::shared_ptr<OccupancyClearingMethod> ElevationGrid::CreateClearingMethod(std
 
 void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
 	float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-	bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold) {
+	bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold,
+	bool clr_on_scan_below_only) {
+
 	int dsize_x = lround(grid_dilate_x_ / res_);
 	int dsize_y = lround(grid_dilate_y_ / res_);
+
 	RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, clear_method_raytrace_range,
-		clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res, obj_range_filter);
+		clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res, obj_range_filter, clr_on_scan_below_only);
+
 	TimedNoObsClearingSettings timed_clearing_settings(max_point_age_, sampled_threshold);
 	clear_methods_.clear();
 	const std::string clear_methods_orig = clear_methods_str;

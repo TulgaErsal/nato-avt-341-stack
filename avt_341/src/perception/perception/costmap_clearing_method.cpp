@@ -193,30 +193,32 @@ namespace perception{
 
   void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z){
     int z_i = static_cast<int>((cells_[y][x].high.val - config_.voxel_height_min) / config_.voxel_height_res);
-    if(!cells_[y][x].filled() || (z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
-//    if((z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
+    const int check_offset = config_.clr_on_scan_below_only ? 1 : 0;
+    if(!cells_[y][x].filled() || (z_i + check_offset) < z || z < 0 || z >= N_VOXELS_PER_CELL){
       return;
     }
     int z_min = std::max(0, static_cast<int>((cells_[y][x].low.val - config_.voxel_height_min) / config_.voxel_height_res));
 
     if(config_.use_voxels){
+      // Remove voxels from z_i down to z
       while(z_i >= z){
         voxel_grid[y*Nx_ + x].set(z_i, false);
         z_i--;
       }
-      // Find next filled cell
+      // Find next filled cell below z_i. This will be the new max
       while(z_i >= z_min && !voxel_grid[y*Nx_ + x].test(z_i)){
-        z_i --;
+        z_i--;
       }
     }
 
     bool was_obstacle = cell_obstacle_calculator_->PastSlopeThreshold(cells_[y][x]);
     if(z_i < z_min){
-      // Cell empty
-      cells_[y][x].high.val = cells_[y][x].low.val;
+      // Empty cell
+      cells_[y][x].ResetHeight();
     }else{
       // Update cell height
       cells_[y][x].high.val = static_cast<float>(z_i) * config_.voxel_height_res + config_.voxel_height_min;
+      cells_[y][x].low.val = std::min(cells_[y][x].low.val, cells_[y][x].high.val);
     }
 
     // Remove surrounding dilation if cell no longer obstacle

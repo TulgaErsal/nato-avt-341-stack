@@ -69,7 +69,8 @@ public:
 
 	void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
 		float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-		bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold);
+		bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold,
+		bool clr_on_scan_below_only);
 
 	void Visualize() const {
 		for (auto& cm : clear_methods_) {

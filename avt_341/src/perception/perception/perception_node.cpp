@@ -9,6 +9,15 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 
+// TODO:
+// timer
+// hfov, vfov, distance filtering, put in object, use in clearing + normal lidar process?
+// clr_scan_below_only setting
+// distance filter with obs time
+// correclly communicate to other clearing methods
+// clear segmented ground plane
+
+
 #ifdef ROS_1
 #include "sensor_msgs/point_cloud_conversion.h"
 #else
@@ -210,7 +219,7 @@ int main(int argc, char* argv[]) {
 	grid.SetSize(grid_width, grid_height);
 
 	float grid_res, grid_llx, grid_lly, warmup_time, thresh, thresh_max, grid_dilate_x, grid_dilate_y, grid_dilate_proportion, voxel_height_min, voxel_height_res, clear_method_raytrace_range, clear_method_obj_range_filter;
-	bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation, limit_grid_size;
+	bool use_elevation, grid_dilate, clear_method_visualize, clear_method_use_voxels, clear_method_clear_dilation, limit_grid_size, clr_on_scan_below_only;
 	int sampled_threshold;
 	std::string clear_method, grid_pub_method;
 	double perception_rate;
@@ -248,6 +257,7 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~clear_method_immediate_clear_dilation", clear_method_clear_dilation, true);
 	n->get_parameter("~clear_method_obs_filter_range", clear_method_obj_range_filter, 1.0f);
 	n->get_parameter("~clear_method_sampled_threshold", sampled_threshold, 5);
+	n->get_parameter("~clear_method_clr_on_scan_below_only", clr_on_scan_below_only, false);
 
 	n->get_parameter("~grid_pub_method", grid_pub_method, avt_341::perception::GridPubMethod::Full);
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
@@ -316,7 +326,7 @@ int main(int argc, char* argv[]) {
 	grid.SetMaxPointAge(max_point_age);
 	grid.SetCostmapClearingMethod(n, clear_method, visualization_range, clear_method_visualize,
 		clear_method_raytrace_range, clear_method_clear_dilation, clear_method_use_voxels,
-		voxel_height_min, voxel_height_res, clear_method_obj_range_filter, sampled_threshold);
+		voxel_height_min, voxel_height_res, clear_method_obj_range_filter, sampled_threshold, clr_on_scan_below_only);
 
 	ResetNode();
 	start_time = n->get_now_seconds();

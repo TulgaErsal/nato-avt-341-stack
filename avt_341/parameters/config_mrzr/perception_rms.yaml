@@ -30,7 +30,7 @@ rms_calc_time_average_window: 0.05        # Time window for averaging RMS and sl
 # Clearing method
 # ======================================================================================================================
 clear_method:
-  type: 'time'                     # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time.
+  type: 'time'                            # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time.
   visualize: False                        # If true, visualizes costmap clearing method.
   visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
   raytrace_range: 50.0                    # Maximum range for raytrace clearing.
@@ -41,6 +41,7 @@ clear_method:
   obs_filter_range: 1.0                   # Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option.
   max_point_age: 1.0                      # Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time set.
   sampled_threshold: 5                    # Minimum samples before cell cleared when clear_method_type=no_obs_time set.
+  clr_on_scan_below_only: False           # If true, only clears cells where the raytrace passes strictly below the discrete voxel height of the marked cell. Otherwise adjusts cells less than or equal to the impacted discrete voxel height.
 
 # Segmentation
 # ======================================================================================================================
