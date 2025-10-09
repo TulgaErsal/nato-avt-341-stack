@@ -217,6 +217,14 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
         }
     }
 
+    // Clear all previous markers
+    avt_341::msg::Marker obs_marker_clear;
+    obs_marker_clear.header.frame_id = "map";
+    obs_marker_clear.header.stamp = node->get_stamp();
+    obs_marker_clear.id = 0;
+    obs_marker_clear.action = avt_341::msg::Marker::DELETEALL;
+    obstacle_markers.push_back(obs_marker_clear);
+
     // Cluster obstacles
     obstacles_clustered = cluster_occupied_cells(obstacle_size_meters);
     if (viz) {
