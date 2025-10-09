@@ -19,9 +19,10 @@ stitch_lidar_points: True                 # If true, lidar scans will be stitche
 filter_highest_lidar: False               # If true, the highest point in each cell will be ignored and the second highest will be used for the slope calculations. If false, the highest point will be used.
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
 perception_rate: 100.0                    # Publish rate for perception node
-limit_grid_size: True                     # Enable limiting the global occupancy grid size. If enabled, the full map will still be saved, but only a portion will be published
-max_grid_width: 100.0                     # Maximum grid width [m] (for limit_grid_size = True)
-max_grid_height: 100.0                    # Maximum grid height [m] (for limit_grid_size = True)
+max_grid_width: 100.0                     # Maximum grid width [m] (for grid_pub_method = 'window')
+max_grid_height: 100.0                    # Maximum grid height [m] (for grid_pub_method = 'window')
+grid_pub_method: 'window'                 # Method of publishing the grid. 'full' | 'window' | 'updates' . full: Always publish entire grid. window: Published limited sized grid windowed around vehicle pose. updates: Publish incremental updates (on _updates topic) corresponding to regions updated by most recent point clouds.
+grid_pub_force_full_every: 10.0           # Force full grid publish every x seconds. Only active when grid_pub_method='updates'.
 clear_ground_points: True                 # Clears all grid cells containing points in "ground_points_topic"
 rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians for calculating slope and RMS values
 rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
@@ -34,9 +35,9 @@ clear_method:
   visualize: False                        # If true, visualizes costmap clearing method.
   visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
   raytrace_range: 50.0                    # Maximum range for raytrace clearing.
-  use_voxels: True                        # Maximum range for raytrace clearing.
-  voxel_height_min: -5.0                   # Voxel grid height min used in raytrace_voxel clearing method.
-  voxel_height_res: 0.25                   # Voxel grid height resolution used in raytrace_voxel clearing method.
+  use_voxels: True                        # Whether to use voxel representation for raytrace clearing method. Otherwise, the min and max height values associated with a cell are adjusted to the point at which the ray intersects the cell without having memory of other intermediate height values which would normally be tracked by the voxels.
+  voxel_height_min: -5.0                  # Voxel grid height min used in raytrace_voxel clearing method. Voxels will extend from voxel_height_min at increments of voxel_height_res for 1024 cells.
+  voxel_height_res: 0.25                  # Voxel grid height resolution used in raytrace_voxel clearing method. Voxels will extend from voxel_height_min at increments of voxel_height_res for 1024 cells.
   immediate_clear_dilation: True          # If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values.
   obs_filter_range: 1.0                   # Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option.
   max_point_age: 0.5                      # Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time set.
