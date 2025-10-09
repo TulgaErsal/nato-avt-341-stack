@@ -1,0 +1,20 @@
+rate: 10.0
+
+model:
+  external: ''
+  name: 'fedav8m-cuda-640x640'
+  warmup: 30
+  classes: ["FED Alpha"]
+
+thresholds:
+  score: 0.5
+  iou: 0.5
+  count: 300
+
+visualizer:
+  enabled: True
+  textbox: True
+  seed: 0
+  # Using the key "size.font" in order to keep size options sorted, despite this option affecting the font scale.
+  size_font: 0.75
+  size_border: 2
