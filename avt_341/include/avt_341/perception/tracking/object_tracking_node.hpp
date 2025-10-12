@@ -238,6 +238,9 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief Frame ID of the camera optical frame. */
     std::string camera_frame_;
 
+    /** @brief Child frame ID for the Odometry message. */
+    std::string odometry_child_frame_;
+
     /** @brief Shared pointer to the transform listener. */
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
 

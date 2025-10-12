@@ -1,4 +1,5 @@
 camera_frame: "flir_optical"
+odometry_child_frame: "feda/odom"
 filters_downsampling_leaf_size: 0.3
 filters_passthrough_min: 3.0
 filters_passthrough_max: 30.0
@@ -10,7 +11,7 @@ filters_ground_threshold: 0.2
 filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
-filters_kalman_measurement: 1.0
+filters_kalman_measurement: 0.01
 tracker_target_class: 0
 tracker_timeout: 5.0
 sync_enable: true
@@ -21,8 +22,8 @@ publish_clouds_roi: true
 publish_clouds_ground: true
 publish_clouds_cluster: true
 publish_pose: true
-filters_pose: true
+filters_pose: false
 publish_odometry: true
-filters_odometry: true
+filters_odometry: false
 publish_detection: true
 publish_image: true

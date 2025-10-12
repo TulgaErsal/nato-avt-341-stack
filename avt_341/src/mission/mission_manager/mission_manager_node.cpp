@@ -58,7 +58,18 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     const std::string leader_name = current_task->getFormationDef()->followedVehicle();
 
     if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
-      mgr->leader_odometry = *msg;
+      avt_341::msg::Odometry leader_odom = *msg;
+
+      // Check if odometry is in map frame
+      if (msg->header.frame_id != "map") {
+        avt_341::msg::PoseStamped leader_pose, leader_pose_map;
+        leader_pose.header = msg->header;
+        leader_pose.pose = leader_odom.pose.pose;
+        nh->transform_pose(leader_pose, leader_pose_map, "map", 0.2);
+        leader_odom.pose.pose = leader_pose_map.pose;
+      }
+      
+      mgr->leader_odometry = leader_odom;
 //      leader_pub->publish(*msg);
     }
 }
@@ -113,6 +124,7 @@ int main(int argc, char **argv) {
 
     // initialize the node
     nh = avt_341::node::init_node(argc, argv, "mission_manager");
+    nh->initialize_tf_listener();
     avt_341::node::Rate loop_rate(10);
 
     // load the parameters
