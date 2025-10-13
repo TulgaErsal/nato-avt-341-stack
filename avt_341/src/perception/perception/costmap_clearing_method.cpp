@@ -216,7 +216,6 @@ namespace perception{
     }else{
       // Update cell height
       cells_[y][x].high.val = static_cast<float>(z_i) * config_.voxel_height_res + config_.voxel_height_min;
-      cells_[y][x].low.val = std::min(cells_[y][x].low.val, cells_[y][x].high.val);
     }
 
     // Remove surrounding dilation if cell no longer obstacle
