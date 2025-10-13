@@ -168,7 +168,7 @@ namespace avt_341 {
             template<typename MessageT>
             std::shared_ptr<Publisher<MessageT>> create_latching_publisher(const std::string &topic_name) {
                 // TODO: Not currently implemented in ROS1
-                return create_publisher(topic_name, 1);
+                return std::make_shared<Publisher<MessageT>>(topic_name, 1, node_);
             }
 
             template<typename MessageT>
