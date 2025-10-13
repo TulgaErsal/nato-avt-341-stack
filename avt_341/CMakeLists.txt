@@ -154,7 +154,11 @@ if(USING_CATKIN)
     )
 
   # Proxy library
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp" "src/node/occupancy_grid_subscriber.cpp")
+  add_library(${PROJECT_NAME}_proxy
+          "src/node/node_proxy.cpp"
+          "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/monitoring.cpp"
+  )
   target_link_libraries(${PROJECT_NAME}_proxy ${catkin_LIBRARIES})
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
@@ -308,7 +312,12 @@ if(USING_AMENT)
 
   # Node proxy library
   # ------------------
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp" "src/node/occupancy_grid_subscriber.cpp")
+  add_library(${PROJECT_NAME}_proxy
+          "src/node/node_proxy.cpp"
+          "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/monitoring.cpp"
+  )
+
   target_include_directories(
     ${PROJECT_NAME}_proxy
     PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>

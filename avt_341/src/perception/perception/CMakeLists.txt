@@ -3,8 +3,13 @@ message(STATUS "Building perception node ...")
 if(USING_CATKIN)
   # Perception node
   add_executable(
-    ${PROJECT_NAME}_perception_node "costmap_clearing_method.cpp"
-                                    "elevation_grid.cpp" "perception_node.cpp" "elevation_grid_components.cpp")
+    ${PROJECT_NAME}_perception_node
+          "costmap_clearing_method.cpp"
+          "elevation_grid.cpp"
+          "perception_node.cpp"
+          "elevation_grid_components.cpp"
+          "point_cloud_filter.cpp"
+  )
   add_dependencies(${PROJECT_NAME}_perception_node ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_perception_node ${PROJECT_NAME}_proxy)
   install(
@@ -16,7 +21,12 @@ endif() # if(USING_CATKIN)
 if(USING_AMENT)
   add_executable(
     ${PROJECT_NAME}_perception_node
-    "perception_node.cpp" "costmap_clearing_method.cpp" "elevation_grid.cpp" "elevation_grid_components.cpp")
+    "perception_node.cpp"
+    "costmap_clearing_method.cpp"
+    "elevation_grid.cpp"
+    "elevation_grid_components.cpp"
+    "point_cloud_filter.cpp"
+  )
   target_link_libraries(${PROJECT_NAME}_perception_node ${PROJECT_NAME}_proxy)
   install(
     TARGETS ${PROJECT_NAME}_perception_node
