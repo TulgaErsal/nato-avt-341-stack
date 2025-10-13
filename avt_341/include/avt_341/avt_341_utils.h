@@ -170,6 +170,15 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 	return d0;
 }
 
+inline avt_341::msg::Pose TransformToPose(const avt_341::msg::Transform & tx) {
+	avt_341::msg::Pose pose_msg;
+	pose_msg.orientation = tx.rotation;
+	pose_msg.position.x = tx.translation.x;
+	pose_msg.position.y = tx.translation.y;
+	pose_msg.position.z = tx.translation.z;
+	return pose_msg;
+}
+
 inline float GetHeadingFromOrientation(avt_341::msg::Quaternion orientation){
     avt_341::msg_tf::Quaternion q(
         orientation.x,

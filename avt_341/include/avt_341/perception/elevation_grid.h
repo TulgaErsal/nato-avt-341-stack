@@ -16,6 +16,8 @@
 #include <vector>
 #include <limits>
 #include <string>
+
+#include "point_cloud_filter.hpp"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/perception/elevation_grid_cell.h"
 #include "avt_341/perception/elevation_grid_components.h"
@@ -31,10 +33,19 @@ public:
 	~ElevationGrid() override;
 
 	/**
+	* Set point cloud filtering configuration
+	* \param filter_pc_config Configuration for normal occupancy addition point cloud.
+	* \param filter_pc_cm_config Configuration for additional point cloud filtering of costmap clearing methods.
+	*/
+	void SetPointCloudFilterConfig(
+		const PointCloudFilterConfig& filter_pc_config,
+		const PointCloudFilterConfig& filter_pc_cm_config);
+
+	/**
 		* Add points to be processed
 		* \param point_cloud PointCloud message
 		*/
-	void AddPoints(avt_341::msg::PointCloud& point_cloud);
+	void AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose);
 
 	/**
 		* Clear points in point cloud
@@ -67,12 +78,15 @@ public:
 		const TimedNoObsClearingSettings& timed_clear_settings,
 		float visualization_range, bool visualize);
 
-	void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
-		float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-		bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold,
-		bool clr_on_scan_below_only);
+	void SetCostmapClearingMethod(
+		std::shared_ptr<node::NodeProxy> node_ref,
+		const ClearMethodRosParameters & params,
+		const std::vector<std::string> & clear_method_types
+		);
 
-	void Visualize() const {
+	void SetCostmapClearingMethod(std::shared_ptr<node::NodeProxy> node_ref, const ClearMethodRosParameters & params);
+
+	void VisualizeClearMethods() const {
 		for (auto& cm : clear_methods_) {
 			cm->Visualize();
 		}
@@ -81,10 +95,6 @@ public:
 	bool PastSlopeThreshold(const Cell& cell) const override;
 	float Slope(const Cell& cell) const override;
 	void AddOccupancy(const avt_341::msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) override;
-
-	void SetMaxPointAge(float mpa) {
-		max_point_age_ = mpa;
-	}
 
 	void SetSlopeThreshold(float tr, float tr_max) {
 		thresh_ = std::max(0.0f, tr);
@@ -156,6 +166,10 @@ public:
 
 
 private:
+
+	avt_341::perception::PointCloudFilter pc_filter;			// filter for input point clouds
+	avt_341::perception::PointCloudFilter pc_cm_filter;			// additional filter for clearing methods applied after regular filter
+
 	std::vector<utils::ivec2> GetCellsInFov(float x, float y, float heading, float hfov, float range);
 	uint8_t GetGridCellValue(const Cell& cell) const;
 	void ResizeGrid();

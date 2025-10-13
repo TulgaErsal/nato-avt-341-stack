@@ -1,22 +1,102 @@
 #include "avt_341/perception/point_cloud_filter.hpp"
 
+#include <avt_341/avt_341_utils.h>
+
 namespace avt_341::perception {
 
-void PointCloudFilter::Filter(
-    const std::vector<msg::Point32> &points_in,
-    std::vector<msg::Point32> &points_out){
+PointCloudFilter::PointCloudFilter()
+    : PointCloudFilter(PointCloudFilterConfig()){
+}
 
-    points_out.clear();
-    for (const auto & p : points_in) {
-        if (IsValid(p)) {
-            points_out.push_back(p);
+PointCloudFilter::PointCloudFilter(const PointCloudFilterConfig &config){
+    SetConfig(config);
+}
+
+void PointCloudFilter::SetConfig(const PointCloudFilterConfig &config) {
+    config_ = config;
+}
+
+void PointCloudFilter::CacheFilterInfo() {
+
+    const double EPS = 1e-3;
+
+    filter_max_dist_ = config_.max_dist > EPS;
+    filter_min_dist_ = config_.min_dist > EPS;
+    filter_hfov_ = config_.min_hfov > -180.0 + EPS && config_.max_hfov < 180.0 - EPS && config_.max_hfov > config_.min_hfov;
+    filter_height_clearance_ = config_.max_height_clearance > EPS;
+
+    min_dist_sqr = config_.min_dist * config_.min_dist;
+    max_dist_sqr = config_.max_dist * config_.max_dist;
+}
+
+bool PointCloudFilter::IsEnabled() const {
+    return filter_max_dist_ || filter_min_dist_ || filter_hfov_ || filter_height_clearance_;
+}
+
+std::shared_ptr<msg::PointCloud> PointCloudFilter::Filter(const std::shared_ptr<msg::PointCloud> &pc, const msg::Pose& origin) const {
+
+    if (!IsEnabled()) {
+        return pc;
+    }
+
+    std::shared_ptr<msg::PointCloud> pc_out = std::make_shared<msg::PointCloud>();
+    Filter(*pc, origin, *pc_out);
+    return pc_out;
+}
+
+
+void PointCloudFilter::Filter(const msg::PointCloud &pc, const msg::Pose& origin, msg::PointCloud &pc_out) const {
+
+    pc_out.header = pc.header;
+    pc_out.channels.resize(pc.channels.size());
+    std::vector<std::vector<float>> channel_values(pc.channels.size());
+    const double origin_heading = utils::GetHeadingFromOrientation(origin.orientation);
+
+    for (int i = 0; i < pc.points.size(); i++) {
+        const msg::Point32& p = pc.points[i];
+        if (IsValid(p, origin, origin_heading)) {
+            pc_out.points.push_back(p);
+            for (int c = 0; c < pc.channels.size(); c++) {
+                channel_values[c].push_back(pc.channels[c].values[i]);
+            }
         }
     }
 
+    for (int c = 0; c < pc.channels.size(); c++) {
+        pc_out.channels[c].name = pc.channels[c].name;
+        pc_out.channels[c].values = channel_values[c];
+    }
 }
 
-bool PointCloudFilter::IsValid(const msg::Point32 &point) const {
+bool PointCloudFilter::IsValid(const msg::Point32 &point, const msg::Pose& origin, const double& origin_heading) const {
 
+    if (filter_min_dist_ || filter_max_dist_) {
+        const double dx = point.x - origin.position.x;
+        const double dy = point.y - origin.position.y;
+        const double dz = point.z - origin.position.z;
+        const double dist_sqr = dx * dx + dy * dy + dz * dz;
+        if (filter_min_dist_ && dist_sqr < min_dist_sqr) {
+            return false;
+        }
+        if (filter_max_dist_ && dist_sqr > max_dist_sqr) {
+            return false;
+        }
+    }
+
+    if (filter_height_clearance_ && point.z - origin.position.z > config_.max_height_clearance) {
+        return false;
+    }
+
+    if (filter_hfov_) {
+        const double point_angle = std::atan2(point.y - origin.position.y, point.x - origin.position.x) * 180.0 / M_PI;
+        double angle_diff = point_angle - origin_heading;
+        angle_diff -= 360.0f * floorf((angle_diff + 180.0f) * (1.0f / 360.0f));
+        if (angle_diff < config_.min_hfov || angle_diff > config_.max_hfov) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 };

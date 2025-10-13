@@ -211,18 +211,32 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud& point_cloud, st
 	}
 }
 
-void ElevationGrid::AddPoints(avt_341::msg::PointCloud& point_cloud) {
+void ElevationGrid::SetPointCloudFilterConfig(
+	const PointCloudFilterConfig& filter_pc_config,
+	const PointCloudFilterConfig& filter_pc_cm_config) {
+
+	pc_filter.SetConfig(filter_pc_config);
+	pc_cm_filter.SetConfig(filter_pc_cm_config);
+}
+
+void ElevationGrid::AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose) {
 
 	if (is_resetting_) {
 		return;
 	}
 
+	// Filtered point cloud for normal occupancy addition
+	auto filtered_pc = pc_filter.Filter(pc_ptr, vehicle_pose);
+
+	// Additional filtering for clearing methods if desired
+	auto filtered_cms_pc = clear_methods_.empty() ? filtered_pc : pc_cm_filter.Filter(filtered_pc, vehicle_pose);
+
 	for (auto& cm : clear_methods_) {
-		cm->ClearOccupancy(point_cloud);
+		cm->ClearOccupancy(*filtered_cms_pc);
 	}
-	AddOccupancy(point_cloud, cells_, dilate_);
+	AddOccupancy(*filtered_pc, cells_, dilate_);
 	for (auto& cm : clear_methods_) {
-		cm->OnOccupancyAdded(point_cloud);
+		cm->OnOccupancyAdded(*filtered_cms_pc);
 	}
 
 }
@@ -354,54 +368,80 @@ std::shared_ptr<OccupancyClearingMethod> ElevationGrid::CreateClearingMethod(std
 	const RaytraceSettings& raytrace_settings,
 	const TimedNoObsClearingSettings& timed_clear_settings,
 	float visualization_range, bool visualize) {
+
 	clear_method_type.erase(std::remove_if(clear_method_type.begin(), clear_method_type.end(), ::isspace), clear_method_type.end());
+
 	if (clear_method_type == CostmapClearMethodType::Time) {
 		return std::make_shared<TimedClearingMethod>(max_point_age_, cells_, visualization_range, visualize, raytrace_settings, this);
 	}
+
 	if (clear_method_type == CostmapClearMethodType::Raytrace) {
 		if (!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0) {
 			node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
 		}
 		return std::make_shared<RaytraceClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
 	}
+
 	if (clear_method_type == CostmapClearMethodType::RaytraceWithFiltering) {
 		if (!dilate_ || grid_dilate_x_ <= 0 || grid_dilate_y_ <= 0) {
 			node_ref->log_warning("Raytrace Clearing: Dilation should be enabled with dilation size > 0 to reduce intermittent obstacle.");
 		}
 		return std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells_, visualization_range, visualize, raytrace_settings, this);
 	}
+
 	if (clear_method_type == CostmapClearMethodType::NoObsTime) {
 		return std::make_shared<TimedNoObsClearingMethod>(cells_, visualization_range, visualize, timed_clear_settings, raytrace_settings, this);
 	}
+
 	if (clear_method_type == CostmapClearMethodType::None) {
 		return std::make_shared<NullClearingMethod>(cells_, visualization_range, visualize, raytrace_settings, this);
 	}
+
 	node_ref->log_error("Unknown costmap clearing method: %s", clear_method_type.c_str());
 	return nullptr;
 }
 
-void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
-	float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-	bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold,
-	bool clr_on_scan_below_only) {
+void ElevationGrid::SetCostmapClearingMethod(
+	std::shared_ptr<node::NodeProxy> node_ref,
+	const ClearMethodRosParameters & params,
+	const std::vector<std::string> & clear_method_types) {
 
 	int dsize_x = lround(grid_dilate_x_ / res_);
 	int dsize_y = lround(grid_dilate_y_ / res_);
 
-	RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, clear_method_raytrace_range,
-		clear_method_clear_dilation, use_voxels, voxel_height_min, voxel_height_res, obj_range_filter, clr_on_scan_below_only);
+	RaytraceSettings raytrace_settings(llx_, lly_, res_, dsize_x, dsize_y, thresh_, params);
+	TimedNoObsClearingSettings timed_clearing_settings(max_point_age_, params.sampled_threshold, params.no_obs_dist_threshold);
 
-	TimedNoObsClearingSettings timed_clearing_settings(max_point_age_, sampled_threshold);
 	clear_methods_.clear();
-	const std::string clear_methods_orig = clear_methods_str;
-	size_t pos = 0;
-	while ((pos = clear_methods_str.find(",")) != std::string::npos) {
-		auto clear_method = CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, timed_clearing_settings, visualization_range, visualize);
+	for (const auto & cm_type : clear_method_types) {
+		auto clear_method = CreateClearingMethod(
+			node_ref,
+			cm_type,
+			raytrace_settings,
+			timed_clearing_settings,
+			params.visualization_range,
+			params.visualize
+			);
 		clear_methods_.push_back(clear_method);
+	}
+
+	node_ref->log_info("Costmap clearing methods: %s (%d)", params.clear_methods_str.c_str(), clear_methods_.size());
+
+}
+
+void ElevationGrid::SetCostmapClearingMethod(std::shared_ptr<node::NodeProxy> node_ref, const ClearMethodRosParameters & params) {
+
+	std::string clear_methods_str = params.clear_methods_str;
+
+	size_t pos = 0;
+	std::vector<std::string> clear_methods_str_split;
+	while ((pos = clear_methods_str.find(",")) != std::string::npos) {
+		clear_methods_str_split.push_back(clear_methods_str.substr(0, pos));
 		clear_methods_str.erase(0, pos + 1);
 	}
-	clear_methods_.push_back(CreateClearingMethod(node_ref, clear_methods_str.substr(0, pos), raytrace_settings, timed_clearing_settings, visualization_range, visualize));
-	node_ref->log_info("Costmap clearing methods: %s (%d)", clear_methods_orig.c_str(), clear_methods_.size());
+	clear_methods_str_split.push_back(clear_methods_str.substr(0, pos));
+
+	SetCostmapClearingMethod(node_ref, params, clear_methods_str_split);
 }
 
 

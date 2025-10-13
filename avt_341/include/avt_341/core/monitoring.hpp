@@ -8,7 +8,7 @@ namespace avt_341::core {
 class WindowedMean {
 
 public:
-
+    WindowedMean() = default;
     explicit WindowedMean(const int N_size);
     double GetMean() const;
     void AddSample(const double value);

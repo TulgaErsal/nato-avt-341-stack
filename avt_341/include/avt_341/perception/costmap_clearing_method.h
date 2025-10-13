@@ -11,6 +11,31 @@
 namespace avt_341 {
 namespace perception {
 
+struct ClearMethodRosParameters {
+
+  std::string clear_methods_str;
+
+  // Visualization
+  float visualization_range;
+  bool visualize;
+
+  // Raytracing
+  float raytrace_range;
+  bool clear_dilation;
+  bool use_voxels;
+  float voxel_height_min;
+  float voxel_height_res;
+  bool clr_on_scan_below_only;
+
+  // Raytracing with object filter
+  float obj_range_filter;
+
+  // Timed no-obs clearing
+  int sampled_threshold;
+  float max_point_age;
+  float no_obs_dist_threshold;
+};
+
 struct CostmapClearMethodType
 {
 public:
@@ -24,9 +49,13 @@ public:
 struct TimedNoObsClearingSettings {
   double time_threshold;
   int sample_threshold;
+  double distance_threshold;
 
-  TimedNoObsClearingSettings(double time_threshold, int sample_threshold)
-    : time_threshold(time_threshold), sample_threshold(sample_threshold) {}
+  TimedNoObsClearingSettings(double time_threshold, int sample_threshold, double distance_threshold)
+  :
+  time_threshold(time_threshold),
+  sample_threshold(sample_threshold),
+  distance_threshold(distance_threshold) {}
 };
 
 struct RaytraceSettings{
@@ -44,11 +73,21 @@ struct RaytraceSettings{
   float voxel_height_res;
   float obj_range_filter;
 
-  RaytraceSettings(float llx, float lly, float res, int gridDilateX, int gridDilateY, float thresh, float raytraceRange,
-                   bool immediateClearDilation, bool useVoxels, float voxelHeightMin, float voxelHeightRes, float obj_range_filter, bool clr_on_scan_below_only)
-                   : llx(llx), lly(lly), res(res), grid_dilate_x(gridDilateX), grid_dilate_y(gridDilateY), thresh(thresh),
-                     raytrace_range(raytraceRange), immediate_clear_dilation(immediateClearDilation), use_voxels(useVoxels),
-                     voxel_height_min(voxelHeightMin), voxel_height_res(voxelHeightRes), obj_range_filter(obj_range_filter), clr_on_scan_below_only(clr_on_scan_below_only) {}
+  RaytraceSettings(float llx, float lly, float res, int gridDilateX, int gridDilateY, float thresh, ClearMethodRosParameters params)
+  :
+    llx(llx),
+    lly(lly),
+    res(res),
+    grid_dilate_x(gridDilateX),
+    grid_dilate_y(gridDilateY),
+    thresh(thresh),
+    raytrace_range(params.raytrace_range),
+    immediate_clear_dilation(params.clear_dilation),
+    use_voxels(params.use_voxels),
+    voxel_height_min(params.voxel_height_min),
+    voxel_height_res(params.voxel_height_res),
+    obj_range_filter(params.obj_range_filter),
+    clr_on_scan_below_only(params.clr_on_scan_below_only) {}
 };
 
 class OccupancyClearingMethod{
