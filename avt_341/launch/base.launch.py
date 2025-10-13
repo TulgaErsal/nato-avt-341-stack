@@ -235,6 +235,7 @@ def generate_launch_description():
                     package='avt_341',
                     executable='avt_bot_state_publisher_node',
                     name='state_publisher',
+                    condition=IfCondition(LaunchConfiguration('publish_odom_to_tf')),
                     parameters=[{'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]

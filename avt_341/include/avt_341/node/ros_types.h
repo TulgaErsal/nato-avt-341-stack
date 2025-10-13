@@ -49,6 +49,7 @@
 
 #include "avt_341_msgs/Communication.h"
 #include "avt_341_msgs/FollowerStatus.h"
+#include "avt_341_msgs/MissionTaskStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
 #include "avt_341_msgs/Obstacles.h"
@@ -181,6 +182,9 @@ namespace avt_341 {
         using Communication = avt_341_msgs::Communication;
         using CommunicationPtr = const avt_341_msgs::Communication::ConstPtr &;
 
+        using MissionTaskStatus = avt_341_msgs::MissionTaskStatus;
+        using MissionTaskStatusPtr = const avt_341_msgs::MissionTaskStatus::ConstPtr &;
+
         using OccupiedCell = avt_341_msgs::OccupiedCell;
         using OccupiedCellPtr = const avt_341_msgs::OccupiedCell::ConstPtr &;
 
@@ -264,6 +268,7 @@ namespace avt_341 {
 
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/mission_task_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
@@ -369,6 +374,9 @@ namespace avt_341 {
 
     using Communication = avt_341_msgs::msg::Communication;
     using CommunicationPtr = avt_341_msgs::msg::Communication::SharedPtr;
+
+    using MissionTaskStatus = avt_341_msgs::msg::MissionTaskStatus;
+    using MissionTaskStatusPtr = avt_341_msgs::msg::MissionTaskStatus::SharedPtr;
 
     using OccupiedCell = avt_341_msgs::msg::OccupiedCell;
     using OccupiedCellPtr = avt_341_msgs::msg::OccupiedCell::SharedPtr;
