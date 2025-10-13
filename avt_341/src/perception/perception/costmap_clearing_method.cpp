@@ -62,8 +62,6 @@ namespace perception{
     for (int i=0; i<Ny_;i++){
       for (int j=0; j<Nx_; j++){
         if (cells_[i][j].low.age > max_point_age_ ||
-            cells_[i][j].highest.age > max_point_age_ ||
-            cells_[i][j].second_highest.age > max_point_age_ ||
             cells_[i][j].high.age > max_point_age_){
             cells_[i][j]=empty_cell;
         }

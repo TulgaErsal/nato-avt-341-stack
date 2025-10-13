@@ -92,10 +92,6 @@ public:
 		grid_slope_mult_ = static_cast<float>(GRID_MAX_VALUE) / (thresh_max_ - thresh_);
 	}
 
-	void SetStitchPoints(bool stitch_points) { stitch_points_ = stitch_points; }
-
-	void SetFilterHighest(bool filter_high) { filter_highest_ = filter_high; }
-
 	void SetUseElevation(bool use_elevation) {
 		use_elevation_ = use_elevation;
 	}
@@ -178,8 +174,6 @@ private:
 	float grid_dilate_y_;
 	float grid_dilate_proportion_;
 	bool use_elevation_;
-	bool stitch_points_;
-	bool filter_highest_;
 	const uint8_t GRID_MAX_VALUE = 100;
 	float grid_slope_mult_ = 50.0f;
 	bool has_segmentation_ = false;

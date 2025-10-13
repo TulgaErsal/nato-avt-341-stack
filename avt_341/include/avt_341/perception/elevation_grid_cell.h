@@ -20,18 +20,14 @@ namespace perception{
   };
 
   class Cell{
-    //float low = std::numeric_limits<float>::max();
-    //float high = std::numeric_limits<float>::lowest();
-    //float highest = std::numeric_limits<float>::lowest();
-    //float second_highest = std::numeric_limits<float>::lowest();
+
     constexpr static const float MIN_LIMIT = std::numeric_limits<float>::lowest();
     constexpr static const float MAX_LIMIT = std::numeric_limits<float>::max();
+
   public:
     Cell(){
       low.val = MAX_LIMIT;
       high.val = MIN_LIMIT;
-      highest.val = MIN_LIMIT;
-      second_highest.val = MIN_LIMIT;
       has_dilated = false;
       dilated_val = 0;
       terrain = 0.0f;
@@ -46,8 +42,6 @@ namespace perception{
     void AgeCell(float dt){
       low.age += dt;
       high.age += dt;
-      highest.age += dt;
-      second_highest.age += dt;
       dilated_age += dt;
     }
 
@@ -58,7 +52,7 @@ namespace perception{
     }
 
 
-    ElevAge low,high,highest,second_highest;
+    ElevAge low,high;
 
     inline float height() const { return high.val - low.val; }
     inline bool filled() const { return low.val < MAX_LIMIT; }

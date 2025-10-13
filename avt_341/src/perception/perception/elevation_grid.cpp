@@ -20,8 +20,6 @@ ElevationGrid::ElevationGrid() {
 	grid_dilate_y_ = 2.0f;
 	grid_dilate_proportion_ = 0.8f;
 	use_elevation_ = false;
-	stitch_points_ = true;
-	filter_highest_ = false;
 	max_point_age_ = 5.0f;
 	grid_update_region_.Reset();
 }
@@ -168,24 +166,10 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud& point_cloud, st
 				grid_update_region_.UpdateBounds(xi,yi);
 				const float original_slope = Slope(cells[yi][xi]);
 				float h = point_cloud.points[i].z;
-				if (filter_highest_) {
-					if (h > cells[yi][xi].highest.val) {
-						cells[yi][xi].second_highest = cells[yi][xi].highest;
-						cells[yi][xi].highest.val = h;
-						cells[yi][xi].highest.age = 0.0f;
-						cells[yi][xi].high = cells[yi][xi].second_highest;
-					}
-					else if (h > cells[yi][xi].second_highest.val) {
-						cells[yi][xi].second_highest.val = h;
-						cells[yi][xi].second_highest.age = 0.0f;
-						cells[yi][xi].high = cells[yi][xi].second_highest;
-					}
-				}
-				else {
-					if (h > cells[yi][xi].high.val) {
-						cells[yi][xi].high.val = h;
-						cells[yi][xi].high.age = 0.0f;
-					}
+
+				if (h > cells[yi][xi].high.val) {
+					cells[yi][xi].high.val = h;
+					cells[yi][xi].high.age = 0.0f;
 				}
 				if (h < cells[yi][xi].low.val) {
 					cells[yi][xi].low.val = h;
@@ -233,9 +217,6 @@ void ElevationGrid::AddPoints(avt_341::msg::PointCloud& point_cloud) {
 		return;
 	}
 
-	if (!stitch_points_) {
-		ClearGrid();
-	}
 	for (auto& cm : clear_methods_) {
 		cm->ClearOccupancy(point_cloud);
 	}

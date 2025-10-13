@@ -14,8 +14,12 @@
 // hfov, vfov, distance filtering, put in object, use in clearing + normal lidar process?
 // clr_scan_below_only setting
 // distance filter with obs time
-// correclly communicate to other clearing methods
+// communicate to other clearing methods
 // clear segmented ground plane
+// documentation
+// change to using lidar for origin lookup
+// remove stitch parameter			done
+// remove filter highest param		done
 
 
 #ifdef ROS_1
@@ -271,12 +275,8 @@ int main(int argc, char* argv[]) {
 	bool is_full_grid_pub = grid_pub_method == avt_341::perception::GridPubMethod::Full;
 	bool is_updates_grid_pub = grid_pub_method == avt_341::perception::GridPubMethod::Updates;
 
-	bool stitch_points;
-	n->get_parameter("~stitch_lidar_points", stitch_points, true);
 	float max_point_age;
 	n->get_parameter("~clear_method_max_point_age", max_point_age, 5.0f);
-	bool filter_highest_lidar;
-	n->get_parameter("~filter_highest_lidar", filter_highest_lidar, false);
 	float cull_lidar_points_dist, cull_lidar_points_dist_min;
 	n->get_parameter("~cull_lidar", cull_lidar_points, false);
 	n->get_parameter("~cull_lidar_dist", cull_lidar_points_dist, 100.0f);
@@ -321,8 +321,6 @@ int main(int argc, char* argv[]) {
 	grid.SetCorner(grid_llx, grid_lly);
 	grid.SetUseElevation(use_elevation);
 	grid.SetDilation(grid_dilate, grid_dilate_x, grid_dilate_y, grid_dilate_proportion);
-	grid.SetStitchPoints(stitch_points);
-	grid.SetFilterHighest(filter_highest_lidar);
 	grid.SetMaxPointAge(max_point_age);
 	grid.SetCostmapClearingMethod(n, clear_method, visualization_range, clear_method_visualize,
 		clear_method_raytrace_range, clear_method_clear_dilation, clear_method_use_voxels,
