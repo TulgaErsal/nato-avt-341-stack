@@ -193,7 +193,7 @@ namespace perception{
 
   void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z){
     int z_i = static_cast<int>((cells_[y][x].high.val - config_.voxel_height_min) / config_.voxel_height_res);
-    if(!cells_[y][x].filled() || (z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
+    if(!cells_[y][x].filled() || (z_i < z || z < 0 || z >= N_VOXELS_PER_CELL)){
 //    if((z_i <= z || z < 0 || z >= N_VOXELS_PER_CELL)){
       return;
     }
@@ -213,7 +213,7 @@ namespace perception{
     bool was_obstacle = cell_obstacle_calculator_->PastSlopeThreshold(cells_[y][x]);
     if(z_i < z_min){
       // Cell empty
-      cells_[y][x].high.val = cells_[y][x].low.val;
+      cells_[y][x].ResetHeight();
     }else{
       // Update cell height
       cells_[y][x].high.val = static_cast<float>(z_i) * config_.voxel_height_res + config_.voxel_height_min;
