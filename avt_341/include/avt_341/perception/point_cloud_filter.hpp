@@ -6,6 +6,7 @@
 namespace avt_341::perception {
 
 struct PointCloudFilterConfig {
+    bool enable_dist_filter = false;
     double min_dist = -1.0;
     double max_dist = -1.0;
     double min_hfov = -180.0;

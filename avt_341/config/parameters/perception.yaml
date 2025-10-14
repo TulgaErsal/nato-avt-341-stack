@@ -20,6 +20,7 @@ grid_pub_force_full_every: 10.0            # Force full grid publish every x sec
 
 # Point Cloud Filtering
 # ======================================================================================================================
+cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
 cull_lidar_dist: 80.0                     # Lidar points beyond this distance are ignored. Set to -1.0 to disable.
 cull_lidar_dist_min: 0.0                  # Lidar points before this distance are ignored. Set to -1.0 to disable.
 cull_lidar_hfov_min: -180.0               # Minimum horizontal field of view angle used to cull lidar points.
@@ -30,7 +31,7 @@ overhead_clearance: 5.0                   # Overhead clearance from vehicle afte
 # Costmap Clearing Methods
 # ======================================================================================================================
 clear_method:
-  type: 'none'                            # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time.
+  type: 'none'                            # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time | channel_threshold.
   visualize: False                        # If true, visualizes costmap clearing method.
   visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
 
@@ -47,8 +48,12 @@ clear_method:
   sampled_threshold: 5                    # Minimum samples before cell cleared when clear_method_type=no_obs_time set.
   no_obs_dist_threshold: 0.25             # Minimum distance ego-vehicle must move for scans to count towards sampled_threshold parameter.
 
+  channel_to_clear: 'gnd_seg'             # Channel to use the values of for grid clearing when clear_method_type = 'channel_threshold' is set.
+  channel_threshold: 0.5                  # Threshold value of channel_to_clear under which cells are cleared when clear_method_type = 'channel_threshold' is set.
+
   # Additional Point Cloud Filtering for clearing methods
 
+  cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
   cull_lidar_dist: 80.0                     # Lidar points beyond this distance are ignored. Set to -1.0 to disable.
   cull_lidar_dist_min: 0.0                  # Lidar points before this distance are ignored. Set to -1.0 to disable.
   cull_lidar_hfov_min: -180.0               # Minimum horizontal field of view angle used to cull lidar points.

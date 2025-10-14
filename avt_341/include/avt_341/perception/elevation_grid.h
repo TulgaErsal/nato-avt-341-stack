@@ -19,9 +19,10 @@
 
 #include "point_cloud_filter.hpp"
 #include "avt_341/node/ros_types.h"
+#include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/elevation_grid_cell.h"
 #include "avt_341/perception/elevation_grid_components.h"
-#include "avt_341/perception/costmap_clearing_method.h"
+#include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
 
 namespace avt_341 {
 namespace perception {
@@ -72,19 +73,7 @@ public:
 		ResizeGrid();
 	}
 
-	std::shared_ptr<OccupancyClearingMethod> CreateClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref,
-		std::string clear_method_type,
-		const RaytraceSettings& raytrace_settings,
-		const TimedNoObsClearingSettings& timed_clear_settings,
-		float visualization_range, bool visualize);
-
-	void SetCostmapClearingMethod(
-		std::shared_ptr<node::NodeProxy> node_ref,
-		const ClearMethodRosParameters & params,
-		const std::vector<std::string> & clear_method_types
-		);
-
-	void SetCostmapClearingMethod(std::shared_ptr<node::NodeProxy> node_ref, const ClearMethodRosParameters & params);
+	void SetGridClearingMethod(const std::shared_ptr<node::NodeProxy>& node_ref, const ClearMethodRosParameters & params);
 
 	void VisualizeClearMethods() const {
 		for (auto& cm : clear_methods_) {
@@ -191,7 +180,6 @@ private:
 	const uint8_t GRID_MAX_VALUE = 100;
 	float grid_slope_mult_ = 50.0f;
 	bool has_segmentation_ = false;
-	float max_point_age_;
 	bool is_resetting_ = false;
 	std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
 	GridRegion grid_update_region_;

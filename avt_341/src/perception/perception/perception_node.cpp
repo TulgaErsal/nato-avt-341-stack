@@ -1,26 +1,11 @@
 // c++ includes
-#include <math.h>
-#include <iostream>
-#include <fstream>
-#include <vector>
 #include <deque>
-#include <algorithm>
 // ros includes
+#include <avt_341/avt_341_utils.h>
 #include <avt_341/core/monitoring.hpp>
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-
-// TODO:
-// timer
-// hfov, vfov, distance filtering, put in object, use in clearing + normal lidar process?	done
-// clr_scan_below_only setting		done
-// distance filter with obs tim		done
-// communicate to other clearing methods
-// clear segmented ground plane
-// change to using lidar for origin lookup	done
-// remove stitch parameter			done
-// remove filter highest param		done
 
 #ifdef ROS_1
 #include "sensor_msgs/point_cloud_conversion.h"
@@ -42,8 +27,8 @@ double grid_pub_force_full_every_x_sec = 0.0;
 double last_full_grid_update = 0.0;
 
 avt_341::core::WindowedMean pc_callback_time(40);
-
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
+
 
 void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 
@@ -91,8 +76,9 @@ avt_341::perception::ClearMethodRosParameters ParseClearMethodsConfig() {
 	n->get_parameter("~clear_method_use_voxels", params.use_voxels, true);
 	n->get_parameter("~clear_method_voxel_height_min", params.voxel_height_min, 0.0f);
 	n->get_parameter("~clear_method_voxel_height_res", params.voxel_height_res, 0.5f);
-	n->get_parameter("~clear_method_immediate_clear_dilation", params.clear_dilation, true);
+	n->get_parameter("~clear_method_immediate_clear_dilation", params.immediate_clr_dilation, true);
 	n->get_parameter("~clear_method_clr_on_scan_below_only", params.clr_on_scan_below_only, false);
+	n->get_parameter("~clear_method_lidar_frame", params.lidar_frame, std::string("lidar"));
 
 	// Raytrace clearing + object filter
 	n->get_parameter("~clear_method_obs_filter_range", params.obj_range_filter, 1.0f);
@@ -101,12 +87,18 @@ avt_341::perception::ClearMethodRosParameters ParseClearMethodsConfig() {
 	n->get_parameter("~clear_method_sampled_threshold", params.sampled_threshold, 5);
 	n->get_parameter("~clear_method_max_point_age", params.max_point_age, 5.0f);
 	n->get_parameter("~clear_method_no_obs_dist_threshold", params.no_obs_dist_threshold, 0.25f);
+
+	// Channel-based clearing
+	n->get_parameter("~clear_method_channel_to_clear", params.channel_to_clear, std::string("gnd_seg"));
+	n->get_parameter("~clear_method_channel_threshold", params.channel_threshold, 0.5f);
+
 	return params;
 }
 
 avt_341::perception::PointCloudFilterConfig ParseFilterConfig(const std::string &param_prefix = "") {
 
 	avt_341::perception::PointCloudFilterConfig config;
+	n->get_parameter("~" + param_prefix + "cull_lidar", config.enable_dist_filter, false);
 	n->get_parameter("~" + param_prefix + "cull_lidar_dist", config.max_dist, -1.0);
 	n->get_parameter("~" + param_prefix + "cull_lidar_dist_min", config.min_dist, -1.0);
 	n->get_parameter("~" + param_prefix + "cull_lidar_hfov_min", config.min_hfov, -180.0);
@@ -178,7 +170,7 @@ int main(int argc, char* argv[]) {
 	// Read parameters
 	// --------------------------------------------------------------------------------------------------------------
 
-	float grid_width, grid_height, visualization_range;
+	float grid_width, grid_height;
 	n->get_parameter("/grid_width", grid_width, 200.0f);
 	n->get_parameter("/grid_height", grid_height, 200.0f);
 	grid.SetSize(grid_width, grid_height);
@@ -217,7 +209,6 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
-	float max_point_age;
 	n->get_parameter("~perception_points_topic", perception_points_topic, std::string("avt_341/points"));
 
 	avt_341::perception::PointCloudFilterConfig pc_filter_config = ParseFilterConfig();
@@ -247,7 +238,7 @@ int main(int argc, char* argv[]) {
 	grid.SetCorner(grid_llx, grid_lly);
 	grid.SetUseElevation(use_elevation);
 	grid.SetDilation(grid_dilate, grid_dilate_x, grid_dilate_y, grid_dilate_proportion);
-	grid.SetCostmapClearingMethod(n, clear_methods_config);
+	grid.SetGridClearingMethod(n, clear_methods_config);
 	grid.SetPointCloudFilterConfig(pc_filter_config, pc_cm_filter_config);
 
 	// Create publishers + subscribers

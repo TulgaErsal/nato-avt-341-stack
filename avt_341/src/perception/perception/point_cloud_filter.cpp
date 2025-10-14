@@ -20,8 +20,8 @@ void PointCloudFilter::CacheFilterInfo() {
 
     const double EPS = 1e-3;
 
-    filter_max_dist_ = config_.max_dist > EPS;
-    filter_min_dist_ = config_.min_dist > EPS;
+    filter_max_dist_ = config_.enable_dist_filter && config_.max_dist > EPS;
+    filter_min_dist_ = config_.enable_dist_filter && config_.min_dist > EPS;
     filter_hfov_ = config_.min_hfov > -180.0 + EPS && config_.max_hfov < 180.0 - EPS && config_.max_hfov > config_.min_hfov;
     filter_height_clearance_ = config_.max_height_clearance > EPS;
 
