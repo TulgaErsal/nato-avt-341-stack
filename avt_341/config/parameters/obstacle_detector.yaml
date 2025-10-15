@@ -1,7 +1,7 @@
 # Obstacle Detection
 # ======================================================================================================================
-use_pca_box: false                                              # Use PCA Bounding box to align clusters
-use_tracking: true                                              # Use tracking to assign bbox ids
+use_pca_box: False                                              # Use PCA Bounding box to align clusters
+use_tracking: True                                              # Use tracking to assign bbox ids
 
 voxel_grid_size: 0.2                                            # Grid size for voxel grid filtering [m]
 

@@ -212,7 +212,8 @@ def generate_launch_description():
         for ki in param_refs[k].keys():
             del params[k][ki]
 
-    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
+    # TODO: Remove temp jerry rig for obstacle_detector param keys
+    arg_list = [DeclareLaunchArgument(f"{k}_{ki}" if k == 'obstacle_detector' else ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
 
     vehicle_node_list = []
     for idx in range(MAX_VEHICLES):
@@ -250,21 +251,15 @@ def generate_launch_description():
                             {'display': display_type},
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
                     ),
-                    # Uncomment to use UAB Terrain Segmentation
-                    # Node(
-                    #     package='avt_341',
-                    #     executable='uab_perception_node',
-                    #     name='uab_perception_node',
-                    #     parameters=[{
-                    #         'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
-                    #         'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
-                    #         'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
-                    #         'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
-                    #         'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
-                    #         'publish_uab_occupancy_grid': launch.substitutions.LaunchConfiguration('publish_uab_occupancy_grid'),
-                    #     }],
-                    #     output='screen'
-                    # ),
+                    GroupAction(condition=IfCondition(LaunchConfiguration('use_lidar_obstacle_detector')), actions=[
+                        Node(
+                            package='avt_341',
+                            executable='avt_341_lidar_obstacle_detector_node',
+                            name='lidar_obstacle_detector_node',
+                            output='screen',
+                            parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}]
+                        )
+                    ]),
                     Node(
                         package='avt_341',
                         executable='avt_341_control_node',
