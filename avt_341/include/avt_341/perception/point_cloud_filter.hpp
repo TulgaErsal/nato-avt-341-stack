@@ -30,6 +30,8 @@ public:
 
     bool IsEnabled() const;
 
+    std::string GetDescription() const;
+
 private:
 
     void CacheFilterInfo();

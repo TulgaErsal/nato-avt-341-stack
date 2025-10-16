@@ -54,7 +54,9 @@ public:
 		*/
 	void ClearPoints(avt_341::msg::PointCloud& point_cloud);
 
-	bool has_segmentation() const { return has_segmentation_; }
+	bool HasSegmentation() const { return has_segmentation_; }
+
+	void SetNode(const std::shared_ptr<node::NodeProxy>& node_ref);
 
 	void SetSize(float s) {
 		width_ = s;
@@ -73,7 +75,7 @@ public:
 		ResizeGrid();
 	}
 
-	void SetGridClearingMethod(const std::shared_ptr<node::NodeProxy>& node_ref, const ClearMethodRosParameters & params);
+	void SetGridClearingMethod(const ClearMethodRosParameters & params);
 
 	void VisualizeClearMethods() const {
 		for (auto& cm : clear_methods_) {
@@ -156,8 +158,9 @@ public:
 
 private:
 
-	avt_341::perception::PointCloudFilter pc_filter;			// filter for input point clouds
-	avt_341::perception::PointCloudFilter pc_cm_filter;			// additional filter for clearing methods applied after regular filter
+	std::shared_ptr<node::NodeProxy> node_ref_;
+	PointCloudFilter pc_filter;						// Filter for input point clouds
+	PointCloudFilter pc_cm_filter;					// Additional filter for clearing methods applied after regular filter
 
 	std::vector<utils::ivec2> GetCellsInFov(float x, float y, float heading, float hfov, float range);
 	uint8_t GetGridCellValue(const Cell& cell) const;

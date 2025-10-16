@@ -171,10 +171,6 @@ int main(int argc, char* argv[]) {
 	// --------------------------------------------------------------------------------------------------------------
 
 	float grid_width, grid_height;
-	n->get_parameter("/grid_width", grid_width, 200.0f);
-	n->get_parameter("/grid_height", grid_height, 200.0f);
-	grid.SetSize(grid_width, grid_height);
-
 	float grid_res, grid_llx, grid_lly, warmup_time, thresh, thresh_max, grid_dilate_x, grid_dilate_y, grid_dilate_proportion;
 	bool use_elevation, grid_dilate;
 	std::string clear_method, grid_pub_method;
@@ -182,6 +178,8 @@ int main(int argc, char* argv[]) {
 	std::string perception_points_topic;
 	float rms_horizontal_fov_radians, rms_range_meters, rms_time_average_window;
 
+	n->get_parameter("/grid_width", grid_width, 200.0f);
+	n->get_parameter("/grid_height", grid_height, 200.0f);
 	n->get_parameter("~rms_calc_horizontal_fov_radians", rms_horizontal_fov_radians, 0.7854f); // about 45 degrees
 	n->get_parameter("~rms_calc_range_meters", rms_range_meters, 15.0f);
 	n->get_parameter("~rms_calc_time_average_window", rms_time_average_window, 1.0f);
@@ -233,12 +231,14 @@ int main(int argc, char* argv[]) {
 					grid_pub_force_full_every_x_sec
 					);
 
+	grid.SetNode(n);
+	grid.SetSize(grid_width, grid_height);
 	grid.SetSlopeThreshold(thresh, thresh_max);
 	grid.SetRes(grid_res);
 	grid.SetCorner(grid_llx, grid_lly);
 	grid.SetUseElevation(use_elevation);
 	grid.SetDilation(grid_dilate, grid_dilate_x, grid_dilate_y, grid_dilate_proportion);
-	grid.SetGridClearingMethod(n, clear_methods_config);
+	grid.SetGridClearingMethod(clear_methods_config);
 	grid.SetPointCloudFilterConfig(pc_filter_config, pc_cm_filter_config);
 
 	// Create publishers + subscribers
@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
 		if (odom_rcvd && (now_seconds - start_time) > warmup_time) {
 
 			bool is_full_update = PublishGrid(false, grid_pub_method, now_seconds, grid_pub, grid_pub_updates);
-			if (grid.has_segmentation()) {
+			if (grid.HasSegmentation()) {
 				PublishGrid(true, grid_pub_method, now_seconds, grid_segmentation_pub, grid_segmentation_pub_updates);
 			}
 			if (is_full_update){

@@ -88,9 +88,9 @@ bool PointCloudFilter::IsValid(const msg::Point32 &point, const msg::Pose& origi
     }
 
     if (filter_hfov_) {
-        const double point_angle = std::atan2(point.y - origin.position.y, point.x - origin.position.x) * 180.0 / M_PI;
+        const auto point_angle = std::atan2(point.y - origin.position.y, point.x - origin.position.x) * 180.0 / M_PI;
         double angle_diff = point_angle - origin_heading;
-        angle_diff -= 360.0f * floorf((angle_diff + 180.0f) * (1.0f / 360.0f));
+        angle_diff -= 360.0f * floorf((static_cast<float>(angle_diff) + 180.0f) * (1.0f / 360.0f));
         if (angle_diff < config_.min_hfov || angle_diff > config_.max_hfov) {
             return false;
         }
@@ -98,5 +98,33 @@ bool PointCloudFilter::IsValid(const msg::Point32 &point, const msg::Pose& origi
 
     return true;
 }
+
+std::string PointCloudFilter::GetDescription() const {
+
+    if (!IsEnabled()) {
+        return "Disabled";
+    }
+
+    std::string description;
+
+    if (filter_min_dist_) {
+        description += "MinDist: " + std::to_string(config_.min_dist) + "m ";
+    }
+
+    if (filter_max_dist_) {
+        description += "MaxDist: " + std::to_string(config_.max_dist) + "m ";
+    }
+
+    if (filter_height_clearance_) {
+        description += "Clearance: " + std::to_string(config_.max_height_clearance) + "m ";
+    }
+
+    if (filter_hfov_) {
+        description += "HFov: [" + std::to_string(config_.min_hfov) + ", " + std::to_string(config_.max_hfov) + "] ";
+    }
+
+    return description;
+}
+
 
 };

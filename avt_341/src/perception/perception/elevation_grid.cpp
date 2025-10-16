@@ -213,11 +213,21 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud& point_cloud, st
 }
 
 void ElevationGrid::SetPointCloudFilterConfig(
-	const PointCloudFilterConfig& filter_pc_config,
-	const PointCloudFilterConfig& filter_pc_cm_config) {
+		const PointCloudFilterConfig& filter_pc_config,
+		const PointCloudFilterConfig& filter_pc_cm_config) {
 
 	pc_filter.SetConfig(filter_pc_config);
 	pc_cm_filter.SetConfig(filter_pc_cm_config);
+
+	node_ref_->log_info(
+		"Point cloud culling (universal):\n	%s",
+		pc_filter.GetDescription().c_str()
+		);
+
+	node_ref_->log_info(
+		"Point cloud culling (specific to grid clearing):\n	%s",
+		pc_cm_filter.GetDescription().c_str()
+		);
 }
 
 void ElevationGrid::AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose) {
@@ -364,7 +374,12 @@ void ElevationGrid::Reset() {
 	is_resetting_ = false;
 }
 
-void ElevationGrid::SetGridClearingMethod(const std::shared_ptr<node::NodeProxy>& node_ref, const ClearMethodRosParameters & params) {
+void ElevationGrid::SetNode(const std::shared_ptr<node::NodeProxy>& node_ref) {
+	node_ref_ = node_ref;
+}
+
+
+void ElevationGrid::SetGridClearingMethod(const ClearMethodRosParameters & params) {
 
 	BaseClearingSettings base_config;
 	base_config.llx = llx_;
@@ -377,7 +392,7 @@ void ElevationGrid::SetGridClearingMethod(const std::shared_ptr<node::NodeProxy>
 	base_config.visualization_range = params.visualization_range;
 	base_config.visualize = params.visualize;
 
-	clear_methods_ = ClearingMethodFactory::CreateClearingMethods(node_ref, cells_, params, base_config, this);
+	clear_methods_ = ClearingMethodFactory::CreateClearingMethods(node_ref_, cells_, params, base_config, this);
 }
 
 
