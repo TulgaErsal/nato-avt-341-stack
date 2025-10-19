@@ -153,6 +153,7 @@ avt_341::msg::Path GetMPCPath()
 
     avt_341::msg::Path path_msg;
     path_msg.header.frame_id = "odom";
+    path_msg.header.stamp = node->get_stamp();
     for (int i=0; i<path_len; i++) {
         avt_341::msg::PoseStamped pose;
         pose.header.frame_id = "odom";
