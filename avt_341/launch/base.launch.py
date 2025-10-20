@@ -212,7 +212,9 @@ def generate_launch_description():
         for ki in param_refs[k].keys():
             del params[k][ki]
 
-    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
+    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector']
+    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() if k not in new_format_params for ki, vi in v.items()]
+    arg_list += [DeclareLaunchArgument(f"{k}_{ki}", default_value=str(vi)) for k, v in params.items() if k in new_format_params for ki, vi in v.items()]
 
     vehicle_node_list = []
     for idx in range(MAX_VEHICLES):
@@ -250,21 +252,67 @@ def generate_launch_description():
                             {'display': display_type},
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
                     ),
-                    # Uncomment to use UAB Terrain Segmentation
-                    # Node(
-                    #     package='avt_341',
-                    #     executable='uab_perception_node',
-                    #     name='uab_perception_node',
-                    #     parameters=[{
-                    #         'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
-                    #         'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
-                    #         'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
-                    #         'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
-                    #         'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
-                    #         'publish_uab_occupancy_grid': launch.substitutions.LaunchConfiguration('publish_uab_occupancy_grid'),
-                    #     }],
-                    #     output='screen'
-                    # ),
+                    # UAB Terrain Segmentation
+                    Node(
+                        package='avt_341',
+                        executable='uab_perception_node',
+                        name='uab_perception_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+                        ],
+                        remappings=[
+                            ('camera/rgb/image_raw','front_camera/image'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_uab_perception')),
+                    ),
+                    # Deep Learning 2D Object Detection for static scene objects
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_object_detector_node',
+                        name='object_detector_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'obj_detector_{k}') for k in params['obj_detector'].keys()}
+                        ],
+                        remappings=[
+                            ('image','front_camera/image'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_obj_detector')),
+                    ),
+                    # Deep Learning 2D Object Detection for Formation Vehicles
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_object_detector_node',
+                        name='veh_detector_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'veh_detector_{k}') for k in params['veh_detector'].keys()}
+                        ],
+                        remappings=[
+                            ('image','front_camera/image'),
+                            ('detections/vision','front_camera/detections_2d'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_veh_detector')),
+                    ),
+                    # Object Tracking
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_object_tracking_node',
+                        name='object_tracking_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+                        ],
+                        remappings=[
+                            ('camera_info','front_camera/camera_info'),
+                            ('image','front_camera/image'),
+                            ('detection_2d', 'front_camera/detections_2d'),
+                            ('input','avt_341/points'),
+                            ('odometry','avt_341/mrzr4/tracked_odom'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_object_tracker')),
+                    ),
                     Node(
                         package='avt_341',
                         executable='avt_341_control_node',
@@ -414,6 +462,10 @@ def generate_launch_description():
 
     launch_description = LaunchDescription([
         *arg_list,
+        DeclareLaunchArgument("use_object_tracker", default_value="False", description="Set to enable object tracking node."),
+        DeclareLaunchArgument("use_obj_detector", default_value="False", description="Set to enable detection 2d bounding box detection of static objects using deep neural network inference."),
+        DeclareLaunchArgument("use_veh_detector", default_value="False", description="Set to enable detection 2d bounding box detection of vehicles for formation following using deep neural network inference."),
+        DeclareLaunchArgument("use_uab_perception", default_value="False", description="Set to enable use of UAB perception node."),
         OpaqueFunction(function=evaluate_waypoint_parameters),
         Node(
             package='tf2_ros',
