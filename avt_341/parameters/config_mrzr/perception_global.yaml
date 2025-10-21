@@ -35,7 +35,7 @@ overhead_clearance: 5.0                   # Overhead clearance from vehicle afte
 # Clearing method
 # ======================================================================================================================
 clear_method:
-  type: 'raytrace'                        # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time.
+  type: 'raytrace'                        # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time | channel_threshold
   visualize: False                        # If true, visualizes costmap clearing method.
   visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
   raytrace_range: 50.0                    # Maximum range for raytrace clearing.
