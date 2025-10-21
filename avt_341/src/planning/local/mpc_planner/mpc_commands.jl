@@ -509,6 +509,26 @@ function Plan()
 			slopeLimited = false	# For when the limit is the same as commanded
 		end
 
+		# check if heading error is large (i.e., close to 180 degrees), and reduce speed further if so
+        dx_goal = goal[1] - x_veh
+        dy_goal = goal[2] - y_veh
+        dir_to_goal = atan(dy_goal, dx_goal)
+        heading_error = abs(atan2(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
+        if abs(heading_error - π) <= angleThreshold
+            speedSetpoint = speedForTurningBack
+            n.ocp.XL[7] = speedForTurningBack # set a minimum speed for sharp turns
+            # Also update lower bounds of all trajectory points for longitudinal speed
+            for i in 1:n.ocp.state.pts
+                setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+            end
+        else
+            # restore lower bound to the regular minimum
+            n.ocp.XL[7] = minSpeed
+            for i in 1:n.ocp.state.pts
+                setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+            end
+        end
+
 		#set the new speed limit
 		n.ocp.XU[7]=speedSetpoint
 		for i=1:n.ocp.state.pts
