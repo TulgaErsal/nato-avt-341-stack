@@ -1,7 +1,7 @@
-#include <queue>
-
 #ifndef MONITORING_HPP
 #define MONITORING_HPP
+
+#include <queue>
 
 namespace avt_341::core {
 

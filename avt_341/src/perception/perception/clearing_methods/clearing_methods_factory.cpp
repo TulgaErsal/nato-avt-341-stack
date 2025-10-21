@@ -47,7 +47,7 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::RaytraceWithFiltering) {
 
-        if (base_config.grid_dilate_x <= 0 || base_config.grid_dilate_y) {
+        if (base_config.grid_dilate_x <= 0 || base_config.grid_dilate_y <= 0) {
             node_ref->log_warning("Raytrace Clearing: Dilation should be enabled to reduce intermittent obstacle.");
         }
 
