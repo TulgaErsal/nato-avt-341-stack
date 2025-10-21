@@ -212,7 +212,7 @@ def generate_launch_description():
         for ki in param_refs[k].keys():
             del params[k][ki]
 
-    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector']
+    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector', 'obstacle_detector']
     arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() if k not in new_format_params for ki, vi in v.items()]
     arg_list += [DeclareLaunchArgument(f"{k}_{ki}", default_value=str(vi)) for k, v in params.items() if k in new_format_params for ki, vi in v.items()]
 
