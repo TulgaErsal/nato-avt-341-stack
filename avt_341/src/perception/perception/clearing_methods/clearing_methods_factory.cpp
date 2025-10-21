@@ -122,6 +122,11 @@ std::vector<std::shared_ptr<OccupancyClearingMethod>> ClearingMethodFactory::Cre
     }
 
 	node_ref->log_info("Costmap clearing methods: %s (%d)", params.clear_methods_str.c_str(), cm_methods.size());
+    for (const auto & cm: cm_methods) {
+        node_ref->log_info(" - %s", cm->GetDescription().c_str());
+    }
+
+
     return cm_methods;
 }
 

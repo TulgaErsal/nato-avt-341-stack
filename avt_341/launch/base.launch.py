@@ -314,15 +314,15 @@ def generate_launch_description():
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),
                     ),
-                    GroupAction(condition=IfCondition(LaunchConfiguration('use_lidar_obstacle_detector')), actions=[
-                        Node(
-                            package='avt_341',
-                            executable='avt_341_lidar_obstacle_detector_node',
-                            name='lidar_obstacle_detector_node',
-                            output='screen',
-                            parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}]
-                        )
-                    ]),
+                    # Lidar obstacle detector, ground segmentation
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_lidar_obstacle_detector_node',
+                        name='lidar_obstacle_detector_node',
+                        parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_lidar_obstacle_detector'))
+                    ),
                     Node(
                         package='avt_341',
                         executable='avt_341_control_node',

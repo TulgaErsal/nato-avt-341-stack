@@ -24,7 +24,8 @@ public:
         CellObstacleCalculator *obs_calculator
         );
 
-    virtual void ClearOccupancy(const msg::PointCloud &point_cloud) override;
+    void ClearOccupancy(const msg::PointCloud &point_cloud) override;
+    std::string GetDescription() const override;
 
 private:
     ChannelClearingSettings ch_config_;

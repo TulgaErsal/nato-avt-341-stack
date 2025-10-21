@@ -220,12 +220,12 @@ void ElevationGrid::SetPointCloudFilterConfig(
 	pc_cm_filter.SetConfig(filter_pc_cm_config);
 
 	node_ref_->log_info(
-		"Point cloud culling (universal):\n	%s",
+		"Point cloud culling: %s",
 		pc_filter.GetDescription().c_str()
 		);
 
 	node_ref_->log_info(
-		"Point cloud culling (specific to grid clearing):\n	%s",
+		"Point cloud culling (extra for grid clearing): %s",
 		pc_cm_filter.GetDescription().c_str()
 		);
 }

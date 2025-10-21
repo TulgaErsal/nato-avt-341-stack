@@ -44,7 +44,7 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 		}
 	}
 
-	if (!sensor_msgs::convertPointCloud2ToPointCloud(*rcv_cloud, *pc_ptr)) {
+	if (!sensor_msgs::convertPointCloud2ToPointCloud(*pc2_ptr, *pc_ptr)) {
 		return;
 	}
 
@@ -55,9 +55,9 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 
 	pc_callback_time.AddSample(n->get_now_seconds() - callback_start_time);
 	if (pc_callback_time.GetMean() > pc_callback_runtime_threshold) {
-		n->log_warning_throttle(1.0, "PointCloudCallback computation time > %.2f: %.2f ms",
-			pc_callback_runtime_threshold*1e3,
-			pc_callback_time.GetMean()*1e3
+		n->log_warning_throttle(1.0, "PointCloudCallback took %.2f ms (> %.2f ms warning threshold).",
+			pc_callback_time.GetMean()*1e3,
+			pc_callback_runtime_threshold*1e3
 			);
 	}
 }
@@ -200,7 +200,7 @@ int main(int argc, char* argv[]) {
 
 	n->get_parameter("~grid_pub_method", grid_pub_method, avt_341::perception::GridPubMethod::Full);
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
-	n->get_parameter("~pc_callback_runtime_threshold", pc_callback_runtime_threshold, 0.1);
+	n->get_parameter("~pc_callback_warn_time", pc_callback_runtime_threshold, 0.1);
 
 	if (!avt_341::perception::GridPubMethod::IsGridPubMethodValid(grid_pub_method)){
 		n->log_error("Invalid grid_pub_method: %hs", grid_pub_method.c_str());
@@ -210,7 +210,7 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~perception_points_topic", perception_points_topic, std::string("avt_341/points"));
 
 	avt_341::perception::PointCloudFilterConfig pc_filter_config = ParseFilterConfig();
-	avt_341::perception::PointCloudFilterConfig pc_cm_filter_config = ParseFilterConfig("clear_method");
+	avt_341::perception::PointCloudFilterConfig pc_cm_filter_config = ParseFilterConfig("clear_method_");
 	avt_341::perception::ClearMethodRosParameters clear_methods_config = ParseClearMethodsConfig();
 
 	// Configure grid

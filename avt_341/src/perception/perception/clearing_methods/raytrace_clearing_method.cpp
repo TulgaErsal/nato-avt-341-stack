@@ -150,7 +150,7 @@ void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
     int z_i = static_cast<int>((cells_[y][x].high.val - vx_h_min) / vx_h_res);
 
     const int check_offset = rt_config_.clr_on_scan_below_only ? 1 : 0;
-    if (!cells_[y][x].filled() || (z_i + check_offset) < z || z < 0 || z >= N_VOXELS_PER_CELL) {
+    if (!cells_[y][x].filled() || (z_i - check_offset) < z || z < 0 || z >= N_VOXELS_PER_CELL) {
         return;
     }
 
@@ -400,6 +400,17 @@ void RaytraceClearingMethod::ResetInternalCellState(int x, int y) {
 }
 
 
+std::string RaytraceClearingMethod::GetDescription() const {
+    return "RaytraceClearingMethod: "
+           "raytrace_range: " + std::to_string(rt_config_.raytrace_range) + "m" +
+           ", voxel_height_res=" +  std::to_string(rt_config_.voxel_height_res) + "m" +
+           ", voxel_height_min=" +  std::to_string(rt_config_.voxel_height_min) + "m" +
+           ", use_voxels=" + (rt_config_.use_voxels ? "true" : "false") +
+           ", clr_on_scan_below_only=" + (rt_config_.clr_on_scan_below_only ? "true" : "false");
+}
+
+
+
 // RAYTRACE CLEARING WITH OBSTACLE DISTANCE FILTERING
 // ==================================================================================================================
 // ==================================================================================================================
@@ -533,6 +544,10 @@ void RaytraceWithFilteringClearingMethod::Reset() {
 void RaytraceWithFilteringClearingMethod::ResetInternalCellState(int x, int y) {
     cells_with_clearing_[y][x].ResetHeight();
     occupancy_delta_[y][x] = false;
+}
+
+std::string RaytraceWithFilteringClearingMethod::GetDescription() const {
+    return RaytraceClearingMethod::GetDescription();
 }
 
 }

@@ -110,6 +110,11 @@ public:
      */
     virtual void ResetInternalCellState(int x, int y);
 
+    /**
+     * String description of clearing method.
+     */
+    virtual std::string GetDescription() const = 0;
+
 protected:
 
     void RemoveDilationAtCell(int x, int y) const;
@@ -136,6 +141,8 @@ public:
         );
 
     void ClearOccupancy(const msg::PointCloud &point_cloud) override;
+
+    std::string GetDescription() const override;
 };
 
 }

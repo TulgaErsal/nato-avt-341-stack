@@ -120,6 +120,10 @@ void OccupancyClearingMethod::RemoveDilationAtCell(int x, int y, std::vector<std
     }
 }
 
+std::string NullClearingMethod::GetDescription() const {
+    return "NullClearingMethod: No clearing done";
+}
+
 const std::string CostmapClearMethodType::None = "none";
 const std::string CostmapClearMethodType::Time = "time";
 const std::string CostmapClearMethodType::NoObsTime = "no_obs_time";

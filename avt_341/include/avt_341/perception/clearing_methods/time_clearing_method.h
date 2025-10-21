@@ -59,6 +59,7 @@ public:
 
     void ClearOccupancy(const msg::PointCloud &point_cloud) override;
     void AgeCells(const float dt) const;
+    std::string GetDescription() const override;
 
 private:
     float max_point_age_;
@@ -80,7 +81,7 @@ public:
     void ClearOccupancy(const msg::PointCloud &point_cloud) override;
     void OnOccupancyAdded(const msg::PointCloud &point_cloud, const msg::Point & veh_pos) override;
     void Reset() override;
-
+    std::string GetDescription() const override;
     virtual void ResetInternalCellState(int xi, int yi) override;
 
 private:

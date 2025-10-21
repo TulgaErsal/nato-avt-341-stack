@@ -14,6 +14,7 @@ PointCloudFilter::PointCloudFilter(const PointCloudFilterConfig &config){
 
 void PointCloudFilter::SetConfig(const PointCloudFilterConfig &config) {
     config_ = config;
+    CacheFilterInfo();
 }
 
 void PointCloudFilter::CacheFilterInfo() {
@@ -50,7 +51,7 @@ void PointCloudFilter::Filter(const msg::PointCloud &pc, const msg::Pose& origin
     pc_out.header = pc.header;
     pc_out.channels.resize(pc.channels.size());
     std::vector<std::vector<float>> channel_values(pc.channels.size());
-    const double origin_heading = utils::GetHeadingFromOrientation(origin.orientation);
+    const double origin_heading = utils::GetHeadingFromOrientation(origin.orientation) * 180.0 / M_PI;
 
     for (int i = 0; i < pc.points.size(); i++) {
         const msg::Point32& p = pc.points[i];

@@ -41,6 +41,10 @@ void TimedClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
     }
 }
 
+std::string TimedClearingMethod::GetDescription() const {
+    return "TimedClearingMethod: max_point_age: " + std::to_string(max_point_age_) + " s";
+}
+
 TimedNoObsClearingMethod::TimedNoObsClearingMethod(
     std::vector<std::vector<Cell>> &cells,
     const BaseClearingSettings &base_config,
@@ -125,6 +129,13 @@ void TimedNoObsClearingMethod::Reset() {
             ResetInternalCellState(xi, yi);
         }
     }
+}
+
+std::string TimedNoObsClearingMethod::GetDescription() const {
+    return "TimedNoObsClearingMethod: "
+           "time_threshold=" + std::to_string(time_config_.time_threshold) + "s" +
+            ", sample_threshold=" + std::to_string(time_config_.sample_threshold) +
+            ", distance_threshold=" + std::to_string(time_config_.distance_threshold) + "m";
 }
 
 }

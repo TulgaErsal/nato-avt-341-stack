@@ -52,7 +52,7 @@ void publishJointCloud(
     ) {
 
   pcl::PointCloud<pcl::PointXYZI> joint_cloud;
-  joint_cloud.resize(segmented_clouds.first->size() + segmented_clouds.second->points.size());
+  joint_cloud.resize(segmented_clouds.first->points.size() + segmented_clouds.second->points.size());
 
   int c = 0;
 

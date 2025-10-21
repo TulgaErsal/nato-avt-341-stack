@@ -73,6 +73,8 @@ public:
 
     virtual void ResetInternalCellState(int x, int y) override;
 
+    std::string GetDescription() const override;
+
 protected:
     msg::Point TfTransformToPoint(const msg::TransformStamped &transform) const;
 
@@ -136,6 +138,8 @@ public:
     void Reset() override;
 
     virtual void ResetInternalCellState(int x, int y) override;
+
+    std::string GetDescription() const override;
 
 protected:
     std::vector<std::vector<Cell>> &cells_without_clearing_;

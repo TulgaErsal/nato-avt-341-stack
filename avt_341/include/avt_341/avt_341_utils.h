@@ -172,10 +172,13 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 
 inline avt_341::msg::Pose TransformToPose(const avt_341::msg::Transform & tx) {
 	avt_341::msg::Pose pose_msg;
-	pose_msg.orientation = tx.rotation;
+
 	pose_msg.position.x = tx.translation.x;
 	pose_msg.position.y = tx.translation.y;
 	pose_msg.position.z = tx.translation.z;
+
+	pose_msg.orientation = tx.rotation;
+
 	return pose_msg;
 }
 

@@ -47,5 +47,10 @@ void ChannelThresholdClearingMethod::ClearOccupancy(const msg::PointCloud &point
 
 }
 
+std::string ChannelThresholdClearingMethod::GetDescription() const {
+    return "ChannelThresholdClearingMethod: channel=" + ch_config_.channel_to_clear +
+           ", threshold=" + std::to_string(ch_config_.threshold) + "m";
+}
+
 }
 

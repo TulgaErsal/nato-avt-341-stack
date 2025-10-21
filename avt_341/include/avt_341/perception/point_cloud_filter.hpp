@@ -19,7 +19,7 @@ class PointCloudFilter {
 public:
 
     PointCloudFilter();
-    PointCloudFilter(const PointCloudFilterConfig & config);
+    explicit PointCloudFilter(const PointCloudFilterConfig & config);
 
     void SetConfig(const PointCloudFilterConfig & config);
 

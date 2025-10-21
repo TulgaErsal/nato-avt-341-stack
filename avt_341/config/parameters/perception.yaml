@@ -16,9 +16,13 @@ warmup_time: 5.0                          # Time before lidar processing starts
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
 perception_rate: 20.0                     # Publish rate for perception node
 grid_pub_method: 'full'                   # Method of publishing the grid. 'full' | 'window' | 'updates' . full: Always publish entire grid. window: Published limited sized grid windowed around vehicle pose. updates: Publish incremental updates (on _updates topic) corresponding to regions updated by most recent point clouds.
-grid_pub_force_full_every: 10.0            # Force full grid publish every x seconds. Only active when grid_pub_method='updates'.
+grid_pub_force_full_every: 10.0           # Force full grid publish every x seconds. Only active when grid_pub_method='updates'.
+rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians for calculating slope and RMS values
+rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
+rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
+pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
 
-# Point Cloud Filtering
+# Point Cloud Culling
 # ======================================================================================================================
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
 cull_lidar_dist: 80.0                     # Lidar points beyond this distance are ignored. Set to -1.0 to disable.
@@ -58,7 +62,7 @@ clear_method:
   cull_lidar_dist_min: 0.0                  # Lidar points before this distance are ignored. Set to -1.0 to disable.
   cull_lidar_hfov_min: -180.0               # Minimum horizontal field of view angle used to cull lidar points.
   cull_lidar_hfov_max: 180.0                # Maximum horizontal field of view angle used to cull lidar points.
-  overhead_clearance: 5.0                   # Overhead clearance from vehicle after which lidar points ignored. Set to -1.0 to disable.
+  overhead_clearance: -1.0                   # Overhead clearance from vehicle after which lidar points ignored. Set to -1.0 to disable.
 
 # Segmentation
 # ======================================================================================================================
@@ -69,5 +73,4 @@ publish_uab_occupancy_grid: False # Whether or not to publish the occupancy grid
 # Lidar Obstacle Detector
 # ======================================================================================================================
 use_lidar_obstacle_detector: False      # If true uses lidar obstacle detector. ROS1 version only currently.
-raw_points_topic: 'avt_341/points'         # The name of the points topic listened to by the obstacle detection node.
 perception_points_topic: 'avt_341/points'  # The name of the points topic listened to by the perception node.
