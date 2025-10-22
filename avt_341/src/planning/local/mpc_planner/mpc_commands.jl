@@ -513,7 +513,7 @@ function Plan()
         dx_goal = goal[1] - x_veh
         dy_goal = goal[2] - y_veh
         dir_to_goal = atan(dy_goal, dx_goal)
-        heading_error = abs(atan2(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
+        heading_error = abs(atan(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
         if abs(heading_error - π) <= angleThreshold
             speedSetpoint = speedForTurningBack
             n.ocp.XL[7] = speedForTurningBack # set a minimum speed for sharp turns
