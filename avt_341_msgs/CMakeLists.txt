@@ -12,15 +12,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Define the messages to be built.
 set(MESSAGE_DEFINITIONS
-    "BoundingBox2d"
     "Communication"
-    "Detection2d"
-    "Detection2dArray"
     "DwaInfo"
     "DwaObjective"
     "DwaTrajectory"
     "FollowerStatus"
-    "Hypothesis"
     "Obstacles"
     "OccupiedCell"
     "OccupiedCells"
