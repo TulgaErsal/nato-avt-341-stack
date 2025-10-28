@@ -114,11 +114,12 @@ int main(int argc, char *argv[]){
     node->initialize_tf_listener();
 
     // Get params
-    std::string zones_filepath, zones_frame, local_frame, vehicle_odom_topic;
+    std::string zones_filepath, zones_frame, local_frame, vehicle_odom_topic, vehicle_name;
     std::vector<double> zone_speeds;
     node->get_parameter("~zones_filepath", zones_filepath, std::string(""));
     node->get_parameter("~zones_frame", zones_frame, std::string("nad83"));
     node->get_parameter("~vehicle_odom_topic", vehicle_odom_topic, std::string("avt_341/odometry"));
+    node->get_parameter("~vehicle_name", vehicle_name, std::string("MRZR"));
     node->get_parameter("~zone_speeds", zone_speeds, std::vector<double>());
 
     // Create subscribers/publishers
@@ -166,15 +167,18 @@ int main(int argc, char *argv[]){
         }
 
         // Check if new zone has been entered
-        if (current_zone != -1 && current_zone != last_zone) {
+        if (current_zone != last_zone && (current_zone < 0 || current_zone >= zone_speeds.size())){
+            node->log_info("Speed not defined for zone #%d",current_zone);
+        }
+        else if (current_zone != last_zone) {
             node->log_info("SETTING SPEED TO %.2lf [Zone #%d]",zone_speeds[current_zone],current_zone);
 
             // Send SET_SPEED msg
             avt_341::msg::Communication comm_msg;
-            comm_msg.sender_name = my_name;
+            comm_msg.sender_name = vehicle_name;
             comm_msg.msg_id = 0;
             comm_msg.type = "SET_SPEED";
-            comm_msg.receiver_name = my_name;
+            comm_msg.receiver_name = vehicle_name;
             comm_msg.desired_speed = zone_speeds[current_zone];
             comm_msg.priority_type = "PREEMPT";
             comm_pub->publish(comm_msg);

@@ -62,7 +62,7 @@ void callbackImu(avt_341::msg::ImuPtr msg_received_imu) {
 }
 
 void callbackSteeringAngle(avt_341::msg::Float64Ptr msg_received_steering_angle) {
-    g_steering_angle = msg_received_steering_angle->data;
+    g_steering_angle = msg_received_steering_angle->data * 0.2 * -3.1415/180.0;
     g_received_steering_angle = true;
 }
 

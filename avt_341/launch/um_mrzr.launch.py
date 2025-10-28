@@ -26,7 +26,7 @@ global_params = {
     '/grid_height': 2290.0, #877.0 #2290.0                       # Grid height.
     '/grid_width': 2955.0 #759.0 #2955.0                        # Grid width.
 }
-vehicle_namespaces = ['mrzr']
+vehicle_namespaces = ['mrzr','mrzr2','feda']
 vehicle_config_folders = [f'{avt_341_dir}/parameters/config_mrzr']
 
 class ArrayIndexSubstitution(Substitution):
@@ -126,6 +126,15 @@ def tf2_nodes(context):
             name='flir_to_flir_rgb_publisher',
             arguments=["0", "0", "0", "-1.570796", "0", "-1.570796", "flir_sensor_link", "flir_rgb_link"]
         ),
+        # LIDAR/CAMERA CALIBRATION
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='lidar_ns_fix_publisher',
+            #arguments=["0.537904", "-0.377448", "-0.0465617", "1.941151293010382", "1.5667626308005476", "-1.1943102744897447", "os_lidar", "flir_optical"]
+            #arguments=["0.133597135773211", "-0.094362075012651", "-0.0465617", "1.941151293010382", "1.5667626308005476", "-1.1943102744897447", "os_lidar", "flir_optical"]
+            arguments=["-0.0450898", "-0.54038", "-0.374075", "1.574556603141863", "0.006128297832243186", "-1.5693132942983006", "os_lidar", "flir_optical"]
+        ), 
         # SKIP Node(
         #     package='mrzr_tools',
         #     executable='mrzr_tf2_server.py',
@@ -149,17 +158,14 @@ def recording_node(context):
     record = LaunchConfiguration('record')
     record_select_topic = LaunchConfiguration('record_select_topic')
     record_topics = LaunchConfiguration('record_topics')
-    separate_camera_bag = LaunchConfiguration('separate_camera_bag')
-    compress_cameras = LaunchConfiguration('compress_cameras')
 
     # File naming constants
     time_YYMMDD = datetime.now().strftime('%y%m%d')
     time_HHMMSS = datetime.now().strftime('%H%M%S')
     home_dir = os.path.expanduser('~')
 
-    filename = f"{home_dir}/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_{time_HHMMSS}"
-    filename_nav = f"{home_dir}/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_nav_{time_HHMMSS}"
-    filename_cams = f"{home_dir}/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_cam_{time_HHMMSS}"
+    filename = f"{home_dir}/bags/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_{time_HHMMSS}"
+    filename_nav = f"{home_dir}/bags/avt_341_data/{time_YYMMDD}_MRZR_AVT-341_nav_{time_HHMMSS}"
 
     return [
         GroupAction(condition=IfCondition(record), actions=[
@@ -170,28 +176,10 @@ def recording_node(context):
                 )
             ]),
             GroupAction(condition=UnlessCondition(record_select_topic), actions=[
-                GroupAction(condition=IfCondition(separate_camera_bag), actions=[
-                    ExecuteProcess(
-                        cmd=['ros2','bag','record','-o',filename_nav,'-a','-x','(/flir_rgb/.*|/usb_cam/.*)'],
-                        output='screen'
-                    ),
-                    ExecuteProcess(
-                        cmd=['ros2','bag','record','-o',filename_cams,'-e','(/flir_rgb/.*|/usb_cam/.*)'],
-                        output='screen',
-                        condition=UnlessCondition(compress_cameras)
-                    ),
-                    ExecuteProcess(
-                        cmd=['ros2','bag','record','-o',filename_cams,'-e','(/flir_rgb/.*/compressed.*|/usb_cam/.*/compressed.*)'],
-                        output='screen',
-                        condition=IfCondition(compress_cameras)
-                    )
-                ]),
-                GroupAction(condition=UnlessCondition(separate_camera_bag), actions=[
-                    ExecuteProcess(
-                        cmd=['ros2','bag','record','-o',filename,'-a'],
-                        output='screen'
-                    )
-                ])
+                ExecuteProcess(
+                    cmd=['ros2','bag','record','-o',filename_nav,'-e','/oxts/.*'],
+                    output='screen'
+                )
             ])
         ])
     ]
@@ -220,8 +208,8 @@ def launch_setup(context, *args, **kwargs):
         # Transform servers
         *tf2_nodes(context),
 
-        # SKIP Recording node
-        # *recording_node(context),
+        # Recording nodes
+        *recording_node(context),
 
         # SKIP Speed republisher
         # Node(
@@ -269,6 +257,13 @@ def launch_setup(context, *args, **kwargs):
 		#         "navstack_ns":      "/mrzr/avt_341"
         #     }.items()
         # ),
+
+        # Logging Republisher
+        Node(
+            package='um_mrzr_tools',
+            executable='logging_remaps.py',
+            name='logging_remaps',
+        ),
 
         # NATO AVT-341 Stack
         launch.actions.IncludeLaunchDescription(

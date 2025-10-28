@@ -244,7 +244,10 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 package='avt_341',
                 executable='veh_converter_node',
                 name='avt_341_veh_converter_node',
-                output='screen'
+                output='screen',
+                remappings=[
+                    ('avt_341/steering_angle', '/steering_position'),
+                ],
             ),
             # Goal Point Processor
             Node(
@@ -417,6 +420,36 @@ def launch_setup(context, *args, **kwargs):
             )
         ]),
 
+        # FEDA Detector
+        Node(
+            package='avt_341',
+            executable='avt_341_object_detector_node',
+            name='feda_detector_node',
+            namespace='feda',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}],
+            remappings=[
+                ('image', '/flir_camera/image_raw')
+            ]
+        ),
+
+        # FEDA Tracker
+        Node(
+            package='avt_341',
+            executable='avt_341_object_tracking_node',
+            name='object_tracking_node',
+            namespace='feda',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'feda_tracking_{k}') for k in params['feda_tracking'].keys()}],
+            remappings=[
+                ('image', '/flir_camera/image_raw'),
+                ('camera_info', '/flir_camera/camera_info'),
+                ('detection_2d', 'detections/vision'),
+                ('input', '/ouster/points'),
+                ('odometry', 'avt_341/odometry'),
+            ]
+        ),
+
         # Grid Commpression
         Node(
             package='avt_341',
@@ -463,14 +496,14 @@ def launch_setup(context, *args, **kwargs):
                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
         ),
 
-        # SKIP Data Acquisition
-        # Node(
-        #     package='avt_341',
-        #     executable='data_acquisition_node',
-        #     name='data_acquisition_node',
-        #     output='log',
-        #     parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}]
-        # ),
+        # Data Acquisition
+        Node(
+            package='avt_341',
+            executable='data_acquisition_node',
+             name='data_acquisition_node',
+            output='log',
+            parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}]
+        ),
 
         # Mission Manager
         Node(
@@ -570,7 +603,7 @@ def generate_launch_description():
         "use_global_path":              "True",
         "global_planner_method":        "a_star",
         "enable_logging":               "False",
-        "logging_path":                 os.path.join(os.path.expanduser('~'),"avt_341_data"),
+        "logging_path":                 os.path.join(os.path.expanduser('~'),"bags/avt_341_data"),
     }
     launch_args = []
     for arg,default in launch_arg_defaults.items():
