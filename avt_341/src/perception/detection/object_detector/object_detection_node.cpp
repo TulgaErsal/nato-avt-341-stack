@@ -120,6 +120,7 @@ void ObjectDetectorNode::Initialize() {
     auto torchscript_path = model_path + ".torchscript";
 
     // Check if the TorchScript file is available at the specified path.
+    RCLCPP_INFO_STREAM(get_logger(), "TorchScript path: " << torchscript_path);
     auto script_stream = std::ifstream(torchscript_path);
     if(script_stream.fail()) {
         throw rclcpp::exceptions::InvalidParameterValueException(

@@ -66,14 +66,14 @@ class Hypothesis {
      * @param id Hypothesis class ID.
      * @param score Hypothesis confidence score.
      */
-    Hypothesis(int id, double score);
+    Hypothesis(const std::string& id, double score);
 
     /**
      * @brief Get the hypothesis class ID.
      *
      * @return int Hypothesis class ID.
      */
-    int GetID();
+    const std::string& GetID();
 
     /**
      * @brief Get the hypothesis confidence score.
@@ -91,7 +91,7 @@ class Hypothesis {
 
   private:
     /** @brief Hypothesis class ID. */
-    int id_ = -1;
+    std::string id_ = "";
 
     /** @brief Hypothesis confidence score. */
     double score_ = 0.0;
