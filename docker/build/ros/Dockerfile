@@ -11,7 +11,7 @@ RUN apt-get update && \
         git \
         gpg \
         lsb-release && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Add a lower
 RUN groupadd --gid 1000 avt341 && \
@@ -25,7 +25,7 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc
         --yes \
         ros-noetic-desktop && \
     echo "source /opt/ros/noetic/setup.bash" >> /home/avt341/.bashrc && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install and configure rosdep.
 RUN apt-get update && \
@@ -34,7 +34,7 @@ RUN apt-get update && \
         python3-rosdep && \
     rosdep init && \
     rosdep update && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy the "avt_341" and "avt_341_msgs" packages into the catkin workspace
 COPY avt_341 /opt/ros/ws/src/TulgaErsal/nato-avt-341-stack/avt_341
