@@ -101,6 +101,7 @@ FormationMsg::FormationMsg(const avt_341::msg::Communication &msg)
   follower1_name = msg.follower1_name;
   follower2_name = msg.follower2_name;
   follower3_name = msg.follower3_name;
+  termination_method = msg.termination_method;
   desired_speed = msg.desired_speed;
   x_scale = msg.x_scale > 0.0 ? msg.x_scale : -1.0;
   y_scale = msg.y_scale > 0.0 ? msg.y_scale : -1.0;
