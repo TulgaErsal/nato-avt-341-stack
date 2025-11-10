@@ -22,8 +22,6 @@
 JULIA_DEFINE_FAST_TLS();
 
 jl_function_t* j_get_heading = nullptr;
-jl_function_t* j_set_leader_speed = nullptr;
-jl_function_t* j_set_follower_status = nullptr;
 
 void CatchJuliaException()
 {
@@ -156,7 +154,7 @@ void LeaderSpeedCallback(avt_341::msg::Float64Ptr msg)
 
 void FollowerStatusCallback(avt_341::msg::FollowerStatusPtr msg)
 {
-    bool status = msg->data;
+    bool status = msg->use_leader;
     jl_value_t *j_status = jl_box_bool(status);
     jl_call1(j_set_follower_status, j_status);
     CATCH_JULIA_EXCEPTION;
