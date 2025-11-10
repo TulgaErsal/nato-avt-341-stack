@@ -61,6 +61,11 @@ slopeThreshold = 0.2
 rmsThreshold = 0.05 # in meters
 speedAroundLargeSlopesAndRMS = 4.0 # in m/s
 
+# LogSumExp smoothing parameter for the along-path distance to goal
+# Larger values (>10) give better approximation of true minimum but may be numerically less stable
+# Smaller values (<5) give smoother but less accurate approximation
+beta = 10.0  # default provides good balance between accuracy and numerical stability
+
 # handling turning back 180 degrees
 angleThreshold = 10 * (π / 180) # in radians; turning back if the vehicle facing within angleThreshold of 180 deg from goal)
 speedForTurningBack = 3.0 # in m/s

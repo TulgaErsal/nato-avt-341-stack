@@ -351,6 +351,8 @@ function Setup()
 	global deviationFromDesiredFinalSpeed
 	global traversabilityCost
 	global leader_speed
+	global beta
+	global distanceToGoalAlongPath
 	
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
 	global mpc_speed = Array{Float64}(undef, numColPoints+1, 1)
@@ -430,7 +432,17 @@ function Setup()
 	@NLparameter(n.ocp.mdl, desiredYaw == 0.0); #desired yaw angle
 	@NLparameter(n.ocp.mdl, leader_speed == 0.0);
 
+	# Traditional endpoint-based distance to goal
 	distanceToGoal=@NLexpression(n.ocp.mdl,(((x[end]-g1)^2+(y[end]-g2)^2)/((x[1]-g1)^2+(y[1]-g2)^2)))
+	
+	# Smooth minimum distance to goal along the entire path
+	# Uses LogSumExp trick for differentiable minimum approximation
+	# beta controls the sharpness of the approximation (larger = closer to true minimum)
+	@NLparameter(n.ocp.mdl, beta == 5.0)  # Tuning parameter for smoothness
+	distanceToGoalAlongPath = @NLexpression(n.ocp.mdl,
+		-1/beta * log(sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts))
+	)
+	
 	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum(1/((x[j]-Xobs_0[i])^2+(y[j]-Yobs_0[i])^2+0.1) for i=1:maxNumObs for j=2:n.ocp.state.pts))
 	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum((tanh(-1.3*((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
 	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
@@ -508,6 +520,7 @@ function Plan()
 	global yawAccel
 	global deviationFromDesiredFinalSpeed
 	global traversabilityCost
+	global distanceToGoalAlongPath
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -583,7 +596,7 @@ function Plan()
 		horizon_dist = speedSetpoint * predictionTimeHorizon
 		if follower_status && (goal_dist < horizon_dist)
 			JuMP.setValue(leader_speed, cmdLeaderSpeed)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed)
 		else
 			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
 		end
