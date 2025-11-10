@@ -84,6 +84,7 @@ double grid_resolution;
 double front_angle_goal;
 double front_angle_obstacle;
 double front_angle_segmentation;
+double w_final_speed;
 bool adaptive;
 double vehicle_axle_distance_front;
 bool obstacles_vizualize;
@@ -151,6 +152,9 @@ jl_function_t* j_get_path = NULL;
 /** @brief Pointer to the Julia function to get the MPC speed */
 jl_function_t* j_get_speed = NULL;
 
+/** @brief Pointer to the Julia function to get the MPC speed at the end of the prediction horizon */
+jl_function_t* j_get_final_speed = NULL;
+
 /** @brief Pointer to the Julia function to get the MPC steering */
 jl_function_t* j_get_steering = NULL;
 
@@ -185,6 +189,13 @@ jl_function_t* j_set_linear_solver = NULL;
 jl_function_t* j_set_slope_threshold = NULL;
 jl_function_t* j_set_rms_threshold = NULL;
 jl_function_t* j_set_speed_around_large_slopes_and_rms = NULL;
+jl_function_t* j_set_sa_min = NULL;
+jl_function_t* j_set_sa_max = NULL;
+jl_function_t* j_set_sr_min = NULL;
+jl_function_t* j_set_sr_max = NULL;
+jl_function_t* j_set_w_final_speed = NULL;
+jl_function_t* j_set_leader_speed = NULL;
+jl_function_t* j_set_follower_status = NULL;
 
 // ---------------
 

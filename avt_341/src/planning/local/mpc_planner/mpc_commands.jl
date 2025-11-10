@@ -13,6 +13,8 @@ global x_veh = 0.0
 global y_veh = 0.0
 global yawrate = 0.0
 global longacc = 0.0
+global cmdLeaderSpeed = 0.0
+global follower_status = false
 global numobs = 0
 global obstacle_size_meters = 0.0
 global obs_radius = 0.0
@@ -147,6 +149,10 @@ function SetWTraversabilityCost(w_traversability_cost::Float64)
 	global w_traversabilityCost = w_traversability_cost
 end
 
+function SetWFinalSpeed(w_final_speed::Float64)
+	global w_finalSpeed = w_final_speed
+end
+
 function SetSafetyMargin(marigin::Float64)
 	global safetyMargin = marigin
 end
@@ -262,6 +268,14 @@ function SetLinearSolver(solver::String)
     global linearSolverId = solver
 end
 
+function SetLeaderSpeed(speed::Float64)
+    global cmdLeaderSpeed = speed
+end
+
+function SetFollowerStatus(status::Int32)
+    global follower_status = Bool(status)
+end
+
 function GetPath()
 	return mpc_path
 end
@@ -278,6 +292,11 @@ function GetSpeed()
 	return 0.0
 end
 
+function GetFinalSpeed()
+	num_path_points = size(mpc_path)[1]
+	return mpc_speed[num_path_points]
+end
+
 function GetSteering()
 	num_path_points = size(mpc_path)[1]
 	if skipCount < num_path_points - 2
@@ -288,6 +307,10 @@ end
 
 function GetSlopeLimited()
 	return slopeLimited
+end
+
+function GetObjectiveValue()
+	return n.r.ocp.objVal
 end
 
 function Setup()
@@ -303,7 +326,16 @@ function Setup()
 	global w_deviationInYaw
 	global w_yawAccel
 	global w_traversability
-
+	global w_finalSpeed
+	global cmdLeaderSpeed
+	global distanceToGoal
+	global distanceToObstacles
+	global deviationInYaw
+	global yawAccel
+	global deviationFromDesiredFinalSpeed
+	global traversabilityCost
+	global leader_speed
+	
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
 	global mpc_speed = Array{Float64}(undef, numColPoints+1, 1)
 	global mpc_steering = Array{Float64}(undef, numColPoints+1, 1)
@@ -380,6 +412,7 @@ function Setup()
 		newConstraint!(n,obs_con,:obs_con)
 	end
 	@NLparameter(n.ocp.mdl, desiredYaw == 0.0); #desired yaw angle
+	@NLparameter(n.ocp.mdl, leader_speed == 0.0);
 
 	distanceToGoal=@NLexpression(n.ocp.mdl,(((x[end]-g1)^2+(y[end]-g2)^2)/((x[1]-g1)^2+(y[1]-g2)^2)))
 	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum(1/((x[j]-Xobs_0[i])^2+(y[j]-Yobs_0[i])^2+0.1) for i=1:maxNumObs for j=2:n.ocp.state.pts))
@@ -388,16 +421,17 @@ function Setup()
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
+	deviationFromDesiredFinalSpeed = @NLexpression(n.ocp.mdl, (ux[end] - leader_speed)^2)
 	if useSegmentation
 		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumSeg for j=2:n.ocp.state.pts))
 	end
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
 	# @NLobjective(n.ocp.mdl, Min, obj+100.0 * (distanceToGoal+1))
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel + w_traversabilityCost*traversabilityCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel* yawAccel)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
 	end
 	n.s.ocp.save = false
 
@@ -450,6 +484,14 @@ end
 
 function Plan()
 	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint, slopeLimited
+	global follower_status
+	global cmdLeaderSpeed
+	global distanceToGoal
+	global distanceToObstacles
+	global deviationInYaw
+	global yawAccel
+	global deviationFromDesiredFinalSpeed
+	global traversabilityCost
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -497,6 +539,17 @@ function Plan()
 		n.ocp.XU[7]=speedSetpoint
 		for i=1:n.ocp.state.pts
 			setupperbound(n.r.ocp.xUnscaled[i,7],n.ocp.XU[7])
+		end
+		
+		# Update objective function based on follower status and goal proximity
+		# Check if goal is within prediction horizon
+		goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
+		horizon_dist = speedSetpoint * predictionTimeHorizon
+		if follower_status && (goal_dist < horizon_dist)
+			JuMP.setValue(leader_speed, cmdLeaderSpeed)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed)
+		else
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
 		end
 
 		if n.s.mpc.shiftX0
