@@ -61,10 +61,8 @@ slopeThreshold = 0.2
 rmsThreshold = 0.05 # in meters
 speedAroundLargeSlopesAndRMS = 4.0 # in m/s
 
-# LogSumExp smoothing parameter for the along-path distance to goal
-# Larger values (>10) give better approximation of true minimum but may be numerically less stable
-# Smaller values (<5) give smoother but less accurate approximation
-beta = 10.0  # default provides good balance between accuracy and numerical stability
+# Smoothing parameter for the along-path distance to goal
+beta = 0.1
 
 # linear tire model parameters
 Caf =  -3.69554	# cornering stiffness--front axle (N/rad)
