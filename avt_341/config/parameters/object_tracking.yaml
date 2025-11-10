@@ -1,4 +1,4 @@
-camera_frame: "mrzr2/front_camera"
+camera_frame: "mrzr2/front_camera_rdf"
 filters_downsampling_leaf_size: 0.3
 filters_passthrough_min: 3.0
 filters_passthrough_max: 30.0

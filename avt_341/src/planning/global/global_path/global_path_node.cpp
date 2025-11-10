@@ -366,14 +366,16 @@ int main(int argc, char* argv[])
           fast_marching_grid.data.resize(height*width);
 
           float* fm_data = path_planner->ExtractCosts();
-          for (int i = 0; i < width*height; i++) {
-            float value = fm_data[i];
-            if (value < 0.0f) {
-              fast_marching_grid.data[i] = -1; // Unknown
-            } else if (!isfinite(value)) {
-              fast_marching_grid.data[i] = -1;
-            } else {
-              fast_marching_grid.data[i] = static_cast<int>(std::round(value));
+          if (fm_data) {
+            for (int i = 0; i < width*height; i++) {
+              float value = fm_data[i];
+              if (value < 0.0f) {
+                fast_marching_grid.data[i] = -1; // Unknown
+              } else if (!isfinite(value)) {
+                fast_marching_grid.data[i] = -1;
+              } else {
+                fast_marching_grid.data[i] = static_cast<int>(std::round(value));
+              }
             }
           }
           fastmatching_costs_pub->publish(fast_marching_grid);
