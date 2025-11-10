@@ -577,8 +577,8 @@ int main(int argc, char *argv[])
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset",1,ResetCallback);
     auto terrain_slope_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
     auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
-    auto leader_speed_sub = node->create_subscription<avt_341::msg::Float64Ptr>("avt_341/leader_speed",1,LeaderSpeedCallback);
-    auto follower_status_sub = node->create_subscription<avt_341::msg::FollowerStatusPtr>("avt_341/follower_status",1,FollowerStatusCallback);
+    auto leader_speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/leader_speed",1,LeaderSpeedCallback);
+    auto follower_status_sub = node->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
 
     // Register publishers
     // -------------------.
