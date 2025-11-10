@@ -420,11 +420,10 @@ function Setup()
 	distanceToGoal=@NLexpression(n.ocp.mdl,(((x[end]-g1)^2+(y[end]-g2)^2)/((x[1]-g1)^2+(y[1]-g2)^2)))
 	
 	# Smooth minimum distance to goal along the entire path
-	# Uses LogSumExp trick for differentiable minimum approximation
-	# beta controls the sharpness of the approximation (larger = closer to true minimum)
-	@NLparameter(n.ocp.mdl, beta == 5.0)  # Tuning parameter for smoothness
+	# Uses exponential sum for a differentiable measure of path-goal proximity
+	@NLparameter(n.ocp.mdl, beta == beta)
 	distanceToGoalAlongPath = @NLexpression(n.ocp.mdl,
-		-1/beta * log(sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts))
+		-sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts)
 	)
 	
 	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum(1/((x[j]-Xobs_0[i])^2+(y[j]-Yobs_0[i])^2+0.1) for i=1:maxNumObs for j=2:n.ocp.state.pts))
