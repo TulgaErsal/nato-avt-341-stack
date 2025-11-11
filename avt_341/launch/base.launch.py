@@ -310,6 +310,7 @@ def generate_launch_description():
                             ('detection_2d', 'front_camera/detections_2d'),
                             ('input','avt_341/points'),
                             ('odometry','avt_341/mrzr4/tracked_odom'),
+                            ('pose','avt_341/mrzr4/tracked_pose'),
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),
