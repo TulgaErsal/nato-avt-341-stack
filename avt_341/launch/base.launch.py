@@ -212,7 +212,7 @@ def generate_launch_description():
         for ki in param_refs[k].keys():
             del params[k][ki]
 
-    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector']
+    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector', 'obstacle_detector']
     arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() if k not in new_format_params for ki, vi in v.items()]
     arg_list += [DeclareLaunchArgument(f"{k}_{ki}", default_value=str(vi)) for k, v in params.items() if k in new_format_params for ki, vi in v.items()]
 
@@ -252,6 +252,7 @@ def generate_launch_description():
                             {'display': display_type},
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
                     ),
+
                     # UAB Terrain Segmentation
                     Node(
                         package='avt_341',
@@ -313,6 +314,15 @@ def generate_launch_description():
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),
+                    ),
+                    # Lidar obstacle detector, ground segmentation
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_lidar_obstacle_detector_node',
+                        name='lidar_obstacle_detector_node',
+                        parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_lidar_obstacle_detector'))
                     ),
                     Node(
                         package='avt_341',

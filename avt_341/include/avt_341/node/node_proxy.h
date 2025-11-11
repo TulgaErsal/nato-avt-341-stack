@@ -499,6 +499,9 @@ namespace avt_341 {
         RCLCPP_ERROR_ONCE(node_->get_logger(), format, args...);
       }
 
+      template<typename... Args> inline void log_warning_throttle(float period, const char * format, Args... args){
+        RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);
+      }
 
       template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
         RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);
