@@ -272,8 +272,8 @@ function SetLeaderSpeed(speed::Float64)
     global cmdLeaderSpeed = speed
 end
 
-function SetFollowerStatus(status::Int32)
-    global follower_status = Bool(status)
+function SetFollowerStatus(status::Bool)
+    global follower_status = status
 end
 
 function GetPath()
