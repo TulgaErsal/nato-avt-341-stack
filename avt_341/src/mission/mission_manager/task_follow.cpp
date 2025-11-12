@@ -18,9 +18,9 @@ void Follow::init_() {
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(path_generator_.useBreadcrumbs() ? 0 : 1);
 
-//    if(!formation_def_->formationAtGoal()){
-//      mgr->publishFormationStatus(formation_def_->formation_status);
-//    }
+    if(!formation_def_->formationAtGoal()){
+      mgr->publishFormationStatus(formation_def_->formation_status);
+    }
 }
 
 void Follow::run() {
