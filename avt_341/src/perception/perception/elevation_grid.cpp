@@ -3,7 +3,6 @@
 #include <thread>
 #include <math.h>
 #include <avt_341/perception/clearing_methods/clearing_methods_factory.h>
-#include <opencv2/imgproc.hpp>
 
 namespace avt_341 {
 namespace perception {
