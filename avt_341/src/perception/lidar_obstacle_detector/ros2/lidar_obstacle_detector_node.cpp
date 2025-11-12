@@ -58,12 +58,22 @@ void publishJointCloud(
 
   // ground cloud
   for (const auto & pt : segmented_clouds.second->points) {
-    joint_cloud.points[c++] = pcl::PointXYZI(pt.x, pt.y, pt.z, 0.0);
+    pcl::PointXYZI pt_i;
+    pt_i.x = pt.x;
+    pt_i.y = pt.y;
+    pt_i.z = pt.z;
+    pt_i.intensity = 0.0;
+    joint_cloud.points[c++] = pt_i;
   }
 
   // non-ground cloud
   for (const auto & pt : segmented_clouds.first->points) {
-    joint_cloud.points[c++] = pcl::PointXYZI(pt.x, pt.y, pt.z, 1.0);
+    pcl::PointXYZI pt_i;
+    pt_i.x = pt.x;
+    pt_i.y = pt.y;
+    pt_i.z = pt.z;
+    pt_i.intensity = 1.0;
+    joint_cloud.points[c++] = pt_i;
   }
 
   avt_341::msg::PointCloud2 joint_cloud_msg;
