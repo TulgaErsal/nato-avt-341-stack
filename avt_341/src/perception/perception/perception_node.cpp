@@ -34,7 +34,12 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 
 	const double callback_start_time = n->get_now_seconds();
 
+	#ifdef ROS_1
+	std::shared_ptr<avt_341::msg::PointCloud2> pc2_ptr = std::make_shared<avt_341::msg::PointCloud2>(*rcv_cloud);
+	#else
 	std::shared_ptr<avt_341::msg::PointCloud2> pc2_ptr = rcv_cloud;
+	#endif
+
 	std::shared_ptr<avt_341::msg::PointCloud> pc_ptr = std::make_shared<avt_341::msg::PointCloud>();
 
 	if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
