@@ -28,6 +28,7 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     communication_pub = node_proxy_->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
+    follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
     task_status_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/mission_task_state");
 }
 
@@ -224,6 +225,10 @@ void MissionManager::publishNavStateCmd(int state){
 
 void MissionManager::publishTaskCompletion(Task * task){
   publishTaskCompletion(task->sender_name, task->msg_id);
+}
+
+void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
+  follower_status_pub->publish(status_msg);
 }
 
 void MissionManager::publishCurrentTaskInfo() {
