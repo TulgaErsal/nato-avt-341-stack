@@ -307,6 +307,10 @@ if(USING_AMENT)
     add_definitions(-DGTE_ROS_HUMBLE)
   endif()
 
+  if($ENV{ROS_DISTRO} STREQUAL "jazzy")
+    add_definitions(-DGTE_ROS_JAZZY)
+  endif()
+
   # Build
   include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 

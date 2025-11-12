@@ -29,6 +29,7 @@ def generate_launch_description():
                           'robot_description': robot_desc,
                           'use_sim_time': 'False',
                           'goal_dist': '5.0',
+                          'publish_odom_to_tf': 'True',
                           'path_look_ahead': '30.0'}.items()
     )
 

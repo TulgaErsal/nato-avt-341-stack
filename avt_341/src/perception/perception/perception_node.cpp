@@ -53,7 +53,7 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 		return;
 	}
 
-	avt_341::msg::TransformStamped origin_tx = n->lookup_transform("map", current_pose.child_frame_id);
+	avt_341::msg::TransformStamped origin_tx = n->lookup_transform("map", current_pose.child_frame_id, rcv_cloud->header.stamp);
 	avt_341::msg::Pose origin_pose = avt_341::utils::TransformToPose(origin_tx.transform);
 
 	grid.AddPoints(pc_ptr, origin_pose);
