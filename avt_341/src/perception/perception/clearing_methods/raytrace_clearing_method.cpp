@@ -2,6 +2,8 @@
 
 namespace avt_341::perception {
 
+constexpr int RaytraceClearingMethod::N_VOXELS_PER_CELL;
+
 RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeProxy> & node_ref,
                                                std::vector<std::vector<Cell>> & cells,
                                                const BaseClearingSettings & base_config,
