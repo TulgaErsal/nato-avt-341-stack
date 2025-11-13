@@ -61,6 +61,9 @@ slopeThreshold = 0.2
 rmsThreshold = 0.05 # in meters
 speedAroundLargeSlopesAndRMS = 4.0 # in m/s
 
+# Smoothing parameter for the along-path distance to goal
+beta = 0.1
+
 # linear tire model parameters
 Caf =  -3.69554	# cornering stiffness--front axle (N/rad)
 Car =  -2.76883	# cornering stiffness-- rear axle (N/rad)

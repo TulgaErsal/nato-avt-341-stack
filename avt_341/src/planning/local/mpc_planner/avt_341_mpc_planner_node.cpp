@@ -144,6 +144,22 @@ void TerrainRMSCallback(avt_341::msg::Float64Ptr terrain_rms_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
+void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
+{
+    double speed = msg->twist.twist.linear.x;
+    jl_value_t *j_speed = jl_box_float64(speed);
+    jl_call1(j_set_leader_speed, j_speed);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void LeaderStatusCallback(avt_341::msg::BoolPtr msg)
+{
+    bool status = !(msg->data);
+    jl_value_t *j_status = jl_box_bool(status);
+    jl_call1(j_set_follower_status, j_status);
+    CATCH_JULIA_EXCEPTION;
+}
+
 avt_341::msg::Path GetMPCPath()
 {
     jl_array_t *j_path = (jl_array_t*)jl_call0(j_get_path);
@@ -177,6 +193,16 @@ avt_341::msg::Float64 GetMPCSpeed()
     avt_341::msg::Float64 speed_msg;
     speed_msg.data = speed;
     return speed_msg;
+}
+
+avt_341::msg::Float64 GetMPCFinalSpeed()
+{
+    double final_speed = jl_unbox_float64(jl_call0(j_get_final_speed));
+    CATCH_JULIA_EXCEPTION;
+    
+    avt_341::msg::Float64 final_speed_msg;
+    final_speed_msg.data = final_speed;
+    return final_speed_msg;
 }
 
 avt_341::msg::Float64 GetMPCSteering()
@@ -260,6 +286,7 @@ void DeclareParameters()
     node->get_parameter("~w_deviation_in_yaw", w_deviation_in_yaw, 1.);
     node->get_parameter("~w_yaw_accel", w_yaw_accel, 1.);
     node->get_parameter("~w_traversability_cost", w_traversability_cost, 0.1);
+    node->get_parameter("~w_final_speed", w_final_speed, 200.0);
     node->get_parameter("~safety_margin", safety_margin, 0.0);
     node->get_parameter("~grid_resolution", grid_resolution, 0.25);
     node->get_parameter("~front_angle_goal", front_angle_goal, 1.571);
@@ -422,9 +449,13 @@ void InitialiseJuliaAPI()
     j_set_segmentation = jl_get_function(mpc_module, "SetSegmentation");
     j_get_path = jl_get_function(mpc_module, "GetPath");
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
+    j_get_final_speed = jl_get_function(mpc_module, "GetFinalSpeed");
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
     j_get_heading = jl_get_function(mpc_module, "GetHeading");
     j_get_slope_limited = jl_get_function(mpc_module, "GetSlopeLimited");
+    j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
+    j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
+    j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
 
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
@@ -477,6 +508,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_w_traversability_cost = jl_box_float64(w_traversability_cost);
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
+    jl_value_t *j_w_final_speed = jl_box_float64(w_final_speed);
     jl_value_t *j_front_angle_goal = jl_box_float64(front_angle_goal);
     jl_value_t *j_front_angle_obstacle = jl_box_float64(front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
@@ -508,6 +540,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_yaw_accel, j_w_yaw_accel);
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
+    jl_call1(j_set_w_final_speed, j_w_final_speed);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
@@ -561,6 +594,8 @@ int main(int argc, char *argv[])
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset",1,ResetCallback);
     auto terrain_slope_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
     auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
+    auto leader_odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
+    auto leader_status_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
 
     // Register publishers
     // -------------------.

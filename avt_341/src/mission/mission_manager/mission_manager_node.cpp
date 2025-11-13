@@ -70,7 +70,7 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
       }
       
       mgr->leader_odometry = leader_odom;
-//      leader_pub->publish(*msg);
+      leader_pub->publish(*msg);
     }
 }
 
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-//    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
+    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
     // start the loop
     while(avt_341::node::ok()){
@@ -291,6 +291,9 @@ int main(int argc, char **argv) {
 
         // post-update tasks
         mgr->postUpdateTasks();
+
+        // Publish leader status
+        mgr->publishLeaderStatus();
 
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){

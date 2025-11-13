@@ -11,7 +11,6 @@
  */
 
 // ros includes
-#include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include <avt_341/node/occupancy_grid_subscriber.h>
 // local includes
@@ -21,6 +20,11 @@
 #include "avt_341/visualization/visualization_factory.h"
 #include <chrono>
 #include <utility>
+
+#ifdef Bool
+#undef Bool // Fix conflicting definition in Xlib.h
+#endif
+#include "avt_341/node/ros_types.h"
 
 using avt_341::planning::Point;
 
@@ -33,6 +37,7 @@ bool waypoints_rcvd = false;
 bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
+bool is_follower = false;
 bool verbose_gp_log = false;
 bool shutdown_condition = false;
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
@@ -40,6 +45,8 @@ bool use_segmentation = false;
 avt_341::msg::Int32 state;
 int current_waypoint = 0;
 bool reset_called = false;
+float goal_dist = 0.0f;
+float goal_accept_radius = 0.0f;
 
 avt_341::msg::PoseStamped CreatePoseStamped(std::string frame_id,
                                             float px,
@@ -118,6 +125,16 @@ void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
   waypoints_rcvd = true;
 }
 
+void LeaderStatusCallback(avt_341::msg::BoolPtr rcv_leader_status) {
+  is_follower = !(rcv_leader_status->data);
+  if (is_follower) {
+    goal_accept_radius = 0.5f;
+  }
+  else{
+    goal_accept_radius = goal_dist;
+  }
+}
+
 avt_341::msg::Path ToROSPath(const std::vector<Point>& path)
 {
   avt_341::msg::Path ros_path;
@@ -149,7 +166,7 @@ int main(int argc, char* argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
 
-  float goal_accept_radius, global_lookahead, w_distance, w_occupancy, w_segmentation;
+  float global_lookahead, w_distance, w_occupancy, w_segmentation;
   double local_origin_x, local_origin_y;
   std::vector<double> waypoints_x_list, waypoints_y_list;
   std::string display_type;
@@ -160,7 +177,7 @@ int main(int argc, char* argv[])
   bool use_fastmarching;
   Point goal;
 
-  n->get_parameter("~goal_dist", goal_accept_radius, 3.0f);
+  n->get_parameter("~goal_dist", goal_dist, 3.0f);
   n->get_parameter("~display", display_type, avt_341::visualization::default_display);
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
@@ -183,6 +200,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid_low_res"));
   n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
   n->get_parameter("~use_fastmarching", use_fastmarching, true);
+  goal_accept_radius = goal_dist;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -220,6 +238,7 @@ int main(int argc, char* argv[])
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
   auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
+  auto leader_status_sub = n->create_subscription<avt_341::msg::Bool>("avt_341/leader_status", 10, LeaderStatusCallback);
   auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
   auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
   auto fastmatching_costs_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/fm_map", 1);
