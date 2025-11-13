@@ -129,11 +129,9 @@ void LeaderStatusCallback(avt_341::msg::BoolPtr rcv_leader_status) {
   is_follower = !(rcv_leader_status->data);
   if (is_follower) {
     goal_accept_radius = 0.5f;
-    std::cout << "FOLLOWER: goal_accept_radius=" << goal_accept_radius << "\n";
   }
   else{
     goal_accept_radius = goal_dist;
-    std::cout << "LEADER: goal_accept_radius=" << goal_accept_radius << "\n";
   }
 }
 
