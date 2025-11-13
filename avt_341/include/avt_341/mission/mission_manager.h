@@ -76,6 +76,7 @@ class MissionManager{
     double sodist_threshold;
     avt_341::msg::Odometry odometry;
     avt_341::msg::Odometry leader_odometry;
+    bool rcvd_leader_odom = false;
     int nav_state;
     float desired_speed;
     bool goal_changed;
