@@ -94,6 +94,7 @@ class MissionManager{
     void publishGpToggle(int state);
     void publishArrival(const std::string & sender_name, const std::string & objective);
     void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
+    void publishLeaderStatus();
     void reset();
     void resetTaskList(bool send_completion_msg);
     void cancelTask(int task_id,bool send_completion_msg);
@@ -127,6 +128,7 @@ class MissionManager{
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Communication>> communication_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> leader_status_pub = nullptr;
 
     // Methods
     bool hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose);

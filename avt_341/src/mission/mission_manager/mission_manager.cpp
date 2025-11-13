@@ -29,6 +29,7 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
     follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
+    leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
 }
 
 MissionManager::~MissionManager() {
@@ -228,6 +229,26 @@ void MissionManager::publishTaskCompletion(Task * task){
 
 void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
   follower_status_pub->publish(status_msg);
+}
+
+void MissionManager::publishLeaderStatus(){
+  bool is_leader = true;
+  // Check if there is a leader
+  Task* active_task = currentTask();
+  if (active_task) {
+    FormationDefinition* formatiom_def = active_task->getFormationDef();
+    if (formatiom_def) {
+      const std::string leader_name = formatiom_def->followedVehicle();
+      // Check if I am leader
+      if (!leader_name.empty() && formation_params.my_name != leader_name) {
+        is_leader = false;
+      }
+    }
+  }
+  // Publish follower status
+  avt_341::msg::Bool status_msg;
+  status_msg.data = is_leader;
+  leader_status_pub->publish(status_msg);
 }
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){

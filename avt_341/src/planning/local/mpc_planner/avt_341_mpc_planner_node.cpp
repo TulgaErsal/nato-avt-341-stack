@@ -152,9 +152,9 @@ void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void FollowerStatusCallback(avt_341::msg::FollowerStatusPtr msg)
+void LeaderStatusCallback(avt_341::msg::BoolPtr msg)
 {
-    bool status = msg->use_leader;
+    bool status = !(msg->data);
     jl_value_t *j_status = jl_box_bool(status);
     jl_call1(j_set_follower_status, j_status);
     CATCH_JULIA_EXCEPTION;
@@ -594,7 +594,7 @@ int main(int argc, char *argv[])
     auto terrain_slope_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
     auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
     auto leader_odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
-    auto follower_status_sub = node->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
+    auto leader_status_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
 
     // Register publishers
     // -------------------.

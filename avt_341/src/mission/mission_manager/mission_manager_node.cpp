@@ -292,6 +292,9 @@ int main(int argc, char **argv) {
         // post-update tasks
         mgr->postUpdateTasks();
 
+        // Publish leader status
+        mgr->publishLeaderStatus();
+
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
             avt_341::msg::Float64 speed_msg;
