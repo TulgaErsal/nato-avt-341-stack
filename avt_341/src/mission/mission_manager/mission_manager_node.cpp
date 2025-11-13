@@ -70,6 +70,7 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
       }
       
       mgr->leader_odometry = leader_odom;
+      mgr->rcvd_leader_odom = true;
       leader_pub->publish(*msg);
     }
 }

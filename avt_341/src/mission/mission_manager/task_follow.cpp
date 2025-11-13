@@ -24,6 +24,7 @@ void Follow::init_() {
 }
 
 void Follow::run() {
+    if (!(mgr->rcvd_leader_odom)) return;
     path_generator_.Update(mgr->leader_odometry, mgr->odometry, formation_def_->formation_status);
     const auto & follower_path = path_generator_.GetPath();
     if(path_generator_.useBreadcrumbs()){
