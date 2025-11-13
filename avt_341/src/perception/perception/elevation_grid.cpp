@@ -272,7 +272,7 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell& cell) const {
 }
 
 void ElevationGrid::FillGridMsgCells(std::vector<int8_t> & data, const GridRegion region, bool is_segmentation) const {
-	data.resize(region.Width()*region.Height());
+	//data.resize(region.Width()*region.Height());
 	int c = 0;
 	for (int j = region.y_min; j < region.y_max; j++) {
 		for (int i = region.x_min; i < region.x_max; i++) {
@@ -330,14 +330,15 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double wi
 	avt_341::msg::OccupancyGrid grid;
 	grid.header.frame_id = "map";
 	grid.info.resolution = res_;
-	grid.info.width = xi_max-xi_min;
-	grid.info.height = yi_max-yi_min;
+	grid.info.width = local_nx; //xi_max-xi_min;
+	grid.info.height =  local_ny; //yi_max-yi_min;
 	grid.info.origin.position.x = xi_min * res_ + llx_;
 	grid.info.origin.position.y = yi_min * res_ + lly_;
 	grid.info.origin.orientation.w = 1.0;
 	grid.info.origin.orientation.x = 0.0;
 	grid.info.origin.orientation.y = 0.0;
 	grid.info.origin.orientation.z = 0.0;
+	grid.data.resize(local_nx * local_ny);
 
 	FillGridMsgCells(grid.data, GridRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation);
 	return grid;
