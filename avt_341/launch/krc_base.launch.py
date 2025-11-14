@@ -222,10 +222,6 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 executable='obstacle_processor_node',
                 name='obstacle_processor_node',
                 output='screen',
-                remappings=[
-                    ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
-                ],
-                #prefix=['xterm -e gdb -ex run --args'],
                 parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
             # Segmentation Grid Processor
@@ -485,7 +481,10 @@ def launch_setup(context, *args, **kwargs):
                 },
                 {k: LaunchConfiguration(f'mission_manager_{k}') for k in params['mission_manager'].keys()},
                 #{k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
-            ]
+            ],
+            remappings=[
+                ('avt_341/comm_messages','/avt_341/comm_messages'),
+            ],
         ),
 
         # Socket Communication
@@ -508,7 +507,10 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[
                 {k: LaunchConfiguration(f'speed_zones_{k}') for k in params['speed_zones'].keys()}
-            ]
+            ],
+            remappings=[
+                ('avt_341/comm_messages','/avt_341/comm_messages'),
+            ],
         ),
 
         # UAB Perception
