@@ -46,13 +46,13 @@ public:
 		* Add points to be processed
 		* \param point_cloud PointCloud message
 		*/
-	void AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose);
+	void ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose, bool clear_only = false);
 
 	/**
 		* Clear points in point cloud
 		* \param point_cloud PointCloud message
 		*/
-	void ClearPoints(avt_341::msg::PointCloud& point_cloud);
+	void ClearPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose);
 
 	bool HasSegmentation() const { return has_segmentation_; }
 

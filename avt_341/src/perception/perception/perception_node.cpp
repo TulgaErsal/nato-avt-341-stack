@@ -28,7 +28,7 @@ double last_full_grid_update = 0.0;
 
 avt_341::core::WindowedMean pc_callback_time(40);
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
-
+std::shared_ptr<avt_341::msg::PointCloud> clr_only_pc = nullptr;
 
 void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 
@@ -40,7 +40,48 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 	std::shared_ptr<avt_341::msg::PointCloud2> pc2_ptr = rcv_cloud;
 	#endif
 
+	if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
+		pc2_ptr = std::make_shared<avt_341::msg::PointCloud2>();
+		if (!n->transform_cloud(*rcv_cloud, *pc2_ptr, "map")) {
+			return;
+		}
+	}
+
 	std::shared_ptr<avt_341::msg::PointCloud> pc_ptr = std::make_shared<avt_341::msg::PointCloud>();
+	if (!sensor_msgs::convertPointCloud2ToPointCloud(*pc2_ptr, *pc_ptr)) {
+		return;
+	}
+
+
+	if (clr_only_pc != nullptr) {
+		avt_341::msg::TransformStamped origin_tx = n->lookup_transform("map", current_pose.child_frame_id, clr_only_pc->header.stamp);
+		avt_341::msg::Pose origin_pose = avt_341::utils::TransformToPose(origin_tx.transform);
+		grid.ClearPoints(clr_only_pc, origin_pose);
+		clr_only_pc = nullptr;
+	}
+
+	avt_341::msg::TransformStamped origin_tx = n->lookup_transform("map", current_pose.child_frame_id, rcv_cloud->header.stamp);
+	avt_341::msg::Pose origin_pose = avt_341::utils::TransformToPose(origin_tx.transform);
+
+	grid.ProcessPoints(pc_ptr, origin_pose);
+
+	pc_callback_time.AddSample(n->get_now_seconds() - callback_start_time);
+	if (pc_callback_time.GetMean() > pc_callback_runtime_threshold) {
+		n->log_warning_throttle(1.0, "PointCloudCallback took %.2f ms (> %.2f ms warning threshold).",
+			pc_callback_time.GetMean()*1e3,
+			pc_callback_runtime_threshold*1e3
+			);
+	}
+}
+
+void GroundCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
+
+	// TODO: Remove duplication with PointCloudCallback
+#ifdef ROS_1
+	std::shared_ptr<avt_341::msg::PointCloud2> pc2_ptr = std::make_shared<avt_341::msg::PointCloud2>(*rcv_cloud);
+#else
+	std::shared_ptr<avt_341::msg::PointCloud2> pc2_ptr = rcv_cloud;
+#endif
 
 	if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
 		pc2_ptr = std::make_shared<avt_341::msg::PointCloud2>();
@@ -49,21 +90,9 @@ void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_cloud) {
 		}
 	}
 
-	if (!sensor_msgs::convertPointCloud2ToPointCloud(*pc2_ptr, *pc_ptr)) {
-		return;
-	}
-
-	avt_341::msg::TransformStamped origin_tx = n->lookup_transform("map", current_pose.child_frame_id, rcv_cloud->header.stamp);
-	avt_341::msg::Pose origin_pose = avt_341::utils::TransformToPose(origin_tx.transform);
-
-	grid.AddPoints(pc_ptr, origin_pose);
-
-	pc_callback_time.AddSample(n->get_now_seconds() - callback_start_time);
-	if (pc_callback_time.GetMean() > pc_callback_runtime_threshold) {
-		n->log_warning_throttle(1.0, "PointCloudCallback took %.2f ms (> %.2f ms warning threshold).",
-			pc_callback_time.GetMean()*1e3,
-			pc_callback_runtime_threshold*1e3
-			);
+	clr_only_pc = std::make_shared<avt_341::msg::PointCloud>();
+	if (!sensor_msgs::convertPointCloud2ToPointCloud(*pc2_ptr, *clr_only_pc)) {
+		clr_only_pc = nullptr;
 	}
 }
 
@@ -180,7 +209,7 @@ int main(int argc, char* argv[]) {
 	bool use_elevation, grid_dilate;
 	std::string clear_method, grid_pub_method;
 	double perception_rate;
-	std::string perception_points_topic;
+	std::string perception_points_topic, ground_points_topic;
 	float rms_horizontal_fov_radians, rms_range_meters, rms_time_average_window;
 
 	n->get_parameter("/grid_width", grid_width, 200.0f);
@@ -213,6 +242,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	n->get_parameter("~perception_points_topic", perception_points_topic, std::string("avt_341/points"));
+	n->get_parameter("~ground_points_topic", ground_points_topic, std::string("avt_341/ground_points"));
 
 	avt_341::perception::PointCloudFilterConfig pc_filter_config = ParseFilterConfig();
 	avt_341::perception::PointCloudFilterConfig pc_cm_filter_config = ParseFilterConfig("clear_method_");
@@ -249,6 +279,7 @@ int main(int argc, char* argv[]) {
 	// Create publishers + subscribers
 	// --------------------------------------------------------------------------------------------------------------
 	auto pc_sub = n->create_subscription<avt_341::msg::PointCloud2>(perception_points_topic, 10, PointCloudCallback);
+	auto pc_ground_sub = n->create_subscription<avt_341::msg::PointCloud2>(ground_points_topic, 10, GroundCallback);
 	auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
 	auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
 	auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);

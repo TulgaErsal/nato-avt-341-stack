@@ -229,7 +229,7 @@ void ElevationGrid::SetPointCloudFilterConfig(
 		);
 }
 
-void ElevationGrid::AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose) {
+void ElevationGrid::ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose, const bool clear_only) {
 
 	if (is_resetting_) {
 		return;
@@ -244,6 +244,11 @@ void ElevationGrid::AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, co
 	for (auto& cm : clear_methods_) {
 		cm->ClearOccupancy(*filtered_cms_pc);
 	}
+
+	if (clear_only) {
+		return;
+	}
+
 	AddOccupancy(*filtered_pc, cells_, dilate_);
 	for (auto& cm : clear_methods_) {
 		cm->OnOccupancyAdded(*filtered_cms_pc, vehicle_pose.position);
@@ -251,10 +256,8 @@ void ElevationGrid::AddPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, co
 
 }
 
-void ElevationGrid::ClearPoints(avt_341::msg::PointCloud& point_cloud) {
-	for (auto& cm : clear_methods_) {
-		cm->ClearOccupancy(point_cloud);
-	}
+void ElevationGrid::ClearPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose) {
+	ProcessPoints(pc_ptr, vehicle_pose, true);
 }
 
 uint8_t ElevationGrid::GetGridCellValue(const Cell& cell) const {
