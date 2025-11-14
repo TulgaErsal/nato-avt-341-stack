@@ -6,7 +6,7 @@ mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_
 mission_paths_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_paths - NAD83_m.csv')" # Mission Manager - file describing paths of mission points
 fsc_type: 'speed_up_follower'
 fsc_max_speed_factor: 2.0                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
-x_offset_on_path: False                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
+x_offset_on_path: true                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
 formation_prune_gp: True                                                                # If true prunes the formation controller generated follower global path to the closer point
 follow_goal_threshold: 10.0
 same_object_distance_threshold: 1.0                                                     # Distance for combining obstacles                                                             # Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal
@@ -39,4 +39,4 @@ ot:
 
 # Formation Control
 # ======================================================================================================================
-use_leader_breadcrumbs: True                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
+use_leader_breadcrumbs: false                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
