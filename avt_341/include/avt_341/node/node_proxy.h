@@ -187,6 +187,8 @@ namespace avt_341 {
             geometry_msgs::TransformStamped lookup_transform(const std::string& target_frame, const ros::Time& target_time,
                                                              const std::string& source_frame, const ros::Time& source_time,
                                                              const std::string& fixed_frame);
+            geometry_msgs::PoseStamped lookup_pose(const std::string &target_frame, const std::string &source_frame, const ros::Time & stamp);
+
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
             void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
@@ -456,6 +458,9 @@ namespace avt_341 {
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,
                                                             const std::string &source_frame, const rclcpp::Time &source_time,
                                                             const std::string &fixed_frame);
+
+      geometry_msgs::msg::PoseStamped lookup_pose(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time & stamp);
+
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
       void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);

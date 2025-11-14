@@ -17,11 +17,13 @@ max_grid_width: 100.0                     # Maximum grid width [m] (for grid_pub
 max_grid_height: 100.0                    # Maximum grid height [m] (for grid_pub_method = 'window')
 grid_pub_method: 'window'                 # Method of publishing the grid. 'full' | 'window' | 'updates' . full: Always publish entire grid. window: Published limited sized grid windowed around vehicle pose. updates: Publish incremental updates (on _updates topic) corresponding to regions updated by most recent point clouds.
 grid_pub_force_full_every: 10.0           # Force full grid publish every x seconds. Only active when grid_pub_method='updates'.
-clear_ground_points: True                 # Clears all grid cells containing points in "ground_points_topic"
 rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians for calculating slope and RMS values
 rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
 rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
 pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
+
+perception_points_topic: '/avt_341/lidar_detector/cloud_clusters'   # Primary point cloud input topic. Points received will go through grid addition and clearing methods.
+clear_only_points_topic: '/avt_341/lidar_detector/cloud_ground'     # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
 
 # Point Cloud Culling
 # ======================================================================================================================
@@ -67,8 +69,3 @@ clear_method:
 # Segmentation
 # ======================================================================================================================
 global_grid_csv_path: '$(find avt_341)/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv'      # Path to CSV containing KRC global segmentation grid.
-
-# Lidar Obstacle Detector
-# ======================================================================================================================
-perception_points_topic: '/avt_341/lidar_detector/cloud_clusters'  # The name of the points topic listened to by the perception node.
-ground_points_topic: '/avt_341/lidar_detector/cloud_ground'  # The name of the ground points topic for clearing cells when clear_ground_points=True.

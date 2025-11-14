@@ -275,6 +275,7 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell& cell) const {
 }
 
 void ElevationGrid::FillGridMsgCells(std::vector<int8_t> & data, const GridRegion region, bool is_segmentation) const {
+	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
 	int c = 0;
 	for (int j = region.y_min; j < region.y_max; j++) {
@@ -297,6 +298,7 @@ avt_341::msg::OccupancyGridUpdate ElevationGrid::GetGridUpdate(bool is_segmentat
 	grid_update_msg.y = dilated_region.y_min;
 	grid_update_msg.width = dilated_region.Width();
 	grid_update_msg.height = dilated_region.Height();
+	grid_update_msg.data.resize(dilated_region.Width()*dilated_region.Height());
 
 	FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation);
 	grid_update_region_.Reset();
@@ -315,6 +317,7 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation) {
 	grid.info.origin.orientation.x = 0.0;
 	grid.info.origin.orientation.y = 0.0;
 	grid.info.origin.orientation.z = 0.0;
+	grid.data.resize(nx_ * ny_);
 
 	FillGridMsgCells(grid.data, GridRegion(0, nx_, 0, ny_), is_segmentation);
 	return grid;

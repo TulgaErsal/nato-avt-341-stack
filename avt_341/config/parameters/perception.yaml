@@ -22,6 +22,9 @@ rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slop
 rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
 pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
 
+perception_points_topic: 'avt_341/points'           # The name of the points topic listened to by the perception node.
+clear_only_points_topic: 'avt_341/ground_points'    # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
+
 # Point Cloud Culling
 # ======================================================================================================================
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
@@ -68,8 +71,3 @@ clear_method:
 # ======================================================================================================================
 global_grid_csv_path: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', '20230816_KRC_CP06_sfv.csv')"      # Path to CSV containing KRC global segmentation grid.
 
-
-# Lidar Obstacle Detector
-# ======================================================================================================================
-use_lidar_obstacle_detector: False      # If true uses lidar obstacle detector. ROS1 version only currently.
-perception_points_topic: 'avt_341/points'  # The name of the points topic listened to by the perception node.

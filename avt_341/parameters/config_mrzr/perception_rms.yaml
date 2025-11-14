@@ -22,6 +22,9 @@ rms_calc_range_meters: 15.0               # Range in meters for calculating slop
 rms_calc_time_average_window: 0.05        # Time window for averaging RMS and slope values
 pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
 
+perception_points_topic: '/ouster/points'         # Primary point cloud input topic. Points received will go through grid addition and clearing methods.
+clear_only_points_topic: 'avt_341/ground_points'  # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
+
 # Point Cloud Culling
 # ======================================================================================================================
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
@@ -66,7 +69,3 @@ clear_method:
 # Segmentation
 # ======================================================================================================================
 global_grid_csv_path: '$(find avt_341)/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv'      # Path to CSV containing KRC global segmentation grid.
-
-# Lidar Obstacle Detector
-# ======================================================================================================================
-perception_points_topic: '/ouster/points'  # The name of the points topic listened to by the perception node.

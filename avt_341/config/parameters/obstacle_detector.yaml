@@ -1,5 +1,7 @@
 # Obstacle Detection
 # ======================================================================================================================
+use_lidar_obstacle_detector: False                              # If true uses lidar obstacle detector. ROS1 version only currently.
+
 use_pca_box: False                                              # Use PCA Bounding box to align clusters
 use_tracking: True                                              # Use tracking to assign bbox ids
 
