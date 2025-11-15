@@ -65,7 +65,7 @@ geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string& t
   }
 }
 
-geometry_msgs::PoseStamped NodeProxy::lookup_pose(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time & stamp){
+geometry_msgs::PoseStamped NodeProxy::lookup_pose(const std::string &target_frame, const std::string &source_frame, const ros::Time & stamp){
 
   auto tx = lookup_transform(target_frame, source_frame, stamp);
   geometry_msgs::PoseStamped pose_msg;
