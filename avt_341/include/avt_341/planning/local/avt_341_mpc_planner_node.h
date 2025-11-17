@@ -92,6 +92,10 @@ bool publish_steering_commands;
 double slope_threshold;
 double rms_threshold;
 double speed_around_large_slopes_and_rms;
+double sa_min;
+double sa_max;
+double sr_min;
+double sr_max;
 // --------------
 
 // Globals

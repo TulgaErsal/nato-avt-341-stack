@@ -29,8 +29,8 @@ def generate_launch_description():
                           'robot_description': robot_desc,
                           'use_sim_time': 'False',
                           'goal_dist': '5.0',
-                          'path_look_ahead': '30.0',
-                          'local_planner_method': 'mpc'}.items()
+                          'publish_odom_to_tf': 'True',
+                          'path_look_ahead': '30.0'}.items()
     )
 
     launch_description = LaunchDescription([

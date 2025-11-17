@@ -41,7 +41,7 @@ private:
   float ComputeGradientY(const float* costs, const Index& index);
   Vec2 BilinearInterpolateGradient(const float* costs, const Point& position);
 
-  float* costs_;
+  float* costs_ = nullptr;
 };
 
 }

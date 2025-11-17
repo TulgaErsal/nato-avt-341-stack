@@ -514,22 +514,69 @@ def launch_setup(context, *args, **kwargs):
         ),
 
         # UAB Perception
-#        Node(
-#            package='avt_341',
-#            executable='uab_perception_node',
-#            name='uab_perception_node',
-#            parameters=[
-#                {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
-#            ],
-#            remappings=[
-#                ('avt_341/points','/ouster/points'),
-#                #('camera/rgb/image_raw','/flir_camera/image_raw'),
-#                ('camera/rgb/image_raw','/flir_camera/image_color'),
-#                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
-#                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
-#            ],
-#            output='screen'
-#        ),
+        Node(
+            package='avt_341',
+            executable='uab_perception_node',
+            name='uab_perception_node',
+            parameters=[
+                {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+            ],
+            remappings=[
+                ('avt_341/points','/ouster/points'),
+                ('camera/rgb/image_raw','/flir_camera/image_raw'),
+                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
+                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
+            ],
+            output='screen'
+        ),
+
+        # Obstacle Detection
+        Node(
+            package='avt_341',
+            executable='avt_341_object_detector_node',
+            name='object_detector_node',
+            parameters=[
+                {k: LaunchConfiguration(f'object_detector_{k}') for k in params['object_detector'].keys()}
+            ],
+            remappings=[
+                ('image','/flir_camera/image_raw'),
+            ],
+            output='screen'
+        ),
+
+        # FEDA Detection
+        Node(
+            package='avt_341',
+            executable='avt_341_object_detector_node',
+            name='feda_detector_node',
+            namespace='feda_detector',
+            parameters=[
+                {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
+            ],
+            remappings=[
+                ('image','/flir_camera/image_raw'),
+            ],
+            output='screen'
+        ),
+
+        # Object Tracking
+        Node(
+            package='avt_341',
+            executable='avt_341_object_tracking_node',
+            name='object_tracking_node',
+            parameters=[
+                {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+            ],
+            remappings=[
+                ('camera_info','/flir_camera/camera_info'),
+                ('image','/flir_camera/image_raw'),
+                ('detection_2d', '/mrzr/feda_detector/detections/vision'),
+                ('input','/ouster/points'),
+                ('pose','/feda/pose'),
+                ('odometry','/feda/avt_341/odometry')
+            ],
+            output='screen'
+        ),
 
         # Vehicle Logging
         GroupAction(condition=IfCondition(enable_logging), actions=[

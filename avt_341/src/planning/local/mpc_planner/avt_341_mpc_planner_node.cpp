@@ -169,6 +169,7 @@ avt_341::msg::Path GetMPCPath()
 
     avt_341::msg::Path path_msg;
     path_msg.header.frame_id = "odom";
+    path_msg.header.stamp = node->get_stamp();
     for (int i=0; i<path_len; i++) {
         avt_341::msg::PoseStamped pose;
         pose.header.frame_id = "odom";
@@ -298,6 +299,10 @@ void DeclareParameters()
     node->get_parameter("~slope_threshold", slope_threshold, 0.2);
     node->get_parameter("~rms_threshold", rms_threshold, 0.05);
     node->get_parameter("~speed_around_large_slopes_and_rms", speed_around_large_slopes_and_rms, 4.0);
+    node->get_parameter("~sa_min", sa_min, -0.485);
+    node->get_parameter("~sa_max", sa_max, 0.485);
+    node->get_parameter("~sr_min", sr_min, -0.523);
+    node->get_parameter("~sr_max", sr_max, 0.523);
 
 }
 
@@ -322,7 +327,7 @@ void InitialiseJuliaAPI()
     CATCH_JULIA_EXCEPTION;
     // ----------[ Initialize Julia system image. ]----------
     // ------------------------------------------------------
-    
+
     // ----------------------------------------------------------
     // ----------[ Load the Julia MPC planner module. ]----------
     if (!planner_module_path.empty())
@@ -479,6 +484,10 @@ void InitialiseJuliaAPI()
     j_set_slope_threshold = jl_get_function(mpc_module, "SetSlopeThreshold");
     j_set_rms_threshold = jl_get_function(mpc_module, "SetRMSThreshold");
     j_set_speed_around_large_slopes_and_rms = jl_get_function(mpc_module, "SetSpeedAroundLargeSlopesAndRMS");
+    j_set_sa_min = jl_get_function(mpc_module, "SetSteeringAngleMin");
+    j_set_sa_max = jl_get_function(mpc_module, "SetSteeringAngleMax");
+    j_set_sr_min = jl_get_function(mpc_module, "SetSteeringRateMin");
+    j_set_sr_max = jl_get_function(mpc_module, "SetSteeringRateMax");
     // -------------------------------
 
     // Convert params to Julia types
@@ -509,6 +518,10 @@ void InitialiseJuliaAPI()
     jl_value_t *j_slope_threshold = jl_box_float64(slope_threshold);
     jl_value_t *j_rms_threshold = jl_box_float64(rms_threshold);
     jl_value_t *j_speed_around_large_slopes_and_rms = jl_box_float64(speed_around_large_slopes_and_rms);
+    jl_value_t *j_sa_min = jl_box_float64(sa_min);
+    jl_value_t *j_sa_max = jl_box_float64(sa_max);
+    jl_value_t *j_sr_min = jl_box_float64(sr_min);
+    jl_value_t *j_sr_max = jl_box_float64(sr_max);
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -538,6 +551,10 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_slope_threshold, j_slope_threshold);
     jl_call1(j_set_rms_threshold, j_rms_threshold);
     jl_call1(j_set_speed_around_large_slopes_and_rms, j_speed_around_large_slopes_and_rms);
+    jl_call1(j_set_sa_min, j_sa_min);
+    jl_call1(j_set_sa_max, j_sa_max);
+    jl_call1(j_set_sr_min, j_sr_min);
+    jl_call1(j_set_sr_max, j_sr_max);
     CATCH_JULIA_EXCEPTION;
 }
 

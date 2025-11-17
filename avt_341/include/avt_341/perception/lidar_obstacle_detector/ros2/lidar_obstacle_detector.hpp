@@ -29,7 +29,7 @@
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/common/transforms.h>
 
-#include "../../box.hpp"
+#include "avt_341/perception/box.hpp"
 
 namespace avt_341{
 namespace perception{

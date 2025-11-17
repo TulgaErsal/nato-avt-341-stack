@@ -34,6 +34,7 @@ int main(int argc, char **argv){
   // create and populate the odometry message that will be published
   avt_341::msg::Odometry odom_msg;
   odom_msg.header.frame_id = "odom";
+  odom_msg.child_frame_id = "base_link";
   avt_341::node::set_seq(odom_msg.header, 0);
   odom_msg.pose.pose.position.x = -55.0;
   odom_msg.pose.pose.position.y = 0.0;

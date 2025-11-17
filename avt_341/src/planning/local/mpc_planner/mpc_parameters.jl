@@ -42,16 +42,16 @@ const x_min    = 0.
 const x_max    = 400.
 const y_min    = 0.
 const y_max    = 400.
-const sa_min   = -0.485
-const sa_max   = 0.485
+sa_min         = -0.485
+sa_max         = 0.485
 const psi_min  = -2*pi
 const psi_max  = 2*pi
 const u_min    = 1.0   #5.
 const u_max    = 30.
-const sr_min   = -0.523
-const sr_max   = 0.523
-const jx_min   = -2.0 # -2.1*3
-const jx_max   = 2.0 #1.9*3
+sr_min         = -0.523
+sr_max         = 0.523
+const jx_min   = -2.0
+const jx_max   = 2.0
 
 # epsilon
 const EP      = 0.01

@@ -166,6 +166,12 @@ namespace avt_341 {
             }
 
             template<typename MessageT>
+            std::shared_ptr<Publisher<MessageT>> create_latching_publisher(const std::string &topic_name) {
+                // TODO: Not currently implemented in ROS1
+                return std::make_shared<Publisher<MessageT>>(topic_name, 1, node_);
+            }
+
+            template<typename MessageT>
             std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, uint qos, void(*callback)(const boost::shared_ptr<MessageT const>&)) {
                 return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
             }
@@ -181,6 +187,8 @@ namespace avt_341 {
             geometry_msgs::TransformStamped lookup_transform(const std::string& target_frame, const ros::Time& target_time,
                                                              const std::string& source_frame, const ros::Time& source_time,
                                                              const std::string& fixed_frame);
+            geometry_msgs::PoseStamped lookup_pose(const std::string &target_frame, const std::string &source_frame, const ros::Time & stamp);
+
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
             void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
@@ -326,6 +334,10 @@ namespace avt_341 {
         pub_ptr_ = node_->create_publisher<MessageT>(topic_name, qos);
       }
 
+      explicit Publisher(const std::string &topic_name, const rclcpp::QoS& qos, const std::shared_ptr<rclcpp::Node> &node_) {
+        pub_ptr_ = node_->create_publisher<MessageT>(topic_name, qos);
+      }
+
       using SharedPtr = std::shared_ptr<Publisher<MessageT>>;
 
       void publish(const MessageT &msg) {
@@ -428,6 +440,13 @@ namespace avt_341 {
         return std::make_shared<Publisher<MessageT>>(topic_name, qos, node_);
       }
 
+      template<typename MessageT>
+      std::shared_ptr<Publisher<MessageT>> create_latching_publisher(const std::string &topic_name) {
+        rclcpp::QoS qos(1);
+        qos.durability(rclcpp::DurabilityPolicy::TransientLocal);
+        return std::make_shared<Publisher<MessageT>>(topic_name, qos, node_);
+      }
+
       template<typename MessageT, typename CallbackT>
       std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, int qos, CallbackT &&callback) {
         return std::make_shared<Subscriber<MessageT>>(topic_name, qos, std::forward<CallbackT>(callback), node_);
@@ -439,6 +458,9 @@ namespace avt_341 {
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,
                                                             const std::string &source_frame, const rclcpp::Time &source_time,
                                                             const std::string &fixed_frame);
+
+      geometry_msgs::msg::PoseStamped lookup_pose(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time & stamp);
+
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
       void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
@@ -482,6 +504,9 @@ namespace avt_341 {
         RCLCPP_ERROR_ONCE(node_->get_logger(), format, args...);
       }
 
+      template<typename... Args> inline void log_warning_throttle(float period, const char * format, Args... args){
+        RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);
+      }
 
       template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
         RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);

@@ -26,6 +26,7 @@ set(MESSAGE_DEFINITIONS
     "OccupiedCells"
     "Sinkage"
     "LiorfCloudInfo"
+    "MissionTaskStatus"
     )
 
 set(SERVICE_DEFINITIONS

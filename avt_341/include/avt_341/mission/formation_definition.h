@@ -67,6 +67,7 @@ public:
   inline std::vector<std::string> orderedVehicles() const { return formation_vehicle_names_; }
   inline int formationIndex() const { return my_index_; }
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
+  inline std::string getFormationType() const { return current_formation_msg_.formation; }
 
   avt_341::msg::FollowerStatus formation_status;
   avt_341::msg::PoseStamped goal;

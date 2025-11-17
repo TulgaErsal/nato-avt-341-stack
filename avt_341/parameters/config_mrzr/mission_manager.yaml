@@ -19,7 +19,7 @@ follower_dot_range: 100.0                                                       
 
 # Mission Manager - Out of formation speed control
 oof:
-  threshold: 15.0                                                                       # Distance threshold after which vehicle considered out of formation
+  threshold: 100.0                                                                       # Distance threshold after which vehicle considered out of formation
   const_term: 0.3                                                                       # Initial speed factor subtraction if past threshold
   lin_slope: 0.03                                                                       # Slope in linear portion of out of formation speed control
   mult: 0.10                                                                            # Multiplier applied to vehicles out of formation

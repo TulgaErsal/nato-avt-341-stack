@@ -1,0 +1,6 @@
+grid_width: 100.0
+grid_height: 100.0
+grid_llx: 0.0
+grid_lly: 0.0
+grid_res: 1.0
+publish_uab_occupancy_grid: False

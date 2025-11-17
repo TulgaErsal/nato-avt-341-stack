@@ -65,6 +65,21 @@ geometry_msgs::TransformStamped NodeProxy::lookup_transform(const std::string& t
   }
 }
 
+geometry_msgs::PoseStamped NodeProxy::lookup_pose(const std::string &target_frame, const std::string &source_frame, const ros::Time & stamp){
+
+  auto tx = lookup_transform(target_frame, source_frame, stamp);
+  geometry_msgs::PoseStamped pose_msg;
+
+  pose_msg.pose.position.x = tx.transform.translation.x;
+  pose_msg.pose.position.y = tx.transform.translation.y;
+  pose_msg.pose.position.z = tx.transform.translation.z;
+
+  pose_msg.pose.orientation = tx.transform.rotation;
+  pose_msg.header = tx.header;
+
+  return pose_msg;
+}
+
 bool NodeProxy::transform_cloud(const sensor_msgs::PointCloud2 & in_cloud, sensor_msgs::PointCloud2 & out_cloud, const std::string &target_frame){
 	try {
 		tf_buffer_->transform(in_cloud, out_cloud, target_frame, ros::Duration(0.2));
@@ -233,6 +248,21 @@ void NodeProxy::spin() {
         RCLCPP_WARN(node_->get_logger(), "Could not transform %s to %s: %s", source_frame.c_str(), target_frame.c_str(), ex.what());
         return geometry_msgs::msg::TransformStamped();
       }
+    }
+
+    geometry_msgs::msg::PoseStamped NodeProxy::lookup_pose(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time & stamp){
+
+      auto tx = lookup_transform(target_frame, source_frame, stamp);
+      geometry_msgs::msg::PoseStamped pose_msg;
+
+      pose_msg.pose.position.x = tx.transform.translation.x;
+      pose_msg.pose.position.y = tx.transform.translation.y;
+      pose_msg.pose.position.z = tx.transform.translation.z;
+
+      pose_msg.pose.orientation = tx.transform.rotation;
+      pose_msg.header = tx.header;
+
+      return pose_msg;
     }
 
     geometry_msgs::msg::TransformStamped NodeProxy::lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,

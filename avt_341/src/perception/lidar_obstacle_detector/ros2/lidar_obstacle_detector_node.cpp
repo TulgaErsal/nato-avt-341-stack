@@ -36,6 +36,8 @@ Eigen::Vector3f ground_normal;
 float ground_normal_threshold;
 float obstacle_scale;
 int obstacle_min_neighbors;
+bool publish_seg_as_one;
+std::string publish_seg_as_one_field;
 
 // Node handle
 std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
@@ -44,6 +46,43 @@ std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> pub_cloud_ground;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> pub_cloud_clusters;
 
+void publishJointCloud(
+    const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> &segmented_clouds,
+    const avt_341::msg::Header& header
+    ) {
+
+  pcl::PointCloud<pcl::PointXYZI> joint_cloud;
+  joint_cloud.resize(segmented_clouds.first->points.size() + segmented_clouds.second->points.size());
+
+  int c = 0;
+
+  // ground cloud
+  for (const auto & pt : segmented_clouds.second->points) {
+    pcl::PointXYZI pt_i;
+    pt_i.x = pt.x;
+    pt_i.y = pt.y;
+    pt_i.z = pt.z;
+    pt_i.intensity = 0.0;
+    joint_cloud.points[c++] = pt_i;
+  }
+
+  // non-ground cloud
+  for (const auto & pt : segmented_clouds.first->points) {
+    pcl::PointXYZI pt_i;
+    pt_i.x = pt.x;
+    pt_i.y = pt.y;
+    pt_i.z = pt.z;
+    pt_i.intensity = 1.0;
+    joint_cloud.points[c++] = pt_i;
+  }
+
+  avt_341::msg::PointCloud2 joint_cloud_msg;
+  pcl::toROSMsg(joint_cloud, joint_cloud_msg);
+  joint_cloud_msg.fields[3].name = publish_seg_as_one_field;
+  joint_cloud_msg.header = header;
+  pub_cloud_clusters->publish(joint_cloud_msg);
+
+}
 
 void publishClouds(std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmented_clouds, avt_341::msg::Header header)
 {
@@ -133,7 +172,12 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   segmented_clouds.second = ground_filtered;
 
   // Publish ground cloud and obstacle cloud
-  publishClouds(segmented_clouds, pointcloud_header);
+  if (publish_seg_as_one) {
+    publishJointCloud(segmented_clouds, pointcloud_header);
+  }else {
+    publishClouds(segmented_clouds, pointcloud_header);
+  }
+
 
   if(segmented_clouds.first->size()<= 0) return;
 
@@ -190,6 +234,8 @@ int main(int argc, char** argv)
   nh->get_parameter("~ground_normal_threshold", ground_normal_threshold,  0.4f);
   nh->get_parameter("~obstacle_scale", obstacle_scale,  1.0f);
   nh->get_parameter("~obstacle_min_neighbors", obstacle_min_neighbors,  10);
+  nh->get_parameter("~publish_seg_as_one", publish_seg_as_one,  false);
+  nh->get_parameter("~publish_seg_as_one_field", publish_seg_as_one_field,  std::string("gnd_seg"));
 
   roi_max_point = Eigen::Vector4f(roi_max_x, roi_max_y, roi_max_z, 1);
   roi_min_point = Eigen::Vector4f(roi_min_x, roi_min_y, roi_min_z, 1);

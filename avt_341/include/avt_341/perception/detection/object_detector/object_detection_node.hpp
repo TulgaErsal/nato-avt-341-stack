@@ -50,7 +50,13 @@
 #include <torch/script.h>
 
 #include <ament_index_cpp/get_package_prefix.hpp>
+
+#ifdef GTE_ROS_JAZZY
+#include <cv_bridge/cv_bridge.hpp>
+#else
 #include <cv_bridge/cv_bridge.h>
+#endif
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 

@@ -16,9 +16,13 @@
 #include <vector>
 #include <limits>
 #include <string>
+
+#include "point_cloud_filter.hpp"
 #include "avt_341/node/ros_types.h"
+#include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/elevation_grid_cell.h"
-#include "avt_341/perception/costmap_clearing_method.h"
+#include "avt_341/perception/elevation_grid_components.h"
+#include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
 
 namespace avt_341 {
 namespace perception {
@@ -30,18 +34,29 @@ public:
 	~ElevationGrid() override;
 
 	/**
+	* Set point cloud filtering configuration
+	* \param filter_pc_config Configuration for normal occupancy addition point cloud.
+	* \param filter_pc_cm_config Configuration for additional point cloud filtering of costmap clearing methods.
+	*/
+	void SetPointCloudFilterConfig(
+		const PointCloudFilterConfig& filter_pc_config,
+		const PointCloudFilterConfig& filter_pc_cm_config);
+
+	/**
 		* Add points to be processed
 		* \param point_cloud PointCloud message
 		*/
-	void AddPoints(avt_341::msg::PointCloud& point_cloud);
+	void ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose, bool clear_only = false);
 
 	/**
 		* Clear points in point cloud
 		* \param point_cloud PointCloud message
 		*/
-	void ClearPoints(avt_341::msg::PointCloud& point_cloud);
+	void ClearPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose);
 
-	bool has_segmentation() const { return has_segmentation_; }
+	bool HasSegmentation() const { return has_segmentation_; }
+
+	void SetNode(const std::shared_ptr<node::NodeProxy>& node_ref);
 
 	void SetSize(float s) {
 		width_ = s;
@@ -60,17 +75,9 @@ public:
 		ResizeGrid();
 	}
 
-	std::shared_ptr<OccupancyClearingMethod> CreateClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref,
-		std::string clear_method_type,
-		const RaytraceSettings& raytrace_settings,
-		const TimedNoObsClearingSettings& timed_clear_settings,
-		float visualization_range, bool visualize);
+	void SetGridClearingMethod(const ClearMethodRosParameters & params);
 
-	void SetCostmapClearingMethod(std::shared_ptr<avt_341::node::NodeProxy> node_ref, std::string clear_methods_str,
-		float visualization_range, bool visualize, float clear_method_raytrace_range, bool clear_method_clear_dilation,
-		bool use_voxels, float voxel_height_min, float voxel_height_res, float obj_range_filter, int sampled_threshold);
-
-	void Visualize() const {
+	void VisualizeClearMethods() const {
 		for (auto& cm : clear_methods_) {
 			cm->Visualize();
 		}
@@ -80,19 +87,11 @@ public:
 	float Slope(const Cell& cell) const override;
 	void AddOccupancy(const avt_341::msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) override;
 
-	void SetMaxPointAge(float mpa) {
-		max_point_age_ = mpa;
-	}
-
 	void SetSlopeThreshold(float tr, float tr_max) {
 		thresh_ = std::max(0.0f, tr);
 		thresh_max_ = std::max(tr_max, tr);
 		grid_slope_mult_ = static_cast<float>(GRID_MAX_VALUE) / (thresh_max_ - thresh_);
 	}
-
-	void SetStitchPoints(bool stitch_points) { stitch_points_ = stitch_points; }
-
-	void SetFilterHighest(bool filter_high) { filter_highest_ = filter_high; }
 
 	void SetUseElevation(bool use_elevation) {
 		use_elevation_ = use_elevation;
@@ -106,12 +105,17 @@ public:
 
 	avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation = false);
 
+	avt_341::msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation);
+
 	avt_341::msg::OccupancyGrid GetGrid(double x, double y, double width, double height, bool is_segmentation = false);
 
 	void SetCorner(float llx, float lly) {
 		llx_ = llx;
 		lly_ = lly;
 	}
+
+	inline int GetDilateXSize() const { return dilate_ ? lround(grid_dilate_x_/res_) : 0;}
+	inline int GetDilateYSize() const { return dilate_ ? lround(grid_dilate_y_/res_) : 0;}
 
 	void SetDilation(bool grid_dilate, float grid_dilate_x, float grid_dilate_y, float grid_dilate_proportion) {
 		dilate_ = grid_dilate;
@@ -120,6 +124,8 @@ public:
 		grid_dilate_proportion_ = grid_dilate_proportion;
 	}
 
+	void FillGridMsgCells(std::vector<int8_t> & data, GridRegion region, bool is_segmentation) const;
+	void ResetUpdateRegion(){ grid_update_region_.Reset();}
 	void Reset();
 	bool HasData() const;
 
@@ -151,6 +157,11 @@ public:
 
 
 private:
+
+	std::shared_ptr<node::NodeProxy> node_ref_;
+	PointCloudFilter pc_filter;						// Filter for input point clouds
+	PointCloudFilter pc_cm_filter;					// Additional filter for clearing methods applied after regular filter
+
 	std::vector<utils::ivec2> GetCellsInFov(float x, float y, float heading, float hfov, float range);
 	uint8_t GetGridCellValue(const Cell& cell) const;
 	void ResizeGrid();
@@ -169,15 +180,12 @@ private:
 	float grid_dilate_y_;
 	float grid_dilate_proportion_;
 	bool use_elevation_;
-	bool stitch_points_;
-	bool filter_highest_;
 	const uint8_t GRID_MAX_VALUE = 100;
 	float grid_slope_mult_ = 50.0f;
 	bool has_segmentation_ = false;
-	float max_point_age_;
 	bool is_resetting_ = false;
 	std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
-
+	GridRegion grid_update_region_;
 };
 
 } // namespace perception

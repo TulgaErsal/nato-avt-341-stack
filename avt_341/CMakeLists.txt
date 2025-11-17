@@ -154,7 +154,11 @@ if(USING_CATKIN)
     )
 
   # Proxy library
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp" "src/node/occupancy_grid_subscriber.cpp")
+  add_library(${PROJECT_NAME}_proxy
+          "src/node/node_proxy.cpp"
+          "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/monitoring.cpp"
+  )
   target_link_libraries(${PROJECT_NAME}_proxy ${catkin_LIBRARIES})
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
@@ -303,12 +307,21 @@ if(USING_AMENT)
     add_definitions(-DGTE_ROS_HUMBLE)
   endif()
 
+  if($ENV{ROS_DISTRO} STREQUAL "jazzy")
+    add_definitions(-DGTE_ROS_JAZZY)
+  endif()
+
   # Build
   include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 
   # Node proxy library
   # ------------------
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp" "src/node/occupancy_grid_subscriber.cpp")
+  add_library(${PROJECT_NAME}_proxy
+          "src/node/node_proxy.cpp"
+          "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/monitoring.cpp"
+  )
+
   target_include_directories(
     ${PROJECT_NAME}_proxy
     PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
