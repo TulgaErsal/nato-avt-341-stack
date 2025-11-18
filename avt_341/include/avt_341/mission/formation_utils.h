@@ -27,6 +27,7 @@ class FormationSpeedControlType {
 public:
   const static std::string SLOW_DOWN_LEADER;
   const static std::string SPEED_UP_FOLLOWER;
+  const static std::string SPEED_UP_FOLLOWER_SIMPLE;
   const static std::string NONE;
 };
 

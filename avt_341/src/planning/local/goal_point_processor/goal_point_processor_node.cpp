@@ -26,6 +26,7 @@ bool steer_initialized = false;
 
 float speedSetpoint, desiredHeading;
 bool priorUseLeader, turningAround, goal_set;
+bool alwaysPubGoal;
 int priorIndex, priorPathLength;
 avt_341::utils::vec2 goal;
 
@@ -155,9 +156,10 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 		}
     }
 
-	if (!goal_set) {
+	if (!goal_set || alwaysPubGoal) {
 		goal = globalPoint;
         goal_set = true;
+        turningAround = false;
     }
 	else {
 		avt_341::utils::vec3 globalPointVector(globalPoint.x-x_veh, globalPoint.y-y_veh, 0);
@@ -221,6 +223,7 @@ int main(int argc, char* argv[]) {
     n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
     n->get_parameter("~prediction_time_horizon", predictionTimeHorizon, 2.0f);
     n->get_parameter("~front_angle_goal", frontAngleGoal, 1.571f);
+    n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
     
 
     // Initialize variables

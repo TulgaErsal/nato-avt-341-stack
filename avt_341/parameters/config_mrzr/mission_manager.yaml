@@ -4,8 +4,8 @@ follow_scale_x: 15.0                                                            
 follow_scale_y: 10.0                                                                    # Y Scale distance between vehicles in formation in vehicle coordinates
 mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_mission_points.csv')"     # Mission Manager - file describing mission reference points
 mission_paths_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_paths - NAD83_m.csv')" # Mission Manager - file describing paths of mission points
-fsc_type: 'speed_up_follower'
-fsc_max_speed_factor: 2.0                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
+fsc_type: 'speed_up_follower_simple'
+fsc_max_speed_factor: 1.2                                                               # Type of formation speed control (fsc) to use 'speed_up_follower' | 'speed_up_follower_simple' | 'slow_down_leader' | 'none'
 x_offset_on_path: true                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
 formation_prune_gp: True                                                                # If true prunes the formation controller generated follower global path to the closer point
 follow_goal_threshold: 10.0
@@ -19,10 +19,10 @@ follower_dot_range: 100.0                                                       
 
 # Mission Manager - Out of formation speed control
 oof:
-  threshold: 100.0                                                                       # Distance threshold after which vehicle considered out of formation
+  threshold: 7.0                                                                       # Distance threshold after which vehicle considered out of formation
   const_term: 0.3                                                                       # Initial speed factor subtraction if past threshold
   lin_slope: 0.03                                                                       # Slope in linear portion of out of formation speed control
-  mult: 0.10                                                                            # Multiplier applied to vehicles out of formation
+  mult: 0.14                                                                            # Multiplier applied to vehicles out of formation
 
 # Mission Manager - Target of interest
 toi:
