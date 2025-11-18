@@ -79,6 +79,15 @@ namespace avt_341 {
                             std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
     };
 
+    class SpeedUpFollowerSimpleFormationSpeedController : public FormationSpeedController {
+
+    public:
+      explicit SpeedUpFollowerSimpleFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
+
+      double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+    };
+
     std::shared_ptr<FormationSpeedController>
     createFormationSpeedController(const std::string &fsc_type, const std::string &veh_name,
                                    const FormationSpeedControlParams &params,
