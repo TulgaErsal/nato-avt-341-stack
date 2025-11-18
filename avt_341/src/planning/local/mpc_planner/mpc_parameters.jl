@@ -61,6 +61,10 @@ slopeThreshold = 0.2
 rmsThreshold = 0.05 # in meters
 speedAroundLargeSlopesAndRMS = 4.0 # in m/s
 
+# handling turning back 180 degrees
+angleThreshold = 10 * (π / 180) # in radians; turning back if the vehicle facing within angleThreshold of 180 deg from goal)
+speedForTurningBack = 3.0 # in m/s
+
 # Smoothing parameter for the along-path distance to goal
 beta = 0.1
 
