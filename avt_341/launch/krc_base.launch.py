@@ -6,7 +6,7 @@ import launch.conditions
 from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationNotEquals, LaunchConfigurationEquals
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, SetLaunchConfiguration
+from launch.actions import DeclareLaunchArgument, GroupAction, SetLaunchConfiguration, ExecuteProcess
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
 from launch_ros.actions import Node, PushRosNamespace
 from launch.actions import OpaqueFunction
@@ -165,7 +165,8 @@ def evaluate_global_planner(params, context, *args, **kwargs):
                             '/waypoints_y': LaunchConfiguration('waypoints_y'),
                             '/is_empty_waypoints': LaunchConfiguration('is_empty_waypoints'),
                         },
-                        {k: LaunchConfiguration(f'global_planner_{k}') for k in params['global_planner'].keys()}],
+                        {k: LaunchConfiguration(f'global_planner_{k}') for k in params['global_planner'].keys()}
+                    ],
                 )]
     else: # global_planner_method == 'pf':
         return [Node(
@@ -221,10 +222,6 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 executable='obstacle_processor_node',
                 name='obstacle_processor_node',
                 output='screen',
-                remappings=[
-                    #('avt_341/occupancy_grid', 'avt_341/local_grid'),
-                ],
-                #prefix=['xterm -e gdb -ex run --args'],
                 parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
             # Segmentation Grid Processor
@@ -290,6 +287,8 @@ def launch_setup(context, *args, **kwargs):
     simulation_mode = LaunchConfiguration('simulation_mode')                            # Set to true for UE simulation
     use_global_path = LaunchConfiguration('use_global_path')                            # Set to true to use global path, else local path follows points directly
     global_planner_method = LaunchConfiguration('global_planner_method')                # Global planner method. Values = ["a_star", "pf"]
+    enable_logging = LaunchConfiguration('enable_logging')                              # Enable standardized vehicle logging for V&V efforts
+    logging_path = LaunchConfiguration('logging_path')                                  # Save path for vehicle logging
 
     # Vehicle index
     idx = int(veh_index.perform(context))
@@ -361,7 +360,11 @@ def launch_setup(context, *args, **kwargs):
             executable='avt_341_perception_node',
             name='perception_local_node',
             output='screen',
-            parameters=[{k: LaunchConfiguration(f'perception_local_{k}') for k in params['perception_local'].keys()}]
+            parameters=[{k: LaunchConfiguration(f'perception_local_{k}') for k in params['perception_local'].keys()}],
+            remappings=[
+                ('avt_341/terrain_slope', 'avt_341/terrain_slope_local'),
+                ('avt_341/terrain_rms', 'avt_341/terrain_rms_local'),
+            ]
         ),
         Node(
             package='avt_341',
@@ -370,7 +373,20 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[{k: LaunchConfiguration(f'perception_global_{k}') for k in params['perception_global'].keys()}],
             remappings=[
+                ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
+                ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+            ]
+        ),
+        Node(
+            package='avt_341',
+            executable='avt_341_perception_node',
+            name='perception_rms_node',
+            output='screen',
+            parameters=[{k: LaunchConfiguration(f'perception_rms_{k}') for k in params['perception_rms'].keys()}],
+            remappings=[
+                ('avt_341/occupancy_grid', 'avt_341/rms_perception/occupancy_grid'),
+                ('avt_341/segmentation_grid', 'avt_341/rms_perception/segmentation_grid'),
             ]
         ),
         Node(
@@ -401,17 +417,26 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='avt_341',
             executable='avt_341_grid_compression_node',
-            name='grid_compression'
+            name='grid_compression_local'
         ),
 
-        # Costmap Layered
+        # Grid Commpression (Global)
+        Node(
+            package='avt_341',
+            executable='avt_341_grid_compression_node',
+            name='grid_compression_global',
+            remappings=[
+                ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+                ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res')
+            ]
+        ),
+
+        # Static Grid
         #Node(
         #    package='avt_341',
-        #    executable='avt_341_costmap_layered_node',
-        #    name='avt_341_costmap_layered_node',
-        #    output='screen',
-        #    parameters=[
-        #        {k: LaunchConfiguration(f'costmap_layered_{k}') for k in params['costmap_layered'].keys()}],
+        #    executable='avt_341_geotiff_map_publisher_node',
+        #    name='static_grid_publisher_node',
+        #    parameters=[{k: LaunchConfiguration(f'static_grid_{k}') for k in params['static_grid'].keys()}]
         #),
 
         # Speed Controller
@@ -422,15 +447,6 @@ def launch_setup(context, *args, **kwargs):
 
         # Local Planner
         *evaluate_local_planner(params, context=context, args=args, kwargs=kwargs),
-
-        # Local Grid
-#        Node(
-#            package='avt_341',
-#            executable='avt_341_local_occupancy_grid_node',
-#            name='avt_341_local_occupancy_grid_node',
-#            output='log',
-#            parameters=[{k: LaunchConfiguration(f'local_occupancy_{k}') for k in params['local_occupancy'].keys()}]
-#        ),
 
         # Visualization
         Node(
@@ -465,7 +481,10 @@ def launch_setup(context, *args, **kwargs):
                 },
                 {k: LaunchConfiguration(f'mission_manager_{k}') for k in params['mission_manager'].keys()},
                 #{k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
-            ]
+            ],
+            remappings=[
+                ('avt_341/comm_messages','/avt_341/comm_messages'),
+            ],
         ),
 
         # Socket Communication
@@ -488,36 +507,119 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[
                 {k: LaunchConfiguration(f'speed_zones_{k}') for k in params['speed_zones'].keys()}
-            ]
-        )
+            ],
+            remappings=[
+                ('avt_341/comm_messages','/avt_341/comm_messages'),
+            ],
+        ),
+
+        # UAB Perception
+        Node(
+            package='avt_341',
+            executable='uab_perception_node',
+            name='uab_perception_node',
+            parameters=[
+                {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+            ],
+            remappings=[
+                ('avt_341/points','/ouster/points'),
+                ('camera/rgb/image_raw','/flir_camera/image_raw'),
+                ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
+                ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
+            ],
+            output='screen'
+        ),
+
+        # Obstacle Detection
+        Node(
+            package='avt_341',
+            executable='avt_341_object_detector_node',
+            name='object_detector_node',
+            parameters=[
+                {k: LaunchConfiguration(f'object_detector_{k}') for k in params['object_detector'].keys()}
+            ],
+            remappings=[
+                ('image','/flir_camera/image_raw'),
+            ],
+            output='screen'
+        ),
+
+        # FEDA Detection
+        Node(
+            package='avt_341',
+            executable='avt_341_object_detector_node',
+            name='feda_detector_node',
+            namespace='feda_detector',
+            parameters=[
+                {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
+            ],
+            remappings=[
+                ('image','/flir_camera/image_raw'),
+            ],
+            output='screen'
+        ),
+
+        # Object Tracking
+        Node(
+            package='avt_341',
+            executable='avt_341_object_tracking_node',
+            name='object_tracking_node',
+            parameters=[
+                {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+            ],
+            remappings=[
+                ('camera_info','/flir_camera/camera_info'),
+                ('image','/flir_camera/image_raw'),
+                ('detection_2d', '/mrzr/feda_detector/detections/vision'),
+                ('input','/ouster/points'),
+                ('pose','/feda/pose'),
+                ('odometry','/feda/avt_341/odometry')
+            ],
+            output='screen'
+        ),
+
+        # Vehicle Logging
+        GroupAction(condition=IfCondition(enable_logging), actions=[
+            ExecuteProcess(
+                cmd=[
+                    'ros2','run','avt_341','vehicle_logging.py',
+                    f"{get_package_share_directory('avt_341')}/parameters/config_mrzr/vehicle_logging.yaml",
+                    logging_path.perform(context),
+                ],
+                output='screen'
+            )
+        ])
 
     ])
     
     return [*arg_list, *vehicle_node_list]
 
 def generate_launch_description():
-    launch_arg_defaults = { "use_sim_time":                 "False",
-                            "auto_launch_rviz":             "True",
-                            "display_type":                 "rviz",
-                            "waypoints_file":               f"{get_package_share_directory('avt_341')}/config/no_waypoints.yaml",
-                            "robot_description_file":       f"{get_package_share_directory('avt_341')}/config/MRZR.urdf",
-                            "robot_description_veh2_file":  "",
-                            "robot_description_veh3_file":  "",
-                            "robot_description_veh4_file":  "",
-                            "veh_index":                    "0",
-                            "num_vehicles":                 "1",
-                            "namespace_single_vehicle":     "False",
-                            "vehicle_namespaces":           "['agv1', 'agv2', 'cgv1', 'cgv2']",
-                            "vehicle_config_folders":       f"['{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr']",
-                            "use_rqt_display":              "False",
-                            "rviz_config":                  f"{get_package_share_directory('avt_341')}/rviz/avt_341_ros2.rviz",
-                            "rviz_mult_config":             f"{get_package_share_directory('avt_341')}/rviz/avt_341_multi_vehicle_ros2.rviz",
-                            "use_lidar_obstacle_detector":  "False",
-                            "local_planner_method":         "rcc",
-                            "waypoint_mode":                "False",
-                            "simulation_mode":              "False",
-                            "use_global_path":              "True",
-                            "global_planner_method":        "a_star",
+    launch_arg_defaults = {
+        "use_sim_time":                 "False",
+        "auto_launch_rviz":             "True",
+        "display_type":                 "rviz",
+        "waypoints_file":               f"{get_package_share_directory('avt_341')}/config/no_waypoints.yaml",
+        "robot_description_file":       f"{get_package_share_directory('avt_341')}/config/MRZR.urdf",
+        "robot_description_veh2_file":  "",
+        "robot_description_veh3_file":  "",
+        "robot_description_veh4_file":  "",
+        "veh_index":                    "0",
+        "num_vehicles":                 "1",
+        "namespace_single_vehicle":     "False",
+        "vehicle_namespaces":           "['agv1', 'agv2', 'cgv1', 'cgv2']",
+        "vehicle_config_folders":       f"['{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr']",
+        "use_rqt_display":              "False",
+        "rviz_config":                  f"{get_package_share_directory('avt_341')}/rviz/avt_341_ros2.rviz",
+        "rviz_mult_config":             f"{get_package_share_directory('avt_341')}/rviz/avt_341_multi_vehicle_ros2.rviz",
+        "use_lidar_obstacle_detector":  "False",
+        "local_planner_method":         "rcc",
+        "waypoint_mode":                "False",
+        "simulation_mode":              "False",
+        "use_global_path":              "True",
+        "global_planner_method":        "a_star",
+        "enable_logging":               "False",
+        "logging_path":                 os.path.join(os.path.expanduser('~'),"avt_341_data"),
     }
     launch_args = []
     for arg,default in launch_arg_defaults.items():

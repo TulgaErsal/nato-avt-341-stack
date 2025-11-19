@@ -2,11 +2,11 @@
 # ======================================================================================================================
 follow_scale_x: 15.0                                                                    # X scale distance between vehicles in formation in vehicle coordinates
 follow_scale_y: 10.0                                                                    # Y Scale distance between vehicles in formation in vehicle coordinates
-mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_mission_points - NAD83_m.csv')"     # Mission Manager - file describing mission reference points
+mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_mission_points.csv')"     # Mission Manager - file describing mission reference points
 mission_paths_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_paths - NAD83_m.csv')" # Mission Manager - file describing paths of mission points
-fsc_type: 'slow_down_leader'
-fsc_max_speed_factor: 2.0                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
-x_offset_on_path: False                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
+fsc_type: 'speed_up_follower_simple'
+fsc_max_speed_factor: 1.2                                                               # Type of formation speed control (fsc) to use 'speed_up_follower' | 'speed_up_follower_simple' | 'slow_down_leader' | 'none'
+x_offset_on_path: true                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
 formation_prune_gp: True                                                                # If true prunes the formation controller generated follower global path to the closer point
 follow_goal_threshold: 10.0
 same_object_distance_threshold: 1.0                                                     # Distance for combining obstacles                                                             # Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal
@@ -15,14 +15,14 @@ formation_debug_visualize: False                                                
 offsets_from_leader: True                                                               # If true, formation offsets calculated from lead vehicle. If false, offsets calculated from next vehicle in column formation
 follower_dist_break: 10.0                                                               # If follower global path distance is less than this amount, follower waits
 follower_dot_threshold: 0.0                                                             # Heading dot product threshold of heading vectors of follower and lead vehicle below which follower vehicle waits
-follower_dot_range: 30.0                                                                # Range within which to apply heading dot product filter
+follower_dot_range: 100.0                                                                # Range within which to apply heading dot product filter
 
 # Mission Manager - Out of formation speed control
 oof:
-  threshold: 15.0                                                                       # Distance threshold after which vehicle considered out of formation
+  threshold: 7.0                                                                       # Distance threshold after which vehicle considered out of formation
   const_term: 0.3                                                                       # Initial speed factor subtraction if past threshold
   lin_slope: 0.03                                                                       # Slope in linear portion of out of formation speed control
-  mult: 1.5                                                                             # Multiplier applied to vehicles out of formation
+  mult: 0.14                                                                            # Multiplier applied to vehicles out of formation
 
 # Mission Manager - Target of interest
 toi:
@@ -39,4 +39,4 @@ ot:
 
 # Formation Control
 # ======================================================================================================================
-use_leader_breadcrumbs: True                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
+use_leader_breadcrumbs: false                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.

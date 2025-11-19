@@ -32,6 +32,8 @@
 #include "nav_msgs/Odometry.h"
 #include "nav_msgs/GridCells.h"
 
+#include "map_msgs/OccupancyGridUpdate.h"
+
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 
@@ -43,9 +45,11 @@
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Header.h"
+#include "std_msgs/Bool.h"
 
 #include "avt_341_msgs/Communication.h"
 #include "avt_341_msgs/FollowerStatus.h"
+#include "avt_341_msgs/MissionTaskStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
 #include "avt_341_msgs/Obstacles.h"
@@ -128,6 +132,10 @@ namespace avt_341 {
 
         using OccupancyGrid = nav_msgs::OccupancyGrid;
         using OccupancyGridPtr = const nav_msgs::OccupancyGrid::ConstPtr &;
+        using OccupancyGridSharedPtr = nav_msgs::OccupancyGrid::Ptr;
+
+        using OccupancyGridUpdate = map_msgs::OccupancyGridUpdate;
+        using OccupancyGridUpdatePtr = const map_msgs::OccupancyGridUpdate::ConstPtr &;
 
         using Path = nav_msgs::Path;
         using PathPtr = const nav_msgs::Path::ConstPtr &;
@@ -165,11 +173,17 @@ namespace avt_341 {
         using Header = std_msgs::Header;
         using HeaderPtr = const std_msgs::Header::ConstPtr &;
 
+        using Bool = std_msgs::Bool;
+        using BoolPtr = const std_msgs::Bool::ConstPtr &;
+
         using FollowerStatus = avt_341_msgs::FollowerStatus;
         using FollowerStatusPtr = const avt_341_msgs::FollowerStatus::ConstPtr &;
         
         using Communication = avt_341_msgs::Communication;
         using CommunicationPtr = const avt_341_msgs::Communication::ConstPtr &;
+
+        using MissionTaskStatus = avt_341_msgs::MissionTaskStatus;
+        using MissionTaskStatusPtr = const avt_341_msgs::MissionTaskStatus::ConstPtr &;
 
         using OccupiedCell = avt_341_msgs::OccupiedCell;
         using OccupiedCellPtr = const avt_341_msgs::OccupiedCell::ConstPtr &;
@@ -238,6 +252,8 @@ namespace avt_341 {
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/grid_cells.hpp"
 
+#include "map_msgs/msg/occupancy_grid_update.hpp"
+
 #include "visualization_msgs/msg/marker_array.hpp"
 
 #include "tf2/LinearMath/Quaternion.h"
@@ -248,9 +264,11 @@ namespace avt_341 {
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/mission_task_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
@@ -325,6 +343,10 @@ namespace avt_341 {
 
     using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
     using OccupancyGridPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
+    using OccupancyGridSharedPtr = nav_msgs::msg::OccupancyGrid::SharedPtr;
+
+    using OccupancyGridUpdate = map_msgs::msg::OccupancyGridUpdate;
+    using OccupancyGridUpdatePtr = map_msgs::msg::OccupancyGridUpdate::SharedPtr;
 
     using Path = nav_msgs::msg::Path;
     using PathPtr = nav_msgs::msg::Path::SharedPtr;
@@ -353,6 +375,9 @@ namespace avt_341 {
     using Communication = avt_341_msgs::msg::Communication;
     using CommunicationPtr = avt_341_msgs::msg::Communication::SharedPtr;
 
+    using MissionTaskStatus = avt_341_msgs::msg::MissionTaskStatus;
+    using MissionTaskStatusPtr = avt_341_msgs::msg::MissionTaskStatus::SharedPtr;
+
     using OccupiedCell = avt_341_msgs::msg::OccupiedCell;
     using OccupiedCellPtr = avt_341_msgs::msg::OccupiedCell::SharedPtr;
 
@@ -374,6 +399,9 @@ namespace avt_341 {
 
     using String = std_msgs::msg::String;
     using StringPtr = const std_msgs::msg::String::SharedPtr;
+
+    using Bool = std_msgs::msg::Bool;
+    using BoolPtr = const std_msgs::msg::Bool::SharedPtr;
 
     using DwaInfo = avt_341_msgs::msg::DwaInfo;
     using DwaTrajectory = avt_341_msgs::msg::DwaTrajectory;

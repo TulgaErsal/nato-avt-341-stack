@@ -58,8 +58,20 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     const std::string leader_name = current_task->getFormationDef()->followedVehicle();
 
     if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
-      mgr->leader_odometry = *msg;
-//      leader_pub->publish(*msg);
+      avt_341::msg::Odometry leader_odom = *msg;
+
+      // Check if odometry is in map frame
+      if (msg->header.frame_id != "map") {
+        avt_341::msg::PoseStamped leader_pose, leader_pose_map;
+        leader_pose.header = msg->header;
+        leader_pose.pose = leader_odom.pose.pose;
+        nh->transform_pose(leader_pose, leader_pose_map, "map", 0.2);
+        leader_odom.pose.pose = leader_pose_map.pose;
+      }
+      
+      mgr->leader_odometry = leader_odom;
+      mgr->rcvd_leader_odom = true;
+      leader_pub->publish(*msg);
     }
 }
 
@@ -113,6 +125,7 @@ int main(int argc, char **argv) {
 
     // initialize the node
     nh = avt_341::node::init_node(argc, argv, "mission_manager");
+    nh->initialize_tf_listener();
     avt_341::node::Rate loop_rate(10);
 
     // load the parameters
@@ -136,11 +149,11 @@ int main(int argc, char **argv) {
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
 
 
-    nh->get_parameter("~oof/threshold", fsc_params.oof_threshold, 15.0);
+    nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
     nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
-    nh->get_parameter("~oof/const_term", fsc_params.oof_const_term, 0.3);
-    nh->get_parameter("~oof/lin_slope", fsc_params.oof_lin_slope, 0.03);
-    nh->get_parameter("~oof/mult", fsc_params.oof_mult, 1.5);
+    nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
+    nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
+    nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
     nh->get_parameter("~formation_debug_visualize", fsc_params.debug_visualize, false);
     nh->get_parameter("~offsets_from_leader", formation_params.offsets_from_leader, true);
     nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
@@ -149,14 +162,14 @@ int main(int argc, char **argv) {
     nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
     nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
 
-    nh->get_parameter("~toi/approach_dist", toi_params.approach_dist, 15.0f);
-    nh->get_parameter("~toi/encircle_radius",  toi_params.encircle_radius, 10.0f);
-    nh->get_parameter("~toi/encircle_degrees", toi_params.encircle_degrees, 180.0f);
-    nh->get_parameter("~toi/encircle_cw", toi_params.encircle_cw, true);
-    nh->get_parameter("~toi/goal_threshold", toi_params.goal_threshold, 5.0f);
+    nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
+    nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
+    nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
+    nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
+    nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
 
-    nh->get_parameter("~ot/tracking_veh", tracking_veh, std::string(""));
-    nh->get_parameter("~ot/tracked_veh", tracked_veh, std::string(""));
+    nh->get_parameter("~ot_tracking_veh", tracking_veh, std::string(""));
+    nh->get_parameter("~ot_tracked_veh", tracked_veh, std::string(""));
     tracking_veh = toUpper(tracking_veh);
     tracked_veh = toUpper(tracked_veh);
 
@@ -188,7 +201,7 @@ int main(int argc, char **argv) {
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-//    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
+    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
     // start the loop
     while(avt_341::node::ok()){
@@ -279,6 +292,9 @@ int main(int argc, char **argv) {
 
         // post-update tasks
         mgr->postUpdateTasks();
+
+        // Publish leader status
+        mgr->publishLeaderStatus();
 
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){

@@ -4,8 +4,8 @@ goal_dist: 10.0                                # Lookahead threshold within whic
 global_lookahead: 75.0                        # Global path lookahead
 debug_visualize: True                         # Enables debug visualization of global planner.
 w_distance: 1.0                               # Weight for distance cost.
-w_occupancy: 1.0                              # Weight for occupancy cost.
-w_segmentation: 1.0                           # Weight for segmentation cost.
+w_occupancy: 10.0                              # Weight for occupancy cost.
+w_segmentation: 0.1                           # Weight for segmentation cost.
 search_diagonals: True                        # If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered.
 los_max_iterations: 1                         # Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges.
 los_break_on_first: False                     # If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection.
@@ -14,7 +14,8 @@ auto_active_on_new_waypoint: True             # Automatically set navstsack to a
 verbose_gp_log: True                          # Activates verbose logging for global planner.
 dilation_factor: 0.0                          # Dilation to costmap to apply during planning.
 max_separation: 1.0                           # Maximum separation between waypoints [m].
-dubins_smoothing: False                       # Enable path smoothing with minimum radius of curvature 'dubins_radius'
-dubins_radius: 2.0                            # Minimum radius of curvature of path (only for dubins_smoothing=True)
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
-map_topic: avt_341/occupancy_grid_low_res             # Occupancy map topic
+use_segmentation: False                       # Whether to use segmentation grid data or not
+map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
+seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
+use_fastmarching: True                        # Switches solver from AStar to Fastmarching

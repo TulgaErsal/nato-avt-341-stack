@@ -51,19 +51,25 @@
 #include <tuple>
 #include <utility>
 
+#ifdef GTE_ROS_JAZZY
+#include <cv_bridge/cv_bridge.hpp>
+#else
 #include <cv_bridge/cv_bridge.h>
+#endif
+
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <tf2/convert.h>
-#include <tf2_eigen/tf2_eigen.hpp>
 
 #ifdef GTE_ROS_HUMBLE
+#include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
 #else
+#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 #endif
@@ -237,6 +243,9 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief Frame ID of the camera optical frame. */
     std::string camera_frame_;
 
+    /** @brief Child frame ID for the Odometry message. */
+    std::string odometry_child_frame_;
+
     /** @brief Shared pointer to the transform listener. */
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
 
@@ -372,7 +381,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     void PublishImage();
 
     void GetOrientedBoundingBox(
-        std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> point_cloud,
+        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
         pcl::PointXYZ& bounding_box_min,
         pcl::PointXYZ& bounding_box_max,
         pcl::PointXYZ& bounding_box_centroid,

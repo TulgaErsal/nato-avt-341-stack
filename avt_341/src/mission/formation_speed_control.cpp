@@ -42,6 +42,43 @@ namespace avt_341 {
       return 1.0;
     }
 
+// SpeedUpFollowerSimpleFormationSpeedController
+// ====================================================================================================
+
+    SpeedUpFollowerSimpleFormationSpeedController::SpeedUpFollowerSimpleFormationSpeedController(
+        const std::string & veh_name, const FormationSpeedControlParams &params)
+        : FormationSpeedController(veh_name, params) {
+    }
+
+    double SpeedUpFollowerSimpleFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
+                                                                   const avt_341::msg::PoseStamped &terminal_pose,
+                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+      if (formation_def == nullptr || !formation_def->has_formation() ||
+        formation_poses.find(my_name_) == formation_poses.end() || formation_def->isLeader()) {
+        return 1.0;
+      }
+
+      //Calculate target leader point
+      auto leader_odom = formation_poses[formation_def->followedVehicle()];
+      auto odom = formation_poses[my_name_];
+      const auto targetLeaderPose = getFollowerTargetPose(leader_odom, formation_def->formation_status);
+
+      //Calculate vector to target leader point
+      // CTG 2/23/23 - these were facing the wrong way, added the minus sign
+      float vec[2];
+      vec[0] = targetLeaderPose.pose.position.x - odom.pose.pose.position.x;
+      vec[1] = targetLeaderPose.pose.position.y - odom.pose.pose.position.y;
+
+      //Calculate the distance to target leader point
+      float dist = sqrt(vec[0]*vec[0] + vec[1]*vec[1]);
+
+      double speed_factor = 1.0;
+      if(dist > fsc_params_.oof_threshold){
+        speed_factor = dist * fsc_params_.oof_mult;
+      }
+      return std::min(std::max(speed_factor, 0.0), fsc_params_.max_speed_factor);
+    }
+
 // SpeedUpFollowerFormationSpeedController
 // ====================================================================================================
 
@@ -88,15 +125,10 @@ namespace avt_341 {
 
       //If distance between vehicles is less than followerHeadingDistLimit_ meters, the vehicles are too close and distance cannot be used.
       double speed_factor = 1.0;
-      if(dist < fsc_params_.oof_threshold){
-        if(dotP > 0){
-          speed_factor = dotP * fsc_params_.oof_mult + speedHeading;
-        }
-        else{
-          return 0.0; //Follower Vehicle is heading in the wrong direction. So stop.
-        }
+      if(dotP <= 0){
+        return 0.0; //Follower Vehicle is heading in the wrong direction. So stop.
       }
-      else{
+      else if(dist > fsc_params_.oof_threshold){
         speed_factor = dist * fsc_params_.oof_mult + speedHeading;
       }
       return std::min(std::max(speed_factor, 0.0), fsc_params_.max_speed_factor);
@@ -331,6 +363,9 @@ namespace avt_341 {
       }
       if (fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER) {
         return std::make_shared<SpeedUpFollowerFormationSpeedController>(veh_name, params);
+      }
+      if (fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER_SIMPLE) {
+        return std::make_shared<SpeedUpFollowerSimpleFormationSpeedController>(veh_name, params);
       }
       if (fsc_type == FormationSpeedControlType::NONE) {
         return std::make_shared<NullFormationSpeedController>(veh_name, params);

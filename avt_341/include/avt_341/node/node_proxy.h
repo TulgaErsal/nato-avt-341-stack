@@ -47,6 +47,11 @@ namespace avt_341 {
         }
 
         template<typename MessageT>
+        inline boost::shared_ptr<MessageT> make_msg_shared(const MessageT & msg) {
+          return boost::make_shared<MessageT>(msg);
+        }
+
+        template<typename MessageT>
         class Publisher {
         public:
             explicit Publisher(const std::string &topic_name, int qos, ros::NodeHandle & node) {
@@ -58,12 +63,13 @@ namespace avt_341 {
                 pub_.publish(msg);
             }
 
+            using SharedPtr = std::shared_ptr<Publisher<MessageT>>;
+
         private:
             ros::Publisher pub_;
         };
 
-        template<
-                typename MessageT>
+        template<typename MessageT>
         class Subscriber {
 
         public:
@@ -71,14 +77,23 @@ namespace avt_341 {
                 sub_ptr_ = node.subscribe<MessageT>(topic_name, qos, callback);
             }
 
+            Subscriber(const std::string & topic_name, uint qos, const boost::function<void (const boost::shared_ptr<MessageT const>&)>& callback, ros::NodeHandle & node) {
+              sub_ptr_ = node.subscribe<MessageT>(topic_name, qos, callback);
+            }
+
+          using SharedPtr = std::shared_ptr<Subscriber<MessageT>>;
+
         private:
             ros::Subscriber sub_ptr_;
         };
 
-        template<typename MessageT>
-        using SubscriberPtr = std::shared_ptr<Subscriber<MessageT>>;
+
 
         inline double seconds_from_time(ros::Time t){
+            return t.toSec();
+        }
+
+        inline double seconds_from_time(ros::Duration t){
             return t.toSec();
         }
 
@@ -151,8 +166,19 @@ namespace avt_341 {
             }
 
             template<typename MessageT>
+            std::shared_ptr<Publisher<MessageT>> create_latching_publisher(const std::string &topic_name) {
+                // TODO: Not currently implemented in ROS1
+                return std::make_shared<Publisher<MessageT>>(topic_name, 1, node_);
+            }
+
+            template<typename MessageT>
             std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, uint qos, void(*callback)(const boost::shared_ptr<MessageT const>&)) {
                 return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
+            }
+
+            template<typename MessageT>
+            std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, uint qos, const boost::function<void (const boost::shared_ptr<MessageT const>&)>& callback) {
+              return std::make_shared<Subscriber<MessageT>>(topic_name, qos, callback, node_);
             }
 
             void initialize_tf_listener();
@@ -161,6 +187,8 @@ namespace avt_341 {
             geometry_msgs::TransformStamped lookup_transform(const std::string& target_frame, const ros::Time& target_time,
                                                              const std::string& source_frame, const ros::Time& source_time,
                                                              const std::string& fixed_frame);
+            geometry_msgs::PoseStamped lookup_pose(const std::string &target_frame, const std::string &source_frame, const ros::Time & stamp);
+
             void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
 
             void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::PoseStamped &target_pose);
@@ -291,6 +319,11 @@ namespace avt_341 {
       return rclcpp::Duration(sec, nsec);
     }
 
+    template<typename MessageT>
+    inline std::shared_ptr<MessageT> make_msg_shared(const MessageT & msg) {
+      return std::make_shared<MessageT>(msg);
+    }
+
     template<
         typename MessageT,
         typename AllocatorT = std::allocator<void>,
@@ -301,6 +334,12 @@ namespace avt_341 {
         pub_ptr_ = node_->create_publisher<MessageT>(topic_name, qos);
       }
 
+      explicit Publisher(const std::string &topic_name, const rclcpp::QoS& qos, const std::shared_ptr<rclcpp::Node> &node_) {
+        pub_ptr_ = node_->create_publisher<MessageT>(topic_name, qos);
+      }
+
+      using SharedPtr = std::shared_ptr<Publisher<MessageT>>;
+
       void publish(const MessageT &msg) {
         pub_ptr_->publish(msg);
       }
@@ -309,25 +348,22 @@ namespace avt_341 {
       std::shared_ptr<PublisherT> pub_ptr_;
     };
 
-    template<
-        typename MessageT,
-        typename CallbackT,
-        typename AllocatorT = std::allocator<void>,
-        typename CallbackMessageT = typename rclcpp::subscription_traits::has_message_type<CallbackT>::type>
+    template<typename MessageT>
     class Subscriber {
 
     public:
+
+      template<typename CallbackT>
       Subscriber(const std::string &topic_name, int qos, CallbackT &&callback,
                  const std::shared_ptr<rclcpp::Node> &node_) {
-        sub_ptr_ = node_->create_subscription<MessageT>(topic_name, qos, callback);
+        sub_ptr_ = node_->create_subscription<MessageT>(topic_name, qos, std::forward<CallbackT>(callback));
       }
 
-    private:
-      std::shared_ptr<rclcpp::Subscription<CallbackMessageT, AllocatorT>> sub_ptr_;
-    };
+      using SharedPtr = std::shared_ptr<Subscriber<MessageT>>;
 
-    template<typename MessageT, typename CallbackT>
-    using SubscriberPtr = std::shared_ptr<Subscriber<MessageT, CallbackT>>;
+    private:
+      typename rclcpp::Subscription<MessageT>::SharedPtr sub_ptr_;
+    };
 
     inline double seconds_from_time(rclcpp::Time t){
         return t.seconds();
@@ -404,10 +440,16 @@ namespace avt_341 {
         return std::make_shared<Publisher<MessageT>>(topic_name, qos, node_);
       }
 
+      template<typename MessageT>
+      std::shared_ptr<Publisher<MessageT>> create_latching_publisher(const std::string &topic_name) {
+        rclcpp::QoS qos(1);
+        qos.durability(rclcpp::DurabilityPolicy::TransientLocal);
+        return std::make_shared<Publisher<MessageT>>(topic_name, qos, node_);
+      }
+
       template<typename MessageT, typename CallbackT>
-      std::shared_ptr<Subscriber<MessageT, CallbackT>>
-      create_subscription(const std::string &topic_name, int qos, CallbackT &&callback) {
-        return std::make_shared<Subscriber<MessageT, CallbackT>>(topic_name, qos, callback, node_);
+      std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, int qos, CallbackT &&callback) {
+        return std::make_shared<Subscriber<MessageT>>(topic_name, qos, std::forward<CallbackT>(callback), node_);
       }
 
       void initialize_tf_listener();
@@ -416,6 +458,9 @@ namespace avt_341 {
       geometry_msgs::msg::TransformStamped lookup_transform(const std::string &target_frame, const rclcpp::Time &target_time,
                                                             const std::string &source_frame, const rclcpp::Time &source_time,
                                                             const std::string &fixed_frame);
+
+      geometry_msgs::msg::PoseStamped lookup_pose(const std::string &target_frame, const std::string &source_frame, const rclcpp::Time & stamp);
+
       void publish_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
 
       void publish_static_tf(const std::string &parent_frame, const std::string &child_frame, const geometry_msgs::msg::PoseStamped &target_pose);
@@ -459,6 +504,9 @@ namespace avt_341 {
         RCLCPP_ERROR_ONCE(node_->get_logger(), format, args...);
       }
 
+      template<typename... Args> inline void log_warning_throttle(float period, const char * format, Args... args){
+        RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);
+      }
 
       template<typename... Args> inline void log_info_throttle(float period, const char * format, Args... args){
         RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), period*1000.0, format, args...);

@@ -1,115 +1,235 @@
+symbols:
+  vehicles:
+    - 'mrzr'
+  position_keys:
+    - 'x'
+    - 'y'
+    - 'z'
+  orientation_keys:
+    - 'roll'
+    - 'pitch'
+    - 'yaw'
+  accel_items:
+    - name: 'forward_accel'
+      field: 'x'
+    - name: 'lateral_accel'
+      field: 'y'
+    - name: 'vertical_accel'
+      field: 'z'
+  wheels:
+    - 'fl'
+    - 'fr'
+    - 'rl'
+    - 'rr'
+
 log_topics:
-  # Local position of the vehicle CG in the x-axis
-  - name: 'x'
-    topic: '/mrzr/avt_341/odometry'
-    field: 'pose.pose.position.x'
+
+  # ==========================================================================================================
+  # VEHICLE STATE TOPICS
+  # ==========================================================================================================
+
+  # Local position of the vehicle CG in the x,y,z axis
+  - name: '{vehicles}_{position_keys}'
+    topic: '/{vehicles}/avt_341/odometry'
+    field: 'pose.pose.position.{position_keys}'
     type: 'nav_msgs/msg/Odometry'
     units: 'm'
-  # Local position of the vehicle CG in the y-axis
-  - name: 'y'
-    topic: '/mrzr/avt_341/odometry'
-    field: 'pose.pose.position.y'
-    type: 'nav_msgs/msg/Odometry'
-    units: 'm'
-  # Local position of the vehicle CG in the z-axis
-  - name: 'z'
-    topic: '/mrzr/avt_341/odometry'
-    field: 'pose.pose.position.z'
-    type: 'nav_msgs/msg/Odometry'
-    units: 'm'
-  # Orientation of the vehicle body about the x-axis
-  - name: 'roll'
-    topic: ''
-    field: ''
-    type: ''
-    units: 'rad'
-  # Orientation of the vehicle body about the y-axis
-  - name: 'pitch'
-    topic: ''
-    field: ''
-    type: ''
-    units: 'rad'
-  # Orientation of the vehicle body about the z-axis
-  - name: 'yaw'
-    topic: ''
-    field: ''
-    type: ''
-    units: 'rad'
-  # Acceleration of the vehicle CG in the x-axis
-  - name: 'forwardaccel'
-    topic: '/mrzr/avt_341/vehicle_cg/accel'
-    field: 'accel.linear.x'
-    type: 'geometry_msgs/msg/AccelStamped'
-    units: 'm/s^2'
-  # Acceleration of the vehicle CG in the y-axis
-  - name: 'lateralaccel'
-    topic: '/mrzr/avt_341/vehicle_cg/accel'
-    field: 'accel.linear.y'
-    type: 'geometry_msgs/msg/AccelStamped'
-    units: 'm/s^2'
-  # Acceleration of the vehicle CG in the z-axis
-  - name: 'verticalaccel'
-    topic: '/mrzr/avt_341/vehicle_cg/accel'
-    field: 'accel.linear.z'
-    type: 'geometry_msgs/msg/AccelStamped'
-    units: 'm/s^2'
-  # Speed of the vehicle CG in the x-axis
-  - name: 'forwardspeed'
-    topic: '/mrzr/mrzr_velocity'
+
+  # Orientation of the vehicle body about x axis (roll)
+  - name: '{vehicles}_roll'
+    topic: '/vbox/roll'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'm/s'
+    units: 'deg'
+
+  # Orientation of the vehicle body about y axis (pitch)
+  - name: '{vehicles}_pitch'
+    topic: '/vbox/pitch'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'deg'
+
+  # Orientation of the vehicle body about z axis (yaw)
+  - name: '{vehicles}_yaw'
+    topic: '/vbox/yaw'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'deg'
+
+  # Acceleration of the vehicle CG in the x axis
+  - name: '{vehicles}_forward_accel'
+    topic: '/vbox/forwardaccel'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'g'
+
+  # Acceleration of the vehicle CG in the y axis
+  - name: '{vehicles}_lateral_accel'
+    topic: '/vbox/lateralaccel'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'g'
+
+  # Acceleration of the vehicle CG in the z axis
+  - name: '{vehicles}_vertical_accel'
+    topic: '/vbox/verticalaccel'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'g'
+
+  # Speed of the vehicle CG in the x-axis
+  - name: '{vehicles}_forward_speed'
+    topic: '/vbox/forwardspeed'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'km/h'
+
   # Front wheel angle position
-  - name: 'steeringangle'
-    topic: '/cmd_vel'
-    field: 'angular.z'
-    type: 'geometry_msgs/msg/Twist'
+  - name: '{vehicles}_steering_angle'
+    topic: '/{vehicles}/avt_341/steering_angle'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: 'rad'
+
   # Throttle position
-  - name: 'throttle'
-    topic: '/throttle_out'
-    field: 'percent'
-    type: 'mrak_msgs/msg/Throttle'
+  - name: '{vehicles}_throttle'
+    topic: '/{vehicles}/throttle'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: '%'
+
   # Engine torque output
-  - name: 'enginetorque'
+  - name: '{vehicles}_engine_torque'
     topic: ''
     field: ''
     type: ''
     units: 'Nm'
+
   # Engine speed output
-  - name: 'enginespeed'
-    topic: '/mrzr/engine_speed_rpm'
+  - name: '{vehicles}_engine_speed'
+    topic: '/{vehicles}/engine_speed'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rpm'
+
+  # Driveshaft speed output
+  - name: '{vehicles}_driveshaft_speed'
+    topic: '/{vehicles}/driveshaft_speed'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'rpm'
+
   # Brake position
-  - name: 'brake'
-    topic: '/brake_out'
-    field: 'percent'
-    type: 'mrak_msgs/msg/Brake'
+  - name: '{vehicles}_brake'
+    topic: '/{vehicles}/brake'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
     units: '%'
-  # Rotational speed of the front-left wheel
-  - name: 'wheelrotspeedfl'
-    topic: '/wheel_speed/fl'
+
+  # Rotational speed of the wheels
+  - name: '{vehicles}_wheel_rot_speed_{wheels}'
+    topic: '/{vehicles}/wheel_speed_{wheels}'
     field: 'data'
     type: 'std_msgs/msg/Float64'
     units: 'rpm'
-  # Rotational speed of the front-right wheel 
-  - name: 'wheelrotspeedfr'
-    topic: '/wheel_speed/fr'
+
+  # ==========================================================================================================
+  # VEHICLE COMMAND TOPICS
+  # ==========================================================================================================
+
+  # Desired Steering Angle (Front Wheel)
+  - name: '{vehicles}_desired_steering_angle'
+    topic: '/{vehicles}/avt_341/cmd_vel'
+    field: 'angular.z'
+    type: 'geometry_msgs/msg/Twist'
+    units: 'rad'
+
+  # Desired Throttle Position
+  - name: '{vehicles}_desired_throttle'
+    topic: '/{vehicles}/throttle_rqst'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'rpm'
-  # Rotational speed of the rear-left wheel 
-  - name: 'wheelrotspeedrl'
-    topic: '/wheel_speed/rl'
+    units: '%'
+
+  # Desired Brake pressure or Pedal Position
+  - name: '{vehicles}_desired_brake'
+    topic: '/mrzr/brake_rqst'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'rpm'
-  # Rotational speed of the rear-right wheel
-  - name: 'wheelrotspeedrr'
-    topic: '/wheel_speed/rr'
+    units: '%'
+
+  # Local Planned Path X, Y
+  - name: '{vehicles}_local_planned_path_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/local_path'
+    field: 'poses.pose.position.{position_keys[:2]}'
+    type: 'nav_msgs/msg/Path'
+    units: 'm'
+
+  # Global Planned Path X, Y
+  - name: '{vehicles}_global_planned_path_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/global_path'
+    field: 'poses.pose.position.{position_keys[:2]}'
+    type: 'nav_msgs/msg/Path'
+    units: 'm'
+
+  # Desired lateral speed
+  - name: '{vehicles}_desired_lateral_speed'
+    topic: ''
+    field: ''
+    type: ''
+    units: 'm/s'
+
+  # Desired yaw rate
+  - name: '{vehicles}_desired_yaw_rate'
+    topic: ''
+    field: ''
+    type: ''
+    units: 'rad/s'
+
+  # Desired heading angle (desiredHeading)
+  - name: '{vehicles}_desired_heading_angle'
+    topic: '/{vehicles}/avt_341/mpc_desiredHeading'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'rpm'
+    units: 'rad'
+
+  # Desired longitudinal speed
+  - name: '{vehicles}_desired_longitudinal_speed'
+    topic: '/{vehicles}/avt_341/speed_setpoint'
+    field: 'data'
+    type: 'std_msgs/msg/Float64'
+    units: 'm/s'
+
+  # Desired longitudinal acceleration
+  - name: '{vehicles}_desired_longitudinal_accel'
+    topic: ''
+    field: ''
+    type: ''
+    units: 'm/s^2'
+
+  # Perceived Chassis CG X, Y, Z of Lead Vehicle
+  - name: 'lead_{position_keys}'
+    topic: ''
+    field: ''
+    type: ''
+    units: 'm'
+
+  # Perceived Chassis Yaw Angle of Lead Vehicle
+  - name: 'lead_yaw'
+    topic: ''
+    field: ''
+    type: ''
+    units: 'deg'
+
+  # Perceived Vehicle Forward Speed of Lead Vehicle
+  - name: 'lead_speed'
+    topic: ''
+    field: ''
+    type: ''
+    units: 'm/s'
+
+  # Occupancy Grid
+  - name: '{vehicles}_occupancy_grid'
+    topic: '/{vehicles}/avt_341/occupancy_grid'
+    field: ''
+    type: 'nav_msgs/msg/OccupancyGrid'

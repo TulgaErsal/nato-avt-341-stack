@@ -13,6 +13,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <avt_341/node/node_proxy.h>
+#include <avt_341/node/occupancy_grid_subscriber.h>
 #include <avt_341/node/ros_types.h>
 #include <avt_341/planning/local/dwa/planner.hpp>
 #include <avt_341/visualization/visualization_factory.h>
@@ -296,11 +297,11 @@ int main(int argc, char* argv[]) {
         node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",
                                                           1,
                                                           CallbackOdometry);
-    auto sub_grid_occ = node->create_subscription<avt_341::msg::OccupancyGrid>(
+    avt_341::node::OccupancyGridSubscriber sub_grid_occ(node,
         "avt_341/occupancy_grid",
         1,
         CallbackGridOccupancy);
-    auto sub_grid_seg = node->create_subscription<avt_341::msg::OccupancyGrid>(
+    avt_341::node::OccupancyGridSubscriber sub_grid_seg(node,
         "avt_341/segmentation_grid",
         1,
         CallbackGridSegmentation);

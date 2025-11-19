@@ -4,5 +4,5 @@ Development
 .. toctree::
     :maxdepth: 1
 
-    devcontainers/index.rst
-    ros-proxy-interface/index.rst
+    Documentation <documentation/index.rst>
+    ROS Version-Independence <ros-version-ind/index.rst>

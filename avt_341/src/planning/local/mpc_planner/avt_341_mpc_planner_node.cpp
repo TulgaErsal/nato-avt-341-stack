@@ -124,6 +124,42 @@ void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
     recv_seg_input = true;
 }
 
+void TerrainSlopeCallback(avt_341::msg::Float64Ptr terrain_slope_msg)
+{
+    double terrain_slope = terrain_slope_msg->data;
+
+    jl_value_t *j_terrain_slope = jl_box_float64(terrain_slope);
+
+    jl_call1(j_set_terrain_slope, j_terrain_slope);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void TerrainRMSCallback(avt_341::msg::Float64Ptr terrain_rms_msg)
+{
+    double terrain_rms = terrain_rms_msg->data;
+
+    jl_value_t *j_terrain_rms = jl_box_float64(terrain_rms);
+
+    jl_call1(j_set_terrain_rms, j_terrain_rms);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
+{
+    double speed = msg->twist.twist.linear.x;
+    jl_value_t *j_speed = jl_box_float64(speed);
+    jl_call1(j_set_leader_speed, j_speed);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void LeaderStatusCallback(avt_341::msg::BoolPtr msg)
+{
+    bool status = !(msg->data);
+    jl_value_t *j_status = jl_box_bool(status);
+    jl_call1(j_set_follower_status, j_status);
+    CATCH_JULIA_EXCEPTION;
+}
+
 avt_341::msg::Path GetMPCPath()
 {
     jl_array_t *j_path = (jl_array_t*)jl_call0(j_get_path);
@@ -133,6 +169,7 @@ avt_341::msg::Path GetMPCPath()
 
     avt_341::msg::Path path_msg;
     path_msg.header.frame_id = "odom";
+    path_msg.header.stamp = node->get_stamp();
     for (int i=0; i<path_len; i++) {
         avt_341::msg::PoseStamped pose;
         pose.header.frame_id = "odom";
@@ -156,6 +193,16 @@ avt_341::msg::Float64 GetMPCSpeed()
     avt_341::msg::Float64 speed_msg;
     speed_msg.data = speed;
     return speed_msg;
+}
+
+avt_341::msg::Float64 GetMPCFinalSpeed()
+{
+    double final_speed = jl_unbox_float64(jl_call0(j_get_final_speed));
+    CATCH_JULIA_EXCEPTION;
+    
+    avt_341::msg::Float64 final_speed_msg;
+    final_speed_msg.data = final_speed;
+    return final_speed_msg;
 }
 
 avt_341::msg::Float64 GetMPCSteering()
@@ -199,6 +246,16 @@ avt_341::msg::Float64MultiArray GetMPCHeading()
     return heading_msg;
 }
 
+avt_341::msg::Bool GetSlopeLimited()
+{
+    bool slope_limited = jl_unbox_bool(jl_call0(j_get_slope_limited));
+    CATCH_JULIA_EXCEPTION;
+    
+    avt_341::msg::Bool slope_limited_msg;
+    slope_limited_msg.data = slope_limited;
+    return slope_limited_msg;
+}
+
 bool NewInputAvailable() {
     return recv_veh_input;
 }
@@ -229,6 +286,7 @@ void DeclareParameters()
     node->get_parameter("~w_deviation_in_yaw", w_deviation_in_yaw, 1.);
     node->get_parameter("~w_yaw_accel", w_yaw_accel, 1.);
     node->get_parameter("~w_traversability_cost", w_traversability_cost, 0.1);
+    node->get_parameter("~w_final_speed", w_final_speed, 200.0);
     node->get_parameter("~safety_margin", safety_margin, 0.0);
     node->get_parameter("~grid_resolution", grid_resolution, 0.25);
     node->get_parameter("~front_angle_goal", front_angle_goal, 1.571);
@@ -238,6 +296,14 @@ void DeclareParameters()
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
     node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
     node->get_parameter("~publish_steering_commands", publish_steering_commands, true);
+    node->get_parameter("~slope_threshold", slope_threshold, 0.2);
+    node->get_parameter("~rms_threshold", rms_threshold, 0.05);
+    node->get_parameter("~speed_around_large_slopes_and_rms", speed_around_large_slopes_and_rms, 4.0);
+    node->get_parameter("~sa_min", sa_min, -0.485);
+    node->get_parameter("~sa_max", sa_max, 0.485);
+    node->get_parameter("~sr_min", sr_min, -0.523);
+    node->get_parameter("~sr_max", sr_max, 0.523);
+
 }
 
 void InitialiseJuliaAPI()
@@ -261,7 +327,7 @@ void InitialiseJuliaAPI()
     CATCH_JULIA_EXCEPTION;
     // ----------[ Initialize Julia system image. ]----------
     // ------------------------------------------------------
-    
+
     // ----------------------------------------------------------
     // ----------[ Load the Julia MPC planner module. ]----------
     if (!planner_module_path.empty())
@@ -378,12 +444,19 @@ void InitialiseJuliaAPI()
     j_set_heading = jl_get_function(mpc_module, "SetHeading");
     j_set_speed = jl_get_function(mpc_module, "SetSpeedSetpoint");
     j_set_sinkage = jl_get_function(mpc_module, "SetSinkage");
+    j_set_terrain_slope = jl_get_function(mpc_module, "SetTerrainSlope");
+    j_set_terrain_rms = jl_get_function(mpc_module, "SetTerrainRMS");
     j_set_segmentation = jl_get_function(mpc_module, "SetSegmentation");
     j_get_path = jl_get_function(mpc_module, "GetPath");
     j_get_speed = jl_get_function(mpc_module, "GetSpeed");
+    j_get_final_speed = jl_get_function(mpc_module, "GetFinalSpeed");
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
     j_get_heading = jl_get_function(mpc_module, "GetHeading");
-    
+    j_get_slope_limited = jl_get_function(mpc_module, "GetSlopeLimited");
+    j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
+    j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
+    j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
+
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
@@ -408,6 +481,13 @@ void InitialiseJuliaAPI()
     // j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
     j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
     j_set_linear_solver = jl_get_function(mpc_module, "SetLinearSolver");
+    j_set_slope_threshold = jl_get_function(mpc_module, "SetSlopeThreshold");
+    j_set_rms_threshold = jl_get_function(mpc_module, "SetRMSThreshold");
+    j_set_speed_around_large_slopes_and_rms = jl_get_function(mpc_module, "SetSpeedAroundLargeSlopesAndRMS");
+    j_set_sa_min = jl_get_function(mpc_module, "SetSteeringAngleMin");
+    j_set_sa_max = jl_get_function(mpc_module, "SetSteeringAngleMax");
+    j_set_sr_min = jl_get_function(mpc_module, "SetSteeringRateMin");
+    j_set_sr_max = jl_get_function(mpc_module, "SetSteeringRateMax");
     // -------------------------------
 
     // Convert params to Julia types
@@ -428,12 +508,20 @@ void InitialiseJuliaAPI()
     jl_value_t *j_w_traversability_cost = jl_box_float64(w_traversability_cost);
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
+    jl_value_t *j_w_final_speed = jl_box_float64(w_final_speed);
     jl_value_t *j_front_angle_goal = jl_box_float64(front_angle_goal);
     jl_value_t *j_front_angle_obstacle = jl_box_float64(front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
     // jl_value_t *j_vehicle_axle_distance_front = jl_box_float64(vehicle_axle_distance_front);
     jl_value_t *j_front_angle_segmentation = jl_box_float64(front_angle_segmentation);
     jl_value_t *j_linear_solver = jl_cstr_to_string(linear_solver.c_str());
+    jl_value_t *j_slope_threshold = jl_box_float64(slope_threshold);
+    jl_value_t *j_rms_threshold = jl_box_float64(rms_threshold);
+    jl_value_t *j_speed_around_large_slopes_and_rms = jl_box_float64(speed_around_large_slopes_and_rms);
+    jl_value_t *j_sa_min = jl_box_float64(sa_min);
+    jl_value_t *j_sa_max = jl_box_float64(sa_max);
+    jl_value_t *j_sr_min = jl_box_float64(sr_min);
+    jl_value_t *j_sr_max = jl_box_float64(sr_max);
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -452,6 +540,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_yaw_accel, j_w_yaw_accel);
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
+    jl_call1(j_set_w_final_speed, j_w_final_speed);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
@@ -459,6 +548,13 @@ void InitialiseJuliaAPI()
     // jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
     jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
     jl_call1(j_set_linear_solver, j_linear_solver);
+    jl_call1(j_set_slope_threshold, j_slope_threshold);
+    jl_call1(j_set_rms_threshold, j_rms_threshold);
+    jl_call1(j_set_speed_around_large_slopes_and_rms, j_speed_around_large_slopes_and_rms);
+    jl_call1(j_set_sa_min, j_sa_min);
+    jl_call1(j_set_sa_max, j_sa_max);
+    jl_call1(j_set_sr_min, j_sr_min);
+    jl_call1(j_set_sr_max, j_sr_max);
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -496,6 +592,10 @@ int main(int argc, char *argv[])
     auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset",1,ResetCallback);
+    auto terrain_slope_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
+    auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
+    auto leader_odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
+    auto leader_status_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
 
     // Register publishers
     // -------------------.
@@ -508,10 +608,15 @@ int main(int argc, char *argv[])
     auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+    auto slope_limited_pub = node->create_publisher<avt_341::msg::Bool>("avt_341/mpc_slope_limited", 1);
 
     node->log_info("Julia API initialized. Running main loop.");
 
     node->log_info("Node running at %.2f Hz.", rate);
+
+    node->log_info("Number of collocation points: %d.", num_col_points);
+
+    node->log_info("Prediction time horizon: %.1f.", prediction_time_horizon);
 
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
@@ -533,7 +638,7 @@ int main(int argc, char *argv[])
             }
             drive_pub->publish(GetMPCDrive());
 	        heading_pub->publish(GetMPCHeading());
-
+            slope_limited_pub->publish(GetSlopeLimited());
         }
 
         if(reset_called && is_initialized) {

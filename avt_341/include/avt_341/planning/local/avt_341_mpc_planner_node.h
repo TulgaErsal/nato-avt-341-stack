@@ -84,10 +84,18 @@ double grid_resolution;
 double front_angle_goal;
 double front_angle_obstacle;
 double front_angle_segmentation;
+double w_final_speed;
 bool adaptive;
 double vehicle_axle_distance_front;
 bool obstacles_vizualize;
 bool publish_steering_commands;
+double slope_threshold;
+double rms_threshold;
+double speed_around_large_slopes_and_rms;
+double sa_min;
+double sa_max;
+double sr_min;
+double sr_max;
 // --------------
 
 // Globals
@@ -136,14 +144,26 @@ jl_function_t* j_set_sinkage = NULL;
 /** @brief Pointer to the Julia function to set the segmentation grid cells. */
 jl_function_t* j_set_segmentation = NULL;
 
+/** @brief Pointer to the Julia function to set the terrain slope. */
+jl_function_t* j_set_terrain_slope = NULL;
+
+/** @brief Pointer to the Julia function to set the terrain rms. */
+jl_function_t* j_set_terrain_rms = NULL;
+
 /** @brief Pointer to the Julia function to get the MPC path */
 jl_function_t* j_get_path = NULL;
 
 /** @brief Pointer to the Julia function to get the MPC speed */
 jl_function_t* j_get_speed = NULL;
 
+/** @brief Pointer to the Julia function to get the MPC speed at the end of the prediction horizon */
+jl_function_t* j_get_final_speed = NULL;
+
 /** @brief Pointer to the Julia function to get the MPC steering */
 jl_function_t* j_get_steering = NULL;
+
+/** @brief Pointer to the Julia function to get slope limiting flag */
+jl_function_t* j_get_slope_limited = NULL;
 
 /** PARAMETER SETTERS */
 jl_function_t* j_set_tire_model = NULL;
@@ -170,6 +190,16 @@ jl_function_t* j_set_terrain_adaptive = NULL;
 jl_function_t* j_set_veh_front_axle_dist = NULL;
 jl_function_t* j_set_front_angle_segmentation = NULL;
 jl_function_t* j_set_linear_solver = NULL;
+jl_function_t* j_set_slope_threshold = NULL;
+jl_function_t* j_set_rms_threshold = NULL;
+jl_function_t* j_set_speed_around_large_slopes_and_rms = NULL;
+jl_function_t* j_set_sa_min = NULL;
+jl_function_t* j_set_sa_max = NULL;
+jl_function_t* j_set_sr_min = NULL;
+jl_function_t* j_set_sr_max = NULL;
+jl_function_t* j_set_w_final_speed = NULL;
+jl_function_t* j_set_leader_speed = NULL;
+jl_function_t* j_set_follower_status = NULL;
 
 // ---------------
 

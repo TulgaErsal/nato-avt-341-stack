@@ -42,19 +42,31 @@ const x_min    = 0.
 const x_max    = 400.
 const y_min    = 0.
 const y_max    = 400.
-const sa_min   = -0.485
-const sa_max   = 0.485
+sa_min         = -0.485
+sa_max         = 0.485
 const psi_min  = -2*pi
 const psi_max  = 2*pi
 const u_min    = 1.0   #5.
 const u_max    = 30.
-const sr_min   = -0.523
-const sr_max   = 0.523
-const jx_min   = -2.1*3
-const jx_max   = 1.9*3
+sr_min         = -0.523
+sr_max         = 0.523
+const jx_min   = -2.0
+const jx_max   = 2.0
 
 # epsilon
 const EP      = 0.01
+
+# handling large slopes and RMS
+slopeThreshold = 0.2
+rmsThreshold = 0.05 # in meters
+speedAroundLargeSlopesAndRMS = 4.0 # in m/s
+
+# handling turning back 180 degrees
+angleThreshold = 20 * (π / 180) # in radians; turning back if the vehicle facing within angleThreshold of 180 deg from goal)
+speedForTurningBack = 3.0 # in m/s
+
+# Smoothing parameter for the along-path distance to goal
+beta = 0.1
 
 # linear tire model parameters
 Caf =  -3.69554	# cornering stiffness--front axle (N/rad)

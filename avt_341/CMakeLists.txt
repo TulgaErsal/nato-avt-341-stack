@@ -21,6 +21,11 @@ if(WIN32 OR WIN64)
   add_compile_definitions(-D _USE_MATH_DEFINES)
 endif() # if(WIN32 OR WIN64)
 
+if(SET_BIG_OBJ)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+  message(STATUS "/bigobj added to CMAKE_CXX_FLAGS")
+endif(SET_BIG_OBJ)
+
 if($ENV{ROS_VERSION} EQUAL 1)
   set(USING_CATKIN ON)
 
@@ -61,7 +66,8 @@ set(AVT341_SOURCE_FILES
     "perception/map_publisher"
     "perception/global_segmentation_grid"
     "perception/grid_compression"
-    "perception/lidar_obstacle_detector"
+    "perception/lidar_obstacle_detector/ros1"
+    "perception/lidar_obstacle_detector/ros2"
     "perception/perception"
     "perception/uab_terrain_perception"
     "perception/obstacles_processor"
@@ -93,6 +99,7 @@ if(USING_CATKIN)
       jsk_recognition_msgs
       message_generation
       nav_msgs
+      map_msgs
       roscpp
       rospy
       std_msgs
@@ -147,7 +154,11 @@ if(USING_CATKIN)
     )
 
   # Proxy library
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp")
+  add_library(${PROJECT_NAME}_proxy
+          "src/node/node_proxy.cpp"
+          "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/monitoring.cpp"
+  )
   target_link_libraries(${PROJECT_NAME}_proxy ${catkin_LIBRARIES})
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
@@ -275,12 +286,14 @@ if(USING_AMENT)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(nav_msgs REQUIRED)
+  find_package(map_msgs REQUIRED)
   find_package(visualization_msgs REQUIRED)
   find_package(avt_341_msgs REQUIRED)
   find_package(OpenCV REQUIRED)
   find_package(rclpy REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
+  find_package(Eigen3 3.4 REQUIRED)
 
   if(WIN32 OR WIN64)
     set(link_libs ${OpenCV_LIBS})
@@ -294,12 +307,20 @@ if(USING_AMENT)
     add_definitions(-DGTE_ROS_HUMBLE)
   endif()
 
+  if($ENV{ROS_DISTRO} STREQUAL "jazzy")
+    add_definitions(-DGTE_ROS_JAZZY)
+  endif()
+
   # Build
   include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 
   # Node proxy library
   # ------------------
-  add_library(${PROJECT_NAME}_proxy "src/node/node_proxy.cpp")
+  add_library(${PROJECT_NAME}_proxy
+          "src/node/node_proxy.cpp"
+          "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/monitoring.cpp"
+  )
 
   target_include_directories(
     ${PROJECT_NAME}_proxy
@@ -308,7 +329,7 @@ if(USING_AMENT)
 
   ament_target_dependencies(
     ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
-    visualization_msgs)
+    visualization_msgs map_msgs)
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
     add_subdirectory(${SOURCE_FILE})
@@ -328,8 +349,8 @@ if(USING_AMENT)
     EXPORT export_${PROJECT_NAME}
     DESTINATION "lib/${PROJECT_NAME}")
 
-  # Testing
-  # =======
+  # Test Nodes
+  # ===============
 
   # Target detection test node
   add_executable(test_target_detection_node
@@ -355,5 +376,12 @@ if(USING_AMENT)
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
+
+  # Automated Tests
+  # ===============
+  if(BUILD_TESTING)
+    add_subdirectory(test)
+  endif()
+
   ament_package()
 endif() # if(USING_AMENT)

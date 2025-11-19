@@ -5,6 +5,7 @@
 * Controller is generic, but used for speed control in this application.
 *
 * \author Chris Goodin
+* \author James R Baxter
 *
 * \date 8/31/2020
 */
@@ -18,7 +19,7 @@ namespace control{
 class AntiWindupMethod{
 public:
   const static std::string ResetOnSetpoint;
-  const static std::string OutputClamping;
+  const static std::string IntegralClamping;
   const static std::string Disabled;
 };
 
@@ -53,6 +54,8 @@ class PidController{
     ff_a2_ = a2;
   }
 
+  void SetIntegralAbsMax(double integral_abs_max){ integral_abs_max_ = integral_abs_max; }
+
  private:
   double kp_;
   double ki_;
@@ -61,7 +64,7 @@ class PidController{
   double previous_error_;
   double integral_;
   bool overshoot_limiter_;
-  bool output_clamping_;
+  bool integral_clamping_;
   bool crossed_setpoint_;
   bool stay_positive_;
 
@@ -71,6 +74,7 @@ class PidController{
   double ff_a2_;
   double ff_a0_;
   std::ofstream fout_;
+  double integral_abs_max_;
   double output_min_;
   double output_max_;
 };

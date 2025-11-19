@@ -170,7 +170,7 @@ def evaluate_waypoint_parameters(context, *args, **kwargs):
 
 PYTHON_EVAL_STR = '$Python:'
 
-
+# TODO: Issue #123 Convert to new base.launch file
 def generate_launch_description():
 
     MAX_VEHICLES = 4
@@ -198,11 +198,7 @@ def generate_launch_description():
             vi = params[k][ki]
             if type(vi) is dict:
                 for kii, vii in vi.items():
-                    # TODO: Issue #123 Convert to new base.launch file
-                    if k == 'perception' or k == 'mission_manager':
-                        params[k]['/'.join([ki, kii])] = vii
-                    else:
-                        params[k]['_'.join([ki, kii])] = vii
+                    params[k]['_'.join([ki, kii])] = vii
                 del params[k][ki]
         for ki, vi in params[k].items():
             if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
@@ -216,7 +212,9 @@ def generate_launch_description():
         for ki in param_refs[k].keys():
             del params[k][ki]
 
-    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() for ki, vi in v.items()]
+    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector', 'obstacle_detector']
+    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() if k not in new_format_params for ki, vi in v.items()]
+    arg_list += [DeclareLaunchArgument(f"{k}_{ki}", default_value=str(vi)) for k, v in params.items() if k in new_format_params for ki, vi in v.items()]
 
     vehicle_node_list = []
     for idx in range(MAX_VEHICLES):
@@ -239,6 +237,7 @@ def generate_launch_description():
                     package='avt_341',
                     executable='avt_bot_state_publisher_node',
                     name='state_publisher',
+                    condition=IfCondition(LaunchConfiguration('publish_odom_to_tf')),
                     parameters=[{'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
                                                                      IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
@@ -253,21 +252,78 @@ def generate_launch_description():
                             {'display': display_type},
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
                     ),
-                    # Uncomment to use UAB Terrain Segmentation
-                    # Node(
-                    #     package='avt_341',
-                    #     executable='uab_perception_node',
-                    #     name='uab_perception_node',
-                    #     parameters=[{
-                    #         'grid_width': launch.substitutions.LaunchConfiguration('grid_width'),
-                    #         'grid_height': launch.substitutions.LaunchConfiguration('grid_height'),
-                    #         'grid_llx': launch.substitutions.LaunchConfiguration('grid_llx'),
-                    #         'grid_lly': launch.substitutions.LaunchConfiguration('grid_lly'),
-                    #         'grid_res': launch.substitutions.LaunchConfiguration('grid_res'),
-                    #         'publish_uab_occupancy_grid': launch.substitutions.LaunchConfiguration('publish_uab_occupancy_grid'),
-                    #     }],
-                    #     output='screen'
-                    # ),
+
+                    # UAB Terrain Segmentation
+                    Node(
+                        package='avt_341',
+                        executable='uab_perception_node',
+                        name='uab_perception_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+                        ],
+                        remappings=[
+                            ('camera/rgb/image_raw','front_camera/image'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_uab_perception')),
+                    ),
+                    # Deep Learning 2D Object Detection for static scene objects
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_object_detector_node',
+                        name='object_detector_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'obj_detector_{k}') for k in params['obj_detector'].keys()}
+                        ],
+                        remappings=[
+                            ('image','front_camera/image'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_obj_detector')),
+                    ),
+                    # Deep Learning 2D Object Detection for Formation Vehicles
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_object_detector_node',
+                        name='veh_detector_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'veh_detector_{k}') for k in params['veh_detector'].keys()}
+                        ],
+                        remappings=[
+                            ('image','front_camera/image'),
+                            ('detections/vision','front_camera/detections_2d'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_veh_detector')),
+                    ),
+                    # Object Tracking
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_object_tracking_node',
+                        name='object_tracking_node',
+                        parameters=[
+                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+                        ],
+                        remappings=[
+                            ('camera_info','front_camera/camera_info'),
+                            ('image','front_camera/image'),
+                            ('detection_2d', 'front_camera/detections_2d'),
+                            ('input','avt_341/points'),
+                            ('odometry','avt_341/mrzr4/tracked_odom'),
+                            ('pose','avt_341/mrzr4/tracked_pose'),
+                        ],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_object_tracker')),
+                    ),
+                    # Lidar obstacle detector, ground segmentation
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_lidar_obstacle_detector_node',
+                        name='lidar_obstacle_detector_node',
+                        parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}],
+                        output='screen',
+                        condition=IfCondition(LaunchConfiguration('use_lidar_obstacle_detector'))
+                    ),
                     Node(
                         package='avt_341',
                         executable='avt_341_control_node',
@@ -417,6 +473,10 @@ def generate_launch_description():
 
     launch_description = LaunchDescription([
         *arg_list,
+        DeclareLaunchArgument("use_object_tracker", default_value="False", description="Set to enable object tracking node."),
+        DeclareLaunchArgument("use_obj_detector", default_value="False", description="Set to enable detection 2d bounding box detection of static objects using deep neural network inference."),
+        DeclareLaunchArgument("use_veh_detector", default_value="False", description="Set to enable detection 2d bounding box detection of vehicles for formation following using deep neural network inference."),
+        DeclareLaunchArgument("use_uab_perception", default_value="False", description="Set to enable use of UAB perception node."),
         OpaqueFunction(function=evaluate_waypoint_parameters),
         Node(
             package='tf2_ros',
@@ -424,16 +484,15 @@ def generate_launch_description():
             name='static_transform_publisher',
             arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]),
         *vehicle_node_list,
-        # DeclareLaunchArgument('rviz_config', default_value=rviz_config_single_vehicle, description='Full path to rviz config file'),
-        # SetLaunchConfiguration('rviz_config', rviz_config_multi_vehicle, condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1']))),
+        DeclareLaunchArgument('rviz_config', default_value=TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
+                                                                               false_val=TextSubstitution(text=rviz_config_single_vehicle),
+                                                                               condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))),
         Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
             condition=IfCondition(auto_launch_rviz),
-            arguments=["-d", TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
-                                                 false_val=TextSubstitution(text=rviz_config_single_vehicle),
-                                                 condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))]
+            arguments=["-d", LaunchConfiguration('rviz_config')]
         )
     ])
 

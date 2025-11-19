@@ -11,7 +11,7 @@ if(USING_AMENT)
   file(
     DOWNLOAD
     https://www.dropbox.com/s/n6img54q02j8tbs/20230816_KRC_CP06_Scaled_FlippedVertical.csv?dl=1
-    "${PROJECT_SOURCE_DIR}/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv"
+    "${PROJECT_SOURCE_DIR}/config/20230816_KRC_CP06_sfv.csv"
     EXPECTED_HASH
       SHA256=ee537193d028f54ffe08ce9ba78879ee2758fa129942a66f81001382c90fb588)
 

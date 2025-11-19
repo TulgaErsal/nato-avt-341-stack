@@ -12,3 +12,4 @@ num_vehicles: 1                                                                 
 namespace_single_vehicle: False                                                 # If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)
 vehicle_namespaces: ['agv1', 'agv2', 'cgv1', 'cgv2']                            # Vehicle namespaces
 manual_control_vehicles: ['']                                                   # List of manually controlled vehicles. Most stack components disabled for these vehicles to improvement performance.
+publish_odom_to_tf: False                                                       # If true, odometry message is converted to tf transform and broadcast. Not that this will introduce some delay.

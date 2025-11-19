@@ -3,8 +3,11 @@ message(STATUS "Building global path node ...")
 if(USING_CATKIN)
   add_executable(
     ${PROJECT_NAME}_global_path_node
-    "astar.cpp" "global_path_node.cpp"
-    "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp")
+    "global_path_node.cpp"
+    "astar.cpp"
+    "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp"
+    fastmarching.cpp
+  )
   add_dependencies(${PROJECT_NAME}_global_path_node ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_global_path_node ${PROJECT_NAME}_proxy
                         X11)
@@ -17,8 +20,11 @@ endif() # if(USING_CATKIN)
 if(USING_AMENT)
   add_executable(
     ${PROJECT_NAME}_global_path_node
-    "astar.cpp" "global_path_node.cpp"
-    "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp")
+    "global_path_node.cpp"
+    "astar.cpp"
+    "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp"
+    fastmarching.cpp
+  )
   target_link_libraries(${PROJECT_NAME}_global_path_node ${link_libs}
                         ${PROJECT_NAME}_proxy)
   install(

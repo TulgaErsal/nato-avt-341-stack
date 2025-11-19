@@ -28,6 +28,9 @@ MissionManager::MissionManager(const FormationParameters & formation_params, con
     communication_pub = node_proxy_->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
+    follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
+    leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
+    task_status_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/mission_task_state");
 }
 
 MissionManager::~MissionManager() {
@@ -225,9 +228,57 @@ void MissionManager::publishTaskCompletion(Task * task){
   publishTaskCompletion(task->sender_name, task->msg_id);
 }
 
-//void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
-//  follower_status_pub->publish(status_msg);
-//}
+void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
+  follower_status_pub->publish(status_msg);
+}
+
+void MissionManager::publishLeaderStatus(){
+  bool is_leader = true;
+  // Check if there is a leader
+  Task* active_task = currentTask();
+  if (active_task) {
+    FormationDefinition* formatiom_def = active_task->getFormationDef();
+    if (formatiom_def) {
+      const std::string leader_name = formatiom_def->followedVehicle();
+      // Check if I am leader
+      if (!leader_name.empty() && formation_params.my_name != leader_name) {
+        is_leader = false;
+      }
+    }
+  }
+  // Publish follower status
+  avt_341::msg::Bool status_msg;
+  status_msg.data = is_leader;
+  leader_status_pub->publish(status_msg);
+}
+
+void MissionManager::publishCurrentTaskInfo() {
+    publishTaskInfo(currentTask());
+}
+
+void MissionManager::publishTaskInfo(const Task* task){
+
+    if(task == nullptr) {
+        return;
+    }
+
+    msg::MissionTaskStatus status_msg;
+    status_msg.header.stamp = node_proxy_->get_stamp();
+    status_msg.header.frame_id = "map";
+    status_msg.task_id = task->msg_id;
+    status_msg.task_description = task->description();
+
+    if (const FormationDefinition * formation_def =  task->getFormationDef()) {
+        status_msg.formation_type = formation_def->getFormationType();
+        status_msg.formation_vehicles = formation_def->orderedVehicles();
+        const std::string tracked_veh = formation_def->isFollowing() ? formation_def->followedVehicle() : "";
+        status_msg.tracked_vehicle = tracked_veh;
+        std::transform(tracked_veh.begin(), tracked_veh.end(), status_msg.tracked_vehicle.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+    }
+
+    task_status_pub->publish(status_msg);
+}
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   communication_pub->publish(TaskCompleteMsg(sender_name, -1, sender_name, msg_id).toROSMsg());
@@ -240,6 +291,7 @@ void MissionManager::updateTasks() {
         if(!active_task->init_done){
           active_task->init();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
+          publishTaskInfo(active_task);
         }
 
         active_task->run();

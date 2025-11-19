@@ -18,12 +18,13 @@ void Follow::init_() {
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(path_generator_.useBreadcrumbs() ? 0 : 1);
 
-//    if(!formation_def_->formationAtGoal()){
-//      mgr->publishFormationStatus(formation_def_->formation_status);
-//    }
+    if(!formation_def_->formationAtGoal()){
+      mgr->publishFormationStatus(formation_def_->formation_status);
+    }
 }
 
 void Follow::run() {
+    if (!(mgr->rcvd_leader_odom)) return;
     path_generator_.Update(mgr->leader_odometry, mgr->odometry, formation_def_->formation_status);
     const auto & follower_path = path_generator_.GetPath();
     if(path_generator_.useBreadcrumbs()){
