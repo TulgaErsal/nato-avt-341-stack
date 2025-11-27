@@ -33,6 +33,9 @@ void RosParameterEvent::cache_parameter_map() {
 // ROS1 - BASE PARAMETER
 // ====================================================================================================================
 
+const std::string RosParameter::EMPTY_STRING_ = "";
+const std::string RosParameter::EMPTY_STRING_ARRAY_ = std::vector<std::string>();
+
 const std::string & RosParameter::get_name() const {
     return "";
 }
@@ -54,11 +57,11 @@ double RosParameter::as_double() const {
 }
 
 const std::string & RosParameter::as_string() const {
-    return "";
+    return EMPTY_STRING_;
 }
 
 const std::vector<std::string> & RosParameter::as_string_array() const {
-    return std::vector<std::string>();
+    return EMPTY_STRING_ARRAY_;
 }
 
 // ====================================================================================================================

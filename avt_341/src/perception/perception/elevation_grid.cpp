@@ -210,6 +210,12 @@ void ElevationGrid::SetSlopeParameters(
 
 	thresh_ = std::max(0.0f, tr.value_or(thresh_));
 	thresh_max_ = std::max(tr_max.value_or(thresh_max_), thresh_);
+
+	constexpr float eps = std::numeric_limits<float>::epsilon();
+	if (std::abs(thresh_max_ - thresh_) < eps) {
+		thresh_max_ = thresh_ + eps;
+	}
+
 	grid_slope_mult_ = static_cast<float>(GRID_MAX_VALUE) / (thresh_max_ - thresh_);
 
 	if (recompute_grid) {

@@ -49,7 +49,12 @@ public:
     const std::vector<std::string> & as_string_array() const;
 
 private:
-#ifndef ROS1
+
+#ifdef ROS1
+    // For return by reference as_string and as_string_array in ROS1
+    static const std::string EMPTY_STRING_;
+    static const std::vector<std::string> EMPTY_STRING_ARRAY_;
+#else
     const rclcpp::Parameter param_;
 #endif
 
