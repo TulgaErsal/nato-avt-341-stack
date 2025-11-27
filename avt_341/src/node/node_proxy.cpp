@@ -25,6 +25,13 @@ void Rate::sleep() {
 NodeProxy::NodeProxy(const std::string &node_name) {
 }
 
+std::shared_ptr<ParamsProxy> NodeProxy::params() {
+  if (params_ == nullptr) {
+    params_ = std::make_shared<ParamsProxy>();
+  }
+  return params_;
+}
+
 void NodeProxy::initialize_tf_listener() {
   if(tf_buffer_ != nullptr)
     return;
@@ -179,6 +186,13 @@ void NodeProxy::spin() {
     NodeProxy::NodeProxy(const std::string &node_name) {
       node_ = rclcpp::Node::make_shared(node_name);
       this->get_parameter("/is_empty_waypoints", is_empty_waypoints_, false);
+    }
+
+    std::shared_ptr<ParamsProxy> NodeProxy::params() {
+      if (params_ == nullptr) {
+        params_ = std::make_shared<ParamsProxy>(node_);
+      }
+      return params_;
     }
 
     void NodeProxy::initialize_tf_listener() {
