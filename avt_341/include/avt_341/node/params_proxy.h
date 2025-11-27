@@ -50,11 +50,7 @@ public:
 
 private:
 
-#ifdef ROS1
-    // For return by reference as_string and as_string_array in ROS1
-    static const std::string EMPTY_STRING_;
-    static const std::vector<std::string> EMPTY_STRING_ARRAY_;
-#else
+#ifndef ROS1
     const rclcpp::Parameter param_;
 #endif
 
