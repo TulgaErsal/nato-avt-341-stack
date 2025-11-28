@@ -1,7 +1,7 @@
 #ifndef AVT_341_PARAMS_PROXY_H
 #define AVT_341_PARAMS_PROXY_H
 
-#ifdef ROS1
+#ifdef ROS_1
 #include <ros/ros.h>
 #else
 #include <rclcpp/rclcpp.hpp>
@@ -9,7 +9,7 @@
 
 namespace avt_341 {
 
-#ifdef ROS1
+#ifdef ROS_1
 template<typename T>
 using optional = boost::optional<T>;
 #else
@@ -25,7 +25,7 @@ class RosParameter {
 
 public:
 
-#ifndef ROS1
+#ifndef ROS_1
     explicit RosParameter(const rclcpp::Parameter & param);
 #endif
 
@@ -35,7 +35,7 @@ public:
 
     template<typename T>
     decltype(auto) get_value() const {
-        #ifdef ROS1
+        #ifdef ROS_1
         return T();
         #else
         return param_.get_value<T>();
@@ -50,7 +50,7 @@ public:
 
 private:
 
-#ifndef ROS1
+#ifndef ROS_1
     const rclcpp::Parameter param_;
 #endif
 
@@ -60,7 +60,7 @@ class RosParameterEvent {
 
 public:
 
-#ifndef ROS1
+#ifndef ROS_1
     explicit RosParameterEvent(const rcl_interfaces::msg::ParameterEvent & param_event);
 #endif
 
@@ -100,7 +100,7 @@ public:
         std::string node_name;
     };
 
-#ifndef ROS1
+#ifndef ROS_1
     explicit ParamsProxy(const std::shared_ptr<rclcpp::Node>& node);
 #endif
 
@@ -125,7 +125,7 @@ private:
     std::vector<ParameterCallbackContext> multi_param_callback_contexts_;
     std::string own_node_name_;
 
-#ifndef ROS1
+#ifndef ROS_1
     void on_multi_param_preprocess(const rcl_interfaces::msg::ParameterEvent & pe);
 
     std::shared_ptr<rclcpp::Node> node_;

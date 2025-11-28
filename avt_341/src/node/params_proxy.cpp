@@ -2,9 +2,9 @@
 
 namespace avt_341::node {
 
-// ====================================================================================================================
+// ====================================================================
 // SHARED - PARAMETER EVENT
-// ====================================================================================================================
+// ====================================================================
 
 bool RosParameterEvent::contains_parameter(const std::string &parameter_name) const {
     return parameter_map_.find(parameter_name) != parameter_map_.end();
@@ -27,11 +27,11 @@ void RosParameterEvent::cache_parameter_map() {
     }
 }
 
-#ifdef ROS1
+#ifdef ROS_1
 
-// ====================================================================================================================
+// ====================================================================
 // ROS1 - BASE PARAMETER
-// ====================================================================================================================
+// ====================================================================
 
 const std::string & RosParameter::get_name() const {
     static const std::string empty_name;
@@ -64,9 +64,9 @@ const std::vector<std::string> & RosParameter::as_string_array() const {
     return empty_array;
 }
 
-// ====================================================================================================================
+// ====================================================================
 // ROS1 - PARAMETER PROXY
-// ====================================================================================================================
+// ====================================================================
 
 void ParamsProxy::add_parameter_callback(
     const std::string &parameter_name,
@@ -92,9 +92,9 @@ void ParamsProxy::add_parameter_event_callback(
 
 #else
 
-// ====================================================================================================================
+// ====================================================================
 // ROS2 - BASE PARAMETER
-// ====================================================================================================================
+// ====================================================================
 
 RosParameter::RosParameter(const rclcpp::Parameter & param) : param_(param){ }
 
@@ -107,9 +107,9 @@ double RosParameter::as_double() const { return param_.as_double(); }
 const std::string & RosParameter::as_string() const { return param_.as_string(); }
 const std::vector<std::string> & RosParameter::as_string_array() const { return param_.as_string_array(); }
 
-// ====================================================================================================================
+// ====================================================================
 // ROS2 - PARAMETER EVENT
-// ====================================================================================================================
+// ====================================================================
 
 RosParameterEvent::RosParameterEvent(const rcl_interfaces::msg::ParameterEvent &param_event)
     : node(param_event.node) {
@@ -123,9 +123,9 @@ RosParameterEvent::RosParameterEvent(const rcl_interfaces::msg::ParameterEvent &
     cache_parameter_map();
 }
 
-// ====================================================================================================================
+// ====================================================================
 // ROS2 - PARAMETER PROXY
-// ====================================================================================================================
+// ====================================================================
 
 ParamsProxy::ParamsProxy(const std::shared_ptr<rclcpp::Node>& node) : node_(node) {
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(node_);
@@ -181,7 +181,9 @@ void ParamsProxy::on_multi_param_preprocess(const rcl_interfaces::msg::Parameter
             }
         }
 
-        context.callback(RosParameterEvent(found_params, param_event.node));
+        if(!found_params.empty()){
+            context.callback(RosParameterEvent(found_params, param_event.node));
+        }
     }
 }
 
