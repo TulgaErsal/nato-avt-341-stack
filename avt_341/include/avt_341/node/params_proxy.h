@@ -1,8 +1,11 @@
 #ifndef AVT_341_PARAMS_PROXY_H
 #define AVT_341_PARAMS_PROXY_H
 
+#include <unordered_map>
+
 #ifdef ROS_1
 #include <ros/ros.h>
+#include <boost/optional/optional.hpp>
 #else
 #include <rclcpp/rclcpp.hpp>
 #endif
