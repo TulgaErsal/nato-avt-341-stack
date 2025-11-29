@@ -151,6 +151,7 @@ int main(int argc, char **argv) {
 
     nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
     nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
+    nh->get_parameter("~fsc_follower_obt_stop", fsc_params.follower_obt_stop, false);
     nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
     nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
     nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);

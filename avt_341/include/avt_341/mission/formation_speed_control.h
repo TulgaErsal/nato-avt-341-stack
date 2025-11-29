@@ -17,6 +17,7 @@ namespace avt_341 {
       double oof_mult;
       double max_speed_factor;
       bool debug_visualize;
+      bool follower_obt_stop;
       double follower_dist_break;
       double follower_dot_threshold;
       double follower_dot_range;
@@ -74,15 +75,6 @@ namespace avt_341 {
 
     public:
       explicit SpeedUpFollowerFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
-
-      double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
-                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
-    };
-
-    class SpeedUpFollowerSimpleFormationSpeedController : public FormationSpeedController {
-
-    public:
-      explicit SpeedUpFollowerSimpleFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
 
       double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
                             std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
