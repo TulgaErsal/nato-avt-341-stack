@@ -406,6 +406,7 @@ namespace avt_341 {
 
     public:
 
+      NodeProxy(rclcpp::Node* node);
       NodeProxy(const std::string &node_name);
 
       template<typename ParameterT>

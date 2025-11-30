@@ -58,6 +58,7 @@ set(AVT341_SOURCE_FILES
     "control/speed_zones"
     "daq/data_acquisition"
     "mission/formation_control"
+    "mission/goal_filtering"
     "mission/mission_manager"
     "perception/detection/common"
     "perception/detection/training"
@@ -157,6 +158,7 @@ if(USING_CATKIN)
   add_library(${PROJECT_NAME}_proxy
           "src/node/node_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/grid_components.cpp"
           "src/core/monitoring.cpp"
   )
   target_link_libraries(${PROJECT_NAME}_proxy ${catkin_LIBRARIES})
@@ -319,6 +321,7 @@ if(USING_AMENT)
   add_library(${PROJECT_NAME}_proxy
           "src/node/node_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
+          "src/core/grid_components.cpp"
           "src/core/monitoring.cpp"
   )
 

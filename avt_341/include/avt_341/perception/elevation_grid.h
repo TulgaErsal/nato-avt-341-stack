@@ -21,11 +21,18 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/elevation_grid_cell.h"
-#include "avt_341/perception/elevation_grid_components.h"
+#include "avt_341/core/grid_components.h"
 #include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
 
 namespace avt_341 {
 namespace perception {
+
+struct GridPubMethod {
+	static const std::string Full;
+	static const std::string Window;
+	static const std::string Updates;
+	static bool IsGridPubMethodValid(const std::string & selected_method);
+};
 
 class ElevationGrid : public CellObstacleCalculator {
 public:
@@ -124,7 +131,7 @@ public:
 		grid_dilate_proportion_ = grid_dilate_proportion;
 	}
 
-	void FillGridMsgCells(std::vector<int8_t> & data, GridRegion region, bool is_segmentation) const;
+	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation) const;
 	void ResetUpdateRegion(){ grid_update_region_.Reset();}
 	void Reset();
 	bool HasData() const;
@@ -185,7 +192,7 @@ private:
 	bool has_segmentation_ = false;
 	bool is_resetting_ = false;
 	std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
-	GridRegion grid_update_region_;
+	core::GridRegion grid_update_region_;
 };
 
 } // namespace perception
