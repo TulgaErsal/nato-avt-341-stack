@@ -6,8 +6,13 @@
 namespace avt_341 {
 namespace mission {
 
-MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy)
-: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy){
+MissionManager::MissionManager(
+    const FormationParameters & formation_params,
+    const ToiParameters & toi_params,
+    const std::shared_ptr<node::NodeProxy> & node_proxy,
+    const std::shared_ptr<FormationGoalFilter> & goal_filter
+    )
+    : formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy), goal_filter_(goal_filter){
 
     my_name = formation_params.my_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
@@ -184,11 +189,19 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
 }
 
 void MissionManager::publishGoal(const avt_341::msg::PoseStamped & target_pose){
-    avt_341::msg::Path goal_msg;
-    
-    // Offset to local map frame
+
     avt_341::msg::PoseStamped target_pose_msg = target_pose;
 
+    Task* current_task = currentTask();
+    if (current_task != nullptr
+        && current_task->hasFormation() && current_task->getFormationDef()->isFollowing()) {
+
+        target_pose_msg.pose = goal_filter_->Filter(
+            target_pose.pose,
+            leader_odometry.pose.pose);
+    }
+
+    avt_341::msg::Path goal_msg;
     goal_msg.poses.clear();
     goal_msg.poses.push_back(target_pose_msg);
     goal_msg.header.stamp = node_proxy_->get_stamp();

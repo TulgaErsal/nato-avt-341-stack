@@ -24,7 +24,9 @@
 #include "avt_341/mission/formation_definition.h"
 #include "avt_341/mission/formation_speed_control.h"
 #include "avt_341/mission/mission_manager_dto.h"
+#include "avt_341/mission/goal_filtering/formation_goal_filter.hpp"
 #include <deque>
+
 
 namespace avt_341 {
 namespace mission {
@@ -46,7 +48,12 @@ class MissionManager{
 
   public:
     /// Construct a formation controller
-    MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy);
+    MissionManager(
+        const FormationParameters & formation_params,
+        const ToiParameters & toi_params,
+        const std::shared_ptr<node::NodeProxy> & node_proxy,
+        const std::shared_ptr<FormationGoalFilter> & goal_filter);
+
     ~MissionManager();
 
     int loadMissionDefinition(std::string filename);
@@ -118,6 +125,7 @@ class MissionManager{
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
+    std::shared_ptr<FormationGoalFilter> goal_filter_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<TaskCompleteMsg> task_completions_;
