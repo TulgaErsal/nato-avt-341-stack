@@ -49,7 +49,7 @@ ObsAvoidanceGoalFilter::ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> 
 
     grid_sub_ = std::make_shared<node::OccupancyGridSubscriber>(
         node,
-        "/" + params_.vehicle_id + "/" + OCCUPANCY_GRID_TOPIC_NAME,
+        OCCUPANCY_GRID_TOPIC_NAME,
         10,
         std::bind(&ObsAvoidanceGoalFilter::OccupancyGridCallback, this, std::placeholders::_1));
 
