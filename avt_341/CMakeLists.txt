@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 3.5)
 
 project(avt_341)
 
+if($ENV{ROS_VERSION} EQUAL 1)
 set(CMAKE_CXX_STANDARD 14)
+else()
+set(CMAKE_CXX_STANDARD 17)
+endif()
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -156,6 +161,7 @@ if(USING_CATKIN)
   # Proxy library
   add_library(${PROJECT_NAME}_proxy
           "src/node/node_proxy.cpp"
+          "src/node/params_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
           "src/core/monitoring.cpp"
   )
@@ -318,6 +324,7 @@ if(USING_AMENT)
   # ------------------
   add_library(${PROJECT_NAME}_proxy
           "src/node/node_proxy.cpp"
+          "src/node/params_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
           "src/core/monitoring.cpp"
   )

@@ -259,7 +259,7 @@ int main(int argc, char* argv[]) {
 
 	grid.SetNode(n);
 	grid.SetSize(grid_width, grid_height);
-	grid.SetSlopeThreshold(thresh, thresh_max);
+	grid.SetSlopeParameters(thresh, thresh_max);
 	grid.SetRes(grid_res);
 	grid.SetCorner(grid_llx, grid_lly);
 	grid.SetUseElevation(use_elevation);
@@ -285,6 +285,24 @@ int main(int argc, char* argv[]) {
 	const bool is_updates_grid_pub = grid_pub_method == avt_341::perception::GridPubMethod::Updates;
 	auto grid_pub_updates = is_updates_grid_pub ? n->create_publisher<avt_341::msg::OccupancyGridUpdate>("avt_341/occupancy_grid_updates", 1) : nullptr;
 	auto grid_segmentation_pub_updates = is_updates_grid_pub ? n->create_publisher<avt_341::msg::OccupancyGridUpdate>("avt_341/segmentation_grid_updates", 1) :  nullptr;
+
+	// Runtime parameter changes
+	// --------------------------------------------------------------------------------------------------------------
+
+	// TODO: Below is temporary - to be refined in near future
+
+	// n->params()->add_parameter_callback("slope_threshold", [&](const avt_341::node::RosParameter & p) {
+	// 	grid.SetSlopeParameters(p.as_double(), std::nullopt, true);
+	// });
+
+	n->params()->add_parameter_callback(std::vector<std::string>{"slope_threshold", "slope_threshold_max"},
+		[&](const avt_341::node::RosParameterEvent & p) {
+		grid.SetSlopeParameters(
+			p.get_value<float>("slope_threshold"),
+			p.get_value<float>("slope_threshold_max"),
+			true);
+	});
+
 
 	// Main loop
 	// --------------------------------------------------------------------------------------------------------------
