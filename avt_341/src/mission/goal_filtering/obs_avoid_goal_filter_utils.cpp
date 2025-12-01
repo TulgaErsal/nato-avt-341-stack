@@ -282,12 +282,9 @@ avoidIntersection(const std::tuple<Eigen::MatrixXi, Eigen::Vector2d, Eigen::Vect
         prev_idx = cur_idx;
         dir_search = "left";     // TODO: validate
     }
-    int new_idx = getFirstFeasibleIndex(row, prev_idx, cur_idx, dir_search);
-    std::cout << "avoidIntersection: prev_idx=" << prev_idx << ", cur_idx=" << cur_idx << ", new_idx=" << new_idx  << ", dir=" << dir << std::endl;
 
-    const bool deadlock_check = isInDeadlock(row, prev_idx, new_idx, min_obstacle_width);
-    std::cout << " deadlock_check=" << deadlock_check << std::endl;
-    bool deadlock = (new_idx == -1 || deadlock_check);
+    int new_idx = getFirstFeasibleIndex(row, prev_idx, cur_idx, dir_search);
+    bool deadlock = (new_idx == -1 || isInDeadlock(row, prev_idx, new_idx, min_obstacle_width));
 
     if (!deadlock) {
         patch_pt[1] = new_idx;

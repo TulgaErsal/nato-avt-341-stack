@@ -66,7 +66,7 @@ private:
     Eigen::MatrixXi occupancy_grid_;
 
     // minimal state to preserve behavior across steps
-    std::optional<Eigen::Vector2d> last_point_;    // last published (for intersection check)
+    avt_341::optional<Eigen::Vector2d> last_point_;    // last published (for intersection check)
 
     // cached patch / state used by the avoidance logic
     Eigen::Vector2d map_origin_;

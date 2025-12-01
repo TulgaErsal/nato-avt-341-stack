@@ -8,11 +8,11 @@
 #define TOPIC_FOLLOWER_POSE_IN          "avt_341/candidate_follower_pose"
 #define TOPIC_FOLLOWER_POSE_OUT         "avt_341/filtered_follower_pose"
 
-class ObsAvoidanceGoalFilterNode : public rclcpp::Node {
+class ObsAvoidGoalFilterNode : public rclcpp::Node {
 
 public:
-    ObsAvoidanceGoalFilterNode()
-    : Node("obs_avoidance_goal_filter_node") {
+    ObsAvoidGoalFilterNode()
+    : Node("obs_avoid_goal_filter_node") {
 
         declare_parameter("leader_vehicle_id", "fed");
         std::string leader_vehicle_id = get_parameter("leader_vehicle_id").as_string();
@@ -23,12 +23,12 @@ public:
         leader_pose_sub_ = create_subscription<nav_msgs::msg::Odometry>(
         "/" + leader_vehicle_id + "/" + TOPIC_LEADER_POSE_IN,
         10,
-        std::bind(&ObsAvoidanceGoalFilterNode::LeaderOdomCallback, this, std::placeholders::_1));
+        std::bind(&ObsAvoidGoalFilterNode::LeaderOdomCallback, this, std::placeholders::_1));
 
         candidate_pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
         TOPIC_FOLLOWER_POSE_IN,
         10,
-        std::bind(&ObsAvoidanceGoalFilterNode::CandidateFollowerPoseCallback, this, std::placeholders::_1));
+        std::bind(&ObsAvoidGoalFilterNode::CandidateFollowerPoseCallback, this, std::placeholders::_1));
 
         filtered_pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>(
         TOPIC_FOLLOWER_POSE_OUT,
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 
     // Note: Put --ros-args -r __ns:=/<vehicle_id> in programs args when debugging from IDE to work with rest of stack
 
-    auto node = std::make_shared<ObsAvoidanceGoalFilterNode>();
+    auto node = std::make_shared<ObsAvoidGoalFilterNode>();
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node->get_node_base_interface());
     executor.spin();

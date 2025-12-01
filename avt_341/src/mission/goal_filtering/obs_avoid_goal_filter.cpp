@@ -14,7 +14,7 @@ namespace avt_341::mission {
 ObsAvoidGoalFilter::ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id)
     : node_(node),
     params_(vehicle_id),
-    last_point_(std::optional<Eigen::Vector2d>()),
+    last_point_(avt_341::optional<Eigen::Vector2d>()),
     row_idx_(-1),
     deadlock_(false) {
 
@@ -158,7 +158,7 @@ void ObsAvoidGoalFilter::Reset() {
     deadlock_ = false;
     direction_ = "";
     row_idx_ = -1;
-    last_point_ = std::optional<Eigen::Vector2d>();
+    last_point_ = avt_341::optional<Eigen::Vector2d>();
 }
 
 bool ObsAvoidGoalFilter::FollowerDiverges(const Eigen::Vector2d& leader_point, const Eigen::Vector2d& follower_point) const {
