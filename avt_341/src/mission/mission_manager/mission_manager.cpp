@@ -10,7 +10,7 @@ MissionManager::MissionManager(
     const FormationParameters & formation_params,
     const ToiParameters & toi_params,
     const std::shared_ptr<node::NodeProxy> & node_proxy,
-    const std::shared_ptr<FormationGoalFilter> & goal_filter
+    const std::shared_ptr<GoalFilter> & goal_filter
     )
     : formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy), goal_filter_(goal_filter){
 
@@ -303,6 +303,7 @@ void MissionManager::updateTasks() {
 
         if(!active_task->init_done){
           active_task->init();
+          goal_filter_->Reset();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
           publishTaskInfo(active_task);
         }
@@ -374,6 +375,7 @@ void MissionManager::reset(){
   task_completions_.clear();
   current_gp_goal = avt_341::msg::PoseStamped();
   mission_contacts.clear();
+  goal_filter_->Reset();
 
   avt_341::msg::String reset_msg;
   reset_msg.data = avt_341::node::NodeType::GlobalPlanner;

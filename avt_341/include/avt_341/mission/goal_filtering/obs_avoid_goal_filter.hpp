@@ -4,13 +4,13 @@
 #include <Eigen/Dense>
 #include <string>
 
-#include "formation_goal_filter.hpp"
+#include "goal_filter.hpp"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/node/occupancy_grid_subscriber.h"
 
 namespace avt_341::mission {
 
-struct ObsAvoidanceGoalFilterParams {
+struct ObsAvoidGoalFilterParams {
 
     std::string vehicle_id;
     int occ_threshold = 0;
@@ -20,18 +20,21 @@ struct ObsAvoidanceGoalFilterParams {
     double min_obstacle_width = 5.0;
     double follower_divergence_threshold = 30.0;
     bool persist_state = true;
+    bool reset_side_on_free_space = true;
 
-    explicit ObsAvoidanceGoalFilterParams(const std::string &vehicle_id)
+    explicit ObsAvoidGoalFilterParams(const std::string &vehicle_id)
         : vehicle_id(vehicle_id){
     }
 };
 
-class ObsAvoidanceGoalFilter : public FormationGoalFilter {
+class ObsAvoidGoalFilter : public GoalFilter {
 
 public:
-    explicit ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id);
+    explicit ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id);
 
     msg::Pose Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) override;
+
+    void Reset() override;
 
     // Divergence check
     bool FollowerDiverges(const Eigen::Vector2d& leader_point,
@@ -55,7 +58,7 @@ private:
                                   double desired_yaw);
 
     std::shared_ptr<node::NodeProxy> node_;
-    ObsAvoidanceGoalFilterParams params_;
+    ObsAvoidGoalFilterParams params_;
 
     std::shared_ptr<node::OccupancyGridSubscriber> grid_sub_;
     std::shared_ptr<node::Publisher<msg::PoseStamped>> unfiltered_goal_pub_ = nullptr;

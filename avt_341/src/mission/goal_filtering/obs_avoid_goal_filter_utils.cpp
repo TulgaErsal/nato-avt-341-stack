@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <climits>
 #include <tuple>
-#include "avt_341/mission/goal_filtering/obs_avoidance_goal_filter_utils.hpp"
+#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
 
 namespace avt_341::mission {
 
@@ -277,11 +277,17 @@ avoidIntersection(const std::tuple<Eigen::MatrixXi, Eigen::Vector2d, Eigen::Vect
                     auto [patch, patch_pt, center, origin, padding] = patch_data;
     int cur_idx = static_cast<int>(std::round(patch_pt[1]));
 
+    std::string dir_search = dir;
     if (prev_idx < 0) {
         prev_idx = cur_idx;
+        dir_search = "left";     // TODO: validate
     }
-    int new_idx = getFirstFeasibleIndex(row, prev_idx, cur_idx, dir);
-    bool deadlock = (new_idx == -1 || isInDeadlock(row, prev_idx, new_idx, min_obstacle_width));
+    int new_idx = getFirstFeasibleIndex(row, prev_idx, cur_idx, dir_search);
+    std::cout << "avoidIntersection: prev_idx=" << prev_idx << ", cur_idx=" << cur_idx << ", new_idx=" << new_idx  << ", dir=" << dir << std::endl;
+
+    const bool deadlock_check = isInDeadlock(row, prev_idx, new_idx, min_obstacle_width);
+    std::cout << " deadlock_check=" << deadlock_check << std::endl;
+    bool deadlock = (new_idx == -1 || deadlock_check);
 
     if (!deadlock) {
         patch_pt[1] = new_idx;

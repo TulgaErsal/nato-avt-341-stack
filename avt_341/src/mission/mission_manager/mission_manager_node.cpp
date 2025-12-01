@@ -4,7 +4,9 @@
 #include "avt_341/mission/mission_manager.h"
 #include "avt_341/mission/mission_manager_parser.h"
 #include <queue>
-#include "avt_341/mission/goal_filtering/obs_avoidance_goal_filter.hpp"
+
+#include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
 std::queue<avt_341::msg::Communication> comm_msgs;
 std::queue<avt_341::msg::PoseStamped> reached_goals;
@@ -121,27 +123,6 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std
     : nullptr;
 }
 
-std::shared_ptr<avt_341::mission::FormationGoalFilter> create_goal_filter(
-    const std::string & vehicle_id,
-    std::string method_id,
-    const std::shared_ptr<avt_341::node::NodeProxy> & node
-    ) {
-
-    if (method_id.empty() || !avt_341::mission::GoalFilterMethod::IsValid(method_id)) {
-        node->log_warning(
-            "Formation goal filter %s for follow vehicles is invalid. Using default instead.",
-            method_id.c_str());
-        method_id = avt_341::mission::GoalFilterMethod::Default();
-    }
-
-    node->log_info("Using goal filter method: %s", method_id.c_str());
-
-    if (method_id == avt_341::mission::GoalFilterMethod::ObstacleAvoidance) {
-        return std::make_shared<avt_341::mission::ObsAvoidanceGoalFilter>(node, vehicle_id);
-    }
-    return std::make_shared<avt_341::mission::NullGoalFilter>();
-}
-
 int main(int argc, char **argv) {
 
     // initialize the node
@@ -195,7 +176,7 @@ int main(int argc, char **argv) {
 
     std::string goal_filter_method;
     nh->get_parameter("~formation_goal_filter", goal_filter_method, std::string("none"));
-    std::shared_ptr<avt_341::mission::FormationGoalFilter> goal_filter = create_goal_filter(formation_params.my_name, goal_filter_method, nh);
+    std::shared_ptr<avt_341::mission::GoalFilter> goal_filter = avt_341::mission::create_goal_filter(formation_params.my_name, goal_filter_method, nh);
 
     tracking_veh = toUpper(tracking_veh);
     tracked_veh = toUpper(tracked_veh);

@@ -20,9 +20,9 @@ add_executable(
   "../formation_speed_control.cpp"
   "../formation_utils.cpp"
 
-  "../goal_filtering/formation_goal_filter.cpp"
-  "../goal_filtering/obs_avoidance_goal_filter.cpp"
-  "../goal_filtering/obs_avoidance_goal_filter_utils.cpp"
+  "../goal_filtering/goal_filter_factory.cpp"
+  "../goal_filtering/obs_avoid_goal_filter.cpp"
+  "../goal_filtering/obs_avoid_goal_filter_utils.cpp"
 )
 
 if(USING_CATKIN)

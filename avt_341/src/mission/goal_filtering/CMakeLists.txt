@@ -13,9 +13,9 @@ if(USING_AMENT)
 
     add_executable(${PROJECT_NAME}_obs_avoidance_goal_filter_node
             obs_avoidance_goal_filter_node.cpp
-            obs_avoidance_goal_filter.cpp
-            obs_avoidance_goal_filter_utils.cpp
-            formation_goal_filter.cpp
+            obs_avoid_goal_filter.cpp
+            obs_avoid_goal_filter_utils.cpp
+            goal_filter_factory.cpp
     )
 
     target_link_libraries(${PROJECT_NAME}_obs_avoidance_goal_filter_node

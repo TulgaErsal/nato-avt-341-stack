@@ -1,8 +1,8 @@
-#include "avt_341/mission/goal_filtering/obs_avoidance_goal_filter.hpp"
+#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
 #include <avt_341/avt_341_utils.h>
 
-#include "avt_341/mission/goal_filtering/obs_avoidance_goal_filter_utils.hpp"
+#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
 #include "avt_341/node/occupancy_grid_subscriber.h"
 
 namespace avt_341::mission {
@@ -11,7 +11,7 @@ namespace avt_341::mission {
 #define UNFILTERED_GOAL_TOPIC_NAME "avt_341/unfiltered_follower_pose"
 #define WORLD_TF_FRAME "map"
 
-ObsAvoidanceGoalFilter::ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id)
+ObsAvoidGoalFilter::ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id)
     : node_(node),
     params_(vehicle_id),
     last_point_(std::optional<Eigen::Vector2d>()),
@@ -25,6 +25,7 @@ ObsAvoidanceGoalFilter::ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> 
     node->get_parameter(param_prefix + "patch_pad_width", params_.patch_pad_width, 20.0);
     node->get_parameter(param_prefix + "min_obstacle_width", params_.min_obstacle_width, 5.0);
     node->get_parameter(param_prefix + "follower_divergence_threshold", params_.follower_divergence_threshold, 30.0);
+    node->get_parameter(param_prefix + "reset_side_on_free_space", params_.reset_side_on_free_space, true);
     node->get_parameter(param_prefix + "persist_state", params_.persist_state, true);
 
     node_->log_info("Formation goal filter parameters:"
@@ -36,6 +37,7 @@ ObsAvoidanceGoalFilter::ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> 
                     "\n patch_pad_width: %.2f"
                     "\n min_obstacle_width: %.2f"
                     "\n follower_divergence_threshold: %.2f"
+                    "\n reset_side_on_free_space: %d"
                     "\n persist_state: %d",
                     params_.vehicle_id.c_str(),
                     params_.occ_threshold,
@@ -44,6 +46,7 @@ ObsAvoidanceGoalFilter::ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> 
                     params_.patch_pad_width,
                     params_.min_obstacle_width,
                     params_.follower_divergence_threshold,
+                    params_.reset_side_on_free_space,
                     params_.persist_state
                     );
 
@@ -51,14 +54,14 @@ ObsAvoidanceGoalFilter::ObsAvoidanceGoalFilter(std::shared_ptr<node::NodeProxy> 
         node,
         OCCUPANCY_GRID_TOPIC_NAME,
         10,
-        std::bind(&ObsAvoidanceGoalFilter::OccupancyGridCallback, this, std::placeholders::_1));
+        std::bind(&ObsAvoidGoalFilter::OccupancyGridCallback, this, std::placeholders::_1));
 
     if (params_.pub_unfiltered_goal) {
         unfiltered_goal_pub_ = node_->create_publisher<msg::PoseStamped>(UNFILTERED_GOAL_TOPIC_NAME, 1);
     }
 }
 
-void ObsAvoidanceGoalFilter::OccupancyGridCallback(msg::OccupancyGridPtr msg) {
+void ObsAvoidGoalFilter::OccupancyGridCallback(msg::OccupancyGridPtr msg) {
     const int W = msg->info.width;
     const int H = msg->info.height;
 
@@ -111,18 +114,18 @@ void ObsAvoidanceGoalFilter::OccupancyGridCallback(msg::OccupancyGridPtr msg) {
     occupancy_grid_.block(i_start, j_start, i_end-i_start, j_end-j_start) = region_to_pad;
 }
 
-Eigen::Vector2d ObsAvoidanceGoalFilter::ToGridCoords(const msg::Point& ros_point) {
+Eigen::Vector2d ObsAvoidGoalFilter::ToGridCoords(const msg::Point& ros_point) {
     // Code currently expects rows to be in x position
     return (Eigen::Vector2d(ros_point.y, ros_point.x) - map_origin_)/map_resolution_;
 }
 
-Eigen::Vector2d ObsAvoidanceGoalFilter::ToRosCoords(const Eigen::Vector2d& grid_point) {
+Eigen::Vector2d ObsAvoidGoalFilter::ToRosCoords(const Eigen::Vector2d& grid_point) {
     // Code currently expects rows to be in x position
     auto temp = (grid_point + map_origin_) * map_resolution_;
     return Eigen::Vector2d(temp.y(), temp.x());
 }
 
-msg::Pose ObsAvoidanceGoalFilter::Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) {
+msg::Pose ObsAvoidGoalFilter::Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) {
 
     if (occupancy_grid_.size() == 0) {
         node_->log_warning("No occupancy grid received yet.");
@@ -151,13 +154,20 @@ msg::Pose ObsAvoidanceGoalFilter::Filter(const msg::Pose &candidate_goal, const 
     return return_msg;
 }
 
-bool ObsAvoidanceGoalFilter::FollowerDiverges(const Eigen::Vector2d& leader_point, const Eigen::Vector2d& follower_point) const {
+void ObsAvoidGoalFilter::Reset() {
+    deadlock_ = false;
+    direction_ = "";
+    row_idx_ = -1;
+    last_point_ = std::optional<Eigen::Vector2d>();
+}
+
+bool ObsAvoidGoalFilter::FollowerDiverges(const Eigen::Vector2d& leader_point, const Eigen::Vector2d& follower_point) const {
     return (leader_point - follower_point).norm() > params_.follower_divergence_threshold;
 }
 
 
 std::tuple<Eigen::MatrixXi, Eigen::Vector2i, Eigen::Vector2i, Eigen::Vector2d>
-ObsAvoidanceGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
+ObsAvoidGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
             const std::tuple<Eigen::MatrixXi, Eigen::Vector2i, Eigen::Vector2i>& pd,
             const std::tuple<Eigen::Vector2d, Eigen::Vector2d, double>& fd) {
     using Eigen::MatrixXi;
@@ -187,6 +197,12 @@ ObsAvoidanceGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
     // PART 1: direct collision?
     // -----------------------------
     const bool is_in_collision = isInCollision(grid, pt);
+
+    if (params_.reset_side_on_free_space && !is_in_collision) {
+        dir = "";
+        prev = -1;
+    }
+
     if (!deadlock && is_in_collision) {
         no_collision = false;
 
@@ -234,10 +250,11 @@ ObsAvoidanceGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
     // PART 3: deadlock handling
     // --------------------------------------------
     if (deadlock) {
+        if (!deadlock_) {
+            node_->log_warning("ObsAvoidGoalFilter: Entering deadlock state");
+        }
         newpt = last_filtered_goal;    // stay at previous point
         prev  = -1;     // no valid row index
-    } else {
-        // keep cached state to help continuity across frames
     }
 
     // divergence diagnostic
@@ -262,7 +279,7 @@ ObsAvoidanceGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
 
 
 
-Eigen::Vector2d ObsAvoidanceGoalFilter::ProcessSample(
+Eigen::Vector2d ObsAvoidGoalFilter::ProcessSample(
                                              const Eigen::Vector2d& point,
                                              const Eigen::Vector2d& offset,
                                              const double desired_yaw) {
