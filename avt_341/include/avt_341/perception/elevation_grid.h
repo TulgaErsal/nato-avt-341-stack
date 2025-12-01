@@ -94,11 +94,9 @@ public:
 	float Slope(const Cell& cell) const override;
 	void AddOccupancy(const avt_341::msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) override;
 
-	void SetSlopeThreshold(float tr, float tr_max) {
-		thresh_ = std::max(0.0f, tr);
-		thresh_max_ = std::max(tr_max, tr);
-		grid_slope_mult_ = static_cast<float>(GRID_MAX_VALUE) / (thresh_max_ - thresh_);
-	}
+	void SetSlopeParameters(optional<float> tr, optional<float> tr_max, bool recompute_grid = false);
+
+	void RecomputeGridDilation();
 
 	void SetUseElevation(bool use_elevation) {
 		use_elevation_ = use_elevation;
@@ -164,6 +162,14 @@ public:
 
 
 private:
+
+	void DilateCell(
+		std::vector<std::vector<Cell>>& cells,
+		int xi,
+		int yi,
+		int dsize_x,
+		int dsize_y,
+		float original_slope = 0.0f);
 
 	std::shared_ptr<node::NodeProxy> node_ref_;
 	PointCloudFilter pc_filter;						// Filter for input point clouds

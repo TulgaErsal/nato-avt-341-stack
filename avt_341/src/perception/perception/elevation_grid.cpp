@@ -172,51 +172,114 @@ void ElevationGrid::AddOccupancy(const avt_341::msg::PointCloud& point_cloud, st
 			int xi = (int)floor((point_cloud.points[i].x - llx_) / res_);
 			int yi = (int)floor((point_cloud.points[i].y - lly_) / res_);
 			if (xi >= 0 && xi < nx_ && yi >= 0 && yi < ny_) {
+				Cell& cell = cells[yi][xi];
 				grid_update_region_.UpdateBounds(xi,yi);
-				const float original_slope = Slope(cells[yi][xi]);
+				const float original_slope = Slope(cell);
 				float h = point_cloud.points[i].z;
 
-				if (h > cells[yi][xi].high.val) {
-					cells[yi][xi].high.val = h;
-					cells[yi][xi].high.age = 0.0f;
+				if (h > cell.high.val) {
+					cell.high.val = h;
+					cell.high.age = 0.0f;
 				}
-				if (h < cells[yi][xi].low.val) {
-					cells[yi][xi].low.val = h;
-					cells[yi][xi].low.age = 0.0f;
+				if (h < cell.low.val) {
+					cell.low.val = h;
+					cell.low.age = 0.0f;
 				}
 				if (has_segmentation_local) {
 					float terr_val = point_cloud.channels[0].values[i];
-					cells[yi][xi].terrain = fmax(cells[yi][xi].terrain, terr_val);
+					cell.terrain = fmax(cell.terrain, terr_val);
 				}
 
 				// CTG 5/8/25, add calculations necessary for tracking RMS
-				cells_[yi][xi].summed_elev += h;
-				cells_[yi][xi].num_points += 1;
-				if (cells_[yi][xi].num_points > 0) {
-					cells_[yi][xi].avg_elev = cells_[yi][xi].summed_elev / cells_[yi][xi].num_points;
-					float dh = h - cells_[yi][xi].avg_elev;
-					cells_[yi][xi].sum_of_squares += dh * dh;
-					cells_[yi][xi].rms = sqrtf(cells_[yi][xi].sum_of_squares / cells_[yi][xi].num_points);
+				cell.summed_elev += h;
+				cell.num_points += 1;
+				if (cell.num_points > 0) {
+					cell.avg_elev = cell.summed_elev / cell.num_points;
+					float dh = h - cell.avg_elev;
+					cell.sum_of_squares += dh * dh;
+					cell.rms = sqrtf(cell.sum_of_squares / cell.num_points);
 				}
 				else {
-					cells_[yi][xi].avg_elev = 0.0f;
-					cells_[yi][xi].rms = 0.0f;
+					cell.avg_elev = 0.0f;
+					cell.rms = 0.0f;
 				}
 
-				// Optional dilation
 				if (dilate) {
-					if ((!cells[yi][xi].has_dilated || Slope(cells[yi][xi]) > original_slope) && PastSlopeThreshold(cells[yi][xi])) {
-						cells[yi][xi].has_dilated = true;
-						uint8_t grid_val = static_cast<uint8_t>(grid_dilate_proportion_ * static_cast<float>(GetGridCellValue(cells[yi][xi])));
-						for (int xii = std::max(0, xi - dsize_x); xii <= std::min(xi + dsize_x, nx_ - 1); xii++) {
-							for (int yii = std::max(0, yi - dsize_y); yii <= std::min(yi + dsize_y, ny_ - 1); yii++) {
-								cells[yii][xii].dilated_val = std::max(grid_val, cells[yii][xii].dilated_val);
-							}
-						}
-					}
+					DilateCell(cells, xi, yi, dsize_x, dsize_y, original_slope);
 				}
 			}
 		}
+	}
+}
+
+void ElevationGrid::SetSlopeParameters(
+	optional<float> tr,
+	optional<float> tr_max,
+	const bool recompute_grid) {
+
+	thresh_ = std::max(0.0f, tr.value_or(thresh_));
+	thresh_max_ = std::max(tr_max.value_or(thresh_max_), thresh_);
+
+	constexpr float eps = std::numeric_limits<float>::epsilon();
+	if (std::abs(thresh_max_ - thresh_) < eps) {
+		thresh_max_ = thresh_ + eps;
+	}
+
+	grid_slope_mult_ = static_cast<float>(GRID_MAX_VALUE) / (thresh_max_ - thresh_);
+
+	if (recompute_grid) {
+		node_ref_->log_info(
+			"Updating grid dilation with slope parameters: thresh=%.2f, thresh_max=%.2f",
+			thresh_,
+			thresh_max_);
+		RecomputeGridDilation();
+	}
+}
+
+void ElevationGrid::RecomputeGridDilation() {
+
+	for (auto & row : cells_) {
+		for (auto & cell : row) {
+			cell.has_dilated = false;
+			cell.dilated_val = 0;
+		}
+	}
+
+	if (!dilate_) {
+		return;
+	}
+
+	const int dsize_x = GetDilateXSize();
+	const int dsize_y = GetDilateYSize();
+
+	for (int xi = 0; xi < nx_; xi++) {
+		for (int yi = 0; yi < ny_; yi++) {
+			DilateCell(cells_, xi, yi, dsize_x, dsize_y);
+		}
+	}
+}
+
+void ElevationGrid::DilateCell(
+	std::vector<std::vector<Cell>>& cells,
+	const int xi,
+	const int yi,
+	const int dsize_x,
+	const int dsize_y,
+	const float original_slope) {
+
+	Cell & cell = cells[yi][xi];
+
+	if (PastSlopeThreshold(cell) && (!cell.has_dilated || Slope(cell) > original_slope)) {
+
+		cell.has_dilated = true;
+		auto dilated_val = static_cast<uint8_t>(grid_dilate_proportion_ * static_cast<float>(GetGridCellValue(cell)));
+
+		for (int xii = std::max(0, xi - dsize_x); xii <= std::min(xi + dsize_x, nx_ - 1); xii++) {
+			for (int yii = std::max(0, yi - dsize_y); yii <= std::min(yi + dsize_y, ny_ - 1); yii++) {
+				cells[yii][xii].dilated_val = std::max(dilated_val, cells[yii][xii].dilated_val);
+			}
+		}
+
 	}
 }
 
