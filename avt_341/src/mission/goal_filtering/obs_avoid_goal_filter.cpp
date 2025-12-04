@@ -234,16 +234,13 @@ ObsAvoidGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
             std::tie(patch, orig, pad) = extractPatch(grid, newpt, patch_path_cells_width);
         }
 
-        const Vector2d leader2 = newpt - off;
-        const double angle2 = std::atan2(std::abs(newpt[0] - leader2[0]),
-                                         std::abs(newpt[1] - leader2[1]));
         const Vector2d pc2(patch.rows() / 2.0, patch.cols() / 2.0);
         Vector2d ppt2(pt[0] - orig[0] + pad[0],
                       pt[1] - orig[1] + pad[1]);
 
-        auto [row2, rot2, ppt_adj2] = getRowFromPatch(patch, ppt2, pc2, angle2);
+        auto [row2, rot2, ppt_adj2] = getRowFromPatch(patch, ppt2, pc2, angle);
         std::tie(newpt, dir, prev, deadlock) =
-            avoidIntersection({rot2, ppt_adj2, pc2, orig, pad}, angle2, row2, prev, dir, deadlock_obs_cells_width);
+            avoidIntersection({rot2, ppt_adj2, pc2, orig, pad}, angle, row2, prev, dir, deadlock_obs_cells_width);
     }
 
     // --------------------------------------------
