@@ -37,6 +37,21 @@ ot:
   tracking_veh: ""                                                                      # Vehicle doing the tracking. Disabled if empty
   tracked_veh: ""                                                                       # Vehicle to track. Disabled if empty
 
+# Goal Filtering
+# ======================================================================================================================
+formation_goal_filter: 'none'                                                           # Formation goal filtering method 'none' | 'obs_avoid'
+
+fgf_obs_avoid:
+  occ_threshold: 0                                                                      # Threshold for occupancy cells to be considered an obstacle.
+  padding: 1.0                                                                          # Amount of additional padding (m) beyond what is already included in grid dilation of perception node.
+  pub_unfiltered_goal: False                                                            # For debugging only. If true, publish unfiltered formation goal. Filtered goal will still be used as follower target.
+  patch_pad_width: 20.0                                                                 # Occupancy grid patch width (m) to search for free cells if candidate follower goal initially placed in occupied cell
+  min_obstacle_width: 5.0                                                               # Minimum obstacle width (m) between successive timestep goals after filtering to be considered in deadlock
+  follower_divergence_threshold: 30.0                                                   # Threshold (m) after which processed follower goal is considered to diverge from leader path
+  reset_side_on_free_space: True                                                        # If true, sidedness state will be reset when candidate goal falls in free space.
+  persist_state: True                                                                   # If true persists state between invocations of goal filter
+  ignore_deadlock: True                                                                 # If true, deadlock condition will be ignored and the internal state of the filter reset
+
 # Formation Control
 # ======================================================================================================================
 use_leader_breadcrumbs: false                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.

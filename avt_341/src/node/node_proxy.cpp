@@ -183,6 +183,10 @@ void NodeProxy::spin() {
       rate_.sleep();
     }
 
+    NodeProxy::NodeProxy(rclcpp::Node* node)
+      : node_(node) {
+    }
+
     NodeProxy::NodeProxy(const std::string &node_name) {
       node_ = rclcpp::Node::make_shared(node_name);
       this->get_parameter("/is_empty_waypoints", is_empty_waypoints_, false);

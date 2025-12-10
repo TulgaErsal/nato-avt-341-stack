@@ -4,7 +4,7 @@ function(DownloadWindowsDll)
     file(DOWNLOAD
     "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=6fqeeadg&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=9f3aa8d240fd99300accfafa57220920b281559bfaa5a2ee5882dd7d0beb844d
+    EXPECTED_HASH SHA256=babc9a321db56d959d37cd14684d4c7efe7f338c6c6c82b5ccf6775f0d76b322
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
@@ -30,6 +30,18 @@ endfunction(DownloadLinuxSharedLibrary)
 # set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
 find_package(Matlab)
 if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
+
+    if(NOT Matlab_MCLMCRRT_LIB)
+        if(WIN32 OR WIN64)
+             set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+             set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+        else()
+             set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
+             set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
+        endif()
+
+    endif()
+
     include_directories(
         include
         ${OpenCV_INCLUDE_DIRS}
@@ -73,7 +85,7 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 
         if(WIN32 OR WIN64)
             DownloadWindowsDll()
-            
+
             target_link_libraries(uab_perception_node
                 "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.lib"
                 ${Matlab_MCLMCRRT_LIB})
@@ -81,7 +93,7 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
                     DESTINATION "lib/${PROJECT_NAME}")
         else()
             DownloadLinuxSharedLibrary()
-        
+
             target_link_libraries(uab_perception_node
                 "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
                 ${Matlab_MCLMCRRT_LIB})

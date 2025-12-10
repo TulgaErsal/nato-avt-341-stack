@@ -7,6 +7,15 @@
 namespace avt_341 {
 namespace perception {
 
+const std::string GridPubMethod::Full = "full";
+const std::string GridPubMethod::Window = "window";
+const std::string GridPubMethod::Updates = "updates";
+
+bool GridPubMethod::IsGridPubMethodValid(const std::string & selected_method){
+	std::vector<std::string> valid_methods = {Full, Window, Updates};
+	return std::find(valid_methods.begin(), valid_methods.end(), selected_method) != valid_methods.end();
+}
+
 ElevationGrid::ElevationGrid() {
 	width_ = 200.0f;
 	height_ = 200.0f;
@@ -337,7 +346,7 @@ uint8_t ElevationGrid::GetGridCellValue(const Cell& cell) const {
 
 }
 
-void ElevationGrid::FillGridMsgCells(std::vector<int8_t> & data, const GridRegion region, bool is_segmentation) const {
+void ElevationGrid::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation) const {
 	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
 	int c = 0;
@@ -356,7 +365,7 @@ avt_341::msg::OccupancyGridUpdate ElevationGrid::GetGridUpdate(bool is_segmentat
 	}
 	int dilate_x = GetDilateXSize();
 	int dilate_y = GetDilateYSize();
-	GridRegion dilated_region = grid_update_region_.Dilate(dilate_x, dilate_y, nx_, ny_);
+	core::GridRegion dilated_region = grid_update_region_.Dilate(dilate_x, dilate_y, nx_, ny_);
 	grid_update_msg.x = dilated_region.x_min;
 	grid_update_msg.y = dilated_region.y_min;
 	grid_update_msg.width = dilated_region.Width();
@@ -382,7 +391,7 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(bool is_segmentation) {
 	grid.info.origin.orientation.z = 0.0;
 	grid.data.resize(nx_ * ny_);
 
-	FillGridMsgCells(grid.data, GridRegion(0, nx_, 0, ny_), is_segmentation);
+	FillGridMsgCells(grid.data, core::GridRegion(0, nx_, 0, ny_), is_segmentation);
 	return grid;
 }
 
@@ -409,7 +418,7 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double wi
 	grid.info.origin.orientation.z = 0.0;
 	grid.data.resize(local_nx * local_ny);
 
-	FillGridMsgCells(grid.data, GridRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation);
+	FillGridMsgCells(grid.data, core::GridRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation);
 	return grid;
 }
 

@@ -5,6 +5,9 @@
 #include "avt_341/mission/mission_manager_parser.h"
 #include <queue>
 
+#include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
+
 std::queue<avt_341::msg::Communication> comm_msgs;
 std::queue<avt_341::msg::PoseStamped> reached_goals;
 std::queue<avt_341::msg::Path> contacts;
@@ -120,7 +123,6 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std
     : nullptr;
 }
 
-
 int main(int argc, char **argv) {
 
     // initialize the node
@@ -171,10 +173,15 @@ int main(int argc, char **argv) {
 
     nh->get_parameter("~ot_tracking_veh", tracking_veh, std::string(""));
     nh->get_parameter("~ot_tracked_veh", tracked_veh, std::string(""));
+
+    std::string goal_filter_method;
+    nh->get_parameter("~formation_goal_filter", goal_filter_method, std::string("none"));
+    std::shared_ptr<avt_341::mission::GoalFilter> goal_filter = avt_341::mission::create_goal_filter(formation_params.my_name, goal_filter_method, nh);
+
     tracking_veh = toUpper(tracking_veh);
     tracked_veh = toUpper(tracked_veh);
 
-    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh);
+    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, goal_filter);
     mgr->sodist_threshold = sodist_threshold;
 
     std::shared_ptr<avt_341::mission::FormationSpeedController> speedController = avt_341::mission::createFormationSpeedController(fsc_type, formation_params.my_name, fsc_params, nh);

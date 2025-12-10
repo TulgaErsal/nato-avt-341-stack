@@ -6,8 +6,13 @@
 namespace avt_341 {
 namespace mission {
 
-MissionManager::MissionManager(const FormationParameters & formation_params, const ToiParameters & toi_params, std::shared_ptr<node::NodeProxy> node_proxy)
-: formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy){
+MissionManager::MissionManager(
+    const FormationParameters & formation_params,
+    const ToiParameters & toi_params,
+    const std::shared_ptr<node::NodeProxy> & node_proxy,
+    const std::shared_ptr<GoalFilter> & goal_filter
+    )
+    : formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy), goal_filter_(goal_filter){
 
     my_name = formation_params.my_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
@@ -184,11 +189,19 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
 }
 
 void MissionManager::publishGoal(const avt_341::msg::PoseStamped & target_pose){
-    avt_341::msg::Path goal_msg;
-    
-    // Offset to local map frame
+
     avt_341::msg::PoseStamped target_pose_msg = target_pose;
 
+    Task* current_task = currentTask();
+    if (current_task != nullptr
+        && current_task->hasFormation() && current_task->getFormationDef()->isFollowing()) {
+
+        target_pose_msg.pose = goal_filter_->Filter(
+            target_pose.pose,
+            leader_odometry.pose.pose);
+    }
+
+    avt_341::msg::Path goal_msg;
     goal_msg.poses.clear();
     goal_msg.poses.push_back(target_pose_msg);
     goal_msg.header.stamp = node_proxy_->get_stamp();
@@ -290,6 +303,7 @@ void MissionManager::updateTasks() {
 
         if(!active_task->init_done){
           active_task->init();
+          goal_filter_->Reset();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
           publishTaskInfo(active_task);
         }
@@ -361,6 +375,7 @@ void MissionManager::reset(){
   task_completions_.clear();
   current_gp_goal = avt_341::msg::PoseStamped();
   mission_contacts.clear();
+  goal_filter_->Reset();
 
   avt_341::msg::String reset_msg;
   reset_msg.data = avt_341::node::NodeType::GlobalPlanner;

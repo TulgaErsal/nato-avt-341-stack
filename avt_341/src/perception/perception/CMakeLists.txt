@@ -9,7 +9,6 @@ add_executable(
         "clearing_methods/raytrace_clearing_method.cpp"
         "clearing_methods/time_clearing_method.cpp"
         "elevation_grid.cpp"
-        "elevation_grid_components.cpp"
         "point_cloud_filter.cpp"
 )
 
