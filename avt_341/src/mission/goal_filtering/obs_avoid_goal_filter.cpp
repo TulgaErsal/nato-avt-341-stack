@@ -27,6 +27,7 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, co
     node->get_parameter(param_prefix + "follower_divergence_threshold", params_.follower_divergence_threshold, 30.0);
     node->get_parameter(param_prefix + "reset_side_on_free_space", params_.reset_side_on_free_space, true);
     node->get_parameter(param_prefix + "persist_state", params_.persist_state, true);
+    node->get_parameter(param_prefix + "ignore_deadlock", params_.ignore_deadlock, false);
 
     node_->log_info("Formation goal filter parameters:"
                     "\n vehicle_id: %s"
@@ -38,7 +39,8 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, co
                     "\n min_obstacle_width: %.2f"
                     "\n follower_divergence_threshold: %.2f"
                     "\n reset_side_on_free_space: %d"
-                    "\n persist_state: %d",
+                    "\n persist_state: %d"
+                    "\n ignore_deadlock: %d",
                     params_.vehicle_id.c_str(),
                     params_.occ_threshold,
                     params_.padding,
@@ -268,6 +270,12 @@ ObsAvoidGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
         row_idx_ = prev;
         last_point_ = newpt;
         // patch, orig, and pad also technically part of state but patch and orig always re-assigned and pad currently always returned as 0s
+    }
+
+    if (deadlock_ && params_.ignore_deadlock) {
+        node_->log_warning("Ignoring detected deadlock and resetting internal state since ignore_deadlock=True");
+        deadlock_ = false;
+        Reset();
     }
 
     return {patch, orig, pad, newpt};

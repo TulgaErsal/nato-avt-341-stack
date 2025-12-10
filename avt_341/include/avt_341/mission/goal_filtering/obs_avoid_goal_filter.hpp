@@ -21,6 +21,7 @@ struct ObsAvoidGoalFilterParams {
     double follower_divergence_threshold = 30.0;
     bool persist_state = true;
     bool reset_side_on_free_space = true;
+    bool ignore_deadlock = false;
 
     explicit ObsAvoidGoalFilterParams(const std::string &vehicle_id)
         : vehicle_id(vehicle_id){
