@@ -49,7 +49,8 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, co
                     params_.min_obstacle_width,
                     params_.follower_divergence_threshold,
                     params_.reset_side_on_free_space,
-                    params_.persist_state
+                    params_.persist_state,
+                    params_.ignore_deadlock
                     );
 
     grid_sub_ = std::make_shared<node::OccupancyGridSubscriber>(
