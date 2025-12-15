@@ -29,7 +29,7 @@ w_final_speed: 200. # weight on deviationFromDesiredFinalSpeed in the objective 
 safety_margin: 0.0 # safety margin [m] around obstacles
 grid_resolution: 0.25 # resolution of the occupancy grid [m]
 
-always_publish_goal: true # always publish goal (overrides front_angle_goal)
+always_publish_goal: false # always publish goal (overrides front_angle_goal)
 front_angle_goal: 1.571 # the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle [rad]
 front_angle_obstacle: 1.571 # the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle [rad]
 front_angle_segmentation: 1.571 # the angle measured from the vehicle heading beyond which segmentation data is considered not in front of the vehicle [rad]
