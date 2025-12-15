@@ -19,7 +19,7 @@ use_segmentation: False
 segmentation_resolution: 0.25
 linear_solver: "ma27" # See https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_linear_solver for list of linear solvers. Recommended: 'ma27'. Default: 'mumps'
 
-w_distance_to_obstacles: 0.5 # weight on distanceToObstacles in the objective function
+w_distance_to_obstacles: 5. # weight on distanceToObstacles in the objective function
 w_distance_to_goal: 150. # weight on distanceToGoal in the objective function
 w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
 w_yaw_accel: 0.8 #  weight on yawAccel in the objective function
