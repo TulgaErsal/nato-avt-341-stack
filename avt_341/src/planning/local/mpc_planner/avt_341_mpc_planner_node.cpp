@@ -572,6 +572,41 @@ void InitialisePlanner()
     node->log_info("MPC planner initialized.");
 }
 
+void UpdateCostFnWeights(const avt_341::node::RosParameterEvent & p) {
+
+    if (auto param_val = p.get_value<double>("w_distance_to_obstacles")) {
+        node->log_info("Setting w_distance_to_obstacles = %.2f", param_val.value());
+        jl_call1(j_set_w_distance_to_obstacles, jl_box_float64(param_val.value()));
+    }
+
+    if (auto param_val = p.get_value<double>("w_distance_to_goal")) {
+        node->log_info("Setting w_distance_to_goal = %.2f", param_val.value());
+        jl_call1(j_set_w_distance_to_goal, jl_box_float64(param_val.value()));
+    }
+
+    if (auto param_val = p.get_value<double>("w_deviation_in_yaw")) {
+        node->log_info("Setting w_deviation_in_yaw = %.2f", param_val.value());
+        jl_call1(j_set_w_deviation_in_yaw, jl_box_float64(param_val.value()));
+    }
+
+    if (auto param_val = p.get_value<double>("w_yaw_accel")) {
+        node->log_info("Setting w_yaw_accel = %.2f", param_val.value());
+        jl_call1(j_set_w_yaw_accel, jl_box_float64(param_val.value()));
+    }
+
+    if (auto param_val = p.get_value<double>("w_traversability_cost")) {
+        node->log_info("Setting w_traversability_cost = %.2f", param_val.value());
+        jl_call1(j_set_w_traversability_cost, jl_box_float64(param_val.value()));
+    }
+
+    if (auto param_val = p.get_value<double>("w_final_speed")) {
+        node->log_info("Setting w_final_speed = %.2f", param_val.value());
+        jl_call1(j_set_w_final_speed, jl_box_float64(param_val.value()));
+    }
+
+    CATCH_JULIA_EXCEPTION;
+}
+
 int main(int argc, char *argv[])
 {
     node = avt_341::node::init_node(argc, argv, "avt_341_mpc_wrapper_node");
@@ -617,6 +652,15 @@ int main(int argc, char *argv[])
     node->log_info("Number of collocation points: %d.", num_col_points);
 
     node->log_info("Prediction time horizon: %.1f.", prediction_time_horizon);
+
+    node->params()->add_parameter_callback(std::vector<std::string> {
+        "w_distance_to_obstacles",
+        "w_distance_to_goal",
+        "w_deviation_in_yaw",
+        "w_yaw_accel",
+        "w_traversability_cost",
+        "w_final_speed"
+    }, UpdateCostFnWeights);
 
     avt_341::node::Rate node_rate(rate);
     while (avt_341::node::ok() && !has_error)
