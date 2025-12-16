@@ -302,6 +302,7 @@ void MissionManager::updateTasks() {
     if(active_task != nullptr) {
 
         if(!active_task->init_done){
+          publishSpeedSetPoint();
           active_task->init();
           goal_filter_->Reset();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
@@ -376,6 +377,7 @@ void MissionManager::reset(){
   current_gp_goal = avt_341::msg::PoseStamped();
   mission_contacts.clear();
   goal_filter_->Reset();
+  speed_setpoint_state = -1.0;
 
   avt_341::msg::String reset_msg;
   reset_msg.data = avt_341::node::NodeType::GlobalPlanner;
@@ -474,6 +476,21 @@ MissionPoint MissionManager::getClosestOverwatch(){
   return mp_out;
 }
 
+double MissionManager::getSpeedSetpoint() {
+
+  // Task override desired speed takes precedent.
+  // Else take speed setpoint from mission manager state (configured from SetSpeedMsg).
+  // Else take default max speed
+
+  constexpr double eps = std::numeric_limits<double>::epsilon();
+  Task* current_task = currentTask();
+  if(current_task != nullptr && current_task->task_speed > eps){
+    return current_task->task_speed;
+  }
+
+  return speed_setpoint_state > eps ? speed_setpoint_state : formation_params.default_max_speed;
+}
+
 void MissionManager::handleFormationRequest(FormationMsg msg) {
 
     MissionPoint mp;
@@ -487,7 +504,7 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
         handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
     } else if(formation_def->isFollowing()) {
-        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def);
+        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def, msg.desired_speed);
         addTask(followTask, msg.priority_type);
     }
 
@@ -539,11 +556,19 @@ void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinit
     }
 }
 
-void MissionManager::handleSetSpeed(const SetSpeedMsg & msg) {
+void MissionManager::publishSpeedSetPoint() {
     avt_341::msg::Float64 speed_msg;
-    speed_msg.data = msg.desired_speed;
+    speed_msg.data = getSpeedSetpoint();
     speed_pub->publish(speed_msg);
-    node_proxy_->log_info("SET SPEED TO %lf", msg.desired_speed);
+    node_proxy_->log_info("SET SPEED TO %lf", speed_msg.data);
+}
+
+void MissionManager::handleSetSpeedMsg(const SetSpeedMsg & msg) {
+    speed_setpoint_state = msg.desired_speed;
+    if (Task* current_task = currentTask()) {
+        current_task->task_speed = msg.desired_speed;
+    }
+    publishSpeedSetPoint();
 }
 
 void MissionManager::onGoalReached(const avt_341::msg::PoseStamped & pose){

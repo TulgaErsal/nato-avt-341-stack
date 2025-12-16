@@ -9,10 +9,11 @@
 namespace avt_341 {
 namespace mission {
 
-PathFollow::PathFollow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def, double desired_speed)
-: Task(manager, sender, msg_id, formation_def), desired_speed_(desired_speed) {
+PathFollow::PathFollow(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def, double desired_speed)
+: Task(manager, sender, msg_id, formation_def) {
     setPathInternal(avt_341::msg::Path(), "");
     terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
+    task_speed = desired_speed;
 }
 
 bool PathFollow::setPathInternal(const avt_341::msg::Path & path_in, const std::string & name_in) {
@@ -50,8 +51,6 @@ void PathFollow::init_() {
     mgr->publishGoalPath(path);
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
-    if (desired_speed_ > 0.0)
-      mgr->handleSetSpeed(SetSpeedMsg{sender_name, msg_id, name, desired_speed_, PriorityType::PREEMPT});
 }
 
 void PathFollow::run() {
@@ -78,7 +77,7 @@ void PathFollow::onPreempt(){
 
 std::string PathFollow::description() const {
   std::ostringstream stream;
-  stream << "ID " << msg_id << " PATH_FOLLOW: " << name << " Speed=" << desired_speed_;
+  stream << "ID " << msg_id << " PATH_FOLLOW: " << name;
   return stream.str();
 }
 

@@ -74,7 +74,7 @@ class MissionManager{
     void handleAcknowledge(const AcknowledgeMsg &);
     void handleArrive(const ArrivedMsg & msg);
     void handleTaskComplete(const TaskCompleteMsg & msg);
-    void handleSetSpeed(const SetSpeedMsg & msg);
+    void handleSetSpeedMsg(const SetSpeedMsg & msg);
     void handleOverwatch(const OverwatchMsg & msg);
     void handleCancelTask(const CancelMsg & msg);
     void handleCancelAllTask(const CancelAllMsg & msg);
@@ -85,7 +85,6 @@ class MissionManager{
     avt_341::msg::Odometry leader_odometry;
     bool rcvd_leader_odom = false;
     int nav_state;
-    float desired_speed;
     bool goal_changed;
     bool arrival_announced;
     double local_origin_x;
@@ -126,6 +125,7 @@ class MissionManager{
     std::vector<Contact> mission_contacts;
     std::shared_ptr<node::NodeProxy> node_proxy_;
     std::shared_ptr<GoalFilter> goal_filter_;
+    double speed_setpoint_state = -1.0;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<TaskCompleteMsg> task_completions_;
@@ -149,6 +149,8 @@ class MissionManager{
     void addContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
+    void publishSpeedSetPoint();
+    double getSpeedSetpoint();
 
 }; // class mission manager
 

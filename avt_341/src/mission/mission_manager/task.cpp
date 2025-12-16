@@ -5,7 +5,7 @@ namespace avt_341 {
 namespace mission {
 
 Task::Task(MissionManager* manager, const std::string & sender, int id, FormationDefinition* formation_def)
-: mgr(manager), sender_name(sender), msg_id(id), init_done(false), formation_def_(formation_def), is_preemptable(true) {
+: sender_name(sender), msg_id(id), init_done(false), is_preemptable(true), mgr(manager), formation_def_(formation_def) {
 
 }
 
