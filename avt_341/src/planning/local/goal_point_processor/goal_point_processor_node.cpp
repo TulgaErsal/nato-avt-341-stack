@@ -130,11 +130,15 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
         }
 
         // move along global path starting from closestIndex until you exceed prediction horizon
+        float pathLength = 0.0f;
         for (int gp = closestIndex; gp < global_path.poses.size(); gp++) {
             globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
-            distanceToGlobalPoint = (globalPoint - vehiclePosition).mag();
-            if (distanceToGlobalPoint > (predictionTimeHorizon + 0.1) * speedSetpoint) {
+            if (gp > closestIndex) {
+                avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
+                pathLength += (globalPoint - prevPoint).mag();
+            }
+            if (pathLength > (predictionTimeHorizon + 0.1) * speedSetpoint) {
                 break;
             }
         }
@@ -145,12 +149,16 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			priorIndex = 0;
 			priorPathLength = 0;
         }
+		float pathLength = 0.0f;
 		for (int gp=0;gp<global_path.poses.size();gp++) {
 			globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
-			float distanceToGlobalPoint = (globalPoint-vehiclePosition).mag();
+			if (gp > 0) {
+                avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
+                pathLength += (globalPoint - prevPoint).mag();
+            }
 			// Check prediction horizon
-			if (distanceToGlobalPoint > (predictionTimeHorizon+0.1)*speedSetpoint){
+			if (pathLength > (predictionTimeHorizon+0.1)*speedSetpoint){
 				break;
             }
 		}
