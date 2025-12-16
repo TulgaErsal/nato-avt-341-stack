@@ -138,7 +138,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
-            if (pathLength > (predictionTimeHorizon + 0.1) * speedSetpoint) {
+            if (pathLength > (predictionTimeHorizon + 0.1) * longvel) {
                 break;
             }
         }
@@ -158,7 +158,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 pathLength += (globalPoint - prevPoint).mag();
             }
 			// Check prediction horizon
-			if (pathLength > (predictionTimeHorizon+0.1)*speedSetpoint){
+			if (pathLength > (predictionTimeHorizon+0.1)*longvel){
 				break;
             }
 		}
