@@ -124,7 +124,7 @@ struct AcknowledgeMsg : public MissionManagerDto {
 
 struct ArrivedMsg : public MissionManagerDto {
   explicit ArrivedMsg(const avt_341::msg::Communication &msg);
-  ArrivedMsg(const std::string &sender, int msgId, std::string objectiveName);
+  ArrivedMsg(const std::string &sender, int msgId, const std::string& objectiveName);
 
   avt_341::msg::Communication toROSMsg() override;
   std::string getType() override;

@@ -166,13 +166,11 @@ std::string AcknowledgeMsg::getType() { return MissionMsgType::Acknowledge; }
 // ArrivedMsg
 // =====================================================================================================================
 ArrivedMsg::ArrivedMsg(const avt_341::msg::Communication &msg)
-  : MissionManagerDto(msg){
-
+  : MissionManagerDto(msg), objective_name(msg.objective_name){
 }
 
-ArrivedMsg::ArrivedMsg(const std::string &sender, int msgId, std::string objectiveName)
-  : MissionManagerDto(sender, msgId, "", PriorityType::PREEMPT){
-  objective_name = objectiveName;
+ArrivedMsg::ArrivedMsg(const std::string &sender, int msgId, const std::string& objectiveName)
+  : MissionManagerDto(sender, msgId, "", PriorityType::PREEMPT), objective_name(objectiveName){
 }
 
 avt_341::msg::Communication ArrivedMsg::toROSMsg(){
