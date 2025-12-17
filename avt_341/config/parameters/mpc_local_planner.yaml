@@ -29,9 +29,12 @@ w_final_speed: 200. # weight on deviationFromDesiredFinalSpeed in the objective 
 safety_margin: 0.0 # safety margin [m] around obstacles
 grid_resolution: 0.5 # resolution of the occupancy grid [m]
 
+always_publish_goal: False # always publish goal (overrides front_angle_goal)
 front_angle_goal: 1.571 # the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle [rad]
 front_angle_obstacle: 1.571 # the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle [rad]
 front_angle_segmentation: 1.571 # the angle measured from the vehicle heading beyond which segmentation data is considered not in front of the vehicle [rad]
+goal_lookahead_time_padding: 0.1 # additional time padding added to the goal lookahead distance
+use_goal_lookahead_maxspeed: False # if true the max_speed will be used to select an intermediate waypoint at (planning_horizon+padding)*speed distance along the global path. Else, the current speed will be used.
 
 adaptive: False # whether to use the terrain adaptive formulation or not
 
@@ -50,4 +53,3 @@ sa_min: -0.485        # Minimum steering angle constraint for MPC planner
 sa_max: 0.485         # Maximum steering angle constraint for MPC planner
 sr_min: -0.523        # Minimum steering rate constraint for MPC planner
 sr_max: 0.523         # Maximum steering rate constraint for MPC planner
-

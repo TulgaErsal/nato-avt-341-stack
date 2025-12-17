@@ -32,6 +32,8 @@ avt_341::utils::vec2 goal;
 
 // Params
 float max_speed, la, predictionTimeHorizon, frontAngleGoal;
+float goal_lookahead_padding;
+bool use_goal_lookahead_maxspeed;
 
 void callback_global_path(avt_341::msg::PathPtr global_path) {
     global_path_input = *global_path;
@@ -111,6 +113,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
 	avt_341::utils::vec2 vehiclePosition(x_veh, y_veh);
 	avt_341::utils::vec2 globalPoint(0.0, 0.0);
+    const double lookahead_speed = use_goal_lookahead_maxspeed ? speedSetpoint : longvel;
 
     if (follower_status_input.use_leader) { //asked to follow a leader
 		if (!priorUseLeader){
@@ -138,7 +141,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
-            if (pathLength > (predictionTimeHorizon + 0.1) * longvel) {
+            if (pathLength > (predictionTimeHorizon + goal_lookahead_padding) * lookahead_speed) {
                 break;
             }
         }
@@ -158,7 +161,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 pathLength += (globalPoint - prevPoint).mag();
             }
 			// Check prediction horizon
-			if (pathLength > (predictionTimeHorizon+0.1)*longvel){
+			if (pathLength > (predictionTimeHorizon+goal_lookahead_padding) * lookahead_speed){
 				break;
             }
 		}
@@ -232,7 +235,8 @@ int main(int argc, char* argv[]) {
     n->get_parameter("~prediction_time_horizon", predictionTimeHorizon, 2.0f);
     n->get_parameter("~front_angle_goal", frontAngleGoal, 1.571f);
     n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
-    
+	n->get_parameter("~goal_lookahead_time_padding", goal_lookahead_padding, 0.1f);
+	n->get_parameter("~use_goal_lookahead_maxspeed", use_goal_lookahead_maxspeed, false);
 
     // Initialize variables
     init_time = n->get_stamp();
