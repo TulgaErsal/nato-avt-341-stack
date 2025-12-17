@@ -560,7 +560,6 @@ void MissionManager::publishSpeedSetPoint() {
     avt_341::msg::Float64 speed_msg;
     speed_msg.data = getSpeedSetpoint();
     speed_pub->publish(speed_msg);
-    node_proxy_->log_info("SET SPEED TO %lf", speed_msg.data);
 }
 
 void MissionManager::handleSetSpeedMsg(const SetSpeedMsg & msg) {
@@ -568,6 +567,7 @@ void MissionManager::handleSetSpeedMsg(const SetSpeedMsg & msg) {
     if (Task* current_task = currentTask()) {
         current_task->task_speed = msg.desired_speed;
     }
+    node_proxy_->log_info("SET SPEED TO %lf", speed_setpoint_state);
     publishSpeedSetPoint();
 }
 

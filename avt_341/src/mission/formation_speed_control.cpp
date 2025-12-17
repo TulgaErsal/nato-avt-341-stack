@@ -38,7 +38,8 @@ namespace avt_341 {
 
     double NullFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
                                                         const avt_341::msg::PoseStamped &terminal_pose,
-                                                        std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+                                                        std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                        double speed_setpoint) {
       return 1.0;
     }
 
@@ -52,7 +53,8 @@ namespace avt_341 {
 
     double SpeedUpFollowerFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
                                                                    const avt_341::msg::PoseStamped &terminal_pose,
-                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                                   double speed_setpoint) {
 
       if (formation_def == nullptr || !formation_def->has_formation() ||
         formation_poses.find(my_name_) == formation_poses.end() || formation_def->isLeader()) {
@@ -103,7 +105,8 @@ namespace avt_341 {
 
     double SlowLeaderFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
                                                               const avt_341::msg::PoseStamped &terminal_pose,
-                                                              std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+                                                              std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                              double speed_setpoint) {
 
       if (formation_poses.find(my_name_) == formation_poses.end()) {
         node_proxy_->log_error_once("FormationSpeedController %s not found in formation_poses", my_name_.c_str());
@@ -113,7 +116,7 @@ namespace avt_341 {
       if (formation_def == nullptr || !formation_def->has_formation()) {
         auto current_pos = formation_poses[my_name_].pose.pose.position;
         double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
-        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
+        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false, speed_setpoint);
         return 1.0;
       }
 
@@ -172,7 +175,7 @@ namespace avt_341 {
       if (formation_def->formationAtGoal()) {
         if (fsc_params_.debug_visualize) {
           visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_],
-                                   formation_poses[my_name_].pose.pose.position, false, false);
+                                   formation_poses[my_name_].pose.pose.position, false, false, speed_setpoint);
         }
         return speed_factor;
       }
@@ -237,7 +240,7 @@ namespace avt_341 {
       if (fsc_params_.debug_visualize) {
         visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_],
                                  formation_poses[my_name_].pose.pose.position, heading_filter_on,
-                                 follower_dist_break_on);
+                                 follower_dist_break_on, speed_setpoint);
       }
 
       return speed_factor;
@@ -261,7 +264,7 @@ namespace avt_341 {
                                                                       const avt_341::msg::PoseStamped &target_pose,
                                                                       const avt_341::msg::Point &current_pos,
                                                                       bool heading_filter_on,
-                                                                      bool follower_dist_break_on) {
+                                                                      bool follower_dist_break_on, double speed_setpoint) {
 
       std::string str1 = "map";
       std::string str2 = my_name_ + "_target";
@@ -291,7 +294,7 @@ namespace avt_341 {
       std::ostringstream out;
       out.precision(2);
       out << std::fixed;
-      out << "(" << delta_pos << ", " << speed_factor << ")";
+      out << "(d: " << delta_pos << ", s: " << speed_setpoint << ", f: " << speed_factor << ")";
 
       if (heading_filter_on) {
         out << " [H]";

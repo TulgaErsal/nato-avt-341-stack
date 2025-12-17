@@ -113,6 +113,7 @@ class MissionManager{
 
     Task* currentTask();
     avt_341::msg::PoseStamped current_gp_goal;
+    double getSpeedSetpoint();
 
   private:
 
@@ -150,7 +151,6 @@ class MissionManager{
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();
-    double getSpeedSetpoint();
 
 }; // class mission manager
 

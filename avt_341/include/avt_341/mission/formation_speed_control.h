@@ -28,9 +28,11 @@ namespace avt_341 {
     public:
       explicit FormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
 
+      // TODO: Needs to be cleaned up. speed_setpoint just passed in for later visualization.
+      // visualizeSpeedIndicators should be on base class and number of parameters needs to be reduced.
       virtual double
       getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
-                     std::map<std::string, avt_341::msg::Odometry> &formation_poses) = 0;
+                     std::map<std::string, avt_341::msg::Odometry> &formation_poses, double speed_setpoint) = 0;
 
       virtual void
       clearVisualization();
@@ -48,7 +50,7 @@ namespace avt_341 {
       explicit NullFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
 
       double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
-                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses, double speed_setpoint) override;
     };
 
     class SlowLeaderFormationSpeedController : public FormationSpeedController {
@@ -58,11 +60,11 @@ namespace avt_341 {
                                          std::shared_ptr<avt_341::node::NodeProxy> node_proxy);
 
       double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
-                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses, double speed_setpoint) override;
 
       void visualizeSpeedIndicators(double speed_factor, double delta_pos, const avt_341::msg::PoseStamped &target_pose,
                                     const avt_341::msg::Point &current_pos, bool heading_filter_on,
-                                    bool follower_dist_break_on);
+                                    bool follower_dist_break_on, double speed_setpoint);
       void clearVisualization() override;
 
     private:
@@ -77,7 +79,7 @@ namespace avt_341 {
       explicit SpeedUpFollowerFormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params);
 
       double getSpeedFactor(const FormationDefinition *formation_def, const avt_341::msg::PoseStamped &terminal_pose,
-                            std::map<std::string, avt_341::msg::Odometry> &formation_poses) override;
+                            std::map<std::string, avt_341::msg::Odometry> &formation_poses, double speed_setpoint) override;
     };
 
     std::shared_ptr<FormationSpeedController>

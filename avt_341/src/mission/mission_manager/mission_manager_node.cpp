@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
             avt_341::msg::Float64 speed_msg;
-            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses);
+            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses, mgr->getSpeedSetpoint());
             speed_factor_pub->publish(speed_msg);
         }else{
           speedController->clearVisualization();
