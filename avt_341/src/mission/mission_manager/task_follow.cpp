@@ -7,11 +7,12 @@ namespace avt_341 {
 namespace mission {
 
 // Follow
-Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def)
+Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def, double desired_speed)
 : Task(manager, sender, id, formation_def), path_generator_(formation_def->params) {
     const std::string termination_method = formation_def->terminationMethod();
     terminate_on_leader_arrived_ = termination_method == "LEADER_ARRIVED";
     terminate_on_all_arrived_ = termination_method == "ALL_ARRIVED";
+    task_speed = desired_speed;
 }
 
 void Follow::init_() {

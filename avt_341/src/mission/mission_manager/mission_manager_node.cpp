@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~formation_prune_gp", formation_params.prune_global_path, false);
     nh->get_parameter("~follow_goal_threshold", formation_params.follow_goal_threshold, 10.0f);
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
-
+    nh->get_parameter("~max_speed", formation_params.default_max_speed, 5.0);
 
     nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
     nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
                 std::cout << mgr->my_name << " is shutting down" << std::endl;
                 break;
             } else if(rcvd_msg.type == MissionMsgType::SetSpeed) {
-                mgr->handleSetSpeed(SetSpeedMsg(rcvd_msg));
+                mgr->handleSetSpeedMsg(SetSpeedMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Cancel) {
                 mgr->handleCancelTask(CancelMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::CancelAll){
@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
             avt_341::msg::Float64 speed_msg;
-            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses);
+            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses, mgr->getSpeedSetpoint());
             speed_factor_pub->publish(speed_msg);
         }else{
           speedController->clearVisualization();

@@ -477,7 +477,8 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {
                     'name': ToUpper(ArrayIndexSubstitution(vehicle_namespaces, idx)),
-                    'vehicle_namespaces': vehicle_namespaces
+                    'vehicle_namespaces': vehicle_namespaces,
+                    "max_speed": LaunchConfiguration(f'mpc_local_planner_max_speed')
                 },
                 {k: LaunchConfiguration(f'mission_manager_{k}') for k in params['mission_manager'].keys()},
                 #{k: LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
