@@ -29,6 +29,7 @@ global cmdSpeedSetpoint = 0.0
 global est_sink = 0.0
 global new_sinkage_available = false
 global linearSolverId = "ma27"
+global goalPointIsEndOfGlobalPath = false
 
 global n=0
 global XL=0
@@ -290,6 +291,10 @@ end
 
 function SetFollowerStatus(status::Bool)
     global follower_status = status
+end
+
+function SetGoalPointIsEndOfGlobalPath(flag::Bool)
+    global goalPointIsEndOfGlobalPath = flag
 end
 
 function GetPath()
@@ -585,7 +590,8 @@ function Plan()
 		# Check if goal is within prediction horizon
 		goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
 		horizon_dist = speedSetpoint * predictionTimeHorizon
-		if follower_status && (goal_dist < horizon_dist)
+		# If user marked the goal point as the end of a global path, enable follower objective
+		if follower_status && goalPointIsEndOfGlobalPath
 			JuMP.setValue(leader_speed, cmdLeaderSpeed)
 			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed)
 		else
