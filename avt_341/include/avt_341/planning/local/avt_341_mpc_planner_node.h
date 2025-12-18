@@ -200,6 +200,7 @@ jl_function_t* j_set_sr_max = NULL;
 jl_function_t* j_set_w_final_speed = NULL;
 jl_function_t* j_set_leader_speed = NULL;
 jl_function_t* j_set_follower_status = NULL;
+jl_function_t* j_set_goal_point_is_end_of_global_path = NULL;
 
 // ---------------
 

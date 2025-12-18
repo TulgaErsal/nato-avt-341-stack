@@ -14,6 +14,7 @@ std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_segment_start;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_segment_end;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointStamped>> pub_goalPoint;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_desiredHeading;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_goalPointIsEnd;
 std::shared_ptr<avt_341::node::NodeProxy> n;
 avt_341::msg::Path global_path_input;
 avt_341::msg::Float64MultiArray veh_input;
@@ -29,6 +30,7 @@ bool priorUseLeader, turningAround, goal_set;
 bool alwaysPubGoal;
 int priorIndex, priorPathLength;
 avt_341::utils::vec2 goal;
+bool goal_is_end = false;
 
 // Params
 float max_speed, la, predictionTimeHorizon, frontAngleGoal;
@@ -134,6 +136,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
         // move along global path starting from closestIndex until you exceed prediction horizon
         float pathLength = 0.0f;
+        int lastIndexConsidered = closestIndex;
         for (int gp = closestIndex; gp < global_path.poses.size(); gp++) {
             globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
@@ -141,9 +144,16 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
+            lastIndexConsidered = gp;
             if (pathLength > (predictionTimeHorizon + goal_lookahead_padding) * lookahead_speed) {
                 break;
             }
+        }
+        // If the last index considered is the last index of the global path, mark goal as end
+        if (lastIndexConsidered >= (int)global_path.poses.size() - 1) {
+            goal_is_end = true;
+        } else {
+            goal_is_end = false;
         }
     }
     else {
@@ -153,6 +163,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			priorPathLength = 0;
         }
 		float pathLength = 0.0f;
+		int lastIndexConsidered = 0;
 		for (int gp=0;gp<global_path.poses.size();gp++) {
 			globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
@@ -160,10 +171,17 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
+			lastIndexConsidered = gp;
 			// Check prediction horizon
 			if (pathLength > (predictionTimeHorizon+goal_lookahead_padding) * lookahead_speed){
 				break;
             }
+		}
+        // If the last index considered is the last index of the global path, mark goal as end
+		if (global_path.poses.size() > 0) {
+			goal_is_end = (lastIndexConsidered >= (int)global_path.poses.size() - 1);
+		} else {
+			goal_is_end = false;
 		}
     }
 
@@ -229,6 +247,7 @@ int main(int argc, char* argv[]) {
     pub_segment_end = n->create_publisher<avt_341::msg::Bool>("segment_end_tag",10);
     pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1);
     pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1);
+    pub_goalPointIsEnd = n->create_publisher<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
  
     n->get_parameter("~max_speed", max_speed, 5.0f);
     n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
@@ -259,6 +278,9 @@ int main(int argc, char* argv[]) {
             ros_goalPoint.point.z = 0.0f;
             ros_goalPoint.header.frame_id = "map";
             pub_goalPoint->publish(ros_goalPoint);
+            avt_341::msg::Bool ros_goalPointIsEnd;
+            ros_goalPointIsEnd.data = goal_is_end;
+            pub_goalPointIsEnd->publish(ros_goalPointIsEnd);
             avt_341::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
             pub_desiredHeading->publish(ros_desiredHeading);
