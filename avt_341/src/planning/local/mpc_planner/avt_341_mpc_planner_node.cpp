@@ -79,6 +79,15 @@ void GoalPointCallback(avt_341::msg::PointStampedPtr point_stamped_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
+void GoalPointEndOfGlobalPathCallback(avt_341::msg::BoolPtr msg)
+{
+    bool flag = msg->data;
+    jl_value_t *j_flag = jl_box_bool(flag);
+
+    jl_call1(j_set_goal_point_is_end_of_global_path, j_flag);
+    CATCH_JULIA_EXCEPTION;
+}
+
 void HeadingCallback(avt_341::msg::Float64Ptr heading_msg)
 {
     double psi = heading_msg->data;
@@ -456,6 +465,7 @@ void InitialiseJuliaAPI()
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
+    j_set_goal_point_is_end_of_global_path = jl_get_function(mpc_module, "SetGoalPointIsEndOfGlobalPath");
 
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
@@ -622,6 +632,7 @@ int main(int argc, char *argv[])
     auto veh_state_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,VehicleStateCallback);
     auto obs_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters",1,ObstaclesCallback);
     auto goal_pt_sub = node->create_subscription<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
+    auto goal_end_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
     auto head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
     auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
