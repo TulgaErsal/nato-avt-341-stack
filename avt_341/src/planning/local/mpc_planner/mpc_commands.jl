@@ -373,9 +373,6 @@ function Setup()
 
 	n = define(numStates=8,numControls=2,X0=[x_veh, y_veh, latvel, yawrate, yaw, steer_angle, longvel, longacc],XF=[NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN], XL=XL, XU=XU, CL=CL,CU=CU);
 
-	# n.s.ocp.solver.settings[:max_cpu_time] = 10.0
-	# n.s.ocp.solver.settings[:max_iter] = 3000
-
 	defineMPC!(n;fixedTp=true,predictX0=false,tex=0.1,maxSim=1000000000)
 	states!(n,[:x,:y,:v,:r,:psi,:sa,:ux,:ax];descriptions=["x(t)","y(t)","v(t)","r(t)","psi(t)","sa(t)","ux(t)","ax(t)"]);
 	controls!(n,[:jx,:sr];descriptions=["jx(t)","sr(t)"]);
@@ -442,8 +439,6 @@ function Setup()
 		-sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts)
 	)
 	
-	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum(1/((x[j]-Xobs_0[i])^2+(y[j]-Yobs_0[i])^2+0.1) for i=1:maxNumObs for j=2:n.ocp.state.pts))
-	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum((tanh(-1.3*((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
 	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2))) for i=1:maxNumObs for j=2:n.ocp.state.pts))
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
@@ -454,7 +449,6 @@ function Setup()
 	end
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
 	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
-	# @NLobjective(n.ocp.mdl, Min, obj+100.0 * (distanceToGoal+1))
 	if useSegmentation
 		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost)
 	else
@@ -505,8 +499,6 @@ function Setup()
 		acceptable_compl_inf_tol = 0.01
 	))
 
-	# n.s.ocp.solver.settings[:max_cpu_time] = 1.0
-	# n.s.ocp.solver.settings[:max_iter] = 200
 end
 
 function Plan()
