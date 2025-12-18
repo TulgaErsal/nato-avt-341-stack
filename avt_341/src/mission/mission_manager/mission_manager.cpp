@@ -376,6 +376,7 @@ void MissionManager::reset(){
   task_completions_.clear();
   current_gp_goal = avt_341::msg::PoseStamped();
   mission_contacts.clear();
+  arrivals_.clear();
   goal_filter_->Reset();
   speed_setpoint_state = -1.0;
 
