@@ -212,7 +212,7 @@ def generate_launch_description():
         for ki in param_refs[k].keys():
             del params[k][ki]
 
-    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector', 'obstacle_detector']
+    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector', 'obstacle_detector', 'speed_zones']
     arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() if k not in new_format_params for ki, vi in v.items()]
     arg_list += [DeclareLaunchArgument(f"{k}_{ki}", default_value=str(vi)) for k, v in params.items() if k in new_format_params for ki, vi in v.items()]
 
@@ -251,6 +251,18 @@ def generate_launch_description():
                         parameters=[
                             {'display': display_type},
                             {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
+                    ),
+
+                    # Speed Zones
+                    Node(
+                        package='avt_341',
+                        executable='avt_341_speed_zones_node',
+                        name='speed_zones_node',
+                        output='screen',
+                        parameters=[
+                            {k: LaunchConfiguration(f'speed_zones_{k}') for k in params['speed_zones'].keys()}
+                        ],
+                        condition=IfCondition(LaunchConfiguration('use_speed_zones')),
                     ),
 
                     # UAB Terrain Segmentation
@@ -441,7 +453,7 @@ def generate_launch_description():
                         executable='avt_341_grid_compression_node',
                         name='grid_compression'),
                 ]),     # End unless in manually controlled vehicle list
-                GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1'])), actions=[
+                GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('use_mm_with_one_veh')])), actions=[
                     Node(
                         package='avt_341',
                         executable='avt_341_mission_manager_node',
@@ -478,6 +490,8 @@ def generate_launch_description():
         DeclareLaunchArgument("use_obj_detector", default_value="False", description="Set to enable detection 2d bounding box detection of static objects using deep neural network inference."),
         DeclareLaunchArgument("use_veh_detector", default_value="False", description="Set to enable detection 2d bounding box detection of vehicles for formation following using deep neural network inference."),
         DeclareLaunchArgument("use_uab_perception", default_value="False", description="Set to enable use of UAB perception node."),
+        DeclareLaunchArgument("use_speed_zones", default_value="False", description="Set to enable speed zones."),
+        DeclareLaunchArgument("use_mm_with_one_veh", default_value="False", description="Set to run mission manager even when only one vehicle is used."),
         OpaqueFunction(function=evaluate_waypoint_parameters),
         Node(
             package='tf2_ros',

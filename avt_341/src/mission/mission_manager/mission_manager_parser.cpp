@@ -106,6 +106,12 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.receiver_name = tokens[3];
     message.target_msg_id = atoi(tokens[4].c_str());
   }
+  else if(message.type == MissionMsgType::PathFollow) {
+    message.receiver_name = tokens[3];
+    message.objective_name = tokens[4];
+    message.desired_speed = std::stod(tokens[5]);
+    message.priority_type = tokens[6];
+  }
 
   return message;
 }
@@ -156,6 +162,10 @@ std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
   else if(msg.type == MissionMsgType::Overwatch) {
     stream << "," << msg.receiver_name << "," << msg.target_msg_id << "," << msg.priority_type;
   }
+  // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>
+  else if(msg.type == MissionMsgType::PathFollow) {
+    stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.desired_speed << "," << msg.priority_type;
+  }
 
   return stream.str();
 
@@ -195,6 +205,9 @@ std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341::msg::Communic
   }
   if(msg.type == MissionMsgType::Overwatch){
     return std::make_shared<OverwatchMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::PathFollow){
+    return std::make_shared<PathFollowMsg>(msg);
   }
   return nullptr;
 }
