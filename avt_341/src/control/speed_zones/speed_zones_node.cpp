@@ -64,6 +64,10 @@ std::vector<SpeedZone> ReadSpeedZones(std::string filepath, std::string frame) {
     std::vector<SpeedZone> zones;
     int row = 0;
 
+    if (filepath.empty()) {
+        return zones;
+    }
+
     // Load the speed zones from file
     std::ifstream infile(filepath);
     if(infile.is_open()) {
@@ -132,6 +136,11 @@ int main(int argc, char *argv[]){
 
     // Parse speed zones
     std::vector<SpeedZone> speed_zones = ReadSpeedZones(zones_filepath, zones_frame);
+
+    if (speed_zones.empty()) {
+        node->log_warning("No speed zones defined. Node existing.");
+        exit(EXIT_SUCCESS);
+    }
 
     avt_341::node::Rate node_rate(10.0);
     int current_zone, last_zone = -1;
