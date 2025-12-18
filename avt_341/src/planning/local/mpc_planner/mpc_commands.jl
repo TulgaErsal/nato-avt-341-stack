@@ -371,8 +371,8 @@ function Setup()
 
 	global n, obs_r, Xobs_0, Yobs_0, cellX, cellY, cellZ, g1, g2, desiredYaw, n_f, n_r
 
-	XL = [NaN, NaN, NaN, NaN, psi_min, sa_min, minSpeed, -10.0]
-	XU = [NaN, NaN, NaN, NaN, psi_max, sa_max, maxSpeed,  10.0]
+	XL = [NaN, NaN, NaN, NaN, psi_min, sa_min, minSpeed, ax_min]
+	XU = [NaN, NaN, NaN, NaN, psi_max, sa_max, maxSpeed, ax_max]
 	CL=[jx_min, sr_min]
 	CU=[jx_max, sr_max]
 

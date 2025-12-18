@@ -52,6 +52,8 @@ sr_min         = -0.523
 sr_max         = 0.523
 const jx_min   = -5.0
 const jx_max   = 2.0
+const ax_min   = -10.0
+const ax_max   = 10.0
 
 # epsilon
 const EP      = 0.01
