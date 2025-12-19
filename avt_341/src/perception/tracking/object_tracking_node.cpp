@@ -56,14 +56,26 @@ ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracker") {
     Initialize();
     CreateSubscriptions();
     CreateTimers();
+    CreateServices();
     CreatePublishers();
 
     estimator_timer_->reset();
+    tracking_timer_->reset();
+    info_timer_->reset();
 }
 
 void ObjectTrackingNode::GetParameters() {
+    declare_parameter("tracking_rate", 5.0);
+    tracking_rate_ = get_parameter("tracking_rate").as_double();
+
+    declare_parameter("info_rate", 1.0);
+    info_rate_ = get_parameter("info_rate").as_double();
+
     declare_parameter("camera_frame", "camera_optical");
     camera_frame_ = get_parameter("camera_frame").as_string();
+
+    declare_parameter("world_frame", "Q");
+    world_frame_ = get_parameter("world_frame").as_string();
 
     declare_parameter("odometry_child_frame", "odom");
     odometry_child_frame_ = get_parameter("odometry_child_frame").as_string();
@@ -102,7 +114,10 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_ground_angle", 3.0);
     sac_segmentation_angle_ = get_parameter("filters_ground_angle").as_double();
 
-    declare_parameter("filters_kalman_rate", 20.0);
+    declare_parameter("filters_roi_scale_factor", 1.5);
+    roi_scale_factor_ = get_parameter("filters_roi_scale_factor").as_double();
+
+    declare_parameter("filters_kalman_rate", 50.0);
     estimator_rate_ = get_parameter("filters_kalman_rate").as_double();
 
     declare_parameter("filters_kalman_process", 0.01);
@@ -113,9 +128,14 @@ void ObjectTrackingNode::GetParameters() {
     filter_measurement_variance_ =
         get_parameter("filters_kalman_measurement").as_double();
 
-    declare_parameter("tracker_target_class", 0);
-    target_class_ =
-        std::to_string(get_parameter("tracker_target_class").as_int());
+    declare_parameter("filters_use_pca_centroid", false);
+    use_pca_centroid_ = get_parameter("filters_use_pca_centroid").as_bool();
+
+    declare_parameter("tracker_autostart", true);
+    use_autostart_ = get_parameter("tracker_autostart").as_bool();
+
+    declare_parameter("tracker_target_class", "");
+    autostart_target_class_ = get_parameter("tracker_target_class").as_string();
 
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
@@ -141,6 +161,9 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("publish_clouds_cluster", false);
     publish_cluster_cloud_ = get_parameter("publish_clouds_cluster").as_bool();
 
+    declare_parameter("publish_clouds_cropbox", false);
+    publish_cropbox_cloud_ = get_parameter("publish_clouds_cropbox").as_bool();
+
     declare_parameter("publish_pose", true);
     publish_pose_ = get_parameter("publish_pose").as_bool();
 
@@ -158,6 +181,20 @@ void ObjectTrackingNode::GetParameters() {
 
     declare_parameter("publish_image", false);
     publish_image_ = get_parameter("publish_image").as_bool();
+
+    declare_parameter("filters_use_manual_roi", false);
+    use_manual_roi_size_ = get_parameter("filters_use_manual_roi").as_bool();
+
+    declare_parameter("filters_manual_roi_size",
+                      std::vector<double>{1.0, 1.0, 1.0});
+    roi_bounding_box_3d_size_ = Eigen::Vector3d(
+        get_parameter("filters_manual_roi_size").as_double_array()[0],
+        get_parameter("filters_manual_roi_size").as_double_array()[1],
+        get_parameter("filters_manual_roi_size").as_double_array()[2]);
+
+    on_set_parameters_callback_handle_ = add_on_set_parameters_callback(
+        std::bind(&ObjectTrackingNode::SetParametersCallback, this,
+                  std::placeholders::_1));
 }
 
 void ObjectTrackingNode::CreateSubscriptions() {
@@ -168,34 +205,39 @@ void ObjectTrackingNode::CreateSubscriptions() {
 
     detections_subscription_ =
         create_subscription<vision_msgs::msg::Detection2DArray>(
-            "detection_2d",
-            RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::DetectionsCallback,
-                      this,
+            "detection_2d", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+            std::bind(&ObjectTrackingNode::DetectionsCallback, this,
                       std::placeholders::_1));
 
     image_subscription_ = create_subscription<sensor_msgs::msg::Image>(
-        "image",
-        RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-        std::bind(&ObjectTrackingNode::ImageCallback,
-                  this,
+        "image", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+        std::bind(&ObjectTrackingNode::ImageCallback, this,
                   std::placeholders::_1));
 
     camera_info_subscription_ =
         create_subscription<sensor_msgs::msg::CameraInfo>(
-            "camera_info",
-            RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::CameraInfoCallback,
-                      this,
+            "camera_info", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+            std::bind(&ObjectTrackingNode::CameraInfoCallback, this,
                       std::placeholders::_1));
 
     point_cloud_subscription_ =
         create_subscription<sensor_msgs::msg::PointCloud2>(
-            "input",
-            RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::PointCloudCallback,
-                      this,
+            "points/input", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+            std::bind(&ObjectTrackingNode::PointCloudCallback, this,
                       std::placeholders::_1));
+
+    task_status_subscription_ =
+        create_subscription<avt_341_msgs::msg::MissionTaskStatus>(
+            "task", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+            std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
+                      std::placeholders::_1));
+}
+
+void ObjectTrackingNode::CreateServices() {
+    set_target_service_server_ = create_service<avt_341_msgs::srv::SetTarget>(
+        "set_target",
+        std::bind(&ObjectTrackingNode::SetTargetServiceCallback, this,
+                  std::placeholders::_1, std::placeholders::_2));
 }
 
 void ObjectTrackingNode::CreateTimers() {
@@ -203,109 +245,358 @@ void ObjectTrackingNode::CreateTimers() {
         std::chrono::duration<double>(1.0 / estimator_rate_),
         std::bind(&ObjectTrackingNode::EstimatorTimerCallback, this));
     estimator_timer_->cancel();
+
+    tracking_timer_ = create_wall_timer(
+        std::chrono::duration<double>(1.0 / tracking_rate_),
+        std::bind(&ObjectTrackingNode::TrackingTimerCallback, this));
+    tracking_timer_->cancel();
+
+    info_timer_ = create_wall_timer(
+        std::chrono::duration<double>(1.0 / info_rate_),
+        std::bind(&ObjectTrackingNode::TrackerInfoCallback, this));
+    info_timer_->cancel();
 }
 
 void ObjectTrackingNode::CreatePublishers() {
-    if(publish_fov_cloud_) {
+    if (publish_fov_cloud_) {
+        RCLCPP_WARN_ONCE(get_logger(),
+                         "Field-of-view (FOV) cloud publishing enabled: this "
+                         "is for debugging purposes only and will have a "
+                         "negative effect on tracking performance.");
         fov_cloud_publisher_ =
             create_publisher<sensor_msgs::msg::PointCloud2>("points/fov", 1);
     }
 
-    if(publish_roi_cloud_) {
+    if (publish_roi_cloud_) {
+        RCLCPP_WARN_ONCE(
+            get_logger(),
+            "Region of interest (ROI) cloud publishing enabled: this is for "
+            "debugging purposes only and will have a negative effect on "
+            "tracking performance.");
         roi_cloud_publisher_ =
             create_publisher<sensor_msgs::msg::PointCloud2>("points/roi", 1);
     }
 
-    if(publish_ground_cloud_) {
+    if (publish_ground_cloud_) {
+        RCLCPP_WARN_ONCE(get_logger(),
+                         "Ground cloud publishing enabled: this is for "
+                         "debugging purposes only and will have a negative "
+                         "effect on tracking performance.");
         ground_cloud_publisher_ =
             create_publisher<sensor_msgs::msg::PointCloud2>("points/ground", 1);
     }
 
-    if(publish_cluster_cloud_) {
-        cluster_publisher_ =
-            create_publisher<sensor_msgs::msg::PointCloud2>("points/cluster",
+    if (publish_cluster_cloud_) {
+        RCLCPP_WARN_ONCE(
+            get_logger(),
+            "Cluster cloud publishing enabled: this is for debugging purposes "
+            "only and will have a negative effect on tracking performance.");
+        cluster_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>(
+            "points/cluster", 1);
+    }
+
+    if (publish_cropbox_cloud_) {
+        RCLCPP_WARN_ONCE(
+            get_logger(),
+            "Cropbox cloud publishing enabled: this is for debugging purposes "
+            "only and will have a negative effect on tracking performance.");
+        cropbox_cloud_publisher_ =
+            create_publisher<sensor_msgs::msg::PointCloud2>("points/cropbox",
                                                             1);
     }
 
     detection_publisher_ =
         create_publisher<vision_msgs::msg::Detection3D>("detection_3d", 1);
 
-    if(publish_image_) {
+    if (publish_image_) {
         image_publisher_ =
             create_publisher<sensor_msgs::msg::Image>("out_image", 1);
     }
 
-    if(publish_pose_) {
+    if (publish_pose_) {
         pose_publisher_ =
             create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-                "pose",
-                1);
+                "pose", 1);
     }
 
-    if(publish_odometry_) {
+    if (publish_odometry_) {
         odometry_publisher_ =
             create_publisher<nav_msgs::msg::Odometry>("odometry", 1);
     }
+
+    info_publisher_ =
+        create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
 }
 
-void ObjectTrackingNode::PointCloudCallback(
-    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    RCLCPP_DEBUG_ONCE(get_logger(), "Point cloud callback triggered!");
+void ObjectTrackingNode::TrackerInfoCallback() {
+    avt_341_msgs::msg::TrackerInfo info_message;
+    info_message.header.stamp = get_clock()->now();
+    info_message.header.frame_id = "none";
+    info_message.state = state_;
+    info_publisher_->publish(info_message);
+}
 
-    if(!has_camera_info_) {
+void ObjectTrackingNode::CropRegionOfInterest() {
+    RCLCPP_INFO(get_logger(),
+                "Running crop box filter around the region of interest ...");
+
+    // Define the crop box origin and its bounds relative to the last known
+    // object centroid position. Note that we MUST use 4D floating-point vectors
+    // to easily propagate through the affine transforms in the PCL library.
+    crop_box_.setTranslation(bounding_box_centroid_.cast<float>());
+    Eigen::Vector4f crop_box_roi_min(
+        -roi_scale_factor_ * object_size_.x() / 2.0,
+        -roi_scale_factor_ * object_size_.y() / 2.0,
+        -roi_scale_factor_ * object_size_.z() / 2.0, 1.0f);
+    Eigen::Vector4f crop_box_roi_max(roi_scale_factor_ * object_size_.x() / 2.0,
+                                     roi_scale_factor_ * object_size_.y() / 2.0,
+                                     roi_scale_factor_ * object_size_.z() / 2.0,
+                                     1.0f);
+    crop_box_.setMin(crop_box_roi_min);
+    crop_box_.setMax(crop_box_roi_max);
+
+    // Run the crop box filter in-place.
+    crop_box_.setInputCloud(point_cloud_);
+    crop_box_.filter(*point_cloud_);
+
+    if (publish_cropbox_cloud_) {
+        PublishPointCloud(point_cloud_, point_cloud_message_->header.stamp,
+                          camera_frame_, cropbox_cloud_publisher_);
+    }
+}
+
+void ObjectTrackingNode::TrackingTimerCallback() {
+    RCLCPP_DEBUG_ONCE(get_logger(), "Tracking timer callback triggered!");
+    if (!has_camera_info_) {
+        state_ = TrackerState::INACTIVE;
         RCLCPP_DEBUG(get_logger(),
                      "No camera info received, skipping tracking ...");
         return;
     }
 
-    if(!has_first_detection_) {
+    if (!has_first_detection_) {
+        state_ = TrackerState::INACTIVE;
         RCLCPP_DEBUG(get_logger(),
-                     "No detection received, skipping tracking ...");
+                     "No valid initial target detection received, skipping "
+                     "tracking ...");
         return;
     }
 
-    if(sync_messages_) {
-        double detection_skew = (use_callback_time_)
-            ? get_clock()->now().nanoseconds() / 1.0e9 -
-                last_detection_callback_time_.nanoseconds() / 1.0e9
-            : rclcpp::Time(point_cloud_message->header.stamp).nanoseconds() /
-                    1.0e9 -
-                last_detection_time_.nanoseconds() / 1.0e9;
-        if(detection_skew > max_detection_skew_) {
-            RCLCPP_DEBUG(
-                get_logger(),
-                "Last detection is too old %0.2lf, skipping tracking ...",
-                detection_skew);
+    if (has_tracked_target_ && !has_detection_) {
+        state_ = TrackerState::LIDAR_ONLY_TRACKING;
+        RCLCPP_DEBUG(get_logger(),
+                     "No camera target detection available, falling back to "
+                     "LiDAR-only tracking ...");
+    } else {
+        state_ = TrackerState::FULL_TRACKING;
+        RCLCPP_DEBUG(get_logger(), "Setting tracker to full tracking ...");
+    }
+
+    if (!has_point_cloud_ || point_cloud_->size() <= 0) {
+        state_ = TrackerState::NO_DETECTION;
+        RCLCPP_DEBUG(
+            get_logger(),
+            "Point cloud missing, too old or empty, skipping tracking ...");
+        return;
+    }
+
+    if (sync_messages_) {
+        double detection_skew =
+            (use_callback_time_)
+                ? get_clock()->now().nanoseconds() / 1.0e9 -
+                      last_valid_detection_callback_time_.nanoseconds() / 1.0e9
+                : rclcpp::Time(point_cloud_message_->header.stamp)
+                              .nanoseconds() /
+                          1.0e9 -
+                      last_valid_detection_time_.nanoseconds() / 1.0e9;
+        if (detection_skew > max_detection_skew_) {
+            if (state_ != TrackerState::LIDAR_ONLY_TRACKING) {
+                RCLCPP_WARN(get_logger(),
+                            "Last detection is too old %0.2lf, skipping camera "
+                            "tracking ...",
+                            detection_skew);
+
+                state_ = TrackerState::LIDAR_ONLY_TRACKING;
+            }
             has_detection_ = false;
-            return;
         }
     }
 
     auto start_time = get_clock()->now();
 
-    // Convert the ROS sensor_msgs/msg/PointCloud2 message to a PCL XYZ point
-    // cloud.
-    auto point_cloud = ToPCLCloud(point_cloud_message);
+    // Transform the point cloud to the camera frame and apply the filter
+    // stack to limit the keep the size of the dataset contained.
+    try {
+        TransformPointCloudToCameraFrame(point_cloud_, point_cloud_message_);
+    } catch (const TransformException& exception) {
+        RCLCPP_WARN(get_logger(),
+                    "Could not transform point cloud to camera frame.");
 
-    // LIDAR TO CAMERA POINT CLOUD TRANSFORM
-    // -------------------------------------
-
-    // Transform the point cloud from its native frame to the camera frame. Note
-    // that this only works when there is already a valid transform between the
-    // two frames in the TF tree. Also note that this transform is performed
-    // in-place, as the point coordinates from the LiDAR frame are not used
-    // elsewhere in this node.
-    if(point_cloud_message->header.frame_id.empty() ||
-       !(transform_buffer_->canTransform(camera_frame_,
-                                         point_cloud_message->header.frame_id,
-                                         rclcpp::Time(0)))) {
-        RCLCPP_ERROR(get_logger(),
-                     "Could not lookup the transform between point cloud frame "
-                     "and camera frame!");
+        has_point_cloud_ = false;
+        has_detection_ = false;
         return;
     }
 
-    if(tf2::getFrameId(*point_cloud_message) != camera_frame_) {
+    if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
+        LimitSensorDistance(point_cloud_, true);
+        DownsampleCloud(point_cloud_);
+        CropRegionOfInterest();
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
+            new pcl::PointCloud<pcl::PointXYZ>);
+        SegmentGroundPlane(point_cloud_, cloud_plane);
+
+        try {
+            EuclideanClustering();
+            centroid_in_cloud_frame_ = true;
+
+            if (cloud_cluster_->size() > 0) {
+            } else {
+                has_point_cloud_ = false;
+                has_detection_ = false;
+            }
+        } catch (const ClusteringException& exception) {
+            has_point_cloud_ = false;
+            has_detection_ = false;
+            return;
+        }
+    } else if (state_ == TrackerState::FULL_TRACKING) {
+        LimitSensorDistance(point_cloud_, false);
+        DownsampleCloud(point_cloud_);
+        ProjectPointsToPixel(point_cloud_, point_cloud_message_);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
+            new pcl::PointCloud<pcl::PointXYZ>);
+
+        SegmentGroundPlane(point_cloud_, cloud_plane);
+
+        try {
+            EuclideanClustering();
+            centroid_in_cloud_frame_ = false;
+        } catch (const ClusteringException& exception) {
+            RCLCPP_WARN(get_logger(),
+                        "Could not isolate any clusters from the camera "
+                        "detection region ROI!");
+
+            has_point_cloud_ = false;
+            has_detection_ = false;
+            CheckTargetTimeout();
+            return;
+        }
+
+        has_tracked_target_ = true;
+        last_valid_target_time_ = get_clock()->now();
+    }
+
+    // ORIENTED BOUNDING BOX ESTIMATION
+    // --------------------------------
+
+    if (cloud_cluster_->size() > 0) {
+
+        try {
+            pcl::PointXYZ bounding_box_min, bounding_box_max,
+                bounding_box_centroid;
+            Eigen::Matrix3f bounding_box_rotation;
+
+            GetOrientedBoundingBox(cloud_cluster_, bounding_box_min,
+                                   bounding_box_max, bounding_box_centroid,
+                                   bounding_box_rotation);
+
+            if (use_pca_centroid_) {
+                bounding_box_centroid_ = Eigen::Vector3d(
+                    bounding_box_centroid.x, bounding_box_centroid.y,
+                    bounding_box_centroid.z);
+            }
+
+            bounding_box_size_ =
+                Eigen::Vector3d(bounding_box_max.x - bounding_box_min.x,
+                                bounding_box_max.y - bounding_box_min.y,
+                                bounding_box_max.z - bounding_box_min.z);
+
+            bounding_box_kernel_ = bounding_box_centroid_;
+            object_size_ = (!use_manual_roi_size_) ? bounding_box_size_
+                                                   : roi_bounding_box_3d_size_;
+
+            // Convert the rotation matrix to an orientation quaternion.
+            bounding_box_orientation_ =
+                Eigen::Quaterniond(bounding_box_rotation.cast<double>());
+
+            if (publish_image_) {
+                PublishImage();
+            }
+        } catch (const PCAException& exception) {
+            RCLCPP_ERROR_STREAM(
+                get_logger(),
+                "Bounding box estimation exception: " << exception.what());
+        }
+    } else {
+        RCLCPP_ERROR(get_logger(),
+                     "Invalid cluster of size zero! Skipping bounding box "
+                     "estimation ...");
+    }
+
+    execution_time_ = (get_clock()->now() - start_time).nanoseconds() / 1.0e6;
+    RCLCPP_DEBUG(get_logger(), "Tracker pipeline execution time: %0.2lf ms",
+                 execution_time_);
+
+    has_point_cloud_ = false;
+    has_detection_ = false;
+}
+
+void ObjectTrackingNode::CheckTargetTimeout() {
+    if ((get_clock()->now() - last_valid_target_time_).seconds() >
+        target_timeout_) {
+        RCLCPP_WARN(get_logger(), "Tracker timeout reached.");
+        state_ = TrackerState::NO_DETECTION;
+        has_tracked_target_ = false;
+    }
+}
+
+void ObjectTrackingNode::EuclideanClustering() {
+    try {
+        auto clustering_result = ExtractEuclideanClusters(point_cloud_);
+        // Update the flag for centroid measurement.
+
+        // TODO: Restore this comment to restore the filter.
+        // has_new_measurement_ = true;
+
+        cloud_cluster_ = clustering_result.first;
+        bounding_box_centroid_ = Eigen::Vector3d(clustering_result.second.x,
+                                                 clustering_result.second.y,
+                                                 clustering_result.second.z);
+
+        if (publish_cluster_cloud_) {
+            PublishPointCloud(cloud_cluster_,
+                              point_cloud_message_->header.stamp, camera_frame_,
+                              cluster_publisher_);
+        }
+    } catch (const ClusteringException& exception) {
+        RCLCPP_DEBUG_STREAM(get_logger(),
+                            "Clustering exception: " << exception.what());
+        throw;
+    }
+}
+
+void ObjectTrackingNode::Reset() {
+    execution_time_ = -1.0;
+}
+
+void ObjectTrackingNode::TransformPointCloudToCameraFrame(
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
+    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
+    if (point_cloud_message->header.frame_id.empty() ||
+        !(transform_buffer_->canTransform(camera_frame_,
+                                          point_cloud_message->header.frame_id,
+                                          rclcpp::Time(0)))) {
+
+        std::string message(
+            "Could not lookup the transform between point cloud frame "
+            "and camera frame!");
+        RCLCPP_ERROR(get_logger(), message.c_str());
+        throw TransformException(message.c_str());
+    }
+
+    if (tf2::getFrameId(*point_cloud_message) != camera_frame_) {
         RCLCPP_DEBUG(get_logger(),
                      "Transforming point cloud between LiDAR frame \"%s\" and "
                      "camera frame \"%s\" ...",
@@ -316,178 +607,41 @@ void ObjectTrackingNode::PointCloudCallback(
                 TransformPointCloud(point_cloud_message, camera_frame_);
 
             pcl::transformPointCloud(
-                *point_cloud,
-                *point_cloud,
+                *point_cloud, *point_cloud,
                 tf2::transformToEigen(transform_message.transform).matrix());
-
-        } catch(tf2::TransformException& exception) {
+        } catch (tf2::TransformException& exception) {
             RCLCPP_WARN(get_logger(), exception.what());
             return;
         }
     }
+}
 
-    // POINT CLOUD DOWNSAMPLING PIPELINE
-    // ---------------------------------
-
-    // Clamp the sensor distance.
-    LimitSensorDistance(point_cloud);
-
-    // Downsample the point cloud using a voxel filter to speed up the next
-    // processing steps.
-    DownsampleCloud(point_cloud);
-
-    // POINT TO PIXEL COORDINATES PROJECTION
-    // -------------------------------------
-
-    // Find the mapping between the 3D coordinates (X, Y, Z) of a point and the
-    // corresponding pixel coordinates in the camera image frame.
-    const std::vector<PixelCoordinates> coordinates =
-        ConvertPointCloudToPixelCoordinates(point_cloud, camera_info_message_);
-
-    // Find the cloud points in the camera field of view and store them in a
-    // separate point cloud. We keep the original downsampled point cloud to
-    // account for objects that are not yet in the field-of-view.
-    FindPointsInCameraFOV(point_cloud,
-                          coordinates,
-                          camera_info_message_->height,
-                          camera_info_message_->width);
-
-    if(publish_fov_cloud_) {
-        PublishPointCloud(point_cloud,
-                          point_cloud_message->header.stamp,
-                          camera_frame_,
-                          fov_cloud_publisher_);
-    }
-
-    // Find cloud points the region of interest defined by the first detection.
-
-    RCLCPP_DEBUG(get_logger(),
-                 "Finding cloud points in the region of interest ...");
-
-    unsigned int x_min =
-        detections_message_.detections[0].bbox.center.position.x -
-        detections_message_.detections[0].bbox.size_x / 2;
-    unsigned int x_max =
-        detections_message_.detections[0].bbox.center.position.x +
-        detections_message_.detections[0].bbox.size_x / 2;
-
-    unsigned int y_min =
-        detections_message_.detections[0].bbox.center.position.y -
-        detections_message_.detections[0].bbox.size_y / 2;
-    unsigned int y_max =
-        detections_message_.detections[0].bbox.center.position.y +
-        detections_message_.detections[0].bbox.size_y / 2;
-
-    RCLCPP_DEBUG(
-        get_logger(),
-        "Trimming region of interest to the camera image frame bounds ...");
-    if(x_min < 0) x_min = 0;
-    if(x_max > camera_info_message_->width) x_max = camera_info_message_->width;
-    if(y_min < 0) y_min = 0;
-    if(y_max > camera_info_message_->height)
-        y_max = camera_info_message_->height;
-
-    RCLCPP_DEBUG(get_logger(),
-                 "Selected the following bounding box as region of interest: "
-                 "[X_MIN: %i, X_MAX: %i Y_MIN: %i Y_MAX: %i]",
-                 x_min,
-                 x_max,
-                 y_min,
-                 y_max);
-
-    // Find the points lying in the region of interest (ROI) defined by the
-    // detection bounding box.
-    FindPointsInROI(point_cloud, coordinates, x_min, x_max, y_min, y_max);
-
-    if(publish_roi_cloud_) {
-        PublishPointCloud(point_cloud,
-                          point_cloud_message->header.stamp,
-                          camera_frame_,
-                          roi_cloud_publisher_);
-    }
-
-    RemoveNaNPoints(point_cloud);
-
-    // GROUND PLANE SEGMENTATION
-    // -------------------------
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
-        new pcl::PointCloud<pcl::PointXYZ>);
-
-    SegmentGroundPlane(point_cloud, cloud_plane);
-
-    if(publish_ground_cloud_) {
-        PublishPointCloud(cloud_plane,
-                          point_cloud_message->header.stamp,
-                          camera_frame_,
-                          ground_cloud_publisher_);
-    }
-
-    RemoveNaNPoints(point_cloud);
-
-    // EUCLIDEAN CLUSTERING
-    // --------------------
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster;
+Eigen::Vector3d ObjectTrackingNode::TransformToCoordinates(
+    const std::string& source_frame, const std::string& target_frame,
+    const Eigen::Vector3d& point) const {
+    geometry_msgs::msg::TransformStamped transform_message;
     try {
-        auto clustering_result = ExtractEuclideanClusters(point_cloud);
-        // Update the flag for centroid measurement.
-        has_new_measurement_ = true;
-
-        cloud_cluster = clustering_result.first;
-        bounding_box_centroid_ = Eigen::Vector3d(clustering_result.second.x,
-                                                 clustering_result.second.y,
-                                                 clustering_result.second.z);
-    } catch(const ClusteringException& exception) {
-        RCLCPP_DEBUG(get_logger(), exception.what());
-        return;
+        transform_message = transform_buffer_->lookupTransform(
+            target_frame.c_str(), source_frame.c_str(), tf2::TimePointZero);
+    } catch (tf2::TransformException& exception) {
+        RCLCPP_ERROR(get_logger(), "Transform lookup exception.");
+        return point;
     }
 
-    if(publish_cluster_cloud_) {
-        PublishPointCloud(cloud_cluster,
-                          point_cloud_message->header.stamp,
-                          camera_frame_,
-                          cluster_publisher_);
-    }
+    Eigen::Vector3d transformed_point;
+    tf2::doTransform(point, transformed_point, transform_message);
+    return transformed_point;
+}
 
-    // ORIENTED BOUNDING BOX ESTIMATION
-    // --------------------------------
+void ObjectTrackingNode::PointCloudCallback(
+    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
+    RCLCPP_DEBUG_ONCE(get_logger(), "Point cloud callback triggered!");
 
-    try {
-        pcl::PointXYZ bounding_box_min, bounding_box_max, bounding_box_centroid;
-        Eigen::Matrix3f bounding_box_rotation;
-
-        GetOrientedBoundingBox(cloud_cluster,
-                               bounding_box_min,
-                               bounding_box_max,
-                               bounding_box_centroid,
-                               bounding_box_rotation);
-
-        /*
-        bounding_box_centroid_ = Eigen::Vector3d(bounding_box_centroid.x,
-                                             bounding_box_centroid.y,
-                                             bounding_box_centroid.z);
-        */
-
-        bounding_box_size_ =
-            Eigen::Vector3d(bounding_box_max.x - bounding_box_min.x,
-                            bounding_box_max.y - bounding_box_min.y,
-                            bounding_box_max.z - bounding_box_min.z);
-
-        // Convert the rotation matrix to an orientation quaternion.
-        bounding_box_orientation_ =
-            Eigen::Quaterniond(bounding_box_rotation.cast<double>());
-
-        if(publish_image_) { PublishImage(); }
-
-    } catch(const PCAException& exception) {
-        RCLCPP_ERROR(get_logger(), exception.what());
-    }
-
-    auto execution_time = (get_clock()->now() - start_time).nanoseconds();
-    RCLCPP_DEBUG(get_logger(),
-                 "Tracker pipeline execution time: %0.2lf ms",
-                 execution_time / 1.0e6);
+    // Convert the ROS sensor_msgs/msg/PointCloud2 message to a PCL XYZ
+    // point cloud.
+    point_cloud_ = ToPCLCloud(point_cloud_message);
+    point_cloud_message_ = point_cloud_message;
+    has_point_cloud_ = true;
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr ObjectTrackingNode::ToPCLCloud(
@@ -496,8 +650,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr ObjectTrackingNode::ToPCLCloud(
         new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*point_cloud_message, *point_cloud);
 
-    RCLCPP_DEBUG(get_logger(),
-                 "Number of points in the raw point cloud: %i",
+    RCLCPP_DEBUG(get_logger(), "Number of points in the raw point cloud: %i",
                  int(point_cloud->points.size()));
 
     return point_cloud;
@@ -517,8 +670,7 @@ void ObjectTrackingNode::RemoveNaNPoints(
 
     RCLCPP_DEBUG(get_logger(),
                  "Total points after NaN filtering: %i -> %i (%i)",
-                 points_before_filtering,
-                 points_after_filtering,
+                 points_before_filtering, points_after_filtering,
                  points_before_filtering - points_after_filtering);
 }
 
@@ -531,7 +683,7 @@ void ObjectTrackingNode::ImageCallback(
         // camera image as received.
         latest_image_ = cv_bridge::toCvShare(image_message);
         has_image_ = true;
-    } catch(const cv_bridge::Exception& exception) {
+    } catch (const cv_bridge::Exception& exception) {
         RCLCPP_ERROR(get_logger(), "CVBridge exception: %s", exception.what());
     }
 }
@@ -550,21 +702,35 @@ void ObjectTrackingNode::DetectionsCallback(
     const vision_msgs::msg::Detection2DArray::SharedPtr detections_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Detections callback triggered!");
 
-    if(!detections_message->detections.size() > 0) return;
+    if (!has_target_selection_) {
+        RCLCPP_INFO(get_logger(),
+                    "No target selected, ignoring detections ...");
+        has_detection_ = false;
+        return;
+    }
 
-    bool has_target = false;
-    for(const auto& detection : detections_message->detections) {
-        // We only consider the highest scoring result for each detection, under
-        // the assumption that the hypotheses array is sorted from highest to
-        // lowest scoring.
-        if(detection.results[0].hypothesis.class_id == target_class_) {
+    if (!detections_message->detections.size() > 0) {
+        RCLCPP_DEBUG(get_logger(),
+                     "No detections in the current frame, skipping ...");
+        has_detection_ = false;
+        return;
+    }
+
+    bool target_found = false;
+    for (const auto& detection : detections_message->detections) {
+        // We only consider the highest scoring result for each detection,
+        // under the assumption that the hypotheses array is sorted from
+        // highest to lowest scoring.
+        if (detection.results[0].hypothesis.class_id == target_class_) {
             detection_score_ = detection.results[0].hypothesis.score;
-            has_target = true;
+            target_found = true;
             break;
         }
     }
 
-    if(!has_target) {
+    if (!target_found) {
+        RCLCPP_INFO(get_logger(),
+                    "Target not found in the current detection, skipping ...");
         has_detection_ = false;
         return;
     }
@@ -572,10 +738,10 @@ void ObjectTrackingNode::DetectionsCallback(
     // Store the vision_msgs/msg/Detection2DArray message, keep track of its
     // timestamp and mark detections as received.
     detections_message_ = *detections_message;
-    last_detection_time_ = detections_message->header.stamp;
-    last_detection_callback_time_ = get_clock()->now();
-    has_first_detection_ = true;
+    last_valid_detection_time_ = detections_message->header.stamp;
+    last_valid_detection_callback_time_ = get_clock()->now();
 
+    has_first_detection_ = true;
     has_detection_ = true;
 }
 
@@ -598,15 +764,13 @@ void ObjectTrackingNode::DownsampleCloud(
 geometry_msgs::msg::TransformStamped ObjectTrackingNode::TransformPointCloud(
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message,
     const std::string target_frame) {
-    // Retrieve the transform from the point cloud message native frame to the
-    // target frame from the published transform tree.
-    geometry_msgs::msg::TransformStamped transform_message;
+    // Retrieve the transform from the point cloud message native frame to
+    // the target frame from the published transform tree.
     try {
         return transform_buffer_->lookupTransform(
-            target_frame,
-            tf2::getFrameId(*point_cloud_message),
+            target_frame, tf2::getFrameId(*point_cloud_message),
             tf2::TimePointZero);
-    } catch(tf2::TransformException& exception) {
+    } catch (tf2::TransformException& exception) {
         RCLCPP_ERROR(get_logger(), "Transform lookup exception.");
         throw;
     }
@@ -628,7 +792,7 @@ ObjectTrackingNode::ConvertPointCloudToPixelCoordinates(
     std::vector<PixelCoordinates> coordinates;
     coordinates.reserve(point_cloud->size());
 
-    for(auto& point : point_cloud->points) {
+    for (auto& point : point_cloud->points) {
         coordinates.emplace_back(
             ConvertPointToPixelCoordinates(point, camera_info_message));
     }
@@ -638,16 +802,15 @@ ObjectTrackingNode::ConvertPointCloudToPixelCoordinates(
 
 void ObjectTrackingNode::FindPointsInCameraFOV(
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    const std::vector<PixelCoordinates>& coordinates,
-    const int height,
+    const std::vector<PixelCoordinates>& coordinates, const int height,
     const int width) {
     pcl::PointIndices::Ptr fov_points_indices(new pcl::PointIndices());
     fov_points_indices->indices.reserve(point_cloud->size());
 
-    for(unsigned int index = 0; index < coordinates.size(); ++index) {
-        if(point_cloud->points[index].z > 0.0 && coordinates[index].x_ >= 0 &&
-           coordinates[index].x_ <= width && coordinates[index].y_ >= 0 &&
-           coordinates[index].y_ <= height) {
+    for (unsigned int index = 0; index < coordinates.size(); ++index) {
+        if (point_cloud->points[index].z > 0.0 && coordinates[index].x_ >= 0 &&
+            coordinates[index].x_ <= width && coordinates[index].y_ >= 0 &&
+            coordinates[index].y_ <= height) {
             fov_points_indices->indices.push_back(index);
         }
     }
@@ -662,16 +825,14 @@ void ObjectTrackingNode::FindPointsInCameraFOV(
 
 void ObjectTrackingNode::FindPointsInROI(
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    const std::vector<PixelCoordinates>& coordinates,
-    const unsigned int x_min,
-    const unsigned int x_max,
-    const unsigned int y_min,
+    const std::vector<PixelCoordinates>& coordinates, const unsigned int x_min,
+    const unsigned int x_max, const unsigned int y_min,
     const unsigned int y_max) {
     pcl::PointIndices::Ptr roi_points_indices(new pcl::PointIndices());
 
-    for(unsigned int index = 0; index < coordinates.size(); ++index) {
-        if(coordinates[index].x_ >= x_min && coordinates[index].x_ < x_max &&
-           coordinates[index].y_ >= y_min && coordinates[index].y_ < y_max) {
+    for (unsigned int index = 0; index < coordinates.size(); ++index) {
+        if (coordinates[index].x_ >= x_min && coordinates[index].x_ < x_max &&
+            coordinates[index].y_ >= y_min && coordinates[index].y_ < y_max) {
             roi_points_indices->indices.push_back(index);
         }
     }
@@ -685,9 +846,22 @@ void ObjectTrackingNode::FindPointsInROI(
 }
 
 void ObjectTrackingNode::LimitSensorDistance(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, bool symmetric) {
     passthrough_filter_.setInputCloud(point_cloud);
-    passthrough_filter_.filter(*point_cloud);
+    if (symmetric) {
+        passthrough_filter_.setFilterLimits(-passthrough_distance_max_,
+                                            passthrough_distance_max_);
+        passthrough_filter_.filter(*point_cloud);
+        passthrough_filter_.setNegative(true);
+        passthrough_filter_.setFilterLimits(-passthrough_distance_min_,
+                                            passthrough_distance_min_);
+        passthrough_filter_.filter(*point_cloud);
+        passthrough_filter_.setNegative(false);
+    } else {
+        passthrough_filter_.setFilterLimits(passthrough_distance_min_,
+                                            passthrough_distance_max_);
+        passthrough_filter_.filter(*point_cloud);
+    }
 }
 
 const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr, const pcl::PointXYZ>
@@ -705,24 +879,25 @@ ObjectTrackingNode::ExtractEuclideanClusters(
     euclidean_clustering_.setMaxClusterSize(cluster_size_max_);
     euclidean_clustering_.setSearchMethod(kd_tree);
 
-    // Run the cluster extraction algorithm and store the results in a vector of
-    // vectors of cluster indices.
+    // Run the cluster extraction algorithm and store the results in a
+    // vector of vectors of cluster indices.
     euclidean_clustering_.setInputCloud(point_cloud);
     std::vector<pcl::PointIndices> clusters_indices;
     euclidean_clustering_.extract(clusters_indices);
 
-    // Throw an exception to be caught upstream f clustering was unsuccessful.
-    if(int(clusters_indices.size()) < 1) {
+    // Throw an exception to be caught upstream if clustering was unsuccessful.
+    if (uint(clusters_indices.size()) < 1) {
         throw ClusteringException(
-            "Could not find any valid clusters in the provided point cloud.");
+            "Could not find any valid clusters in the provided point "
+            "cloud.");
     }
-    RCLCPP_DEBUG(get_logger(),
-                 "Euclidean clustering found %i clusters.",
-                 int(clusters_indices.size()));
 
-    // Create a shared pointer to a new point cloud to store the closest cluster
-    // and keep track of the cluster distances from the origin as the clustering
-    // results are traversed.
+    RCLCPP_DEBUG(get_logger(), "Euclidean clustering found %i clusters.",
+                 uint(clusters_indices.size()));
+
+    // Create a shared pointer to a new point cloud to store the closest
+    // cluster and keep track of the cluster distances from the origin as
+    // the clustering results are traversed.
     pcl::PointCloud<pcl::PointXYZ>::Ptr closest_cloud_cluster(
         new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointXYZ closest_cluster_centroid(
@@ -730,33 +905,32 @@ ObjectTrackingNode::ExtractEuclideanClusters(
         std::numeric_limits<float>::infinity(),
         std::numeric_limits<float>::infinity());
 
-    for(int cluster_index = 0; cluster_index < int(clusters_indices.size());
-        ++cluster_index) {
+    // Iterate over the cloud clusters to compute the cluster centroids.
+    for (unsigned int cluster_index = 0;
+         cluster_index < uint(clusters_indices.size()); ++cluster_index) {
         // Temporarily instantiate a point cloud to the current cluster.
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
             new pcl::PointCloud<pcl::PointXYZ>);
-        for(const auto& idx : clusters_indices[cluster_index].indices) {
+        for (const auto& idx : clusters_indices[cluster_index].indices) {
             cloud_cluster->push_back((*point_cloud)[idx]);
         }
 
-        // Compute the distance to the centroid of the current cluster from the
-        // point cloud origin.
+        // Compute the distance to the centroid of the current cluster from
+        // the point cloud origin.
         pcl::PointXYZ cloud_centroid;
         pcl::computeCentroid(*cloud_cluster, cloud_centroid);
         auto distance = cloud_centroid.getVector3fMap().norm();
 
         // Compare the distance to the current cluster with the shortest
         // distance so far and update the closest cluster index accordingly.
-        if(distance < closest_cluster_centroid.getVector3fMap().norm()) {
+        if (distance < closest_cluster_centroid.getVector3fMap().norm()) {
             closest_cluster_centroid = cloud_centroid;
             closest_cloud_cluster = cloud_cluster;
         }
 
-        RCLCPP_DEBUG(get_logger(),
-                     "Cluster %i: %i points, centroid %0.2f meters away.",
-                     cluster_index,
-                     int(cloud_cluster->points.size()),
-                     distance);
+        RCLCPP_DEBUG(
+            get_logger(), "Cluster %i: %i points, centroid %0.2f meters away.",
+            cluster_index, uint(cloud_cluster->points.size()), distance);
     }
 
     return std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
@@ -773,7 +947,7 @@ void ObjectTrackingNode::SegmentGroundPlane(
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
     sac_segmentation_.segment(*inliers, *coefficients);
 
-    if(inliers->indices.size() == 0) {
+    if (inliers->indices.size() == 0) {
         RCLCPP_DEBUG(get_logger(),
                      "Could not estimate a planar model for the given "
                      "dataset.");
@@ -799,45 +973,62 @@ void ObjectTrackingNode::SegmentGroundPlane(
     extract_indices.setNegative(true);
     extract_indices.setKeepOrganized(true);
     extract_indices.filterDirectly(point_cloud);
+
+    RemoveNaNPoints(point_cloud);
+
+    if (publish_ground_cloud_) {
+        PublishPointCloud(cloud_plane, point_cloud_message_->header.stamp,
+                          camera_frame_, ground_cloud_publisher_);
+    }
 }
 
 void ObjectTrackingNode::EstimatorTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Estimator timer callback triggered!");
 
-    // Skip the target state estimation if no valid target detection has been
-    // performed since the last reset.
-    if(!has_first_detection_) return;
+    // TODO: Remove the next line to restore the filter.
+    return;
+
+    // Skip the target state estimation if no valid target detection has
+    // been performed since the last reset.
+    if (!has_first_detection_)
+        return;
 
     // Reset the target state estimator if the target is currently being
     // tracked but no valid detections have been received during the timeout
     // window.
-    if((get_clock()->now() - last_detection_time_).seconds() >
-       target_timeout_) {
-        if(is_tracking_) {
-            RCLCPP_WARN(get_logger(),
-                        "Target timeout, resetting estimator ...");
-            filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
-            is_tracking_ = false;
-            has_detection_ = false;
-            has_first_detection_ = false;
-        }
+    if ((get_clock()->now() - last_valid_detection_time_).seconds() >
+        target_timeout_) {
+        // if (state_ == TrackerState::LIDAR_ONLY_TRACKING ||
+        //     state_ == TrackerState::FULL_TRACKING) {
+        RCLCPP_WARN(get_logger(), "Target timeout, resetting estimator ...");
+        filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
+        filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        state_ = TrackerState::UNINITIALIZED;
+        has_detection_ = false;
+        has_first_detection_ = false;
+        //}
 
         return;
     }
 
-    // If you made it this far, then it means you are ready to track the target.
+    // If you made it this far, then it means you are ready to track the
+    // target.
+    state_ = TrackerState::FULL_TRACKING;
     is_tracking_ = true;
 
     // Run the "Predict" step of the Kalman filter.
     filter_->Predict();
 
-    // Check if a new measurement is available to be parse, then provide a
+    // Check if a new measurement is available to be parsed, then provide a
     // matching measurement vector z_n.
-    if(has_new_measurement_) {
-        // The measurement vector contains the position vector components, each
-        // followed by its first (velocity) and second (acceleration)
-        // derivatives, hence (0, 0 + 3, 0 + 3 + 3) are the corresponding to the
-        // position vector.
+    if (has_new_measurement_) {
+        bounding_box_centroid_ = TransformToCoordinates(
+            camera_frame_, world_frame_, bounding_box_centroid_);
+
+        // The measurement vector contains the position vector components,
+        // each followed by its first (velocity) and second (acceleration)
+        // derivatives, hence (0, 0 + 3, 0 + 3 + 3) are the corresponding to
+        // the position vector.
         Eigen::Vector<double, 9> measurement_vector =
             Eigen::Vector<double, 9>::Zero();
         measurement_vector(0) = bounding_box_centroid_.x();
@@ -856,17 +1047,27 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
     bounding_box_centroid_filtered_.y() = state_filtered(3);
     bounding_box_centroid_filtered_.z() = state_filtered(6);
 
-    if(publish_odometry_) { PublishOdometry(); }
-    if(publish_pose_) { PublishPose(); }
-    if(publish_detection_3d_) { PublishDetection3D(); }
+    // bounding_box_centroid_filtered_ =
+    //     TransformToCoordinates(world_frame_, camera_frame_,
+    //     bounding_box_centroid_filtered_);
+
+    if (publish_odometry_) {
+        PublishOdometry();
+    }
+    if (publish_pose_) {
+        PublishPose();
+    }
+    if (publish_detection_3d_) {
+        PublishDetection3D();
+    }
 }
 
 void ObjectTrackingNode::PublishPointCloud(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    const rclcpp::Time& stamp,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, const rclcpp::Time& stamp,
     const std::string& frame_id,
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher) {
-    // Convert the PCL XYZ point cloud to a ROS sensor_msgs/PointCloud2 message.
+    // Convert the PCL XYZ point cloud to a ROS sensor_msgs/PointCloud2
+    // message.
     sensor_msgs::msg::PointCloud2 point_cloud_message;
     pcl::toROSMsg(*point_cloud, point_cloud_message);
 
@@ -885,8 +1086,6 @@ void ObjectTrackingNode::Initialize() {
 
     // Configure the passthrough filter.
     passthrough_filter_.setFilterFieldName("z");
-    passthrough_filter_.setFilterLimits(passthrough_distance_min_,
-                                        passthrough_distance_max_);
 
     // Configure the SAC segmentation filter.
     sac_segmentation_.setOptimizeCoefficients(true);
@@ -900,14 +1099,20 @@ void ObjectTrackingNode::Initialize() {
 
     // Initialize the Kalman filter.
     filter_ = std::make_shared<avt_341::perception::filtering::CVFilter<3>>(
-        1.0 / estimator_rate_,
-        filter_process_variance_,
+        1.0 / estimator_rate_, filter_process_variance_,
         filter_measurement_variance_);
     filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
+
+    has_target_selection_ = (use_autostart_) ? true : false;
+    target_class_ = (use_autostart_) ? autostart_target_class_ : "";
+
+    last_valid_detection_time_ = get_clock()->now();
+    last_valid_target_time_ = get_clock()->now();
 }
 
 void ObjectTrackingNode::PublishImage() {
-    if(!has_image_) return;
+    if (!has_image_)
+        return;
 
     auto image_copy = latest_image_->image.clone();
 
@@ -925,19 +1130,17 @@ void ObjectTrackingNode::PublishImage() {
 
 void ObjectTrackingNode::GetOrientedBoundingBox(
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    pcl::PointXYZ& bounding_box_min,
-    pcl::PointXYZ& bounding_box_max,
+    pcl::PointXYZ& bounding_box_min, pcl::PointXYZ& bounding_box_max,
     pcl::PointXYZ& bounding_box_centroid,
     Eigen::Matrix3f& bounding_box_rotation) {
     moi_estimation_.setInputCloud(point_cloud);
     moi_estimation_.compute();
 
-    if(!moi_estimation_.getOBB(bounding_box_min,
-                               bounding_box_max,
-                               bounding_box_centroid,
-                               bounding_box_rotation)) {
-        throw PCAException("Could not estimate the oriented bounding box for "
-                           "the provided point cloud cluster.");
+    if (!moi_estimation_.getOBB(bounding_box_min, bounding_box_max,
+                                bounding_box_centroid, bounding_box_rotation)) {
+        throw PCAException(
+            "Could not estimate the oriented bounding box for "
+            "the provided point cloud cluster.");
     }
 }
 
@@ -974,9 +1177,9 @@ void ObjectTrackingNode::PublishPose() {
     geometry_msgs::msg::PoseWithCovarianceStamped pose_message;
 
     pose_message.header.stamp = get_clock()->now();
-    pose_message.header.frame_id = camera_frame_;
+    pose_message.header.frame_id = world_frame_;
 
-    if(use_filtered_pose_) {
+    if (use_filtered_pose_) {
         pose_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
         pose_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
         pose_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
@@ -1001,7 +1204,7 @@ void ObjectTrackingNode::PublishOdometry() {
     odometry_message.header.frame_id = camera_frame_;
     odometry_message.child_frame_id = odometry_child_frame_;
 
-    if(use_filtered_odometry_) {
+    if (use_filtered_odometry_) {
         odometry_message.pose.pose.position.x =
             bounding_box_centroid_filtered_.x();
         odometry_message.pose.pose.position.y =
@@ -1015,10 +1218,173 @@ void ObjectTrackingNode::PublishOdometry() {
     }
 
     // Note that the filter does not predicted orientation, hence the
-    // orientation fields in the odometry message pose entry are not populated.
-
+    // orientation fields in the odometry message pose entry are not
+    // populated.
     odometry_publisher_->publish(odometry_message);
 }
 
-} // namespace perception
-} // namespace avt_341
+void ObjectTrackingNode::TaskStatusCallback(
+    avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message) {
+    task_status_message->tracked_vehicle;
+}
+
+rcl_interfaces::msg::SetParametersResult
+ObjectTrackingNode::SetParametersCallback(
+    const std::vector<rclcpp::Parameter>& parameters) {
+    for (const auto& parameter : parameters) {
+        if (parameter.get_name() == "camera_frame") {
+            camera_frame_ = parameter.as_string();
+        } else if (parameter.get_name() == "world_frame") {
+            world_frame_ = parameter.as_string();
+        } else if (parameter.get_name() == "odometry_child_frame") {
+            odometry_child_frame_ = parameter.as_string();
+        } else if (parameter.get_name() == "filters_downsampling_leaf_size") {
+            leaf_size_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_passthrough_min") {
+            passthrough_distance_min_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_passthrough_max") {
+            passthrough_distance_max_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_tolerance") {
+            clustering_tolerance_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_size_minimum") {
+            cluster_size_min_ = parameter.as_int();
+        } else if (parameter.get_name() == "filters_clustering_size_maximum") {
+            cluster_size_max_ = parameter.as_int();
+        } else if (parameter.get_name() == "filters_ground_max_iterations") {
+            sac_segmentation_max_iterations_ = parameter.as_int();
+        } else if (parameter.get_name() == "filters_ground_threshold") {
+            sac_segmentation_threshold_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_ground_angle") {
+            sac_segmentation_angle_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_roi_scale_factor") {
+            roi_scale_factor_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_kalman_rate") {
+            estimator_rate_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_kalman_process") {
+            filter_process_variance_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_kalman_measurement") {
+            filter_measurement_variance_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_use_pca_centroid") {
+            use_pca_centroid_ = parameter.as_bool();
+        } else if (parameter.get_name() == "tracker_timeout") {
+            target_timeout_ = parameter.as_double();
+        } else if (parameter.get_name() == "sync_enable") {
+            sync_messages_ = parameter.as_bool();
+        } else if (parameter.get_name() == "sync_use_callback") {
+            use_callback_time_ = parameter.as_bool();
+        } else if (parameter.get_name() == "sync_detection") {
+            max_detection_skew_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_pose") {
+            use_filtered_pose_ = parameter.as_bool();
+        } else if (parameter.get_name() == "filters_odometry") {
+            use_filtered_odometry_ = parameter.as_bool();
+        } else if (parameter.get_name() == "filters_use_manual_roi") {
+            use_manual_roi_size_ = parameter.as_bool();
+        }
+    }
+    rcl_interfaces::msg::SetParametersResult result;
+    result.successful = true;
+    return result;
+}
+
+std::string ObjectTrackingNode::ToString(TrackerState& state) {
+    if (state == TrackerState::UNINITIALIZED) {
+        return "uninitialized";
+    } else if (state == TrackerState::INACTIVE) {
+        return "inactive";
+    } else if (state == TrackerState::NO_DETECTION) {
+        return "no_detection";
+    } else if (state == TrackerState::LIDAR_ONLY_TRACKING) {
+        return "lidar_only";
+    } else if (state == TrackerState::FULL_TRACKING) {
+        return "full";
+    }
+    throw std::invalid_argument("Unknown tracker state.");
+}
+
+void ObjectTrackingNode::SetTargetServiceCallback(
+    const std::shared_ptr<avt_341_msgs::srv::SetTarget::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::SetTarget::Response> response) {
+    // Suppress unused variable compiler warning.
+    (void)request;
+
+    target_class_ = request->id;
+    has_target_selection_ = true;
+
+    std::string message("Target selection set to \"" + target_class_ + "\".");
+    RCLCPP_INFO(get_logger(), message.c_str());
+    response->success = true;
+    response->message = message.c_str();
+}
+
+void ObjectTrackingNode::ProjectPointsToPixel(
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
+    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
+    // Find the mapping between the 3D coordinates (X, Y, Z) of a point and
+    // the corresponding pixel coordinates in the camera image frame.
+    const std::vector<PixelCoordinates> coordinates =
+        ConvertPointCloudToPixelCoordinates(point_cloud, camera_info_message_);
+
+    // Find the cloud points in the camera field of view and store them in a
+    // separate point cloud. We keep the original downsampled point cloud to
+    // account for objects that are not yet in the field-of-view.
+    FindPointsInCameraFOV(point_cloud, coordinates,
+                          camera_info_message_->height,
+                          camera_info_message_->width);
+
+    if (publish_fov_cloud_) {
+        PublishPointCloud(point_cloud, point_cloud_message->header.stamp,
+                          camera_frame_, fov_cloud_publisher_);
+    }
+
+    // Find cloud points the region of interest defined by the first
+    // detection.
+
+    RCLCPP_DEBUG(get_logger(),
+                 "Finding cloud points in the region of interest ...");
+
+    unsigned int x_min =
+        detections_message_.detections[0].bbox.center.position.x -
+        detections_message_.detections[0].bbox.size_x / 2;
+    unsigned int x_max =
+        detections_message_.detections[0].bbox.center.position.x +
+        detections_message_.detections[0].bbox.size_x / 2;
+
+    unsigned int y_min =
+        detections_message_.detections[0].bbox.center.position.y -
+        detections_message_.detections[0].bbox.size_y / 2;
+    unsigned int y_max =
+        detections_message_.detections[0].bbox.center.position.y +
+        detections_message_.detections[0].bbox.size_y / 2;
+
+    RCLCPP_DEBUG(
+        get_logger(),
+        "Trimming region of interest to the camera image frame bounds ...");
+    if (x_min < 0)
+        x_min = 0;
+    if (x_max > camera_info_message_->width)
+        x_max = camera_info_message_->width;
+    if (y_min < 0)
+        y_min = 0;
+    if (y_max > camera_info_message_->height)
+        y_max = camera_info_message_->height;
+
+    RCLCPP_DEBUG(get_logger(),
+                 "Selected the following bounding box as region of interest: "
+                 "[X_MIN: %i, X_MAX: %i Y_MIN: %i Y_MAX: %i]",
+                 x_min, x_max, y_min, y_max);
+
+    // Find the points lying in the region of interest (ROI) defined by the
+    // detection bounding box.
+    FindPointsInROI(point_cloud, coordinates, x_min, x_max, y_min, y_max);
+
+    if (publish_roi_cloud_) {
+        PublishPointCloud(point_cloud, point_cloud_message->header.stamp,
+                          camera_frame_, roi_cloud_publisher_);
+    }
+
+    RemoveNaNPoints(point_cloud);
+}
+
+}  // namespace perception
+}  // namespace avt_341
