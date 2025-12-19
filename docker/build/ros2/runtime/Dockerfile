@@ -30,10 +30,10 @@ RUN source /opt/ros/humble/setup.bash && \
 
 COPY --chown=${USER}:${USER} \
      --chmod=+x \
-     docker/build/ros2/runtime/entrypoint.sh \
-     /home/${USER}/entrypoint.sh
+     docker/build/ros2/runtime/entrypoint.py \
+     /home/${USER}/entrypoint.py
 
-ENTRYPOINT /home/avt/entrypoint.sh
+ENTRYPOINT /home/avt/entrypoint.py
 
 
 ###############################################################################

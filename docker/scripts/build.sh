@@ -31,20 +31,20 @@ docker build --build-arg "TARGET=cpu" \
              --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-${VERSION} \
              .
 
-printf "Building tulgaersal/nato-avt-341-stack:ros2-devel-cuda ..."
-docker build --build-arg "TARGET=cuda" \
-             --file ${BUILD_PATH}/ros2/devel/Dockerfile \
-             --progress ${PROGRESS} \
-             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel-cuda \
-             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel-cuda-latest \
-             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel-cuda-${VERSION} \
-             .
+#printf "Building tulgaersal/nato-avt-341-stack:ros2-devel-cuda ..."
+#docker build --build-arg "TARGET=cuda" \
+#             --file ${BUILD_PATH}/ros2/devel/Dockerfile \
+#             --progress ${PROGRESS} \
+#             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel-cuda \
+#             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel-cuda-latest \
+#             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel-cuda-${VERSION} \
+#             .
 
-printf "Building tulgaersal/nato-avt-341-stack:ros2-runtime-cuda ..."
-docker build --build-arg "TARGET=cuda" \
-             --file ${BUILD_PATH}/ros2/runtime/Dockerfile \
-             --progress ${PROGRESS} \
-             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-cuda \
-             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-cuda-latest \
-             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-cuda-${VERSION} \
-             .
+#printf "Building tulgaersal/nato-avt-341-stack:ros2-runtime-cuda ..."
+#docker build --build-arg "TARGET=cuda" \
+#             --file ${BUILD_PATH}/ros2/runtime/Dockerfile \
+#             --progress ${PROGRESS} \
+#             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-cuda \
+#             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-cuda-latest \
+#             --tag ghcr.io/tulgaersal/nato-avt-341-stack:ros2-runtime-cuda-${VERSION} \
+#             .
