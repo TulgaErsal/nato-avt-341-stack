@@ -314,7 +314,7 @@ std::vector<Detection2D> ObjectDetector::Detect(cv::Mat& image) {
             continue;
         }
 
-        auto detection = Detection2D(BoundingBox2D(x_min, x_max, y_min, y_max), Hypothesis(class_id, score));
+        auto detection = Detection2D(BoundingBox2D(x_min, x_max, y_min, y_max), Hypothesis(classes_[class_id], score));
         detections.push_back(detection);
     }
 

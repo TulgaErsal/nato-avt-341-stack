@@ -12,27 +12,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Define the messages to be built.
 set(MESSAGE_DEFINITIONS
-    "BoundingBox2d"
     "Communication"
-    "Detection2d"
-    "Detection2dArray"
     "DwaInfo"
     "DwaObjective"
     "DwaTrajectory"
     "FollowerStatus"
-    "Hypothesis"
+    "LiorfCloudInfo"
+    "MissionTaskStatus"
     "Obstacles"
     "OccupiedCell"
     "OccupiedCells"
     "Sinkage"
-    "LiorfCloudInfo"
-    "MissionTaskStatus"
-    )
+    "TrackerInfo")
 
-set(SERVICE_DEFINITIONS
-    "LiorfSaveMap"
-    )
-
+set(SERVICE_DEFINITIONS "LiorfSaveMap" "SetTarget")
 
 # Append the ".msg" extension for both builds and preprend the "msg/" prefix to
 # message definitions for the ament build.
@@ -42,11 +35,12 @@ string(REGEX REPLACE "([^;]+)" "msg/\\1.msg" MESSAGE_DEFINITIONS_AMENT
                      "${MESSAGE_DEFINITIONS}")
 string(REGEX REPLACE "([^;]+)" "\\1.srv" SERVICE_DEFINITIONS_CATKIN
                      "${SERVICE_DEFINITIONS}")
-#string(REGEX REPLACE "([^;]+)" "srv/\\1.srv" SERVICE_DEFINITIONS_AMENT
-#                     "${SERVICE_DEFINITIONS}")
+string(REGEX REPLACE "([^;]+)" "srv/\\1.srv" SERVICE_DEFINITIONS_AMENT
+                      "${SERVICE_DEFINITIONS}")
 
 if($ENV{ROS_VERSION} EQUAL 1)
-  find_package(catkin REQUIRED COMPONENTS std_msgs nav_msgs message_generation sensor_msgs)
+  find_package(catkin REQUIRED COMPONENTS std_msgs nav_msgs message_generation
+                                          sensor_msgs)
 
   add_message_files(FILES ${MESSAGE_DEFINITIONS_CATKIN})
   add_service_files(FILES ${SERVICE_DEFINITIONS_CATKIN})
@@ -62,8 +56,15 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
   find_package(std_msgs REQUIRED)
   find_package(sensor_msgs REQUIRED)
 
-  rosidl_generate_interfaces(${PROJECT_NAME} ${MESSAGE_DEFINITIONS_AMENT}
-                             DEPENDENCIES builtin_interfaces std_msgs nav_msgs sensor_msgs)
+  rosidl_generate_interfaces(
+    ${PROJECT_NAME}
+    ${MESSAGE_DEFINITIONS_AMENT}
+    ${SERVICE_DEFINITIONS_AMENT}
+    DEPENDENCIES
+    builtin_interfaces
+    std_msgs
+    nav_msgs
+    sensor_msgs)
 
   install(FILES "ros_bridge_mappings.yaml" DESTINATION "share/${PROJECT_NAME}")
 

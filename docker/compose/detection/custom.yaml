@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    rate: 30.0
+    model_external: "/home/avt/ROS/"
+    model_name: fedav8m-cuda-640x640

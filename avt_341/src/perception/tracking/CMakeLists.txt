@@ -8,6 +8,7 @@ if(USING_CATKIN)
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
+  find_package(avt_341_msgs REQUIRED)
   find_package(PCL REQUIRED QUIET)
   find_package(Eigen3 REQUIRED)
   find_package(cv_bridge REQUIRED)
@@ -35,6 +36,7 @@ if(USING_AMENT)
 
   ament_target_dependencies(
     ${PROJECT_NAME}_object_tracking_node
+    avt_341_msgs
     Eigen3
     cv_bridge
     OpenCV

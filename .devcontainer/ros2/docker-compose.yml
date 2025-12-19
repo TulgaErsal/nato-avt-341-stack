@@ -1,0 +1,22 @@
+networks:
+  devcontainer:
+    name: nato_avt_341_stack_devcontainer
+
+services:
+  ros:
+    container_name: nato_avt_341_stack_devcontainer
+    image: ghcr.io/tulgaersal/nato-avt-341-stack:ros2-devel
+    networks: [ devcontainer ]
+    user: "1000:1000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - build:/home/avt/ROS/build
+      - install:/home/avt/ROS/install
+      - ../../://home/avt/ROS/src/nato-avt-341-stack
+
+volumes:
+  build:
+    name: nato_avt_341_stack_devcontainer_build
+  install:
+    name: nato_avt_341_stack_devcontainer_install
