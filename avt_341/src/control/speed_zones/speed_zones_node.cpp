@@ -134,7 +134,8 @@ int main(int argc, char *argv[]){
     std::vector<SpeedZone> speed_zones = ReadSpeedZones(zones_filepath, zones_frame);
 
     avt_341::node::Rate node_rate(10.0);
-    int current_zone, last_zone = -1;
+    int current_zone = -1;
+    int last_zone = -1;
     while (avt_341::node::ok())
     {
         // Update vehicle state

@@ -311,13 +311,13 @@ avt_341::msg::OccupancyGrid ElevationGrid::GetGrid(double x, double y, double wi
 	grid.info.origin.orientation.y = 0.0;
 	grid.info.origin.orientation.z = 0.0;
 
-	grid.data.resize(local_nx * local_ny);
+	grid.data.resize(local_nx * local_ny, 0);
 
-	int c = 0;
 	for (int j = yi_min; j < yi_max; j++) {
 		for (int i = xi_min; i < xi_max; i++) {
+			const int c = (j - yi_min) * local_nx + (i - xi_min);
 			//grid.data[nx_*j+i] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
-			grid.data[c++] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
+			grid.data[c] = is_segmentation ? (uint8_t)(cells_[j][i].terrain) : std::max(GetGridCellValue(cells_[j][i]), cells_[j][i].dilated_val);
 		}
 	}
 

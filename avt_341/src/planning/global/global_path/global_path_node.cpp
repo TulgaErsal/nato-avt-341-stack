@@ -439,15 +439,15 @@ int main(int argc, char* argv[])
         if (nl % 20 == 0 && verbose_gp_log) { //update every second
           auto t_now = std::chrono::system_clock::now();
           auto calc_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t1);
-          n->log_info("Global Path [%d]: Pos (%.2f, %.2f) Distance to goal (%.2f, %.2f) for %d of %d = %.2f",
-                      calc_duration_ms.count(),
-                      odom.pose.pose.position.x,
-                      odom.pose.pose.position.y,
-                      goal.x,
-                      goal.y,
-                      current_waypoint+1,
-                      current_waypoints.poses.size(),
-                      current_goal_dist);
+          // n->log_info("Global Path [%d]: Pos (%.2f, %.2f) Distance to goal (%.2f, %.2f) for %d of %d = %.2f",
+          //             calc_duration_ms.count(),
+          //             odom.pose.pose.position.x,
+          //             odom.pose.pose.position.y,
+          //             goal.x,
+          //             goal.y,
+          //             current_waypoint+1,
+          //             current_waypoints.poses.size(),
+          //             current_goal_dist);
           t1 = t_now;
         }
         if (current_waypoint == current_waypoints.poses.size() - 1) {  // last waypoint

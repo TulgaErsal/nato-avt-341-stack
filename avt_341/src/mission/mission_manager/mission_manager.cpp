@@ -198,7 +198,7 @@ void MissionManager::publishGoalPath(const avt_341::msg::Path& path) {
     path_msg.header.stamp = node_proxy_->get_stamp();
     path_msg.header.frame_id = "map";
     path_msg.poses = path.poses;
-    waypoint_pub->publish(path);
+    waypoint_pub->publish(path_msg);
 }
 
 void MissionManager::publishPath(const avt_341::msg::Path& path){

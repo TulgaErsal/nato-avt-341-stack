@@ -1,6 +1,5 @@
 import os
 import yaml
-import json
 
 import launch.conditions
 from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationNotEquals, LaunchConfigurationEquals
@@ -267,6 +266,11 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 ],
         )]
 
+def ros_string_array_to_vals(str_array: str):
+    # Remove '[' and ']', extra spaces,
+    return str_array.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
+
+
 def launch_setup(context, *args, **kwargs):
     # General args
     use_sim_time = LaunchConfiguration('use_sim_time')                                  # Use simulation time (mainly for rosbag data replay)
@@ -306,7 +310,7 @@ def launch_setup(context, *args, **kwargs):
             robot_desc = infp.read()
 
     # Load vehicle config files
-    vehicle_config_folders_arr = json.loads(vehicle_config_folders.perform(context).replace("'","\""))
+    vehicle_config_folders_arr = ros_string_array_to_vals(vehicle_config_folders.perform(context))
     param_dir = vehicle_config_folders_arr[idx]
     param_files = {f[:-len('.yaml')]: os.path.join(param_dir, f) for f in os.listdir(param_dir) if f.endswith('.yaml')}
     params = {}
@@ -469,7 +473,8 @@ def launch_setup(context, *args, **kwargs):
             executable='data_acquisition_node',
             name='data_acquisition_node',
             output='log',
-            parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}]
+            parameters=[{k: LaunchConfiguration(f'data_acquisition_{k}') for k in params['data_acquisition'].keys()}],
+            condition=IfCondition(LaunchConfiguration('enable_daq'))
         ),
 
         # Mission Manager
@@ -525,7 +530,8 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
                 ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
             ],
-            output='screen'
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('enable_uab_perception'))
         ),
 
         # Obstacle Detection
@@ -539,7 +545,8 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 ('image','/flir_camera/image_raw'),
             ],
-            output='screen'
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('use_avt_obj_detector'))
         ),
 
         # FEDA Detection
@@ -554,7 +561,8 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 ('image','/flir_camera/image_raw'),
             ],
-            output='screen'
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('use_avt_veh_detector'))
         ),
 
         # Object Tracking
@@ -573,7 +581,8 @@ def launch_setup(context, *args, **kwargs):
                 ('pose','/feda/pose'),
                 ('odometry','/feda/avt_341/odometry')
             ],
-            output='screen'
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('use_avt_tracker'))
         ),
 
         # Vehicle Logging
@@ -593,12 +602,15 @@ def launch_setup(context, *args, **kwargs):
     return [*arg_list, *vehicle_node_list]
 
 def generate_launch_description():
+
+    default_veh_config_folder = os.path.join(get_package_share_directory('avt_341'), 'parameters', 'config_mrzr')
+
     launch_arg_defaults = {
         "use_sim_time":                 "False",
         "auto_launch_rviz":             "True",
         "display_type":                 "rviz",
-        "waypoints_file":               f"{get_package_share_directory('avt_341')}/config/no_waypoints.yaml",
-        "robot_description_file":       f"{get_package_share_directory('avt_341')}/config/MRZR.urdf",
+        "waypoints_file":               os.path.join(get_package_share_directory('avt_341'), 'config', 'no_waypoints.yaml'),
+        "robot_description_file":       os.path.join(get_package_share_directory('avt_341'), 'config', 'MRZR.urdf'),
         "robot_description_veh2_file":  "",
         "robot_description_veh3_file":  "",
         "robot_description_veh4_file":  "",
@@ -606,10 +618,10 @@ def generate_launch_description():
         "num_vehicles":                 "1",
         "namespace_single_vehicle":     "False",
         "vehicle_namespaces":           "['agv1', 'agv2', 'cgv1', 'cgv2']",
-        "vehicle_config_folders":       f"['{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr', '{get_package_share_directory('avt_341')}/parameters/config_mrzr']",
+        "vehicle_config_folders":       f"['{default_veh_config_folder}', '{default_veh_config_folder}', '{default_veh_config_folder}', '{default_veh_config_folder}']",
         "use_rqt_display":              "False",
-        "rviz_config":                  f"{get_package_share_directory('avt_341')}/rviz/avt_341_ros2.rviz",
-        "rviz_mult_config":             f"{get_package_share_directory('avt_341')}/rviz/avt_341_multi_vehicle_ros2.rviz",
+        "rviz_config":                  os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_ros2.rviz'),
+        "rviz_mult_config":             os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_multi_vehicle_ros2.rviz'),
         "use_lidar_obstacle_detector":  "False",
         "local_planner_method":         "rcc",
         "waypoint_mode":                "False",
@@ -617,6 +629,11 @@ def generate_launch_description():
         "use_global_path":              "True",
         "global_planner_method":        "a_star",
         "enable_logging":               "False",
+        "enable_daq":                   "True",
+        "enable_uab_perception":        "True",
+        "use_avt_tracker":              "True",
+        "use_avt_obj_detector":         "True",
+        "use_avt_veh_detector":         "True",
         "logging_path":                 os.path.join(os.path.expanduser('~'),"avt_341_data"),
     }
     launch_args = []

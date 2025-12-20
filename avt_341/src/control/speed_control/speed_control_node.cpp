@@ -224,7 +224,7 @@ int main(int argc, char *argv[]){
     avt_341::msg::Twist dc_safe = dc;
     double lat_accel_g = (vel*vel) * tan(dc_safe.angular.z) / wheelbase / 9.81;
     if (abs(lat_accel_g) > max_lat_g) {
-      n->log_info("Lateral acceleration limit activated: %f g", lat_accel_g);
+      n->log_info_throttle(1.0, "Lateral acceleration limit activated: %f g", lat_accel_g);
       // Calculate maximum speed for commanded steering angle
       dc_safe.linear.x = sqrt(abs((max_lat_g*9.81) * wheelbase / tan(dc_safe.angular.z)));
       if (dc_safe.linear.x > dc.linear.x) dc_safe.linear.x = dc.linear.x;
