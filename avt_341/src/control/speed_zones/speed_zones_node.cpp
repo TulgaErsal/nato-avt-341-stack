@@ -71,26 +71,33 @@ std::vector<SpeedZone> ReadSpeedZones(std::string filepath, std::string frame) {
     // Load the speed zones from file
     std::ifstream infile(filepath);
     if(infile.is_open()) {
-        while(std::getline(infile, line))
+        try
         {
-            std::istringstream iss(line);
-            line_contents = GetLine(iss);
-            std::vector<std::vector<double>> corners;
-            if (row >= 1 && !line_contents.empty()) {
-                int id = std::stoi(line_contents[0]);
-                for (int i = 1; i < line_contents.size(); i+=2) {
-                    corners.push_back({
-                        std::stod(line_contents[i]),
-                        std::stod(line_contents[i+1])
-                    });
+            while(std::getline(infile, line))
+            {
+                std::istringstream iss(line);
+                line_contents = GetLine(iss);
+                std::vector<std::vector<double>> corners;
+                if (row >= 1 && !line_contents.empty()) {
+                    int id = std::stoi(line_contents[0]);
+                    for (int i = 1; i < line_contents.size(); i+=2) {
+                        corners.push_back({
+                            std::stod(line_contents[i]),
+                            std::stod(line_contents[i+1])
+                        });
+                    }
+                    SpeedZone zone(id,frame,corners);
+                    zones.push_back(zone);
                 }
-                SpeedZone zone(id,frame,corners);
-                zones.push_back(zone);
+                row++;
             }
-            row++;
-        }    
+        }
+        catch(std::exception& e)
+        {
+            node->log_error("Error reading speed zones %s: %s", filepath.c_str(), e.what());
+        }
     } else {
-        node->log_error("Error reading speed zones %s", filepath.c_str());
+        node->log_error("Could not open speed zones file %s", filepath.c_str());
     }
     return zones;
 }
@@ -135,6 +142,7 @@ int main(int argc, char *argv[]){
     my_name.erase(0, 1);    // Erase '/' in namespace
 
     // Parse speed zones
+    node->log_info("Attempting to read file %s", zones_filepath.c_str());
     std::vector<SpeedZone> speed_zones = ReadSpeedZones(zones_filepath, zones_frame);
 
     if (speed_zones.empty()) {
@@ -142,8 +150,17 @@ int main(int argc, char *argv[]){
         exit(EXIT_SUCCESS);
     }
 
+    if (zone_speeds.size() != speed_zones.size())
+    {
+        node->log_error("Size mismatch between zone speeds (%d) and zone geometry (%d).", zone_speeds.size(), speed_zones.size());
+        exit(EXIT_FAILURE);
+    }
+
+    node->log_info("Loaded %d speed zones.", speed_zones.size());
+
     avt_341::node::Rate node_rate(10.0);
-    int current_zone, last_zone = -1;
+    int current_zone = -1;
+    int last_zone = -1;
     while (avt_341::node::ok())
     {
         // Update vehicle state
