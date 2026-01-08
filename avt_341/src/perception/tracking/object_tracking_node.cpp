@@ -65,7 +65,7 @@ ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracker") {
 }
 
 void ObjectTrackingNode::GetParameters() {
-    declare_parameter("tracking_rate", 5.0);
+    declare_parameter("tracking_rate", 10.0);
     tracking_rate_ = get_parameter("tracking_rate").as_double();
 
     declare_parameter("info_rate", 1.0);
@@ -133,6 +133,9 @@ void ObjectTrackingNode::GetParameters() {
 
     declare_parameter("tracker_autostart", true);
     use_autostart_ = get_parameter("tracker_autostart").as_bool();
+
+    declare_parameter("tracker_use_mission_manager", true);
+    use_mission_manager_ = get_parameter("tracker_use_mission_manager").as_bool();
 
     declare_parameter("tracker_target_class", "");
     autostart_target_class_ = get_parameter("tracker_target_class").as_string();
@@ -226,18 +229,23 @@ void ObjectTrackingNode::CreateSubscriptions() {
             std::bind(&ObjectTrackingNode::PointCloudCallback, this,
                       std::placeholders::_1));
 
-    task_status_subscription_ =
-        create_subscription<avt_341_msgs::msg::MissionTaskStatus>(
-            "task", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
-                      std::placeholders::_1));
+    if(use_mission_manager_) {
+        task_status_subscription_ =
+            create_subscription<avt_341_msgs::msg::MissionTaskStatus>(
+                "task", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+                std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
+                        std::placeholders::_1));
+    }
 }
 
 void ObjectTrackingNode::CreateServices() {
-    set_target_service_server_ = create_service<avt_341_msgs::srv::SetTarget>(
-        "set_target",
-        std::bind(&ObjectTrackingNode::SetTargetServiceCallback, this,
-                  std::placeholders::_1, std::placeholders::_2));
+    if (!use_mission_manager_) {
+        set_target_service_server_ =
+            create_service<avt_341_msgs::srv::SetTarget>(
+                "set_target",
+                std::bind(&ObjectTrackingNode::SetTargetServiceCallback, this,
+                          std::placeholders::_1, std::placeholders::_2));
+    }
 }
 
 void ObjectTrackingNode::CreateTimers() {
@@ -1225,7 +1233,11 @@ void ObjectTrackingNode::PublishOdometry() {
 
 void ObjectTrackingNode::TaskStatusCallback(
     avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message) {
-    task_status_message->tracked_vehicle;
+    target_class_ = task_status_message->tracked_vehicle;
+    has_target_selection_ = true;
+
+    std::string message("Target selection set to \"" + target_class_ + "\".");
+    RCLCPP_INFO(get_logger(), message.c_str());
 }
 
 rcl_interfaces::msg::SetParametersResult

@@ -637,6 +637,10 @@ class ObjectTrackingNode : public rclcpp::Node {
      */
     bool use_autostart_;
 
+    /** @brief Whether or not to listen to targets from the mission manager.
+     * Note that this disables the target selection ROS service. */
+    bool use_mission_manager_;
+
     std::string target_class_;
 
     std::string autostart_target_class_;
