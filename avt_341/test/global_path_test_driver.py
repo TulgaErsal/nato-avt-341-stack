@@ -27,7 +27,7 @@ class GlobalPathTestNode(Node):
     def publish_test_data(self):
         verbose = self.get_parameter('verbose').get_parameter_value().bool_value
         
-        # Create Occupancy Grid (100x100, 1.0 res)
+        # Create Occupancy Grid
         grid = OccupancyGrid()
         grid.header.stamp = self.get_clock().now().to_msg()
         grid.header.frame_id = 'map'
