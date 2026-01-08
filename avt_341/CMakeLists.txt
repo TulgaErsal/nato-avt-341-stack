@@ -382,7 +382,7 @@ if(USING_AMENT)
     DESTINATION "lib/${PROJECT_NAME}")
   
   install(
-    PROGRAMS "launch/vehicle_logging.py"
+    PROGRAMS "launch/vehicle_logging.py" "test/global_path_test_driver.py"
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
