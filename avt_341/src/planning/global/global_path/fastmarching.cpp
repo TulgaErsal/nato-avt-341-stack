@@ -4,23 +4,37 @@
 #include <queue>
 #include <chrono>
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 
 namespace avt_341 {
 namespace planning {
+
+// Clearance penalty function: penalizes paths close to safety margin
+static float clearance_penalty(float distance, float safety_margin) {
+  // Exponential penalty as we get closer to safety margin
+  // Returns 0 when far from obstacles, increases as we approach safety_margin
+  if (distance <= safety_margin) {
+    return 1e9f; // Infinite penalty
+  }
+  
+  float buffer = 2.0f * safety_margin; // Comfortable clearance distance
+  if (distance >= buffer) {
+    return 0.0f; // No penalty when far enough
+  }
+  
+  // Exponential penalty in the transition zone
+  float normalized = (distance - safety_margin) / safety_margin;
+  return std::exp(-normalized * 2.0f) - std::exp(-2.0f);
+}
 
 bool FastMarching::Solve() {
   auto t_1 = std::chrono::system_clock::now();
   std::fill(paths_.begin(), paths_.end(), -1);
 
-//  AStarCell start_node(start_, 0.);
+  // Solve backwards from goal to start (as per Python implementation)
   AStarCell start_node(goal_, 0.);
-//  AStarCell goal_node(goal_, 0.);
   AStarCell goal_node(start_, 0.);
-//  auto start_position = IndexToPoint(FoldIndex(start_));
-//  auto goal_position = IndexToPoint(FoldIndex(goal_));
-//  std::cout << "Start " << start_node.idx << " (" << start_position[0] << ", " << start_position[1] << "), dist: "
-//            << "\n";
-//  std::cout << "Goal: " << goal_node.idx << " (" << goal_position[0] << ", " << goal_position[1] << "), dist: " << "\n";
 
   delete[] costs_;
   costs_ = new float[height_ * width_];
@@ -31,67 +45,75 @@ bool FastMarching::Solve() {
 
   std::priority_queue<AStarCell> nodes_to_visit;
   nodes_to_visit.push(start_node);
-  const int N_adj = search_diagonals_ ? 8 : 4;
+  const int N_adj = 8; // Always use 8-connected for FMM
   int* neighbors = new int[N_adj];
 
   bool solution_found = false;
   while (!nodes_to_visit.empty()) {
-    // .top() doesn't actually remove the node
     AStarCell current = nodes_to_visit.top();
 
-    if (current == goal_node) {
+    // Optimization: stop if we reached the actual start
+    if (current.idx == goal_node.idx) {
       solution_found = true;
-      break;
+      // Could break here, but continuing fills the entire cost map
     }
 
     nodes_to_visit.pop();
 
-    // check bounds and find up to four neighbors
+    // Find 8-connected neighbors
     neighbors[0] = HasDown(current.idx) ? Down(current.idx) : -1;
     neighbors[1] = HasLeft(current.idx) ? Left(current.idx) : -1;
     neighbors[2] = HasUp(current.idx) ? Up(current.idx) : -1;
     neighbors[3] = HasRight(current.idx) ? Right(current.idx) : -1;
-    if (search_diagonals_) {
-      neighbors[4] = HasDown(current.idx) && HasLeft(current.idx) ? DownLeft(current.idx) : -1;
-      neighbors[5] = HasDown(current.idx) && HasRight(current.idx) ? DownRight(current.idx) : -1;
-      neighbors[6] = HasUp(current.idx) && HasLeft(current.idx) ? UpLeft(current.idx) : -1;
-      neighbors[7] = HasUp(current.idx) && HasLeft(current.idx) ? UpRight(current.idx) : -1;
-    }
+    neighbors[4] = HasDown(current.idx) && HasLeft(current.idx) ? DownLeft(current.idx) : -1;
+    neighbors[5] = HasDown(current.idx) && HasRight(current.idx) ? DownRight(current.idx) : -1;
+    neighbors[6] = HasUp(current.idx) && HasLeft(current.idx) ? UpLeft(current.idx) : -1;
+    neighbors[7] = HasUp(current.idx) && HasRight(current.idx) ? UpRight(current.idx) : -1;
 
     for (int i = 0; i < N_adj; ++i) {
       int current_neighbor = neighbors[i];
+      
+      // Only process unvisited cells (cost == INF)
       if (current_neighbor >= 0 && costs_[current_neighbor] == INF) {
 
-        // For each new cell to explore, find the cost_diff in both x and y directions (dx and dy)
+        // Skip infinite weight cells (obstacles)
+        if (weights_[current_neighbor] >= INF) {
+          continue;
+        }
+
+        // For each new cell, find the min cost in both x and y directions
         float dy_down = HasDown(current_neighbor) ? costs_[Down(current_neighbor)] : INF;
         float dy_up = HasUp(current_neighbor) ? costs_[Up(current_neighbor)] : INF;
-        float dy = std::min(dy_down, dy_up);
+        float val_dy = std::min(dy_down, dy_up);
+        
         float dx_left = HasLeft(current_neighbor) ? costs_[Left(current_neighbor)] : INF;
         float dx_right = HasRight(current_neighbor) ? costs_[Right(current_neighbor)] : INF;
-        float dx = std::min(dx_left, dx_right);
+        float val_dx = std::min(dx_left, dx_right);
 
-        // Calculate new cost based on dx, dy and the weights
-        int weight = weights_[current_neighbor];
-        // Set unknown value to weight 2, slightly higher than perfect traversability
-        if (weight == 51) {
-          weight = 2;
-        }
+        // Get weight for this cell
+        float weight = weights_[current_neighbor];
         float neighbor_weight = map_res_ * weight;
-        float discriminant = 2.0 * std::pow(neighbor_weight, 2) - std::pow(dx - dy, 2);
+
+        // FMM update formula
+        float discriminant = 2.0f * std::pow(neighbor_weight, 2) - std::pow(val_dx - val_dy, 2);
         float new_cost;
+        
         if (discriminant >= 0) {
-          new_cost = (dx + dy + std::sqrt(discriminant)) / 2.0f;
+          new_cost = (val_dx + val_dy + std::sqrt(discriminant)) / 2.0f;
         } else {
-          new_cost = std::min(dx + neighbor_weight, dy + neighbor_weight);
+          new_cost = std::min(val_dx + neighbor_weight, val_dy + neighbor_weight);
         }
 
-        // Update cost grid neighbor cells with new costs of neighbors paths with lower expected cost are explored first
-        costs_[neighbors[i]] = new_cost;
-        nodes_to_visit.emplace(neighbors[i], new_cost);
-        paths_[neighbors[i]] = current.idx;
+        // Update cost and parent
+        if (new_cost < costs_[current_neighbor]) {
+          costs_[current_neighbor] = new_cost;
+          paths_[current_neighbor] = current.idx; // Store parent for backtracking
+          nodes_to_visit.emplace(current_neighbor, new_cost);
+        }
       }
     }
   }
+  
   auto t_now = std::chrono::system_clock::now();
   auto calc_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t_1);
 
@@ -108,45 +130,40 @@ bool FastMarching::ExtractPath(float* costs) {
   path_.clear();
   path_world_.clear();
 
-  int step_number = 0;
-  int steps_per_path_point = 10;
-  float step_size = map_res_ / (float) steps_per_path_point;
-//  int current_idx = goal_;
+  // Discrete parent backtracking from start to goal
   int current_idx = start_;
-  auto current_position = IndexToPoint(FoldIndex(current_idx));
-  auto start_position = IndexToPoint(FoldIndex(start_));
+  Index current = FoldIndex(current_idx);
+  
+  Point current_position = IndexToPoint(current);
   path_world_.push_back(current_position);
 
-//  while (current_idx != start_) {
-  while (current_idx != goal_) {
-    if (!IsInMap(FoldIndex(current_idx))) {
-      std::cerr << "Iterating path, coordinate not valid.\n";
-      return false;
-    }
-    if (step_number > 2000) {
-      return false;
-    }
-    auto gradient = BilinearInterpolateGradient(costs, current_position);
-    auto gradient_normalized = Normalize(gradient);
-//    current_position.x += -gradient_normalized.x * step_size;
-//    current_position.y += -gradient_normalized.y * step_size;
-    current_position.x += gradient_normalized.x * step_size;
-    current_position.y += gradient_normalized.y * step_size;
-    current_idx = FlattenIndex(PointToIndex(current_position));
+  int max_steps = height_ * width_;
+  int step_count = 0;
 
-    auto current_dist = Distance(current_position, start_position);
-//    std::cout << step_number << ": (" << current_position.x << ", " << current_position.y << "),  \t dist: " << current_dist
-//              << "\t Grad: [" << gradient_normalized.x << ", " << gradient_normalized.y << "]\n";
-    if (step_number % steps_per_path_point == 0) {
-      path_world_.push_back(current_position);
+  // Follow parent pointers from start to goal
+  while (current_idx != goal_ && step_count < max_steps) {
+    int parent_idx = paths_[current_idx];
+    
+    // Safety check for unreachable cells
+    if (parent_idx < 0) {
+      std::cerr << "FastMarching: Path extraction failed - no parent at idx " << current_idx << std::endl;
+      return false;
     }
-    step_number++;
+
+    current_idx = parent_idx;
+    current = FoldIndex(current_idx);
+    current_position = IndexToPoint(current);
+    path_world_.push_back(current_position);
+    
+    step_count++;
   }
-//  path_world_.push_back(current_position);
 
-//  std::reverse(path_.begin(), path_.end());
-//  std::reverse(path_world_.begin(), path_world_.end());
+  if (current_idx != goal_) {
+    std::cerr << "FastMarching: Path extraction failed - did not reach goal" << std::endl;
+    return false;
+  }
 
+  // Path is built from start to goal, no need to reverse
   return true;
 }
 
