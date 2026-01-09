@@ -173,8 +173,9 @@ int main(int argc, char* argv[])
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
   float dilation_factor, max_separation;
+  float safety_margin;
   std::string map_topic, seg_topic;
-  bool use_fastmarching;
+  std::string planning_method;
   Point goal;
 
   n->get_parameter("~goal_dist", goal_dist, 3.0f);
@@ -199,7 +200,8 @@ int main(int argc, char* argv[])
   n->get_parameter("~use_segmentation", use_segmentation, true);
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid_low_res"));
   n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
-  n->get_parameter("~use_fastmarching", use_fastmarching, true);
+  n->get_parameter("~planning_method", planning_method, std::string("astar"));
+  n->get_parameter("~safety_margin", safety_margin, 0.5f);
   goal_accept_radius = goal_dist;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -222,8 +224,8 @@ int main(int argc, char* argv[])
     //return 2;
   }
 
-  n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n use_fastmarching: %d",
-    w_distance, w_occupancy, w_segmentation, static_cast<int>(use_fastmarching));
+  n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s",
+    w_distance, w_occupancy, w_segmentation, planning_method.c_str());
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 1);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
@@ -277,14 +279,15 @@ int main(int argc, char* argv[])
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
 
   avt_341::planning::Astar* path_planner;
-  if (use_fastmarching) {
+  if (planning_method == "fast_marching") {
     path_planner = new avt_341::planning::FastMarching(visualizer,
                                                        w_distance,
                                                        w_occupancy,
                                                        w_segmentation,
                                                        search_diagonals,
                                                        los_max_iterations,
-                                                       los_break_on_first);
+                                                       los_break_on_first,
+                                                       safety_margin);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,
                                                 w_distance,
@@ -376,7 +379,7 @@ int main(int argc, char* argv[])
         dist_to_goal_msg.data = current_goal_dist;
 
         std::vector<Point> path = path_planner->PlanPath(&current_grid, &segmentation_grid, goal, position);
-        if (use_fastmarching && !path.empty()) {
+        if (planning_method == "fast_marching" && !path.empty()) {
           avt_341::msg::OccupancyGrid fast_marching_grid;
           fast_marching_grid.header = current_grid.header;
           fast_marching_grid.info = current_grid.info;

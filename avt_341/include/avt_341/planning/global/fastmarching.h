@@ -2,6 +2,7 @@
 #define FASTMARCHING_H
 
 #include <utility>
+#include <vector>
 
 #include "avt_341/planning/global/astar.h"
 
@@ -15,31 +16,39 @@ public:
                float w_segmentation,
                bool search_diagonals,
                int los_max_iterations,
-               bool los_break_on_first) : Astar(std::move(visualizer),
-                                                w_distance,
-                                                w_occupancy,
-                                                w_segmentation,
-                                                search_diagonals,
-                                                los_max_iterations,
-                                                los_break_on_first) {}
+               bool los_break_on_first,
+               float safety_margin) : Astar(std::move(visualizer),
+                                            w_distance,
+                                            w_occupancy,
+                                            w_segmentation,
+                                            search_diagonals,
+                                            los_max_iterations,
+                                            los_break_on_first),
+                                      safety_margin_(safety_margin) {}
 
   /**
    * Solve the FM map. Returns true if a path was found.
    */
   bool Solve() override;
 
+  std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
+                              avt_341::msg::OccupancyGrid* segmentation_grid,
+                              Point goal,
+                              Point position) override;
+
   float* ExtractCosts() {
     return costs_;
   }
 
+protected:
+  void ComputeEDT();
+  
+  float safety_margin_;
+  std::vector<std::vector<float>> edt_map_;
+
 private:
   bool ExtractPath(float* costs);
-  static Vec2 Normalize(const Vec2& v);
   static float Distance(const Point& p1, const Point& p2);
-  float HandleGradientNaNs(float cost_0, float cost_1);
-  float ComputeGradientX(const float* costs, const Index& index);
-  float ComputeGradientY(const float* costs, const Index& index);
-  Vec2 BilinearInterpolateGradient(const float* costs, const Point& position);
 
   float* costs_ = nullptr;
 };
