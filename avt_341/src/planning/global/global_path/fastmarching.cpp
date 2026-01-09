@@ -11,18 +11,31 @@ namespace avt_341 {
 namespace planning {
 
 // Clearance penalty function: penalizes paths close to safety margin
-static float clearance_penalty(float distance, float safety_margin) {
-  if (distance <= safety_margin) {
-    return 1e9f; // Infinite penalty
+static float clearance_penalty(float d, float r, const std::string& option) {
+  if (option == "linear") {
+    const float R_inf = 3.0f;  // Influence radius: penalty is 0 beyond this
+    if (d >= R_inf) {
+      return 0.0f;
+    }
+    return (R_inf - d) / (R_inf - r);
   }
-  
-  float buffer = 2.0f * safety_margin;
-  if (distance >= buffer) {
+  else if (option == "quadratic") {
+    return std::pow(r / d, 2.0f);
+  }
+  else if (option == "exponential") {
+    const float k = 2.0f;
+    return std::exp(-k * (d - r));
+  }
+  else if (option == "repulsive_potential") {
+    const float R_inf = 3.0f; // Influence radius: penalty is 0 beyond this
+    if (d >= R_inf) {
+      return 0.0f;
+    }
+    return std::pow(1.0f/d - 1.0f/R_inf, 2.0f);
+  }
+  else {
     return 0.0f;
   }
-  
-  float normalized = (distance - safety_margin) / safety_margin;
-  return std::exp(-normalized * 2.0f) - std::exp(-2.0f);
 }
 
 std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
@@ -95,7 +108,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
                 } else {
                     // Preserve base cost and add clearance penalty
                     float w = base_w;
-                    w += w_distance_ * clearance_penalty(d, adjusted_safety_margin);
+                    w += w_distance_ * clearance_penalty(d, adjusted_safety_margin, clearance_penalty_type_);
                     weights_[flat_idx] = w;
                 }
             }

@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
   float dilation_factor, max_separation;
   float safety_margin;
   std::string map_topic, seg_topic;
-  std::string planning_method;
+  std::string planning_method, clearance_penalty_type;
   Point goal;
 
   n->get_parameter("~goal_dist", goal_dist, 3.0f);
@@ -202,6 +202,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
   n->get_parameter("~planning_method", planning_method, std::string("astar"));
   n->get_parameter("~safety_margin", safety_margin, 0.5f);
+  n->get_parameter("~clearance_penalty_type", clearance_penalty_type, std::string("repulsive_potential"));
   goal_accept_radius = goal_dist;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -287,7 +288,8 @@ int main(int argc, char* argv[])
                                                        search_diagonals,
                                                        los_max_iterations,
                                                        los_break_on_first,
-                                                       safety_margin);
+                                                       safety_margin,
+                                                       clearance_penalty_type);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,
                                                 w_distance,

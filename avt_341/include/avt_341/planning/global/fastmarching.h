@@ -17,14 +17,16 @@ public:
                bool search_diagonals,
                int los_max_iterations,
                bool los_break_on_first,
-               float safety_margin) : Astar(std::move(visualizer),
+               float safety_margin,
+               std::string clearance_penalty_type) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
                                             w_segmentation,
                                             search_diagonals,
                                             los_max_iterations,
                                             los_break_on_first),
-                                      safety_margin_(safety_margin) {}
+                                      safety_margin_(safety_margin),
+                                      clearance_penalty_type_(clearance_penalty_type) {}
 
   /**
    * Solve the FM map. Returns true if a path was found.
@@ -44,6 +46,7 @@ protected:
   void ComputeEDT();
   
   float safety_margin_;
+  std::string clearance_penalty_type_;
   std::vector<std::vector<float>> edt_map_;
 
 private:

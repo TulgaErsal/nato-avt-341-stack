@@ -7,7 +7,7 @@
     goal_dist: 10.0                                # Lookahead threshold within which next waypoint selected.
     global_lookahead: 75.0                        # Global path lookahead
     debug_visualize: True                         # Enables debug visualization of global planner.
-    w_distance: 10.0                               # Weight for distance cost.
+    w_distance: 1.0                               # Weight for distance cost.
     w_occupancy: 10.0                              # Weight for occupancy cost.
     w_segmentation: 0.1                           # Weight for segmentation cost.
     search_diagonals: True                        # If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered.
@@ -17,10 +17,11 @@
     auto_active_on_new_waypoint: True             # Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint.
     verbose_gp_log: True                          # Activates verbose logging for global planner.
     dilation_factor: 0.0                          # Dilation to costmap to apply during planning.
-    safety_margin: 0.5                            # Safety margin from obstacles in meters (for EDT-based planners).
+    safety_margin: 0.3                           # Safety margin from obstacles in meters (for EDT-based planners).
     max_separation: 1.0                           # Maximum separation between waypoints [m].
     use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
     use_segmentation: False                       # Whether to use segmentation grid data or not
     map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
     seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
     planning_method: fast_marching                # Planning algorithm: 'astar', 'fast_marching'
+    clearance_penalty_type: repulsive_potential   # Clearance penalty type: 'linear', 'quadratic', 'exponential', 'repulsive_potential'
