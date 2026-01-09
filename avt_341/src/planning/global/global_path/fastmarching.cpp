@@ -33,6 +33,9 @@ static float clearance_penalty(float d, float r, const std::string& option) {
     }
     return std::pow(1.0f/d - 1.0f/R_inf, 2.0f);
   }
+  else if (option == "wall_hugging") {
+    return std::pow(d, 2.0f);
+  }
   else {
     return 0.0f;
   }
