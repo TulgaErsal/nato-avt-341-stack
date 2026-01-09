@@ -23,5 +23,5 @@
     use_segmentation: False                       # Whether to use segmentation grid data or not
     map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
     seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
-    planning_method: fast_marching                # Planning algorithm: 'astar', 'fast_marching'
+    planning_method: d_star_lite                # Planning algorithm: 'astar', 'fast_marching', 'd_star_lite'
     clearance_penalty_type: repulsive_potential     # Clearance penalty type: 'linear', 'quadratic', 'exponential', 'repulsive_potential', 'wall_hugging'

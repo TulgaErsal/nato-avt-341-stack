@@ -17,6 +17,7 @@
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/global/astar.h"
 #include "avt_341/planning/global/fastmarching.h"
+#include "avt_341/planning/global/d_star_lite.h"
 #include "avt_341/visualization/visualization_factory.h"
 #include <chrono>
 #include <utility>
@@ -291,6 +292,14 @@ int main(int argc, char* argv[])
                                                        safety_margin,
                                                        clearance_penalty_type,
                                                        verbose_gp_log);
+  } else if (planning_method == "d_star_lite") {
+    path_planner = new avt_341::planning::DStarLite(visualizer,
+                                                    w_distance,
+                                                    w_occupancy,
+                                                    w_segmentation,
+                                                    search_diagonals,
+                                                    los_max_iterations,
+                                                    los_break_on_first);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,
                                                 w_distance,
