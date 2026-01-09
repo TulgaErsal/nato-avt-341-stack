@@ -98,7 +98,11 @@ std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* gri
             // We can raise to power to influence how strongly it centers.
             // Pure FM2 uses linear relation usually.
             // We add a small epsilon to d to act as saturation.
-            float denominator = std::max(d, 0.01f);
+            
+            const float sat_dist = 5.0f;
+            float effect_dist = std::min(d, sat_dist);
+            
+            float denominator = std::max(effect_dist, 0.01f);
             float weight = (max_dist / denominator);
             
             // Apply w_distance_ as a scaling factor
