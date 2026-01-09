@@ -289,7 +289,8 @@ int main(int argc, char* argv[])
                                                        los_max_iterations,
                                                        los_break_on_first,
                                                        safety_margin,
-                                                       clearance_penalty_type);
+                                                       clearance_penalty_type,
+                                                       verbose_gp_log);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,
                                                 w_distance,

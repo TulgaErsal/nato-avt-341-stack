@@ -18,7 +18,8 @@ public:
                int los_max_iterations,
                bool los_break_on_first,
                float safety_margin,
-               std::string clearance_penalty_type) : Astar(std::move(visualizer),
+               std::string clearance_penalty_type,
+               bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
                                             w_segmentation,
@@ -26,7 +27,8 @@ public:
                                             los_max_iterations,
                                             los_break_on_first),
                                       safety_margin_(safety_margin),
-                                      clearance_penalty_type_(clearance_penalty_type) {}
+                                      clearance_penalty_type_(clearance_penalty_type),
+                                      verbose_(verbose) {}
 
   /**
    * Solve the FM map. Returns true if a path was found.
@@ -47,6 +49,7 @@ protected:
   
   float safety_margin_;
   std::string clearance_penalty_type_;
+  bool verbose_;
   std::vector<std::vector<float>> edt_map_;
 
 private:

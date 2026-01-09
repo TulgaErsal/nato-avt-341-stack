@@ -82,8 +82,10 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
     // Compute EDT for safety margin logic
     ComputeEDT();
 
-    std::cout << "[FastMarching] Safety margin (input): " << safety_margin_ << "m" << std::endl;
-    std::cout << "[FastMarching] Safety margin (adjusted): " << adjusted_safety_margin << "m" << std::endl;
+    if (verbose_) {
+        std::cout << "[FastMarching] Safety margin (input): " << safety_margin_ << "m" << std::endl;
+        std::cout << "[FastMarching] Safety margin (adjusted): " << adjusted_safety_margin << "m" << std::endl;
+    }
 
     // Store original weights (from occupancy/segmentation) and apply EDT-based clearance
     std::vector<float> base_weights(weights_.size());
@@ -117,7 +119,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
 
     bool solved = Solve();
     if (!solved) {
-        std::cerr << "WARNING: Fast Marching path planner failed to solve map" << std::endl;
+        if (verbose_) std::cerr << "WARNING: Fast Marching path planner failed to solve map" << std::endl;
     }
 
     return path_world_;
@@ -320,7 +322,7 @@ bool FastMarching::ExtractPath(float* costs) {
     int parent_idx = paths_[current_idx];
     
     if (parent_idx < 0) {
-      std::cerr << "FastMarching: Path extraction failed - no parent at idx " << current_idx << std::endl;
+      if (verbose_) std::cerr << "FastMarching: Path extraction failed - no parent at idx " << current_idx << std::endl;
       return false;
     }
 
@@ -333,7 +335,7 @@ bool FastMarching::ExtractPath(float* costs) {
   }
 
   if (current_idx != goal_) {
-    std::cerr << "FastMarching: Path extraction failed - did not reach goal" << std::endl;
+    if (verbose_) std::cerr << "FastMarching: Path extraction failed - did not reach goal" << std::endl;
     return false;
   }
 
