@@ -3,11 +3,14 @@
 
 #include <utility>
 #include <vector>
+#include <memory>
+#include <string>
 
 #include "avt_341/planning/global/astar.h"
 
 namespace avt_341 {
 namespace planning {
+
 class FastMarching : public Astar {
 public:
   FastMarching(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
@@ -30,6 +33,8 @@ public:
                                       clearance_penalty_type_(clearance_penalty_type),
                                       verbose_(verbose) {}
 
+  virtual ~FastMarching() = default;
+
   /**
    * Solve the FM map. Returns true if a path was found.
    */
@@ -41,7 +46,7 @@ public:
                               Point position) override;
 
   float* ExtractCosts() {
-    return costs_;
+    return costs_flat_.data();
   }
 
 protected:
@@ -50,16 +55,25 @@ protected:
   float safety_margin_;
   std::string clearance_penalty_type_;
   bool verbose_;
-  std::vector<std::vector<float>> edt_map_;
+  
+  // Persistent buffers to avoid reallocations
+  std::vector<float> edt_flat_;
+  std::vector<float> costs_flat_;
+  std::vector<float> base_weights_tmp_;
+  
+  // Temporary buffers for EDT computation
+  std::vector<float> edt_work_f_;
+  std::vector<float> edt_work_d_row_;
+  std::vector<int> edt_work_v_;
+  std::vector<float> edt_work_z_;
+  std::vector<float> edt_work_dist_sq_;
 
 private:
-  bool ExtractPath(float* costs);
+  bool ExtractPath();
   static float Distance(const Point& p1, const Point& p2);
-
-  float* costs_ = nullptr;
 };
 
-}
-}
+} // namespace planning
+} // namespace avt_341
 
-#endif
+#endif // FASTMARCHING_H

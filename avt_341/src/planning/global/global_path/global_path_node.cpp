@@ -18,6 +18,7 @@
 #include "avt_341/planning/global/astar.h"
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/planning/global/d_star_lite.h"
+#include "avt_341/planning/global/fast_marching_square.h"
 #include "avt_341/visualization/visualization_factory.h"
 #include <chrono>
 #include <utility>
@@ -300,6 +301,17 @@ int main(int argc, char* argv[])
                                                     search_diagonals,
                                                     los_max_iterations,
                                                     los_break_on_first);
+  } else if (planning_method == "fast_marching_square") {
+    path_planner = new avt_341::planning::FastMarchingSquare(visualizer,
+                                                             w_distance,
+                                                             w_occupancy,
+                                                             w_segmentation,
+                                                             search_diagonals,
+                                                             los_max_iterations,
+                                                             los_break_on_first,
+                                                             safety_margin,
+                                                             clearance_penalty_type,
+                                                             verbose_gp_log);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,
                                                 w_distance,

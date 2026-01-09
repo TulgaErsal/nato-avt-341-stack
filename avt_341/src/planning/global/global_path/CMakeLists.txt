@@ -8,6 +8,7 @@ if(USING_CATKIN)
     "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp"
     fastmarching.cpp
     d_star_lite.cpp
+    fast_marching_square.cpp
   )
   add_dependencies(${PROJECT_NAME}_global_path_node ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${PROJECT_NAME}_global_path_node ${PROJECT_NAME}_proxy
@@ -26,6 +27,7 @@ if(USING_AMENT)
     "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp"
     fastmarching.cpp
     d_star_lite.cpp
+    fast_marching_square.cpp
   )
   target_link_libraries(${PROJECT_NAME}_global_path_node ${link_libs}
                         ${PROJECT_NAME}_proxy)
