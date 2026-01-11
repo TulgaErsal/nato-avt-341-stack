@@ -28,37 +28,54 @@ class GlobalPathTestNode(Node):
         verbose = self.get_parameter('verbose').get_parameter_value().bool_value
         
         # Create Occupancy Grid
+        resolution = 1.0  # Change this to test resolution independence
+        map_width_m = 100.0
+        map_height_m = 100.0
+        
+        width = int(map_width_m / resolution)
+        height = int(map_height_m / resolution)
+        
         grid = OccupancyGrid()
         grid.header.stamp = self.get_clock().now().to_msg()
         grid.header.frame_id = 'map'
-        grid.info.resolution = 1.0
-        grid.info.width = 100
-        grid.info.height = 100
+        grid.info.resolution = resolution
+        grid.info.width = width
+        grid.info.height = height
         grid.info.origin.position.x = 0.0
         grid.info.origin.position.y = 0.0
         
         # Random obstacles
-        data = np.zeros(100 * 100, dtype=np.int8)
+        data = np.zeros(width * height, dtype=np.int8)
         np.random.seed(0)
         
-        start_x, start_y = 10, 10
-        goal_x, goal_y = 90, 90
+        # Start and Goal in Meters
+        start_x_m, start_y_m = 10.0, 10.0
+        goal_x_m, goal_y_m = 90.0, 90.0
         
         count = 0
         while count < 20:
-            w = np.random.randint(5, 15)
-            h = np.random.randint(5, 15)
-            x = np.random.randint(0, 85)
-            y = np.random.randint(0, 85)
+            # Random size in meters (5m to 15m)
+            w_m = np.random.uniform(5.0, 15.0)
+            h_m = np.random.uniform(5.0, 15.0)
+            # Random position in meters
+            x_m = np.random.uniform(0.0, 85.0)
+            y_m = np.random.uniform(0.0, 85.0)
             
-            # Buffer check
-            if (y - 5 < start_y < y + h + 5 and x - 5 < start_x < x + w + 5) or \
-               (y - 5 < goal_y < y + h + 5 and x - 5 < goal_x < x + w + 5):
+            # Check buffer in meters
+            if (y_m - 5.0 < start_y_m < y_m + h_m + 5.0 and x_m - 5.0 < start_x_m < x_m + w_m + 5.0) or \
+               (y_m - 5.0 < goal_y_m < y_m + h_m + 5.0 and x_m - 5.0 < goal_x_m < x_m + w_m + 5.0):
                 continue
             
-            for i in range(y, min(y + h, 100)):
-                for j in range(x, min(x + w, 100)):
-                    data[i * 100 + j] = 100
+            # Convert to grid indices
+            ix = int(x_m / resolution)
+            iy = int(y_m / resolution)
+            iw = int(w_m / resolution)
+            ih = int(h_m / resolution)
+            
+            # Fill grid
+            for i in range(iy, min(iy + ih, height)):
+                for j in range(ix, min(ix + iw, width)):
+                    data[i * width + j] = 100
             count += 1
             
         grid.data = data.tolist()
@@ -69,8 +86,8 @@ class GlobalPathTestNode(Node):
         odom = Odometry()
         odom.header.stamp = self.get_clock().now().to_msg()
         odom.header.frame_id = 'map'
-        odom.pose.pose.position.x = float(start_x)
-        odom.pose.pose.position.y = float(start_y)
+        odom.pose.pose.position.x = float(start_x_m)
+        odom.pose.pose.position.y = float(start_y_m)
         self.odom_pub.publish(odom)
         if verbose: self.get_logger().info('Published Odometry')
 
@@ -79,8 +96,8 @@ class GlobalPathTestNode(Node):
             goal = PoseStamped()
             goal.header.stamp = self.get_clock().now().to_msg()
             goal.header.frame_id = 'map'
-            goal.pose.position.x = float(goal_x)
-            goal.pose.position.y = float(goal_y)
+            goal.pose.position.x = float(goal_x_m)
+            goal.pose.position.y = float(goal_y_m)
             self.goal_pub.publish(goal)
             self.goal_published = True
             if verbose: self.get_logger().info('Published Goal')
