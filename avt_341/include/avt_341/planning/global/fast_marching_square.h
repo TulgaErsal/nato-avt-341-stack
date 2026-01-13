@@ -27,10 +27,11 @@ public:
                      bool los_break_on_first,
                      float safety_margin,
                      std::string clearance_penalty_type,
+                     std::string path_integration_mode,
                      bool verbose)
       : FastMarching(std::move(visualizer), w_distance, w_occupancy, w_segmentation,
                      search_diagonals, los_max_iterations, los_break_on_first,
-                     safety_margin, clearance_penalty_type, verbose) {}
+                     safety_margin, clearance_penalty_type, path_integration_mode, verbose) {}
 
   virtual ~FastMarchingSquare() = default;
 

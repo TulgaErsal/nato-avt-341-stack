@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
   float dilation_factor, max_separation;
   float safety_margin;
   std::string map_topic, seg_topic;
-  std::string planning_method, clearance_penalty_type;
+  std::string planning_method, clearance_penalty_type, path_integration_mode;
   Point goal;
 
   n->get_parameter("~goal_dist", goal_dist, 3.0f);
@@ -205,6 +205,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~planning_method", planning_method, std::string("astar"));
   n->get_parameter("~safety_margin", safety_margin, 0.5f);
   n->get_parameter("~clearance_penalty_type", clearance_penalty_type, std::string("repulsive_potential"));
+  n->get_parameter("~path_integration_mode", path_integration_mode, std::string("gradient_descent"));
   goal_accept_radius = goal_dist;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -292,6 +293,7 @@ int main(int argc, char* argv[])
                                                        los_break_on_first,
                                                        safety_margin,
                                                        clearance_penalty_type,
+                                                       path_integration_mode,
                                                        verbose_gp_log);
   } else if (planning_method == "d_star_lite") {
     path_planner = new avt_341::planning::DStarLite(visualizer,
@@ -311,6 +313,7 @@ int main(int argc, char* argv[])
                                                              los_break_on_first,
                                                              safety_margin,
                                                              clearance_penalty_type,
+                                                             path_integration_mode,
                                                              verbose_gp_log);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,

@@ -22,6 +22,7 @@ public:
                bool los_break_on_first,
                float safety_margin,
                std::string clearance_penalty_type,
+               std::string path_integration_mode,
                bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
@@ -31,7 +32,8 @@ public:
                                             los_break_on_first),
                                       safety_margin_(safety_margin),
                                       clearance_penalty_type_(clearance_penalty_type),
-                                      verbose_(verbose) {}
+                                      verbose_(verbose),
+                                      path_integration_mode_(path_integration_mode) {}
 
   virtual ~FastMarching() = default;
 
@@ -52,6 +54,7 @@ public:
 protected:
   void ComputeEDT();
   
+  std::string path_integration_mode_;
   float safety_margin_;
   std::string clearance_penalty_type_;
   bool verbose_;
@@ -70,6 +73,9 @@ protected:
 
 private:
   bool ExtractPath();
+  bool ExtractPathDiscrete();
+  bool ExtractPathGradientDescent();
+  Point GetGradient(Point p);
   static float Distance(const Point& p1, const Point& p2);
 };
 
