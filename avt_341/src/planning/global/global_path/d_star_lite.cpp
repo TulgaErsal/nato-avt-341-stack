@@ -28,8 +28,13 @@ void DStarLite::Initialize() {
   km_ = 0.0f;
   g_.assign(height_ * width_, INF);
   rhs_.assign(height_ * width_, INF);
+  open_keys_.assign(height_ * width_, {INF, INF});
+  in_open_.assign(height_ * width_, false);
   rhs_[s_goal_] = 0.0f;
-  open_list_.insert({s_goal_, CalculateKey(s_goal_)});
+  DStarLiteKey k = CalculateKey(s_goal_);
+  open_list_.insert({s_goal_, k});
+  open_keys_[s_goal_] = k;
+  in_open_[s_goal_] = true;
   s_last_ = s_start_;
 }
 
@@ -53,16 +58,16 @@ void DStarLite::UpdateVertex(int u) {
     rhs_[u] = min_rhs;
   }
 
-  // Remove u from open list if it's there
-  auto it = std::find_if(open_list_.begin(), open_list_.end(), [u](const DStarNode& node) {
-    return node.index == u;
-  });
-  if (it != open_list_.end()) {
-    open_list_.erase(it);
+  if (in_open_[u]) {
+    open_list_.erase({u, open_keys_[u]});
+    in_open_[u] = false;
   }
 
   if (g_[u] != rhs_[u]) {
-    open_list_.insert({u, CalculateKey(u)});
+    DStarLiteKey k = CalculateKey(u);
+    open_list_.insert({u, k});
+    open_keys_[u] = k;
+    in_open_[u] = true;
   }
 }
 
@@ -70,6 +75,7 @@ void DStarLite::ComputeShortestPath() {
   while (!open_list_.empty() && (open_list_.begin()->key < CalculateKey(s_start_) || rhs_[s_start_] != g_[s_start_])) {
     DStarNode current = *open_list_.begin();
     open_list_.erase(open_list_.begin());
+    in_open_[current.index] = false;
 
     int u = current.index;
     DStarLiteKey k_old = current.key;
@@ -77,6 +83,8 @@ void DStarLite::ComputeShortestPath() {
 
     if (k_old < k_new) {
       open_list_.insert({u, k_new});
+      open_keys_[u] = k_new;
+      in_open_[u] = true;
     } else if (g_[u] > rhs_[u]) {
       g_[u] = rhs_[u];
       std::vector<int> neighbors = GetNeighbors(u);
@@ -95,25 +103,21 @@ void DStarLite::ComputeShortestPath() {
 }
 
 float DStarLite::Cost(int u, int v) {
-  // Use weights_ as cost. If weights_[v] is very large, it's an obstacle.
-  // We should check map_[ix][iy] for high occupancy if weights_ doesn't explicitly store "is obstacle".
-  // Astar uses weights_ for cost, and weights_ are initialized to include w_occupancy * val_height.
-  // If map_[v] >= 100, we treat it as infinite cost.
+  // Check the base Astar weights_. If weights_[v] is >= INF, it's an obstacle.
+  if (weights_[v] >= INF) return INF;
+  
+  // Also check map occupancy as a fallback
   Index iv = FoldIndex(v);
   if (map_[iv.ix][iv.iy] >= 100.0f) return INF;
   
-  // Astar weight model
-  float move_cost = weights_[v];
-  
-  // Account for diagonal distance
+  // Calculate Euclidean distance (grid steps)
   Index iu = FoldIndex(u);
-  if (iu.ix != iv.ix && iu.iy != iv.iy) {
-    // Both iv.ix and iv.iy are different, means diagonal move
-    // This assumes only 1-step neighbors are checked
-    move_cost *= 1.41421356f;
-  }
+  float dx = std::abs((float)iu.ix - (float)iv.ix);
+  float dy = std::abs((float)iu.iy - (float)iv.iy);
+  float step_dist = (dx > 0 && dy > 0) ? 1.41421356f : 1.0f;
   
-  return move_cost;
+  // Total cost = (base distance cost + terrain penalty) * step distance
+  return (w_distance_ + weights_[v]) * step_dist;
 }
 
 float DStarLite::HeuristicDStar(int u, int v) {

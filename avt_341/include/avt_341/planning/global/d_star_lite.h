@@ -16,6 +16,9 @@ struct DStarLiteKey {
     if (k1 > other.k1) return false;
     return k2 < other.k2;
   }
+  bool operator!=(const DStarLiteKey& other) const {
+    return k1 != other.k1 || k2 != other.k2;
+  }
 };
 
 struct DStarNode {
@@ -58,6 +61,8 @@ protected:
 
   std::vector<float> g_;
   std::vector<float> rhs_;
+  std::vector<DStarLiteKey> open_keys_;
+  std::vector<bool> in_open_;
   float km_;
   int s_start_;
   int s_goal_;
