@@ -206,7 +206,7 @@ bool FastMarching::Solve() {
     costs_flat_[goal_] = 0.0f;
     
     std::priority_queue<AStarCell> pq;
-    pq.emplace(goal_, 0.0f);
+    pq.emplace(goal_, 0.0f,0.0f);
 
     bool solution_found = false;
     const int w = width_;
@@ -222,7 +222,7 @@ bool FastMarching::Solve() {
         pq.pop();
 
         int current_idx = top.idx;
-        if (top.cost > costs_flat_[current_idx]) continue;
+        if (top.g > costs_flat_[current_idx]) continue;
 
         if (current_idx == start_) {
             solution_found = true;
@@ -261,7 +261,7 @@ bool FastMarching::Solve() {
             if (new_cost < costs_flat_[n_idx]) {
                 costs_flat_[n_idx] = new_cost;
                 paths_[n_idx] = current_idx;
-                pq.emplace(n_idx, new_cost);
+                pq.emplace(n_idx, new_cost, new_cost);
             }
         }
     }

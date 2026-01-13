@@ -190,8 +190,8 @@ float Astar::Heuristic(const Index& i0, const Index& i1) const {
 bool Astar::Solve() {
   std::fill(paths_.begin(), paths_.end(), -1);
 
-  AStarCell start_node(start_, 0.);
-  AStarCell goal_node(goal_, 0.);
+  AStarCell start_node(start_, 0.0f, Heuristic(FoldIndex(start_), FoldIndex(goal_)));
+  AStarCell goal_node(goal_, 0.0f, 0.0f);
 
   auto* costs = new float[height_ * width_];
   for (int i = 0; i < height_ * width_; ++i) {
@@ -218,6 +218,7 @@ bool Astar::Solve() {
     }
 
     nodes_to_visit.pop();
+    if (current.g > costs[current.idx]) continue;
 
     // check bounds and find up to eight neighbors
     neighbors[0] = HasDown(current.idx) ? Down(current.idx) : -1;
@@ -238,15 +239,12 @@ bool Astar::Solve() {
       const float step_cost = is_diag ? kDiagonalStep : kCardinalStep;
 
       // Diagonal moves cost more than cardinal moves.
-    float new_cost =
-        costs[current.idx] +
-        step_cost * w_distance_ +
-        weights_[nb];
+      float g_new = costs[current.idx] + step_cost * w_distance_ + weights_[nb];
 
-      if (new_cost < costs[nb]) {
-        costs[nb] = new_cost;
-        float priority = new_cost + Heuristic(FoldIndex(nb), FoldIndex(goal_));
-        nodes_to_visit.emplace(nb, priority);
+      if (g_new < costs[nb]) {
+        costs[nb] = g_new;
+        float f_new = g_new + Heuristic(FoldIndex(nb), FoldIndex(goal_));
+        nodes_to_visit.emplace(nb, g_new, f_new);
         paths_[nb] = current.idx;
       }
     }
