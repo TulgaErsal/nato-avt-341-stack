@@ -15,14 +15,14 @@ static inline float clearance_penalty(float d, float r, const std::string& optio
   if (option == "linear") {
     const float R_inf = 5.0f;
     if (d >= R_inf) return 0.0f;
-    return 10.0f * (R_inf - d) / (R_inf - r);
+    return 20.0f * (R_inf - d) / (R_inf - r);
   }
   else if (option == "quadratic") {
     float ratio = r / d;
-    return 10.0f * ratio * ratio;
+    return 20.0f * ratio * ratio;
   }
   else if (option == "exponential") {
-    return 10.0f * std::exp(-2.0f * (d - r));
+    return 20.0f * std::exp(-2.0f * (d - r));
   }
   else if (option == "repulsive_potential") {
     const float R_inf = 5.0f;
