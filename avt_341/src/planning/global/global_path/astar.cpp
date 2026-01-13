@@ -224,7 +224,7 @@ bool Astar::Solve() {
       neighbors[4] = HasDown(current.idx) && HasLeft(current.idx) ? DownLeft(current.idx) : -1;
       neighbors[5] = HasDown(current.idx) && HasRight(current.idx) ? DownRight(current.idx) : -1;
       neighbors[6] = HasUp(current.idx) && HasLeft(current.idx) ? UpLeft(current.idx) : -1;
-      neighbors[7] = HasUp(current.idx) && HasLeft(current.idx) ? UpRight(current.idx) : -1;
+      neighbors[7] = HasUp(current.idx) && HasRight(current.idx) ? UpRight(current.idx) : -1;
     }
     for (int i = 0; i < N_adj; ++i) {
       if (neighbors[i] >= 0) {
