@@ -74,8 +74,12 @@ protected:
 private:
   bool ExtractPath();
   bool ExtractPathDiscrete();
-  bool ExtractPathGradientDescent();
-  Point GetGradient(Point p);
+  bool ExtractPathGradientDescent(float* costs);
+  float HandleGradientNaNs(float cost_1, float cost_0);
+  float ComputeGradientX(const float* costs, const Index& index);
+  float ComputeGradientY(const float* costs, const Index& index);
+  Vec2 BilinearInterpolateGradient(const float* costs, const Point& position);
+  Vec2 Normalize(const Vec2& v);
   static float Distance(const Point& p1, const Point& p2);
 };
 

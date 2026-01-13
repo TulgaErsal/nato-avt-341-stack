@@ -272,7 +272,7 @@ bool FastMarching::ExtractPath() {
     if (path_integration_mode_ == "discrete") {
         return ExtractPathDiscrete();
     } else {
-        return ExtractPathGradientDescent();
+        return ExtractPathGradientDescent(costs_flat_.data());
     }
 }
 
