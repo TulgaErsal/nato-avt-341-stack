@@ -168,22 +168,25 @@ void Astar::PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>&
   }
 }
 
-// manhattan distance: requires each move to cost >= 1
 float Astar::Heuristic(const Index& i0, const Index& i1) const {
-  //straight line distance
-  int x = i1.ix - i0.ix;
-  int y = i1.iy - i0.iy;
-  return w_distance_ * (float) sqrt(x * x + y * y);
+  const int dx = std::abs(i1.ix - i0.ix);
+  const int dy = std::abs(i1.iy - i0.iy);
 
-  //return std::max(std::abs(x),std::abs(y));
-  //manhattan distance
-  //return std::abs(i0 - i1) + std::abs(j0 - j1);
-  // diagonal heuristic
-  //float D2 = 1.0f;
-  //float D = 1.414214f; //1.0f;
-  //float dx = abs(i1-i0);
-  //float dy = abs(j1-j0);
-  //return D * (dx + dy) + (D2 - 2.0f * D) * std::min(dx, dy);
+  constexpr float D  = 1.0f;
+  constexpr float D2 = 1.41421356237f; // sqrt(2)
+
+  float h;
+  if (search_diagonals_) {
+    const int dmin = std::min(dx, dy);
+    const int dmax = std::max(dx, dy);
+    // Octile distance: (dmax-dmin)*1 + dmin*sqrt(2)
+    h = D * float(dmax - dmin) + D2 * float(dmin);
+  } else {
+    // Manhattan distance
+    h = D * float(dx + dy);
+  }
+
+  return w_distance_ * h;
 }
 
 bool Astar::Solve() {
