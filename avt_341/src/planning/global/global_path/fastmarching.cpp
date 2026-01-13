@@ -13,24 +13,24 @@ namespace planning {
 // Optimized clearance penalty function
 static inline float clearance_penalty(float d, float r, const std::string& option) {
   if (option == "linear") {
-    const float R_inf = 3.0f;
+    const float R_inf = 5.0f;
     if (d >= R_inf) return 0.0f;
-    return (R_inf - d) / (R_inf - r);
+    return 10.0f * (R_inf - d) / (R_inf - r);
   }
   else if (option == "quadratic") {
     float ratio = r / d;
-    return ratio * ratio;
+    return 10.0f * ratio * ratio;
   }
   else if (option == "exponential") {
-    return std::exp(-2.0f * (d - r));
+    return 10.0f * std::exp(-2.0f * (d - r));
   }
   else if (option == "repulsive_potential") {
-    const float R_inf = 3.0f;
+    const float R_inf = 5.0f;
     if (d >= R_inf) return 0.0f;
     float inv_d = 1.0f / d;
     float inv_R = 1.0f / R_inf;
     float diff = inv_d - inv_R;
-    return diff * diff;
+    return 20.0f * diff * diff;
   }
   else if (option == "wall_hugging") {
     return d * d;
@@ -107,7 +107,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         int ix = i % w;
         int iy = i / w;
         
-        if (d <= adjusted_safety_margin || map_[ix][iy] > 0) {
+        if (d <= adjusted_safety_margin || map_[ix][iy] >= 100.0f) {
             weights_[i] = INF;
         } else {
             float base_w = base_weights_tmp_[i];
@@ -137,7 +137,7 @@ void FastMarching::ComputeEDT() {
     for (int x = 0; x < w; ++x) {
         float last_occ = -INF_EDT;
         for (int y = 0; y < h; ++y) {
-            if (map_[x][y] > 0) last_occ = (float)y;
+            if (map_[x][y] >= 100.0f) last_occ = (float)y;
             if (last_occ != -INF_EDT) {
                 float dist = (float)y - last_occ;
                 edt_work_dist_sq_[y * w + x] = dist * dist;
@@ -145,7 +145,7 @@ void FastMarching::ComputeEDT() {
         }
         last_occ = INF_EDT;
         for (int y = h - 1; y >= 0; --y) {
-            if (map_[x][y] > 0) last_occ = (float)y;
+            if (map_[x][y] >= 100.0f) last_occ = (float)y;
             if (last_occ != INF_EDT) {
                 float dist = last_occ - (float)y;
                 float dsq = dist * dist;
