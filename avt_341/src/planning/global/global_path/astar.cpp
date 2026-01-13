@@ -199,6 +199,7 @@ bool Astar::Solve() {
   }
   costs[start_] = 0.;
 
+  std::vector<bool> closed(height_ * width_, false);
   std::priority_queue<AStarCell> nodes_to_visit;
   nodes_to_visit.push(start_node);
   const int N_adj = search_diagonals_ ? 8 : 4;
@@ -216,8 +217,10 @@ bool Astar::Solve() {
       solution_found = true;
       break;
     }
-
+    
     nodes_to_visit.pop();
+    if (closed[current.idx]) continue;
+    closed[current.idx] = true;
     if (current.g > costs[current.idx]) continue;
 
     // check bounds and find up to eight neighbors
