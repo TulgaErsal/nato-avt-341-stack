@@ -23,6 +23,7 @@ public:
                float safety_margin,
                std::string clearance_penalty_type,
                std::string path_integration_mode,
+               float obstacle_threshold,
                bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
@@ -33,7 +34,8 @@ public:
                                       safety_margin_(safety_margin),
                                       clearance_penalty_type_(clearance_penalty_type),
                                       verbose_(verbose),
-                                      path_integration_mode_(path_integration_mode) {}
+                                      path_integration_mode_(path_integration_mode),
+                                      obstacle_threshold_(obstacle_threshold) {}
 
   virtual ~FastMarching() = default;
 
@@ -57,6 +59,7 @@ protected:
   std::string path_integration_mode_;
   float safety_margin_;
   std::string clearance_penalty_type_;
+  float obstacle_threshold_;
   bool verbose_;
   
   // Persistent buffers to avoid reallocations

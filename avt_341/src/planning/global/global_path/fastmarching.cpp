@@ -107,7 +107,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         int ix = i % w;
         int iy = i / w;
         
-        if (d <= adjusted_safety_margin || map_[ix][iy] >= 100.0f) {
+        if (d <= adjusted_safety_margin || map_[ix][iy] > obstacle_threshold_) {
             weights_[i] = INF;
         } else {
             float base_w = base_weights_tmp_[i];
@@ -137,7 +137,7 @@ void FastMarching::ComputeEDT() {
     for (int x = 0; x < w; ++x) {
         float last_occ = -INF_EDT;
         for (int y = 0; y < h; ++y) {
-            if (map_[x][y] >= 100.0f) last_occ = (float)y;
+            if (map_[x][y] > obstacle_threshold_) last_occ = (float)y;
             if (last_occ != -INF_EDT) {
                 float dist = (float)y - last_occ;
                 edt_work_dist_sq_[y * w + x] = dist * dist;
@@ -145,7 +145,7 @@ void FastMarching::ComputeEDT() {
         }
         last_occ = INF_EDT;
         for (int y = h - 1; y >= 0; --y) {
-            if (map_[x][y] >= 100.0f) last_occ = (float)y;
+            if (map_[x][y] > obstacle_threshold_) last_occ = (float)y;
             if (last_occ != INF_EDT) {
                 float dist = last_occ - (float)y;
                 float dsq = dist * dist;
