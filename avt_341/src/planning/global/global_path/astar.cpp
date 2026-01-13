@@ -203,6 +203,9 @@ bool Astar::Solve() {
   const int N_adj = search_diagonals_ ? 8 : 4;
   int* neighbors = new int[N_adj];
 
+  constexpr float kCardinalStep = 1.0f;
+  constexpr float kDiagonalStep = 1.41421356237f; // sqrt(2)
+
   bool solution_found = false;
   while (!nodes_to_visit.empty()) {
     // .top() doesn't actually remove the node
@@ -227,17 +230,20 @@ bool Astar::Solve() {
       neighbors[7] = HasUp(current.idx) && HasRight(current.idx) ? UpRight(current.idx) : -1;
     }
     for (int i = 0; i < N_adj; ++i) {
-      if (neighbors[i] >= 0) {
-        // the sum of the cost so far and the cost of this move
-        float new_cost = costs[current.idx] + weights_[neighbors[i]];
-        if (new_cost < costs[neighbors[i]]) {
-          costs[neighbors[i]] = new_cost;
-          float priority =
-            new_cost + Heuristic(FoldIndex(neighbors[i]), FoldIndex(goal_));
-          // paths with lower expected cost are explored first
-          nodes_to_visit.emplace(neighbors[i], priority);
-          paths_[neighbors[i]] = current.idx;
-        }
+      const int nb = neighbors[i];
+      if (nb < 0) continue;
+
+      const bool is_diag = search_diagonals_ && (i >= 4);
+      const float step_cost = is_diag ? kDiagonalStep : kCardinalStep;
+
+      // Diagonal moves cost more than cardinal moves.
+      float new_cost = costs[current.idx] + step_cost * weights_[nb];
+
+      if (new_cost < costs[nb]) {
+        costs[nb] = new_cost;
+        float priority = new_cost + Heuristic(FoldIndex(nb), FoldIndex(goal_));
+        nodes_to_visit.emplace(nb, priority);
+        paths_[nb] = current.idx;
       }
     }
   }
