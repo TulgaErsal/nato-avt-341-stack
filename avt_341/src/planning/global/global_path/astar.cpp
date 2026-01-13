@@ -429,7 +429,14 @@ std::vector<Point> Astar::PlanPath(avt_341::msg::OccupancyGrid* grid,
     }
   }
 
+  auto t0 = std::chrono::steady_clock::now();
+
   bool solved = Solve();
+
+  auto t1 = std::chrono::steady_clock::now();
+
+  std::cout << "A* solve time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << " ms" << std::endl;
+
   if (!solved) {
     std::cerr << "WARNING: Path planner failed to solve map " << std::endl;
   }

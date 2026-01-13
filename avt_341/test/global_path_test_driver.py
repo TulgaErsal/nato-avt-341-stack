@@ -28,7 +28,7 @@ class GlobalPathTestNode(Node):
         verbose = self.get_parameter('verbose').get_parameter_value().bool_value
         
         # Create Occupancy Grid
-        resolution = 1.0  # Change this to test resolution independence
+        resolution = 0.1  # Change this to test resolution independence
         map_width_m = 100.0
         map_height_m = 100.0
         
