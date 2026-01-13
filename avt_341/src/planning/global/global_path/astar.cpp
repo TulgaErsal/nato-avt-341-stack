@@ -12,8 +12,6 @@
 namespace avt_341 {
 namespace planning {
 
-const int Astar::EdgeDistanceCost;
-
 Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
              float w_distance,
              float w_occupancy,
@@ -65,7 +63,7 @@ void Astar::AllocateMap(int h, int w, int init_val) {
 }
 
 void Astar::SetMapValue(const Index& index, int val_height, int val_seg) {
-  weights_[FlattenIndex(index)] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * static_cast<float>(val_height)
+  weights_[FlattenIndex(index)] = w_occupancy_ * static_cast<float>(val_height)
     + w_segmentation_ * static_cast<float>(val_seg);
   map_[index.ix][index.iy] = (float) val_height;   // only used for obstacles (dilation, line of sight)
 }
@@ -240,7 +238,10 @@ bool Astar::Solve() {
       const float step_cost = is_diag ? kDiagonalStep : kCardinalStep;
 
       // Diagonal moves cost more than cardinal moves.
-      float new_cost = costs[current.idx] + step_cost * weights_[nb];
+    float new_cost =
+        costs[current.idx] +
+        step_cost * w_distance_ +
+        weights_[nb];
 
       if (new_cost < costs[nb]) {
         costs[nb] = new_cost;
