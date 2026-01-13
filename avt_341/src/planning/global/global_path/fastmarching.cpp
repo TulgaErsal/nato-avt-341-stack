@@ -327,86 +327,172 @@ bool FastMarching::ExtractPathDiscrete() {
     return false;
 }
 
-bool FastMarching::ExtractPathGradientDescent() {
-    // Start at the 'start' position (tracking back to goal)
-    // In your Solve(), goal has cost 0, so we move "downhill" to goal.
-    Point curr_p = IndexToPoint(FoldIndex(start_));
-    int max_iters = width_ * height_ * 2;
-    float step_size = map_res_ * 0.5f; 
-    
-    for (int i = 0; i < max_iters; ++i) {
-        if (!std::isfinite(curr_p.x) || !std::isfinite(curr_p.y)) break;
-        path_world_.push_back(curr_p);
-        
-        // 1. Calculate Gradient at current continuous point
-        // Using Central Difference: grad = ((T(x+1)-T(x-1))/2, (T(y+1)-T(y-1))/2)
-        Point grad = GetGradient(curr_p);
-        
-        float mag = std::sqrt(grad.x * grad.x + grad.y * grad.y);
-        if (mag < 1e-5 || !std::isfinite(mag)) break; // Reached the goal (minima) or invalid state
-
-        // 2. Move "downhill" (negative gradient)
-        curr_p.x -= (grad.x / mag) * step_size;
-        curr_p.y -= (grad.y / mag) * step_size;
-
-        // 3. Termination Check
-        if (Distance(curr_p, IndexToPoint(FoldIndex(goal_))) < map_res_) {
-            path_world_.push_back(IndexToPoint(FoldIndex(goal_)));
-            return true;
-        }
-    }
-    return !path_world_.empty();
-}
-
 float FastMarching::Distance(const Point& p1, const Point& p2) {
     float dx = p1.x - p2.x;
     float dy = p1.y - p2.y;
     return std::sqrt(dx * dx + dy * dy);
 }
 
-Point FastMarching::GetGradient(Point p) {
-    // Convert world coordinates to float grid coordinates
-    float gx = (p.x - llx_) / map_res_;
-    float gy = (p.y - lly_) / map_res_;
+bool FastMarching::ExtractPathGradientDescent(float* costs) {
+  path_.clear();
+  path_world_.clear();
 
-    // Get integer coordinates of the top-left cell
-    int x0 = static_cast<int>(std::floor(gx));
-    int y0 = static_cast<int>(std::floor(gy));
-    
-    // Safety bounds check for a 2x2 neighborhood
-    if (x0 < 1 || x0 >= width_ - 2 || y0 < 1 || y0 >= height_ - 2) {
-        return {0, 0}; 
+  int step_number = 0;
+  int steps_per_path_point = 10;
+  float step_size = map_res_ / (float) steps_per_path_point;
+  //  int current_idx = goal_;
+  int current_idx = start_;
+  auto current_position = IndexToPoint(FoldIndex(current_idx));
+  auto start_position = IndexToPoint(FoldIndex(start_));
+  path_world_.push_back(current_position);
+
+  //  while (current_idx != start_) {
+  while (current_idx != goal_) {
+    if (!IsInMap(FoldIndex(current_idx))) {
+      std::cerr << "Iterating path, coordinate not valid.\n";
+      return false;
     }
+    if (step_number > 2000) {
+      return false;
+    }
+    auto gradient = BilinearInterpolateGradient(costs, current_position);
+    auto gradient_normalized = Normalize(gradient);
+    //    current_position.x += -gradient_normalized.x * step_size;
+    //    current_position.y += -gradient_normalized.y * step_size;
+    current_position.x += gradient_normalized.x * step_size;
+    current_position.y += gradient_normalized.y * step_size;
+    current_idx = FlattenIndex(PointToIndex(current_position));
 
-    // Local interpolation weights
-    float sx = gx - x0;
-    float sy = gy - y0;
+    auto current_dist = Distance(current_position, start_position);
+    //    std::cout << step_number << ": (" << current_position.x << ", " << current_position.y << "),  \t dist: " << current_dist
+    //              << "\t Grad: [" << gradient_normalized.x << ", " << gradient_normalized.y << "]\n";
+    if (step_number % steps_per_path_point == 0) {
+      path_world_.push_back(current_position);
+    }
+    step_number++;
+  }
+  //  path_world_.push_back(current_position);
 
-    // Helper to get cost at integer grid coords. 
-    // We treat INF as a large finite value for gradient math to avoid NaNs.
-    auto T = [&](int ix, int iy) { 
-        float v = costs_flat_[iy * width_ + ix];
-        return (v >= INF * 0.5f) ? 1e6f : v; 
-    };
+  //  std::reverse(path_.begin(), path_.end());
+  //  std::reverse(path_world_.begin(), path_world_.end());
 
-    // Calculate Central Differences at the 4 corners of the current cell
-    // grad_x = (T[x+1] - T[x-1]) / 2
-    float g00_x = (T(x0+1, y0) - T(x0-1, y0)) * 0.5f;
-    float g10_x = (T(x0+2, y0) - T(x0, y0)) * 0.5f;
-    float g01_x = (T(x0+1, y0+1) - T(x0-1, y0+1)) * 0.5f;
-    float g11_x = (T(x0+2, y0+1) - T(x0, y0+1)) * 0.5f;
-
-    float g00_y = (T(x0, y0+1) - T(x0, y0-1)) * 0.5f;
-    float g10_y = (T(x0+1, y0+1) - T(x0+1, y0-1)) * 0.5f;
-    float g01_y = (T(x0, y0+2) - T(x0, y0)) * 0.5f;
-    float g11_y = (T(x0+1, y0+2) - T(x0+1, y0)) * 0.5f;
-
-    // Bilinear interpolation of the gradients
-    float grad_x = (1-sy)*( (1-sx)*g00_x + sx*g10_x ) + sy*( (1-sx)*g01_x + sx*g11_x );
-    float grad_y = (1-sy)*( (1-sx)*g00_y + sx*g10_y ) + sy*( (1-sx)*g01_y + sx*g11_y );
-
-    return {grad_x / map_res_, grad_y / map_res_};
+  return true;
 }
+
+float FastMarching::HandleGradientNaNs(float cost_1, float cost_0) {
+  if (!std::isfinite(cost_1) && !std::isfinite(cost_0)) {
+    if (cost_0 == cost_1) {
+      return 0;
+    } else if (cost_0 > cost_1) {
+      return INF;
+    } else {
+      return -INF;
+    }
+  } else {
+    return (cost_0 - cost_1) / (2 * map_res_);
+  }
+}
+
+float FastMarching::ComputeGradientY(const float* costs, const Index& index) {
+  int up = FlattenIndex(index.ix, index.iy + 1);
+  int down = FlattenIndex(index.ix, index.iy - 1);
+  return HandleGradientNaNs(costs[up], costs[down]);
+}
+
+float FastMarching::ComputeGradientX(const float* costs, const Index& index) {
+  int right = FlattenIndex(index.ix + 1, index.iy);
+  int left = FlattenIndex(index.ix - 1, index.iy);
+  return HandleGradientNaNs(costs[right], costs[left]);
+}
+
+Vec2 FastMarching::BilinearInterpolateGradient(const float* costs, const Point& position) {
+  // Convert position to grid indices
+  Index idx = PointToIndex(position);
+
+  // Calculate the relative position within the cell
+  Point cell_center = IndexToPoint(idx);
+  float dx = position.x - cell_center.x;
+  float dy = position.y - cell_center.y;
+
+  // Determine neighboring indices dynamically
+  int ix0 = (dx < 0) ? idx.ix - 1 : idx.ix;
+  int ix1 = ix0 + 1;
+  int iy0 = (dy < 0) ? idx.iy - 1 : idx.iy;
+  int iy1 = iy0 + 1;
+
+  // Ensure indices are within bounds
+  ix0 = std::max(1, std::min(ix0, static_cast<int>(width_ - 2)));
+  ix1 = std::max(1, std::min(ix1, static_cast<int>(width_ - 2)));
+  iy0 = std::max(1, std::min(iy0, static_cast<int>(height_ - 2)));
+  iy1 = std::max(1, std::min(iy1, static_cast<int>(height_ - 2)));
+
+  float grad_y22 = ComputeGradientY(costs, {ix1, iy1});
+  // Calculate gradients at surrounding points
+  float grad_x11 = ComputeGradientX(costs, {ix0, iy0});
+  float grad_y11 = ComputeGradientY(costs, {ix0, iy0});
+
+  float grad_x21 = ComputeGradientX(costs, {ix1, iy0});
+  float grad_y21 = ComputeGradientY(costs, {ix1, iy0});
+
+  float grad_x12 = ComputeGradientX(costs, {ix0, iy1});
+  float grad_y12 = ComputeGradientY(costs, {ix0, iy1});
+
+  float grad_x22 = ComputeGradientX(costs, {ix1, iy1});
+
+  // Check for inf or -inf values
+  auto hasInf = [](float value) {
+    return std::isinf(value);
+  };
+
+  if (hasInf(grad_x11) || hasInf(grad_y11) || hasInf(grad_x21) || hasInf(grad_y21) || hasInf(grad_x12)
+    || hasInf(grad_y12) || hasInf(grad_x22) || hasInf(grad_y22)) {
+  // Fallback to gradient at the cell corresponding to the position
+    float fallback_grad_x = ComputeGradientX(costs, {idx.ix, idx.iy});
+    float fallback_grad_y = ComputeGradientY(costs, {idx.ix, idx.iy});
+    return {fallback_grad_x, fallback_grad_y};
+  }
+
+  // Get positions of the grid points
+  Point p11 = IndexToPoint({ix0, iy0});
+  Point p21 = IndexToPoint({ix1, iy0});
+  Point p12 = IndexToPoint({ix0, iy1});
+  Point p22 = IndexToPoint({ix1, iy1});
+
+  // Calculate interpolation weights
+  float w11 = ((p22.x - position.x) * (p22.y - position.y)) / (map_res_ * map_res_);
+  float w21 = ((position.x - p12.x) * (p12.y - position.y)) / (map_res_ * map_res_);
+  float w12 = ((p21.x - position.x) * (position.y - p21.y)) / (map_res_ * map_res_);
+  float w22 = ((position.x - p11.x) * (position.y - p11.y)) / (map_res_ * map_res_);
+
+  // Interpolate gradients
+  float grad_x = w11 * grad_x11 + w21 * grad_x21 + w12 * grad_x12 + w22 * grad_x22;
+  float grad_y = w11 * grad_y11 + w21 * grad_y21 + w12 * grad_y12 + w22 * grad_y22;
+
+  return {grad_x, grad_y};
+}
+
+Vec2 FastMarching::Normalize(const Vec2& v) {
+  if (std::isfinite(v.x) && std::isfinite(v.y)) {
+    if (v.x == 0 && v.y == 0) {
+      return {1, 0};
+    }
+    float mag = sqrt(v.x * v.x + v.y * v.y);
+    return {v.x / mag, v.y / mag};
+  }
+  float x{0}, y{0};
+  if (v.x == INF) {
+    x = 1;
+  } else if (v.x == -INF) {
+    x = -1;
+  }
+  if (v.y == INF) {
+    y = 1;
+  } else if (v.y == -INF) {
+    y = -1;
+  }
+  return Normalize({x, y});
+}
+
 
 } // namespace planning
 } // namespace avt_341
