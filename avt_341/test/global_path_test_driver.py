@@ -42,7 +42,7 @@ class GlobalPathTestNode(Node):
         np.random.seed(0)
         
         start_x, start_y = 10, 10
-        goal_x, goal_y = 90, 90
+        goal_x, goal_y = 30, 53
         
         count = 0
         while count < 20:

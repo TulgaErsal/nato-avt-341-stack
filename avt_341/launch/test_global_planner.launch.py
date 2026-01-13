@@ -7,6 +7,14 @@ from launch_ros.actions import Node
 def generate_launch_description():
     avt_341_dir = get_package_share_directory('avt_341')
     rviz_config = os.path.join(avt_341_dir, 'rviz', 'avt_341_ros2.rviz')
+    
+    # Load global planner parameters from YAML file
+    global_planner_params = os.path.join(
+        avt_341_dir,
+        'parameters',
+        'config_mrzr',
+        'global_planner.yaml'
+    )
 
     return LaunchDescription([
         # The Global Planner
@@ -15,14 +23,7 @@ def generate_launch_description():
             executable='avt_341_global_path_node',
             name='global_path_node',
             output='screen',
-            parameters=[{
-                'use_fastmarching': True,
-                'w_distance': 1.0,
-                'w_occupancy': 1.0,
-                'w_segmentation': 0.0,
-                'goal_dist': 2.0,
-                'verbose_gp_log': False
-            }]
+            parameters=[global_planner_params]
         ),
         
         # The Test Driver
