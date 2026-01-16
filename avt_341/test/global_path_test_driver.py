@@ -52,7 +52,7 @@ class GlobalPathTestNode(Node):
         size_y, size_x = int(height_m * res), int(width_m * res)
         
         occ_grid = np.zeros((size_y, size_x), dtype=np.int8)
-        terrain_grid = np.zeros((size_y, size_x), dtype=np.int8)
+        terrain_grid = np.full((size_y, size_x), 100, dtype=np.int8)
         
         def m_to_px(val): return int(val * res)
         
@@ -93,16 +93,19 @@ class GlobalPathTestNode(Node):
 
         # 2. Populate Terrain Costs
         if add_terrain:
-            np.random.seed(seed + 1) # Offset seed so it's not identical to obstacles
+            np.random.seed(seed + 1) 
             num_patches = self.get_parameter('num_patches').value
             for _ in range(num_patches):
                 cx, cy = np.random.randint(0, size_x), np.random.randint(0, size_y)
                 radius = np.random.randint(m_to_px(4.0), m_to_px(12.0))
+                
                 y_indices, x_indices = np.ogrid[:size_y, :size_x]
                 mask = (x_indices - cx)**2 + (y_indices - cy)**2 <= radius**2
-                cost = int(np.random.uniform(30, 70))
-                terrain_grid[mask] = np.maximum(terrain_grid[mask], cost)
-            
+                
+                traversability_value = int(np.random.uniform(20, 50))
+                
+                terrain_grid[mask] = np.minimum(terrain_grid[mask], traversability_value)       
+                
         return occ_grid, terrain_grid, start_m, goal_m
 
     def create_grid_msg(self, data_np, frame_id, resolution):
