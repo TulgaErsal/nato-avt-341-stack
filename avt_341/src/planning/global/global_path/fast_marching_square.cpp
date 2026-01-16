@@ -85,28 +85,23 @@ std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* gri
     }
     if (max_dist < 0.1f) max_dist = 1.0f;
 
+    const float transition_buffer = 3.0f * map_res_; // 3-cell smooth transition
+    const float w_penalty = 5.0f; // Magnitude of the safety push
+
     for (int i = 0; i < n_cells; ++i) {
         float d = edt_flat_[i];
-        int ix = i % w;
-        int iy = i / w;
         
-        if (d <= adjusted_safety_margin || map_[ix][iy] > 50) { // Obstacle threshold
-            weights_[i] = INF;
+        if (d <= adjusted_safety_margin) {
+            weights_[i] = INF; // Hard constraint
+        } else if (d < adjusted_safety_margin + transition_buffer) {
+            // Linear or Quadratic transition
+            float dist_into_buffer = (d - adjusted_safety_margin);
+            float ratio = dist_into_buffer / transition_buffer; // 0 at margin, 1 at edge of buffer
+            
+            // Weight goes from (1 + w_penalty) down to 1.0
+            weights_[i] = 1.0f + w_penalty * std::pow(1.0f - ratio, 2); 
         } else {
-            // W = (max_dist / d) * w_distance
-            // This creates a potential well centered at max distance from everything.
-            // We can raise to power to influence how strongly it centers.
-            // Pure FM2 uses linear relation usually.
-            // We add a small epsilon to d to act as saturation.
-            
-            const float sat_dist = 5.0f;
-            float effect_dist = std::min(d, sat_dist);
-            
-            float denominator = std::max(effect_dist, 0.01f);
-            float weight = (max_dist / denominator);
-            
-            // Apply w_distance_ as a scaling factor
-            weights_[i] = weight * w_distance_;
+            weights_[i] = 1.0f; // Pure shortest path
         }
     }
 
