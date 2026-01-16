@@ -23,7 +23,7 @@
     use_segmentation: False                       # Whether to use segmentation grid data or not
     map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
     seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
-    planning_method: fast_marching_square                        # Planning algorithm: 'astar', 'fast_marching', 'd_star_lite', 'fast_marching_square'
-    path_integration_mode: gradient_descent       # Path integration mode: 'discrete', 'gradient_descent'
+    planning_method: fast_marching                        # Planning algorithm: 'astar', 'fast_marching', 'd_star_lite', 'fast_marching_square'
+    path_integration_mode: discrete       # Path integration mode: 'discrete', 'gradient_descent'
     obstacle_threshold: 0.0                      # Threshold above which cells are strictly impassable in EDT-based planners.
-    clearance_penalty_type: none     # Clearance penalty type: 'none', 'linear', 'quadratic', 'exponential', 'repulsive_potential', 'wall_hugging'
+    clearance_penalty_type: quadratic     # Clearance penalty type: 'none', 'linear', 'quadratic', 'exponential', 'repulsive_potential', 'wall_hugging'
