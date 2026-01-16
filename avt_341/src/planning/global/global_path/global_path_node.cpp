@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
   float dilation_factor, max_separation;
   float safety_margin, obstacle_threshold;
   std::string map_topic, seg_topic;
-  std::string planning_method, clearance_penalty_type, path_integration_mode;
+  std::string planning_method, clearance_penalty_type, path_extraction_method;
   Point goal;
 
   n->get_parameter("~goal_dist", goal_dist, 3.0f);
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~planning_method", planning_method, std::string("astar"));
   n->get_parameter("~safety_margin", safety_margin, 0.5f);
   n->get_parameter("~clearance_penalty_type", clearance_penalty_type, std::string("repulsive_potential"));
-  n->get_parameter("~path_integration_mode", path_integration_mode, std::string("gradient_descent"));
+  n->get_parameter("~path_extraction_method", path_extraction_method, std::string("gradient_descent"));
   n->get_parameter("~obstacle_threshold", obstacle_threshold, 0.0f);
   goal_accept_radius = goal_dist;
 
@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
                                                        los_break_on_first,
                                                        safety_margin,
                                                        clearance_penalty_type,
-                                                       path_integration_mode,
+                                                       path_extraction_method,
                                                        obstacle_threshold,
                                                        verbose_gp_log);
   } else if (planning_method == "d_star_lite") {
@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
                                                              los_break_on_first,
                                                              safety_margin,
                                                              clearance_penalty_type,
-                                                             path_integration_mode,
+                                                             path_extraction_method,
                                                              obstacle_threshold,
                                                              verbose_gp_log);
   } else {

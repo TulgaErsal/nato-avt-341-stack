@@ -60,9 +60,10 @@ std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* gri
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
         
         float occ = (float)grid->data[i];
-        float seg_val = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
-        // Treat high occupancy or low segmentation class as obstacle
+        float seg = 100.0f - (float)GetGridValue(segmentation_grid, x_grid, y_grid);
+        
         map_[ix][iy] = occ; 
+        base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
     }
     
     // 1. Compute Distance Map (EDT) - The first "Fast Marching" step (or solving Eikonal for distance)
@@ -98,10 +99,10 @@ std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* gri
             float dist_into_buffer = (d - adjusted_safety_margin);
             float ratio = dist_into_buffer / transition_buffer; // 0 at margin, 1 at edge of buffer
             
-            // Weight goes from (1 + w_penalty) down to 1.0
-            weights_[i] = 1.0f + w_penalty * std::pow(1.0f - ratio, 2); 
+            // Weight goes from (base + w_penalty) down to base
+            weights_[i] = base_weights_tmp_[i] + w_penalty * std::pow(1.0f - ratio, 2); 
         } else {
-            weights_[i] = 1.0f; // Pure shortest path
+            weights_[i] = base_weights_tmp_[i]; // Shortest path with terrain costs
         }
     }
 

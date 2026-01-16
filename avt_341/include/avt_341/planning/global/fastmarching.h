@@ -22,7 +22,7 @@ public:
                bool los_break_on_first,
                float safety_margin,
                std::string clearance_penalty_type,
-               std::string path_integration_mode,
+               std::string path_extraction_method,
                float obstacle_threshold,
                bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
@@ -34,7 +34,7 @@ public:
                                       safety_margin_(safety_margin),
                                       clearance_penalty_type_(clearance_penalty_type),
                                       verbose_(verbose),
-                                      path_integration_mode_(path_integration_mode),
+                                      path_extraction_method_(path_extraction_method),
                                       obstacle_threshold_(obstacle_threshold) {}
 
   virtual ~FastMarching() = default;
@@ -56,7 +56,7 @@ public:
 protected:
   void ComputeEDT();
   
-  std::string path_integration_mode_;
+  std::string path_extraction_method_;
   float safety_margin_;
   std::string clearance_penalty_type_;
   float obstacle_threshold_;

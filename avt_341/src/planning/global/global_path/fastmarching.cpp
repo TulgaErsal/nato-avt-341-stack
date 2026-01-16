@@ -269,7 +269,7 @@ bool FastMarching::ExtractPath() {
     path_world_.clear();
     
     // Check YAML-loaded parameter
-    if (path_integration_mode_ == "discrete") {
+    if (path_extraction_method_ == "discrete") {
         return ExtractPathDiscrete();
     } else {
         return ExtractPathGradientDescent(costs_flat_.data());
