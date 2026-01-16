@@ -20,10 +20,13 @@ public:
                bool search_diagonals,
                int los_max_iterations,
                bool los_break_on_first,
-               float safety_margin,
+                float safety_margin,
                std::string clearance_penalty_type,
                std::string path_extraction_method,
                float obstacle_threshold,
+               float clearance_penalty_scale,
+               float clearance_penalty_range,
+               float clearance_penalty_exponent,
                bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
@@ -35,7 +38,10 @@ public:
                                       clearance_penalty_type_(clearance_penalty_type),
                                       verbose_(verbose),
                                       path_extraction_method_(path_extraction_method),
-                                      obstacle_threshold_(obstacle_threshold) {}
+                                      obstacle_threshold_(obstacle_threshold),
+                                      clearance_penalty_scale_(clearance_penalty_scale),
+                                      clearance_penalty_range_(clearance_penalty_range),
+                                      clearance_penalty_exponent_(clearance_penalty_exponent) {}
 
   virtual ~FastMarching() = default;
 
@@ -60,7 +66,12 @@ protected:
   float safety_margin_;
   std::string clearance_penalty_type_;
   float obstacle_threshold_;
+  float clearance_penalty_scale_;
+  float clearance_penalty_range_;
+  float clearance_penalty_exponent_;
   bool verbose_;
+  
+  float clearance_penalty(float d, float r, const std::string& option);
   
   // Persistent buffers to avoid reallocations
   std::vector<float> edt_flat_;

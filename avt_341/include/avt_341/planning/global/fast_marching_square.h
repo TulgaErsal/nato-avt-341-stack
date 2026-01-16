@@ -29,10 +29,15 @@ public:
                      std::string clearance_penalty_type,
                      std::string path_extraction_method,
                      float obstacle_threshold,
+                     float clearance_penalty_scale,
+                     float clearance_penalty_range,
+                     float clearance_penalty_exponent,
                      bool verbose)
       : FastMarching(std::move(visualizer), w_distance, w_occupancy, w_segmentation,
                      search_diagonals, los_max_iterations, los_break_on_first,
-                     safety_margin, clearance_penalty_type, path_extraction_method, obstacle_threshold, verbose) {}
+                     safety_margin, clearance_penalty_type, path_extraction_method, 
+                     obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, 
+                     clearance_penalty_exponent, verbose) {}
 
   virtual ~FastMarchingSquare() = default;
 

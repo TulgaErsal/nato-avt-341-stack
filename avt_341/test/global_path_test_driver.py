@@ -11,7 +11,7 @@ class GlobalPathTestNode(Node):
         super().__init__('global_path_test_driver')
         
         # Parameters
-        self.declare_parameter('scenario', 'narrow_gate')
+        self.declare_parameter('scenario', 'random')
         self.declare_parameter('width_m', 100.0)
         self.declare_parameter('height_m', 100.0)
         self.declare_parameter('cell_size_m', 1.0)
@@ -19,8 +19,8 @@ class GlobalPathTestNode(Node):
         self.declare_parameter('num_patches', 12)
         self.declare_parameter('verbose', True)
         self.declare_parameter('num_random', 10)
-        self.declare_parameter('obs_min', 1.0)
-        self.declare_parameter('obs_max', 10.0)
+        self.declare_parameter('obs_min', 5.0)
+        self.declare_parameter('obs_max', 15.0)
         self.declare_parameter('seed', 0)
 
         # Publishers

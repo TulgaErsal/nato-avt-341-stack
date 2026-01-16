@@ -10,27 +10,24 @@
 namespace avt_341 {
 namespace planning {
 
-// Optimized clearance penalty function
-static inline float clearance_penalty(float d, float r, const std::string& option) {
+float FastMarching::clearance_penalty(float d, float r, const std::string& option) {
   if (option == "linear") {
-    const float R_inf = 5.0f;
-    if (d >= R_inf) return 0.0f;
-    return 20.0f * (R_inf - d) / (R_inf - r);
+    if (d >= clearance_penalty_range_) return 0.0f;
+    return clearance_penalty_scale_ * (clearance_penalty_range_ - d) / (clearance_penalty_range_ - r);
   }
   else if (option == "quadratic") {
     float ratio = r / d;
-    return 20.0f * ratio * ratio;
+    return clearance_penalty_scale_ * ratio * ratio;
   }
   else if (option == "exponential") {
-    return 20.0f * std::exp(-2.0f * (d - r));
+    return clearance_penalty_scale_ * std::exp(-clearance_penalty_exponent_ * (d - r));
   }
   else if (option == "repulsive_potential") {
-    const float R_inf = 5.0f;
-    if (d >= R_inf) return 0.0f;
+    if (d >= clearance_penalty_range_) return 0.0f;
     float inv_d = 1.0f / d;
-    float inv_R = 1.0f / R_inf;
+    float inv_R = 1.0f / clearance_penalty_range_;
     float diff = inv_d - inv_R;
-    return 20.0f * diff * diff;
+    return clearance_penalty_scale_ * diff * diff;
   }
   else if (option == "wall_hugging") {
     return d * d;
