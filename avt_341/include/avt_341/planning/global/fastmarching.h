@@ -25,8 +25,10 @@ public:
                std::string path_extraction_method,
                float obstacle_threshold,
                float clearance_penalty_scale,
-               float clearance_penalty_range,
+                float clearance_penalty_range,
                float clearance_penalty_exponent,
+               int gradient_descent_max_steps,
+               int gradient_descent_steps_per_point,
                bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
@@ -41,7 +43,9 @@ public:
                                       obstacle_threshold_(obstacle_threshold),
                                       clearance_penalty_scale_(clearance_penalty_scale),
                                       clearance_penalty_range_(clearance_penalty_range),
-                                      clearance_penalty_exponent_(clearance_penalty_exponent) {}
+                                      clearance_penalty_exponent_(clearance_penalty_exponent),
+                                      gradient_descent_max_steps_(gradient_descent_max_steps),
+                                      gradient_descent_steps_per_point_(gradient_descent_steps_per_point) {}
 
   virtual ~FastMarching() = default;
 
@@ -69,6 +73,8 @@ protected:
   float clearance_penalty_scale_;
   float clearance_penalty_range_;
   float clearance_penalty_exponent_;
+  int gradient_descent_max_steps_;
+  int gradient_descent_steps_per_point_;
   bool verbose_;
   
   float clearance_penalty(float d, float r, const std::string& option);

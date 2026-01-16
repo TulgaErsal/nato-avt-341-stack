@@ -32,4 +32,6 @@
     clearance_penalty_scale: 20.0                 # Scaling factor for the clearance penalty.
     clearance_penalty_range: 5.0                 # Distance (m) at which clearance penalty becomes zero.
     clearance_penalty_exponent: 2.0              # Exponent factor for the 'exponential' clearance penalty.
+    gradient_descent_max_steps: 2000             # Max steps for path extraction.
+    gradient_descent_steps_per_point: 10         # Interpolation resolution.
     clearance_penalty_type: quadratic     # Clearance penalty type for fast_marching: 'none', 'linear', 'quadratic', 'exponential', 'repulsive_potential', 'wall_hugging'

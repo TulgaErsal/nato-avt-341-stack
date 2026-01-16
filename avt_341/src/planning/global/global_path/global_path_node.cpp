@@ -176,6 +176,7 @@ int main(int argc, char* argv[])
   int los_max_iterations;
   float dilation_factor, max_separation;
   float safety_margin, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
+  int gradient_descent_max_steps, gradient_descent_steps_per_point;
   std::string map_topic, seg_topic;
   std::string planning_method, clearance_penalty_type, path_extraction_method;
   Point goal;
@@ -210,6 +211,8 @@ int main(int argc, char* argv[])
   n->get_parameter("~clearance_penalty_scale", clearance_penalty_scale, 20.0f);
   n->get_parameter("~clearance_penalty_range", clearance_penalty_range, 5.0f);
   n->get_parameter("~clearance_penalty_exponent", clearance_penalty_exponent, 2.0f);
+  n->get_parameter("~gradient_descent_max_steps", gradient_descent_max_steps, 2000);
+  n->get_parameter("~gradient_descent_steps_per_point", gradient_descent_steps_per_point, 10);
   goal_accept_radius = goal_dist;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -302,6 +305,8 @@ int main(int argc, char* argv[])
                                                        clearance_penalty_scale,
                                                        clearance_penalty_range,
                                                        clearance_penalty_exponent,
+                                                       gradient_descent_max_steps,
+                                                       gradient_descent_steps_per_point,
                                                        verbose_gp_log);
   } else if (planning_method == "d_star_lite") {
     path_planner = new avt_341::planning::DStarLite(visualizer,
@@ -326,6 +331,8 @@ int main(int argc, char* argv[])
                                                              clearance_penalty_scale,
                                                              clearance_penalty_range,
                                                              clearance_penalty_exponent,
+                                                             gradient_descent_max_steps,
+                                                             gradient_descent_steps_per_point,
                                                              verbose_gp_log);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,

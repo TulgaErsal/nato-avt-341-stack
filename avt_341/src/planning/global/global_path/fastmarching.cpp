@@ -335,43 +335,33 @@ bool FastMarching::ExtractPathGradientDescent(float* costs) {
   path_world_.clear();
 
   int step_number = 0;
-  int steps_per_path_point = 10;
+  int steps_per_path_point = gradient_descent_steps_per_point_;
   float step_size = map_res_ / (float) steps_per_path_point;
-  //  int current_idx = goal_;
   int current_idx = start_;
   auto current_position = IndexToPoint(FoldIndex(current_idx));
   auto start_position = IndexToPoint(FoldIndex(start_));
   path_world_.push_back(current_position);
 
-  //  while (current_idx != start_) {
   while (current_idx != goal_) {
     if (!IsInMap(FoldIndex(current_idx))) {
       std::cerr << "Iterating path, coordinate not valid.\n";
       return false;
     }
-    if (step_number > 2000) {
+    if (step_number > gradient_descent_max_steps_) {
       return false;
     }
     auto gradient = BilinearInterpolateGradient(costs, current_position);
     auto gradient_normalized = Normalize(gradient);
-    //    current_position.x += -gradient_normalized.x * step_size;
-    //    current_position.y += -gradient_normalized.y * step_size;
     current_position.x += gradient_normalized.x * step_size;
     current_position.y += gradient_normalized.y * step_size;
     current_idx = FlattenIndex(PointToIndex(current_position));
 
     auto current_dist = Distance(current_position, start_position);
-    //    std::cout << step_number << ": (" << current_position.x << ", " << current_position.y << "),  \t dist: " << current_dist
-    //              << "\t Grad: [" << gradient_normalized.x << ", " << gradient_normalized.y << "]\n";
     if (step_number % steps_per_path_point == 0) {
       path_world_.push_back(current_position);
     }
     step_number++;
   }
-  //  path_world_.push_back(current_position);
-
-  //  std::reverse(path_.begin(), path_.end());
-  //  std::reverse(path_world_.begin(), path_world_.end());
 
   return true;
 }
