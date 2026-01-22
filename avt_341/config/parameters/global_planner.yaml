@@ -31,3 +31,4 @@ clearance_penalty_exponent: 2.0               # Exponent factor for the 'exponen
 gradient_descent_max_steps: 2000              # Max steps for path extraction.
 gradient_descent_steps_per_point: 10          # Interpolation resolution.
 clearance_penalty_type: quadratic             # Clearance penalty type for fast_marching: 'none', 'linear', 'quadratic', 'exponential', 'repulsive_potential', 'wall_hugging'
+clipping_distance: 2.0                        # Distance (m) from start position at which to clip the beginning of the path.

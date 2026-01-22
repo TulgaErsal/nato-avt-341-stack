@@ -265,12 +265,26 @@ bool FastMarching::ExtractPath() {
     path_.clear();
     path_world_.clear();
     
+    bool found = false;
     // Check YAML-loaded parameter
     if (path_extraction_method_ == "discrete") {
-        return ExtractPathDiscrete();
+        found = ExtractPathDiscrete();
     } else {
-        return ExtractPathGradientDescent(costs_flat_.data());
+        found = ExtractPathGradientDescent(costs_flat_.data());
     }
+
+    if (found && clipping_distance_ > 0.0f && !path_world_.empty()) {
+        Point start_pos = IndexToPoint(FoldIndex(start_));
+        
+        while (path_world_.size() > 1 && Distance(path_world_[0], start_pos) < clipping_distance_) {
+            path_world_.erase(path_world_.begin());
+            if (!path_.empty()) {
+                path_.erase(path_.begin());
+            }
+        }
+    }
+    
+    return found;
 }
 
 bool FastMarching::ExtractPathDiscrete() {

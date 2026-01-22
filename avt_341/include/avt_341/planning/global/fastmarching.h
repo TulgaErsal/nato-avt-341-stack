@@ -28,7 +28,8 @@ public:
                 float clearance_penalty_range,
                float clearance_penalty_exponent,
                int gradient_descent_max_steps,
-               int gradient_descent_steps_per_point,
+                int gradient_descent_steps_per_point,
+               float clipping_distance,
                bool verbose) : Astar(std::move(visualizer),
                                             w_distance,
                                             w_occupancy,
@@ -45,7 +46,8 @@ public:
                                       clearance_penalty_range_(clearance_penalty_range),
                                       clearance_penalty_exponent_(clearance_penalty_exponent),
                                       gradient_descent_max_steps_(gradient_descent_max_steps),
-                                      gradient_descent_steps_per_point_(gradient_descent_steps_per_point) {}
+                                      gradient_descent_steps_per_point_(gradient_descent_steps_per_point),
+                                      clipping_distance_(clipping_distance) {}
 
   virtual ~FastMarching() = default;
 
@@ -75,6 +77,7 @@ protected:
   float clearance_penalty_exponent_;
   int gradient_descent_max_steps_;
   int gradient_descent_steps_per_point_;
+  float clipping_distance_;
   bool verbose_;
   
   float clearance_penalty(float d, float r, const std::string& option);

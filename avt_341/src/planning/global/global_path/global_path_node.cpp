@@ -177,6 +177,7 @@ int main(int argc, char* argv[])
   float dilation_factor, max_separation;
   float safety_margin, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
   int gradient_descent_max_steps, gradient_descent_steps_per_point;
+  float clipping_distance;
   std::string map_topic, seg_topic;
   std::string planning_method, clearance_penalty_type, path_extraction_method;
   Point goal;
@@ -213,6 +214,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~clearance_penalty_exponent", clearance_penalty_exponent, 2.0f);
   n->get_parameter("~gradient_descent_max_steps", gradient_descent_max_steps, 2000);
   n->get_parameter("~gradient_descent_steps_per_point", gradient_descent_steps_per_point, 10);
+  n->get_parameter("~clipping_distance", clipping_distance, 0.0f);
   goal_accept_radius = goal_dist;
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -235,8 +237,8 @@ int main(int argc, char* argv[])
     //return 2;
   }
 
-  n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s",
-    w_distance, w_occupancy, w_segmentation, planning_method.c_str());
+  n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s\n clipping_distance: %.2f",
+    w_distance, w_occupancy, w_segmentation, planning_method.c_str(), clipping_distance);
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 1);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
@@ -307,6 +309,7 @@ int main(int argc, char* argv[])
                                                        clearance_penalty_exponent,
                                                        gradient_descent_max_steps,
                                                        gradient_descent_steps_per_point,
+                                                       clipping_distance,
                                                        verbose_gp_log);
   } else if (planning_method == "d_star_lite") {
     path_planner = new avt_341::planning::DStarLite(visualizer,
@@ -333,6 +336,7 @@ int main(int argc, char* argv[])
                                                              clearance_penalty_exponent,
                                                              gradient_descent_max_steps,
                                                              gradient_descent_steps_per_point,
+                                                             clipping_distance,
                                                              verbose_gp_log);
   } else {
     path_planner = new avt_341::planning::Astar(visualizer,
