@@ -86,6 +86,7 @@ protected:
   std::vector<float> edt_flat_;
   std::vector<float> costs_flat_;
   std::vector<float> base_weights_tmp_;
+  std::vector<Vec2> shifts_;
   
   // Temporary buffers for EDT computation
   std::vector<float> edt_work_f_;
@@ -103,6 +104,7 @@ private:
   float ComputeGradientY(const float* costs, const Index& index);
   Vec2 BilinearInterpolateGradient(const float* costs, const Point& position);
   Vec2 Normalize(const Vec2& v);
+  Point GetShiftedPoint(int idx) const;
   static float Distance(const Point& p1, const Point& p2);
 };
 

@@ -30,6 +30,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* gri
         edt_work_v_.resize(std::max(w, h));
         edt_work_z_.resize(std::max(w, h) + 1);
         edt_work_dist_sq_.assign(w * h, 1e10f);
+        shifts_.assign(w * h, {0.0f, 0.0f});
     }
     
     SetCornerCoords(grid->info.origin.position.x, grid->info.origin.position.y);
@@ -72,37 +73,53 @@ std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* gri
     float adjusted_safety_margin = safety_margin_ + (map_res_ * 0.5f);
 
     if (verbose_) {
-        std::cout << "[FastMarchingSquare] Safety margin: " << adjusted_safety_margin << "m" << std::endl;
+        std::cout << "[FastMarchingSquare] Safety margin (input/adjusted): " << safety_margin_ << "/" << adjusted_safety_margin << "m" << std::endl;
     }
 
-    // 2. Compute Velocity/Slowness Map
-    // FM2 Principal: Velocity V(x) ~ Distance(x).
-    // Metric W(x) = 1/V(x) = 1/Distance(x).
-    // We normalize to avoid tiny numbers.
-    
-    float max_dist = 0.0f;
-    for (float d : edt_flat_) {
-        if (d < 1e9f && d > max_dist) max_dist = d;
-    }
-    if (max_dist < 0.1f) max_dist = 1.0f;
+    shifts_.assign(n_cells, {0.0f, 0.0f});
 
     const float transition_buffer = 3.0f * map_res_; // 3-cell smooth transition
     const float w_penalty = 5.0f; // Magnitude of the safety push
 
     for (int i = 0; i < n_cells; ++i) {
         float d = edt_flat_[i];
+        int ix = i % width_;
+        int iy = i / width_;
         
-        if (d <= adjusted_safety_margin) {
-            weights_[i] = INF; // Hard constraint
-        } else if (d < adjusted_safety_margin + transition_buffer) {
-            // Linear or Quadratic transition
-            float dist_into_buffer = (d - adjusted_safety_margin);
-            float ratio = dist_into_buffer / transition_buffer; // 0 at margin, 1 at edge of buffer
-            
-            // Weight goes from (base + w_penalty) down to base
-            weights_[i] = base_weights_tmp_[i] + w_penalty * std::pow(1.0f - ratio, 2); 
+        // A cell is INF only if it is fully consumed by the safety margin.
+        // A cell must be marked as an obstacle if a shift to clear the safety margin exceeds half a cell size.
+        if (map_[ix][iy] > obstacle_threshold_ || d < safety_margin_) {
+            weights_[i] = INF;
         } else {
-            weights_[i] = base_weights_tmp_[i]; // Shortest path with terrain costs
+            if (d < adjusted_safety_margin) {
+                // Calculate gradient direction of EDT
+                float gx = 0.0f;
+                float gy = 0.0f;
+                if (ix > 0 && ix < width_ - 1) gx = (edt_flat_[i+1] - edt_flat_[i-1]);
+                else if (ix == 0 && width_ > 1) gx = (edt_flat_[i+1] - d) * 2.0f;
+                else if (ix == width_ - 1 && width_ > 1) gx = (d - edt_flat_[i-1]) * 2.0f;
+
+                if (iy > 0 && iy < height_ - 1) gy = (edt_flat_[i+width_] - edt_flat_[i-width_]);
+                else if (iy == 0 && height_ > 1) gy = (edt_flat_[i+width_] - d) * 2.0f;
+                else if (iy == height_ - 1 && height_ > 1) gy = (d - edt_flat_[i-width_]) * 2.0f;
+
+                float mag = std::sqrt(gx * gx + gy * gy);
+                if (mag > 1e-6f) {
+                    float shift_len = adjusted_safety_margin - d;
+                    shifts_[i].x = (gx / mag) * shift_len;
+                    shifts_[i].y = (gy / mag) * shift_len;
+                }
+            }
+
+            float effective_d = std::max(d, adjusted_safety_margin);
+
+            if (effective_d < adjusted_safety_margin + transition_buffer) {
+                float dist_into_buffer = (effective_d - adjusted_safety_margin);
+                float ratio = dist_into_buffer / transition_buffer;
+                weights_[i] = base_weights_tmp_[i] + w_penalty * std::pow(1.0f - ratio, 2); 
+            } else {
+                weights_[i] = base_weights_tmp_[i];
+            }
         }
     }
 

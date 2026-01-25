@@ -59,6 +59,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         edt_work_v_.resize(std::max(w, h));
         edt_work_z_.resize(std::max(w, h) + 1);
         edt_work_dist_sq_.assign(w * h, 1e10f);
+        shifts_.assign(w * h, {0.0f, 0.0f});
     }
     
     SetCornerCoords(grid->info.origin.position.x, grid->info.origin.position.y);
@@ -98,20 +99,45 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         std::cout << "[FastMarching] Safety margin (input/adjusted): " << safety_margin_ << "/" << adjusted_safety_margin << "m" << std::endl;
     }
 
-    // Combine base weights with EDT-based clearance
+    shifts_.assign(n_cells, {0.0f, 0.0f});
+
+    // Combine base weights with EDT-based clearance and compute shifts
     for (int i = 0; i < n_cells; ++i) {
         float d = edt_flat_[i];
         int ix = i % w;
         int iy = i / w;
         
-        if (d <= adjusted_safety_margin || map_[ix][iy] > obstacle_threshold_) {
+        // A cell is INF only if it is fully consumed by the safety margin.
+        // A cell must be marked as an obstacle if a shift to clear the safety margin exceeds half a cell size.
+        if (map_[ix][iy] > obstacle_threshold_ || d < safety_margin_) {
             weights_[i] = INF;
         } else {
+            if (d < adjusted_safety_margin) {
+                // Node is within adjusted safety margin but can be shifted.
+                // Calculate gradient direction of EDT (points away from obstacle)
+                float gx = 0.0f;
+                float gy = 0.0f;
+                if (ix > 0 && ix < w - 1) gx = (edt_flat_[i+1] - edt_flat_[i-1]);
+                else if (ix == 0 && w > 1) gx = (edt_flat_[i+1] - d) * 2.0f;
+                else if (ix == w - 1 && w > 1) gx = (d - edt_flat_[i-1]) * 2.0f;
+
+                if (iy > 0 && iy < h - 1) gy = (edt_flat_[i+w] - edt_flat_[i-w]);
+                else if (iy == 0 && h > 1) gy = (edt_flat_[i+w] - d) * 2.0f;
+                else if (iy == h - 1 && h > 1) gy = (d - edt_flat_[i-w]) * 2.0f;
+
+                float mag = std::sqrt(gx * gx + gy * gy);
+                if (mag > 1e-6f) {
+                    float shift_len = adjusted_safety_margin - d;
+                    shifts_[i].x = (gx / mag) * shift_len;
+                    shifts_[i].y = (gy / mag) * shift_len;
+                }
+            }
+
             float base_w = base_weights_tmp_[i];
             if (base_w >= INF) {
                 weights_[i] = INF;
             } else {
-                weights_[i] = base_w + w_distance_ * clearance_penalty(d, adjusted_safety_margin, clearance_penalty_type_);
+                weights_[i] = base_w + w_distance_ * clearance_penalty(std::max(d, adjusted_safety_margin), adjusted_safety_margin, clearance_penalty_type_);
             }
         }
     }
@@ -233,22 +259,70 @@ bool FastMarching::Solve() {
 
             // --- EIKONAL UPDATE LOGIC ---
             // Find the minimum arrival times from the 4-cardinal neighbors of the TARGET node (n_idx)
+            Point target_p = GetShiftedPoint(n_idx);
+
             float T_x = INF;
-            if (nx > 0) T_x = std::min(T_x, costs_flat_[n_idx - 1]);
-            if (nx < w - 1) T_x = std::min(T_x, costs_flat_[n_idx + 1]);
+            float h_x = map_res_;
+            if (nx > 0) {
+                float val = costs_flat_[n_idx - 1];
+                if (val < T_x) {
+                    T_x = val;
+                    h_x = Distance(target_p, GetShiftedPoint(n_idx - 1));
+                }
+            }
+            if (nx < w - 1) {
+                float val = costs_flat_[n_idx + 1];
+                if (val < T_x) {
+                    T_x = val;
+                    h_x = Distance(target_p, GetShiftedPoint(n_idx + 1));
+                }
+            }
 
             float T_y = INF;
-            if (ny > 0) T_y = std::min(T_y, costs_flat_[n_idx - w]);
-            if (ny < h - 1) T_y = std::min(T_y, costs_flat_[n_idx + w]);
+            float h_y = map_res_;
+            if (ny > 0) {
+                float val = costs_flat_[n_idx - w];
+                if (val < T_y) {
+                    T_y = val;
+                    h_y = Distance(target_p, GetShiftedPoint(n_idx - w));
+                }
+            }
+            if (ny < h - 1) {
+                float val = costs_flat_[n_idx + w];
+                if (val < T_y) {
+                    T_y = val;
+                    h_y = Distance(target_p, GetShiftedPoint(n_idx + w));
+                }
+            }
 
-            float new_cost;
-            if (std::abs(T_x - T_y) < weight) {
-                // Solution to (T-Tx)^2 + (T-Ty)^2 = W^2
-                float sum = T_x + T_y;
-                new_cost = (sum + std::sqrt(2.0f * weight * weight - (T_x - T_y) * (T_x - T_y))) * 0.5f;
-            } else {
-                // Wave is moving mostly along one axis
-                new_cost = std::min(T_x, T_y) + weight;
+            float f = weight / map_res_;
+            float new_cost = INF;
+
+            if (T_x < INF && T_y < INF) {
+                float a = 1.0f / (h_x * h_x);
+                float b = 1.0f / (h_y * h_y);
+                float c = f * f;
+
+                bool two_axis = false;
+                if (T_x > T_y) {
+                    if (T_x - T_y < f * h_y) two_axis = true;
+                } else {
+                    if (T_y - T_x < f * h_x) two_axis = true;
+                }
+
+                if (two_axis) {
+                    float sum_ab = a + b;
+                    float term1 = (a * T_x + b * T_y) / sum_ab;
+                    float disc = c * sum_ab - a * b * (T_x - T_y) * (T_x - T_y);
+                    if (disc < 0) disc = 0;
+                    new_cost = term1 + std::sqrt(disc) / sum_ab;
+                } else {
+                    new_cost = std::min(T_x + f * h_x, T_y + f * h_y);
+                }
+            } else if (T_x < INF) {
+                new_cost = T_x + f * h_x;
+            } else if (T_y < INF) {
+                new_cost = T_y + f * h_y;
             }
 
             if (new_cost < costs_flat_[n_idx]) {
@@ -297,7 +371,7 @@ bool FastMarching::ExtractPathDiscrete() {
     
     while (curr != goal_ && curr >= 0 && count < max_iters) {
         path_.push_back(FoldIndex(curr));
-        path_world_.push_back(IndexToPoint(FoldIndex(curr)));
+        path_world_.push_back(GetShiftedPoint(curr));
         
         // Find neighbor with minimum arrival time
         int w = width_;
@@ -331,7 +405,7 @@ bool FastMarching::ExtractPathDiscrete() {
     
     if (curr == goal_) {
         path_.push_back(FoldIndex(curr));
-        path_world_.push_back(IndexToPoint(FoldIndex(curr)));
+        path_world_.push_back(GetShiftedPoint(curr));
         return true;
     }
     
@@ -494,6 +568,13 @@ Vec2 FastMarching::Normalize(const Vec2& v) {
   return Normalize({x, y});
 }
 
+
+Point FastMarching::GetShiftedPoint(int idx) const {
+  Point p = IndexToPoint(FoldIndex(idx));
+  p.x += shifts_[idx].x;
+  p.y += shifts_[idx].y;
+  return p;
+}
 
 } // namespace planning
 } // namespace avt_341

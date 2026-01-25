@@ -85,10 +85,10 @@ class GlobalPathTestNode(Node):
                 occ_grid[y:y+h, x:x+w] = 100
                 count += 1
         elif scenario == "narrow_and_wide":
-            occ_grid[m_to_px(40):m_to_px(60), m_to_px(20):m_to_px(50)] = 100
+            occ_grid[m_to_px(40):m_to_px(60), m_to_px(20):m_to_px(49)] = 100
             occ_grid[m_to_px(40):m_to_px(60), m_to_px(51):size_x] = 100
         elif scenario == "narrow_gate":
-            occ_grid[m_to_px(40):m_to_px(60), 0:m_to_px(50)] = 100
+            occ_grid[m_to_px(40):m_to_px(60), 0:m_to_px(49)] = 100
             occ_grid[m_to_px(40):m_to_px(60), m_to_px(51):size_x] = 100
 
         # 2. Populate Terrain Costs
