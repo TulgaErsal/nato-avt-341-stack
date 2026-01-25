@@ -16,11 +16,15 @@ float FastMarching::clearance_penalty(float d, float r, const std::string& optio
     return clearance_penalty_scale_ * (clearance_penalty_range_ - d) / (clearance_penalty_range_ - r);
   }
   else if (option == "quadratic") {
-    float ratio = r / d;
+    if (d >= clearance_penalty_range_) return 0.0f;
+    float ratio = (clearance_penalty_range_ - d) / (clearance_penalty_range_ - r);
     return clearance_penalty_scale_ * ratio * ratio;
   }
   else if (option == "exponential") {
-    return clearance_penalty_scale_ * std::exp(-clearance_penalty_exponent_ * (d - r));
+    if (d >= clearance_penalty_range_) return 0.0f;
+    float val_at_d = std::exp(-clearance_penalty_exponent_ * (d - r));
+    float val_at_range = std::exp(-clearance_penalty_exponent_ * (clearance_penalty_range_ - r));
+    return clearance_penalty_scale_ * (val_at_d - val_at_range) / (1.0f - val_at_range);
   }
   else if (option == "repulsive_potential") {
     if (d >= clearance_penalty_range_) return 0.0f;
