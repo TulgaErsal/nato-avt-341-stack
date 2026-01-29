@@ -3,25 +3,21 @@
 
 /// represents a single pixel in A* grid
 class AStarCell {
-  public:
-    int idx;     // index in the flattened grid
-    float cost;  // cost of traversing this pixel
+public:
+    int idx;    // flattened index
+    float g;    // cost-to-come
+    float f;    // priority = g + h
 
-    /** Create a cell with index i and cost c
-     * \param i The index of the cell
-     * \param c The cost associated with the cell
-     */
-    AStarCell(int i, float c) : idx(i),cost(c) {}
+    AStarCell(int i, float g_, float f_)
+        : idx(i), g(g_), f(f_) {}
 
-// the top of the priority queue is the greatest element by default,
-// but we want the smallest, so flip the sign
-  inline friend bool operator<(const AStarCell &n1, const AStarCell &n2) {
-    return n1.cost > n2.cost;
-  }
+    friend bool operator<(const AStarCell& a, const AStarCell& b) {
+        return a.f > b.f;   // min-heap behavior
+    }
 
-  inline friend bool operator==(const AStarCell &n1, const AStarCell &n2) {
-    return n1.idx == n2.idx;
-  }
+    friend bool operator==(const AStarCell& a, const AStarCell& b) {
+        return a.idx == b.idx;
+    }
 };
 
 #endif

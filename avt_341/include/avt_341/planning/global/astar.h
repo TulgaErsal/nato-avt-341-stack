@@ -85,7 +85,7 @@ public:
   static int GetGridValue(avt_341::msg::OccupancyGrid* segmentation_grid, double x, double y);
 
   /// Inherited from planner base class.
-  std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
+  virtual std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
                               avt_341::msg::OccupancyGrid* segmentation_grid,
                               Point goal,
                               Point position);

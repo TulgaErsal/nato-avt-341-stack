@@ -11,7 +11,7 @@ class GlobalPathTestNode(Node):
         super().__init__('global_path_test_driver')
         
         # Parameters
-        self.declare_parameter('scenario', 'narrow_gate')
+        self.declare_parameter('scenario', 'random')
         self.declare_parameter('width_m', 100.0)
         self.declare_parameter('height_m', 100.0)
         self.declare_parameter('cell_size_m', 1.0)
@@ -19,8 +19,8 @@ class GlobalPathTestNode(Node):
         self.declare_parameter('num_patches', 12)
         self.declare_parameter('verbose', True)
         self.declare_parameter('num_random', 10)
-        self.declare_parameter('obs_min', 1.0)
-        self.declare_parameter('obs_max', 10.0)
+        self.declare_parameter('obs_min', 5.0)
+        self.declare_parameter('obs_max', 15.0)
         self.declare_parameter('seed', 0)
 
         # Publishers
@@ -85,10 +85,10 @@ class GlobalPathTestNode(Node):
                 occ_grid[y:y+h, x:x+w] = 100
                 count += 1
         elif scenario == "narrow_and_wide":
-            occ_grid[m_to_px(40):m_to_px(60), m_to_px(20):m_to_px(50)] = 100
+            occ_grid[m_to_px(40):m_to_px(60), m_to_px(20):m_to_px(49)] = 100
             occ_grid[m_to_px(40):m_to_px(60), m_to_px(51):size_x] = 100
         elif scenario == "narrow_gate":
-            occ_grid[m_to_px(40):m_to_px(60), 0:m_to_px(50)] = 100
+            occ_grid[m_to_px(40):m_to_px(60), 0:m_to_px(49)] = 100
             occ_grid[m_to_px(40):m_to_px(60), m_to_px(51):size_x] = 100
 
         # 2. Populate Terrain Costs

@@ -12,8 +12,6 @@
 namespace avt_341 {
 namespace planning {
 
-const int Astar::EdgeDistanceCost;
-
 Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
              float w_distance,
              float w_occupancy,
@@ -65,7 +63,7 @@ void Astar::AllocateMap(int h, int w, int init_val) {
 }
 
 void Astar::SetMapValue(const Index& index, int val_height, int val_seg) {
-  weights_[FlattenIndex(index)] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * static_cast<float>(val_height)
+  weights_[FlattenIndex(index)] = w_occupancy_ * static_cast<float>(val_height)
     + w_segmentation_ * static_cast<float>(val_seg);
   map_[index.ix][index.iy] = (float) val_height;   // only used for obstacles (dilation, line of sight)
 }
@@ -168,29 +166,32 @@ void Astar::PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>&
   }
 }
 
-// manhattan distance: requires each move to cost >= 1
 float Astar::Heuristic(const Index& i0, const Index& i1) const {
-  //straight line distance
-  int x = i1.ix - i0.ix;
-  int y = i1.iy - i0.iy;
-  return w_distance_ * (float) sqrt(x * x + y * y);
+  const int dx = std::abs(i1.ix - i0.ix);
+  const int dy = std::abs(i1.iy - i0.iy);
 
-  //return std::max(std::abs(x),std::abs(y));
-  //manhattan distance
-  //return std::abs(i0 - i1) + std::abs(j0 - j1);
-  // diagonal heuristic
-  //float D2 = 1.0f;
-  //float D = 1.414214f; //1.0f;
-  //float dx = abs(i1-i0);
-  //float dy = abs(j1-j0);
-  //return D * (dx + dy) + (D2 - 2.0f * D) * std::min(dx, dy);
+  constexpr float D  = 1.0f;
+  constexpr float D2 = 1.41421356237f; // sqrt(2)
+
+  float h;
+  if (search_diagonals_) {
+    const int dmin = std::min(dx, dy);
+    const int dmax = std::max(dx, dy);
+    // Octile distance: (dmax-dmin)*1 + dmin*sqrt(2)
+    h = D * float(dmax - dmin) + D2 * float(dmin);
+  } else {
+    // Manhattan distance
+    h = D * float(dx + dy);
+  }
+
+  return w_distance_ * h;
 }
 
 bool Astar::Solve() {
   std::fill(paths_.begin(), paths_.end(), -1);
 
-  AStarCell start_node(start_, 0.);
-  AStarCell goal_node(goal_, 0.);
+  AStarCell start_node(start_, 0.0f, Heuristic(FoldIndex(start_), FoldIndex(goal_)));
+  AStarCell goal_node(goal_, 0.0f, 0.0f);
 
   auto* costs = new float[height_ * width_];
   for (int i = 0; i < height_ * width_; ++i) {
@@ -198,10 +199,14 @@ bool Astar::Solve() {
   }
   costs[start_] = 0.;
 
+  std::vector<bool> closed(height_ * width_, false);
   std::priority_queue<AStarCell> nodes_to_visit;
   nodes_to_visit.push(start_node);
   const int N_adj = search_diagonals_ ? 8 : 4;
   int* neighbors = new int[N_adj];
+
+  constexpr float kCardinalStep = 1.0f;
+  constexpr float kDiagonalStep = 1.41421356237f; // sqrt(2)
 
   bool solution_found = false;
   while (!nodes_to_visit.empty()) {
@@ -212,8 +217,11 @@ bool Astar::Solve() {
       solution_found = true;
       break;
     }
-
+    
     nodes_to_visit.pop();
+    if (closed[current.idx]) continue;
+    closed[current.idx] = true;
+    if (current.g > costs[current.idx]) continue;
 
     // check bounds and find up to eight neighbors
     neighbors[0] = HasDown(current.idx) ? Down(current.idx) : -1;
@@ -224,20 +232,23 @@ bool Astar::Solve() {
       neighbors[4] = HasDown(current.idx) && HasLeft(current.idx) ? DownLeft(current.idx) : -1;
       neighbors[5] = HasDown(current.idx) && HasRight(current.idx) ? DownRight(current.idx) : -1;
       neighbors[6] = HasUp(current.idx) && HasLeft(current.idx) ? UpLeft(current.idx) : -1;
-      neighbors[7] = HasUp(current.idx) && HasLeft(current.idx) ? UpRight(current.idx) : -1;
+      neighbors[7] = HasUp(current.idx) && HasRight(current.idx) ? UpRight(current.idx) : -1;
     }
     for (int i = 0; i < N_adj; ++i) {
-      if (neighbors[i] >= 0) {
-        // the sum of the cost so far and the cost of this move
-        float new_cost = costs[current.idx] + weights_[neighbors[i]];
-        if (new_cost < costs[neighbors[i]]) {
-          costs[neighbors[i]] = new_cost;
-          float priority =
-            new_cost + Heuristic(FoldIndex(neighbors[i]), FoldIndex(goal_));
-          // paths with lower expected cost are explored first
-          nodes_to_visit.emplace(neighbors[i], priority);
-          paths_[neighbors[i]] = current.idx;
-        }
+      const int nb = neighbors[i];
+      if (nb < 0) continue;
+
+      const bool is_diag = search_diagonals_ && (i >= 4);
+      const float step_cost = is_diag ? kDiagonalStep : kCardinalStep;
+
+      // Diagonal moves cost more than cardinal moves.
+      float g_new = costs[current.idx] + step_cost * w_distance_ + weights_[nb];
+
+      if (g_new < costs[nb]) {
+        costs[nb] = g_new;
+        float f_new = g_new + Heuristic(FoldIndex(nb), FoldIndex(goal_));
+        nodes_to_visit.emplace(nb, g_new, f_new);
+        paths_[nb] = current.idx;
       }
     }
   }
@@ -429,7 +440,14 @@ std::vector<Point> Astar::PlanPath(avt_341::msg::OccupancyGrid* grid,
     }
   }
 
+  auto t0 = std::chrono::steady_clock::now();
+
   bool solved = Solve();
+
+  auto t1 = std::chrono::steady_clock::now();
+
+  std::cout << "A* solve time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << " ms" << std::endl;
+
   if (!solved) {
     std::cerr << "WARNING: Path planner failed to solve map " << std::endl;
   }

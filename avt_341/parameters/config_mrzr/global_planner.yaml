@@ -1,25 +1,37 @@
 # Global Planner Parameters
 # ROS 2 parameter file format
-/**:
-  ros__parameters:
-    # Global Planner
-    # ======================================================================================================================
-    goal_dist: 10.0                                # Lookahead threshold within which next waypoint selected.
-    global_lookahead: 75.0                        # Global path lookahead
-    debug_visualize: True                         # Enables debug visualization of global planner.
-    w_distance: 1.0                               # Weight for distance cost.
-    w_occupancy: 10.0                              # Weight for occupancy cost.
-    w_segmentation: 0.1                           # Weight for segmentation cost.
-    search_diagonals: True                        # If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered.
-    los_max_iterations: 1                         # Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges.
-    los_break_on_first: False                     # If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection.
-    shutdown_behavior: 1                          # behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown).
-    auto_active_on_new_waypoint: True             # Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint.
-    verbose_gp_log: False                          # Activates verbose logging for global planner.
-    dilation_factor: 0.0                          # Dilation to costmap to apply during planning.
-    max_separation: 1.0                           # Maximum separation between waypoints [m].
-    use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
-    use_segmentation: True                       # Whether to use segmentation grid data or not
-    map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
-    seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
-    use_fastmarching: True                       # Switches solver from AStar to Fastmarching
+
+# Global Parameters
+# ======================================================================================================================
+goal_dist: 10.0                               # Lookahead threshold within which next waypoint selected.
+global_lookahead: 75.0                        # Global path lookahead
+debug_visualize: True                         # Enables debug visualization of global planner.
+w_distance: 1.0                               # Weight for distance cost.
+w_occupancy: 10.0                             # Weight for occupancy cost.
+w_segmentation: 0.1                           # Weight for segmentation cost.
+search_diagonals: True                        # If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered.
+los_max_iterations: 1                         # Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges.
+los_break_on_first: False                     # If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection.
+shutdown_behavior: 1                          # behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown).
+auto_active_on_new_waypoint: True             # Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint.
+verbose_gp_log: False                         # Activates verbose logging for global planner.
+dilation_factor: 0.0                          # Dilation to costmap to apply during planning.
+max_separation: 1.0                           # Maximum separation between waypoints [m].
+use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
+use_segmentation: True                        # Whether to use segmentation grid data or not
+map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
+seg_topic: avt_341/normal_segmentation_grid   # Segmentation grid topic
+planning_method: fast_marching                # 'astar', 'fast_marching', 'd_star_lite', 'fast_marching_square'
+obstacle_threshold: 0.0                       # Threshold above which cells are strictly impassable in EDT-based planners.
+
+# Fast Marching Parameters
+# ======================================================================================================================
+safety_margin_global: 0.75                    # Safety margin from obstacles in meters (for EDT-based planners).
+path_extraction_method: discrete              # 'discrete', 'gradient_descent'
+clearance_penalty_scale: 40.0                 # Scaling factor for the clearance penalty.
+clearance_penalty_range: 2.0                  # Distance (m) at which clearance penalty becomes zero.
+clearance_penalty_exponent: 2.0               # Exponent factor for the 'exponential' clearance penalty.
+gradient_descent_max_steps: 2000              # Max steps for path extraction.
+gradient_descent_steps_per_point: 10          # Interpolation resolution.
+clearance_penalty_type: linear                # Clearance penalty type for fast_marching: 'none', 'linear', 'quadratic', 'exponential', 'repulsive_potential', 'wall_hugging'
+clipping_distance: 2.0                        # Distance (m) from start position at which to clip the beginning of the path.
