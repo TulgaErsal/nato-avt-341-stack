@@ -20,7 +20,7 @@ public:
                bool search_diagonals,
                int los_max_iterations,
                bool los_break_on_first,
-                float safety_margin,
+                float safety_margin_global,
                std::string clearance_penalty_type,
                std::string path_extraction_method,
                float obstacle_threshold,
@@ -37,7 +37,7 @@ public:
                                             search_diagonals,
                                             los_max_iterations,
                                             los_break_on_first),
-                                      safety_margin_(safety_margin),
+                                      safety_margin_global_(safety_margin_global),
                                       clearance_penalty_type_(clearance_penalty_type),
                                       verbose_(verbose),
                                       path_extraction_method_(path_extraction_method),
@@ -69,7 +69,7 @@ protected:
   void ComputeEDT();
   
   std::string path_extraction_method_;
-  float safety_margin_;
+  float safety_margin_global_;
   std::string clearance_penalty_type_;
   float obstacle_threshold_;
   float clearance_penalty_scale_;

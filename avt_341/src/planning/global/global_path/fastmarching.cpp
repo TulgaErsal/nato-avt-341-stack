@@ -96,11 +96,11 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
     }
     
-    float adjusted_safety_margin = safety_margin_ + (map_res_ * 0.5f);
+    float adjusted_safety_margin = safety_margin_global_ + (map_res_ * 0.5f);
     ComputeEDT();
 
     if (verbose_) {
-        std::cout << "[FastMarching] Safety margin (input/adjusted): " << safety_margin_ << "/" << adjusted_safety_margin << "m" << std::endl;
+        std::cout << "[FastMarching] Safety margin (input/adjusted): " << safety_margin_global_ << "/" << adjusted_safety_margin << "m" << std::endl;
     }
 
     shifts_.assign(n_cells, {0.0f, 0.0f});
@@ -113,7 +113,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         
         // A cell is INF only if it is fully consumed by the safety margin.
         // A cell must be marked as an obstacle if a shift to clear the safety margin exceeds half a cell size.
-        if (map_[ix][iy] > obstacle_threshold_ || d < safety_margin_) {
+        if (map_[ix][iy] > obstacle_threshold_ || d < safety_margin_global_) {
             weights_[i] = INF;
         } else {
             if (d < adjusted_safety_margin) {

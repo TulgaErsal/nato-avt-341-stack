@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
   float dilation_factor, max_separation;
-  float safety_margin, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
+  float safety_margin_global, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
   int gradient_descent_max_steps, gradient_descent_steps_per_point;
   float clipping_distance;
   std::string map_topic, seg_topic;
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid_low_res"));
   n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
   n->get_parameter("~planning_method", planning_method, std::string("astar"));
-  n->get_parameter("~safety_margin", safety_margin, 0.5f);
+  n->get_parameter("~safety_margin_global", safety_margin_global, 0.5f);
   n->get_parameter("~clearance_penalty_type", clearance_penalty_type, std::string("repulsive_potential"));
   n->get_parameter("~path_extraction_method", path_extraction_method, std::string("gradient_descent"));
   n->get_parameter("~obstacle_threshold", obstacle_threshold, 0.0f);
@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
                                                        search_diagonals,
                                                        los_max_iterations,
                                                        los_break_on_first,
-                                                       safety_margin,
+                                                       safety_margin_global,
                                                        clearance_penalty_type,
                                                        path_extraction_method,
                                                        obstacle_threshold,
@@ -327,7 +327,7 @@ int main(int argc, char* argv[])
                                                              search_diagonals,
                                                              los_max_iterations,
                                                              los_break_on_first,
-                                                             safety_margin,
+                                                             safety_margin_global,
                                                              clearance_penalty_type,
                                                              path_extraction_method,
                                                              obstacle_threshold,
