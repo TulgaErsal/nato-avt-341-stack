@@ -347,6 +347,11 @@ bool FastMarching::ExtractPath() {
     // Check YAML-loaded parameter
     if (path_extraction_method_ == "discrete") {
         found = ExtractPathDiscrete();
+    } else if (path_extraction_method_ == "hybrid") {
+        found = ExtractPathGradientDescent(costs_flat_.data());
+        if (!found) {
+            found = ExtractPathDiscrete();
+        }
     } else {
         found = ExtractPathGradientDescent(costs_flat_.data());
     }
