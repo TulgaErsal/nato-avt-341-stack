@@ -347,6 +347,21 @@ bool FastMarching::ExtractPath() {
     // Check YAML-loaded parameter
     if (path_extraction_method_ == "discrete") {
         found = ExtractPathDiscrete();
+        // apply LOS smoothing
+        if (found && los_max_iterations_ > 0) {
+            std::vector<Index> smoothed_path;
+            PostSmoothing(path_, smoothed_path);
+            for (int i = 1; i < los_max_iterations_; i++) {
+                std::vector<Index> tmp = smoothed_path;
+                smoothed_path.clear();
+                PostSmoothing(tmp, smoothed_path);
+            }
+            path_ = smoothed_path;
+            path_world_.clear();
+            for (const auto& idx : path_) {
+                path_world_.push_back(GetShiftedPoint(FlattenIndex(idx)));
+            }
+        }
     } else if (path_extraction_method_ == "hybrid") {
         found = ExtractPathGradientDescent(costs_flat_.data());
         if (!found) {
@@ -389,7 +404,8 @@ bool FastMarching::ExtractPathDiscrete() {
         int cy = curr / w;
         
         int best_neigh = -1;
-        float min_val = costs_flat_[curr];
+        float max_descent = 0.0f;
+        Point p_curr = GetShiftedPoint(curr);
         
         const int dx[] = {-1, 1, 0, 0, -1, 1, -1, 1};
         const int dy[] = {0, 0, -1, 1, -1, -1, 1, 1};
@@ -400,9 +416,14 @@ bool FastMarching::ExtractPathDiscrete() {
             int ny = cy + dy[i];
             if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
                 int n_idx = ny * w + nx;
-                if (costs_flat_[n_idx] < min_val) {
-                    min_val = costs_flat_[n_idx];
-                    best_neigh = n_idx;
+                float val_n = costs_flat_[n_idx];
+                if (val_n < costs_flat_[curr]) {
+                    float dist = Distance(p_curr, GetShiftedPoint(n_idx));
+                    float descent = (costs_flat_[curr] - val_n) / dist;
+                    if (descent > max_descent) {
+                        max_descent = descent;
+                        best_neigh = n_idx;
+                    }
                 }
             }
         }
@@ -475,6 +496,33 @@ float FastMarching::HandleGradientNaNs(float cost_1, float cost_0) {
   } else {
     return (cost_0 - cost_1) / (2 * map_res_);
   }
+}
+
+bool FastMarching::LineOfSight(const Index& i0, const Index& i1) {
+  int x0 = i0.ix;
+  int y0 = i0.iy;
+  int x1 = i1.ix;
+  int y1 = i1.iy;
+  int dx = std::abs(x1 - x0);
+  int dy = std::abs(y1 - y0);
+  int sx = (x0 < x1) ? 1 : -1;
+  int sy = (y0 < y1) ? 1 : -1;
+  int err = dx - dy;
+
+  while (true) {
+    if (weights_[y0 * width_ + x0] >= INF) return false;
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x0 += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+  return true;
 }
 
 float FastMarching::ComputeGradientY(const float* costs, const Index& index) {

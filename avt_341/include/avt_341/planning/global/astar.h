@@ -259,7 +259,7 @@ protected:
 
   virtual bool ExtractPath();
   void PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>& out_path);
-  bool LineOfSight(const Index& i0, const Index& i1);
+  virtual bool LineOfSight(const Index& i0, const Index& i1);
 
   float llx_, lly_;
   float map_res_;
