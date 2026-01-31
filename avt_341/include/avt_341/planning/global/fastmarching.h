@@ -102,6 +102,7 @@ private:
   float HandleGradientNaNs(float cost_1, float cost_0);
   float ComputeGradientX(const float* costs, const Index& index);
   float ComputeGradientY(const float* costs, const Index& index);
+  bool LineOfSight(const Index& i0, const Index& i1) override;
   Vec2 BilinearInterpolateGradient(const float* costs, const Point& position);
   Vec2 Normalize(const Vec2& v);
   Point GetShiftedPoint(int idx) const;
