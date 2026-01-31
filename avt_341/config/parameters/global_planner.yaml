@@ -24,7 +24,7 @@ obstacle_threshold: 0.0                       # Threshold above which cells are 
 # Fast Marching Parameters
 # ======================================================================================================================
 safety_margin_global: 0.75                    # Safety margin from obstacles in meters (for EDT-based planners).
-path_extraction_method: discrete              # 'discrete', 'gradient_descent'
+path_extraction_method: hybrid                # 'discrete', 'gradient_descent', 'hybrid'
 clearance_penalty_scale: 40.0                 # Scaling factor for the clearance penalty.
 clearance_penalty_range: 2.0                  # Distance (m) at which clearance penalty becomes zero.
 clearance_penalty_exponent: 2.0               # Exponent factor for the 'exponential' clearance penalty.
