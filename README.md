@@ -1,6 +1,5 @@
 # NATO AVT-341 Autonomy Stack
 
-![Build ROS1 Workflow Badge](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/build_ros1_noetic.yml/badge.svg)
 ![Build ROS2 Workflow Badge](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/build_ros2_humble.yml/badge.svg)
 
 This repository contains autonomous algorithms for multi-vehicle formation navigation in the context of NATO AVT-341 and AVT-408 projects. It supports ROS1 and ROS2 interfaces.
