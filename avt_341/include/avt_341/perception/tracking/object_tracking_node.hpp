@@ -475,6 +475,9 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
         pose_publisher_;
 
+    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
+        pose_filtered_publisher_;
+
     void PublishPose();
 
     // Odometry publisher
@@ -483,6 +486,8 @@ class ObjectTrackingNode : public rclcpp::Node {
     bool publish_odometry_;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_publisher_;
+
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_filtered_publisher_;
 
     void PublishOdometry();
 
@@ -524,6 +529,10 @@ class ObjectTrackingNode : public rclcpp::Node {
     Eigen::Vector3d bounding_box_size_;
 
     Eigen::Vector3d bounding_box_centroid_;
+
+    Eigen::Vector3d bounding_box_centroid_global_;
+
+    bool filter_initialized_;
 
     bool use_filtered_pose_;
 

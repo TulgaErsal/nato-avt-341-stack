@@ -324,12 +324,19 @@ void ObjectTrackingNode::CreatePublishers() {
     if (publish_pose_) {
         pose_publisher_ =
             create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-                "pose", 1);
-    }
+                "pose/raw", 1);
+
+        pose_filtered_publisher_ =
+            create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
+                "pose/filtered", 1);
+        }
 
     if (publish_odometry_) {
         odometry_publisher_ =
-            create_publisher<nav_msgs::msg::Odometry>("odometry", 1);
+            create_publisher<nav_msgs::msg::Odometry>("odometry/raw", 1);
+
+        odometry_filtered_publisher_ =
+            create_publisher<nav_msgs::msg::Odometry>("odometry/filtered", 1);
     }
 
     info_publisher_ =
@@ -345,7 +352,7 @@ void ObjectTrackingNode::TrackerInfoCallback() {
 }
 
 void ObjectTrackingNode::CropRegionOfInterest() {
-    RCLCPP_INFO(get_logger(),
+    RCLCPP_DEBUG(get_logger(),
                 "Running crop box filter around the region of interest ...");
 
     // Define the crop box origin and its bounds relative to the last known
@@ -564,9 +571,7 @@ void ObjectTrackingNode::EuclideanClustering() {
     try {
         auto clustering_result = ExtractEuclideanClusters(point_cloud_);
         // Update the flag for centroid measurement.
-
-        // TODO: Restore this comment to restore the filter.
-        // has_new_measurement_ = true;
+        has_new_measurement_ = true;
 
         cloud_cluster_ = clustering_result.first;
         bounding_box_centroid_ = Eigen::Vector3d(clustering_result.second.x,
@@ -993,9 +998,6 @@ void ObjectTrackingNode::SegmentGroundPlane(
 void ObjectTrackingNode::EstimatorTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Estimator timer callback triggered!");
 
-    // TODO: Remove the next line to restore the filter.
-    return;
-
     // Skip the target state estimation if no valid target detection has
     // been performed since the last reset.
     if (!has_first_detection_)
@@ -1006,23 +1008,24 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
     // window.
     if ((get_clock()->now() - last_valid_detection_time_).seconds() >
         target_timeout_) {
-        // if (state_ == TrackerState::LIDAR_ONLY_TRACKING ||
-        //     state_ == TrackerState::FULL_TRACKING) {
-        RCLCPP_WARN(get_logger(), "Target timeout, resetting estimator ...");
-        filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
-        filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
-        state_ = TrackerState::UNINITIALIZED;
-        has_detection_ = false;
-        has_first_detection_ = false;
-        //}
-
-        return;
+        if (state_ == TrackerState::LIDAR_ONLY_TRACKING ||
+            state_ == TrackerState::NO_DETECTION) {
+            RCLCPP_WARN(get_logger(),
+                        "Target timeout, resetting estimator ...");
+            filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
+            filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+            state_ = TrackerState::INACTIVE;
+            has_detection_ = false;
+            has_first_detection_ = false;
+            filter_initialized_ = false;
+        }
     }
 
-    // If you made it this far, then it means you are ready to track the
-    // target.
-    state_ = TrackerState::FULL_TRACKING;
-    is_tracking_ = true;
+    if(!filter_initialized_) {
+            filter_->SetInitialPosition(TransformToCoordinates(
+            camera_frame_, world_frame_, bounding_box_centroid_));
+            filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+    }
 
     // Run the "Predict" step of the Kalman filter.
     filter_->Predict();
@@ -1030,7 +1033,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
     // Check if a new measurement is available to be parsed, then provide a
     // matching measurement vector z_n.
     if (has_new_measurement_) {
-        bounding_box_centroid_ = TransformToCoordinates(
+        bounding_box_centroid_global_ = TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_);
 
         // The measurement vector contains the position vector components,
@@ -1039,9 +1042,9 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         // the position vector.
         Eigen::Vector<double, 9> measurement_vector =
             Eigen::Vector<double, 9>::Zero();
-        measurement_vector(0) = bounding_box_centroid_.x();
-        measurement_vector(3) = bounding_box_centroid_.y();
-        measurement_vector(6) = bounding_box_centroid_.z();
+        measurement_vector(0) = bounding_box_centroid_global_.x();
+        measurement_vector(3) = bounding_box_centroid_global_.y();
+        measurement_vector(6) = bounding_box_centroid_global_.z();
 
         // Run the "Update" step of the Kalman filter and mark the latest
         // measurement as processed.
@@ -1049,15 +1052,12 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         has_new_measurement_ = false;
     }
 
-    // Get the filtered state and publish a matching odometry message.
+    // Get the filtered state, transform it to the world reference frame and
+    // publish a matching odometry message.
     const auto state_filtered = filter_->GetState();
     bounding_box_centroid_filtered_.x() = state_filtered(0);
     bounding_box_centroid_filtered_.y() = state_filtered(3);
     bounding_box_centroid_filtered_.z() = state_filtered(6);
-
-    // bounding_box_centroid_filtered_ =
-    //     TransformToCoordinates(world_frame_, camera_frame_,
-    //     bounding_box_centroid_filtered_);
 
     if (publish_odometry_) {
         PublishOdometry();
@@ -1169,9 +1169,9 @@ void ObjectTrackingNode::PublishDetection3D() {
     detection_message.bbox.size.y = bounding_box_size_.y();
     detection_message.bbox.size.z = bounding_box_size_.z();
 
-    detection_message.bbox.center.position.x = bounding_box_centroid_.x();
-    detection_message.bbox.center.position.y = bounding_box_centroid_.y();
-    detection_message.bbox.center.position.z = bounding_box_centroid_.z();
+    detection_message.bbox.center.position.x = bounding_box_centroid_global_.x();
+    detection_message.bbox.center.position.y = bounding_box_centroid_global_.y();
+    detection_message.bbox.center.position.z = bounding_box_centroid_global_.z();
 
     detection_message.bbox.center.orientation.w = bounding_box_orientation_.w();
     detection_message.bbox.center.orientation.x = bounding_box_orientation_.x();
@@ -1182,52 +1182,58 @@ void ObjectTrackingNode::PublishDetection3D() {
 }
 
 void ObjectTrackingNode::PublishPose() {
-    geometry_msgs::msg::PoseWithCovarianceStamped pose_message;
-
-    pose_message.header.stamp = get_clock()->now();
-    pose_message.header.frame_id = world_frame_;
-
     if (use_filtered_pose_) {
-        pose_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
-        pose_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
-        pose_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
-    } else {
-        pose_message.pose.pose.position.x = bounding_box_centroid_.x();
-        pose_message.pose.pose.position.y = bounding_box_centroid_.y();
-        pose_message.pose.pose.position.z = bounding_box_centroid_.z();
+        geometry_msgs::msg::PoseWithCovarianceStamped pose_filtered_message;
+        pose_filtered_message.header.stamp = get_clock()->now();
+        pose_filtered_message.header.frame_id = world_frame_;
+        pose_filtered_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
+        pose_filtered_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
+        pose_filtered_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
+        pose_filtered_message.pose.pose.orientation.w = bounding_box_orientation_.w();
+        pose_filtered_message.pose.pose.orientation.x = bounding_box_orientation_.x();
+        pose_filtered_message.pose.pose.orientation.y = bounding_box_orientation_.y();
+        pose_filtered_message.pose.pose.orientation.z = bounding_box_orientation_.z();
+        pose_filtered_publisher_->publish(pose_filtered_message);
     }
 
+    geometry_msgs::msg::PoseWithCovarianceStamped pose_message;
+    pose_message.header.stamp = get_clock()->now();
+    pose_message.header.frame_id = world_frame_;
+    pose_message.pose.pose.position.x = bounding_box_centroid_global_.x();
+    pose_message.pose.pose.position.y = bounding_box_centroid_global_.y();
+    pose_message.pose.pose.position.z = bounding_box_centroid_global_.z();
     pose_message.pose.pose.orientation.w = bounding_box_orientation_.w();
     pose_message.pose.pose.orientation.x = bounding_box_orientation_.x();
     pose_message.pose.pose.orientation.y = bounding_box_orientation_.y();
     pose_message.pose.pose.orientation.z = bounding_box_orientation_.z();
-
     pose_publisher_->publish(pose_message);
 }
 
 void ObjectTrackingNode::PublishOdometry() {
-    nav_msgs::msg::Odometry odometry_message;
-
-    odometry_message.header.stamp = get_clock()->now();
-    odometry_message.header.frame_id = camera_frame_;
-    odometry_message.child_frame_id = odometry_child_frame_;
+    // Note that the filter does not predict orientation, hence the orientation
+    // fields in the odometry message pose entry are not populated.
 
     if (use_filtered_odometry_) {
-        odometry_message.pose.pose.position.x =
+        nav_msgs::msg::Odometry odometry_filtered_message;
+        odometry_filtered_message.header.stamp = get_clock()->now();
+        odometry_filtered_message.header.frame_id = world_frame_;
+        odometry_filtered_message.child_frame_id = odometry_child_frame_;
+        odometry_filtered_message.pose.pose.position.x =
             bounding_box_centroid_filtered_.x();
-        odometry_message.pose.pose.position.y =
+        odometry_filtered_message.pose.pose.position.y =
             bounding_box_centroid_filtered_.y();
-        odometry_message.pose.pose.position.z =
+        odometry_filtered_message.pose.pose.position.z =
             bounding_box_centroid_filtered_.z();
-    } else {
-        odometry_message.pose.pose.position.x = bounding_box_centroid_.x();
-        odometry_message.pose.pose.position.y = bounding_box_centroid_.y();
-        odometry_message.pose.pose.position.z = bounding_box_centroid_.z();
+        odometry_filtered_publisher_->publish(odometry_filtered_message);
     }
 
-    // Note that the filter does not predicted orientation, hence the
-    // orientation fields in the odometry message pose entry are not
-    // populated.
+    nav_msgs::msg::Odometry odometry_message;
+    odometry_message.header.stamp = get_clock()->now();
+    odometry_message.header.frame_id = world_frame_;
+    odometry_message.child_frame_id = odometry_child_frame_;
+    odometry_message.pose.pose.position.x = bounding_box_centroid_global_.x();
+    odometry_message.pose.pose.position.y = bounding_box_centroid_global_.y();
+    odometry_message.pose.pose.position.z = bounding_box_centroid_global_.z();
     odometry_publisher_->publish(odometry_message);
 }
 
