@@ -1,12 +1,3 @@
-message(STATUS "Building mission command panel plugin...")
-
-
-find_package(rviz_common REQUIRED)
-find_package(rviz_rendering REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(avt_341_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-
 if(POLICY CMP0071)
   cmake_policy(SET CMP0071 NEW)
 endif()
@@ -18,6 +9,14 @@ else()
   find_package(Qt5 REQUIRED COMPONENTS Widgets)
   set(QT_VERSION 5)
 endif()
+
+message(STATUS "Building mission command panel plugin...")
+
+find_package(rviz_common REQUIRED)
+find_package(rviz_rendering REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(avt_341_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
