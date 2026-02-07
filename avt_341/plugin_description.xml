@@ -1,0 +1,9 @@
+<library path="lib/libavt_341">
+  <class name="avt_341/MissionCommand"
+         type="avt_341::ui::MissionCommandPanel"
+         base_class_type="rviz::Panel">
+    <description>
+      Simple UI panel plugin for RViz for sending commands to UGVs.
+    </description>
+  </class>
+</library>

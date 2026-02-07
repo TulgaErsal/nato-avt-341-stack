@@ -91,7 +91,8 @@ set(AVT341_SOURCE_FILES
     "planning/local/vehicle_converter"
     "planning/local/mpc_planner"
     "planning/global/global_path"
-    "planning/global/pf_global_path")
+    "planning/global/pf_global_path"
+    "ui/mission_command_panel")
 
 # Append src/ subdirectory to the path of each target.
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
@@ -286,6 +287,11 @@ if(USING_CATKIN)
     DESTINATION "${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz"
     FILES_MATCHING
     PATTERN "*.rviz")
+
+  install(
+    FILES plugin_description.xml
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+    
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
