@@ -37,7 +37,7 @@
   <depend>visualization_msgs</depend>
 
   <depend condition="$ROS_DISTRO == humble">qtbase5-dev</depend>
-  <depend condition="$ROS_DISTRO == jazzy">qt6-base-dev</depend>
+  <depend condition="$ROS_DISTRO == jazzy">qtbase5-dev</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
