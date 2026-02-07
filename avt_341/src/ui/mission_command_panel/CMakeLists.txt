@@ -1,35 +1,64 @@
 message(STATUS "Building mission command panel plugin...")
 
-if(USING_CATKIN)
-    find_package(catkin REQUIRED COMPONENTS
-        rviz
-    )
 
-    ## This setting causes Qt's "MOC" generation to happen automatically.
-    set(CMAKE_AUTOMOC ON)
+find_package(rviz_common REQUIRED)
+find_package(rviz_rendering REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(avt_341_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
-    if(rviz_QT_VERSION VERSION_LESS "5")
-        message(STATUS "Using Qt4 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
-        find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED QtCore QtGui)
-        ## pull in all required include dirs, define QT_LIBRARIES, etc.
-        include(${QT_USE_FILE})
-    else()
-        message(STATUS "Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
-        find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED Core Widgets)
-        ## make target_link_libraries(${QT_LIBRARIES}) pull in all required dependencies
-        set(QT_LIBRARIES Qt5::Widgets)
-    endif()
+if(POLICY CMP0071)
+  cmake_policy(SET CMP0071 NEW)
+endif()
 
-    # Avoid conflicts between Qt and boost signals
-    add_definitions(-DQT_NO_KEYWORDS)
+find_package(Qt6 QUIET COMPONENTS Widgets)
+if(Qt6_FOUND)
+  set(QT_VERSION 6)
+else()
+  find_package(Qt5 REQUIRED COMPONENTS Widgets)
+  set(QT_VERSION 5)
+endif()
 
-    set(SRC_FILES mission_command_panel.cpp)
-    set(HEADER_FILES  ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}/ui/mission_command_panel.h)
-    add_library(${PROJECT_NAME} ${SRC_FILES} ${HEADER_FILES})
-    target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES})
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 
-endif() # if(USING_CATKIN)
+set(SRC_FILES mission_command_panel.cpp)
+set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}/ui/mission_command_panel.h)
 
-if(USING_AMENT)
-    message(STATUS "Mission command panel only supported in ROS1, skipping...")
-endif() # if(USING_AMENT)
+add_library(${PROJECT_NAME}_ui SHARED ${SRC_FILES} ${HEADER_FILES})
+target_include_directories(${PROJECT_NAME}_ui PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+if(QT_VERSION EQUAL 6)
+  target_link_libraries(${PROJECT_NAME}_ui
+    Qt6::Widgets
+    rviz_common::rviz_common
+    rviz_rendering::rviz_rendering
+    rclcpp::rclcpp
+    avt_341_msgs::avt_341_msgs__rosidl_typesupport_cpp
+    std_msgs::std_msgs__rosidl_typesupport_cpp
+  )
+else()
+  target_link_libraries(${PROJECT_NAME}_ui
+    Qt5::Widgets
+    rviz_common::rviz_common
+    rviz_rendering::rviz_rendering
+    rclcpp::rclcpp
+    avt_341_msgs::avt_341_msgs__rosidl_typesupport_cpp
+    std_msgs::std_msgs__rosidl_typesupport_cpp
+  )
+endif()
+
+install(TARGETS ${PROJECT_NAME}_ui
+  EXPORT export_${PROJECT_NAME}_ui
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+ament_export_targets(export_${PROJECT_NAME}_ui HAS_LIBRARY_TARGET)
+ament_export_libraries(${PROJECT_NAME}_ui)
+

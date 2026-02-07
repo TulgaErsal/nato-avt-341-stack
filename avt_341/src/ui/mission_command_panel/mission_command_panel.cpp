@@ -4,7 +4,7 @@ namespace avt_341 {
 namespace ui {
 
 MissionCommandPanel::MissionCommandPanel( QWidget* parent )
-  : rviz::Panel( parent )
+  : rviz_common::Panel( parent )
 {
     // Create entries
     sender_name_entry_ = new QLineEdit("MRZR");
@@ -91,15 +91,19 @@ MissionCommandPanel::MissionCommandPanel( QWidget* parent )
     // Create signal/slot connections.
     connect( send_msg_button_, SIGNAL( clicked() ), this, SLOT( sendCommand() ));
     connect( reset_perception_button_, SIGNAL( clicked() ), this, SLOT( resetPerception() ));
+}
 
-    // Initialize ROS publisher
-    command_pub_ = nh_.advertise<avt_341_msgs::Communication>("avt_341/comm_messages", 1);
-	reset_pub_ = nh_.advertise<std_msgs::String>("avt_341/reset", 1);
+void MissionCommandPanel::onInitialize()
+{
+    // Initialize ROS node and publishers
+    node_ = std::make_shared<rclcpp::Node>("mission_command_panel_node");
+    command_pub_ = node_->create_publisher<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 10);
+    reset_pub_ = node_->create_publisher<std_msgs::msg::String>("avt_341/reset", 10);
 }
 
 void MissionCommandPanel::sendCommand()
 {
-    avt_341_msgs::Communication command_msg;
+    avt_341_msgs::msg::Communication command_msg;
     command_msg.sender_name = sender_name_entry_->text().toUpper().toStdString();
     command_msg.msg_id = msg_id_entry_->text().toInt();
     command_msg.type = msg_type_combo_->currentText().toStdString();
@@ -119,14 +123,14 @@ void MissionCommandPanel::sendCommand()
     command_msg.y_offset = y_offset_entry_->text().toDouble();
     command_msg.distance = distance_entry_->text().toDouble();
     command_msg.target_msg_id = target_msg_entry_->text().toInt();
-    command_pub_.publish(command_msg);
+    command_pub_->publish(command_msg);
 }
 
 void MissionCommandPanel::resetPerception()
 {
-	std_msgs::String reset_msg;
-	reset_msg.data = "perception";
-	reset_pub_.publish(reset_msg);
+    std_msgs::msg::String reset_msg;
+    reset_msg.data = "perception";
+    reset_pub_->publish(reset_msg);
 }
 
 } // end namespace ui
@@ -135,5 +139,5 @@ void MissionCommandPanel::resetPerception()
 // Tell pluginlib about this class.  Every class which should be
 // loadable by pluginlib::ClassLoader must have these two lines
 // compiled in its .cpp file, outside of any namespace scope.
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(avt_341::ui::MissionCommandPanel,rviz::Panel )
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(avt_341::ui::MissionCommandPanel, rviz_common::Panel )

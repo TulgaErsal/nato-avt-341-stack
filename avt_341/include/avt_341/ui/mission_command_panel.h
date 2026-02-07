@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string>
 #include <limits>
+#include <memory>
 
 #include <QLineEdit>
 #include <QPushButton>
@@ -23,14 +24,14 @@
 #include <QLabel>
 #include <QDoubleValidator>
 #include <QIntValidator>
-#include <QRegExp>
-#include <QRegExpValidator>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 
-#include <ros/ros.h>
-#include "avt_341_msgs/Communication.h"
-#include "std_msgs/String.h"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341_msgs/msg/communication.hpp"
+#include "std_msgs/msg/string.hpp"
 
-#include <rviz/panel.h>
+#include <rviz_common/panel.hpp>
 #endif
 
 class QLineEdit;
@@ -38,12 +39,14 @@ class QLineEdit;
 namespace avt_341 {
 namespace ui {
 
-class MissionCommandPanel: public rviz::Panel
+class MissionCommandPanel: public rviz_common::Panel
 {
 
 Q_OBJECT
 public:
     MissionCommandPanel( QWidget* parent = 0 );
+
+    virtual void onInitialize() override;
 
 protected Q_SLOTS:
     void sendCommand();
@@ -75,14 +78,15 @@ protected:
     QPushButton* send_msg_button_;
     QPushButton* reset_perception_button_;
 
-    // The ROS node handle.
-    ros::NodeHandle nh_;
+    // The ROS node.
+    rclcpp::Node::SharedPtr node_;
 
     // ROS Publishers
-    ros::Publisher command_pub_;
-    ros::Publisher reset_pub_;
+    rclcpp::Publisher<avt_341_msgs::msg::Communication>::SharedPtr command_pub_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_pub_;
 
 };
+
 } // end namespace ui
 } // end namespace avt_341
 
