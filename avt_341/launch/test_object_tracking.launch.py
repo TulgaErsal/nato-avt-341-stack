@@ -26,9 +26,10 @@ def launch_setup(context, *args, **kwargs):
                 tracking_params['tracker_target_class'] = str(tracking_params['tracker_target_class'])
             
             # Force bag-specific frames to match the TF tree in the bag
-            # This prevents the node from defaulting to 'flir_optical' or 'Q'
-            tracking_params['world_frame'] = 'mrzr2/odom'
-            tracking_params['camera_frame'] = 'mrzr2/front_camera'
+            # We use 'odom' as world frame (found in bag strings)
+            # and 'flir_optical' as camera frame (as requested by user)
+            tracking_params['world_frame'] = 'odom'
+            tracking_params['camera_frame'] = 'flir_optical'
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
@@ -45,7 +46,7 @@ def launch_setup(context, *args, **kwargs):
         output='screen'
     )
 
-    # 4. Object Tracking Node
+    # 2. Object Tracking Node
     tracking_node = Node(
         package='avt_341',
         executable='avt_341_object_tracking_node',
@@ -65,7 +66,7 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
-    # 5. RViz2
+    # 3. RViz2
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -75,10 +76,21 @@ def launch_setup(context, *args, **kwargs):
         output='screen'
     )
 
+    # 4. Static Transform Alias
+    # Aliases the bag's camera frame to the stack's expected 'flir_optical' frame
+    tf_alias_node = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='tf_alias_node',
+        arguments=['0', '0', '0', '0', '0', '0', 'mrzr2/front_camera', 'flir_optical'],
+        parameters=[{'use_sim_time': True}]
+    )
+
     return [
         bag_play,
         tracking_node,
-        rviz_node
+        rviz_node,
+        tf_alias_node
     ]
 
 def generate_launch_description():
