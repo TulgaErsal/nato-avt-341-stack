@@ -24,6 +24,10 @@ def launch_setup(context, *args, **kwargs):
             # ROS 2 is strict about types. Ensure 'tracker_target_class' is a string.
             if tracking_params and 'tracker_target_class' in tracking_params:
                 tracking_params['tracker_target_class'] = str(tracking_params['tracker_target_class'])
+            
+            # Ensure world_frame is set to a valid tf tree element instead of the default 'Q'
+            if tracking_params and 'world_frame' not in tracking_params:
+                tracking_params['world_frame'] = 'mrzr2/odom'
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
