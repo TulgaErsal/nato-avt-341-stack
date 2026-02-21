@@ -30,6 +30,9 @@ def launch_setup(context, *args, **kwargs):
             # and 'flir_optical' as camera frame (as requested by user)
             tracking_params['world_frame'] = 'odom'
             tracking_params['camera_frame'] = 'flir_optical'
+            
+            # Enable mission manager to listen to the 'task' topic
+            tracking_params['tracker_use_mission_manager'] = True
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
@@ -86,11 +89,20 @@ def launch_setup(context, *args, **kwargs):
         parameters=[{'use_sim_time': True}]
     )
 
+    # 5. Mission Task Status Publisher
+    # Publishes the task status once to set the target vehicle ID
+    task_status_pub = ExecuteProcess(
+        cmd=['ros2', 'topic', 'pub', '-t', '1', '/task', 'avt_341_msgs/msg/MissionTaskStatus', 
+             '{tracked_vehicle: "0"}'],
+        output='screen'
+    )
+
     return [
         bag_play,
         tracking_node,
         rviz_node,
-        tf_alias_node
+        tf_alias_node,
+        task_status_pub
     ]
 
 def generate_launch_description():
