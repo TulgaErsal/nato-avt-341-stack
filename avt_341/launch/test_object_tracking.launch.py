@@ -62,11 +62,7 @@ def launch_setup(context, *args, **kwargs):
     
     # 1. Play the rosbag
     bag_play = ExecuteProcess(
-        cmd=['ros2', 'bag', 'play', bag_file, '--clock', '-l',
-             '--remap', '/mrzr2/front_camera/camera_info:=/flir_camera/camera_info',
-             '/mrzr2/front_camera/image:=/flir_camera/image_raw',
-             '/mrzr2/front_camera/detections_2d:=/mrzr/feda_detector/detections/vision',
-             '/mrzr2/avt_341/points:=/ouster/points'],
+        cmd=['ros2', 'bag', 'play', bag_file, '--clock', '-l'],
         output='screen'
     )
 
@@ -78,10 +74,10 @@ def launch_setup(context, *args, **kwargs):
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
         remappings=[
-            ('camera_info', '/flir_camera/camera_info'),
-            ('image', '/flir_camera/image_raw'),
-            ('detection_2d', '/mrzr/feda_detector/detections/vision'),
-            ('points/input', '/ouster/points'),
+            ('camera_info', '/mrzr2/front_camera/camera_info'),
+            ('image', '/mrzr2/front_camera/image'),
+            ('detection_2d', '/mrzr2/front_camera/detections_2d'),
+            ('points/input', '/mrzr2/avt_341/points'),
             ('points/fov', 'object_tracking/points/fov'),
             ('points/roi', 'object_tracking/points/roi'),
             ('points/ground', 'object_tracking/points/ground'),
