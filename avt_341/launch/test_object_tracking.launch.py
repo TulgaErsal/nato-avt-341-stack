@@ -21,18 +21,39 @@ def launch_setup(context, *args, **kwargs):
     try:
         with open(tracking_params_path, 'r') as f:
             tracking_params = yaml.safe_load(f)
-            # ROS 2 is strict about types. Ensure 'tracker_target_class' is a string.
-            if tracking_params and 'tracker_target_class' in tracking_params:
-                tracking_params['tracker_target_class'] = str(tracking_params['tracker_target_class'])
+            if tracking_params is None:
+                tracking_params = {}
             
-            # Force bag-specific frames to match the TF tree in the bag
-            # We use 'odom' as world frame (found in bag strings)
-            # and 'flir_optical' as camera frame (as requested by user)
-            tracking_params['world_frame'] = 'odom'
-            tracking_params['camera_frame'] = 'flir_optical'
-            
-            # Enable mission manager to listen to the 'task' topic
-            tracking_params['tracker_use_mission_manager'] = True
+            # Apply requested parameter configuration
+            tracking_params.update({
+                'tracking_rate': 10.0,
+                'camera_frame': 'mrzr2/front_camera',
+                'publish_clouds_cluster': True,
+                'publish_clouds_cropbox': True,
+                'publish_clouds_roi': True,
+                'publish_clouds_ground': True,
+                'publish_clouds_fov': True,
+                'publish_detection': True,
+                'publish_odometry': True,
+                'publish_pose': True,
+                'filters_pose': True,
+                'filters_odometry': True,
+                'tracker_use_mission_manager': False,
+                'tracker_use_pca_centroid': True,
+                'tracker_target_class': '0',
+                'filters_use_manual_roi': True,
+                'filters_downsampling_leaf_size': 0.25,
+                'filters_ground_threshold': 0.2,
+                'filters_clustering_size_minimum': 100,
+                'filters_clustering_size_maximum': 500,
+                'filters_manual_roi_size': [5.0, 5.0, 5.0],
+                'filters_kalman_process': 0.1,
+                'filters_kalman_measurement': 0.001,
+                'world_frame': 'map',
+                'sync_enable': False,
+                'sync_detection': 0.1,
+                'sync_use_callback': True
+            })
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
@@ -79,17 +100,7 @@ def launch_setup(context, *args, **kwargs):
         output='screen'
     )
 
-    # 4. Static Transform Alias
-    # Aliases the bag's camera frame to the stack's expected 'flir_optical' frame
-    tf_alias_node = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='tf_alias_node',
-        arguments=['0', '0', '0', '0', '0', '0', 'mrzr2/front_camera', 'flir_optical'],
-        parameters=[{'use_sim_time': True}]
-    )
-
-    # 5. Mission Task Status Publisher
+    # 4. Mission Task Status Publisher
     # Publishes the task status once to set the target vehicle ID
     task_status_pub = ExecuteProcess(
         cmd=['ros2', 'topic', 'pub', '-t', '1', '/task', 'avt_341_msgs/msg/MissionTaskStatus', 
@@ -101,7 +112,6 @@ def launch_setup(context, *args, **kwargs):
         bag_play,
         tracking_node,
         rviz_node,
-        tf_alias_node,
         task_status_pub
     ]
 
