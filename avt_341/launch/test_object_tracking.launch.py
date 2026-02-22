@@ -15,6 +15,8 @@ def launch_setup(context, *args, **kwargs):
     avt_341_dir = get_package_share_directory('avt_341')
     tracking_params_path = LaunchConfiguration('tracking_params').perform(context)
     rviz_config = LaunchConfiguration('rviz_config').perform(context)
+    record = LaunchConfiguration('record').perform(context).lower() == 'true'
+    output_bag = LaunchConfiguration('output_bag').perform(context)
 
     # Load YAML parameters manually to avoid ROS 2's strict YAML format requirement
     # (The provided YAML files are simple key-value pairs, which ROS 2's direct parameter file loading doesn't like)
@@ -62,7 +64,7 @@ def launch_setup(context, *args, **kwargs):
     
     # 1. Play the rosbag
     bag_play = ExecuteProcess(
-        cmd=['ros2', 'bag', 'play', bag_file, '--clock', '-l'],
+        cmd=['ros2', 'bag', 'play', bag_file, '--clock'],
         output='screen'
     )
 
@@ -104,12 +106,22 @@ def launch_setup(context, *args, **kwargs):
         output='screen'
     )
 
-    return [
+    # 5. Record Bag (Optional)
+    actions = [
         bag_play,
         tracking_node,
         rviz_node,
         task_status_pub
     ]
+
+    if record:
+        bag_record = ExecuteProcess(
+            cmd=['ros2', 'bag', 'record', '-a', '-o', output_bag],
+            output='screen'
+        )
+        actions.append(bag_record)
+
+    return actions
 
 def generate_launch_description():
     avt_341_dir = get_package_share_directory('avt_341')
@@ -118,5 +130,7 @@ def generate_launch_description():
         DeclareLaunchArgument('bag_file', description='Path to the rosbag directory or file'),
         DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'avt_341_ros2.rviz')),
         DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'mrzr_tracking.yaml')),
+        DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
+        DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),
         OpaqueFunction(function=launch_setup)
     ])
