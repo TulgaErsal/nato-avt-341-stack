@@ -64,7 +64,7 @@ def launch_setup(context, *args, **kwargs):
     
     # 1. Play the rosbag
     bag_play = ExecuteProcess(
-        cmd=['ros2', 'bag', 'play', bag_file, '--clock'],
+        cmd=['ros2', 'bag', 'play', bag_file, '--clock', '-l'],
         output='screen'
     )
 

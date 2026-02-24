@@ -1,0 +1,100 @@
+import sqlite3
+import matplotlib.pyplot as plt
+from rosidl_runtime_py.utilities import get_message
+from rclpy.serialization import deserialize_message
+import os
+
+def read_bag(bag_path):
+    # Find the database file
+    db_files = [f for f in os.listdir(bag_path) if f.endswith('.db3')]
+    if not db_files:
+        raise FileNotFoundError(f"No .db3 files found in {bag_path}")
+    db_path = os.path.join(bag_path, db_files[0])
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Get topic list and types
+    cursor.execute("SELECT id, name, type FROM topics")
+    topics = {row[1]: {'id': row[0], 'type': row[2]} for row in cursor.fetchall()}
+    
+    def get_messages(topic_name):
+        if topic_name not in topics:
+            print(f"Topic {topic_name} not found in bag")
+            return []
+        
+        topic_id = topics[topic_name]['id']
+        topic_type = topics[topic_name]['type']
+        msg_class = get_message(topic_type)
+        
+        cursor.execute("SELECT data FROM messages WHERE topic_id = ?", (topic_id,))
+        messages = []
+        for row in cursor.fetchall():
+            msg = deserialize_message(row[0], msg_class)
+            messages.append(msg)
+        return messages
+
+    data = {}
+    data['pose_filtered'] = get_messages('/pose/filtered')
+    data['pose_raw'] = get_messages('/pose/raw')
+    data['mrzr2_odom'] = get_messages('/mrzr2/avt_341/odometry')
+    data['mrzr4_odom'] = get_messages('/mrzr4/avt_341/odometry')
+    
+    conn.close()
+    return data
+
+def extract_xy(messages):
+    x = []
+    y = []
+    for msg in messages:
+        pos = msg.pose.pose.position
+        if pos.x == 0.0 and pos.y == 0.0:
+            continue
+        x.append(pos.x)
+        y.append(pos.y)
+    return x, y
+
+def main():
+    bag_path = os.path.expanduser('~/colcon_ws/test_recording')
+    print(f"Reading bag from {bag_path}...")
+    data = read_bag(bag_path)
+    
+    mrzr2_x, mrzr2_y = extract_xy(data['mrzr2_odom'])
+    mrzr4_x, mrzr4_y = extract_xy(data['mrzr4_odom'])
+    filtered_x, filtered_y = extract_xy(data['pose_filtered'])
+    raw_x, raw_y = extract_xy(data['pose_raw'])
+    
+    plt.figure(figsize=(12, 10))
+    
+    # Plot 1: Filtered
+    plt.subplot(2, 1, 1)
+    plt.plot(mrzr2_x, mrzr2_y, 'b-', label='MRZR2 Path', alpha=0.5)
+    plt.plot(mrzr4_x, mrzr4_y, 'ro', label='MRZR4 Location', markersize=2)
+    plt.scatter(filtered_x, filtered_y, c='g', s=10, label='/pose/filtered')
+    plt.title('Filtered Pose Tracking')
+    plt.xlabel('X [m]')
+    plt.ylabel('Y [m]')
+    plt.legend()
+    plt.grid(True)
+    plt.axis('equal')
+    
+    # Plot 2: Raw
+    plt.subplot(2, 1, 2)
+    plt.plot(mrzr2_x, mrzr2_y, 'b-', label='MRZR2 Path', alpha=0.5)
+    plt.plot(mrzr4_x, mrzr4_y, 'ro', label='MRZR4 Location', markersize=2)
+    plt.scatter(raw_x, raw_y, c='orange', s=10, label='/pose/raw')
+    plt.title('Raw Pose Tracking')
+    plt.xlabel('X [m]')
+    plt.ylabel('Y [m]')
+    plt.legend()
+    plt.grid(True)
+    plt.axis('equal')
+    
+    plt.tight_layout()
+    output_plot = 'tracking_results.png'
+    plt.savefig(output_plot)
+    print(f"Plots saved to {output_plot}")
+    plt.show()
+
+if __name__ == '__main__':
+    main()
