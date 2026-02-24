@@ -46,7 +46,7 @@ def launch_setup(context, *args, **kwargs):
                 'filters_use_manual_roi': True,
                 'filters_downsampling_leaf_size': 0.25,
                 'filters_ground_threshold': 0.2,
-                'filters_clustering_size_minimum': 100,
+                'filters_clustering_size_minimum': 30,
                 'filters_clustering_size_maximum': 500,
                 'filters_manual_roi_size': [5.0, 5.0, 5.0],
                 'filters_kalman_process': 0.1,
