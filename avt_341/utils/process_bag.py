@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from rosidl_runtime_py.utilities import get_message
 from rclpy.serialization import deserialize_message
 import os
+import argparse
 
 def read_bag(bag_path):
     # Find the database file
@@ -55,9 +56,19 @@ def extract_xy(messages):
     return x, y
 
 def main():
-    bag_path = os.path.expanduser('~/colcon_ws/test_recording')
+    parser = argparse.ArgumentParser(description='Process a ROS 2 bag and plot tracking results.')
+    parser.add_argument('bag_path', type=str, nargs='?', default='~/colcon_ws/test_recording',
+                        help='Path to the ROS 2 bag directory')
+    args = parser.parse_args()
+
+    bag_path = os.path.expanduser(args.bag_path)
     print(f"Reading bag from {bag_path}...")
-    data = read_bag(bag_path)
+    
+    try:
+        data = read_bag(bag_path)
+    except Exception as e:
+        print(f"Error reading bag: {e}")
+        return
     
     mrzr2_x, mrzr2_y = extract_xy(data['mrzr2_odom'])
     mrzr4_x, mrzr4_y = extract_xy(data['mrzr4_odom'])
