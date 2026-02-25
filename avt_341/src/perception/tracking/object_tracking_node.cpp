@@ -1025,6 +1025,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             filter_->SetInitialPosition(TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_));
             filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+            filter_initialized_ = true;
     }
 
     // Run the "Predict" step of the Kalman filter.
@@ -1088,6 +1089,8 @@ void ObjectTrackingNode::PublishPointCloud(
 
 void ObjectTrackingNode::Initialize() {
     pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
+
+    filter_initialized_ = false;
 
     // Configure the voxel grid filter.
     voxel_grid_filter_.setLeafSize(leaf_size_, leaf_size_, leaf_size_);
