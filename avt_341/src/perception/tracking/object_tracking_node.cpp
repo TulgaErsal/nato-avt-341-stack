@@ -1037,15 +1037,14 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         bounding_box_centroid_global_ = TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_);
 
-        // The measurement vector contains the position vector components,
-        // each followed by its first (velocity) and second (acceleration)
-        // derivatives, hence (0, 0 + 3, 0 + 3 + 3) are the corresponding to
-        // the position vector.
-        Eigen::Vector<double, 9> measurement_vector =
-            Eigen::Vector<double, 9>::Zero();
+        // The measurement vector contains only the observed position
+        // components [x, y, z].  Velocity and acceleration are NOT observed
+        // directly; they are estimated by the filter from consecutive
+        // position measurements.
+        Eigen::Vector<double, 3> measurement_vector;
         measurement_vector(0) = bounding_box_centroid_global_.x();
-        measurement_vector(3) = bounding_box_centroid_global_.y();
-        measurement_vector(6) = bounding_box_centroid_global_.z();
+        measurement_vector(1) = bounding_box_centroid_global_.y();
+        measurement_vector(2) = bounding_box_centroid_global_.z();
 
         // Run the "Update" step of the Kalman filter and mark the latest
         // measurement as processed.

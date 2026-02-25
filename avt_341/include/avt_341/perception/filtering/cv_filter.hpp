@@ -15,7 +15,8 @@
 
 * @file      cv_filter.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
-* @brief     Header file for a Kalman filter with a constant velocity Brownian motion model.
+* @brief     Header file for a Kalman filter with a constant acceleration
+*            Brownian motion model and position-only measurement.
 * @copyright MIT License
 
              NATO AVT-341 Autonomy Stack: Autonomous Navigation Stack for Ground Vehicles
@@ -43,6 +44,7 @@
 
 #pragma once
 
+#include <avt_341/perception/filtering/kalman_filter.hpp>
 #include <avt_341/perception/filtering/kinematic_kalman_filter.hpp>
 #include <avt_341/perception/filtering/process_covariance.hpp>
 
@@ -52,52 +54,120 @@ namespace filtering {
 
 template <int state_size>
 /**
- * @brief Templated class for a constant velocity Kalman filter.
+ * @brief Templated class for a constant acceleration Kalman filter with
+ *        position-only measurement.
  *
- * @details This is a Kalman filter with first-order (i.e. position and velocity
- * estimation) Netwonian particle kinematic model. The class provides
- * convenience function for providing measurements for position alone or for
- * position and velocity.
+ * @details This filter tracks position, velocity, and acceleration for each
+ * spatial dimension independently (constant acceleration / "CV" model, order=2).
+ * The observation model is position-only: H is a (state_size × state_size*3)
+ * matrix that selects only the position entries from the full state vector.
+ * This correctly avoids the phantom velocity/acceleration measurements that
+ * arise when using the full (state_size*3 × state_size*3) H matrix with a
+ * position-only measurement vector.
+ *
+ * State vector layout (stride = order+1 = 3 per spatial dimension):
+ *   [x_pos, x_vel, x_acc, y_pos, y_vel, y_acc, z_pos, z_vel, z_acc]
+ *    idx 0   idx 1   idx 2  idx 3  idx 4  idx 5  idx 6  idx 7  idx 8
+ *
+ * Measurement vector: [x_pos, y_pos, z_pos]  (3-dimensional, position only)
  */
-class CVFilter : public KinematicKalmanFilter<state_size, 2, state_size> {
+class CVFilter : public KalmanFilter<state_size * 3, state_size> {
   public:
-    typedef KinematicKalmanFilter<state_size, 2, state_size> KinematicFilter;
-    typedef Eigen::Vector<double, state_size> StateVector;
-    typedef Eigen::Vector<double, 3 * state_size> MeasurementVector;
-    typedef Eigen::Matrix<double, 3 * state_size, 3 * state_size> MeasurementUncertaintyMatrix;
+    // Model order (constant acceleration).
+    static constexpr int kOrder = 2;
+    // Total state vector size: [pos, vel, acc] per dimension.
+    static constexpr int kFullStateSize = state_size * (kOrder + 1);  // = state_size * 3
+
+    typedef KalmanFilter<kFullStateSize, state_size> Base;
+
+    // Position component of the state (input to SetInitialPosition / SetInitialVelocity).
+    typedef Eigen::Vector<double, state_size> PositionVector;
+
+    // Measurement vector is position-only (state_size dimensional).
+    typedef Eigen::Vector<double, state_size>  MeasurementVector;
+    typedef Eigen::Matrix<double, state_size, state_size> MeasurementUncertaintyMatrix;
 
     CVFilter(const double& time_step, const double& process_variance, const double& measurement_variance)
-        : KinematicFilter(time_step),
-          process_variance_(process_variance) {
+        : Base(), process_variance_(process_variance) {
+        InitializeStateTransition(time_step);
+        InitializeObservationMatrix();
         InitializeMeasurementUncertainty(measurement_variance);
         InitializeProcessUncertainty(time_step);
     }
 
+    /**
+     * @brief Build the block-diagonal state transition matrix F (kFullStateSize × kFullStateSize).
+     *        Each diagonal block is the scalar constant-acceleration transition matrix for one
+     *        spatial dimension.
+     */
+    void InitializeStateTransition(const double& time_step) {
+        auto F_block = CreateStateTransitionMatrix<kOrder>(time_step);
+        Base::F_ = Eigen::Matrix<double, kFullStateSize, kFullStateSize>::Zero();
+        for (int i = 0; i < state_size; ++i) {
+            Base::F_.template block<kOrder + 1, kOrder + 1>(
+                i * (kOrder + 1), i * (kOrder + 1)) = F_block;
+        }
+    }
+
+    /**
+     * @brief Build the position-only observation matrix H (state_size × kFullStateSize).
+     *        H(i, i*(kOrder+1)) = 1 selects the position entry for each spatial dimension i.
+     *        All other entries are zero.
+     */
+    void InitializeObservationMatrix() {
+        Base::H_.setZero();
+        for (int i = 0; i < state_size; ++i) {
+            Base::H_(i, i * (kOrder + 1)) = 1.0;
+        }
+    }
+
+    /**
+     * @brief Set the measurement uncertainty matrix R (state_size × state_size).
+     *        R = measurement_variance² · I  (covariance, not std-dev).
+     */
     void InitializeMeasurementUncertainty(const double& measurement_variance) {
-        // Set measurement uncertainty.
-        auto measurement_uncertainty = MeasurementUncertaintyMatrix::Identity() * std::pow(measurement_variance, 2.0);
-        KinematicFilter::SetMeasurementUncertainty(measurement_uncertainty);
+        auto R = MeasurementUncertaintyMatrix::Identity() * std::pow(measurement_variance, 2.0);
+        Base::SetMeasurementUncertainty(R);
     }
 
+    /**
+     * @brief Set the process uncertainty matrix Q (kFullStateSize × kFullStateSize) using the
+     *        discrete white-noise covariance formula.
+     *        Note: GetDiscreteWhiteNoise internally applies another pow(2), so the effective
+     *        Q scaling is process_variance^4.  Tune accordingly.
+     */
     void InitializeProcessUncertainty(const double& time_step) {
-        auto process_uncertainty =
-            avt_341::perception::filtering::ProcessCovariance<state_size, 2>::GetDiscreteWhiteNoise(
-                time_step,
-                std::pow(process_variance_, 2.0));
-        KinematicFilter::SetProcessUncertainty(process_uncertainty);
+        auto Q = avt_341::perception::filtering::ProcessCovariance<state_size, kOrder>::GetDiscreteWhiteNoise(
+            time_step, std::pow(process_variance_, 2.0));
+        Base::SetProcessUncertainty(Q);
     }
 
-    void SetInitialState(const StateVector& initial_state) { KinematicFilter::x_ = initial_state; }
-
-    void SetInitialPosition(const StateVector& initial_position) {
-        for(int i = 0; i < state_size; ++i) { KinematicFilter::x_(i * 3) = initial_position(i); }
+    /**
+     * @brief Set the initial position components of the state vector.
+     *        Stride between dimensions in the full state is (kOrder+1) = 3.
+     */
+    void SetInitialPosition(const PositionVector& initial_position) {
+        for (int i = 0; i < state_size; ++i) {
+            Base::x_(i * (kOrder + 1)) = initial_position(i);
+        }
     }
 
-    void SetInitialVelocity(const StateVector& initial_velocity) {
-        for(int i = 0; i < state_size; ++i) { KinematicFilter::x_(i * 3 + 1) = initial_velocity(i); }
+    /**
+     * @brief Set the initial velocity components of the state vector.
+     *        Velocity offset within each block is 1.
+     */
+    void SetInitialVelocity(const PositionVector& initial_velocity) {
+        for (int i = 0; i < state_size; ++i) {
+            Base::x_(i * (kOrder + 1) + 1) = initial_velocity(i);
+        }
     }
 
-    void Update(const MeasurementVector& measurement) { KinematicFilter::Update(measurement); }
+    /**
+     * @brief Run the measurement update step with a position-only measurement vector.
+     *
+     * @param measurement  3-dimensional position measurement [x, y, z].
+     */
+    void Update(const MeasurementVector& measurement) { Base::Update(measurement); }
 
   private:
     double process_variance_;
