@@ -90,11 +90,11 @@ class CVFilter : public KinematicKalmanFilter<state_size, 2, state_size> {
     void SetInitialState(const StateVector& initial_state) { KinematicFilter::x_ = initial_state; }
 
     void SetInitialPosition(const StateVector& initial_position) {
-        for(int i = 0; i < 2; ++i) { KinematicFilter::x_(i * state_size) = initial_position(i); }
+        for(int i = 0; i < state_size; ++i) { KinematicFilter::x_(i * 3) = initial_position(i); }
     }
 
     void SetInitialVelocity(const StateVector& initial_velocity) {
-        for(int i = 0; i < 2; ++i) { KinematicFilter::x_(i * state_size + 1) = initial_velocity(i); }
+        for(int i = 0; i < state_size; ++i) { KinematicFilter::x_(i * 3 + 1) = initial_velocity(i); }
     }
 
     void Update(const MeasurementVector& measurement) { KinematicFilter::Update(measurement); }
