@@ -96,7 +96,7 @@
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
-#include <avt_341/perception/filtering/cv_filter.hpp>
+#include <avt_341/perception/filtering/ca_filter.hpp>
 #include <avt_341/perception/tracking/exceptions.hpp>
 #include <avt_341/perception/tracking/pixel_coordinates.hpp>
 #include <avt_341_msgs/msg/mission_task_status.hpp>
@@ -393,7 +393,7 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     void EstimatorTimerCallback();
 
-    std::shared_ptr<avt_341::perception::filtering::CVFilter<3>> filter_;
+    std::shared_ptr<avt_341::perception::filtering::CAFilter<3>> filter_;
 
     bool has_new_measurement_ = false;
 

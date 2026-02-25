@@ -13,7 +13,7 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      cv_filter.hpp
+* @file      ca_filter.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
 * @brief     Header file for a Kalman filter with a constant acceleration
 *            Brownian motion model and position-only measurement.
@@ -58,7 +58,7 @@ template <int state_size>
  *        position-only measurement.
  *
  * @details This filter tracks position, velocity, and acceleration for each
- * spatial dimension independently (constant acceleration / "CV" model, order=2).
+ * spatial dimension independently (constant acceleration / "CA" model, order=2).
  * The observation model is position-only: H is a (state_size × state_size*3)
  * matrix that selects only the position entries from the full state vector.
  * This correctly avoids the phantom velocity/acceleration measurements that
@@ -71,7 +71,7 @@ template <int state_size>
  *
  * Measurement vector: [x_pos, y_pos, z_pos]  (3-dimensional, position only)
  */
-class CVFilter : public KalmanFilter<state_size * 3, state_size> {
+class CAFilter : public KalmanFilter<state_size * 3, state_size> {
   public:
     // Model order (constant acceleration).
     static constexpr int kOrder = 2;
@@ -87,7 +87,7 @@ class CVFilter : public KalmanFilter<state_size * 3, state_size> {
     typedef Eigen::Vector<double, state_size>  MeasurementVector;
     typedef Eigen::Matrix<double, state_size, state_size> MeasurementUncertaintyMatrix;
 
-    CVFilter(const double& time_step, const double& process_variance, const double& measurement_variance)
+    CAFilter(const double& time_step, const double& process_variance, const double& measurement_variance)
         : Base(), process_variance_(process_variance) {
         InitializeStateTransition(time_step);
         InitializeObservationMatrix();

@@ -1108,7 +1108,7 @@ void ObjectTrackingNode::Initialize() {
     sac_segmentation_.setNumberOfThreads(0);
 
     // Initialize the Kalman filter.
-    filter_ = std::make_shared<avt_341::perception::filtering::CVFilter<3>>(
+    filter_ = std::make_shared<avt_341::perception::filtering::CAFilter<3>>(
         1.0 / estimator_rate_, filter_process_variance_,
         filter_measurement_variance_);
     filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
