@@ -96,7 +96,7 @@
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
-#include <avt_341/perception/filtering/ca_filter.hpp>
+#include <avt_341/perception/filtering/imm_filter.hpp>
 #include <avt_341/perception/tracking/exceptions.hpp>
 #include <avt_341/perception/tracking/pixel_coordinates.hpp>
 #include <avt_341_msgs/msg/mission_task_status.hpp>
@@ -388,12 +388,12 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
         ground_cloud_publisher_;
 
-    // Object state estimation
-    // -----------------------
+    // Object state estimation (IMM: CA + CTRA)
+    // ----------------------------------------
 
     void EstimatorTimerCallback();
 
-    std::shared_ptr<avt_341::perception::filtering::CAFilter<3>> filter_;
+    std::shared_ptr<avt_341::perception::filtering::IMMFilter> filter_;
 
     bool has_new_measurement_ = false;
 
@@ -402,6 +402,15 @@ class ObjectTrackingNode : public rclcpp::Node {
     double filter_process_variance_;
 
     double filter_measurement_variance_;
+
+    /** @brief IMM: initial probability for the CA model. */
+    double imm_ca_init_prob_;
+
+    /** @brief IMM: initial probability for the CTRA model. */
+    double imm_ctra_init_prob_;
+
+    /** @brief IMM: diagonal entry of the Markov model-transition matrix. */
+    double imm_transition_prob_;
 
     rclcpp::TimerBase::SharedPtr estimator_timer_;
 

@@ -51,6 +51,12 @@ def launch_setup(context, *args, **kwargs):
                 'filters_manual_roi_size': [5.0, 5.0, 5.0],
                 'filters_kalman_process': 0.5,
                 'filters_kalman_measurement': 0.1,
+                # IMM model probabilities and Markov transition probability
+                # CA model is preferred for straight-line driving; CTRA kicks
+                # in when the likelihood of turning becomes higher.
+                'filters_imm_ca_init_prob': 0.6,
+                'filters_imm_ctra_init_prob': 0.4,
+                'filters_imm_transition_prob': 0.9,
                 'world_frame': 'map',
                 'sync_enable': False,
                 'sync_detection': 0.1,

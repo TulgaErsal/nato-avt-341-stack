@@ -128,6 +128,15 @@ void ObjectTrackingNode::GetParameters() {
     filter_measurement_variance_ =
         get_parameter("filters_kalman_measurement").as_double();
 
+    declare_parameter("filters_imm_ca_init_prob", 0.5);
+    imm_ca_init_prob_ = get_parameter("filters_imm_ca_init_prob").as_double();
+
+    declare_parameter("filters_imm_ctra_init_prob", 0.5);
+    imm_ctra_init_prob_ = get_parameter("filters_imm_ctra_init_prob").as_double();
+
+    declare_parameter("filters_imm_transition_prob", 0.9);
+    imm_transition_prob_ = get_parameter("filters_imm_transition_prob").as_double();
+
     declare_parameter("filters_use_pca_centroid", false);
     use_pca_centroid_ = get_parameter("filters_use_pca_centroid").as_bool();
 
@@ -1037,17 +1046,14 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         bounding_box_centroid_global_ = TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_);
 
-        // The measurement vector contains only the observed position
-        // components [x, y, z].  Velocity and acceleration are NOT observed
-        // directly; they are estimated by the filter from consecutive
-        // position measurements.
-        Eigen::Vector<double, 3> measurement_vector;
+        // The IMM measurement vector is 3D [x, y, z].  Velocity and
+        // acceleration are estimated internally by each sub-filter.
+        Eigen::Matrix<double, 3, 1> measurement_vector;
         measurement_vector(0) = bounding_box_centroid_global_.x();
         measurement_vector(1) = bounding_box_centroid_global_.y();
         measurement_vector(2) = bounding_box_centroid_global_.z();
 
-        // Run the "Update" step of the Kalman filter and mark the latest
-        // measurement as processed.
+        // Run the IMM update step and mark the latest measurement as processed.
         filter_->Update(measurement_vector);
         has_new_measurement_ = false;
     }
@@ -1107,11 +1113,15 @@ void ObjectTrackingNode::Initialize() {
     sac_segmentation_.setDistanceThreshold(sac_segmentation_threshold_);
     sac_segmentation_.setNumberOfThreads(0);
 
-    // Initialize the Kalman filter.
-    filter_ = std::make_shared<avt_341::perception::filtering::CAFilter<3>>(
-        1.0 / estimator_rate_, filter_process_variance_,
-        filter_measurement_variance_);
-    filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
+    // Initialize the IMM filter (CA + CTRA).
+    filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
+        1.0 / estimator_rate_,
+        filter_process_variance_,
+        filter_measurement_variance_,
+        imm_ca_init_prob_,
+        imm_ctra_init_prob_,
+        imm_transition_prob_);
+    filter_->SetInitialPosition(Eigen::Vector3d::Zero());
 
     has_target_selection_ = (use_autostart_) ? true : false;
     target_class_ = (use_autostart_) ? autostart_target_class_ : "";
