@@ -81,8 +81,11 @@ def main():
     plt.subplot(2, 1, 1)
     plt.plot(mrzr2_x, mrzr2_y, 'b-', label='MRZR2 Path', alpha=0.5)
     plt.plot(mrzr4_x, mrzr4_y, 'ro', label='MRZR4 Location', markersize=2)
-    plt.scatter(filtered_x, filtered_y, c='g', s=10, label='/pose/filtered')
-    plt.title('Filtered Pose Tracking')
+    if filtered_x:
+        v_min = -len(filtered_x) * 0.4  # Shift vmin to avoid too light colors
+        plt.scatter(filtered_x, filtered_y, c=range(len(filtered_x)), cmap='Greens', s=15, 
+                    label='/pose/filtered', alpha=0.8, vmin=v_min)
+    plt.title('Filtered Pose Tracking (Visible Light -> Dark over time)')
     plt.xlabel('X [m]')
     plt.ylabel('Y [m]')
     plt.legend()
@@ -93,8 +96,11 @@ def main():
     plt.subplot(2, 1, 2)
     plt.plot(mrzr2_x, mrzr2_y, 'b-', label='MRZR2 Path', alpha=0.5)
     plt.plot(mrzr4_x, mrzr4_y, 'ro', label='MRZR4 Location', markersize=2)
-    plt.scatter(raw_x, raw_y, c='orange', s=10, label='/pose/raw')
-    plt.title('Raw Pose Tracking')
+    if raw_x:
+        v_min_raw = -len(raw_x) * 0.4  # Shift vmin to avoid too light colors
+        plt.scatter(raw_x, raw_y, c=range(len(raw_x)), cmap='YlOrBr', s=15, 
+                    label='/pose/raw', alpha=0.8, vmin=v_min_raw)
+    plt.title('Raw Pose Tracking (Visible Light -> Dark over time)')
     plt.xlabel('X [m]')
     plt.ylabel('Y [m]')
     plt.legend()
