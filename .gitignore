@@ -53,3 +53,8 @@ config/KRC_CP*.csv
 
 # iOS files
 *.DS_Store
+
+# Build files
+build
+install
+log
