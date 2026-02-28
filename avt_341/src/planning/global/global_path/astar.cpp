@@ -26,6 +26,8 @@ Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
     los_max_iterations_(los_max_iterations),
     los_break_on_first_(los_break_on_first) {//,dubins_smoothing_(dubins_smoothing), dubins_radius_(dubins_radius) {
   dfac_ = 0;
+  width_ = 0;
+  height_ = 0;
   visualizer_ = visualizer;
 }
 
