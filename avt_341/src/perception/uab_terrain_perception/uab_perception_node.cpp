@@ -15,7 +15,6 @@ const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
 std::shared_ptr<avt_341::node::NodeProxy> node;
-
 geometry_msgs::msg::TransformStamped lidar_to_base_link_tf;
 geometry_msgs::msg::TransformStamped lidar_to_camera_tf;
 
