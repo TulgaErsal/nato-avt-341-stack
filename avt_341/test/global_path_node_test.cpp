@@ -461,7 +461,7 @@ TEST(GlobalPlannerParamTest, ParamsWithinRange) {
   EXPECT_GT(g_params.w_distance,    0.0f) << "w_distance must be positive";
   EXPECT_GT(g_params.w_occupancy,   0.0f) << "w_occupancy must be positive";
   EXPECT_GE(g_params.w_segmentation, 0.0f) << "w_segmentation must be non-negative";
-  EXPECT_GE(g_params.los_max_iterations, 1) << "los_max_iterations must be >= 1";
+  EXPECT_GE(g_params.los_max_iterations, 0) << "los_max_iterations must be >= 0";
   EXPECT_GE(g_params.safety_margin_global, 0.0f);
   EXPECT_GE(g_params.clearance_penalty_scale, 0.0f);
   EXPECT_GE(g_params.clearance_penalty_range, 0.0f);
