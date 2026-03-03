@@ -86,18 +86,6 @@ Visualization Manager:
         All Enabled: true
         map:
           Value: true
-        mrzr2/base_link:
-          Value: true
-        mrzr2/front_camera:
-          Value: true
-        mrzr2/lidar:
-          Value: true
-        mrzr4/base_link:
-          Value: true
-        mrzr4/front_camera:
-          Value: true
-        mrzr4/lidar:
-          Value: true
         odom:
           Value: true
       Marker Scale: 15
@@ -107,16 +95,6 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
-          mrzr2/base_link:
-            mrzr2/front_camera:
-              {}
-            mrzr2/lidar:
-              {}
-          mrzr4/base_link:
-            mrzr4/front_camera:
-              {}
-            mrzr4/lidar:
-              {}
           odom:
             {}
       Update Interval: 0
@@ -574,11 +552,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 18.575239181518555
+      Scale: 6.814720153808594
       Target Frame: base_link
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 174.53659057617188
-      Y: 400.4622802734375
+      X: 47.122901916503906
+      Y: 48.32737350463867
     Saved: ~
 Window Geometry:
   Displays:
