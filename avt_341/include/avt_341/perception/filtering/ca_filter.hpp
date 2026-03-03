@@ -169,6 +169,19 @@ class CAFilter : public KalmanFilter<state_size * 3, state_size> {
      */
     void Update(const MeasurementVector& measurement) { Base::Update(measurement); }
 
+    /**
+     * @brief Run the measurement update step with a per-call measurement noise
+     *        covariance.  The stored R is not modified.
+     *
+     * @param measurement  3-dimensional position measurement [x, y, z].
+     * @param R            Measurement noise covariance (state_size × state_size)
+     *                     to use for this update only.
+     */
+    void Update(const MeasurementVector& measurement,
+                const MeasurementUncertaintyMatrix& R) {
+        Base::Update(measurement, R);
+    }
+
   private:
     double process_variance_;
 };

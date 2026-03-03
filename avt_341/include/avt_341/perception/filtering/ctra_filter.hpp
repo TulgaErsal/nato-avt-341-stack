@@ -194,13 +194,20 @@ class CTRAFilter {
      * @return The innovation covariance S = H*P*H^T + R, used by the IMM.
      */
     MeasurementCovariance Update(const MeasurementVector& z) {
-        const MeasurementVector y = z - H_ * x_;
-        const MeasurementCovariance S = H_ * P_ * H_.transpose() + R_;
-        const Eigen::Matrix<double, kStateDim, kMeasurementDim> K =
-            P_ * H_.transpose() * S.inverse();
-        x_ += K * y;
-        P_ = (StateMatrix::Identity() - K * H_) * P_;
-        return S;
+        return UpdateWithR(z, R_);
+    }
+
+    /**
+     * @brief Update with a 2D position measurement and a per-call measurement
+     *        noise covariance.  The stored R_ is not modified.
+     *
+     * @param z  2D position measurement [x, y].
+     * @param R  Measurement noise covariance to use for this update only.
+     * @return   The innovation covariance S = H*P*H^T + R.
+     */
+    MeasurementCovariance Update(const MeasurementVector& z,
+                                 const MeasurementCovariance& R) {
+        return UpdateWithR(z, R);
     }
 
     // -----------------------------------------------------------------------
@@ -243,6 +250,17 @@ class CTRAFilter {
 
   private:
     static constexpr double kOmegaEps = 1e-4;  ///< Threshold for straight-line approximation.
+
+    MeasurementCovariance UpdateWithR(const MeasurementVector& z,
+                                      const MeasurementCovariance& R) {
+        const MeasurementVector y = z - H_ * x_;
+        const MeasurementCovariance S = H_ * P_ * H_.transpose() + R;
+        const Eigen::Matrix<double, kStateDim, kMeasurementDim> K =
+            P_ * H_.transpose() * S.inverse();
+        x_ += K * y;
+        P_ = (StateMatrix::Identity() - K * H_) * P_;
+        return S;
+    }
 
     void BuildQ(const double sigma) {
         // Process noise: position/velocity driven by jerk and angular jerk.

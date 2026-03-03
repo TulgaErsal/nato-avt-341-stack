@@ -35,6 +35,7 @@
 
 #include <array>
 #include <cmath>
+#include <optional>
 #include <Eigen/Dense>
 
 #include <avt_341/perception/filtering/ca_filter.hpp>
@@ -217,53 +218,48 @@ class IMMFilter {
     // -----------------------------------------------------------------------
 
     /**
-     * @brief Update the IMM with a 3D position measurement. The z component
-     *        is used only by the CA filter; CTRA and NM receive [x, y].
+     * @brief Update the IMM with a 3D position measurement.
      *
-     * @param z  3D position measurement [x, y, z] in the world frame.
+     * The z component is used only by the CA filter; CTRA and NM receive [x, y].
+     *
+     * @param z          3D position measurement [x, y, z] in the world frame.
+     * @param R_override Optional 3×3 measurement noise covariance for this
+     *                   step.  When supplied it overrides the static R built at
+     *                   construction time for all sub-filters:
+     *                     - CA   receives the full 3×3 matrix.
+     *                     - CTRA and NM receive the top-left 2×2 block.
+     *                   When std::nullopt (default), each sub-filter uses its
+     *                   own internally stored R.
      */
-    void Update(const MeasurementVector3D& z) {
+    void Update(const MeasurementVector3D& z,
+                const std::optional<Eigen::Matrix3d>& R_override = std::nullopt) {
         const MeasurementVector2D z2d = z.head<2>();
 
         // --- Update each filter and collect innovation covariances ---
-        Eigen::Matrix<double, 3, 1> z_ca = z;
-        ca_.Update(z_ca);
+        if (R_override) {
+            const Eigen::Matrix2d R2d = R_override->topLeftCorner<2, 2>();
+            ca_.Update(z, R_override.value());
+            CTRAFilter::MeasurementCovariance S_ctra = ctra_.Update(z2d, R2d);
+            NMFilter::MeasurementCovariance   S_nm   = nm_.Update(z2d, R2d);
 
-        CTRAFilter::MeasurementCovariance S_ctra = ctra_.Update(z2d);
-        NMFilter::MeasurementCovariance   S_nm   = nm_.Update(z2d);
+            // --- Compute log-likelihoods using the supplied R ---
+            const double lambda_ca   = ComputeCALikelihood(z, &R_override.value());
+            const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
+            const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
 
-        // --- Compute log-likelihoods ---
-        const double lambda_ca   = ComputeCALikelihood(z);
-        const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
-        const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
-
-        // Convert log-likelihoods to non-negative weights (numerically stable)
-        const double max_ll = std::max({lambda_ca, lambda_ctra, lambda_nm});
-        const double l_ca   = std::exp(lambda_ca   - max_ll);
-        const double l_ctra = std::exp(lambda_ctra - max_ll);
-        const double l_nm   = std::exp(lambda_nm   - max_ll);
-
-        // Predicted model probabilities  c_bar (recompute from current mu_)
-        std::array<double, kNumModels> c_bar;
-        for (int j = 0; j < kNumModels; ++j) {
-            c_bar[j] = 0.0;
-            for (int i = 0; i < kNumModels; ++i) {
-                c_bar[j] += mu_[i] * pi_[i][j];
-            }
-        }
-
-        // Update model probabilities: mu_j ∝ lambda_j * c_bar_j
-        const std::array<double, kNumModels> lambdas = {l_ca, l_ctra, l_nm};
-        double norm = 0.0;
-        for (int j = 0; j < kNumModels; ++j) {
-            mu_[j] = lambdas[j] * c_bar[j];
-            norm   += mu_[j];
-        }
-        if (norm < 1e-12) {
-            // Degenerate: reset to equal weights
-            for (auto& m : mu_) m = 1.0 / kNumModels;
+            UpdateModelProbabilities(lambda_ca, lambda_ctra, lambda_nm);
         } else {
-            for (auto& m : mu_) m /= norm;
+            ca_.Update(z);
+
+            CTRAFilter::MeasurementCovariance S_ctra = ctra_.Update(z2d);
+            NMFilter::MeasurementCovariance   S_nm   = nm_.Update(z2d);
+
+            // --- Compute log-likelihoods ---
+            const double lambda_ca   = ComputeCALikelihood(z, nullptr);
+            const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
+            const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
+
+            UpdateModelProbabilities(lambda_ca, lambda_ctra, lambda_nm);
         }
 
         // --- Fuse outputs (weighted combination of all three models) ---
@@ -330,24 +326,66 @@ class IMMFilter {
     NMFilter& GetNMFilter() { return nm_; }
 
   private:
+    // ---- Update model probabilities from three log-likelihoods ----
+    void UpdateModelProbabilities(const double log_l_ca,
+                                  const double log_l_ctra,
+                                  const double log_l_nm) {
+        // Convert log-likelihoods to non-negative weights (numerically stable)
+        const double max_ll = std::max({log_l_ca, log_l_ctra, log_l_nm});
+        const std::array<double, kNumModels> l = {
+            std::exp(log_l_ca   - max_ll),
+            std::exp(log_l_ctra - max_ll),
+            std::exp(log_l_nm   - max_ll)
+        };
+
+        // Predicted model probabilities  c_bar = sum_i( mu_[i] * pi_[i][j] )
+        std::array<double, kNumModels> c_bar;
+        for (int j = 0; j < kNumModels; ++j) {
+            c_bar[j] = 0.0;
+            for (int i = 0; i < kNumModels; ++i) {
+                c_bar[j] += mu_[i] * pi_[i][j];
+            }
+        }
+
+        // mu_j ∝ lambda_j * c_bar_j
+        double norm = 0.0;
+        for (int j = 0; j < kNumModels; ++j) {
+            mu_[j] = l[j] * c_bar[j];
+            norm   += mu_[j];
+        }
+        if (norm < 1e-12) {
+            for (auto& m : mu_) m = 1.0 / kNumModels;
+        } else {
+            for (auto& m : mu_) m /= norm;
+        }
+    }
+
     // ---- Compute log-likelihood for the CA filter given measurement z ----
-    // Since CAFilter<3> exposes a linear Gaussian update, we evaluate the
-    // N(H*x_pred, H*P*H^T + R) likelihood analytically using its 3D residual.
-    double ComputeCALikelihood(const Eigen::Matrix<double, 3, 1>& z) const {
-        // H for CA filter selects positions at indices 0, 3, 6
+    // When R3 is non-null the supplied matrix is used; otherwise the scalar
+    // ca_measurement_variance_approx_ approximation is used.
+    double ComputeCALikelihood(const Eigen::Matrix<double, 3, 1>& z,
+                               const Eigen::Matrix3d* R3) const {
         const auto& x_ca = ca_.GetState();
         Eigen::Matrix<double, 3, 1> y;
         y(0) = z(0) - x_ca(0);
         y(1) = z(1) - x_ca(3);
         y(2) = z(2) - x_ca(6);
 
-        // Approximate S_ca as R_ca (diagonal, measurement noise dominated)
-        const double r2 = ca_measurement_variance_approx_;
-        const double det_S = r2 * r2 * r2;
-        if (det_S <= 0.0) return -1e9;
-        return -0.5 * y.dot(y) / r2
-               - 0.5 * std::log(det_S)
-               - 1.5 * std::log(2.0 * M_PI);
+        if (R3) {
+            const double det = R3->determinant();
+            if (det <= 0.0) return -1e9;
+            return -0.5 * (y.transpose() * R3->inverse() * y)(0, 0)
+                   - 0.5 * std::log(det)
+                   - 1.5 * std::log(2.0 * M_PI);
+        } else {
+            // Approximate S_ca as scalar * I (measurement noise dominated)
+            const double r2    = ca_measurement_variance_approx_;
+            const double det_S = r2 * r2 * r2;
+            if (det_S <= 0.0) return -1e9;
+            return -0.5 * y.dot(y) / r2
+                   - 0.5 * std::log(det_S)
+                   - 1.5 * std::log(2.0 * M_PI);
+        }
     }
 
     CAFilter<3>  ca_;

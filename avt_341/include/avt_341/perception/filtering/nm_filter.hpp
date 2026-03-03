@@ -104,13 +104,20 @@ class NMFilter {
      *         likelihood computation.
      */
     MeasurementCovariance Update(const MeasurementVector& z) {
-        // H = I  →  y = z - x,  S = P + R,  K = P * S^{-1}
-        const MeasurementVector y = z - x_;
-        const MeasurementCovariance S = P_ + R_;
-        const StateMatrix K = P_ * S.inverse();
-        x_ += K * y;
-        P_ = (StateMatrix::Identity() - K) * P_;
-        return S;
+        return UpdateWithR(z, R_);
+    }
+
+    /**
+     * @brief Update with a 2D position measurement and a per-call measurement
+     *        noise covariance.  The stored R_ is not modified.
+     *
+     * @param z  2D position measurement [x, y].
+     * @param R  Measurement noise covariance to use for this update only.
+     * @return   The innovation covariance S = P + R.
+     */
+    MeasurementCovariance Update(const MeasurementVector& z,
+                                 const MeasurementCovariance& R) {
+        return UpdateWithR(z, R);
     }
 
     // -----------------------------------------------------------------------
@@ -139,6 +146,17 @@ class NMFilter {
     void SetCovariance(const StateMatrix& P) { P_ = P; }
 
   private:
+    MeasurementCovariance UpdateWithR(const MeasurementVector& z,
+                                      const MeasurementCovariance& R) {
+        // H = I  →  y = z - x,  S = P + R,  K = P * S^{-1}
+        const MeasurementVector y = z - x_;
+        const MeasurementCovariance S = P_ + R;
+        const StateMatrix K = P_ * S.inverse();
+        x_ += K * y;
+        P_ = (StateMatrix::Identity() - K) * P_;
+        return S;
+    }
+
     StateVector           x_;
     StateMatrix           P_;
     StateMatrix           Q_;

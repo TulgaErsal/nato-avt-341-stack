@@ -116,6 +116,28 @@ class KalmanFilter {
     }
 
     /**
+     * @brief Feed a new measurement with a per-call measurement noise
+     *        covariance matrix.  The stored R_ is not modified; R is used
+     *        only for this update step.
+     *
+     * @param z Measurement vector.
+     * @param R Measurement noise covariance for this step (same size as R_).
+     */
+    void Update(const MeasurementVector& z, const PureMeasurementMatrix& R) {
+        z_ = z;
+        y_ = z - H_ * x_;
+
+        auto PHT = P_ * H_.transpose();
+        S_ = H_ * PHT + R;
+
+        K_ = PHT * S_.inverse();
+        x_ += K_ * y_;
+
+        auto I_KH = I_ - K_ * H_;
+        P_ = (I_KH * P_) * I_KH.transpose() + (K_ * R) * K_.transpose();
+    }
+
+    /**
      * @brief Set the measurement function matrix $H$.
      *
      * @param H Constant reference to the measurement function matrix.
