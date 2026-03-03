@@ -409,6 +409,9 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief IMM: initial probability for the CTRA model. */
     double imm_ctra_init_prob_;
 
+    /** @brief IMM: initial probability for the NM model. */
+    double imm_nm_init_prob_;
+
     /** @brief IMM: diagonal entry of the Markov model-transition matrix. */
     double imm_transition_prob_;
 

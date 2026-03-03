@@ -128,11 +128,14 @@ void ObjectTrackingNode::GetParameters() {
     filter_measurement_variance_ =
         get_parameter("filters_kalman_measurement").as_double();
 
-    declare_parameter("filters_imm_ca_init_prob", 0.5);
+    declare_parameter("filters_imm_ca_init_prob", 0.33);
     imm_ca_init_prob_ = get_parameter("filters_imm_ca_init_prob").as_double();
 
-    declare_parameter("filters_imm_ctra_init_prob", 0.5);
+    declare_parameter("filters_imm_ctra_init_prob", 0.33);
     imm_ctra_init_prob_ = get_parameter("filters_imm_ctra_init_prob").as_double();
+
+    declare_parameter("filters_imm_nm_init_prob", 0.33);
+    imm_nm_init_prob_ = get_parameter("filters_imm_nm_init_prob").as_double();
 
     declare_parameter("filters_imm_transition_prob", 0.9);
     imm_transition_prob_ = get_parameter("filters_imm_transition_prob").as_double();
@@ -1113,13 +1116,14 @@ void ObjectTrackingNode::Initialize() {
     sac_segmentation_.setDistanceThreshold(sac_segmentation_threshold_);
     sac_segmentation_.setNumberOfThreads(0);
 
-    // Initialize the IMM filter (CA + CTRA).
+    // Initialize the IMM filter (CA + CTRA + NM).
     filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
         1.0 / estimator_rate_,
         filter_process_variance_,
         filter_measurement_variance_,
         imm_ca_init_prob_,
         imm_ctra_init_prob_,
+        imm_nm_init_prob_,
         imm_transition_prob_);
     filter_->SetInitialPosition(Eigen::Vector3d::Zero());
 
