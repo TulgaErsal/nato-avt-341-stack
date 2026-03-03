@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rcl_interfaces.msg import SetParametersResult
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Int32
 import numpy as np
 
+VALID_SCENARIOS = {'random', 'gate', 'box', 'narrow_and_wide', 'narrow_gate'}
+
 class GlobalPathTestNode(Node):
     def __init__(self):
         super().__init__('global_path_test_driver')
-        
+
         # Parameters
         self.declare_parameter('scenario', 'random')
         self.declare_parameter('width_m', 100.0)
@@ -23,22 +26,40 @@ class GlobalPathTestNode(Node):
         self.declare_parameter('obs_max', 15.0)
         self.declare_parameter('seed', 0)
 
+        # Register callback so parameter changes are logged and validated.
+        # Without this, ros2 param set may update the stored value silently
+        # but the node has no way to verify or react to the change.
+        self.add_on_set_parameters_callback(self._on_set_parameters)
+
         # Publishers
         self.grid_pub = self.create_publisher(OccupancyGrid, 'avt_341/occupancy_grid_low_res', 10)
         self.terrain_pub = self.create_publisher(OccupancyGrid, 'avt_341/normal_segmentation_grid', 10)
         self.odom_pub = self.create_publisher(Odometry, 'avt_341/odometry', 10)
         self.goal_pub = self.create_publisher(PoseStamped, 'avt_341/goal_pose', 10)
         self.nav_state_pub = self.create_publisher(Int32, 'avt_341/nav_command_state', 10)
-        
+
         # Subscriber
         self.path_sub = self.create_subscription(Path, 'avt_341/global_path', self.path_callback, 10)
-        
+
         self.timer = self.create_timer(2.0, self.publish_test_data)
         self.goal_published = False
 
+    def _on_set_parameters(self, params):
+        for p in params:
+            if p.name == 'scenario':
+                scenario = p.value.strip()
+                if scenario not in VALID_SCENARIOS:
+                    msg = f"Unknown scenario '{scenario}'. Valid: {VALID_SCENARIOS}"
+                    self.get_logger().error(msg)
+                    return SetParametersResult(successful=False, reason=msg)
+                self.get_logger().info(f"Scenario changed to '{scenario}'")
+                # Re-publish goal so the planner re-plans on the new map.
+                self.goal_published = False
+        return SetParametersResult(successful=True)
+
     def setup_grids(self):
         # Fetch all parameters correctly
-        scenario = self.get_parameter('scenario').value
+        scenario = self.get_parameter('scenario').value.strip()
         width_m = self.get_parameter('width_m').value
         height_m = self.get_parameter('height_m').value
         cell_size_m = self.get_parameter('cell_size_m').value
