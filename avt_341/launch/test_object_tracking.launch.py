@@ -54,8 +54,9 @@ def launch_setup(context, *args, **kwargs):
                 # IMM model probabilities and Markov transition probability
                 # CA model is preferred for straight-line driving; CTRA kicks
                 # in when the likelihood of turning becomes higher.
-                'filters_imm_ca_init_prob': 0.6,
-                'filters_imm_ctra_init_prob': 0.4,
+                'filters_imm_ca_init_prob': 0.33,
+                'filters_imm_ctra_init_prob': 0.33,
+                'filters_imm_nm_init_prob': 0.33,
                 'filters_imm_transition_prob': 0.9,
                 'world_frame': 'map',
                 'sync_enable': False,
