@@ -403,8 +403,8 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     double filter_measurement_variance_;
 
-    /** @brief IMM: initial probability for the CA model. */
-    double imm_ca_init_prob_;
+    /** @brief IMM: initial probability for the CV model. */
+    double imm_cv_init_prob_;
 
     /** @brief IMM: initial probability for the CTRA model. */
     double imm_ctra_init_prob_;

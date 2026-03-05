@@ -5,7 +5,7 @@
 
 * @file      imm_filter.hpp
 * @brief     Interacting Multiple Model (IMM) filter combining:
-*              - Model 0: Constant Acceleration (CA), 9-state linear KF
+*              - Model 0: Constant Velocity (CV), 6-state linear KF
 *              - Model 1: Constant Turn Rate and Acceleration (CTRA), 6-state EKF
 *              - Model 2: No Motion (NM), 2-state linear KF
 *
@@ -17,13 +17,13 @@
 *                model probabilities.
 *
 * All models observe 2D position (x, y) from the same LiDAR measurement.
-* The z-axis estimate is taken from the CA filter only, since CTRA and NM are
+* The z-axis estimate is taken from the CV filter only, since CTRA and NM are
 * 2D horizontal-plane models.
 *
 * Parameters exposed as ROS node parameters:
 *   filters_kalman_process       — shared process noise scale
 *   filters_kalman_measurement   — shared measurement noise scale
-*   filters_imm_ca_init_prob     — initial probability for the CA model  (default 0.33)
+*   filters_imm_cv_init_prob     — initial probability for the CV model  (default 0.33)
 *   filters_imm_ctra_init_prob   — initial probability for the CTRA model (default 0.33)
 *   filters_imm_nm_init_prob     — initial probability for the NM model  (default 0.33)
 *   filters_imm_transition_prob  — Markov model-transition probability   (default 0.9)
@@ -38,7 +38,7 @@
 #include <optional>
 #include <Eigen/Dense>
 
-#include <avt_341/perception/filtering/ca_filter.hpp>
+#include <avt_341/perception/filtering/cv_filter.hpp>
 #include <avt_341/perception/filtering/ctra_filter.hpp>
 #include <avt_341/perception/filtering/nm_filter.hpp>
 
@@ -47,7 +47,7 @@ namespace perception {
 namespace filtering {
 
 /**
- * @brief IMM filter: CA (model 0) + CTRA (model 1) + NM (model 2).
+ * @brief IMM filter: CV (model 0) + CTRA (model 1) + NM (model 2).
  *
  * External interface mirrors the CAFilter API used in ObjectTrackingNode,
  * so the node needs only minimal changes:
@@ -70,7 +70,7 @@ class IMMFilter {
      * @param dt                   Estimator time step [s].
      * @param process_variance     Process noise scale (shared between models).
      * @param measurement_variance Measurement noise scale (shared).
-     * @param ca_init_prob         Initial model probability for CA model.
+     * @param cv_init_prob         Initial model probability for CV model.
      * @param ctra_init_prob       Initial model probability for CTRA model.
      * @param nm_init_prob         Initial model probability for NM model.
      * @param transition_prob      Diagonal entry of the Markov transition matrix
@@ -79,18 +79,18 @@ class IMMFilter {
     IMMFilter(const double dt,
               const double process_variance,
               const double measurement_variance,
-              const double ca_init_prob   = 0.33,
+              const double cv_init_prob   = 0.33,
               const double ctra_init_prob = 0.33,
               const double nm_init_prob   = 0.33,
               const double transition_prob = 0.9)
-        : ca_(dt, process_variance, measurement_variance),
+        : cv_(dt, process_variance, measurement_variance),
           ctra_(dt, process_variance, measurement_variance),
           nm_(dt, process_variance, measurement_variance),
           dt_(dt)
     {
         // Normalize initial model probabilities
-        const double sum = ca_init_prob + ctra_init_prob + nm_init_prob;
-        mu_[0] = ca_init_prob   / sum;
+        const double sum = cv_init_prob + ctra_init_prob + nm_init_prob;
+        mu_[0] = cv_init_prob   / sum;
         mu_[1] = ctra_init_prob / sum;
         mu_[2] = nm_init_prob   / sum;
 
@@ -117,7 +117,7 @@ class IMMFilter {
      * @param pos 3D global position vector [x, y, z].
      */
     void SetInitialPosition(const Vec3& pos) {
-        ca_.SetInitialPosition(pos);
+        cv_.SetInitialPosition(pos);
         ctra_.SetInitialPosition(pos);
         nm_.SetInitialPosition(pos);
         fused_position_ = pos;
@@ -129,7 +129,7 @@ class IMMFilter {
      * @param vel 3D velocity [vx, vy, vz].
      */
     void SetInitialVelocity(const Vec3& vel) {
-        ca_.SetInitialVelocity(vel);
+        cv_.SetInitialVelocity(vel);
         ctra_.SetInitialVelocity(vel);
         nm_.SetInitialVelocity(vel);
     }
@@ -167,30 +167,33 @@ class IMMFilter {
         // --- Step 2: Mix initial conditions ---
         // All three models share the 2D position (x, y) as the common subspace.
         // Only the position entries are mixed across models; each model's own
-        // velocity / acceleration / heading states are left intact to avoid
-        // cross-contamination of incompatible state representations.
+        // velocity / heading states are left intact to avoid cross-contamination
+        // of incompatible state representations.
+        //
+        // CV state layout (stride = 2):  [x, vx, y, vy, z, vz]
+        //   x pos → index 0,  y pos → index 2,  z pos → index 4
         {
-            const auto& x_ca    = ca_.GetState();       // 9D  [x,vx,ax, y,vy,ay, z,vz,az]
-            const Vec2  pos_ctra = ctra_.GetPosition2D(); // 2D  [x, y]
-            const Vec2  pos_nm   = nm_.GetPosition2D();   // 2D  [x, y]
+            const auto& x_cv    = cv_.GetState();          // 6D  [x,vx, y,vy, z,vz]
+            const Vec2  pos_ctra = ctra_.GetPosition2D();  // 2D  [x, y]
+            const Vec2  pos_nm   = nm_.GetPosition2D();    // 2D  [x, y]
 
-            // --- Mix into CA (model 0) ---
-            Eigen::Matrix<double, 9, 1> x_ca_mixed = x_ca;
-            x_ca_mixed(0) = mu_mix[0][0] * x_ca(0)     // from CA
-                          + mu_mix[1][0] * pos_ctra(0)  // from CTRA
-                          + mu_mix[2][0] * pos_nm(0);   // from NM
-            x_ca_mixed(3) = mu_mix[0][0] * x_ca(3)
-                          + mu_mix[1][0] * pos_ctra(1)
-                          + mu_mix[2][0] * pos_nm(1);
-            ca_.SetState(x_ca_mixed);
+            // --- Mix into CV (model 0) ---
+            Eigen::Matrix<double, 6, 1> x_cv_mixed = x_cv;
+            x_cv_mixed(0) = mu_mix[0][0] * x_cv(0)       // x from CV
+                          + mu_mix[1][0] * pos_ctra(0)    // x from CTRA
+                          + mu_mix[2][0] * pos_nm(0);     // x from NM
+            x_cv_mixed(2) = mu_mix[0][0] * x_cv(2)       // y from CV
+                          + mu_mix[1][0] * pos_ctra(1)    // y from CTRA
+                          + mu_mix[2][0] * pos_nm(1);     // y from NM
+            cv_.SetState(x_cv_mixed);
 
             // --- Mix into CTRA (model 1) ---
             const auto& x_ctra = ctra_.GetState();
             CTRAFilter::StateVector x_ctra_mixed = x_ctra;
-            x_ctra_mixed(0) = mu_mix[0][1] * x_ca(0)
+            x_ctra_mixed(0) = mu_mix[0][1] * x_cv(0)
                             + mu_mix[1][1] * x_ctra(0)
                             + mu_mix[2][1] * pos_nm(0);
-            x_ctra_mixed(1) = mu_mix[0][1] * x_ca(3)
+            x_ctra_mixed(1) = mu_mix[0][1] * x_cv(2)
                             + mu_mix[1][1] * x_ctra(1)
                             + mu_mix[2][1] * pos_nm(1);
             ctra_.SetState(x_ctra_mixed);
@@ -198,17 +201,17 @@ class IMMFilter {
             // --- Mix into NM (model 2) ---
             const auto& x_nm = nm_.GetState();
             NMFilter::StateVector x_nm_mixed;
-            x_nm_mixed(0) = mu_mix[0][2] * x_ca(0)
+            x_nm_mixed(0) = mu_mix[0][2] * x_cv(0)
                           + mu_mix[1][2] * x_ctra(0)
                           + mu_mix[2][2] * x_nm(0);
-            x_nm_mixed(1) = mu_mix[0][2] * x_ca(3)
+            x_nm_mixed(1) = mu_mix[0][2] * x_cv(2)
                           + mu_mix[1][2] * x_ctra(1)
                           + mu_mix[2][2] * x_nm(1);
             nm_.SetState(x_nm_mixed);
         }
 
         // --- Step 3: Individual predictions ---
-        ca_.Predict();
+        cv_.Predict();
         ctra_.Predict();
         nm_.Predict();
     }
@@ -220,13 +223,13 @@ class IMMFilter {
     /**
      * @brief Update the IMM with a 3D position measurement.
      *
-     * The z component is used only by the CA filter; CTRA and NM receive [x, y].
+     * The z component is used only by the CV filter; CTRA and NM receive [x, y].
      *
      * @param z          3D position measurement [x, y, z] in the world frame.
      * @param R_override Optional 3×3 measurement noise covariance for this
      *                   step.  When supplied it overrides the static R built at
      *                   construction time for all sub-filters:
-     *                     - CA   receives the full 3×3 matrix.
+     *                     - CV    receives the full 3×3 matrix.
      *                     - CTRA and NM receive the top-left 2×2 block.
      *                   When std::nullopt (default), each sub-filter uses its
      *                   own internally stored R.
@@ -238,46 +241,47 @@ class IMMFilter {
         // --- Update each filter and collect innovation covariances ---
         if (R_override) {
             const Eigen::Matrix2d R2d = R_override->topLeftCorner<2, 2>();
-            ca_.Update(z, R_override.value());
+            cv_.Update(z, R_override.value());
             CTRAFilter::MeasurementCovariance S_ctra = ctra_.Update(z2d, R2d);
             NMFilter::MeasurementCovariance   S_nm   = nm_.Update(z2d, R2d);
 
             // --- Compute log-likelihoods using the supplied R ---
-            const double lambda_ca   = ComputeCALikelihood(z, &R_override.value());
+            const double lambda_cv   = ComputeCVLikelihood(z, &R_override.value());
             const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
             const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
 
-            UpdateModelProbabilities(lambda_ca, lambda_ctra, lambda_nm);
+            UpdateModelProbabilities(lambda_cv, lambda_ctra, lambda_nm);
         } else {
-            ca_.Update(z);
+            cv_.Update(z);
 
             CTRAFilter::MeasurementCovariance S_ctra = ctra_.Update(z2d);
             NMFilter::MeasurementCovariance   S_nm   = nm_.Update(z2d);
 
             // --- Compute log-likelihoods ---
-            const double lambda_ca   = ComputeCALikelihood(z, nullptr);
+            const double lambda_cv   = ComputeCVLikelihood(z, nullptr);
             const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
             const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
 
-            UpdateModelProbabilities(lambda_ca, lambda_ctra, lambda_nm);
+            UpdateModelProbabilities(lambda_cv, lambda_ctra, lambda_nm);
         }
 
         // --- Fuse outputs (weighted combination of all three models) ---
-        const auto& x_ca   = ca_.GetState();
+        // CV state layout (stride = 2):  [x, vx, y, vy, z, vz]
+        const auto& x_cv   = cv_.GetState();
         const Vec2  p_ctra = ctra_.GetPosition2D();
         const Vec2  p_nm   = nm_.GetPosition2D();
 
-        fused_position_.x() = mu_[0] * x_ca(0)   + mu_[1] * p_ctra(0) + mu_[2] * p_nm(0);
-        fused_position_.y() = mu_[0] * x_ca(3)   + mu_[1] * p_ctra(1) + mu_[2] * p_nm(1);
-        // z only from CA (CTRA and NM are 2D)
-        fused_position_.z() = x_ca(6);
+        fused_position_.x() = mu_[0] * x_cv(0) + mu_[1] * p_ctra(0) + mu_[2] * p_nm(0);
+        fused_position_.y() = mu_[0] * x_cv(2) + mu_[1] * p_ctra(1) + mu_[2] * p_nm(1);
+        // z only from CV (CTRA and NM are 2D)
+        fused_position_.z() = x_cv(4);
 
-        // Velocity fused from CA (indices 1, 4, 7) and CTRA speed/yaw.
-        // When NM dominates (mu_[2] ≈ 1), the CA velocity naturally tends to
-        // zero as the CA filter observes no motion.
-        fused_velocity_.x() = x_ca(1);
-        fused_velocity_.y() = x_ca(4);
-        fused_velocity_.z() = x_ca(7);
+        // Velocity from CV filter.
+        // When NM dominates (mu_[2] ≈ 1), the CV velocity naturally tends to
+        // zero as the CV filter observes no motion.
+        fused_velocity_.x() = x_cv(1);
+        fused_velocity_.y() = x_cv(3);
+        fused_velocity_.z() = x_cv(5);
     }
 
     // -----------------------------------------------------------------------
@@ -285,26 +289,33 @@ class IMMFilter {
     // -----------------------------------------------------------------------
 
     /**
-     * @brief Returns the 9-element CA state vector (compatible with existing
-     *        tracker code that reads state_filtered(0), (3), (6) for x,y,z).
+     * @brief Returns a synthetic 9-element state vector compatible with existing
+     *        tracker code that reads state_filtered(0), (3), (6) for x,y,z and
+     *        (1), (4), (7) for vx, vy, vz.  Acceleration entries (2), (5), (8)
+     *        are set to zero since the CV model does not track acceleration.
      */
     Eigen::Matrix<double, 9, 1> GetState() const {
-        // Return a synthetic 9-vector with fused {x,y} and CA {z}
-        const auto& x_ca = ca_.GetState();
-        Eigen::Matrix<double, 9, 1> s = x_ca;
-        s(0) = fused_position_.x();
-        s(3) = fused_position_.y();
-        s(6) = fused_position_.z();
+        const auto& x_cv = cv_.GetState();
+        Eigen::Matrix<double, 9, 1> s;
+        s(0) = fused_position_.x();   // x pos (fused)
+        s(1) = x_cv(1);               // vx
+        s(2) = 0.0;                   // ax (not tracked by CV)
+        s(3) = fused_position_.y();   // y pos (fused)
+        s(4) = x_cv(3);               // vy
+        s(5) = 0.0;                   // ay (not tracked by CV)
+        s(6) = fused_position_.z();   // z pos (from CV)
+        s(7) = x_cv(5);               // vz
+        s(8) = 0.0;                   // az (not tracked by CV)
         return s;
     }
 
     /** @brief Fused 3D world-frame position. */
     Vec3 GetPosition3D() const { return fused_position_; }
 
-    /** @brief 3D velocity estimate (from CA model). */
+    /** @brief 3D velocity estimate (from CV model). */
     Vec3 GetVelocity3D() const { return fused_velocity_; }
 
-    /** @brief Probability of each model: [0]=CA, [1]=CTRA, [2]=NM. */
+    /** @brief Probability of each model: [0]=CV, [1]=CTRA, [2]=NM. */
     const std::array<double, kNumModels>& GetModelProbabilities() const { return mu_; }
 
     /** @brief CTRA speed estimate [m/s]. */
@@ -316,8 +327,8 @@ class IMMFilter {
     /** @brief CTRA turn rate estimate [rad/s]. */
     double GetCTRAOmega() const { return ctra_.GetOmega(); }
 
-    /** @brief Access underlying CA filter (for state injection by tracker). */
-    CAFilter<3>& GetCAFilter() { return ca_; }
+    /** @brief Access underlying CV filter (for state injection by tracker). */
+    CVFilter<3>& GetCVFilter() { return cv_; }
 
     /** @brief Access underlying CTRA filter. */
     CTRAFilter& GetCTRAFilter() { return ctra_; }
@@ -327,13 +338,13 @@ class IMMFilter {
 
   private:
     // ---- Update model probabilities from three log-likelihoods ----
-    void UpdateModelProbabilities(const double log_l_ca,
+    void UpdateModelProbabilities(const double log_l_cv,
                                   const double log_l_ctra,
                                   const double log_l_nm) {
         // Convert log-likelihoods to non-negative weights (numerically stable)
-        const double max_ll = std::max({log_l_ca, log_l_ctra, log_l_nm});
+        const double max_ll = std::max({log_l_cv, log_l_ctra, log_l_nm});
         const std::array<double, kNumModels> l = {
-            std::exp(log_l_ca   - max_ll),
+            std::exp(log_l_cv   - max_ll),
             std::exp(log_l_ctra - max_ll),
             std::exp(log_l_nm   - max_ll)
         };
@@ -360,16 +371,16 @@ class IMMFilter {
         }
     }
 
-    // ---- Compute log-likelihood for the CA filter given measurement z ----
+    // ---- Compute log-likelihood for the CV filter given measurement z ----
     // When R3 is non-null the supplied matrix is used; otherwise the scalar
-    // ca_measurement_variance_approx_ approximation is used.
-    double ComputeCALikelihood(const Eigen::Matrix<double, 3, 1>& z,
+    // cv_measurement_variance_approx_ approximation is used.
+    double ComputeCVLikelihood(const Eigen::Matrix<double, 3, 1>& z,
                                const Eigen::Matrix3d* R3) const {
-        const auto& x_ca = ca_.GetState();
+        const auto& x_cv = cv_.GetState();
         Eigen::Matrix<double, 3, 1> y;
-        y(0) = z(0) - x_ca(0);
-        y(1) = z(1) - x_ca(3);
-        y(2) = z(2) - x_ca(6);
+        y(0) = z(0) - x_cv(0);   // x residual
+        y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
+        y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
 
         if (R3) {
             const double det = R3->determinant();
@@ -378,8 +389,8 @@ class IMMFilter {
                    - 0.5 * std::log(det)
                    - 1.5 * std::log(2.0 * M_PI);
         } else {
-            // Approximate S_ca as scalar * I (measurement noise dominated)
-            const double r2    = ca_measurement_variance_approx_;
+            // Approximate S_cv as scalar * I (measurement noise dominated)
+            const double r2    = cv_measurement_variance_approx_;
             const double det_S = r2 * r2 * r2;
             if (det_S <= 0.0) return -1e9;
             return -0.5 * y.dot(y) / r2
@@ -388,7 +399,7 @@ class IMMFilter {
         }
     }
 
-    CAFilter<3>  ca_;
+    CVFilter<3>  cv_;
     CTRAFilter   ctra_;
     NMFilter     nm_;
     double       dt_;
@@ -403,8 +414,8 @@ class IMMFilter {
     Vec3 fused_position_;
     Vec3 fused_velocity_;
 
-    // Approximate CA measurement variance used in likelihood computation.
-    static constexpr double ca_measurement_variance_approx_ = 0.01;  // (0.1m σ)²
+    // Approximate CV measurement variance used in likelihood computation.
+    static constexpr double cv_measurement_variance_approx_ = 0.01;  // (0.1m σ)²
 };
 
 } // namespace filtering

@@ -128,8 +128,8 @@ void ObjectTrackingNode::GetParameters() {
     filter_measurement_variance_ =
         get_parameter("filters_kalman_measurement").as_double();
 
-    declare_parameter("filters_imm_ca_init_prob", 0.33);
-    imm_ca_init_prob_ = get_parameter("filters_imm_ca_init_prob").as_double();
+    declare_parameter("filters_imm_cv_init_prob", 0.33);
+    imm_cv_init_prob_ = get_parameter("filters_imm_cv_init_prob").as_double();
 
     declare_parameter("filters_imm_ctra_init_prob", 0.33);
     imm_ctra_init_prob_ = get_parameter("filters_imm_ctra_init_prob").as_double();
@@ -1121,7 +1121,7 @@ void ObjectTrackingNode::Initialize() {
         1.0 / estimator_rate_,
         filter_process_variance_,
         filter_measurement_variance_,
-        imm_ca_init_prob_,
+        imm_cv_init_prob_,
         imm_ctra_init_prob_,
         imm_nm_init_prob_,
         imm_transition_prob_);

@@ -52,9 +52,9 @@ def launch_setup(context, *args, **kwargs):
                 'filters_kalman_process': 0.5,
                 'filters_kalman_measurement': 0.1,
                 # IMM model probabilities and Markov transition probability
-                # CA model is preferred for straight-line driving; CTRA kicks
+                # CV model is preferred for straight-line driving; CTRA kicks
                 # in when the likelihood of turning becomes higher.
-                'filters_imm_ca_init_prob': 0.33,
+                'filters_imm_cv_init_prob': 0.33,
                 'filters_imm_ctra_init_prob': 0.33,
                 'filters_imm_nm_init_prob': 0.33,
                 'filters_imm_transition_prob': 0.9,
