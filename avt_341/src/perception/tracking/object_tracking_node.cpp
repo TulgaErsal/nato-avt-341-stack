@@ -467,6 +467,16 @@ void ObjectTrackingNode::TrackingTimerCallback() {
     if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
         LimitSensorDistance(point_cloud_, true);
         DownsampleCloud(point_cloud_);
+
+        // The camera frame moves with the vehicle, so the stale camera-frame
+        // centroid from the last FULL_TRACKING cycle will be wrong once the
+        // vehicle has moved. Reanchor the crop box by transforming the last
+        // known world-frame centroid back to the current camera frame.
+        if (filter_initialized_) {
+            bounding_box_centroid_ = TransformToCoordinates(
+                world_frame_, camera_frame_, bounding_box_centroid_global_);
+        }
+
         CropRegionOfInterest();
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
