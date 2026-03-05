@@ -73,39 +73,51 @@ def main():
     filtered_x, filtered_y = extract_xy(data['pose_filtered'])
     raw_x, raw_y = extract_xy(data['pose_raw'])
     
-    plt.figure(figsize=(12, 10))
-    
+    # Compute shared axis limits across all data in both plots.
+    all_x = mrzr2_x + filtered_x + raw_x
+    all_y = mrzr2_y + filtered_y + raw_y
+    x_min, x_max = min(all_x), max(all_x)
+    y_min, y_max = min(all_y), max(all_y)
+    x_pad = (x_max - x_min) * 0.05
+    y_pad = (y_max - y_min) * 0.05
+    shared_xlim = (x_min - x_pad, x_max + x_pad)
+    shared_ylim = (y_min - y_pad, y_max + y_pad)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+
     # Plot 1: Filtered
-    plt.subplot(2, 1, 1)
-    plt.plot(mrzr2_x, mrzr2_y, 'b-', label='MRZR2 Path', alpha=0.5)
+    ax1.plot(mrzr2_x, mrzr2_y, 'b-', label='MRZR2 Path', alpha=0.5)
     if filtered_x:
         v_min = -len(filtered_x) * 0.4  # Shift vmin to avoid too light colors
-        plt.scatter(filtered_x, filtered_y, c=range(len(filtered_x)), cmap='Greens', s=15, 
+        ax1.scatter(filtered_x, filtered_y, c=range(len(filtered_x)), cmap='Greens', s=15,
                     label='/pose/filtered', alpha=0.8, vmin=v_min)
-    plt.title('Filtered Pose Tracking (Visible Light -> Dark over time)')
-    plt.xlabel('X [m]')
-    plt.ylabel('Y [m]')
-    plt.legend()
-    plt.grid(True)
-    plt.axis('equal')
-    
+    ax1.set_title('Filtered Pose Tracking (Visible Light -> Dark over time)')
+    ax1.set_xlabel('X [m]')
+    ax1.set_ylabel('Y [m]')
+    ax1.legend()
+    ax1.grid(True)
+    ax1.set_xlim(shared_xlim)
+    ax1.set_ylim(shared_ylim)
+    ax1.set_aspect('equal')
+
     # Plot 2: Raw
-    plt.subplot(2, 1, 2)
-    plt.plot(mrzr2_x, mrzr2_y, 'b-', label='MZRZ2 Path', alpha=0.5)
+    ax2.plot(mrzr2_x, mrzr2_y, 'b-', label='MZRZ2 Path', alpha=0.5)
     if raw_x:
         v_min_raw = -len(raw_x) * 0.4  # Shift vmin to avoid too light colors
-        plt.scatter(raw_x, raw_y, c=range(len(raw_x)), cmap='YlOrBr', s=15, 
+        ax2.scatter(raw_x, raw_y, c=range(len(raw_x)), cmap='YlOrBr', s=15,
                     label='/pose/raw', alpha=0.8, vmin=v_min_raw)
-    plt.title('Raw Pose Tracking (Visible Light -> Dark over time)')
-    plt.xlabel('X [m]')
-    plt.ylabel('Y [m]')
-    plt.legend()
-    plt.grid(True)
-    plt.axis('equal')
+    ax2.set_title('Raw Pose Tracking (Visible Light -> Dark over time)')
+    ax2.set_xlabel('X [m]')
+    ax2.set_ylabel('Y [m]')
+    ax2.legend()
+    ax2.grid(True)
+    ax2.set_xlim(shared_xlim)
+    ax2.set_ylim(shared_ylim)
+    ax2.set_aspect('equal')
     
-    plt.tight_layout()
+    fig.tight_layout()
     output_plot = 'tracking_results.png'
-    plt.savefig(output_plot)
+    fig.savefig(output_plot)
     print(f"Plots saved to {output_plot}")
     plt.show()
 
