@@ -118,25 +118,24 @@ class CVFilter : public KalmanFilter<state_size * 2, state_size> {
      * @brief Set the process uncertainty matrix Q (kFullStateSize × kFullStateSize) using the
      *        discrete white-noise acceleration (DWNA) formula for a CV model.
      *
-     *        Per-dimension block:  Q_block = σ⁴ · [[dt⁴/4, dt³/2],
+     *        Per-dimension block:  Q_block = σ² · [[dt⁴/4, dt³/2],
      *                                               [dt³/2,   dt²]]
      *
-     *        The σ⁴ scaling (process_variance^4) matches the convention used in CAFilter
-     *        where GetDiscreteWhiteNoise receives pow(process_variance, 2) and applies
-     *        another pow(2) internally.
+     *        Standard DWNA formula: Q = σ_a² · [[dt⁴/4, dt³/2], [dt³/2, dt²]]
+     *        where σ_a = process_variance is the acceleration noise standard deviation.
      */
     void InitializeProcessUncertainty(const double& time_step) {
         const double dt2 = time_step * time_step;
         const double dt3 = dt2 * time_step;
         const double dt4 = dt3 * time_step;
-        const double s4  = std::pow(process_variance_, 4.0);
+        const double s2  = std::pow(process_variance_, 2.0);
 
         Eigen::Matrix<double, 2, 2> block_q;
         block_q(0, 0) = 0.25 * dt4;
         block_q(0, 1) = 0.5  * dt3;
         block_q(1, 0) = 0.5  * dt3;
         block_q(1, 1) = dt2;
-        block_q *= s4;
+        block_q *= s2;
 
         Eigen::Matrix<double, kFullStateSize, kFullStateSize> Q =
             Eigen::Matrix<double, kFullStateSize, kFullStateSize>::Zero();
