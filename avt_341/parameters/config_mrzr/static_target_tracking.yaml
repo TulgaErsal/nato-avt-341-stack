@@ -14,7 +14,7 @@ filters_ground_max_iterations: 50
 filters_ground_threshold: 0.2
 filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
-filters_kalman_process: 0.5
+filters_kalman_process: 0.01
 filters_kalman_measurement: 0.1
 tracker_autostart: true
 tracker_target_class: 'car'
