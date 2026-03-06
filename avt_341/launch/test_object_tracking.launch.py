@@ -49,7 +49,7 @@ def launch_setup(context, *args, **kwargs):
                 'filters_clustering_size_minimum': 30,
                 'filters_clustering_size_maximum': 500,
                 'filters_manual_roi_size': [5.0, 5.0, 5.0],
-                'filters_kalman_process': 0.5,
+                'filters_kalman_process': 0.01,
                 'filters_kalman_measurement': 0.1,
                 # IMM model probabilities and Markov transition probability
                 # CV model is preferred for straight-line driving; CTRA kicks
