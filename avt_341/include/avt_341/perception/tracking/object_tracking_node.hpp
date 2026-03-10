@@ -128,7 +128,8 @@ enum TrackerState {
     INACTIVE = 1,
     NO_DETECTION = 2,
     LIDAR_ONLY_TRACKING = 3,
-    FULL_TRACKING = 4
+    FULL_TRACKING = 4,
+    CAMERA_ONLY_TRACKING = 5
 };
 
 class BoundingBox2D {
@@ -339,6 +340,13 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
         cropbox_cloud_publisher_;
+
+    // JN addition for camera detection only tracking
+    /** @brief Estimate range from BBox detection using pixel height vs vehicle height
+    * and return point measurment of BBox center in 3D. */
+    Eigen::Vector3d ConvertBBoxCoordinatesToPoseCentroid_rdf(
+        const vision_msgs::msg::Detection2DArray detections_message,
+        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
     // -------------------------------------
 
@@ -726,6 +734,11 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     void EuclideanClustering();
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster_;
+
+    // JN addition
+    /** @brief Get coordinates from Camera boundingbox is lidar
+    *         centroid is un available. */
+    void CameraCentroidEstimate();
 
     // ---------------------------------------------------------------------- //
     // > Tracker timeout handling

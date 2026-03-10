@@ -149,9 +149,8 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("tracker_use_mission_manager", true);
     use_mission_manager_ = get_parameter("tracker_use_mission_manager").as_bool();
 
-    declare_parameter("tracker_target_class", "");
+    declare_parameter("tracker_target_class", "fed");
     autostart_target_class_ = get_parameter("tracker_target_class").as_string();
-
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
 
@@ -514,9 +513,12 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             RCLCPP_WARN(get_logger(),
                         "Could not isolate any clusters from the camera "
                         "detection region ROI!");
-
+            // JN addition revert to camera
+            centroid_in_cloud_frame_ = false;
+            CameraCentroidEstimate();
             has_point_cloud_ = false;
-            has_detection_ = false;
+            has_detection_ = true;
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             CheckTargetTimeout();
             return;
         }
@@ -614,6 +616,33 @@ void ObjectTrackingNode::EuclideanClustering() {
 
 void ObjectTrackingNode::Reset() {
     execution_time_ = -1.0;
+}
+
+// JN addition for camera detection only tracking
+void ObjectTrackingNode::CameraCentroidEstimate() {
+    try {
+        // bbox already in camera before update
+        Eigen::Vector3d camera_centroid_rdf =
+            ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
+                detections_message_,
+                camera_info_message_);
+        // Swap to flu
+        bounding_box_centroid_ = Eigen::Vector3d(camera_centroid_rdf.x(),
+                                                 camera_centroid_rdf.y(),
+                                                 camera_centroid_rdf.z());
+        
+        // bbox already in camera before update
+        //bounding_box_centroid_ = TransformToCoordinates(
+        //    detections_message_.header.frame_id,
+        //    point_cloud_message_->header.frame_id,
+        //    camera_centroid_rdf);
+        has_new_measurement_ = true;
+    } catch (...) {
+        RCLCPP_INFO_STREAM(get_logger(),
+        "Camera centroid failed: ");
+        has_new_measurement_ = false;
+        throw;
+    }
 }
 
 void ObjectTrackingNode::TransformPointCloudToCameraFrame(
@@ -765,7 +794,7 @@ void ObjectTrackingNode::DetectionsCallback(
 
     if (!target_found) {
         RCLCPP_INFO(get_logger(),
-                    "Target not found in the current detection, skipping ...");
+                    "Target %s not found in the current detection, skipping ...", target_class_);
         has_detection_ = false;
         return;
     }
@@ -809,6 +838,24 @@ geometry_msgs::msg::TransformStamped ObjectTrackingNode::TransformPointCloud(
         RCLCPP_ERROR(get_logger(), "Transform lookup exception.");
         throw;
     }
+}
+
+// JN addition for camera detection only tracking
+// use vehicle height to estimate centroid using range from boundingbox height
+// expressed in righ-down-front (rdf) frame
+// Added to code by Jonas N
+Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
+    const vision_msgs::msg::Detection2DArray detections_message,
+    const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
+    double target_z_f = (double)camera_info_message->k[4] / (double)detections_message.detections[0].bbox.size_y *
+        (double)object_size_.z() / 2;
+    double target_x_r = target_z_f / (double)camera_info_message->k[0] *
+        (double)(detections_message.detections[0].bbox.center.position.x - camera_info_message->k[2]);
+
+    double target_y_d = target_z_f / (double)camera_info_message->k[4] *
+        (double)(detections_message.detections[0].bbox.center.position.y - camera_info_message->k[5]);
+    Eigen::Vector3d camera_estimated_centroid_rdf(target_x_r, target_y_d, target_z_f);
+    return camera_estimated_centroid_rdf;
 }
 
 PixelCoordinates ObjectTrackingNode::ConvertPointToPixelCoordinates(
@@ -1068,6 +1115,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
 
         // Run the IMM update step and mark the latest measurement as processed.
         filter_->Update(measurement_vector);
+        
         has_new_measurement_ = false;
     }
 
