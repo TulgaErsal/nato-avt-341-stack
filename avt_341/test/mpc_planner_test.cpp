@@ -1,9 +1,14 @@
 
 #include <gtest/gtest.h>
-#include <julia.h>
 #include <string>
 #include <iostream>
 #include <vector>
+
+// Julia header throws "No Target Architecture" error otherwise on Windows systems
+#ifdef _WIN64
+ #define _AMD64_
+#endif
+#include <julia.h>
 
 // Definitions that should come from CMake
 #ifndef MPC_PLANNER_MODULE_PATH
