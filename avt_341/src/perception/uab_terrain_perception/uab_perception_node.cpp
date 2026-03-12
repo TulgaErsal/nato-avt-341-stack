@@ -14,6 +14,8 @@
 const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
+std::shared_ptr<avt_341::node::NodeProxy> node;
+
 geometry_msgs::msg::TransformStamped lidar_to_base_link_tf;
 geometry_msgs::msg::TransformStamped lidar_to_camera_tf;
 
@@ -295,8 +297,17 @@ void GetCostmapFromMatlab(float width,
     //odometry
     mwArray mw_odom = odomToMwArray(current_pose);
 
-    //raw pointcloud
-    mwArray mw_pc = pcToMwArray(pc);
+    //raw pointcloud, expected to be in lidar coordinate frame
+    mwArray mw_pc;
+    if (pc.header.frame_id != lidar_frame_id) {
+        avt_341::msg::PointCloud2 pc_out;
+        if (!node->transform_cloud(pc, pc_out, lidar_frame_id)) {
+            return;
+        }
+        mw_pc = pcToMwArray(pc_out);
+    }else {
+        mw_pc = pcToMwArray(pc);
+    }
 
     //raw image
     mwArray mw_img = imageToMwArray(img);
@@ -402,7 +413,8 @@ void ResetCallback(avt_341::msg::StringPtr msg)
 
 int main(int argc, char *argv[])
 {
-    auto node = avt_341::node::init_node(argc, argv, "uab_perception_node");
+    node = avt_341::node::init_node(argc, argv, "uab_perception_node");
+    node->initialize_tf_listener();
 
     auto odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
     auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);

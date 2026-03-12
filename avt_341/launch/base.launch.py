@@ -274,7 +274,9 @@ def generate_launch_description():
                             {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
                         ],
                         remappings=[
-                            ('camera/rgb/image_raw','front_camera/image'),
+                            ('avt_341/odom','avt_341/odometry'),
+                            ('avt_341/camera/image_raw','front_camera/image'),
+                            ('avt_341/camera/camera_info','front_camera/camera_info'),
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_uab_perception')),
