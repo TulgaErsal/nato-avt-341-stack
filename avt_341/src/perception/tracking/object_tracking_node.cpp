@@ -149,8 +149,9 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("tracker_use_mission_manager", true);
     use_mission_manager_ = get_parameter("tracker_use_mission_manager").as_bool();
 
-    declare_parameter("tracker_target_class", "fed");
-    autostart_target_class_ = get_parameter("tracker_target_class").as_string();
+    declare_parameter("tracker_target_class", "mrzr4");
+    // autostart_target_class_ = get_parameter("tracker_target_class").as_string();
+    autostart_target_class_ = "mrzr4";
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
 
@@ -1298,6 +1299,25 @@ void ObjectTrackingNode::PublishOdometry() {
             bounding_box_centroid_filtered_.y();
         odometry_filtered_message.pose.pose.position.z =
             bounding_box_centroid_filtered_.z();
+        tf2::Quaternion q;
+        //q.setRPY(0, 0, filter_->GetYaw());
+        Eigen::Matrix<double, 6, 6> OdometryCovariance;
+        Eigen::Matrix<double, 6, 6> P = filter_->GetCTRACovariance();
+        OdometryCovariance.block<2, 2>(0, 0) = P.block<2, 2>(0, 0);
+        OdometryCovariance(2, 2) = 100.0; //no information on z, using 10 m as large
+        OdometryCovariance(3, 3) = 9.0; //no information on roll using pi rad as large
+        OdometryCovariance(4, 4) = 9.0; //no information on pitch using pi rad as large
+        OdometryCovariance(5, 5) = P(4, 4) ; //ctra yaw variance
+
+        odometry_filtered_message.pose.pose.orientation.x = 0;
+        odometry_filtered_message.pose.pose.orientation.y = 0;
+        odometry_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
+        odometry_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
+        for (size_t i = 0; i < 6; i++)  {
+            for (size_t j = 0; j < 6; j++) {
+                odometry_filtered_message.pose.covariance[j * 6 + i] = OdometryCovariance(i, j);
+            }
+        }
         odometry_filtered_publisher_->publish(odometry_filtered_message);
     }
 
@@ -1308,6 +1328,7 @@ void ObjectTrackingNode::PublishOdometry() {
     odometry_message.pose.pose.position.x = bounding_box_centroid_global_.x();
     odometry_message.pose.pose.position.y = bounding_box_centroid_global_.y();
     odometry_message.pose.pose.position.z = bounding_box_centroid_global_.z();
+   
     odometry_publisher_->publish(odometry_message);
 }
 
