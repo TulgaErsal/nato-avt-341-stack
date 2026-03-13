@@ -63,7 +63,7 @@ class NMFilter {
              const double process_variance,
              const double measurement_variance) {
         x_.setZero();
-        P_ = StateMatrix::Identity();
+        P_ = StateMatrix::Identity()*100;
         Q_ = StateMatrix::Identity() * (process_variance * process_variance);
         R_ = MeasurementCovariance::Identity() * (measurement_variance * measurement_variance);
     }
@@ -129,6 +129,7 @@ class NMFilter {
 
     const StateVector& GetState()      const { return x_; }
     const StateMatrix& GetCovariance() const { return P_; }
+    const StateMatrix& GetS() const { return P_ + R_; }
 
     /** @brief Compute the scalar log-likelihood of measurement z given N(x, S). */
     double LogLikelihood(const MeasurementVector& z,
@@ -140,7 +141,14 @@ class NMFilter {
                - 0.5 * std::log(det)
                - static_cast<double>(kMeasurementDim) / 2.0 * std::log(2.0 * M_PI);
     }
-
+     /** @brief Compute the scalar chi2 of measurement z given N(x, S). */
+    double chi2(const MeasurementVector& z,
+                         const MeasurementCovariance& S) const {
+        const MeasurementVector y = z - x_;
+        const double det = S.determinant();
+        if (det <= 0.0) return -1e9;
+        return (y.transpose() * S.inverse() * y)(0, 0);
+    }
     /** @brief Set state and covariance directly (used by IMM mixing). */
     void SetState(const StateVector& x)      { x_ = x; }
     void SetCovariance(const StateMatrix& P) { P_ = P; }
@@ -153,7 +161,10 @@ class NMFilter {
         const MeasurementCovariance S = P_ + R;
         const StateMatrix K = P_ * S.inverse();
         x_ += K * y;
-        P_ = (StateMatrix::Identity() - K) * P_;
+        // Swap to Joseph form for numeric stability
+        auto I_KH = (StateMatrix::Identity() - K);  // H identity
+        P_ = (I_KH * P_) * I_KH.transpose() + (K * R) * K.transpose();
+        // P_ = (StateMatrix::Identity() - K) * P_;
         return S;
     }
 

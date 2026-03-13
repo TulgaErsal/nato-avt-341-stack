@@ -163,6 +163,15 @@ class KalmanFilter {
     const StateMatrix& GetProcessUncertainty() const { return Q_; }
 
     /**
+    * @brief Set the state uncertainty matrix $P$.
+    *
+    * @param Q Constant reference to the process uncertainty matrix.
+    */
+    void SetStateUncertainty(const StateMatrix& P) { P_ = P; }
+
+    const StateMatrix& GetStateUncertainty() const { return P_; }
+
+    /**
      * @brief Set the state vector.
      *
      * @param x Constant reference to the state vector.

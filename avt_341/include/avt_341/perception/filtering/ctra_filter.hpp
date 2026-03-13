@@ -65,7 +65,7 @@ class CTRAFilter {
                const double measurement_variance)
         : dt_(dt) {
         x_.setZero();
-        P_ = StateMatrix::Identity();
+        P_ = StateMatrix::Identity() * 100;
 
         BuildQ(process_variance);
         BuildR(measurement_variance);
@@ -146,6 +146,8 @@ class CTRAFilter {
             // df/dyaw
             F_j(0, 4) = -vdt * sin_y;
             F_j(1, 4) =  vdt * cos_y;
+            // dyaw/domega
+            F_j(4, 5) = dt;
         } else {
             const double yaw1    = yaw + omega * dt;
             const double cos_y   = std::cos(yaw);
@@ -176,6 +178,9 @@ class CTRAFilter {
                         - r0 / omega * cos_y
                         - 2.0 * a / (oo * omega) * (sin_y1 - sin_y)
                         + (a / oo) * dt * cos_y1;
+
+            // dyaw/domega
+            F_j(4, 5) = dt;
         }
         // v and a rows are already identity (F_j init)
         F_j(2, 3) = dt;   // dv'/da
@@ -240,6 +245,16 @@ class CTRAFilter {
                - 0.5 * std::log(det)
                - static_cast<double>(kMeasurementDim) / 2.0 * std::log(2.0 * M_PI);
     }
+    /** @brief Compute the (scalar) chi2 measure of
+     *         current predicted distribution N(H*x, S). */
+    double chi2(const MeasurementVector& z,
+                         const MeasurementCovariance& S) const {
+        const MeasurementVector y = z - H_ * x_;
+        const double det = S.determinant();
+        if (det <= 0.0) return -1e9;
+        return  (y.transpose() * S.inverse() * y)(0, 0);
+
+    }
 
     /** @brief Access the measurement matrix H (for IMM mixing). */
     const MeasurementMatrix& GetH() const { return H_; }
@@ -247,6 +262,7 @@ class CTRAFilter {
     /** @brief Set state and covariance directly (used by IMM mixing). */
     void SetState(const StateVector& x)     { x_ = x; }
     void SetCovariance(const StateMatrix& P) { P_ = P; }
+    StateMatrix GetCovariance() { return P_; }
 
   private:
     static constexpr double kOmegaEps = 1e-4;  ///< Threshold for straight-line approximation.
@@ -258,7 +274,10 @@ class CTRAFilter {
         const Eigen::Matrix<double, kStateDim, kMeasurementDim> K =
             P_ * H_.transpose() * S.inverse();
         x_ += K * y;
-        P_ = (StateMatrix::Identity() - K * H_) * P_;
+        // Swap to Joseph form for numeric stability
+        auto I_KH = (StateMatrix::Identity() - K * H_);  
+        P_ = (I_KH * P_) * I_KH.transpose() + (K * R) * K.transpose();
+        //P_ = (StateMatrix::Identity() - K * H_) * P_;
         return S;
     }
 
@@ -268,7 +287,8 @@ class CTRAFilter {
         const double dt2 = dt_ * dt_;
         const double dt3 = dt2 * dt_;
         const double dt4 = dt3 * dt_;
-        const double s2  = sigma * sigma;
+        const double s2 = sigma * sigma;
+        const double s2o = sigma * sigma*400;
         // Simplified diagonal Q: {x,y} driven by position noise, {v,a} by
         // acceleration noise, {yaw,omega} by angular noise.
         Q_(0, 0) = 0.25 * dt4 * s2;
@@ -277,8 +297,8 @@ class CTRAFilter {
         Q_(2, 2) = dt2 * s2;
         Q_(3, 3) = s2;
         Q_(4, 4) = 0.25 * dt4 * s2;
-        Q_(5, 5) = dt2 * s2;
-        Q_(4, 5) = Q_(5, 4) = 0.5 * dt3 * s2;
+        Q_(5, 5) = dt2 * s2o;
+        Q_(4, 5) = Q_(5, 4) = 0.5 * dt3 * s2o;
     }
 
     void BuildR(const double sigma) {

@@ -59,7 +59,6 @@ namespace filtering {
 class IMMFilter {
   public:
     static constexpr int kNumModels = 3;
-
     // 3D position + velocity vectors returned to the tracker
     using Vec3 = Eigen::Vector3d;
     using Vec2 = Eigen::Vector2d;
@@ -94,6 +93,8 @@ class IMMFilter {
         mu_[1] = ctra_init_prob / sum;
         mu_[2] = nm_init_prob   / sum;
 
+ 
+
         // Markov transition matrix: pi_[i][j] = P(switching to j | currently in i)
         const double p_stay   = std::max(0.01, std::min(0.99, transition_prob));
         const double p_switch = (1.0 - p_stay) / (kNumModels - 1);
@@ -106,6 +107,7 @@ class IMMFilter {
         // Fused state output
         fused_position_.setZero();
         fused_velocity_.setZero();
+        fused_yaw_ = 0;
     }
 
     // -----------------------------------------------------------------------
@@ -241,6 +243,8 @@ class IMMFilter {
         // --- Update each filter and collect innovation covariances ---
         if (R_override) {
             const Eigen::Matrix2d R2d = R_override->topLeftCorner<2, 2>();
+			
+
             cv_.Update(z, R_override.value());
             CTRAFilter::MeasurementCovariance S_ctra = ctra_.Update(z2d, R2d);
             NMFilter::MeasurementCovariance   S_nm   = nm_.Update(z2d, R2d);
@@ -250,6 +254,14 @@ class IMMFilter {
             const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
             const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
 
+            // --- Compute chi2 ---
+            const double chi2_cv   = ComputeCVChi2(z, nullptr);
+            const double chi2_ctra = ctra_.chi2(z2d, S_ctra);
+            const double chi2_nm   = nm_.chi2(z2d, S_nm);
+            // collect chi2
+            chi2_.x() = chi2_cv;
+            chi2_.y() = chi2_ctra;
+            chi2_.z() = chi2_nm;
             UpdateModelProbabilities(lambda_cv, lambda_ctra, lambda_nm);
         } else {
             cv_.Update(z);
@@ -262,6 +274,14 @@ class IMMFilter {
             const double lambda_ctra = ctra_.LogLikelihood(z2d, S_ctra);
             const double lambda_nm   = nm_.LogLikelihood(z2d, S_nm);
 
+            // --- Compute chi2 ---
+            const double chi2_cv   = ComputeCVChi2(z, nullptr);
+            const double chi2_ctra = ctra_.chi2(z2d, S_ctra);
+            const double chi2_nm   = nm_.chi2(z2d, S_nm);
+            // collect chi2 Vec3 used for convenience
+            chi2_.x() = chi2_cv;
+            chi2_.y() = chi2_ctra;
+            chi2_.z() = chi2_nm;
             UpdateModelProbabilities(lambda_cv, lambda_ctra, lambda_nm);
         }
 
@@ -269,6 +289,9 @@ class IMMFilter {
         // CV state layout (stride = 2):  [x, vx, y, vy, z, vz]
         const auto& x_cv   = cv_.GetState();
         const Vec2  p_ctra = ctra_.GetPosition2D();
+        double v_ctra = ctra_.GetSpeed();
+        double yaw_ctra = ctra_.GetYaw();
+         
         const Vec2  p_nm   = nm_.GetPosition2D();
 
         fused_position_.x() = mu_[0] * x_cv(0) + mu_[1] * p_ctra(0) + mu_[2] * p_nm(0);
@@ -276,12 +299,31 @@ class IMMFilter {
         // z only from CV (CTRA and NM are 2D)
         fused_position_.z() = x_cv(4);
 
-        // Velocity from CV filter.
+        if (v_ctra > 0.2 || sqrt(std::pow(x_cv(1), 2) + std::pow(x_cv(3), 2)) > 0.2) { 
+            //when sufficient speed the CV model velocity have information of yaw
+            // NM gives no information of orientation
+            double yaw_cv = atan2(x_cv(1), x_cv(3));
+            //if (abs(yaw_cv- yaw_ctra)<3/12)
+                //fused_yaw_ = mu_[0] * yaw_cv + mu_[1] * yaw_ctra;
+            //else 
+               fused_yaw_ = yaw_ctra;
+
+        }
+        else {
+            fused_yaw_ = yaw_ctra; // ctra may have memory of yaw even if speed is zero
+
+        }
+
+            
+
+        // Velocity from CV filter and ctra.
         // When NM dominates (mu_[2] ≈ 1), the CV velocity naturally tends to
         // zero as the CV filter observes no motion.
-        fused_velocity_.x() = x_cv(1);
-        fused_velocity_.y() = x_cv(3);
+        fused_velocity_.x() = mu_[0] * x_cv(1) + mu_[1] * v_ctra * cos(yaw_ctra);
+        fused_velocity_.y() = mu_[0] * x_cv(3) + mu_[1] * v_ctra * sin(yaw_ctra);
         fused_velocity_.z() = x_cv(5);
+
+
     }
 
     // -----------------------------------------------------------------------
@@ -312,6 +354,9 @@ class IMMFilter {
     /** @brief Fused 3D world-frame position. */
     Vec3 GetPosition3D() const { return fused_position_; }
 
+    /** @brief Fused yaw. */
+    double GetYaw() const { return fused_yaw_; }
+
     /** @brief 3D velocity estimate (from CV model). */
     Vec3 GetVelocity3D() const { return fused_velocity_; }
 
@@ -327,6 +372,10 @@ class IMMFilter {
     /** @brief CTRA turn rate estimate [rad/s]. */
     double GetCTRAOmega() const { return ctra_.GetOmega(); }
 
+    /** @brief CTRA turn state covariance matrix */
+    CTRAFilter::StateMatrix GetCTRACovariance() const { return ctra_.GetCovariance(); }
+
+
     /** @brief Access underlying CV filter (for state injection by tracker). */
     CVFilter<3>& GetCVFilter() { return cv_; }
 
@@ -335,6 +384,11 @@ class IMMFilter {
 
     /** @brief Access underlying NM filter. */
     NMFilter& GetNMFilter() { return nm_; }
+    
+    /** @brief Access underlying chi2 results */
+    Vec3  GetAllChi2() { return chi2_; }
+
+    Eigen::Matrix<double, 2, 2> GetnmStatecovariance() { return nm_.GetS(); };
 
   private:
     // ---- Update model probabilities from three log-likelihoods ----
@@ -377,28 +431,70 @@ class IMMFilter {
     double ComputeCVLikelihood(const Eigen::Matrix<double, 3, 1>& z,
                                const Eigen::Matrix3d* R3) const {
         const auto& x_cv = cv_.GetState();
+        Eigen::Matrix<double, 6, 6> Pcv = cv_.GetStateUncertainty();
         Eigen::Matrix<double, 3, 1> y;
         y(0) = z(0) - x_cv(0);   // x residual
         y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
         y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
+		Eigen::Matrix<double, 3, 6> H; // Hardcoded H assuming cv order [x xdot y ydot ...
+		H(0,0) = 1;
+		H(1,2) = 1;
+		H(2,4) = 1;
 
         if (R3) {
-            const double det = R3->determinant();
+            const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
+            Eigen::Matrix<double, 3, 3> S = H * Pcv * H.transpose();
+            S = S + I * R3->coeff(0,0);
+            const double det = S.determinant();
             if (det <= 0.0) return -1e9;
-            return -0.5 * (y.transpose() * R3->inverse() * y)(0, 0)
+            return -0.5 * (y.transpose() * S.inverse() * y)(0, 0)
                    - 0.5 * std::log(det)
                    - 1.5 * std::log(2.0 * M_PI);
         } else {
-            // Approximate S_cv as scalar * I (measurement noise dominated)
-            const double r2    = cv_measurement_variance_approx_;
-            const double det_S = r2 * r2 * r2;
+			const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
+			const Eigen::Matrix<double, 3, 3> S = H * Pcv * H.transpose() + cv_measurement_variance_approx_ * I;
+
+            const double det_S = S.determinant();
             if (det_S <= 0.0) return -1e9;
-            return -0.5 * y.dot(y) / r2
+            return -0.5 * (y.transpose() * S.inverse() * y)(0, 0)
                    - 0.5 * std::log(det_S)
                    - 1.5 * std::log(2.0 * M_PI);
         }
     }
 
+    // ---- Compute log-likelihood for the CV filter given measurement z ----
+    // When R3 is non-null the supplied matrix is used; otherwise the scalar
+    // cv_measurement_variance_approx_ approximation is used.
+    double ComputeCVChi2(const Eigen::Matrix<double, 3, 1>& z,
+                               const Eigen::Matrix3d* R3) const {
+        const auto& x_cv = cv_.GetState();
+        Eigen::Matrix<double, 6, 6> Pcv = cv_.GetStateUncertainty();
+        Eigen::Matrix<double, 3, 1> y;
+        y(0) = z(0) - x_cv(0);   // x residual
+        y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
+        y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
+		Eigen::Matrix<double, 3, 6> H; // Hardcoded H assuming cv order [x xdot y ydot ...
+									   // and z as position [x,y,z]
+		H(0,0) = 1; // pos_x
+		H(1,2) = 1; // pos_y
+		H(2,4) = 1; // pos_z
+        if (R3) {
+            const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
+            Eigen::Matrix<double, 3, 3> S = H * Pcv * H.transpose();
+            S = S + I * R3->coeff(0, 0);
+			const double det = S.determinant();
+            if (det <= 0.0) return -1e9;
+            return (y.transpose() * S.inverse() * y)(0, 0);
+  
+        } else {
+            const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
+            const Eigen::Matrix<double, 3, 3> S = H * Pcv * H.transpose() + cv_measurement_variance_approx_ * I;
+			const double det = S.determinant();
+			if (det <= 0.0) return -1e9;
+            return  (y.transpose() * S.inverse() * y)(0, 0);
+                 
+        }
+    }
     CVFilter<3>  cv_;
     CTRAFilter   ctra_;
     NMFilter     nm_;
@@ -413,6 +509,9 @@ class IMMFilter {
     // Fused output
     Vec3 fused_position_;
     Vec3 fused_velocity_;
+    double fused_yaw_;
+    // chi2 measures
+    Vec3 chi2_;
 
     // Approximate CV measurement variance used in likelihood computation.
     static constexpr double cv_measurement_variance_approx_ = 0.01;  // (0.1m σ)²

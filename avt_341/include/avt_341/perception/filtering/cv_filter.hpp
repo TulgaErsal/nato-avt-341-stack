@@ -78,6 +78,7 @@ class CVFilter : public KalmanFilter<state_size * 2, state_size> {
         InitializeObservationMatrix();
         InitializeMeasurementUncertainty(measurement_variance);
         InitializeProcessUncertainty(time_step);
+        P_ = P_ *100;
     }
 
     /**
