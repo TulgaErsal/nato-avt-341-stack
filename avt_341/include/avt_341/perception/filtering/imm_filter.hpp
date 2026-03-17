@@ -436,10 +436,10 @@ class IMMFilter {
         y(0) = z(0) - x_cv(0);   // x residual
         y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
         y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
-		Eigen::Matrix<double, 3, 6> H; // Hardcoded H assuming cv order [x xdot y ydot ...
-		H(0,0) = 1;
-		H(1,2) = 1;
-		H(2,4) = 1;
+        Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero(); // cv order [x xdot y ydot z zdot]
+        H(0,0) = 1;
+        H(1,2) = 1;
+        H(2,4) = 1;
 
         if (R3) {
             const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
@@ -473,11 +473,10 @@ class IMMFilter {
         y(0) = z(0) - x_cv(0);   // x residual
         y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
         y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
-		Eigen::Matrix<double, 3, 6> H; // Hardcoded H assuming cv order [x xdot y ydot ...
-									   // and z as position [x,y,z]
-		H(0,0) = 1; // pos_x
-		H(1,2) = 1; // pos_y
-		H(2,4) = 1; // pos_z
+        Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero(); // cv order [x xdot y ydot z zdot]
+        H(0,0) = 1; // pos_x
+        H(1,2) = 1; // pos_y
+        H(2,4) = 1; // pos_z
         if (R3) {
             const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
             Eigen::Matrix<double, 3, 3> S = H * Pcv * H.transpose();

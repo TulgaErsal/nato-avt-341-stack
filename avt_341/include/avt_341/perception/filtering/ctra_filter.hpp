@@ -262,7 +262,6 @@ class CTRAFilter {
     /** @brief Set state and covariance directly (used by IMM mixing). */
     void SetState(const StateVector& x)     { x_ = x; }
     void SetCovariance(const StateMatrix& P) { P_ = P; }
-    StateMatrix GetCovariance() { return P_; }
 
   private:
     static constexpr double kOmegaEps = 1e-4;  ///< Threshold for straight-line approximation.
