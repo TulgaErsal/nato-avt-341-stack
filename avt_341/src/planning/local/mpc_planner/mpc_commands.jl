@@ -371,7 +371,8 @@ function Setup()
 	global finalHeadingCost
 	global final_heading_param
 	global final_heading_w_param
-	
+	global deviation_in_yaw_w_param
+
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
 	global mpc_speed = Array{Float64}(undef, numColPoints+1, 1)
 	global mpc_steering = Array{Float64}(undef, numColPoints+1, 1)
@@ -474,13 +475,16 @@ function Setup()
 	finalHeadingCost = @NLexpression(n.ocp.mdl,
 		(cos(psi[end]) - cos(final_heading_param))^2 + (sin(psi[end]) - sin(final_heading_param))^2
 	)
+	# Weight on the initial-heading cost; zeroed out when terminal heading cost is active
+	# so the two costs do not fight each other.
+	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
 
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	end
 	n.s.ocp.save = false
 
@@ -543,6 +547,7 @@ function Plan()
 	global finalHeadingCost
 	global final_heading_param
 	global final_heading_w_param
+	global deviation_in_yaw_w_param
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -618,20 +623,25 @@ function Plan()
 		horizon_dist = speedSetpoint * predictionTimeHorizon
 
 		# Activate terminal heading cost when the goal is the end of the global path
-		# and the vehicle is close enough that the prediction horizon reaches it
+		# and the vehicle is close enough that the prediction horizon reaches it.
+		# When terminal heading cost is active, disable the initial-heading cost so
+		# the two costs do not fight each other.
 		JuMP.setValue(final_heading_param, finalHeading)
-		if goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
+		terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
+		if terminal_heading_active
 			JuMP.setValue(final_heading_w_param, w_finalHeading)
+			JuMP.setValue(deviation_in_yaw_w_param, 0.0)
 		else
 			JuMP.setValue(final_heading_w_param, 0.0)
+			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
 		end
 
 		# If user marked the goal point as the end of a global path, enable follower objective
 		if follower_status && goalPointIsEndOfGlobalPath
 			JuMP.setValue(leader_speed, cmdLeaderSpeed)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
 		else
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 		end
 
 		if n.s.mpc.shiftX0
