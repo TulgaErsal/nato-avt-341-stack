@@ -78,8 +78,8 @@ class CVFilter : public KalmanFilter<state_size * 2, state_size> {
         InitializeObservationMatrix();
         InitializeMeasurementUncertainty(measurement_variance);
         InitializeProcessUncertainty(time_step);
-        this->P_ = this->P_ * 100;
-    }
+		this->P_ = this->P_ * 100;
+	}
 
     /**
      * @brief Build the block-diagonal state transition matrix F (kFullStateSize × kFullStateSize).
@@ -164,6 +164,25 @@ class CVFilter : public KalmanFilter<state_size * 2, state_size> {
         for (int i = 0; i < state_size; ++i) {
             Base::x_(i * (kOrder + 1) + 1) = initial_velocity(i);
         }
+    }
+
+    /**
+     * @brief Set covariance if remixed by IMM.
+     *
+     *  JN added
+     */
+    typedef Eigen::Matrix<double, kFullStateSize, kFullStateSize> StateMatrix;
+    void SetCovariance(const StateMatrix& P) {
+        Base::SetStateUncertainty(P);
+    }
+    /**
+     * @brief Get covariance if remixed by IMM.
+     *
+     *  JN added
+     */
+    const StateMatrix& GetCovariance() const {
+        // const StateMatrix& P = Base::GetStateUncertainty();
+        return Base::GetStateUncertainty();
     }
 
     /**

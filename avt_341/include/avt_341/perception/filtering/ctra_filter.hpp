@@ -29,6 +29,7 @@
 
 #include <cmath>
 #include <Eigen/Dense>
+#include "angles/angles.h"
 
 namespace avt_341 {
 namespace perception {
@@ -129,6 +130,10 @@ class CTRAFilter {
         x_pred(3) = a;
         x_pred(4) = yaw + omega * dt;
         x_pred(5) = omega;
+		if (x_pred(2) < 0) {
+			x_pred(2) = - x_pred(2);
+			x_pred(4) = angles::normalize_angle(x_pred(4) + M_PI);
+		}
 
         // ---- Jacobian of f w.r.t. x (linearized F) ----
         StateMatrix F_j = StateMatrix::Identity();
@@ -277,6 +282,10 @@ class CTRAFilter {
         auto I_KH = (StateMatrix::Identity() - K * H_);  
         P_ = (I_KH * P_) * I_KH.transpose() + (K * R) * K.transpose();
         //P_ = (StateMatrix::Identity() - K * H_) * P_;
+		if (x_(2) < 0) {
+			x_(2) = - x_(2);
+			x_(4) = angles::normalize_angle(x_(4) + M_PI);
+		}
         return S;
     }
 

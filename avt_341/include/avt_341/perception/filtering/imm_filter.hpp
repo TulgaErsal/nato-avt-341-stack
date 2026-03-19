@@ -65,6 +65,16 @@ class IMMFilter {
     using MeasurementVector3D = Eigen::Matrix<double, 3, 1>;
     using MeasurementVector2D = Eigen::Matrix<double, 2, 1>;
 
+	// JN added: imm variances for uniform distributions of non estimated states
+	// hardcoded large values for now, could be paramterized if someone wants to tune
+	// double sigma2_v_uniform = std::pow(27.0 - (-27.0), 2) / 12.0; // uniform between +-27 m/s
+	// the uniform uninformed a priori for nm is low in v & a,  not high since the model is no motion
+	double sigma2_v_uniform = std::pow(0.1 - (-0.1), 2) / 12.0; // uniform between +-0.1 m/s
+	double sigma2_a_uniform = std::pow(1.0 - (-1.0), 2) / 1.0; // uniform between +-1 m/s^2 (0.1*g);
+	//double sigma2_a_uniform = std::pow(10.0 - (-10.0), 2) / 12.0; // uniform between +-10 m/s^2 (g);
+	double sigma2_yaw_uniform = std::pow(3.0 - (-3.0), 2) / 12.0; // uniform between +-3 rad (pi);
+	double sigma2_omega_uniform = std::pow(1.5 - (-1.5), 2) / 12.0; // uniform between 
+																   // +-1.5 rad/s (pi/2 /s);;
     /**
      * @param dt                   Estimator time step [s].
      * @param process_variance     Process noise scale (shared between models).
@@ -174,10 +184,20 @@ class IMMFilter {
         //
         // CV state layout (stride = 2):  [x, vx, y, vy, z, vz]
         //   x pos → index 0,  y pos → index 2,  z pos → index 4
+		// Follows the reccomendations in:
+		// Granström, K., Willett, P., &Bar - Shalom, Y. (2016).
+		//   Systematic approach to IMM mixing for unequal dimension states.
+		//   IEEE Transactions on Aerospace and Electronic Systems, 51(4), 2975 - 2986.
+        const double speed_ctra = ctra_.GetSpeed();    // v
+        const double yaw_ctra = ctra_.GetYaw();		   // yaw
+        const auto& x_cv = cv_.GetState();          // 6D  [x,vx, y,vy, z,vz]
+        const double yaw_cv = atan2(x_cv(3), x_cv(1)); // translate others to ctra states
+        const double speed_cv = sqrt(std::pow(x_cv(1), 2) + std::pow(x_cv(3), 2));
+        const Vec2  pos_ctra = ctra_.GetPosition2D();  // 2D  [x, y]
+        const Vec2  pos_nm = nm_.GetPosition2D();    // 2D  [x, y]
+        const auto& x_ctra = ctra_.GetState();
         {
-            const auto& x_cv    = cv_.GetState();          // 6D  [x,vx, y,vy, z,vz]
-            const Vec2  pos_ctra = ctra_.GetPosition2D();  // 2D  [x, y]
-            const Vec2  pos_nm   = nm_.GetPosition2D();    // 2D  [x, y]
+
 
             // --- Mix into CV (model 0) ---
             Eigen::Matrix<double, 6, 1> x_cv_mixed = x_cv;
@@ -187,10 +207,16 @@ class IMMFilter {
             x_cv_mixed(2) = mu_mix[0][0] * x_cv(2)       // y from CV
                           + mu_mix[1][0] * pos_ctra(1)    // y from CTRA
                           + mu_mix[2][0] * pos_nm(1);     // y from NM
+			// velocities differ in modeling
+			x_cv_mixed(1) = mu_mix[0][0] * x_cv(1)              // vx from CV
+				+ mu_mix[1][0] * speed_ctra * cos(yaw_ctra);    // vx from CTRA
+			+mu_mix[2][0] * 0;     // 0 from NM
+			x_cv_mixed(3) = mu_mix[0][0] * x_cv(3)              // vy from CV
+				+ mu_mix[1][0] * speed_ctra * sin(yaw_ctra);    // vy from CTRA
+				+ mu_mix[2][0] * 0;     // v=0 from NM
             cv_.SetState(x_cv_mixed);
 
             // --- Mix into CTRA (model 1) ---
-            const auto& x_ctra = ctra_.GetState();
             CTRAFilter::StateVector x_ctra_mixed = x_ctra;
             x_ctra_mixed(0) = mu_mix[0][1] * x_cv(0)
                             + mu_mix[1][1] * x_ctra(0)
@@ -198,6 +224,21 @@ class IMMFilter {
             x_ctra_mixed(1) = mu_mix[0][1] * x_cv(2)
                             + mu_mix[1][1] * x_ctra(1)
                             + mu_mix[2][1] * pos_nm(1);
+
+			x_ctra_mixed(2) = mu_mix[0][1] * speed_cv
+				+ mu_mix[1][1] * x_ctra(2)
+				+ mu_mix[2][1] * 0;			   // nm v=0
+			x_ctra_mixed(3) = mu_mix[0][1] * 0 // a = 0 in cv
+				+ mu_mix[1][1] * x_ctra(3)
+				+ mu_mix[2][1] * 0;				// a = 0 in nm
+			x_ctra_mixed(4) = mu_mix[0][1] * yaw_cv
+				+ mu_mix[1][1] * x_ctra(4)
+				+ mu_mix[2][1] * 0;				// yaw = 0 in nm
+			x_ctra_mixed(5) = mu_mix[0][1] * 0  // omega = 0 in cv
+				+ mu_mix[1][1] * x_ctra(5)
+				+ mu_mix[2][1] * 0;				// omega = 0 in nm
+
+
             ctra_.SetState(x_ctra_mixed);
 
             // --- Mix into NM (model 2) ---
@@ -205,12 +246,146 @@ class IMMFilter {
             NMFilter::StateVector x_nm_mixed;
             x_nm_mixed(0) = mu_mix[0][2] * x_cv(0)
                           + mu_mix[1][2] * x_ctra(0)
-                          + mu_mix[2][2] * x_nm(0);
+                          + mu_mix[2][2] * pos_nm(0);
             x_nm_mixed(1) = mu_mix[0][2] * x_cv(2)
                           + mu_mix[1][2] * x_ctra(1)
-                          + mu_mix[2][2] * x_nm(1);
+                          + mu_mix[2][2] * pos_nm(1);
             nm_.SetState(x_nm_mixed);
         }
+        
+		// Covariance mixing
+		Eigen::Matrix<double, 6, 6> P_ctra = ctra_.GetCovariance();
+		Eigen::Matrix<double, 6, 6> P_cv = cv_.GetCovariance();
+		Eigen::Matrix<double, 2, 2> P_nm = nm_.GetCovariance();
+        
+		// CTRA needs jacobians to transfor to CV and the reverse
+		Eigen::Matrix<double, 4, 6> J_CV_CTRA; // Jacobian for 
+			// function transforming cv-states to ctra-states
+			// d f_ctra(x_cv)/ d x_cv
+			// read _CV_CTRA cv expressed in ctra 
+			// Only "similar/shared" states not acc & yaw_rate.
+		J_CV_CTRA.setZero();
+		Eigen::Matrix<double, 4, 6> J_CTRA_CV; // Jacobian for 
+			// function transforming ctra-states to cv-states
+			// d f_cv(x_ctra)/ d x_ctra
+			// read _CTRA_CV ctra expressed in cv 
+			// Only "similar/shared" states not z & vz
+		J_CTRA_CV.setZero();
+
+		// recall CTRA State vector (6D): [x, y, v, a, yaw, yaw_rate] 
+		// and populate the jacbians
+		J_CTRA_CV(0, 0) = 1; // pos_x
+		J_CTRA_CV(1, 2) = cos(yaw_ctra); // vx
+		J_CTRA_CV(1, 4) = -speed_ctra * sin(yaw_ctra); // vx
+		J_CTRA_CV(2, 1) = 1; // pos_y
+		J_CTRA_CV(3, 2) = sin(yaw_ctra); // v_y
+		J_CTRA_CV(3, 4) = speed_ctra * cos(yaw_ctra); // vy
+		Eigen::Matrix<double, 4, 4> P4x4_ctra_cv = J_CTRA_CV * P_ctra * J_CTRA_CV.transpose();
+
+		J_CV_CTRA(0, 0) = 1; // pos_x
+		J_CV_CTRA(1, 2) = 1; // pos_y
+        if (abs(speed_cv) > 0.01) {
+            J_CV_CTRA(2, 1) = x_cv(1) / speed_cv; // vx -> speed
+            J_CV_CTRA(2, 3) = x_cv(3) / speed_cv; // vy -> speed
+            J_CV_CTRA(3, 1) = -x_cv(3) / (speed_cv * speed_cv); // d/dvx {yaw = atan(vy/vx)}
+            J_CV_CTRA(3, 3) = x_cv(1) / (speed_cv * speed_cv); // d/dvy {yaw = atan(vy/vx)}
+        }
+        else {
+            J_CV_CTRA(2, 1) = 1; // vx -> speed
+            J_CV_CTRA(2, 3) = 1; // vy -> speed
+            J_CV_CTRA(3, 1) = 0; // d/dvx {yaw = atan(vy/vx)}
+            J_CV_CTRA(3, 3) = 0; // d/dvy {yaw = atan(vy/vx)}
+        }
+		
+		Eigen::Matrix<double, 4, 4> P4x4_cv_ctra = J_CV_CTRA * P_cv * J_CV_CTRA.transpose();
+
+		// Build augumented covariances
+		std::vector<int> ind_ctra{ 1, 2, 3, 4 };
+		Eigen::Matrix<double, 6, 6>  P_ctra_cv = P_cv;
+		P_ctra_cv(ind_ctra, ind_ctra) = P4x4_ctra_cv;
+		std::vector<int> ind_nm_cv{ 1, 3 };
+		Eigen::Matrix<double, 6, 6>  P_nm_cv = P_cv;
+		P_nm_cv(ind_nm_cv, ind_nm_cv) = P_nm;
+		P_nm_cv(1, 1) = sigma2_v_uniform;
+		P_nm_cv(3, 3) = sigma2_v_uniform;
+		// z dimension left as is
+		std::vector<int> ind_cv{ 1, 2, 4, 5 };
+		Eigen::Matrix<double, 6, 6>  P_cv_ctra = P_ctra;
+		P_cv_ctra(ind_cv, ind_cv) = P4x4_cv_ctra;
+		std::vector<int> ind_nm_ctra{ 1, 2 };
+		Eigen::Matrix<double, 6, 6>  P_nm_ctra = P_ctra;
+		P_nm_ctra(ind_nm_ctra, ind_nm_ctra) = P_nm;
+		P_nm_ctra(2, 2) = sigma2_v_uniform;
+		P_nm_ctra(3, 3) = sigma2_a_uniform;
+		P_nm_ctra(4, 4) = sigma2_yaw_uniform;
+		P_nm_ctra(5, 5) = sigma2_omega_uniform;
+		P_cv_ctra(3, 3) = sigma2_a_uniform;
+		P_cv_ctra(5, 5) = sigma2_omega_uniform;
+
+		// calculate M_cv
+		Eigen::Matrix<double, 6, 1> x_estimate_cv;
+		x_estimate_cv(0) = mu_[0] * x_cv(0)    // x from CV
+			+ mu_[1] * pos_ctra(0)    // x from CTRA
+			+ mu_[2] * pos_nm(0);     // x from NM
+		x_estimate_cv(2) = mu_[0] * x_cv(2)       // y from CV
+			+ mu_[1] * pos_ctra(1)    // y from CTRA
+			+ mu_[2] * pos_nm(1);     // y from NM
+		x_estimate_cv(1) = mu_[0] * x_cv(1)              // vx from CV
+			+ mu_[1] * speed_ctra * cos(yaw_ctra);    // vx from CTRA
+		    + mu_[2] * 0;     // 0 from NM
+		x_estimate_cv(3) = mu_[0] * x_cv(3)              // vy from CV
+			+ mu_[1] * speed_ctra * sin(yaw_ctra);    // vy from CTRA
+		    + mu_[2] * 0;     // v=0 from NM
+		x_estimate_cv(4) = x_cv(4);
+		x_estimate_cv(5) = x_cv(5);
+		Eigen::Matrix<double, 6, 1> y = x_estimate_cv - x_cv;
+		Eigen::Matrix<double, 6, 6> M_cv = y * y.transpose();
+		//reuse Pcv for mix as all need for it was above
+		P_cv = mu_mix[0][0] * P_cv +mu_mix[1][0] * P_ctra_cv + mu_mix[2][0] * P_nm_cv + M_cv;
+		cv_.SetCovariance(P_cv); // Added to cv
+		
+		// calculate M_ctra
+		Eigen::Matrix<double, 6, 1> x_estimate_ctra;
+		x_estimate_ctra(0) = mu_[0] * x_cv(0)
+			+ mu_[1] * x_ctra(0)
+			+ mu_[2] * pos_nm(0);
+		x_estimate_ctra(1) = mu_[0] * x_cv(2)
+			+ mu_[1] * x_ctra(1)
+			+ mu_[2] * pos_nm(1);
+		x_estimate_ctra(2) = mu_[0] * speed_cv
+			+ mu_[1] * x_ctra(2)
+			+ mu_[2] * 0;			   // nm v=0
+		x_estimate_ctra(3) = mu_[0] * 0 // a = 0 in cv
+			+ mu_[1] * x_ctra(3)
+			+ mu_[2] * 0;				// a = 0 in nm
+		x_estimate_ctra(4) = mu_[0] * yaw_cv
+			+ mu_[1] * x_ctra(4)
+			+ mu_[2] * 0;				// yaw = 0 in nm
+		x_estimate_ctra(5) = mu_[0] * 0  // omega = 0 in cv
+			+ mu_[1] * x_ctra(5)
+			+ mu_[2] * 0;				// omega = 0 in nm
+
+		Eigen::Matrix<double, 6, 1> y_ctra = x_estimate_ctra - x_ctra;
+		Eigen::Matrix<double, 6, 6> M_ctra = y_ctra * y_ctra.transpose();
+		//reuse P_ctra for mix as all need for it was above
+		P_ctra = mu_mix[0][1] * P_cv_ctra + mu_mix[1][1] * P_ctra + 
+			mu_mix[2][1] * P_nm_ctra + M_ctra;
+		ctra_.SetCovariance(P_ctra); 
+
+		Eigen::Matrix<double, 2, 1> x_estimate_nm;
+        x_estimate_nm(0) = mu_[0] * x_cv(0)
+            + mu_[1] * x_ctra(0)
+            + mu_[2] * pos_nm(0);
+        x_estimate_nm(1) = mu_[0] * x_cv(2)
+            + mu_[1] * x_ctra(1)
+            + mu_[2] * pos_nm(1);
+		Eigen::Matrix<double, 2, 1> y_nm = x_estimate_nm - pos_nm;
+		Eigen::Matrix<double, 2, 2> M_nm = y_nm * y_nm.transpose();
+		//reuse P_nm for mix as all need for it was above
+		P_nm = mu_mix[0][1] * P_cv(ind_nm_cv, ind_nm_cv) + 
+			mu_mix[1][1] * P_ctra(ind_nm_ctra, ind_nm_ctra) + 
+			mu_mix[2][1] * P_nm + M_nm;
+		nm_.SetCovariance(P_nm);
 
         // --- Step 3: Individual predictions ---
         cv_.Predict();
@@ -298,14 +473,14 @@ class IMMFilter {
         fused_position_.y() = mu_[0] * x_cv(2) + mu_[1] * p_ctra(1) + mu_[2] * p_nm(1);
         // z only from CV (CTRA and NM are 2D)
         fused_position_.z() = x_cv(4);
-
+		// JN added
         if (v_ctra > 0.2 || sqrt(std::pow(x_cv(1), 2) + std::pow(x_cv(3), 2)) > 0.2) { 
             //when sufficient speed the CV model velocity have information of yaw
             // NM gives no information of orientation
-            double yaw_cv = atan2(x_cv(1), x_cv(3));
-            //if (abs(yaw_cv- yaw_ctra)<3/12)
-                //fused_yaw_ = mu_[0] * yaw_cv + mu_[1] * yaw_ctra;
-            //else 
+            double yaw_cv = atan2(x_cv(3), x_cv(1));
+            if (abs(yaw_cv - yaw_ctra)<3/12)
+                fused_yaw_ = mu_[0] * yaw_cv + mu_[1] * yaw_ctra;
+            else 
                fused_yaw_ = yaw_ctra;
 
         }
@@ -316,7 +491,7 @@ class IMMFilter {
 
             
 
-        // Velocity from CV filter and ctra.
+        // JN added: Velocity from CV filter and ctra.
         // When NM dominates (mu_[2] ≈ 1), the CV velocity naturally tends to
         // zero as the CV filter observes no motion.
         fused_velocity_.x() = mu_[0] * x_cv(1) + mu_[1] * v_ctra * cos(yaw_ctra);
@@ -330,27 +505,93 @@ class IMMFilter {
     // Accessors mirroring the CAFilter interface expected by the tracker node
     // -----------------------------------------------------------------------
 
-    /**
-     * @brief Returns a synthetic 9-element state vector compatible with existing
-     *        tracker code that reads state_filtered(0), (3), (6) for x,y,z and
-     *        (1), (4), (7) for vx, vy, vz.  Acceleration entries (2), (5), (8)
-     *        are set to zero since the CV model does not track acceleration.
-     */
-    Eigen::Matrix<double, 9, 1> GetState() const {
-        const auto& x_cv = cv_.GetState();
-        Eigen::Matrix<double, 9, 1> s;
-        s(0) = fused_position_.x();   // x pos (fused)
-        s(1) = x_cv(1);               // vx
-        s(2) = 0.0;                   // ax (not tracked by CV)
-        s(3) = fused_position_.y();   // y pos (fused)
-        s(4) = x_cv(3);               // vy
-        s(5) = 0.0;                   // ay (not tracked by CV)
-        s(6) = fused_position_.z();   // z pos (from CV)
-        s(7) = x_cv(5);               // vz
-        s(8) = 0.0;                   // az (not tracked by CV)
-        return s;
-    }
+	/**
+	 * @brief Returns a synthetic 9-element state vector compatible with existing
+	 *        tracker code that reads state_filtered(0), (3), (6) for x,y,z and
+	 *        (1), (4), (7) for vx, vy, vz.  Acceleration entries (2), (5), (8)
+	 *        are set to zero since the CV model does not track acceleration.
+	 */
+	Eigen::Matrix<double, 9, 1> GetState() const {
+		const auto& x_cv = cv_.GetState();
+		Eigen::Matrix<double, 9, 1> s;
+		s(0) = fused_position_.x();   // x pos (fused)
+		s(1) = x_cv(1);               // vx
+		s(2) = 0.0;                   // ax (not tracked by CV)
+		s(3) = fused_position_.y();   // y pos (fused)
+		s(4) = x_cv(3);               // vy
+		s(5) = 0.0;                   // ay (not tracked by CV)
+		s(6) = fused_position_.z();   // z pos (from CV)
+		s(7) = x_cv(5);               // vz
+		s(8) = 0.0;                   // az (not tracked by CV)
+		return s;
+	}
 
+	/**
+	 * @brief Returns a synthetic fused 6x6 covariance matrix 
+	 * using variance of fused yaw as orientation uncertainty 
+	 * JN added
+	 */
+	Eigen::Matrix<double, 6, 6> GetPoseCovariance() const {
+		const auto& x_ctra = ctra_.GetState();
+		const auto& x_cv = cv_.GetState();
+		// Covariance mixing
+		Eigen::Matrix<double, 6, 6> P_ctra = ctra_.GetCovariance();
+		Eigen::Matrix<double, 6, 6> P_cv = cv_.GetCovariance();
+		Eigen::Matrix<double, 2, 2> P_nm = nm_.GetCovariance();
+		Eigen::Matrix<double, 4, 6> J_CV_CTRA; // Jacobian for 
+		// function transforming cv-states to ctra-states
+		// d f_ctra(x_cv)/ d x_cv
+		// read _CV_CTRA cv expressed in ctra 
+		// Only "similar/shared" states not acc & yaw_rate.
+
+		// recall CTRA State vector (6D): [x, y, v, a, yaw, yaw_rate] 
+		// shortcut dont fuse to ctra-state-definition for linearization-point 
+		// use only cv-state
+		J_CV_CTRA.setZero();
+		J_CV_CTRA(0, 0) = 1; // pos_x
+		J_CV_CTRA(1, 2) = 1; // pos_y
+		double speed_cv = sqrt(x_cv(1) * x_cv(1) + x_cv(3) * x_cv(3));
+        if (abs(speed_cv) > 0.01) {
+            J_CV_CTRA(2, 1) = x_cv(1) / speed_cv; // vx -> speed
+            J_CV_CTRA(2, 3) = x_cv(3) / speed_cv; // vy -> speed
+            J_CV_CTRA(3, 1) = -x_cv(3) / (speed_cv * speed_cv); // d/dvx {yaw = atan(vy/vx)}
+            J_CV_CTRA(3, 3) = x_cv(1) / (speed_cv * speed_cv); // d/dvy {yaw = atan(vy/vx)}
+        }
+        else {
+            J_CV_CTRA(2, 1) = 1; // vx -> speed
+            J_CV_CTRA(2, 3) = 1; // vy -> speed
+            J_CV_CTRA(3, 1) = 10; // d/dvx {yaw = atan(vy/vx)}
+            J_CV_CTRA(3, 3) = 10; // d/dvy {yaw = atan(vy/vx)}
+        }
+
+		Eigen::Matrix<double, 4, 4> P4x4_cv_ctra = J_CV_CTRA * P_cv * J_CV_CTRA.transpose();
+		std::vector<int> ind_cv{ 1, 2, 4, 5 };
+        std::vector<int> ind_nm_ctra{ 1, 2 };
+		Eigen::Matrix<double, 6, 6>  P_cv_ctra = P_ctra;
+		P_cv_ctra(ind_cv, ind_cv) = P4x4_cv_ctra;
+		Eigen::Matrix<double, 6, 6>  P_nm_ctra = P_ctra;
+		P_nm_ctra(ind_nm_ctra, ind_nm_ctra) = P_nm;
+		P_nm_ctra(2, 2) = sigma2_v_uniform;
+		P_nm_ctra(3, 3) = sigma2_a_uniform;
+		P_nm_ctra(4, 4) = sigma2_yaw_uniform;
+		P_nm_ctra(5, 5) = sigma2_omega_uniform;
+		P_cv_ctra(3, 3) = sigma2_a_uniform;
+		P_cv_ctra(5, 5) = sigma2_omega_uniform;
+		P_ctra = mu_[0] * P_cv_ctra + mu_[1] * P_ctra +
+			mu_[2] * P_nm_ctra;
+		Eigen::Matrix<double, 6, 6> P;
+		std::vector<int> ind_xy{ 0, 1 };
+		P(ind_xy, ind_xy) = P_ctra(ind_xy, ind_xy);
+		P(2, 2) = P_cv(2, 2);
+		P(5, ind_xy) = P_ctra(4, ind_xy); // yaw to pos covariance
+		P(ind_xy, 5) = P_ctra(ind_xy, 4);// yaw to pos covariance
+		P(5, 5) = P_ctra(4, 4);
+		P(4, 4) = sigma2_yaw_uniform; // no information
+		P(3, 3) = sigma2_yaw_uniform; // no information
+		return P;
+
+
+	}
     /** @brief Fused 3D world-frame position. */
     Vec3 GetPosition3D() const { return fused_position_; }
 
@@ -363,16 +604,24 @@ class IMMFilter {
     /** @brief Probability of each model: [0]=CV, [1]=CTRA, [2]=NM. */
     const std::array<double, kNumModels>& GetModelProbabilities() const { return mu_; }
 
-    /** @brief CTRA speed estimate [m/s]. */
+    /** @brief CTRA speed estimate [m/s]. 
+	* JN added
+	*/
     double GetCTRASpeed() const { return ctra_.GetSpeed(); }
 
-    /** @brief CTRA heading estimate [rad]. */
+    /** @brief CTRA heading estimate [rad]. 
+	* JN added
+	*/
     double GetCTRAYaw() const { return ctra_.GetYaw(); }
 
-    /** @brief CTRA turn rate estimate [rad/s]. */
+    /** @brief CTRA turn rate estimate [rad/s].  
+	* JN added
+	*/
     double GetCTRAOmega() const { return ctra_.GetOmega(); }
 
-    /** @brief CTRA turn state covariance matrix */
+    /** @brief CTRA turn state covariance matrix  
+	* JN added
+	*/
     CTRAFilter::StateMatrix GetCTRACovariance() const { return ctra_.GetCovariance(); }
 
 
@@ -385,7 +634,9 @@ class IMMFilter {
     /** @brief Access underlying NM filter. */
     NMFilter& GetNMFilter() { return nm_; }
     
-    /** @brief Access underlying chi2 results */
+    /** @brief Access underlying chi2 results.  
+	* JN added
+	*/
     Vec3  GetAllChi2() { return chi2_; }
 
     Eigen::Matrix<double, 2, 2> GetnmStatecovariance() { return nm_.GetS(); };
@@ -436,10 +687,10 @@ class IMMFilter {
         y(0) = z(0) - x_cv(0);   // x residual
         y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
         y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
-        Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero(); // cv order [x xdot y ydot z zdot]
-        H(0,0) = 1;
-        H(1,2) = 1;
-        H(2,4) = 1;
+		Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero(); // cv order [x xdot y ydot z zdot]
+		H(0, 0) = 1;
+		H(1, 2) = 1;
+		H(2, 4) = 1;
 
         if (R3) {
             const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
@@ -462,7 +713,8 @@ class IMMFilter {
         }
     }
 
-    // ---- Compute log-likelihood for the CV filter given measurement z ----
+    // ---- Compute chi2 measure for the CV filter given measurement z ----
+	// JN added
     // When R3 is non-null the supplied matrix is used; otherwise the scalar
     // cv_measurement_variance_approx_ approximation is used.
     double ComputeCVChi2(const Eigen::Matrix<double, 3, 1>& z,
@@ -473,10 +725,11 @@ class IMMFilter {
         y(0) = z(0) - x_cv(0);   // x residual
         y(1) = z(1) - x_cv(2);   // y residual (CV stride=2, so y pos at index 2)
         y(2) = z(2) - x_cv(4);   // z residual (z pos at index 4)
-        Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero(); // cv order [x xdot y ydot z zdot]
-        H(0,0) = 1; // pos_x
-        H(1,2) = 1; // pos_y
-        H(2,4) = 1; // pos_z
+		Eigen::Matrix<double, 3, 6> H; // Hardcoded H assuming cv order [x xdot y ydot ...
+								   // and z as position [x,y,z]
+		H(0, 0) = 1; // pos_x
+		H(1, 2) = 1; // pos_y
+		H(2, 4) = 1; // pos_z
         if (R3) {
             const Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<double, 3, 3>::Identity();
             Eigen::Matrix<double, 3, 3> S = H * Pcv * H.transpose();
