@@ -15,6 +15,7 @@ std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_segment_end;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointStamped>> pub_goalPoint;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_desiredHeading;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_goalPointIsEnd;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_finalHeading;
 std::shared_ptr<avt_341::node::NodeProxy> n;
 avt_341::msg::Path global_path_input;
 avt_341::msg::Float64MultiArray veh_input;
@@ -25,7 +26,8 @@ double last_steer_angle = 0.0;
 avt_341::msg::Time last_steer_time;
 bool steer_initialized = false;
 
-float speedSetpoint, desiredHeading;
+float speedSetpoint, desiredHeading, finalHeading;
+bool finalHeadingSet;
 bool priorUseLeader, turningAround, goal_set;
 bool alwaysPubGoal;
 int priorIndex, priorPathLength;
@@ -64,6 +66,20 @@ void callback_speedSetpoint(avt_341::msg::Float64Ptr ss) {
 
 void callback_follower_status(avt_341::msg::FollowerStatusPtr follower_status) {
     follower_status_input = *follower_status;
+}
+
+void callback_goal_pose(avt_341::msg::PoseStampedPtr msg) {
+    // Extract yaw from the goal pose orientation and store as the desired final heading.
+    // The RViz "2D Goal Pose" tool sets the orientation to encode the user-specified heading.
+    avt_341::msg_tf::Quaternion q(
+        msg->pose.orientation.x,
+        msg->pose.orientation.y,
+        msg->pose.orientation.z,
+        msg->pose.orientation.w);
+    double roll, pitch, yaw;
+    avt_341::msg_tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    finalHeading = static_cast<float>(yaw);
+    finalHeadingSet = true;
 }
 
 void publishSteeringRate(double current_angle) {
@@ -238,6 +254,7 @@ int main(int argc, char* argv[]) {
     auto sub_veh = n->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
     auto sub_speed = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
     auto sub_follow = n->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
+    auto sub_goal_pose = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose",1,callback_goal_pose);
 
     pub_time_gap = n->create_publisher<avt_341::msg::Float64>("time_gap",10);
     pub_steering_angle = n->create_publisher<avt_341::msg::Float64>("steering_angle",10);
@@ -248,6 +265,7 @@ int main(int argc, char* argv[]) {
     pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1);
     pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1);
     pub_goalPointIsEnd = n->create_publisher<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
+    pub_finalHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_final_heading",1);
  
     n->get_parameter("~max_speed", max_speed, 5.0f);
     n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
@@ -268,6 +286,8 @@ int main(int argc, char* argv[]) {
     goal_set = false;
     turningAround = false;
     desiredHeading = 0.0f;
+    finalHeading = 0.0f;
+    finalHeadingSet = false;
 
     avt_341::node::Rate rosrate(20.0f);
     while (avt_341::node::ok()) {
@@ -284,6 +304,11 @@ int main(int argc, char* argv[]) {
             avt_341::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
             pub_desiredHeading->publish(ros_desiredHeading);
+            if (goal_is_end && finalHeadingSet) {
+                avt_341::msg::Float64 ros_finalHeading;
+                ros_finalHeading.data = finalHeading;
+                pub_finalHeading->publish(ros_finalHeading);
+            }
         }
         rosrate.sleep();
         n->spin_some();

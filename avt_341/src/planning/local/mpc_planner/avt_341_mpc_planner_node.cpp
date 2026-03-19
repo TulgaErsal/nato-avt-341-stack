@@ -98,6 +98,16 @@ void HeadingCallback(avt_341::msg::Float64Ptr heading_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
+void FinalHeadingCallback(avt_341::msg::Float64Ptr heading_msg)
+{
+    double theta = heading_msg->data;
+
+    jl_value_t *j_theta = jl_box_float64(theta);
+
+    jl_call1(j_set_final_heading, j_theta);
+    CATCH_JULIA_EXCEPTION;
+}
+
 void SpeedCallback(avt_341::msg::Float64Ptr speed_msg)
 {
     double speed = speed_msg->data;
@@ -304,6 +314,7 @@ void DeclareParameters()
     node->get_parameter("~adaptive", adaptive, false);
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
     node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
+    node->get_parameter("~w_final_heading", w_final_heading, 10.0);
     node->get_parameter("~publish_steering_commands", publish_steering_commands, true);
     node->get_parameter("~slope_threshold", slope_threshold, 0.2);
     node->get_parameter("~rms_threshold", rms_threshold, 0.05);
@@ -465,6 +476,8 @@ void InitialiseJuliaAPI()
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
+    j_set_final_heading = jl_get_function(mpc_module, "SetFinalHeading");
+    j_set_w_final_heading = jl_get_function(mpc_module, "SetWFinalHeading");
     j_set_goal_point_is_end_of_global_path = jl_get_function(mpc_module, "SetGoalPointIsEndOfGlobalPath");
 
     // [PARAM SETTERS]
@@ -519,6 +532,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
     jl_value_t *j_w_final_speed = jl_box_float64(w_final_speed);
+    jl_value_t *j_w_final_heading = jl_box_float64(w_final_heading);
     jl_value_t *j_front_angle_goal = jl_box_float64(front_angle_goal);
     jl_value_t *j_front_angle_obstacle = jl_box_float64(front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
@@ -551,6 +565,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
     jl_call1(j_set_w_final_speed, j_w_final_speed);
+    jl_call1(j_set_w_final_heading, j_w_final_heading);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
@@ -614,6 +629,11 @@ void UpdateCostFnWeights(const avt_341::node::RosParameterEvent & p) {
         jl_call1(j_set_w_final_speed, jl_box_float64(param_val.value()));
     }
 
+    if (auto param_val = p.get_value<double>("w_final_heading")) {
+        node->log_info("Setting w_final_heading = %.2f", param_val.value());
+        jl_call1(j_set_w_final_heading, jl_box_float64(param_val.value()));
+    }
+
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -634,6 +654,7 @@ int main(int argc, char *argv[])
     auto goal_pt_sub = node->create_subscription<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
     auto goal_end_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
     auto head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
+    auto final_head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
     auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
@@ -670,7 +691,8 @@ int main(int argc, char *argv[])
         "w_deviation_in_yaw",
         "w_yaw_accel",
         "w_traversability_cost",
-        "w_final_speed"
+        "w_final_speed",
+        "w_final_heading"
     }, UpdateCostFnWeights);
 
     avt_341::node::Rate node_rate(rate);

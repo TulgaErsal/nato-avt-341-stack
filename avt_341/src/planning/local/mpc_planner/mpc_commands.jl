@@ -24,6 +24,8 @@ global numSegCells = 0
 global count = 0
 global goal = [0. 0.]
 global desiredHeading = 0.0
+global finalHeading = 0.0
+global w_finalHeading = 0.0
 global speedSetpoint = 0.0
 global cmdSpeedSetpoint = 0.0
 global est_sink = 0.0
@@ -271,6 +273,14 @@ function SetHeading(theta::Float64)
 	global desiredHeading = theta
 end
 
+function SetFinalHeading(theta::Float64)
+	global finalHeading = theta
+end
+
+function SetWFinalHeading(w::Float64)
+	global w_finalHeading = w
+end
+
 function SetSpeedSetpoint(ss::Float64)
 	global speedSetpoint = ss
 	global cmdSpeedSetpoint = ss
@@ -358,6 +368,9 @@ function Setup()
 	global leader_speed
 	global beta
 	global distanceToGoalAlongPath
+	global finalHeadingCost
+	global final_heading_param
+	global final_heading_w_param
 	
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
 	global mpc_speed = Array{Float64}(undef, numColPoints+1, 1)
@@ -452,12 +465,22 @@ function Setup()
 	if useSegmentation
 		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumSeg for j=2:n.ocp.state.pts))
 	end
+
+	# Terminal heading cost: penalizes deviation from the desired heading at the end of
+	# the predicted trajectory. Activated only when near the end of the global path.
+	# The weight (final_heading_w_param) is set to zero when inactive.
+	@NLparameter(n.ocp.mdl, final_heading_param == 0.0)
+	@NLparameter(n.ocp.mdl, final_heading_w_param == 0.0)
+	finalHeadingCost = @NLexpression(n.ocp.mdl,
+		(cos(psi[end]) - cos(final_heading_param))^2 + (sin(psi[end]) - sin(final_heading_param))^2
+	)
+
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	end
 	n.s.ocp.save = false
 
@@ -517,6 +540,9 @@ function Plan()
 	global deviationFromDesiredFinalSpeed
 	global traversabilityCost
 	global distanceToGoalAlongPath
+	global finalHeadingCost
+	global final_heading_param
+	global final_heading_w_param
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -590,12 +616,22 @@ function Plan()
 		# Check if goal is within prediction horizon
 		goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
 		horizon_dist = speedSetpoint * predictionTimeHorizon
+
+		# Activate terminal heading cost when the goal is the end of the global path
+		# and the vehicle is close enough that the prediction horizon reaches it
+		JuMP.setValue(final_heading_param, finalHeading)
+		if goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
+			JuMP.setValue(final_heading_w_param, w_finalHeading)
+		else
+			JuMP.setValue(final_heading_w_param, 0.0)
+		end
+
 		# If user marked the goal point as the end of a global path, enable follower objective
 		if follower_status && goalPointIsEndOfGlobalPath
 			JuMP.setValue(leader_speed, cmdLeaderSpeed)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
 		else
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 		end
 
 		if n.s.mpc.shiftX0

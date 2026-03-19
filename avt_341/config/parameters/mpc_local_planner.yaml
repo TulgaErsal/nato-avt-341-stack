@@ -25,6 +25,7 @@ w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
 w_yaw_accel: 0.8 #  weight on yawAccel in the objective function
 w_traversability_cost: 0.1  #weight on traversability cost in the objective function
 w_final_speed: 200. # weight on deviationFromDesiredFinalSpeed in the objective function
+w_final_heading: 10. # weight on the terminal heading cost; active only near the end of the global path
 
 safety_margin: 0.0 # safety margin [m] around obstacles
 grid_resolution: 0.5 # resolution of the occupancy grid [m]
