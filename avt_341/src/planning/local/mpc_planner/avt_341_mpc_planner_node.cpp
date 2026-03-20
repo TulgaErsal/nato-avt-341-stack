@@ -55,13 +55,75 @@ void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
     recv_veh_input = true;
 }
 
+// Returns the squared distance from point (px, py) to the segment (ax,ay)-(bx,by).
+static double SegmentDistSq(double px, double py,
+                             double ax, double ay,
+                             double bx, double by)
+{
+    double dx = bx - ax, dy = by - ay;
+    double len_sq = dx * dx + dy * dy;
+    if (len_sq < 1e-12) {
+        double ex = px - ax, ey = py - ay;
+        return ex * ex + ey * ey;
+    }
+    double t = ((px - ax) * dx + (py - ay) * dy) / len_sq;
+    if (t < 0.0) t = 0.0;
+    if (t > 1.0) t = 1.0;
+    double cx = ax + t * dx - px;
+    double cy = ay + t * dy - py;
+    return cx * cx + cy * cy;
+}
+
+// Returns the subset of obstacles (x, y, size triples) whose center lies
+// within half_width of any segment of the path polyline.
+static std::vector<double> CullObstaclesToCorridor(
+    const std::vector<double>& obs,
+    const std::vector<std::pair<double, double>>& path,
+    double half_width)
+{
+    const double threshold_sq = half_width * half_width;
+    const int num_obs = static_cast<int>(obs.size()) / 3;
+    std::vector<double> culled;
+    culled.reserve(obs.size());
+
+    for (int i = 0; i < num_obs; i++) {
+        const double ox = obs[3 * i];
+        const double oy = obs[3 * i + 1];
+
+        bool in_corridor = false;
+        for (size_t j = 0; j + 1 < path.size(); j++) {
+            if (SegmentDistSq(ox, oy,
+                              path[j].first,     path[j].second,
+                              path[j+1].first,   path[j+1].second) <= threshold_sq) {
+                in_corridor = true;
+                break;
+            }
+        }
+
+        if (in_corridor) {
+            culled.push_back(ox);
+            culled.push_back(oy);
+            culled.push_back(obs[3 * i + 2]);
+        }
+    }
+    return culled;
+}
+
 void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
 {
     if (!is_initialized) return;
-    
+
+    const std::vector<double>* obs_to_use = &obs_msg->data;
+    std::vector<double> culled;
+
+    if (use_corridor_culling && mpc_path_cache.size() >= 2) {
+        culled = CullObstaclesToCorridor(obs_msg->data, mpc_path_cache, corridor_half_width);
+        obs_to_use = &culled;
+    }
+
     jl_value_t* obs_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    double* obs_arr = const_cast<double*>(&obs_msg->data[0]);
-    jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_msg->data.size(), 0);
+    double* obs_arr = const_cast<double*>(obs_to_use->data());
+    jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_to_use->size(), 0);
 
     jl_call1(j_set_obstacles, (jl_value_t*)obs_arg);
     CATCH_JULIA_EXCEPTION;
@@ -323,6 +385,8 @@ void DeclareParameters()
     node->get_parameter("~sa_max", sa_max, 0.485);
     node->get_parameter("~sr_min", sr_min, -0.523);
     node->get_parameter("~sr_max", sr_max, 0.523);
+    node->get_parameter("~use_corridor_culling", use_corridor_culling, true);
+    node->get_parameter("~corridor_half_width", corridor_half_width, 20.0);
 
 }
 
@@ -707,8 +771,13 @@ int main(int argc, char *argv[])
             jl_call0(j_plan);
             CATCH_JULIA_EXCEPTION;
 
-            // Publish MPC outputs
-            path_pub->publish(GetMPCPath());
+            // Publish MPC outputs and cache path for obstacle corridor culling
+            auto mpc_path_msg = GetMPCPath();
+            mpc_path_cache.clear();
+            for (const auto& pose : mpc_path_msg.poses) {
+                mpc_path_cache.emplace_back(pose.pose.position.x, pose.pose.position.y);
+            }
+            path_pub->publish(mpc_path_msg);
             speed_pub->publish(GetMPCSpeed());
             if (publish_steering_commands) {
                 steer_pub->publish(GetMPCSteering());

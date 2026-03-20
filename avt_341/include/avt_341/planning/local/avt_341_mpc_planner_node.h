@@ -97,6 +97,8 @@ double sa_min;
 double sa_max;
 double sr_min;
 double sr_max;
+bool use_corridor_culling;
+double corridor_half_width;
 // --------------
 
 // Globals
@@ -105,6 +107,10 @@ double sr_max;
 bool recv_veh_input = false;
 bool recv_seg_input = false;
 bool is_initialized = false;
+
+// Cached MPC path used for obstacle corridor culling (x, y pairs).
+// Populated each planning cycle from GetMPCPath().
+std::vector<std::pair<double, double>> mpc_path_cache;
 // --------------
 
 // Julia modules
