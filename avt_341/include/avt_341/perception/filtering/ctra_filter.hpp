@@ -281,6 +281,7 @@ class CTRAFilter {
         // Swap to Joseph form for numeric stability
         auto I_KH = (StateMatrix::Identity() - K * H_);  
         P_ = (I_KH * P_) * I_KH.transpose() + (K * R) * K.transpose();
+        P_ = (P_ + P_.transpose()) / 2; // ensure symmetry
         //P_ = (StateMatrix::Identity() - K * H_) * P_;
 		if (x_(2) < 0) {
 			x_(2) = - x_(2);
@@ -296,7 +297,7 @@ class CTRAFilter {
         const double dt3 = dt2 * dt_;
         const double dt4 = dt3 * dt_;
         const double s2 = sigma * sigma;
-        const double s2o = sigma * sigma*400;
+        const double s2o = sigma * sigma*1600;
         // Simplified diagonal Q: {x,y} driven by position noise, {v,a} by
         // acceleration noise, {yaw,omega} by angular noise.
         Q_(0, 0) = 0.25 * dt4 * s2;

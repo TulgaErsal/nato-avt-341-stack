@@ -1,7 +1,7 @@
 camera_frame: "mrzr2/front_camera_rdf"
 filters_downsampling_leaf_size: 0.3
-filters_passthrough_min: 3.0
-filters_passthrough_max: 30.0
+filters_passthrough_min: 1.0
+filters_passthrough_max: 40.0
 filters_clustering_tolerance: 0.6
 filters_clustering_size_minimum: 50
 filters_clustering_size_maximum: 500
@@ -10,8 +10,10 @@ filters_ground_threshold: 0.2
 filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
-filters_kalman_measurement: 1.0
-tracker_target_class: 0
+filters_kalman_measurement: 0.5
+filters_use_manual_roi: True
+filters_manual_roi_size: [5.0, 5.0, 5.0]
+tracker_target_class: mrzr4
 tracker_timeout: 5.0
 sync_enable: true
 sync_use_callback: false

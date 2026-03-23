@@ -63,8 +63,8 @@ class NMFilter {
              const double process_variance,
              const double measurement_variance) {
         x_.setZero();
-        P_ = StateMatrix::Identity()*100;
-        Q_ = StateMatrix::Identity() * (process_variance * process_variance);
+        P_ = StateMatrix::Identity()*10000;
+        Q_ = StateMatrix::Identity() * (process_variance * process_variance*100);
         R_ = MeasurementCovariance::Identity() * (measurement_variance * measurement_variance);
     }
 

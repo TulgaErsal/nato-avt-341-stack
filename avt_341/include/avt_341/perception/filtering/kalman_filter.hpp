@@ -113,6 +113,8 @@ class KalmanFilter {
         // literature, however, it is numerically stable.
         auto I_KH = I_ - K_ * H_;
         P_ = (I_KH * P_) * I_KH.transpose() + (K_ * R_) * K_.transpose();
+        P_ = (P_ + P_.transpose()) / 2; // ensure symmetry
+
     }
 
     /**
