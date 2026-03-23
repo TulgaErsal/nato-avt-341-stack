@@ -27,9 +27,12 @@ avt_341::msg::Time last_steer_time;
 bool steer_initialized = false;
 
 float speedSetpoint, desiredHeading, finalHeading;
+float autoFinalHeading;
 bool finalHeadingSet;
+bool autoFinalHeadingSet;
 bool priorUseLeader, turningAround, goal_set;
 bool alwaysPubGoal;
+bool useAutoFinalHeading;
 int priorIndex, priorPathLength;
 avt_341::utils::vec2 goal;
 bool goal_is_end = false;
@@ -41,6 +44,14 @@ bool use_goal_lookahead_maxspeed;
 
 void callback_global_path(avt_341::msg::PathPtr global_path) {
     global_path_input = *global_path;
+
+    // Auto-compute final heading from the direction of the last two waypoints.
+    if (global_path->poses.size() >= 2) {
+        const auto& p1 = global_path->poses[global_path->poses.size() - 2].pose.position;
+        const auto& p2 = global_path->poses[global_path->poses.size() - 1].pose.position;
+        autoFinalHeading = static_cast<float>(std::atan2(p2.y - p1.y, p2.x - p1.x));
+        autoFinalHeadingSet = true;
+    }
 
     avt_341::msg::String scenario_msg;
     scenario_msg.data = "path_update";
@@ -274,6 +285,7 @@ int main(int argc, char* argv[]) {
     n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
 	n->get_parameter("~goal_lookahead_time_padding", goal_lookahead_padding, 0.1f);
 	n->get_parameter("~use_goal_lookahead_maxspeed", use_goal_lookahead_maxspeed, false);
+    n->get_parameter("~use_auto_final_heading", useAutoFinalHeading, true);
 
     // Initialize variables
     init_time = n->get_stamp();
@@ -288,6 +300,8 @@ int main(int argc, char* argv[]) {
     desiredHeading = 0.0f;
     finalHeading = 0.0f;
     finalHeadingSet = false;
+    autoFinalHeading = 0.0f;
+    autoFinalHeadingSet = false;
 
     avt_341::node::Rate rosrate(20.0f);
     while (avt_341::node::ok()) {
@@ -304,10 +318,21 @@ int main(int argc, char* argv[]) {
             avt_341::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
             pub_desiredHeading->publish(ros_desiredHeading);
-            if (goal_is_end && finalHeadingSet) {
-                avt_341::msg::Float64 ros_finalHeading;
-                ros_finalHeading.data = finalHeading;
-                pub_finalHeading->publish(ros_finalHeading);
+            if (goal_is_end) {
+                float headingToPublish = 0.0f;
+                bool shouldPublish = false;
+                if (finalHeadingSet) {
+                    headingToPublish = finalHeading;
+                    shouldPublish = true;
+                } else if (useAutoFinalHeading && autoFinalHeadingSet) {
+                    headingToPublish = autoFinalHeading;
+                    shouldPublish = true;
+                }
+                if (shouldPublish) {
+                    avt_341::msg::Float64 ros_finalHeading;
+                    ros_finalHeading.data = headingToPublish;
+                    pub_finalHeading->publish(ros_finalHeading);
+                }
             }
         }
         rosrate.sleep();
