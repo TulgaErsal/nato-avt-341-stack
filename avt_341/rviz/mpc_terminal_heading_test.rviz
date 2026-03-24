@@ -6,12 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /OccupancyGrid1
-        - /GlobalPath1
-        - /LocalPath1
-        - /VehiclePose1
         - /ObstacleMarkers1
+        - /VehiclePose1
+        - /PointStamped1
       Splitter Ratio: 0.3799999952316284
-    Tree Height: 188
+    Tree Height: 753
   - Class: rviz_common/Tool Properties
     Expanded:
       - /2D Goal Pose1
@@ -124,28 +123,39 @@ Visualization Manager:
       Enabled: true
       Name: ObstacleMarkers
       Namespaces:
-        {}
+        "": true
       Topic:
         Depth: 5
         Durability Policy: Volatile
-        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /avt_341/obstacle_markers
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
+      Enabled: true
       Name: CulledObstacleMarkers
       Namespaces:
-        {}
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/culled_obstacle_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: VehicleSpeed
+      Namespaces:
+        vehicle_speed: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/culled_obstacle_markers
-      Value: false
+        Value: /avt_341/vehicle_speed_text
+      Value: true
     - Angle Tolerance: 0.10000000149011612
       Class: rviz_default_plugins/Odometry
       Covariance:
@@ -184,6 +194,21 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /avt_341/odometry
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/PointStamped
+      Color: 204; 41; 204
+      Enabled: true
+      History Length: 1
+      Name: PointStamped
+      Radius: 1
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/mpc_goalPoint
       Value: true
   Enabled: true
   Global Options:
@@ -236,14 +261,14 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: true
-  Height: 812
+  Height: 1255
   Hide Left Dock: true
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001e7000002d0fc0200000003fb000000100044006900730070006c006100790073000000003e00000148000000ca00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073000000018c000000a50000005c00fffffffb0000000a005600690065007700730000000237000000d7000000a600ffffff00000556000002d000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000001e70000048bfc0200000003fb000000100044006900730070006c006100790073000000003e0000037d000000ca00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000003c10000005c0000005c00fffffffb0000000a005600690065007700730000000423000000a6000000a600ffffff000008ba0000048b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Tool Properties:
     collapsed: true
   Views:
     collapsed: true
-  Width: 1366
+  Width: 2234
   X: 50
   Y: 50

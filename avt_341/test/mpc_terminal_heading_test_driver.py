@@ -27,6 +27,7 @@ from nav_msgs.msg import OccupancyGrid, Odometry
 from geometry_msgs.msg import Quaternion
 from ackermann_msgs.msg import AckermannDriveStamped
 from std_msgs.msg import Float64, Int32
+from visualization_msgs.msg import Marker
 
 
 def yaw_to_quaternion(yaw: float) -> Quaternion:
@@ -119,6 +120,7 @@ class MPCTerminalHeadingTestDriver(Node):
         self._grid_pub = self.create_publisher(OccupancyGrid, 'avt_341/occupancy_grid', 1)
         self._grid_low_res_pub = self.create_publisher(OccupancyGrid, 'avt_341/occupancy_grid_low_res', 1)
         self._nav_pub = self.create_publisher(Int32, 'avt_341/nav_command_state', 1)
+        self._speed_text_pub = self.create_publisher(Marker, 'avt_341/vehicle_speed_text', 1)
 
         # Subscriber
         self._drive_sub = self.create_subscription(
@@ -176,6 +178,7 @@ class MPCTerminalHeadingTestDriver(Node):
 
         self._publish_odometry()
         self._publish_steering()
+        self._publish_speed_text()
 
     # ------------------------------------------------------------------
     def _publish_odometry(self):
@@ -196,6 +199,25 @@ class MPCTerminalHeadingTestDriver(Node):
         msg = Float64()
         msg.data = self._sa
         self._steer_pub.publish(msg)
+
+    def _publish_speed_text(self):
+        msg = Marker()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        msg.ns = 'vehicle_speed'
+        msg.id = 0
+        msg.type = Marker.TEXT_VIEW_FACING
+        msg.action = Marker.ADD
+        msg.pose.position.x = self._x
+        msg.pose.position.y = self._y
+        msg.pose.position.z = 2.0
+        msg.scale.z = 1.5          # text height [m]
+        msg.color.r = 1.0
+        msg.color.g = 1.0
+        msg.color.b = 1.0
+        msg.color.a = 1.0
+        msg.text = f'{self._ux:.1f} m/s'
+        self._speed_text_pub.publish(msg)
 
     def _generate_obstacle_cells(self):
         """Return a set of (col, row) grid cells occupied by random obstacles.
