@@ -136,7 +136,7 @@ void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
             avt_341::msg::Marker m;
             m.header.frame_id = "map";
             m.header.stamp = node->get_stamp();
-            m.id = i;
+            m.id = i + 1; // 0 is reserved for the DELETEALL marker
             m.type = avt_341::msg::Marker::CUBE;
             m.action = avt_341::msg::Marker::ADD;
             m.pose.position.x = (*obs_to_use)[3 * i];
