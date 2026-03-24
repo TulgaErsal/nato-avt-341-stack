@@ -249,7 +249,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
             obs_marker.scale.z = obs_size;
             obs_marker.color.a = 1.0;
             obs_marker.color.r = 1.0;
-            obs_marker.color.g = 0.0;
+            obs_marker.color.g = 0.5;
             obs_marker.color.b = 0.0;
             obs_marker.pose.position.x = x;
             obs_marker.pose.position.y = y;

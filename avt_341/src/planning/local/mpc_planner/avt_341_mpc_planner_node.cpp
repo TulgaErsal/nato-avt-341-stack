@@ -146,7 +146,7 @@ void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
             m.scale.y = (*obs_to_use)[3 * i + 2];
             m.scale.z = (*obs_to_use)[3 * i + 2];
             m.color.r = 1.0f;
-            m.color.g = 0.5f;
+            m.color.g = 0.0f;
             m.color.b = 0.0f;
             m.color.a = 1.0f;
             marker_array.markers.push_back(m);
