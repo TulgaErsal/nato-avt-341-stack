@@ -43,6 +43,7 @@ bool is_follower = false;
 bool verbose_gp_log = false;
 bool shutdown_condition = false;
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PoseStamped>> goal_pose_pub;
 bool use_segmentation = false;
 avt_341::msg::Int32 state;
 int current_waypoint = 0;
@@ -99,6 +100,14 @@ void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
                 current_waypoints.poses.size(),
                 current_waypoints.poses[0].pose.position.x,
                 current_waypoints.poses[0].pose.position.y);
+  }
+  // Publish the terminal pose as goal_pose so that the goal_point_processor
+  // can extract the desired final heading from the mission point orientation.
+  if (goal_pose_pub && !current_waypoints.poses.empty()) {
+    avt_341::msg::PoseStamped terminal_pose = current_waypoints.poses.back();
+    terminal_pose.header.stamp = n->get_stamp();
+    terminal_pose.header.frame_id = "map";
+    goal_pose_pub->publish(terminal_pose);
   }
 }
 
@@ -245,6 +254,7 @@ int main(int argc, char* argv[])
   auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
   auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
   auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
+  goal_pose_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = avt_341::node::OccupancyGridSubscriber(n, map_topic, 10, MapCallback);
