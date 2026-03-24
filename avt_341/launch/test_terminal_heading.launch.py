@@ -18,9 +18,20 @@ Usage
 1. Build and source the workspace.
 2. Launch:
        ros2 launch avt_341 test_terminal_heading.launch.py
+   Optionally add random obstacles:
+       ros2 launch avt_341 test_terminal_heading.launch.py \
+           num_obstacles:=20 obstacle_min_size_m:=1.0 obstacle_max_size_m:=4.0 obstacle_seed:=42
 3. In RViz, use the "2D Goal Pose" tool (press G) to click a goal position and
    drag to set the desired final heading.  The vehicle will drive to the goal
    and arrive aligned with the heading you specified.
+
+Obstacle parameters
+-------------------
+  num_obstacles       Number of randomly placed square obstacles (default: 0).
+  obstacle_min_size_m Minimum obstacle side length in metres (default: 1.0).
+  obstacle_max_size_m Maximum obstacle side length in metres (default: 3.0).
+  obstacle_seed       Integer RNG seed for a reproducible layout.  Set to -1
+                      (the default) for a non-deterministic seed.
 
 Note: the launch file automatically passes ~/julia/julia-1.5.4/lib to the
 MPC planner process via LD_LIBRARY_PATH.  Adjust JULIA_LIB_PATH at the top
@@ -31,6 +42,8 @@ import os
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 JULIA_LIB_PATH = os.path.expanduser('~/julia/julia-1.5.4/lib')
@@ -57,7 +70,16 @@ def generate_launch_description():
         os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'global_planner.yaml'))
     rviz_config = os.path.join(avt_341_dir, 'rviz', 'mpc_terminal_heading_test.rviz')
 
+    num_obstacles_arg       = DeclareLaunchArgument('num_obstacles',       default_value='0',    description='Number of randomly placed obstacles')
+    obstacle_min_size_arg   = DeclareLaunchArgument('obstacle_min_size_m', default_value='1.0',  description='Minimum obstacle side length [m]')
+    obstacle_max_size_arg   = DeclareLaunchArgument('obstacle_max_size_m', default_value='3.0',  description='Maximum obstacle side length [m]')
+    obstacle_seed_arg       = DeclareLaunchArgument('obstacle_seed',       default_value='-1',   description='RNG seed (-1 = non-deterministic)')
+
     return LaunchDescription([
+        num_obstacles_arg,
+        obstacle_min_size_arg,
+        obstacle_max_size_arg,
+        obstacle_seed_arg,
 
         # Static transform: map → odom (identity)
         Node(
@@ -67,7 +89,13 @@ def generate_launch_description():
             arguments=['0', '0', '0', '0', '0', '0', '1', 'map', 'odom']
         ),
 
-        # Test driver: simulates vehicle motion and publishes occupancy grid
+        # Test driver: simulates vehicle motion and publishes occupancy grid.
+        # Obstacle parameters:
+        #   num_obstacles       -- number of randomly placed square obstacles (default 0)
+        #   obstacle_min_size_m -- minimum obstacle side length in metres (default 1.0)
+        #   obstacle_max_size_m -- maximum obstacle side length in metres (default 3.0)
+        #   obstacle_seed       -- RNG seed for reproducible layouts; set to -1 for
+        #                          a non-deterministic seed (default -1)
         Node(
             package='avt_341',
             executable='mpc_terminal_heading_test_driver.py',
@@ -80,6 +108,10 @@ def generate_launch_description():
                 'start_x': 10.0,
                 'start_y': 10.0,
                 'start_yaw_deg': 0.0,
+                'num_obstacles':       LaunchConfiguration('num_obstacles'),
+                'obstacle_min_size_m': LaunchConfiguration('obstacle_min_size_m'),
+                'obstacle_max_size_m': LaunchConfiguration('obstacle_max_size_m'),
+                'obstacle_seed':       LaunchConfiguration('obstacle_seed'),
             }]
         ),
 

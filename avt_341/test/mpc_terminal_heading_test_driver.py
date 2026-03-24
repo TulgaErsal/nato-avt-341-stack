@@ -84,6 +84,11 @@ class MPCTerminalHeadingTestDriver(Node):
         self.declare_parameter('start_y', 10.0)
         self.declare_parameter('start_yaw_deg', 0.0)
         self.declare_parameter('sim_rate_hz', 50.0)
+        self.declare_parameter('num_obstacles', 0)
+        self.declare_parameter('obstacle_min_size_m', 1.0)
+        self.declare_parameter('obstacle_max_size_m', 3.0)
+        # obstacle_seed < 0 means use a non-deterministic seed
+        self.declare_parameter('obstacle_seed', -1)
 
         # 3DOF dynamic bicycle model state (matches MPC internal state vector)
         #   x, y  : CG position [m]
@@ -101,6 +106,9 @@ class MPCTerminalHeadingTestDriver(Node):
         self._ux  = 0.0
         self._ax  = 0.0
         self._sa  = 0.0
+
+        # Generate random obstacles once at startup.
+        self._obstacle_cells = self._generate_obstacle_cells()
 
         # Publishers
         self._odom_pub = self.create_publisher(Odometry, 'avt_341/odometry', 1)
@@ -189,13 +197,75 @@ class MPCTerminalHeadingTestDriver(Node):
         msg.data = self._sa
         self._steer_pub.publish(msg)
 
+    def _generate_obstacle_cells(self):
+        """Return a set of (col, row) grid cells occupied by random obstacles.
+
+        Obstacles are square blobs placed randomly within the map.  A keep-out
+        radius of 5 m around the vehicle start position is enforced so the
+        vehicle is never spawned inside an obstacle.
+        """
+        import random
+
+        n         = self.get_parameter('num_obstacles').value
+        min_size  = self.get_parameter('obstacle_min_size_m').value
+        max_size  = self.get_parameter('obstacle_max_size_m').value
+        seed      = self.get_parameter('obstacle_seed').value
+        width_m   = self.get_parameter('map_width_m').value
+        height_m  = self.get_parameter('map_height_m').value
+        res       = self.get_parameter('map_resolution_m').value
+        cols      = int(width_m  / res)
+        rows      = int(height_m / res)
+
+        if n <= 0:
+            return set()
+
+        rng = random.Random(seed if seed >= 0 else None)
+
+        start_x = self.get_parameter('start_x').value
+        start_y = self.get_parameter('start_y').value
+        keepout_sq = 5.0 ** 2   # 5 m keep-out radius around vehicle start
+
+        cells = set()
+        placed = 0
+        max_attempts = n * 20   # give up after this many misses
+        attempts = 0
+        while placed < n and attempts < max_attempts:
+            attempts += 1
+            cx = rng.uniform(0.0, width_m)
+            cy = rng.uniform(0.0, height_m)
+            # Reject if too close to the vehicle start position.
+            dx, dy = cx - start_x, cy - start_y
+            if dx * dx + dy * dy < keepout_sq:
+                continue
+            size = rng.uniform(min_size, max_size)
+            half = size / 2.0
+            c0 = max(0, int((cx - half) / res))
+            c1 = min(cols - 1, int((cx + half) / res))
+            r0 = max(0, int((cy - half) / res))
+            r1 = min(rows - 1, int((cy + half) / res))
+            for r in range(r0, r1 + 1):
+                for c in range(c0, c1 + 1):
+                    cells.add((c, r))
+            placed += 1
+
+        self.get_logger().info(
+            f'Generated {placed} random obstacle(s) '
+            f'(seed={seed if seed >= 0 else "random"}, '
+            f'size=[{min_size:.1f}, {max_size:.1f}] m).')
+        return cells
+
     def _publish_grid(self):
-        """Publish an empty occupancy grid covering the test area."""
+        """Publish an occupancy grid covering the test area with random obstacles."""
         width_m  = self.get_parameter('map_width_m').value
         height_m = self.get_parameter('map_height_m').value
         res      = self.get_parameter('map_resolution_m').value
         cols = int(width_m / res)
         rows = int(height_m / res)
+
+        data = [0] * (cols * rows)
+        for (c, r) in self._obstacle_cells:
+            if 0 <= c < cols and 0 <= r < rows:
+                data[r * cols + c] = 100
 
         msg = OccupancyGrid()
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -205,7 +275,7 @@ class MPCTerminalHeadingTestDriver(Node):
         msg.info.height = rows
         msg.info.origin.position.x = 0.0
         msg.info.origin.position.y = 0.0
-        msg.data = [0] * (cols * rows)
+        msg.data = data
         self._grid_pub.publish(msg)
         self._grid_low_res_pub.publish(msg)
 
