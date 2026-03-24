@@ -121,6 +121,39 @@ void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
         obs_to_use = &culled;
     }
 
+    if (visualize_culled_obstacles && culled_obs_marker_pub) {
+        avt_341::msg::MarkerArray marker_array;
+        // Delete all previous markers.
+        avt_341::msg::Marker clear_marker;
+        clear_marker.header.frame_id = "map";
+        clear_marker.header.stamp = node->get_stamp();
+        clear_marker.id = 0;
+        clear_marker.action = avt_341::msg::Marker::DELETEALL;
+        marker_array.markers.push_back(clear_marker);
+        // Add one cube per obstacle cluster in the culled set.
+        const int num_obs = static_cast<int>(obs_to_use->size()) / 3;
+        for (int i = 0; i < num_obs; i++) {
+            avt_341::msg::Marker m;
+            m.header.frame_id = "map";
+            m.header.stamp = node->get_stamp();
+            m.id = i;
+            m.type = avt_341::msg::Marker::CUBE;
+            m.action = avt_341::msg::Marker::ADD;
+            m.pose.position.x = (*obs_to_use)[3 * i];
+            m.pose.position.y = (*obs_to_use)[3 * i + 1];
+            m.pose.position.z = 0.0;
+            m.scale.x = (*obs_to_use)[3 * i + 2];
+            m.scale.y = (*obs_to_use)[3 * i + 2];
+            m.scale.z = (*obs_to_use)[3 * i + 2];
+            m.color.r = 1.0f;
+            m.color.g = 0.5f;
+            m.color.b = 0.0f;
+            m.color.a = 1.0f;
+            marker_array.markers.push_back(m);
+        }
+        culled_obs_marker_pub->publish(marker_array);
+    }
+
     jl_value_t* obs_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
     double* obs_arr = const_cast<double*>(obs_to_use->data());
     jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_to_use->size(), 0);
@@ -387,6 +420,7 @@ void DeclareParameters()
     node->get_parameter("~sr_max", sr_max, 0.523);
     node->get_parameter("~use_corridor_culling", use_corridor_culling, true);
     node->get_parameter("~corridor_half_width", corridor_half_width, 20.0);
+    node->get_parameter("~visualize_culled_obstacles", visualize_culled_obstacles, false);
 
 }
 
@@ -740,6 +774,9 @@ int main(int argc, char *argv[])
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
     auto slope_limited_pub = node->create_publisher<avt_341::msg::Bool>("avt_341/mpc_slope_limited", 1);
+    if (visualize_culled_obstacles) {
+        culled_obs_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/culled_obstacle_markers", 1);
+    }
 
     node->log_info("Julia API initialized. Running main loop.");
 

@@ -133,6 +133,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /avt_341/obstacle_markers
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: CulledObstacleMarkers
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/culled_obstacle_markers
+      Value: false
     - Angle Tolerance: 0.10000000149011612
       Class: rviz_default_plugins/Odometry
       Covariance:

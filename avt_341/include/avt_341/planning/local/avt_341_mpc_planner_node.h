@@ -99,6 +99,7 @@ double sr_min;
 double sr_max;
 bool use_corridor_culling;
 double corridor_half_width;
+bool visualize_culled_obstacles;
 // --------------
 
 // Globals
@@ -111,6 +112,10 @@ bool is_initialized = false;
 // Cached MPC path used for obstacle corridor culling (x, y pairs).
 // Populated each planning cycle from GetMPCPath().
 std::vector<std::pair<double, double>> mpc_path_cache;
+
+// Optional publisher for the corridor-culled obstacle MarkerArray.
+// Null when visualize_culled_obstacles is false.
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> culled_obs_marker_pub;
 // --------------
 
 // Julia modules
