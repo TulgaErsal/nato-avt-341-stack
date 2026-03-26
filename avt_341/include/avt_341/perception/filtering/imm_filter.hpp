@@ -360,7 +360,7 @@ class IMMFilter {
 		//reuse Pcv for mix as all need for it was above
 		P_cv = ( 10.0 * mu_mix[0][0] * P_cv +mu_mix[1][0] * P_ctra_cv + mu_mix[2][0] * P_nm_cv + 12.0*M_cv) / 12.0;
 
-        // cv_.SetCovariance(P_cv); // Added to cv
+        cv_.SetCovariance(P_cv);
 		
 		// calculate M_ctra
 		Eigen::Matrix<double, 6, 1> x_estimate_ctra;
@@ -582,10 +582,8 @@ class IMMFilter {
         }
 
 		Eigen::Matrix<double, 4, 4> P4x4_cv_ctra = J_CV_CTRA * P_cv * J_CV_CTRA.transpose();
-        //std::vector<int> ind_cv{ 1, 2, 4, 5 };		
-        std::vector<int> ind_cv{ 0, 1, 3, 4 };
-        //std::vector<int> ind_nm_ctra{ 1, 2 };
-        std::vector<int> ind_nm_ctra{ 0, 1 };
+        std::vector<int> ind_cv{ 0, 1, 2, 4 };      // CTRA {x, y, v, yaw}
+        std::vector<int> ind_nm_ctra{ 0, 1 };        // CTRA {x, y}
         Eigen::Matrix<double, 6, 6>  P_cv_ctra = P_ctra;
 		P_cv_ctra(ind_cv, ind_cv) = P4x4_cv_ctra;
 		Eigen::Matrix<double, 6, 6>  P_nm_ctra = P_ctra;

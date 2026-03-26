@@ -128,6 +128,12 @@ void ObjectTrackingNode::GetParameters() {
     filter_measurement_variance_ =
         get_parameter("filters_kalman_measurement").as_double();
 
+    declare_parameter("camera_target_height", 5.0);
+    camera_target_height_ = get_parameter("camera_target_height").as_double();
+
+    declare_parameter("camera_bbox_pixel_sigma", 4.0);
+    camera_bbox_pixel_sigma_ = get_parameter("camera_bbox_pixel_sigma").as_double();
+
     declare_parameter("filters_imm_cv_init_prob", 0.33);
     imm_cv_init_prob_ = get_parameter("filters_imm_cv_init_prob").as_double();
 
@@ -150,8 +156,7 @@ void ObjectTrackingNode::GetParameters() {
     use_mission_manager_ = get_parameter("tracker_use_mission_manager").as_bool();
 
     declare_parameter("tracker_target_class", "mrzr4");
-    // autostart_target_class_ = get_parameter("tracker_target_class").as_string();
-    autostart_target_class_ = "mrzr4";
+    autostart_target_class_ = get_parameter("tracker_target_class").as_string();
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
 
@@ -847,7 +852,7 @@ geometry_msgs::msg::TransformStamped ObjectTrackingNode::TransformPointCloud(
 Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
     const vision_msgs::msg::Detection2DArray detections_message,
     const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
-    double car_size_z = 5;
+    const double car_size_z = camera_target_height_;
     double target_z_f = (double)camera_info_message->k[4] / (double)detections_message.detections[0].bbox.size_y *
         car_size_z / 2;
     double target_x_r = target_z_f / (double)camera_info_message->k[0] *
@@ -858,14 +863,14 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
     Eigen::Vector3d camera_estimated_centroid_rdf(target_x_r, target_y_d, target_z_f);
 	
 	// covariance jacobians
-	double s2_pixel = 4*4; // sigma2 uncertainty variance of bounding box hardcoded for now
+	const double s2_pixel = camera_bbox_pixel_sigma_ * camera_bbox_pixel_sigma_;
 	double s2_forwards = (double)camera_info_message->k[4] / pow((double)detections_message.detections[0].bbox.size_y,2) *
         car_size_z / 2 * s2_pixel * (double)camera_info_message->k[4] /
 			pow((double)detections_message.detections[0].bbox.size_y, 2) *
         car_size_z / 2;
 	double s2_right = target_z_f / (double)camera_info_message->k[0] * s2_pixel *
 		target_z_f / (double)camera_info_message->k[0];
-	double s2_down = target_z_f / (double)camera_info_message->k[0] * s2_pixel *
+	double s2_down = target_z_f / (double)camera_info_message->k[4] * s2_pixel *
 		target_z_f / (double)camera_info_message->k[4];
 
 	R_rdf_(0, 0) = std::max(filter_measurement_variance_,s2_right);
@@ -874,7 +879,7 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
     RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size" << detections_message.detections[0].bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
         << "[x, y ,z] = [ " << target_x_r
         << ", " << target_y_d
-        << ", =" << target_y_d << "]" << '\n');
+        << ", " << target_z_f << "]" << '\n');
     return camera_estimated_centroid_rdf;
 }
 

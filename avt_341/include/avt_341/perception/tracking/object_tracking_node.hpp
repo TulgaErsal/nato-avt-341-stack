@@ -411,6 +411,18 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     double filter_measurement_variance_;
 
+    /** @brief Known height of the target vehicle [m], used for camera-based
+     *         range estimation from bounding-box pixel height. */
+    double camera_target_height_;
+
+    /** @brief Standard deviation of the bounding-box pixel measurement [px],
+     *         used to propagate pixel uncertainty into 3D position covariance. */
+    double camera_bbox_pixel_sigma_;
+
+    /** @brief Camera measurement covariance in the right-down-forward frame,
+     *         computed each tick from bbox pixel uncertainty and camera intrinsics. */
+    Eigen::Matrix3d R_rdf_ = Eigen::Matrix3d::Identity();
+
     /** @brief IMM: initial probability for the CV model. */
     double imm_cv_init_prob_;
 
