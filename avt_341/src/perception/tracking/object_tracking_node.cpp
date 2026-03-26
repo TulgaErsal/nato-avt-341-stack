@@ -1348,13 +1348,19 @@ void ObjectTrackingNode::PublishOdometry() {
             bounding_box_centroid_filtered_.z();
         tf2::Quaternion q;
         q.setRPY(0, 0, filter_->GetYaw());
-        Eigen::Matrix<double, 6, 6> OdometryCovariance;
+        // CTR state is now [x, vx, y, vy, omega]:
+        //   position x at index 0, position y at index 2.
+        Eigen::Matrix<double, 6, 6> OdometryCovariance =
+            Eigen::Matrix<double, 6, 6>::Zero();
         Eigen::Matrix<double, 5, 5> P = filter_->GetCTRCovariance();
-        OdometryCovariance.block<2, 2>(0, 0) = P.block<2, 2>(0, 0);
-        OdometryCovariance(2, 2) = 100.0;  // no information on z
-        OdometryCovariance(3, 3) = 9.0;    // no information on roll
-        OdometryCovariance(4, 4) = 9.0;    // no information on pitch
-        OdometryCovariance(5, 5) = P(3, 3);  // CTR yaw variance at index 3
+        OdometryCovariance(0, 0) = P(0, 0);  // x variance
+        OdometryCovariance(0, 1) = P(0, 2);  // xy covariance
+        OdometryCovariance(1, 0) = P(2, 0);
+        OdometryCovariance(1, 1) = P(2, 2);  // y variance
+        OdometryCovariance(2, 2) = 100.0;    // no information on z
+        OdometryCovariance(3, 3) = 9.0;      // no information on roll
+        OdometryCovariance(4, 4) = 9.0;      // no information on pitch
+        OdometryCovariance(5, 5) = filter_->GetFusedYawVariance();
         //odometry_filtered_message.pose.pose.orientation = tf2::toMsg(q);
         odometry_filtered_message.pose.pose.orientation.x = 0;
         odometry_filtered_message.pose.pose.orientation.y = 0;
