@@ -396,7 +396,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
         ground_cloud_publisher_;
 
-    // Object state estimation (IMM: CA + CTRA)
+    // Object state estimation (IMM: CV + CTR + NM)
     // ----------------------------------------
 
     void EstimatorTimerCallback();
@@ -426,8 +426,8 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief IMM: initial probability for the CV model. */
     double imm_cv_init_prob_;
 
-    /** @brief IMM: initial probability for the CTRA model. */
-    double imm_ctra_init_prob_;
+    /** @brief IMM: initial probability for the CTR model. */
+    double imm_ctr_init_prob_;
 
     /** @brief IMM: initial probability for the NM model. */
     double imm_nm_init_prob_;

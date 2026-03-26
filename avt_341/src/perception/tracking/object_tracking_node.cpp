@@ -137,8 +137,8 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_imm_cv_init_prob", 0.33);
     imm_cv_init_prob_ = get_parameter("filters_imm_cv_init_prob").as_double();
 
-    declare_parameter("filters_imm_ctra_init_prob", 0.33);
-    imm_ctra_init_prob_ = get_parameter("filters_imm_ctra_init_prob").as_double();
+    declare_parameter("filters_imm_ctr_init_prob", 0.33);
+    imm_ctr_init_prob_ = get_parameter("filters_imm_ctr_init_prob").as_double();
 
     declare_parameter("filters_imm_nm_init_prob", 0.33);
     imm_nm_init_prob_ = get_parameter("filters_imm_nm_init_prob").as_double();
@@ -1222,13 +1222,13 @@ void ObjectTrackingNode::Initialize() {
     sac_segmentation_.setDistanceThreshold(sac_segmentation_threshold_);
     sac_segmentation_.setNumberOfThreads(0);
 
-    // Initialize the IMM filter (CA + CTRA + NM).
+    // Initialize the IMM filter (CV + CTR + NM).
     filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
         1.0 / estimator_rate_,
         filter_process_variance_,
         filter_measurement_variance_,
         imm_cv_init_prob_,
-        imm_ctra_init_prob_,
+        imm_ctr_init_prob_,
         imm_nm_init_prob_,
         imm_transition_prob_);
     filter_->SetInitialPosition(Eigen::Vector3d::Zero());
@@ -1349,12 +1349,12 @@ void ObjectTrackingNode::PublishOdometry() {
         tf2::Quaternion q;
         q.setRPY(0, 0, filter_->GetYaw());
         Eigen::Matrix<double, 6, 6> OdometryCovariance;
-        Eigen::Matrix<double, 6, 6> P = filter_->GetCTRACovariance();
+        Eigen::Matrix<double, 5, 5> P = filter_->GetCTRCovariance();
         OdometryCovariance.block<2, 2>(0, 0) = P.block<2, 2>(0, 0);
-        OdometryCovariance(2, 2) = 100.0; //no information on z, using 10 m as large
-        OdometryCovariance(3, 3) = 9.0; //no information on roll using pi rad as large
-        OdometryCovariance(4, 4) = 9.0; //no information on pitch using pi rad as large
-        OdometryCovariance(5, 5) = P(4, 4) ; //ctra yaw variance
+        OdometryCovariance(2, 2) = 100.0;  // no information on z
+        OdometryCovariance(3, 3) = 9.0;    // no information on roll
+        OdometryCovariance(4, 4) = 9.0;    // no information on pitch
+        OdometryCovariance(5, 5) = P(3, 3);  // CTR yaw variance at index 3
         //odometry_filtered_message.pose.pose.orientation = tf2::toMsg(q);
         odometry_filtered_message.pose.pose.orientation.x = 0;
         odometry_filtered_message.pose.pose.orientation.y = 0;

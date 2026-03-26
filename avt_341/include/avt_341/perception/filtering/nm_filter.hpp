@@ -14,7 +14,7 @@
 * Motion model:  x_{k+1} = x_k  (identity transition, zero velocity assumed).
 * Process noise: small isotropic covariance that allows the uncertainty to
 *                grow when the true object starts moving, which causes the IMM
-*                to shift probability to the CA or CTRA model.
+*                to shift probability to the CV or CTR model.
 *
 * Measurement vector (2D): [x, y]  — position only.
 *
@@ -69,7 +69,7 @@ class NMFilter {
     }
 
     // -----------------------------------------------------------------------
-    // Initialization helpers  (mirror CTRAFilter API)
+    // Initialization helpers  (mirror CTRFilter API)
     // -----------------------------------------------------------------------
 
     /** @brief Set the initial 2D position from an (x,y,z) Eigen vector (z ignored). */
