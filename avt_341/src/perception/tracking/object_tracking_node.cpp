@@ -799,7 +799,7 @@ void ObjectTrackingNode::DetectionsCallback(
 
     if (!target_found) {
         RCLCPP_INFO(get_logger(),
-                    "Target %s not found in the current detection, skipping ...", target_class_);
+                    "Target %s not found in the current detection, skipping ...", target_class_.c_str());
         has_detection_ = false;
         return;
     }

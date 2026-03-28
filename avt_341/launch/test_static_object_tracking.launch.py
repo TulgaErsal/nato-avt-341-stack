@@ -26,9 +26,6 @@ def launch_setup(context, *args, **kwargs):
             if tracking_params is None:
                 tracking_params = {}
             
-            # Apply requested parameter configuration
-            # tracking_params.update({})
-
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}

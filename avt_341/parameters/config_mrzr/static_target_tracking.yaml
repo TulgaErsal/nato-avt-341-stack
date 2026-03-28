@@ -15,7 +15,9 @@ filters_ground_threshold: 0.2
 filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
-filters_kalman_measurement: 0.1
+filters_kalman_measurement: 0.5
+camera_target_height: 5.0       # known height of the tracked vehicle [m]
+camera_bbox_pixel_sigma: 4.0    # bounding-box measurement uncertainty [px]
 tracker_autostart: true
 tracker_target_class: 'car'
 tracker_timeout: 5.0
@@ -32,7 +34,7 @@ filters_pose: true
 publish_odometry: true
 filters_odometry: true
 tracker_use_mission_manager: false
-tracker_use_pca_centroid: true
+filters_use_pca_centroid: false
 publish_detection: true
 publish_image: true
 
