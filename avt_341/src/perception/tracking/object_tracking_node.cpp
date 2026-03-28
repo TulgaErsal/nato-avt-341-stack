@@ -1142,8 +1142,16 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         return;
     }
 
-    // Run the "Predict" step of the Kalman filter.
-    filter_->Predict();
+    // In camera-only mode, skip the predict step. Camera range estimates
+    // derived from bounding-box pixel height are too noisy to sustain
+    // reliable velocity integration. Allowing Predict() here would let a
+    // biased range estimate build up an unconstrained velocity and cause the
+    // position to drift. Camera measurements are still applied via Update()
+    // below, so the position is constrained by each camera tick without
+    // free forward integration between ticks.
+    if (state_ != TrackerState::CAMERA_ONLY_TRACKING) {
+        filter_->Predict();
+    }
 
     // Check if a new measurement is available to be parsed, then provide a
     // matching measurement vector z_n.
