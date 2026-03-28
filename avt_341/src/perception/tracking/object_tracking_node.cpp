@@ -491,6 +491,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         try {
             EuclideanClustering();
             centroid_in_cloud_frame_ = true;
+            last_valid_target_time_ = get_clock()->now();
 
             if (cloud_cluster_->size() > 0) {
             } else {
@@ -1142,16 +1143,25 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         return;
     }
 
-    // In camera-only mode, skip the predict step. Camera range estimates
-    // derived from bounding-box pixel height are too noisy to sustain
-    // reliable velocity integration. Allowing Predict() here would let a
-    // biased range estimate build up an unconstrained velocity and cause the
-    // position to drift. Camera measurements are still applied via Update()
-    // below, so the position is constrained by each camera tick without
-    // free forward integration between ticks.
-    if (state_ != TrackerState::CAMERA_ONLY_TRACKING) {
-        filter_->Predict();
+    // Freeze the filter if no valid LiDAR measurement has arrived within
+    // two tracking periods. A state-based check alone is unreliable because
+    // the tracking timer (10 Hz) and estimator timer (20 Hz) race each other:
+    // the estimator can read a stale FULL_TRACKING state between the moment
+    // the tracking timer starts its tick and the moment it discovers there
+    // is no new data and writes NO_DETECTION. The time-based check is immune
+    // to this race. It also handles CAMERA_ONLY_TRACKING, where camera range
+    // estimates are too noisy to sustain reliable velocity integration.
+    const double dt_since_lidar =
+        (get_clock()->now() - last_valid_target_time_).seconds();
+    if (has_tracked_target_ && dt_since_lidar > 2.0 / tracking_rate_) {
+        if (publish_odometry_)     PublishOdometry();
+        if (publish_pose_)         PublishPose();
+        if (publish_detection_3d_) PublishDetection3D();
+        return;
     }
+
+    // Run the "Predict" step of the Kalman filter.
+    filter_->Predict();
 
     // Check if a new measurement is available to be parsed, then provide a
     // matching measurement vector z_n.
