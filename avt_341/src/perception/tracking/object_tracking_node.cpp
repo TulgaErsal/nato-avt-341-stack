@@ -519,13 +519,20 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             RCLCPP_WARN(get_logger(),
                         "Could not isolate any clusters from the camera "
                         "detection region ROI!");
-            // JN addition revert to camera
             centroid_in_cloud_frame_ = false;
-            CameraCentroidEstimate();
-            has_point_cloud_ = false;
-            has_detection_ = true;
-            state_ = TrackerState::CAMERA_ONLY_TRACKING;
-            CheckTargetTimeout();
+            // Only fall back to camera-only tracking after LiDAR has confirmed
+            // the target at least once. Before that, camera range estimates are
+            // too noisy to use as filter measurements.
+            if (has_had_first_lidar_measurement_) {
+                CameraCentroidEstimate();
+                has_point_cloud_ = false;
+                has_detection_ = true;
+                state_ = TrackerState::CAMERA_ONLY_TRACKING;
+                CheckTargetTimeout();
+            } else {
+                has_point_cloud_ = false;
+                has_detection_ = false;
+            }
             return;
         }
 
@@ -600,8 +607,9 @@ void ObjectTrackingNode::CheckTargetTimeout() {
 void ObjectTrackingNode::EuclideanClustering() {
     try {
         auto clustering_result = ExtractEuclideanClusters(point_cloud_);
-        // Update the flag for centroid measurement.
+        // Update the flags for centroid measurement.
         has_new_measurement_ = true;
+        has_had_first_lidar_measurement_ = true;
 
         cloud_cluster_ = clustering_result.first;
         bounding_box_centroid_ = Eigen::Vector3d(clustering_result.second.x,
@@ -1112,6 +1120,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             has_detection_ = false;
             has_first_detection_ = false;
             filter_initialized_ = false;
+            has_had_first_lidar_measurement_ = false;
         }
     }
 
@@ -1120,6 +1129,17 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             camera_frame_, world_frame_, bounding_box_centroid_));
             filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
             filter_initialized_ = true;
+    }
+
+    // Do not advance the filter when there is no active detection.
+    // Without a measurement to constrain the velocity, forward integration
+    // would cause the position estimate to drift away from the last known
+    // position indefinitely.
+    if (state_ == TrackerState::NO_DETECTION) {
+        if (publish_odometry_)     PublishOdometry();
+        if (publish_pose_)         PublishPose();
+        if (publish_detection_3d_) PublishDetection3D();
+        return;
     }
 
     // Run the "Predict" step of the Kalman filter.
@@ -1369,7 +1389,7 @@ void ObjectTrackingNode::PublishOdometry() {
         // odometry_filtered_message.pose.pose.orientation.normalise();
         for (size_t i = 0; i < 6; i++)  {
             for (size_t j = 0; j < 6; j++) {
-                odometry_filtered_message.pose.covariance[j * 6 + i] = OdometryCovariance(i, j);
+                odometry_filtered_message.pose.covariance[i * 6 + j] = OdometryCovariance(i, j);
             }
         }
         odometry_filtered_publisher_->publish(odometry_filtered_message);

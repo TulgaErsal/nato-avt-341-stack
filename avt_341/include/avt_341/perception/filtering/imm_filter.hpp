@@ -304,6 +304,21 @@ class IMMFilter {
         cv_ .Predict();
         ctr_.Predict();
         nm_ .Predict();
+
+        // --- Step 4: Update fused outputs from predicted sub-filter states -
+        // This keeps GetState() / GetPosition3D() / GetVelocity3D() consistent
+        // with the latest predicted states, not just the last update step.
+        const auto& x_cv_pred  = cv_ .GetState();
+        const Vec2  p_ctr_pred = ctr_.GetPosition2D();
+        const Vec2  p_nm_pred  = nm_ .GetPosition2D();
+
+        fused_position_.x() = mu_[0]*x_cv_pred(0) + mu_[1]*p_ctr_pred(0) + mu_[2]*p_nm_pred(0);
+        fused_position_.y() = mu_[0]*x_cv_pred(2) + mu_[1]*p_ctr_pred(1) + mu_[2]*p_nm_pred(1);
+        fused_position_.z() = x_cv_pred(4);
+
+        fused_velocity_.x() = mu_[0]*x_cv_pred(1) + mu_[1]*ctr_.GetVx();
+        fused_velocity_.y() = mu_[0]*x_cv_pred(3) + mu_[1]*ctr_.GetVy();
+        fused_velocity_.z() = x_cv_pred(5);
     }
 
     // -----------------------------------------------------------------------
@@ -388,13 +403,13 @@ class IMMFilter {
         const auto& x_cv = cv_.GetState();
         Eigen::Matrix<double, 9, 1> s;
         s(0) = fused_position_.x();
-        s(1) = x_cv(1);   // vx
+        s(1) = fused_velocity_.x();
         s(2) = 0.0;        // ax (not tracked)
         s(3) = fused_position_.y();
-        s(4) = x_cv(3);   // vy
+        s(4) = fused_velocity_.y();
         s(5) = 0.0;        // ay (not tracked)
         s(6) = fused_position_.z();
-        s(7) = x_cv(5);   // vz
+        s(7) = fused_velocity_.z();
         s(8) = 0.0;        // az (not tracked)
         return s;
     }

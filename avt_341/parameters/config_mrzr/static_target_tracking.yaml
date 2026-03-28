@@ -34,7 +34,7 @@ filters_pose: true
 publish_odometry: true
 filters_odometry: true
 tracker_use_mission_manager: false
-filters_use_pca_centroid: false
+filters_use_pca_centroid: true
 publish_detection: true
 publish_image: true
 

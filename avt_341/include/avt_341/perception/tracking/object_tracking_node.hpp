@@ -405,6 +405,12 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     bool has_new_measurement_ = false;
 
+    /** @brief True once the first successful LiDAR cluster measurement has
+     *         been processed. Camera-only updates are suppressed until then
+     *         to prevent noisy range estimates from drifting the filter before
+     *         LiDAR confirms the target position. */
+    bool has_had_first_lidar_measurement_ = false;
+
     double estimator_rate_;
 
     double filter_process_variance_;
