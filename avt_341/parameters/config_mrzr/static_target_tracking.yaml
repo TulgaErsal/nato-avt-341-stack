@@ -15,7 +15,7 @@ filters_ground_threshold: 0.2
 filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
-filters_kalman_measurement: 0.5
+filters_kalman_measurement: 5.0
 camera_target_height: 5.0       # known height of the tracked vehicle [m]
 camera_bbox_pixel_sigma: 4.0    # bounding-box measurement uncertainty [px]
 tracker_autostart: true
