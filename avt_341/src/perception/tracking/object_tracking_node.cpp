@@ -863,7 +863,7 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
     const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
     const double car_size_z = camera_target_height_;
     double target_z_f = (double)camera_info_message->k[4] / (double)detections_message.detections[0].bbox.size_y *
-        car_size_z / 2;
+        car_size_z;
     double target_x_r = target_z_f / (double)camera_info_message->k[0] *
         (double)(detections_message.detections[0].bbox.center.position.x - camera_info_message->k[2]);
 
@@ -874,9 +874,9 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
 	// covariance jacobians
 	const double s2_pixel = camera_bbox_pixel_sigma_ * camera_bbox_pixel_sigma_;
 	double s2_forwards = (double)camera_info_message->k[4] / pow((double)detections_message.detections[0].bbox.size_y,2) *
-        car_size_z / 2 * s2_pixel * (double)camera_info_message->k[4] /
+        car_size_z * s2_pixel * (double)camera_info_message->k[4] /
 			pow((double)detections_message.detections[0].bbox.size_y, 2) *
-        car_size_z / 2;
+        car_size_z;
 	double s2_right = target_z_f / (double)camera_info_message->k[0] * s2_pixel *
 		target_z_f / (double)camera_info_message->k[0];
 	double s2_down = target_z_f / (double)camera_info_message->k[4] * s2_pixel *
