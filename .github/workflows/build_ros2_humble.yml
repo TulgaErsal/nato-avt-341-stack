@@ -81,5 +81,5 @@ jobs:
       - name: Upload Test results
         if: always() && env.BUILD_DONE == 'true'
         run: |
-          aws s3 cp ros_ws/build/avt_341/test_results s3://${{ secrets.AWS_S3_BUCKET_NAME }}/test_results --recursive --acl public-read
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+          aws s3 cp ros_ws/build/avt_341/test_results s3://${{ secrets.AWS_S3_BUCKET_NAME }}/test_results --recursive
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/test_results/*"
