@@ -14,9 +14,9 @@
 #endif
 
 // avt_341 includes
-#include "avt_341/perception/elevation_grid.h"
+#include "avt_341/perception/costmap.h"
 
-avt_341::perception::ElevationGrid grid;
+avt_341::perception::Costmap grid;
 avt_341::msg::Odometry current_pose;
 double start_time = 0.0;
 double pc_callback_runtime_threshold = 0.0; // in seconds
@@ -257,13 +257,7 @@ int main(int argc, char* argv[]) {
 					grid_pub_force_full_every_x_sec
 					);
 
-	grid.SetNode(n);
-	grid.SetSize(grid_width, grid_height);
-	grid.SetSlopeParameters(thresh, thresh_max);
-	grid.SetRes(grid_res);
-	grid.SetCorner(grid_llx, grid_lly);
-	grid.SetUseElevation(use_elevation);
-	grid.SetDilation(grid_dilate, grid_dilate_x, grid_dilate_y, grid_dilate_proportion);
+
 	grid.SetGridClearingMethod(clear_methods_config);
 	grid.SetPointCloudFilterConfig(pc_filter_config, pc_cm_filter_config);
 

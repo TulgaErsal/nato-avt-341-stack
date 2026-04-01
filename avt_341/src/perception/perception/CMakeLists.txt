@@ -8,8 +8,16 @@ add_executable(
         "clearing_methods/channel_clearing_method.cpp"
         "clearing_methods/raytrace_clearing_method.cpp"
         "clearing_methods/time_clearing_method.cpp"
-        "elevation_grid.cpp"
+        "layers/costmap_layer.cpp"
+        "layers/point_cloud_layer.cpp"
+        "layers/polygon_layer.cpp"
+        "layers/static_grid_layer.cpp"
+        "costmap.cpp"
         "point_cloud_filter.cpp"
+        layers/costmap_layer.cpp
+        layers/point_cloud_layer.cpp
+        layers/static_grid_layer.cpp
+        layers/polygon_layer.cpp
 )
 
 if(USING_CATKIN)

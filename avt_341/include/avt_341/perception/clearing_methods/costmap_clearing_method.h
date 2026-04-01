@@ -3,7 +3,7 @@
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-#include "avt_341/perception/elevation_grid_cell.h"
+#include "avt_341/perception/costmap_dtos.h"
 
 namespace avt_341::perception {
 
@@ -47,12 +47,9 @@ public:
 };
 
 struct BaseClearingSettings {
-    float llx;
-    float lly;
-    float res;
-    int grid_dilate_x;
-    int grid_dilate_y;
-    float thresh;
+    CostmapSizeInfo* size_info;
+    ThresholdSettings* thresholds;
+    DilationSettings* dilation;
     bool immediate_clear_dilation;
     float visualization_range;
     bool visualize;
