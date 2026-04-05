@@ -207,8 +207,8 @@ namespace avt_341::perception
       return utils::ivec2(ToXIdx(x), ToYIdx(y));
     }
 
-    float ToXWorld(const int i) const { return (i + 0.5f) * res + llx; }
-    float ToYWorld(const int j) const { return (j + 0.5f) * res + lly; }
+    float ToXWorld(const int i) const { return (static_cast<float>(i) + 0.5f) * res + llx; }
+    float ToYWorld(const int j) const { return (static_cast<float>(j) + 0.5f) * res + lly; }
     int ToXIdx(const float x) const { return static_cast<int>((x - llx) / res); }
     int ToYIdx(const float y) const { return static_cast<int>((y - lly) / res); }
 

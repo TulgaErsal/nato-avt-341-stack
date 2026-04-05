@@ -30,18 +30,17 @@ public:
 
 	void Clear() const;
 
-	msg::OccupancyGrid GetGrid(bool is_segmentation = false);
+	msg::OccupancyGrid GetGrid(bool is_segmentation = false, const std::string& target_layer = "") const;
 	msg::OccupancyGrid GetGrid(double width, double height, bool is_segmentation = false) const;
-	msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation);
+	msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation, const std::string& target_layer = "") const;
 
-	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation) const;
+	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation, std::string target_layer = "") const;
 	void Reset() const;
 	void Visualize() const;
 
 	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
 	std::vector<utils::ivec2> GetCellsInFov() const;
-	int GetLayerCount() const { return static_cast<int>(layers_.size()); }
 	bool HasOdomData() const { return current_odom_.header.stamp.sec > 0; }
 	double GetCurrentRms() const {
 		return std::accumulate(rms_buffer_.begin(), rms_buffer_.end(), 0.0)/static_cast<double>(rms_buffer_.size());
@@ -74,10 +73,15 @@ private:
 	bool layer_cmb_last_ = false;
 	bool layer_cmd_mn_ = false;
 
+
 	template <typename T>
-	inline void CollectLayerValues(std::vector<T>& layer_values, std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter) const
+	inline void CollectLayerValues(
+		const std::vector<std::shared_ptr<CostmapLayer>> & layers,
+		std::vector<T>& layer_values,
+		std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter
+		) const
 	{
-		for (const auto& layer : layers_) {
+		for (const auto& layer : layers) {
 			if (const T val = value_getter(layer); val >= static_cast<T>(0)) {
 				layer_values.emplace_back(val);
 			}
@@ -97,11 +101,14 @@ private:
 	}
 
 	template<typename T>
-	inline T GetCombinedLayerValue(std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter) const
+	inline T GetCombinedLayerValue(
+		const std::vector<std::shared_ptr<CostmapLayer>> & layers,
+		std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter
+		) const
 	{
 		std::vector<T> layer_values;
-		layer_values.reserve(layers_.size());
-		CollectLayerValues(layer_values, value_getter);
+		layer_values.reserve(layers.size());
+		CollectLayerValues(layers, layer_values, value_getter);
 		return CombineLayerValues(layer_values);
 	}
 
