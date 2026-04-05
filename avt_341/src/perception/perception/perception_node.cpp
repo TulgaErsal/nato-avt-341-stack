@@ -102,6 +102,7 @@ int main(int argc, char* argv[]) {
 	// --------------------------------------------------------------------------------------------------------------
 	float warmup_time, perception_rate;
 	std::string clear_method, grid_pub_method, layer_combination_method;
+	std::vector<std::string> publish_layers;
 
 	n->get_parameter("~warmup_time", warmup_time, 1.0f);
 	n->get_parameter("~perception_rate", perception_rate, 100.0f);
@@ -111,6 +112,9 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~grid_pub_method", grid_pub_method, std::string(avt_341::perception::GridPubMethod::Full));
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
 	n->get_parameter("~layer_combination_method", layer_combination_method, std::string("last"));
+
+	// Layers to publish individually in addition to combined costmap layers
+	n->get_parameter("~publish_layers", publish_layers, std::vector<std::string>{});
 
 	if (!avt_341::perception::GridPubMethod::IsValid(grid_pub_method)){
 		n->log_error("Invalid grid_pub_method: %hs", grid_pub_method.c_str());

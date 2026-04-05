@@ -73,15 +73,27 @@ void Costmap::Visualize() const
 	}
 }
 
-void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation) const {
+void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation, std::string target_layer) const {
 
 	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
 
+	std::vector<std::shared_ptr<CostmapLayer>> layers;
+	if (target_layer.empty()){
+		layers = layers_;
+	}else{
+		for (const auto & layer : layers_){
+			if (layer->GetLabel() == target_layer){
+				layers.push_back(layer);
+				break;
+			}
+		}
+	}
+
 	int c = 0;
 	for (int i = region.y_min; i < region.y_max; i++) {
 		for (int j = region.x_min; j < region.x_max; j++) {
-			const int layer_val = GetCombinedLayerValue<int>([i, j, is_segmentation](const std::shared_ptr<CostmapLayer>& layer){
+			const int layer_val = GetCombinedLayerValue<int>(layers, [i, j, is_segmentation](const std::shared_ptr<CostmapLayer>& layer){
 				return is_segmentation ? layer->GetSegValue(i, j) : layer->GetOccValue(i, j);
 			});
 			data[c++] = static_cast<int8_t>(layer_val);
@@ -89,7 +101,10 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 	}
 }
 
-msg::OccupancyGridUpdate Costmap::GetGridUpdate(bool is_segmentation) {
+msg::OccupancyGridUpdate Costmap::GetGridUpdate(
+		const bool is_segmentation,
+		const std::string& target_layer
+	) const {
 	msg::OccupancyGridUpdate grid_update_msg;
 	grid_update_msg.header.frame_id = "map";
 
@@ -109,20 +124,31 @@ msg::OccupancyGridUpdate Costmap::GetGridUpdate(bool is_segmentation) {
 	grid_update_msg.height = dilated_region.Height();
 	grid_update_msg.data.resize(dilated_region.Width()*dilated_region.Height());
 
-	FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation);
-	for (const auto & layer : layers_) {
-		layer->ResetUpdateRegion();
+	FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation, target_layer);
+
+	// Reset update regions on full grid retrieval when target_layer = "".
+	// Perhaps add another parameter for more control.
+	const bool reset_regions = target_layer.empty();
+	if (reset_regions){
+		for (const auto & layer : layers_) {
+			layer->ResetUpdateRegion();
+		}
 	}
+
 	return grid_update_msg;
 }
 
-msg::OccupancyGrid Costmap::GetGrid(bool is_segmentation) {
+msg::OccupancyGrid Costmap::GetGrid(
+		const bool is_segmentation,
+		const std::string& target_layer
+	) const {
 	msg::OccupancyGrid grid;
 	grid.header.frame_id = "map";
 	grid.info = size_info_.ToRosMetadata();
 	grid.data.resize(grid.info.width  * grid.info.height);
+	const auto update_region = core::GridRegion(0, grid.info.width, 0, grid.info.height);
 
-	FillGridMsgCells(grid.data, core::GridRegion(0, grid.info.width, 0, grid.info.height), is_segmentation);
+	FillGridMsgCells(grid.data, update_region, is_segmentation, target_layer);
 	return grid;
 }
 
@@ -206,10 +232,10 @@ void Costmap::UpdateRmsAndSlope() {
 
 	float navg = static_cast<float>(idxs.size());
 	for (const auto & idx : idxs) {
-		rms += GetCombinedLayerValue<float>([&idx](const std::shared_ptr<CostmapLayer>& layer){
+		rms += GetCombinedLayerValue<float>(layers_, [&idx](const std::shared_ptr<CostmapLayer>& layer){
 			return layer->GetRmsAtCell(idx.x, idx.y);
 		});
-		slope += GetCombinedLayerValue<float>([&idx](const std::shared_ptr<CostmapLayer>& layer){
+		slope += GetCombinedLayerValue<float>(layers_, [&idx](const std::shared_ptr<CostmapLayer>& layer){
 			return layer->GetTerrainSlopeAtCell(idx.x, idx.y);
 		});
 	}
