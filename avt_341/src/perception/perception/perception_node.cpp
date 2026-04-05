@@ -1,17 +1,8 @@
-// c++ includes
-// ros includes
-#include <avt_341/avt_341_utils.h>
-#include <avt_341/core/monitoring.hpp>
-
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-
-// avt_341 includes
 #include "avt_341/perception/costmap.h"
 
-// avt_341::msg::Odometry current_pose;
 double start_time = 0.0;
-// double pc_callback_runtime_threshold = 0.0; // in seconds
 
 float max_grid_width = 0.0f;
 float max_grid_height = 0.0f;
@@ -109,23 +100,10 @@ int main(int argc, char* argv[]) {
 
 	// Read parameters
 	// --------------------------------------------------------------------------------------------------------------
-
-	// float grid_width, grid_height;
-	// float grid_res, grid_llx, grid_lly, warmup_time, thresh, thresh_max, grid_dilate_x, grid_dilate_y, grid_dilate_proportion;
-	// bool use_elevation, grid_dilate;
 	float warmup_time, perception_rate;
 	std::string clear_method, grid_pub_method, layer_combination_method;
 
-	// float rms_horizontal_fov_radians, rms_range_meters, rms_time_average_window;
-
-	// n->get_parameter("~rms_calc_horizontal_fov_radians", rms_horizontal_fov_radians, 0.7854f); // about 45 degrees
-	// n->get_parameter("~rms_calc_range_meters", rms_range_meters, 15.0f);
-	// n->get_parameter("~rms_calc_time_average_window", rms_time_average_window, 1.0f);
 	n->get_parameter("~warmup_time", warmup_time, 1.0f);
-	// n->get_parameter("~slope_threshold", thresh, 0.5f);
-	// n->get_parameter("~slope_threshold_max", thresh_max, 2.5f);
-	// n->get_parameter("~use_elevation", use_elevation, false);
-
 	n->get_parameter("~perception_rate", perception_rate, 100.0f);
 	n->get_parameter("~max_grid_width", max_grid_width, 800.0f);
 	n->get_parameter("~max_grid_height", max_grid_height, 800.0f);
@@ -164,10 +142,6 @@ int main(int argc, char* argv[]) {
 					layer_combination_method.c_str()
 					);
 
-
-	// grid.SetGridClearingMethod(clear_methods_config);
-	// grid.SetPointCloudFilterConfig(pc_filter_config, pc_cm_filter_config);
-
 	// Create publishers + subscribers
 	// --------------------------------------------------------------------------------------------------------------
 	auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
@@ -188,9 +162,6 @@ int main(int argc, char* argv[]) {
 	grid.Reset();
 	start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(perception_rate);
-	// int n_rms_avg = static_cast<int>(rms_time_average_window * perception_rate);
-	// std::deque<double> rms_buffer;
-	// std::deque<double> slope_buffer;
 	int nloops = 0;
 	while (avt_341::node::ok()) {
 

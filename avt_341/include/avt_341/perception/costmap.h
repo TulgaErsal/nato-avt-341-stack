@@ -6,20 +6,17 @@
 #pragma once
 
 #include <vector>
-#include <limits>
 #include <string>
 
-#include "point_cloud_filter.hpp"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap_dtos.h"
 #include "avt_341/core/grid_components.h"
-#include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
 #include "layers/costmap_layer.h"
 #include <deque>
 
-namespace avt_341 {
-namespace perception {
+namespace avt_341::perception
+{
 
 class Costmap {
 public:
@@ -27,13 +24,9 @@ public:
 		const std::shared_ptr<node::NodeProxy>& node_ref,
 		const CostmapSettings & settings,
 		const std::string& layer_cmb_method
-		);
+	);
 
 	bool HasSegmentation() const;
-
-	// bool PastSlopeThreshold(const Cell& cell) const override;
-	// float Slope(const Cell& cell) const override;
-	// void AddOccupancy(const avt_341::msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) override;
 
 	void Clear() const;
 
@@ -44,18 +37,6 @@ public:
 	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation) const;
 	void Reset() const;
 	void DebugVisualize() const;
-
-	// /// x and y in local ENU meters
-	// float GetRmsAtCoordinate(float x, float y);
-	// /// xi and yi as grid cell indices
-	// float GetRmsAtCell(int xi, int yi);
-	//
-	// /// x and y in local ENU meters
-	// float GetTerrainSlopeAtCoordinate(float x, float y);
-	// /// xi and yi as grid cell indices
-	// float GetTerrainSlopeAtCell(int xi, int yi);
-	//
-	// void GetSlopeRmsInFov(float& slope, float& rms, float x, float y, float heading, float hfov, float range);
 
 	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
@@ -73,28 +54,11 @@ private:
 
 	void OdometryCallback(msg::OdometryPtr rcv_odom);
 
-	// void DilateCell(
-	// 	std::vector<std::vector<Cell>>& cells,
-	// 	int xi,
-	// 	int yi,
-	// 	int dsize_x,
-	// 	int dsize_y,
-	// 	float original_slope = 0.0f);
 	msg::Odometry current_odom_;
 
 	std::shared_ptr<node::NodeProxy> node_ref_;
-	// PointCloudFilter pc_filter;						// Filter for input point clouds
-	// PointCloudFilter pc_cm_filter;					// Additional filter for clearing methods applied after regular filter
 
-	// std::vector<utils::ivec2> GetCellsInFov(float x, float y, float heading, float hfov, float range);
-	// uint8_t GetGridCellValue(const Cell& cell) const;
-	// void ResizeGrid();
-	// std::vector< std::vector<Cell> > cells_;
-
-	// bool has_segmentation_ = false;
-	// bool is_resetting_ = false;
-
-    node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
+	node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
 
 	CostmapSizeInfo size_info_;
 	ThresholdSettings thresholds_;
@@ -125,8 +89,8 @@ private:
 		}
 
 		return layer_cmb_last_ ? layer_values.back()
-			: (layer_cmd_mn_ ? std::accumulate(layer_values.begin(), layer_values.end(), 0) / static_cast<int>(layer_values.size())
-				: *std::max_element(layer_values.begin(), layer_values.end()));
+			       : (layer_cmd_mn_ ? std::accumulate(layer_values.begin(), layer_values.end(), 0) / static_cast<int>(layer_values.size())
+				          : *std::max_element(layer_values.begin(), layer_values.end()));
 	}
 
 	template<typename T>
@@ -140,9 +104,6 @@ private:
 
 	std::deque<double> rms_buffer_;
 	std::deque<double> slope_buffer_;
-	// std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
-	// core::GridRegion grid_update_region_;
 };
 
-} // namespace perception
-} // namespace avt_341
+}
