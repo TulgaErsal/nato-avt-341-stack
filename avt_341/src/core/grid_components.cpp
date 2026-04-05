@@ -22,6 +22,14 @@ GridRegion GridRegion::Dilate(int dilate_x, int dilate_y, int nx, int ny) const 
         };
 }
 
+void GridRegion::UpdateBounds(const GridRegion & other) {
+    if (!other.HasData()){
+        return;
+    }
+    UpdateBounds(other.x_min, other.y_min);
+    UpdateBounds(other.x_max, other.y_max);
+}
+
 void GridRegion::UpdateBounds(const int x, const int y, const int width, const int height) {
     UpdateBounds(x, y);
     UpdateBounds(x+width-1, y+height-1);

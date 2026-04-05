@@ -26,13 +26,14 @@
 namespace avt_341 {
 namespace perception {
 
-class Costmap : public CellObstacleCalculator {
+class Costmap {
 public:
 	Costmap(
 		const std::shared_ptr<node::NodeProxy>& node_ref,
 		const CostmapSizeInfo& size_info,
 		const ThresholdSettings& thresholds,
-		const DilationSettings& dilation
+		const DilationSettings& dilation,
+		const TerrainRmsSettings& terrain_rms_config
 		);
 
 	bool HasSegmentation() const;
@@ -41,19 +42,15 @@ public:
 	// float Slope(const Cell& cell) const override;
 	// void AddOccupancy(const avt_341::msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) override;
 
-	void UpdateSlopeParameters(optional<float> tr, optional<float> tr_max);
-
 	void Clear() const;
 
-	avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation = false);
-
-	avt_341::msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation);
-
-	avt_341::msg::OccupancyGrid GetGrid(double x, double y, double width, double height, bool is_segmentation = false);
+	msg::OccupancyGrid GetGrid(bool is_segmentation = false);
+	msg::OccupancyGrid GetGrid(double width, double height, bool is_segmentation = false) const;
+	msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation);
 
 	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation) const;
 	void Reset() const;
-	bool HasData() const;
+	void DebugVisualize() const;
 
 	// /// x and y in local ENU meters
 	// float GetRmsAtCoordinate(float x, float y);
@@ -67,8 +64,20 @@ public:
 	//
 	// void GetSlopeRmsInFov(float& slope, float& rms, float x, float y, float heading, float hfov, float range);
 
+	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
+	void UpdateRmsAndSlope();
+	std::vector<utils::ivec2> GetCellsInFov() const;
+	bool HasOdomData() const { return current_odom_.header.stamp.sec > 0; }
+	double GetCurrentRms() const {
+		return std::accumulate(rms_buffer_.begin(), rms_buffer_.end(), 0.0)/static_cast<double>(rms_buffer_.size());
+	}
+	double GetCurrentSlope() const {
+		return std::accumulate(slope_buffer_.begin(), slope_buffer_.end(), 0.0) / static_cast<double>(slope_buffer_.size());
+	}
 
 private:
+
+	void OdometryCallback(msg::OdometryPtr rcv_odom);
 
 	// void DilateCell(
 	// 	std::vector<std::vector<Cell>>& cells,
@@ -77,6 +86,7 @@ private:
 	// 	int dsize_x,
 	// 	int dsize_y,
 	// 	float original_slope = 0.0f);
+	msg::Odometry current_odom_;
 
 	std::shared_ptr<node::NodeProxy> node_ref_;
 	// PointCloudFilter pc_filter;						// Filter for input point clouds
@@ -90,10 +100,17 @@ private:
 	// bool has_segmentation_ = false;
 	// bool is_resetting_ = false;
 
+    node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
+
 	CostmapSizeInfo size_info_;
 	ThresholdSettings thresholds_;
 	DilationSettings dilation_;
+	TerrainRmsSettings terrain_rms_config_;
+
 	std::vector<std::shared_ptr<CostmapLayer>> layers_;
+
+	std::deque<double> rms_buffer_;
+	std::deque<double> slope_buffer_;
 	// std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
 	// core::GridRegion grid_update_region_;
 };

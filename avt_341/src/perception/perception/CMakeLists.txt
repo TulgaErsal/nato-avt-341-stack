@@ -14,10 +14,10 @@ add_executable(
         "layers/static_grid_layer.cpp"
         "costmap.cpp"
         "point_cloud_filter.cpp"
-        layers/costmap_layer.cpp
-        layers/point_cloud_layer.cpp
-        layers/static_grid_layer.cpp
-        layers/polygon_layer.cpp
+        "layers/costmap_layer.cpp"
+        "layers/point_cloud_layer.cpp"
+        "layers/static_grid_layer.cpp"
+        "layers/polygon_layer.cpp"
 )
 
 if(USING_CATKIN)

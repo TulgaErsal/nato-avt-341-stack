@@ -34,7 +34,7 @@ namespace avt_341::perception
       high.val = MIN_LIMIT;
       has_dilated = false;
       dilated_val = 0;
-      terrain = 0.0f;
+      terrain = -1.0f;
 
       // RMS Statistics
       num_points = 0;
@@ -60,8 +60,8 @@ namespace avt_341::perception
 
     ElevAge low,high;
 
-    inline float height() const { return high.val - low.val; }
-    inline bool filled() const { return low.val < MAX_LIMIT; }
+    float height() const { return high.val - low.val; }
+    bool filled() const { return low.val < MAX_LIMIT; }
 
     bool has_dilated;
     uint8_t dilated_val;
@@ -83,11 +83,29 @@ namespace avt_341::perception
     virtual void AddOccupancy(const avt_341::msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) = 0;
   };
 
+  struct TerrainRmsSettings
+  {
+    float hfov;
+    float range;
+    float time_window;
+    int n_window;
+
+    void SetDiscreteRmsWindow(float perception_rate)
+    {
+      n_window = static_cast<int>(time_window * perception_rate);
+    }
+  };
+
   struct GridPubMethod {
-    static const std::string Full;
-    static const std::string Window;
-    static const std::string Updates;
-    static bool IsGridPubMethodValid(const std::string & selected_method);
+    static constexpr std::string_view Full = "full";
+    static constexpr std::string_view Window = "window";
+    static constexpr std::string_view Updates = "updates";
+
+    static bool IsGridPubMethodValid(const std::string & selected_method){
+      const auto valid_methods = {Full, Window, Updates};
+      return std::find(valid_methods.begin(), valid_methods.end(), selected_method) != valid_methods.end();
+    }
+
   };
 
   struct ThresholdSettings
@@ -118,8 +136,8 @@ namespace avt_341::perception
     float y;
     float proportion;
 
-    inline int GetNx(const float res) const { return enabled ? lround(x/res) : 0;}
-    inline int GetNy(const float res) const { return enabled ? lround(y/res) : 0;}
+    int GetNx(const float res) const { return enabled ? lround(x/res) : 0;}
+    int GetNy(const float res) const { return enabled ? lround(y/res) : 0;}
 
   };
 
@@ -131,8 +149,8 @@ namespace avt_341::perception
     float llx;
     float lly;
 
-    inline int nx() const { return static_cast<int>(ceil(width / res));}
-    inline int ny() const { return static_cast<int>(ceil(height / res));}
+    int nx() const { return static_cast<int>(ceil(width / res));}
+    int ny() const { return static_cast<int>(ceil(height / res));}
 
     utils::vec2 ToPosWorld(const int i, const int j) const {
       return utils::vec2(ToXWorld(i), ToYWorld(j));
@@ -142,10 +160,10 @@ namespace avt_341::perception
       return utils::ivec2(ToXIdx(x), ToYIdx(y));
     }
 
-    inline float ToXWorld(const int i) const { return (i + 0.5f) * res + llx; }
-    inline float ToYWorld(const int j) const { return (j + 0.5f) * res + lly; }
-    inline int ToXIdx(const float x) const { return static_cast<int>((x - llx) / res); }
-    inline int ToYIdx(const float y) const { return static_cast<int>((y - lly) / res); }
+    float ToXWorld(const int i) const { return (i + 0.5f) * res + llx; }
+    float ToYWorld(const int j) const { return (j + 0.5f) * res + lly; }
+    int ToXIdx(const float x) const { return static_cast<int>((x - llx) / res); }
+    int ToYIdx(const float y) const { return static_cast<int>((y - lly) / res); }
 
     nav_msgs::msg::MapMetaData ToRosMetadata() const {
       nav_msgs::msg::MapMetaData meta;
@@ -162,6 +180,8 @@ namespace avt_341::perception
     }
 
   };
+
+
 
 }
 

@@ -14,61 +14,9 @@ CostmapLayer::CostmapLayer(
     Resize();
 }
 
-
-static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle) {
-	utils::vec2 dir_to_point = test_point - p;
-	float dist = utils::length(dir_to_point);
-
-	if (dist > r) return false;
-
-	dir_to_point.normalize();
-	float dot_product = utils::dot(v, dir_to_point);
-
-	float cos_angle = cosf(angle);
-	return dot_product >= cos_angle;
-}
-
-// CTG, 7/23/25
-std::vector<utils::ivec2> CostmapLayer::GetCellsInFov(float x, float y, float heading, float hfov, float range) {
-	utils::vec2 p(x, y);
-	float angle = 0.5f * hfov;
-	utils::vec2 v(cosf(heading), sinf(heading));
-	std::vector<utils::ivec2> cells_in_fov;
-	int xi0 = std::max(0,static_cast<int>((x - range) / size_info_.res));
-	int xi1 = std::min(size_info_.nx(),static_cast<int>((x + range) / size_info_.res));
-	int yi0 = std::max(0,static_cast<int>((y - range) / size_info_.res));
-	int yi1 = std::min(size_info_.ny(),static_cast<int>((y + range) / size_info_.res));
-	for (int j = yi0; j < yi1; j++) {
-		for (int i = xi0; i < xi1; i++) {
-			utils::vec2 point = size_info_.ToPosWorld(i, j);
-			bool in_view = IsPointInCone(point, p, v, range, angle);
-			if (in_view) {
-				utils::ivec2 c(i, j);
-				cells_in_fov.push_back(c);
-			}
-		}
-	}
-	return cells_in_fov;
-}
-
-// CTG, 7/23/25
-void CostmapLayer::GetSlopeRmsInFov(float& slope, float& rms, float x, float y, float heading, float hfov, float range) {
-
-	std::vector<utils::ivec2> cells = GetCellsInFov(x, y, heading, hfov, range);
-	slope = 0.0f;
-	rms = 0.0f;
-
-	if (cells.size() < 0)return;
-
-	float navg = (float)cells.size();
-	for (int i = 0; i < (int)cells.size(); i++) {
-		rms += GetRmsAtCell(cells[i].x, cells[i].y);
-		slope += GetTerrainSlopeAtCell(cells[i].x, cells[i].y);
-
-	}
-	rms /= navg;
-	slope /= navg;
-	return;
+void CostmapLayer::UpdateOdometry(const msg::Odometry& odom_msg)
+{
+	current_odom_ = odom_msg;
 }
 
 // CTG, 5/8/25
@@ -144,8 +92,7 @@ float CostmapLayer::Slope(const Cell& cell) const {
 
 void CostmapLayer::RecomputeGridDilation() {
 
-	if (ignore_dilation_)
-	{
+	if (!dilation_.enabled) {
 		return;
 	}
 
@@ -156,16 +103,9 @@ void CostmapLayer::RecomputeGridDilation() {
 		}
 	}
 
-	if (!dilation_.enabled) {
-		return;
-	}
-
-	const int dsize_x = GetDilationNx();
-	const int dsize_y = GetDilationNy();
-
 	for (int xi = 0; xi < size_info_.nx(); xi++) {
 		for (int yi = 0; yi < size_info_.ny(); yi++) {
-			DilateCell(cells_, xi, yi, dsize_x, dsize_y);
+			DilateCell(cells_, xi, yi);
 		}
 	}
 }
@@ -174,8 +114,6 @@ void CostmapLayer::DilateCell(
 		std::vector<std::vector<Cell>>& cells,
 		const int xi,
 		const int yi,
-		const int dsize_x,
-		const int dsize_y,
 		const float original_slope
 	) {
 
@@ -188,6 +126,8 @@ void CostmapLayer::DilateCell(
 
 		const auto nx = size_info_.nx();
 		const auto ny = size_info_.ny();
+		const int dsize_x = dilation_.GetNx(size_info_.res);
+		const int dsize_y = dilation_.GetNy(size_info_.res);
 		for (int xii = std::max(0, xi - dsize_x); xii <= std::min(xi + dsize_x, nx - 1); xii++) {
 			for (int yii = std::max(0, yi - dsize_y); yii <= std::min(yi + dsize_y, ny - 1); yii++) {
 				cells[yii][xii].dilated_val = std::max(dilated_val, cells[yii][xii].dilated_val);
@@ -197,15 +137,16 @@ void CostmapLayer::DilateCell(
 	}
 }
 
-uint8_t CostmapLayer::GetGridCellValue(const Cell& cell) const {
-	if (!cell.filled())
-		return 0;
+int CostmapLayer::GetGridCellValue(const Cell& cell) const {
+	if (!cell.filled()){
+		return -1;
+	}
 
 	if (thresholds_.use_elevation) {
 		return cell.high.val > thresholds_.thresh ? GRID_MAX_VALUE : 0;
 	}
 	const auto slope = cell.height() / size_info_.res;
-	return slope > thresholds_.thresh ? static_cast<uint8_t>(std::min(std::max(0.0f, thresholds_.grid_slope_mult() * slope), static_cast<float>(GRID_MAX_VALUE))) : 0;
+	return slope > thresholds_.thresh ? std::min(std::max(0.0f, thresholds_.grid_slope_mult() * slope), static_cast<float>(GRID_MAX_VALUE)) : 0;
 
 }
 
@@ -218,6 +159,10 @@ bool CostmapLayer::HasData() const {
 }
 
 void CostmapLayer::Reset() {
+	// Nothing to do in base class
+}
+
+void CostmapLayer::Visualize() {
 	// Nothing to do in base class
 }
 

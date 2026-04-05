@@ -11,6 +11,7 @@ struct GridRegion {
     GridRegion Dilate(int dilate_x, int dilate_y, int nx, int ny) const;
     void UpdateBounds(int x, int y);
     void UpdateBounds(const int x, const int y, const int width, const int height);
+    void UpdateBounds(const GridRegion & other);
 
     void Reset();
 
