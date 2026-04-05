@@ -7,7 +7,12 @@ double start_time = 0.0;
 float max_grid_width = 0.0f;
 float max_grid_height = 0.0f;
 double grid_pub_force_full_every_x_sec = 0.0;
-double last_full_grid_update = 0.0;
+std::map<std::string, double> last_full_grid_update;
+
+std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr> occ_publisher;
+std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr> seg_publisher;
+std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGridUpdate>::SharedPtr> occ_updates_publisher;
+std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGridUpdate>::SharedPtr> seg_updates_publisher;
 
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
 
@@ -18,13 +23,16 @@ void ResetCallback(avt_341::msg::StringPtr msg) {
 	}
 }
 
-bool PublishGrid(bool is_segmentation, const std::string & grid_pub_method, double now_seconds,
-	const avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr& grid_pub,
-	const avt_341::node::Publisher<avt_341::msg::OccupancyGridUpdate>::SharedPtr& grid_pub_updates,
-	avt_341::perception::Costmap& grid) {
+void PublishGrid(
+	bool is_segmentation,
+	const std::string & grid_pub_method,
+	double now_seconds,
+	const std::string & target_layer,
+	avt_341::perception::Costmap& grid
+	) {
 
 	avt_341::msg::OccupancyGrid grid_msg;
-	bool is_full_update = false;
+
 	if (grid_pub_method == avt_341::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
 			max_grid_width,
@@ -32,25 +40,25 @@ bool PublishGrid(bool is_segmentation, const std::string & grid_pub_method, doub
 			is_segmentation
 			);
 	}else {
-		const bool is_full_grid_pub = grid_pub_method == avt_341::perception::GridPubMethod::Full;
-		is_full_update = is_full_grid_pub || (now_seconds - last_full_grid_update > grid_pub_force_full_every_x_sec);
+		bool is_full_update = (grid_pub_method == avt_341::perception::GridPubMethod::Full)
+			|| (now_seconds - last_full_grid_update[target_layer] > grid_pub_force_full_every_x_sec);
 		if (is_full_update) {
-			last_full_grid_update = now_seconds;
-			grid_msg = grid.GetGrid(is_segmentation);
+			last_full_grid_update[target_layer] = now_seconds;
+			grid_msg = grid.GetGrid(is_segmentation, target_layer);
 		}else {
 			avt_341::msg::OccupancyGridUpdate grid_update_msg;
-			grid_update_msg = grid.GetGridUpdate(is_segmentation);
+			grid_update_msg = grid.GetGridUpdate(is_segmentation, target_layer);
 			if (grid_update_msg.height > 0 && grid_update_msg.width > 0) {
 				grid_update_msg.header.stamp = n->get_stamp();
+				auto grid_pub_updates = is_segmentation ? seg_updates_publisher[target_layer] : occ_updates_publisher[target_layer];
 				grid_pub_updates->publish(grid_update_msg);
 			}
-			return false;
 		}
 	}
 
+	auto grid_pub = is_segmentation ? seg_publisher[target_layer] : occ_publisher[target_layer];
 	grid_msg.header.stamp = n->get_stamp();
 	grid_pub->publish(grid_msg);
-	return is_full_update;
 }
 
 avt_341::perception::CostmapSizeInfo ParseSizeInfo()
@@ -147,16 +155,25 @@ int main(int argc, char* argv[]) {
 	// Create publishers + subscribers
 	// --------------------------------------------------------------------------------------------------------------
 	auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-	auto grid_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
 	auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-	auto grid_segmentation_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
-
 	auto rms_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_rms", 1);
 	auto terrain_slope_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_slope", 1);
 
-	const bool is_updates_grid_pub = grid_pub_method == avt_341::perception::GridPubMethod::Updates;
-	auto grid_pub_updates = is_updates_grid_pub ? n->create_publisher<avt_341::msg::OccupancyGridUpdate>("avt_341/occupancy_grid_updates", 1) : nullptr;
-	auto grid_segmentation_pub_updates = is_updates_grid_pub ? n->create_publisher<avt_341::msg::OccupancyGridUpdate>("avt_341/segmentation_grid_updates", 1) :  nullptr;
+	const bool use_inc_updates = grid_pub_method == avt_341::perception::GridPubMethod::Updates;
+
+	publish_layers.push_back(""); // add empty string to represent combined grid layer for publishing
+
+	for (const auto& layer_id : publish_layers){
+		const std::string occ_pub_name = layer_id.empty() ? "avt_341/occupancy_grid" : "avt_341/occ_" + layer_id;
+		const std::string seg_pub_name = layer_id.empty() ? "avt_341/segmentation_grid" : "avt_341/seg_" + layer_id;
+		occ_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(occ_pub_name, 1);
+		seg_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(seg_pub_name, 1);
+		if (use_inc_updates)
+		{
+			occ_updates_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGridUpdate>(occ_pub_name + "_updates", 1);
+			seg_updates_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGridUpdate>(seg_pub_name + "_updates", 1);
+		}
+	}
 
 	// Main loop
 	// --------------------------------------------------------------------------------------------------------------
@@ -165,18 +182,18 @@ int main(int argc, char* argv[]) {
 	start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(perception_rate);
 	int nloops = 0;
+
 	while (avt_341::node::ok()) {
 
 		const double now_seconds = n->get_now_seconds();
 
 		if (grid.HasOdomData() && (now_seconds - start_time) > warmup_time) {
 
-			bool is_full_update = PublishGrid(false, grid_pub_method, now_seconds, grid_pub, grid_pub_updates, grid);
-			if (grid.HasSegmentation()) {
-				PublishGrid(true, grid_pub_method, now_seconds, grid_segmentation_pub, grid_segmentation_pub_updates, grid);
-			}
-			if (is_full_update){
-				last_full_grid_update = now_seconds;
+			for (const auto& pub_layer: publish_layers){
+				PublishGrid(false, grid_pub_method, now_seconds, pub_layer, grid);
+				if (grid.HasSegmentation()) {
+					PublishGrid(true, grid_pub_method, now_seconds, pub_layer, grid);
+				}
 			}
 
 			// get the slope and RMS
