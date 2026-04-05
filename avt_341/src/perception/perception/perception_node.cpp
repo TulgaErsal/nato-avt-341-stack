@@ -1,5 +1,4 @@
 // c++ includes
-#include <deque>
 // ros includes
 #include <avt_341/avt_341_utils.h>
 #include <avt_341/core/monitoring.hpp>
@@ -114,9 +113,8 @@ int main(int argc, char* argv[]) {
 	// float grid_width, grid_height;
 	// float grid_res, grid_llx, grid_lly, warmup_time, thresh, thresh_max, grid_dilate_x, grid_dilate_y, grid_dilate_proportion;
 	// bool use_elevation, grid_dilate;
-	float warmup_time;
-	std::string clear_method, grid_pub_method;
-	double perception_rate;
+	float warmup_time, perception_rate;
+	std::string clear_method, grid_pub_method, layer_combination_method;
 
 	// float rms_horizontal_fov_radians, rms_range_meters, rms_time_average_window;
 
@@ -128,14 +126,15 @@ int main(int argc, char* argv[]) {
 	// n->get_parameter("~slope_threshold_max", thresh_max, 2.5f);
 	// n->get_parameter("~use_elevation", use_elevation, false);
 
-	n->get_parameter("~perception_rate", perception_rate, 100.0);
+	n->get_parameter("~perception_rate", perception_rate, 100.0f);
 	n->get_parameter("~max_grid_width", max_grid_width, 800.0f);
 	n->get_parameter("~max_grid_height", max_grid_height, 800.0f);
 
 	n->get_parameter("~grid_pub_method", grid_pub_method, std::string(avt_341::perception::GridPubMethod::Full));
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
+	n->get_parameter("~layer_combination_method", layer_combination_method, std::string("last"));
 
-	if (!avt_341::perception::GridPubMethod::IsGridPubMethodValid(grid_pub_method)){
+	if (!avt_341::perception::GridPubMethod::IsValid(grid_pub_method)){
 		n->log_error("Invalid grid_pub_method: %hs", grid_pub_method.c_str());
 		return -1;
 	}
@@ -144,25 +143,25 @@ int main(int argc, char* argv[]) {
 	const avt_341::perception::DilationSettings dilation = ParseDilationSettings();
 	const avt_341::perception::ThresholdSettings thresholds = ParseThresholdSettings();
 	avt_341::perception::TerrainRmsSettings rms_settings = ParseTerrainRmsSettings(perception_rate);
-
-	avt_341::perception::Costmap grid(n, size_info, thresholds, dilation, rms_settings);
+	const avt_341::perception::CostmapSettings settings(size_info, thresholds, dilation, rms_settings);
+	avt_341::perception::Costmap grid(n, settings, layer_combination_method);
 
 	// Configure grid
 	// --------------------------------------------------------------------------------------------------------------
 
 	n->log_info("Perception node settings:\n"
-					"	grid_res: %.2f\n"
-					"	slope_threshold: %.2f\n"
-					"	slope_threshold_max: %.2f\n "
-					"	grid_dilate: %d\n"
+					"	size_info: %hs\n"
+					"	thresholds: %hs\n"
+					"	dilation: %hs\n"
 					"	grid_pub_method: %hs\n"
-					"	grid_pub_force_full_every: %.2f",
-					size_info.res,
-					thresholds.thresh,
-					thresholds.thresh_max,
-					dilation.enabled,
+					"	n_layers: %d\n"
+					"	layer_combine_method: %hs",
+					size_info.ToString().c_str(),
+					dilation.ToString().c_str(),
+					thresholds.ToString().c_str(),
 					grid_pub_method.c_str(),
-					grid_pub_force_full_every_x_sec
+					grid.GetLayerCount(),
+					layer_combination_method.c_str()
 					);
 
 
@@ -183,15 +182,6 @@ int main(int argc, char* argv[]) {
 	auto grid_pub_updates = is_updates_grid_pub ? n->create_publisher<avt_341::msg::OccupancyGridUpdate>("avt_341/occupancy_grid_updates", 1) : nullptr;
 	auto grid_segmentation_pub_updates = is_updates_grid_pub ? n->create_publisher<avt_341::msg::OccupancyGridUpdate>("avt_341/segmentation_grid_updates", 1) :  nullptr;
 
-	// Runtime parameter changes
-	// --------------------------------------------------------------------------------------------------------------
-
-	// TODO: Below is temporary - to be refined in near future
-
-	// n->params()->add_parameter_callback("slope_threshold", [&](const avt_341::node::RosParameter & p) {
-	// 	grid.SetSlopeParameters(p.as_double(), std::nullopt, true);
-	// });
-
 	// Main loop
 	// --------------------------------------------------------------------------------------------------------------
 
@@ -199,8 +189,8 @@ int main(int argc, char* argv[]) {
 	start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(perception_rate);
 	// int n_rms_avg = static_cast<int>(rms_time_average_window * perception_rate);
-	std::deque<double> rms_buffer;
-	std::deque<double> slope_buffer;
+	// std::deque<double> rms_buffer;
+	// std::deque<double> slope_buffer;
 	int nloops = 0;
 	while (avt_341::node::ok()) {
 

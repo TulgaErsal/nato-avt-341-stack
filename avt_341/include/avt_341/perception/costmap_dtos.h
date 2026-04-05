@@ -8,6 +8,7 @@
 #include "avt_341/avt_341_utils.h"
 #include <iostream>
 #include <optional>
+#include <format>
 
 namespace avt_341::perception
 {
@@ -33,8 +34,8 @@ namespace avt_341::perception
       low.val = MAX_LIMIT;
       high.val = MIN_LIMIT;
       has_dilated = false;
-      dilated_val = 0;
-      terrain = -1.0f;
+      dilated_val = -1;
+      terrain_seg = -1;
 
       // RMS Statistics
       num_points = 0;
@@ -64,8 +65,8 @@ namespace avt_341::perception
     bool filled() const { return low.val < MAX_LIMIT; }
 
     bool has_dilated;
-    uint8_t dilated_val;
-    float terrain;
+    int dilated_val;
+    int terrain_seg;
 
     // RMS Statistics
     int num_points;
@@ -77,10 +78,9 @@ namespace avt_341::perception
 
   class CellObstacleCalculator {
   public:
-    virtual ~CellObstacleCalculator() = default;
+    virtual void AddOccupancy(const msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) = 0;
     virtual bool PastSlopeThreshold(const Cell & cell) const = 0;
     virtual float Slope(const Cell & cell) const = 0;
-    virtual void AddOccupancy(const avt_341::msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) = 0;
   };
 
   struct TerrainRmsSettings
@@ -101,9 +101,42 @@ namespace avt_341::perception
     static constexpr std::string_view Window = "window";
     static constexpr std::string_view Updates = "updates";
 
-    static bool IsGridPubMethodValid(const std::string & selected_method){
+    static bool IsValid(const std::string & selected_method){
       const auto valid_methods = {Full, Window, Updates};
       return std::find(valid_methods.begin(), valid_methods.end(), selected_method) != valid_methods.end();
+    }
+
+  };
+
+  struct LayerCombinationMethod {
+    static constexpr std::string_view Last = "last";
+    static constexpr std::string_view Mean = "mean";
+    static constexpr std::string_view Max = "max";
+
+    static bool IsLast(const std::string &method){
+      return method == Last;
+    }
+
+    static bool IsMean(const std::string &method){
+      return method == Mean;
+    }
+
+    static bool IsMax(const std::string &method){
+      return method == Max;
+    }
+
+    static bool IsValid(const std::string & method){
+      const auto valid_methods = {Last, Mean, Max};
+      return std::find(valid_methods.begin(), valid_methods.end(), method) != valid_methods.end();
+    }
+
+    static void SetFlags(const std::string & method, bool & last_flag, bool & mean_flag){
+      if (!IsValid(method))
+      {
+        throw std::invalid_argument("Invalid layer combination method: " + method);
+      }
+      last_flag = IsLast(method);
+      mean_flag = IsMean(method);
     }
 
   };
@@ -127,6 +160,11 @@ namespace avt_341::perception
         thresh_max = thresh + eps;
       }
     }
+
+    std::string ToString() const
+    {
+      return "use_elevation: " + std::to_string(use_elevation) + ", thresh: " + std::to_string(thresh) + ", thresh_max: " + std::to_string(thresh_max);
+    }
   };
 
   struct DilationSettings
@@ -138,6 +176,15 @@ namespace avt_341::perception
 
     int GetNx(const float res) const { return enabled ? lround(x/res) : 0;}
     int GetNy(const float res) const { return enabled ? lround(y/res) : 0;}
+
+    std::string ToString() const
+    {
+      if (!enabled) {
+        return "disabled";
+      }
+
+      return "x: " + std::to_string(x) + "m, y: " + std::to_string(y) + "m, proportion: " + std::to_string(proportion);
+    }
 
   };
 
@@ -179,6 +226,29 @@ namespace avt_341::perception
       return meta;
     }
 
+    std::string ToString() const
+    {
+      return std::to_string(width) + "x" + std::to_string(height) + "m " + std::to_string(res) + "res (" + std::to_string(nx()) + "x" + std::to_string(ny()) + " cells), origin: " + std::to_string(llx) + "m , " + std::to_string(lly) + "m";
+    }
+
+  };
+
+  struct CostmapSettings
+  {
+    CostmapSettings(
+      const CostmapSizeInfo& size_info,
+      const ThresholdSettings& thresholds,
+      const DilationSettings& dilation,
+      const TerrainRmsSettings& terrain_rms
+      )
+    : size_info(size_info), thresholds(thresholds), dilation(dilation), terrain_rms(terrain_rms)
+    {
+    }
+
+    CostmapSizeInfo size_info;
+    ThresholdSettings thresholds;
+    DilationSettings dilation;
+    TerrainRmsSettings terrain_rms;
   };
 
 

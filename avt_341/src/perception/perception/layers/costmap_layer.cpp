@@ -5,11 +5,10 @@ namespace avt_341::perception
 
 CostmapLayer::CostmapLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
-    const CostmapSizeInfo& size_info,
-    const ThresholdSettings& thresholds,
-    const DilationSettings& dilation
+    const CostmapSettings& cm_settings,
+    const std::string& label
     )
-    : node_ref_(node_ref), size_info_(size_info), thresholds_(thresholds), dilation_(dilation)
+    : node_ref_(node_ref), size_info_(cm_settings.size_info), thresholds_(cm_settings.thresholds), dilation_(cm_settings.dilation), label_(label)
 {
     Resize();
 }
@@ -82,14 +81,6 @@ void CostmapLayer::Clear() {
     }
 }
 
-bool CostmapLayer::PastSlopeThreshold(const Cell& cell) const {
-	return cell.height() / size_info_.res > thresholds_.thresh;
-}
-
-float CostmapLayer::Slope(const Cell& cell) const {
-	return cell.height() / size_info_.res ;
-}
-
 void CostmapLayer::RecomputeGridDilation() {
 
 	if (!dilation_.enabled) {
@@ -122,7 +113,7 @@ void CostmapLayer::DilateCell(
 	if (PastSlopeThreshold(cell) && (!cell.has_dilated || Slope(cell) > original_slope)) {
 
 		cell.has_dilated = true;
-		auto dilated_val = static_cast<uint8_t>(dilation_.proportion * static_cast<float>(GetGridCellValue(cell)));
+		auto dilated_val = static_cast<int>(dilation_.proportion * static_cast<float>(GetGridCellValue(cell)));
 
 		const auto nx = size_info_.nx();
 		const auto ny = size_info_.ny();

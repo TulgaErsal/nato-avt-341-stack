@@ -9,15 +9,15 @@
 namespace avt_341::perception
 {
 
-    class PointCloudLayer : public CostmapLayer
+    class PointCloudLayer : public CostmapLayer, public CellObstacleCalculator
     {
 
     public:
+
         PointCloudLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
-            const CostmapSizeInfo& size_info,
-            const ThresholdSettings& thresholds,
-            const DilationSettings& dilation
+            const CostmapSettings& cm_settings,
+            const std::string & label
             );
 
         void SetupPointCloudFilter();
@@ -40,7 +40,10 @@ namespace avt_341::perception
 
         void Visualize() override;
 
-        virtual void Reset() override;
+        void Reset() override;
+
+        bool PastSlopeThreshold(const Cell& cell) const override { return CostmapLayer::PastSlopeThreshold(cell); }
+        float Slope(const Cell& cell) const override { return CostmapLayer::Slope(cell); }
 
     private:
         double pc_callback_warn_dur = 0.0; // in seconds

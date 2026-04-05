@@ -47,9 +47,12 @@ public:
 };
 
 struct BaseClearingSettings {
-    CostmapSizeInfo* size_info;
-    ThresholdSettings* thresholds;
-    DilationSettings* dilation;
+    float llx;
+    float lly;
+    float res;
+    int grid_dilate_x;
+    int grid_dilate_y;
+    float thresh;
     bool immediate_clear_dilation;
     float visualization_range;
     bool visualize;

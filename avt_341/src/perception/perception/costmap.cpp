@@ -10,18 +10,17 @@ namespace avt_341::perception {
 
 Costmap::Costmap(
 	const std::shared_ptr<node::NodeProxy>& node_ref,
-	const CostmapSizeInfo& size_info,
-	const ThresholdSettings& thresholds,
-	const DilationSettings& dilation,
-	const TerrainRmsSettings& terrain_rms_config
+	const CostmapSettings& settings,
+	const std::string& layer_cmb_method
 	)
-	: node_ref_(node_ref), size_info_(size_info), thresholds_(thresholds), dilation_(dilation), terrain_rms_config_(terrain_rms_config)
+	: node_ref_(node_ref), size_info_(settings.size_info), thresholds_(settings.thresholds),
+	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms)
 {
 	// TODO: Should only create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
-		std::make_shared<StaticGridLayer>(node_ref, size_info, thresholds, dilation),
-		std::make_shared<PolygonLayer>(node_ref, size_info, thresholds, dilation),
-		std::make_shared<PointCloudLayer>(node_ref, size_info, thresholds, dilation),
+		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
+		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer"),
+		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
 	};
 
 	layers_.clear();
@@ -29,6 +28,8 @@ Costmap::Costmap(
 		[](const std::shared_ptr<CostmapLayer>& layer) {
 		return layer->IsValid();
 	});
+
+	LayerCombinationMethod::SetFlags(layer_cmb_method, layer_cmb_last_, layer_cmd_mn_);
 
 	odom_sub_ = node_ref_->create_subscription<msg::Odometry>(
 		"avt_341/odometry",
@@ -311,32 +312,13 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
 
-	bool is_last = false;
-	bool is_mean = false;
-
 	int c = 0;
-	std::vector<int> layer_values;
-	layer_values.reserve(layers_.size());
-
 	for (int i = region.y_min; i < region.y_max; i++) {
 		for (int j = region.x_min; j < region.x_max; j++) {
-
-			for (int k = 0; k < layers_.size(); k++){
-				const auto & layer = layers_[k];
-				const auto val = is_segmentation ? layer.GetSegValue(i, j) : layer.GetOccValue(i, j);
-				if (val >= 0){
-					layer_values.emplace_back(val);
-				}
-			}
-
-			if (layer_values.empty()){
-				data[c++] = -1;
-			}
-			else{
-				data[c++] = is_last ? layer_values.back()
-				: (is_mean ? std::accumulate(layer_values.begin(), layer_values.end(), 0) / layer_values.size()
-					: *std::max_element(layer_values.begin(), layer_values.end()));
-			}
+			const int layer_val = GetCombinedLayerValue<int>([i, j, is_segmentation](const std::shared_ptr<CostmapLayer>& layer){
+				return is_segmentation ? layer->GetSegValue(i, j) : layer->GetOccValue(i, j);
+			});
+			data[c++] = static_cast<int8_t>(layer_val);
 		}
 	}
 }
@@ -458,8 +440,12 @@ void Costmap::UpdateRmsAndSlope() {
 
 	float navg = static_cast<float>(idxs.size());
 	for (const auto & idx : idxs) {
-		rms += GetRmsAtCell(idx.x, idx.y);
-		slope += GetTerrainSlopeAtCell(idx.x, idx.y);
+		rms += GetCombinedLayerValue<float>([&idx](const std::shared_ptr<CostmapLayer>& layer){
+			return layer->GetRmsAtCell(idx.x, idx.y);
+		});
+		slope += GetCombinedLayerValue<float>([&idx](const std::shared_ptr<CostmapLayer>& layer){
+			return layer->GetTerrainSlopeAtCell(idx.x, idx.y);
+		});
 	}
 	rms /= navg;
 	slope /= navg;

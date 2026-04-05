@@ -8,8 +8,10 @@ namespace avt_341::perception
     class PolygonLayer: public CostmapLayer
     {
     public:
-        PolygonLayer(const std::shared_ptr<node::NodeProxy>& node_ref, const CostmapSizeInfo& size_info,
-            const ThresholdSettings& thresholds, const DilationSettings& dilation);
+        PolygonLayer(
+            const std::shared_ptr<node::NodeProxy>& node_ref,
+            const CostmapSettings& cm_settings,
+            const std::string& label);
     };
 }
 

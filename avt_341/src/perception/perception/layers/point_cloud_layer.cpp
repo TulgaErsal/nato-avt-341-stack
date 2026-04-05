@@ -9,9 +9,12 @@
 
 namespace avt_341::perception
 {
-PointCloudLayer::PointCloudLayer(const std::shared_ptr<node::NodeProxy>& node_ref, const CostmapSizeInfo& size_info,
-    const ThresholdSettings& thresholds, const DilationSettings& dilation)
-        : CostmapLayer(node_ref, size_info, thresholds, dilation), pc_callback_time_(40)
+PointCloudLayer::PointCloudLayer(
+    const std::shared_ptr<node::NodeProxy>& node_ref,
+    const CostmapSettings& cm_settings,
+    const std::string & label
+    )
+        : CostmapLayer(node_ref, cm_settings, label), pc_callback_time_(40)
 {
     std::string perception_points_topic, clear_only_points_topic;
     node_ref_->get_parameter("~perception_points_topic", perception_points_topic, std::string("avt_341/points"));
@@ -103,12 +106,12 @@ std::shared_ptr<msg::PointCloud> PointCloudLayer::RegisterPc2Msg(const msg::Poin
 
     if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
         pc2_ptr = std::make_shared<msg::PointCloud2>();
-        if (!n->transform_cloud(*rcv_cloud, *pc2_ptr, "map")) {
+        if (!node_ref_->transform_cloud(*rcv_cloud, *pc2_ptr, "map")) {
             return nullptr;
         }
     }
 
-    std::shared_ptr<avt_341::msg::PointCloud> pc_ptr = std::make_shared<avt_341::msg::PointCloud>();
+    std::shared_ptr<msg::PointCloud> pc_ptr = std::make_shared<msg::PointCloud>();
     if (!sensor_msgs::convertPointCloud2ToPointCloud(*pc2_ptr, *pc_ptr)) {
         return nullptr;
     }
@@ -118,15 +121,15 @@ std::shared_ptr<msg::PointCloud> PointCloudLayer::RegisterPc2Msg(const msg::Poin
 
 void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
 
-    const double callback_start_time = n->get_now_seconds();
+    const double callback_start_time = node_ref_->get_now_seconds();
 
-    std::shared_ptr<avt_341::msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
+    std::shared_ptr<msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
 
     if (pc == nullptr) {
         return;
     }
 
-    const std::string veh_frame = current_pose.child_frame_id;
+    const std::string veh_frame = current_odom_.child_frame_id;
 
     if (clr_only_pc_ != nullptr) {
         msg::PoseStamped origin_pose = node_ref_->lookup_pose("map", veh_frame, clr_only_pc_->header.stamp);
@@ -228,8 +231,8 @@ void PointCloudLayer::AddOccupancy(const msg::PointCloud& point_cloud, std::vect
                     cell.low.age = 0.0f;
                 }
                 if (has_segmentation_local) {
-                    float terr_val = point_cloud.channels[0].values[i];
-                    cell.terrain = fmax(cell.terrain, terr_val);
+                    const int terr_val = static_cast<int>(point_cloud.channels[0].values[i]);
+                    cell.terrain_seg = std::max(cell.terrain_seg, terr_val);
                 }
 
                 // CTG 5/8/25, add calculations necessary for tracking RMS
@@ -277,9 +280,12 @@ void PointCloudLayer::SetupGridClearingMethod() {
     ClearMethodRosParameters params = ParseClearMethodsConfig();
 
     BaseClearingSettings base_config;
-    base_config.size_info = &size_info_;
-    base_config.thresholds = &thresholds_;
-    base_config.dilation = &dilation_;
+    base_config.llx = size_info_.llx;
+    base_config.lly = size_info_.lly;
+    base_config.res = size_info_.res;
+    base_config.grid_dilate_x = dilation_.GetNx(size_info_.res);
+    base_config.grid_dilate_y = dilation_.GetNy(size_info_.res);
+    base_config.thresh = thresholds_.thresh;
     base_config.immediate_clear_dilation = params.immediate_clr_dilation;
     base_config.visualization_range = params.visualization_range;
     base_config.visualize = params.visualize;

@@ -13,15 +13,13 @@ namespace avt_341::perception
 
 		CostmapLayer(
 			const std::shared_ptr<node::NodeProxy>& node_ref,
-			const CostmapSizeInfo& size_info,
-			const ThresholdSettings& thresholds,
-			const DilationSettings& dilation
+			const CostmapSettings& cm_settings,
+			const std::string& label
 		);
 
 		bool HasSegmentation() const { return has_segmentation_; }
 
 		Cell& CellAt(const int x, const int y) { return cells_[y][x]; }
-		std::vector<Cell>& (&operator[](const int idx)) { return cells_[idx]; }
 
 		int GetGridCellValue(const Cell& cell) const;
 
@@ -37,8 +35,8 @@ namespace avt_341::perception
 
 		virtual void RecomputeGridDilation();
 
-		inline bool PastSlopeThreshold(const Cell& cell) const;
-		inline float Slope(const Cell& cell) const;
+		virtual bool PastSlopeThreshold(const Cell& cell) const { return cell.height() / size_info_.res > thresholds_.thresh; }
+		virtual float Slope(const Cell& cell) const { return cell.height() / size_info_.res; }
 
 		virtual void Reset();
 		bool IsValid() const { return is_valid_; }
@@ -51,6 +49,10 @@ namespace avt_341::perception
 		void ResetUpdateRegion() { grid_update_region_.Reset(); }
 		void UpdateOdometry(const msg::Odometry& odom_msg);
 
+		int GetSegValue(const int i, const int j) const { return cells_[i][j].terrain_seg; }
+		int GetOccValue(const int i, const int j) const { return std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val); }
+		std::string GetLabel() const { return label_; }
+
 	protected:
 
 		void DilateCell(std::vector<std::vector<Cell>>& cells, int xi, int yi, float original_slope = 0.0f);
@@ -59,10 +61,13 @@ namespace avt_341::perception
 		bool has_segmentation_ = false;
 		bool is_resetting_ = false;
 		bool is_valid_ = true;
+
 		std::shared_ptr<node::NodeProxy> node_ref_;
 		CostmapSizeInfo size_info_;
 		ThresholdSettings thresholds_;
 		DilationSettings dilation_;
+		std::string label_;
+
 		msg::Odometry current_odom_;
 
 		core::GridRegion grid_update_region_;

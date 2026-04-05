@@ -2,9 +2,12 @@
 
 namespace avt_341::perception
 {
-    PolygonLayer::PolygonLayer(const std::shared_ptr<node::NodeProxy>& node_ref,
-    const CostmapSizeInfo& size_info, const ThresholdSettings& thresholds, const DilationSettings& dilation)
-        : CostmapLayer(node_ref, size_info, thresholds, dilation)
+    PolygonLayer::PolygonLayer(
+        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const CostmapSettings& cm_settings,
+        const std::string& label)
+        : CostmapLayer(node_ref, cm_settings, label)
     {
+        is_valid_ = false;
     }
 }
