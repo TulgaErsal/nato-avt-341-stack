@@ -36,7 +36,7 @@ public:
 
 	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation) const;
 	void Reset() const;
-	void DebugVisualize() const;
+	void Visualize() const;
 
 	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
@@ -49,6 +49,8 @@ public:
 	double GetCurrentSlope() const {
 		return std::accumulate(slope_buffer_.begin(), slope_buffer_.end(), 0.0) / static_cast<double>(slope_buffer_.size());
 	}
+
+	std::string ToLayerInfoString() const;
 
 private:
 
@@ -68,6 +70,7 @@ private:
 	std::vector<std::shared_ptr<CostmapLayer>> layers_;
 
 	// Layer combination method, precached as booleans instead of string parameter inputs for efficiency
+	std::string layer_cmb_method_;
 	bool layer_cmb_last_ = false;
 	bool layer_cmd_mn_ = false;
 

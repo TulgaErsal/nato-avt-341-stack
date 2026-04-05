@@ -199,8 +199,8 @@ namespace avt_341::perception
     int nx() const { return static_cast<int>(ceil(width / res));}
     int ny() const { return static_cast<int>(ceil(height / res));}
 
-    utils::vec2 ToPosWorld(const int i, const int j) const {
-      return utils::vec2(ToXWorld(i), ToYWorld(j));
+    utils::vec2 ToPosWorld(const int idxX, const int idxY) const {
+      return utils::vec2(ToXWorld(idxX), ToYWorld(idxY));
     }
 
     utils::ivec2 ToIdx(const float x, const float y) const {
@@ -251,6 +251,13 @@ namespace avt_341::perception
     TerrainRmsSettings terrain_rms;
   };
 
+  struct PolygonZone
+  {
+    std::string name;
+    std::vector<utils::vec2> vertices;
+    double occ_value;
+    int seg_value;
+  };
 
 
 }

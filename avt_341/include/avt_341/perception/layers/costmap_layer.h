@@ -53,6 +53,8 @@ namespace avt_341::perception
 		int GetOccValue(const int i, const int j) const { return std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val); }
 		std::string GetLabel() const { return label_; }
 
+		virtual std::string ToString() const { return label_; }
+
 	protected:
 
 		void DilateCell(std::vector<std::vector<Cell>>& cells, int xi, int yi, float original_slope = 0.0f);

@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
 			terrain_slope_pub->publish(slope_msg);
 
 			if (nloops % 20 == 0) {
-				grid.DebugVisualize(); // debug visualization
+				grid.Visualize(); // debug visualization
 			}
 
 			nloops++;

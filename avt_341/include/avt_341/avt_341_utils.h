@@ -202,6 +202,23 @@ inline std::string ToString(int x, int zero_padding){
   return str;
 };
 
+/// Ray-casting point-in-polygon test (works for non-convex polygons).
+/// https://en.wikipedia.org/wiki/Point_in_polygon
+static bool IsInsidePolygon(const std::vector<vec2>& poly, double px, double py)
+{
+	bool inside = false;
+	const int n = static_cast<int>(poly.size());
+	for (int i = 0, j = n - 1; i < n; j = i++) {
+		const double xi = poly[i].x, yi = poly[i].y;
+		const double xj = poly[j].x, yj = poly[j].y;
+		if (((yi > py) != (yj > py)) &&
+			(px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+			inside = !inside;
+			}
+	}
+	return inside;
+}
+
 } //namespace utils
 } //namespace avt_341
 

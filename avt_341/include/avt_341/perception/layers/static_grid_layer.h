@@ -11,7 +11,13 @@ namespace avt_341::perception
         StaticGridLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
             const CostmapSettings& cm_settings,
-            const std::string& label);
+            const std::string& label
+            );
+
+        std::string ToString() const override;
+
+    private:
+        std::string input_file_;
     };
 }
 

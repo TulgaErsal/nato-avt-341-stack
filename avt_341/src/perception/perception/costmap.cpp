@@ -18,9 +18,9 @@ Costmap::Costmap(
 {
 	// TODO: Should only create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
-		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer", ""),
-		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer", ""),
+		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
 		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
+		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer"),
 	};
 
 	layers_.clear();
@@ -66,7 +66,7 @@ void Costmap::Reset() const
 	}
 }
 
-void Costmap::DebugVisualize() const
+void Costmap::Visualize() const
 {
 	for (const auto & layer : layers_) {
 		layer->Visualize();

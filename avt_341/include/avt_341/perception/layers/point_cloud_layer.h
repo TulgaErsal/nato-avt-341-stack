@@ -45,6 +45,8 @@ namespace avt_341::perception
         bool PastSlopeThreshold(const Cell& cell) const override { return CostmapLayer::PastSlopeThreshold(cell); }
         float Slope(const Cell& cell) const override { return CostmapLayer::Slope(cell); }
 
+        std::string ToString() const override;
+
     private:
         double pc_callback_warn_dur = 0.0; // in seconds
 
@@ -57,6 +59,7 @@ namespace avt_341::perception
 	    std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
         core::WindowedMean pc_callback_time_;
         std::shared_ptr<msg::PointCloud> clr_only_pc_ = nullptr;
+        std::string pc_topic_id_;
 
         node::Subscriber<msg::PointCloud2>::SharedPtr pc_sub_;
         node::Subscriber<msg::PointCloud2>::SharedPtr pc_ground_sub_;
