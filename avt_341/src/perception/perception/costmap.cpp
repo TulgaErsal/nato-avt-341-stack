@@ -14,12 +14,12 @@ Costmap::Costmap(
 	const std::string& layer_cmb_method
 	)
 	: node_ref_(node_ref), size_info_(settings.size_info), thresholds_(settings.thresholds),
-	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms)
+	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms), layer_cmb_method_(layer_cmb_method)
 {
 	// TODO: Should only create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
-		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
-		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer"),
+		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer", ""),
+		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer", ""),
 		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
 	};
 
@@ -29,7 +29,7 @@ Costmap::Costmap(
 		return layer->IsValid();
 	});
 
-	LayerCombinationMethod::SetFlags(layer_cmb_method, layer_cmb_last_, layer_cmd_mn_);
+	LayerCombinationMethod::SetFlags(layer_cmb_method_, layer_cmb_last_, layer_cmd_mn_);
 
 	odom_sub_ = node_ref_->create_subscription<msg::Odometry>(
 		"avt_341/odometry",
@@ -222,6 +222,15 @@ void Costmap::UpdateRmsAndSlope() {
 		slope_buffer_.pop_front();
 		rms_buffer_.pop_front();
 	}
+}
+
+std::string Costmap::ToLayerInfoString() const
+{
+    std::string result = "Costmap layers (" + std::to_string(layers_.size()) + "), combination method: " + layer_cmb_method_ + "\n";
+    for (const auto& layer : layers_) {
+        result += "  - " + layer->ToString() + "\n";
+    }
+    return result;
 }
 
 } //namespace avt_341::perception

@@ -16,8 +16,8 @@ PointCloudLayer::PointCloudLayer(
     )
         : CostmapLayer(node_ref, cm_settings, label), pc_callback_time_(40)
 {
-    std::string perception_points_topic, clear_only_points_topic;
-    node_ref_->get_parameter("~perception_points_topic", perception_points_topic, std::string("avt_341/points"));
+    std::string clear_only_points_topic;
+    node_ref_->get_parameter("~perception_points_topic", pc_topic_id_, std::string("avt_341/points"));
     node_ref_->get_parameter("~clear_only_points_topic", clear_only_points_topic, std::string("avt_341/ground_points"));
 	node_ref_->get_parameter("~pc_callback_warn_time", pc_callback_warn_dur, 0.1);
 
@@ -25,7 +25,7 @@ PointCloudLayer::PointCloudLayer(
     SetupPointCloudFilter();
 
     pc_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
-        perception_points_topic,
+        pc_topic_id_,
         10,
         std::bind(&PointCloudLayer::PointCloudCallback, this, std::placeholders::_1)
         );
@@ -298,5 +298,11 @@ void PointCloudLayer::Visualize()
     for (const auto& cm : clear_methods_) {
         cm->Visualize();
     }
+}
+
+std::string PointCloudLayer::ToString() const
+{
+    return "[PointCloudLayer] id: " + label_
+        + ", pc_topic: " + pc_topic_id_;
 }
 }

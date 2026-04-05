@@ -132,14 +132,12 @@ int main(int argc, char* argv[]) {
 					"	thresholds: %hs\n"
 					"	dilation: %hs\n"
 					"	grid_pub_method: %hs\n"
-					"	n_layers: %d\n"
-					"	layer_combine_method: %hs",
+					"	layers: %hs",
 					size_info.ToString().c_str(),
 					dilation.ToString().c_str(),
 					thresholds.ToString().c_str(),
 					grid_pub_method.c_str(),
-					grid.GetLayerCount(),
-					layer_combination_method.c_str()
+					grid.ToLayerInfoString().c_str()
 					);
 
 	// Create publishers + subscribers
