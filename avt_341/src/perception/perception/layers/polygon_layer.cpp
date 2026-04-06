@@ -50,7 +50,7 @@ namespace avt_341::perception
                 if (zone.vertices.size() >= 3) {
                     zones_.push_back(zone);
                 } else {
-                    node_ref_->log_warning("Zone '%s' has fewer than 3 vertices — skipping.", zone.name.c_str());
+                    node_ref_->log_warning("Zone '%s' has fewer than 3 vertices — skipping.", zone.label.c_str());
                 }
             }
 
@@ -163,7 +163,7 @@ namespace avt_341::perception
             label.pose.position.x = cx;
             label.pose.position.y = cy;
             label.pose.position.z = 1.0;
-            label.text            = zone.name;
+            label.text            = zone.label;
 
             ma.markers.push_back(label);
         }

@@ -159,8 +159,8 @@ PolygonZone PolygonZoneParser::ParseZoneObject()
     while (Peek() != '}') {
         const std::string key = ParseString();
         Expect(':');
-        if (key == "name") {
-            zone.name = ParseString();
+        if (key == "label") {
+            zone.label = ParseString();
         } else if (key == "vertices") {
             zone.vertices = ParseVertexArray();
         } else if (key == "occupancy") {

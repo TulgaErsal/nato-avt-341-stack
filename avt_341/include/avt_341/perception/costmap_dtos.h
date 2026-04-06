@@ -253,7 +253,7 @@ namespace avt_341::perception
 
   struct PolygonZone
   {
-    std::string name;
+    std::string label;
     std::vector<utils::vec2> vertices;
     double occ_value;
     int seg_value;
