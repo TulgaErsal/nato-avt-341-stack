@@ -11,25 +11,26 @@ namespace avt_341::perception
         )
         : CostmapLayer(node_ref, cm_settings, label)
     {
-        node_ref_->get_parameter("~polygon_layer_file", input_file_, std::string(""));
+        node_ref_->get_parameter("~polygon_layer_data_file", input_file_, std::string(""));
         node_ref_->get_parameter("~polygon_layer_visualize", visualize_, false);
         marker_pub_ = node_ref_->create_publisher<msg::MarkerArray>("avt_341/" + label + "/markers", 1);
 
-        thresholds_.use_elevation = true; // For polygon layer, only use simple height value > threshold check
         LoadZones();
         RebuildCellCache(false);
+        thresholds_.use_elevation = true; // For polygon layer, only use simple height value > threshold check
     }
 
     void PolygonLayer::LoadZones()
     {
         zones_.clear();
 
-        try {
+        if (input_file_.empty())
+        {
+            is_valid_ = false;
+            return;
+        }
 
-            if (input_file_.empty())
-            {
-                throw std::invalid_argument("Input file is empty.");
-            }
+        try {
 
             node_ref_->log_info("Attempting to read polygon zones file: %hs", input_file_.c_str());
 
@@ -83,6 +84,8 @@ namespace avt_341::perception
                 for (const auto& zone : zones_) {
                     if (IsInsidePolygon(zone.vertices, p.x, p.y)) {
                         cells_[i][j].high.val = zone.occ_value;
+                        // Even though only high.val used when use_elevation = true. Cell thinks it is in unfilled stae when low.val has default value
+                        cells_[i][j].low.val = zone.occ_value - 1.0;
                         marked_cells += 1;
                         break; // No need to test remaining zones for this cell.
                     }
@@ -176,5 +179,10 @@ namespace avt_341::perception
         return "[PolygonLayer] id: " + label_
             + ", file: " + input_file_
             + ", zones: " + std::to_string(zones_.size());
+    }
+
+    void PolygonLayer::Clear()
+    {
+        // No need to clear layer since has no internal changing state
     }
 }

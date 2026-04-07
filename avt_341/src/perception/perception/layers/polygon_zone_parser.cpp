@@ -18,7 +18,7 @@ std::vector<PolygonZone> PolygonZoneParser::Parse()
     while (Peek() != '}') {
         const std::string key = ParseString();
         Expect(':');
-        if (key == "no_go_zones") {
+        if (key == "zones") {
             zones = ParseZoneArray();
         } else {
             SkipValue();

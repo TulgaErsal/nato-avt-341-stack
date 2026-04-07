@@ -15,12 +15,15 @@ namespace avt_341::perception
             );
 
         std::string ToString() const override;
+        void Clear() override;
 
     private:
         void LoadStaticGrid();
         CostmapSizeInfo ParseSizeInfoFromFile(const std::string& file_name);
 
         std::string input_file_;
+        std::string csv_height_field_;
+        std::string csv_segmentation_field_;
     };
 }
 

@@ -1,5 +1,6 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap.h"
 
 double start_time = 0.0;
@@ -53,6 +54,7 @@ void PublishGrid(
 				auto grid_pub_updates = is_segmentation ? seg_updates_publisher[target_layer] : occ_updates_publisher[target_layer];
 				grid_pub_updates->publish(grid_update_msg);
 			}
+			return;
 		}
 	}
 
@@ -110,7 +112,7 @@ int main(int argc, char* argv[]) {
 	// --------------------------------------------------------------------------------------------------------------
 	float warmup_time, perception_rate;
 	std::string clear_method, grid_pub_method, layer_combination_method;
-	std::vector<std::string> publish_layers;
+	std::string publish_layers_param;
 
 	n->get_parameter("~warmup_time", warmup_time, 1.0f);
 	n->get_parameter("~perception_rate", perception_rate, 100.0f);
@@ -121,8 +123,9 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
 	n->get_parameter("~layer_combination_method", layer_combination_method, std::string("last"));
 
-	// Layers to publish individually in addition to combined costmap layers
-	n->get_parameter("~publish_layers", publish_layers, std::vector<std::string>{});
+	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
+	n->get_parameter("~publish_layers", publish_layers_param, std::string());
+	std::vector<std::string> publish_layers = avt_341::utils::SplitByDelimiter(publish_layers_param, ',');
 
 	if (!avt_341::perception::GridPubMethod::IsValid(grid_pub_method)){
 		n->log_error("Invalid grid_pub_method: %hs", grid_pub_method.c_str());

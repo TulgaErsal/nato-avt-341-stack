@@ -15,8 +15,15 @@ namespace avt_341::perception
         )
         : CostmapLayer(node_ref, cm_settings, label)
     {
-        // Format x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv
-        node_ref_->get_parameter("~static_grid_layer_file", input_file_, std::string(""));
+        // Format map_x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv
+        // Where x,y = map lower-left corner, res = resolution, w,h = width,height survey range in meters
+        node_ref_->get_parameter("~static_grid_layer_data_file", input_file_, std::string(""));
+
+        // Field in csv file to look for height values
+        node_ref_->get_parameter("~static_grid_height_field", csv_height_field_, std::string("height"));
+
+        // Field in csv file to look for segmentation values
+        node_ref_->get_parameter("~static_grid_segmentation_field", csv_segmentation_field_, std::string("segmentation"));
 
         try
         {
@@ -68,7 +75,8 @@ namespace avt_341::perception
     void StaticGridLayer::LoadStaticGrid()
     {
         if (input_file_.empty()){
-            throw std::runtime_error("Input file is empty");
+            is_valid_ = false;
+            return;
         }
 
         if (!std::filesystem::exists(input_file_)){
@@ -79,21 +87,79 @@ namespace avt_341::perception
         int file_nx = file_info.nx();
         int file_ny = file_info.ny();
 
-        // Read CSV data: two columns per row (height, seg)
+        // Read CSV data using header fields to locate height and segmentation columns
         std::vector<float> file_heights(file_nx * file_ny, 0.0f);
         std::vector<int>   file_segs(file_nx * file_ny, -1);
         {
             std::ifstream ifs(input_file_);
             if (!ifs.is_open()) throw std::runtime_error("Failed to open input_file_: " + input_file_);
+
+            // Parse header row to find column indices
+            std::string header_line;
+            if (!std::getline(ifs, header_line))
+                throw std::runtime_error("CSV file is empty: " + input_file_);
+
+            std::vector<std::string> header_fields;
+            {
+                std::istringstream hss(header_line);
+                std::string field;
+                while (std::getline(hss, field, ','))
+                {
+                    // Trim whitespace
+                    field.erase(0, field.find_first_not_of(" \t\r\n"));
+                    field.erase(field.find_last_not_of(" \t\r\n") + 1);
+                    header_fields.push_back(field);
+                }
+            }
+
+            int height_col = -1;
+            int seg_col    = -1;
+            for (int i = 0; i < static_cast<int>(header_fields.size()); ++i)
+            {
+                if (header_fields[i] == csv_height_field_)       height_col = i;
+                else if (header_fields[i] == csv_segmentation_field_) seg_col = i;
+            }
+
+            if (height_col == -1)
+            {
+                node_ref_->log_warning(
+                    "[StaticGridLayer] '%s': height field '%s' not found in CSV header. Layer is invalid.",
+                    label_.c_str(), csv_height_field_.c_str());
+                is_valid_ = false;
+                return;
+            }
+
+            has_segmentation_ = seg_col != -1;
+            node_ref_->log_info("[StaticGridLayer] '%s': segmentation data found: %d.",
+                label_.c_str(), has_segmentation_);
+
+            // Read data rows using discovered column indices
             std::string line;
             int idx = 0;
-            while (std::getline(ifs, line) && idx < file_nx * file_ny) {
+            while (std::getline(ifs, line) && idx < file_nx * file_ny)
+            {
                 std::istringstream ss(line);
-                std::string h_str, s_str;
-                if (std::getline(ss, h_str, ',') && std::getline(ss, s_str, ',')) {
-                    file_heights[idx] = std::stof(h_str);
-                    file_segs[idx]    = static_cast<int>(std::stof(s_str));
+                std::string token;
+                std::vector<std::string> row_fields;
+                while (std::getline(ss, token, ',')) row_fields.push_back(token);
+
+                file_heights[idx] = std::stof(row_fields[height_col]);
+                if (has_segmentation_)
+                {
+                    file_segs[idx] = static_cast<int>(std::stof(row_fields[seg_col]));
                 }
+
+                // if (height_col < static_cast<int>(row_fields.size()))
+                // {
+                //
+                //     try { file_heights[idx] = std::stof(row_fields[height_col]); }
+                //     catch (...) {}
+                // }
+                // if (seg_col != -1 && seg_col < static_cast<int>(row_fields.size()))
+                // {
+                //     try { file_segs[idx] = static_cast<int>(std::stof(row_fields[seg_col])); }
+                //     catch (...) {}
+                // }
                 idx++;
             }
         }
@@ -115,6 +181,7 @@ namespace avt_341::perception
                 // Corresponding file cell indices (lower-left of sub-region)
                 float fx0f = (size_info_.ToXWorld(xi) - file_info.llx) / file_info.res;
                 float fy0f = (size_info_.ToYWorld(yi) - file_info.lly) / file_info.res;
+                fy0f = static_cast<float>(file_ny) - 1.0f - fy0f; // flip y-axis since file origin is top-left
 
                 int fx0 = static_cast<int>(std::floor(fx0f));
                 int fy0 = static_cast<int>(std::floor(fy0f));
@@ -152,5 +219,9 @@ namespace avt_341::perception
         }
     }
 
+    void StaticGridLayer::Clear()
+    {
+        // No need to clear layer since has no internal changing state
+    }
 }
 

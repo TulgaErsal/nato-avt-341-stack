@@ -17,6 +17,7 @@ namespace avt_341::perception
         void PublishMarkers() const;
         std::string ToString() const override;
         void Visualize() override;
+        void Clear() override;
 
     private:
         void LoadZones();

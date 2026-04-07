@@ -42,7 +42,7 @@ namespace avt_341::perception
 		bool IsValid() const { return is_valid_; }
 		bool HasData() const;
 		void Resize();
-		void Clear();
+		virtual void Clear();
 		virtual void Visualize();
 
 		const core::GridRegion& GetUpdateRegion() const { return grid_update_region_; }
