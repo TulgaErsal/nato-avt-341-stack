@@ -521,19 +521,18 @@ void ObjectTrackingNode::TrackingTimerCallback() {
                         "Could not isolate any clusters from the camera "
                         "detection region ROI!");
             centroid_in_cloud_frame_ = false;
-            // Only fall back to camera-only tracking after LiDAR has confirmed
-            // the target at least once. Before that, camera range estimates are
-            // too noisy to use as filter measurements.
-            if (has_had_first_lidar_measurement_) {
-                CameraCentroidEstimate();
-                has_point_cloud_ = false;
-                has_detection_ = true;
-                state_ = TrackerState::CAMERA_ONLY_TRACKING;
-                CheckTargetTimeout();
-            } else {
-                has_point_cloud_ = false;
-                has_detection_ = false;
-            }
+            // Fall back to camera-only tracking whenever LiDAR clustering
+            // fails, including before any LiDAR measurement has been received.
+            // This allows the tracker to initialize from a camera detection
+            // alone and begin tracking distant objects before they enter LiDAR
+            // range.
+            CameraCentroidEstimate();
+            has_point_cloud_ = false;
+            has_detection_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
+            CheckTargetTimeout();
             return;
         }
 
