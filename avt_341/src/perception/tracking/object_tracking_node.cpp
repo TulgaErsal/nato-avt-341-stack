@@ -812,6 +812,31 @@ void ObjectTrackingNode::DetectionsCallback(
         return;
     }
 
+    // Reject the detection if the bounding box touches any image edge.
+    // A clipped bbox produces a biased centroid estimate because part of the
+    // object is outside the frame; the range/bearing estimate from
+    // ConvertBBoxCoordinatesToPoseCentroid_rdf becomes unreliable.
+    if (has_camera_info_) {
+        const auto& bbox = detections_message->detections[0].bbox;
+        const double left   = bbox.center.position.x - bbox.size_x / 2.0;
+        const double right  = bbox.center.position.x + bbox.size_x / 2.0;
+        const double top    = bbox.center.position.y - bbox.size_y / 2.0;
+        const double bottom = bbox.center.position.y + bbox.size_y / 2.0;
+        if (left <= 0.0 ||
+            right  >= static_cast<double>(camera_info_message_->width) ||
+            top    <= 0.0 ||
+            bottom >= static_cast<double>(camera_info_message_->height)) {
+            RCLCPP_DEBUG(get_logger(),
+                         "Bounding box touches image edge (l=%.1f r=%.1f "
+                         "t=%.1f b=%.1f img=%ux%u) — skipping camera update.",
+                         left, right, top, bottom,
+                         camera_info_message_->width,
+                         camera_info_message_->height);
+            has_detection_ = false;
+            return;
+        }
+    }
+
     // Store the vision_msgs/msg/Detection2DArray message, keep track of its
     // timestamp and mark detections as received.
     detections_message_ = *detections_message;
