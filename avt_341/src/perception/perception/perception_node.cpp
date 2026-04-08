@@ -1,3 +1,5 @@
+#include <map>
+#include <string>
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/avt_341_utils.h"

@@ -90,7 +90,7 @@ void CostmapLayer::RecomputeGridDilation() {
 	for (auto & row : cells_) {
 		for (auto & cell : row) {
 			cell.has_dilated = false;
-			cell.dilated_val = 0;
+			cell.dilated_val = -1;
 		}
 	}
 

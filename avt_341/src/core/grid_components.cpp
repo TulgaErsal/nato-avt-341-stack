@@ -27,7 +27,7 @@ void GridRegion::UpdateBounds(const GridRegion & other) {
         return;
     }
     UpdateBounds(other.x_min, other.y_min);
-    UpdateBounds(other.x_max, other.y_max);
+    UpdateBounds(other.x_max-1, other.y_max-1);
 }
 
 void GridRegion::UpdateBounds(const int x, const int y, const int width, const int height) {
@@ -36,6 +36,7 @@ void GridRegion::UpdateBounds(const int x, const int y, const int width, const i
 }
 
 void GridRegion::UpdateBounds(const int x, const int y) {
+    // Exclusive range for max index values
     x_min = std::min(x_min, x);
     x_max = std::max(x_max, x+1);
     y_min = std::min(y_min, y);

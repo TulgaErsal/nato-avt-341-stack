@@ -1,10 +1,8 @@
 #include "avt_341/perception/costmap.h"
-#include <math.h>
-#include <avt_341/perception/clearing_methods/clearing_methods_factory.h>
-
 #include "avt_341/perception/layers/point_cloud_layer.h"
 #include "avt_341/perception/layers/polygon_layer.h"
 #include "avt_341/perception/layers/static_grid_layer.h"
+#include <algorithm>
 
 namespace avt_341::perception {
 
