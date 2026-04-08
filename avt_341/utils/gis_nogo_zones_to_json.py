@@ -63,7 +63,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--occ_value',
                         type=float,
                         default=100.0,
-                        help='Occupancy height value to assign to no-go zones in costmap data structure. This value will be checked agaisnt the occupancy threshold setting.')
+                        help='Occupancy height value to assign to no-go zones in costmap data structure. This value will be checked against the occupancy threshold setting.')
     args = parser.parse_args()
     return args
 
