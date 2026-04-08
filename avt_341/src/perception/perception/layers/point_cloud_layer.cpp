@@ -1,5 +1,7 @@
 #include "avt_341/perception/layers/point_cloud_layer.h"
 #include "avt_341/perception/clearing_methods/clearing_methods_factory.h"
+#include <chrono>
+#include <thread>
 
 #ifdef ROS_1
 #include "sensor_msgs/point_cloud_conversion.h"

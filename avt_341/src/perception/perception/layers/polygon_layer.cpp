@@ -43,11 +43,8 @@ namespace avt_341::perception
                 (std::istreambuf_iterator<char>(file)),
                 std::istreambuf_iterator<char>());
 
-
             PolygonZoneParser parser(text);
-            const std::vector<PolygonZone> parsed = parser.Parse();
-
-            for (const PolygonZone& zone : parsed) {
+            for (const PolygonZone& zone : parser.Parse()) {
                 if (zone.vertices.size() >= 3) {
                     zones_.push_back(zone);
                 } else {
@@ -86,6 +83,7 @@ namespace avt_341::perception
                         cells_[i][j].high.val = zone.occ_value;
                         // Even though only high.val used when use_elevation = true. Cell thinks it is in unfilled stae when low.val has default value
                         cells_[i][j].low.val = zone.occ_value - 1.0;
+                        cells_[i][j].terrain_seg = zone.seg_value;
                         marked_cells += 1;
                         break; // No need to test remaining zones for this cell.
                     }

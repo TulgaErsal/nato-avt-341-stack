@@ -1,4 +1,5 @@
 #include "avt_341/perception/layers/costmap_layer.h"
+#include <algorithm>
 
 namespace avt_341::perception
 {
@@ -19,19 +20,16 @@ void CostmapLayer::UpdateOdometry(const msg::Odometry& odom_msg)
 }
 
 // CTG, 5/8/25
-float CostmapLayer::GetRmsAtCoordinate(float x, float y) {
+float CostmapLayer::GetRmsAtCoordinate(float x, float y) const
+{
 	const utils::ivec2 idx = size_info_.ToIdx(x, y);
-	float rms = GetRmsAtCell(idx.x, idx.y);
-	return rms;
+	return GetRmsAtCell(idx.x, idx.y);
 }
 
 // CTG, 5/8/25
-float CostmapLayer::GetRmsAtCell(int xi, int yi) {
-	float rms = 0.0f;
-	if (xi >= 0 && xi < size_info_.nx() && yi >= 0 && yi < size_info_.ny()) {
-		rms = cells_[yi][xi].rms;
-	}
-	return rms;
+float CostmapLayer::GetRmsAtCell(int xi, int yi) const
+{
+	return cells_[yi][xi].rms;
 }
 
 // CTG, 5/8/25
@@ -43,7 +41,7 @@ float CostmapLayer::GetTerrainSlopeAtCoordinate(float x, float y) {
 
 // CTG, 5/8/25
 float CostmapLayer::GetTerrainSlopeAtCell(int xi, int yi) {
-	float slope = 0.0f;
+	float slope = -1.0f;
 	const auto& res = size_info_.res;
 	const auto& nx = size_info_.nx();
 	const auto& ny = size_info_.ny();

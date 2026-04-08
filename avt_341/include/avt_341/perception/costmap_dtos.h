@@ -6,9 +6,7 @@
 #include <avt_341/node/ros_types.h>
 #include <string>
 #include "avt_341/avt_341_utils.h"
-#include <iostream>
 #include <optional>
-#include <format>
 
 namespace avt_341::perception
 {
@@ -41,7 +39,7 @@ namespace avt_341::perception
       num_points = 0;
       summed_elev = 0.0f;
       avg_elev = 0.0f;
-      rms = 0.0f;
+      rms = -1.0f;
       sum_of_squares = 0.0f;
     }
 

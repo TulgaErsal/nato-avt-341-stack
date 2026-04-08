@@ -43,9 +43,15 @@ public:
 	std::vector<utils::ivec2> GetCellsInFov() const;
 	bool HasOdomData() const { return current_odom_.header.stamp.sec > 0; }
 	double GetCurrentRms() const {
+		if (rms_buffer_.empty()){
+			return 0.0;
+		}
 		return std::accumulate(rms_buffer_.begin(), rms_buffer_.end(), 0.0)/static_cast<double>(rms_buffer_.size());
 	}
 	double GetCurrentSlope() const {
+		if (slope_buffer_.empty()){
+			return 0.0;
+		}
 		return std::accumulate(slope_buffer_.begin(), slope_buffer_.end(), 0.0) / static_cast<double>(slope_buffer_.size());
 	}
 
@@ -92,11 +98,11 @@ private:
 	inline T CombineLayerValues(std::vector<T> layer_values) const
 	{
 		if (layer_values.empty()){
-			return 0;
+			return T{0};
 		}
 
 		return layer_cmb_last_ ? layer_values.back()
-			       : (layer_cmd_mn_ ? std::accumulate(layer_values.begin(), layer_values.end(), 0) / static_cast<int>(layer_values.size())
+			       : (layer_cmd_mn_ ? std::accumulate(layer_values.begin(), layer_values.end(), T{0}) / static_cast<int>(layer_values.size())
 				          : *std::max_element(layer_values.begin(), layer_values.end()));
 	}
 

@@ -24,9 +24,9 @@ namespace avt_341::perception
 		int GetGridCellValue(const Cell& cell) const;
 
 		/// x and y in local ENU meters
-		float GetRmsAtCoordinate(float x, float y);
+		inline float GetRmsAtCoordinate(float x, float y) const;
 		/// xi and yi as grid cell indices
-		float GetRmsAtCell(int xi, int yi);
+		inline float GetRmsAtCell(int xi, int yi) const;
 
 		/// x and y in local ENU meters
 		float GetTerrainSlopeAtCoordinate(float x, float y);

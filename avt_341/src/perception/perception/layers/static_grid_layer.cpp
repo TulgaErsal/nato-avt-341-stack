@@ -148,18 +148,6 @@ namespace avt_341::perception
                 {
                     file_segs[idx] = static_cast<int>(std::stof(row_fields[seg_col]));
                 }
-
-                // if (height_col < static_cast<int>(row_fields.size()))
-                // {
-                //
-                //     try { file_heights[idx] = std::stof(row_fields[height_col]); }
-                //     catch (...) {}
-                // }
-                // if (seg_col != -1 && seg_col < static_cast<int>(row_fields.size()))
-                // {
-                //     try { file_segs[idx] = static_cast<int>(std::stof(row_fields[seg_col])); }
-                //     catch (...) {}
-                // }
                 idx++;
             }
         }

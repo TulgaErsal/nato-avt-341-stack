@@ -155,6 +155,8 @@ std::vector<utils::vec2> PolygonZoneParser::ParseVertexArray()
 PolygonZone PolygonZoneParser::ParseZoneObject()
 {
     PolygonZone zone;
+    zone.seg_value = -1; // default to -1 if not specified
+
     Expect('{');
     while (Peek() != '}') {
         const std::string key = ParseString();
