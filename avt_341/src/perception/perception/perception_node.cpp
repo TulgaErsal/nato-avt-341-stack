@@ -149,8 +149,8 @@ int main(int argc, char* argv[]) {
 					"	grid_pub_method: %hs\n"
 					"	layers: %hs",
 					size_info.ToString().c_str(),
-					dilation.ToString().c_str(),
 					thresholds.ToString().c_str(),
+					dilation.ToString().c_str(),
 					grid_pub_method.c_str(),
 					grid.ToLayerInfoString().c_str()
 					);

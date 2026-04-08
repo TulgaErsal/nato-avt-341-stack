@@ -181,12 +181,13 @@ namespace avt_341::perception
                 // Corresponding file cell indices (lower-left of sub-region)
                 float fx0f = (size_info_.ToXWorld(xi) - file_info.llx) / file_info.res;
                 float fy0f = (size_info_.ToYWorld(yi) - file_info.lly) / file_info.res;
-                fy0f = static_cast<float>(file_ny) - 1.0f - fy0f; // flip y-axis since file origin is top-left
 
-                int fx0 = static_cast<int>(std::floor(fx0f));
-                int fy0 = static_cast<int>(std::floor(fy0f));
-                int fx1 = static_cast<int>(std::ceil(fx0f + ratio)) - 1;
-                int fy1 = static_cast<int>(std::ceil(fy0f + ratio)) - 1;
+                // flip y-axis since file origin is top-left
+                fy0f = static_cast<float>(file_ny) - 1.0f - fy0f;
+                int fx0 = static_cast<int>(std::floor(fx0f - ratio));
+                int fy0 = static_cast<int>(std::floor(fy0f - ratio));
+                int fx1 = static_cast<int>(std::floor(fx0f)) - 1;
+                int fy1 = static_cast<int>(std::floor(fy0f)) - 1;
 
                 // Clamp to file bounds
                 fx0 = std::max(fx0, 0);

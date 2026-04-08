@@ -47,7 +47,7 @@ void Costmap::OdometryCallback(msg::OdometryPtr rcv_odom) {
 
 bool Costmap::HasSegmentation() const
 {
-	return std::all_of(layers_.begin(), layers_.end(),
+	return std::any_of(layers_.begin(), layers_.end(),
 		[](const std::shared_ptr<CostmapLayer>& layer) { return layer->HasSegmentation(); }
 	);
 }
