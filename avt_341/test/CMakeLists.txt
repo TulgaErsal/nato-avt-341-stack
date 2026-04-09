@@ -1,7 +1,7 @@
 message(STATUS "Building Unit Tests")
 
 find_package(ament_cmake_gtest REQUIRED)
-ament_add_gtest(null_test null_test.cpp)
+ament_add_gtest(${PROJECT_NAME}_unit_tests null_test.cpp)
 
 # MPC Planner Tests
 find_package(Julia 1.5.4 EXACT QUIET)
