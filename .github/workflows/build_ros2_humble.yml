@@ -107,7 +107,7 @@ jobs:
           fi
 
           # Download badge image
-          curl -o ros_ws/build/avt_341/unit_test_badge.svg "https://img.shields.io/badge/Unit_Tests-${PERCENTAGE_SUCCESS}%25-${COLOR}"
+          curl -o ros_ws/build/avt_341/unit_test_badge.svg "https://img.shields.io/badge/Unit_Tests-${PERCENTAGE_SUCCESS}%25_%28${SUCCESSFUL_TESTS}/${TOTAL_TESTS}%29-${COLOR}"
 
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
