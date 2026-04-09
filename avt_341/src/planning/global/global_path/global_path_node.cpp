@@ -20,6 +20,9 @@
 #include "avt_341/planning/global/d_star_lite.h"
 #include "avt_341/planning/global/fast_marching_square.h"
 #include "avt_341/visualization/visualization_factory.h"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "avt_341_msgs/msg/global_planner_state.hpp"
 #include <chrono>
 #include <utility>
 
