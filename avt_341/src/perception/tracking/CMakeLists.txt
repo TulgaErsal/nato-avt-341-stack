@@ -17,7 +17,8 @@ if(USING_AMENT)
   find_package(pcl_conversions REQUIRED)
   find_package(pcl_ros REQUIRED)
   find_package(rclcpp REQUIRED)
-  find_package(sensor_msgs REQUIRED)
+  find_package(sensor_msgs REQUIRED)  
+  find_package(angles REQUIRED)
   find_package(tf2 REQUIRED)
   find_package(tf2_eigen REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
@@ -45,6 +46,7 @@ if(USING_AMENT)
     pcl_ros
     rclcpp
     sensor_msgs
+    angles
     tf2
     tf2_eigen
     tf2_geometry_msgs

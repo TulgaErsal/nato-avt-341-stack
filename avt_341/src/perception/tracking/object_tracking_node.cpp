@@ -87,7 +87,7 @@ void ObjectTrackingNode::GetParameters() {
     passthrough_distance_min_ =
         get_parameter("filters_passthrough_min").as_double();
 
-    declare_parameter("filters_passthrough_max", 30.0);
+    declare_parameter("filters_passthrough_max", 40.0);
     passthrough_distance_max_ =
         get_parameter("filters_passthrough_max").as_double();
 
@@ -128,6 +128,24 @@ void ObjectTrackingNode::GetParameters() {
     filter_measurement_variance_ =
         get_parameter("filters_kalman_measurement").as_double();
 
+    declare_parameter("camera_target_height", 5.0);
+    camera_target_height_ = get_parameter("camera_target_height").as_double();
+
+    declare_parameter("camera_bbox_pixel_sigma", 4.0);
+    camera_bbox_pixel_sigma_ = get_parameter("camera_bbox_pixel_sigma").as_double();
+
+    declare_parameter("filters_imm_cv_init_prob", 0.33);
+    imm_cv_init_prob_ = get_parameter("filters_imm_cv_init_prob").as_double();
+
+    declare_parameter("filters_imm_ctr_init_prob", 0.33);
+    imm_ctr_init_prob_ = get_parameter("filters_imm_ctr_init_prob").as_double();
+
+    declare_parameter("filters_imm_nm_init_prob", 0.33);
+    imm_nm_init_prob_ = get_parameter("filters_imm_nm_init_prob").as_double();
+
+    declare_parameter("filters_imm_transition_prob", 0.9);
+    imm_transition_prob_ = get_parameter("filters_imm_transition_prob").as_double();
+
     declare_parameter("filters_use_pca_centroid", false);
     use_pca_centroid_ = get_parameter("filters_use_pca_centroid").as_bool();
 
@@ -137,9 +155,8 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("tracker_use_mission_manager", true);
     use_mission_manager_ = get_parameter("tracker_use_mission_manager").as_bool();
 
-    declare_parameter("tracker_target_class", "");
+    declare_parameter("tracker_target_class", "mrzr4");
     autostart_target_class_ = get_parameter("tracker_target_class").as_string();
-
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
 
@@ -455,6 +472,16 @@ void ObjectTrackingNode::TrackingTimerCallback() {
     if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
         LimitSensorDistance(point_cloud_, true);
         DownsampleCloud(point_cloud_);
+
+        // The camera frame moves with the vehicle, so the stale camera-frame
+        // centroid from the last FULL_TRACKING cycle will be wrong once the
+        // vehicle has moved. Reanchor the crop box by transforming the last
+        // known world-frame centroid back to the current camera frame.
+        if (filter_initialized_) {
+            bounding_box_centroid_ = TransformToCoordinates(
+                world_frame_, camera_frame_, bounding_box_centroid_global_);
+        }
+
         CropRegionOfInterest();
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
@@ -464,6 +491,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         try {
             EuclideanClustering();
             centroid_in_cloud_frame_ = true;
+            last_valid_target_time_ = get_clock()->now();
 
             if (cloud_cluster_->size() > 0) {
             } else {
@@ -492,9 +520,18 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             RCLCPP_WARN(get_logger(),
                         "Could not isolate any clusters from the camera "
                         "detection region ROI!");
-
+            centroid_in_cloud_frame_ = false;
+            // Fall back to camera-only tracking whenever LiDAR clustering
+            // fails, including before any LiDAR measurement has been received.
+            // This allows the tracker to initialize from a camera detection
+            // alone and begin tracking distant objects before they enter LiDAR
+            // range.
+            CameraCentroidEstimate();
             has_point_cloud_ = false;
-            has_detection_ = false;
+            has_detection_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             CheckTargetTimeout();
             return;
         }
@@ -570,8 +607,9 @@ void ObjectTrackingNode::CheckTargetTimeout() {
 void ObjectTrackingNode::EuclideanClustering() {
     try {
         auto clustering_result = ExtractEuclideanClusters(point_cloud_);
-        // Update the flag for centroid measurement.
+        // Update the flags for centroid measurement.
         has_new_measurement_ = true;
+        has_had_first_lidar_measurement_ = true;
 
         cloud_cluster_ = clustering_result.first;
         bounding_box_centroid_ = Eigen::Vector3d(clustering_result.second.x,
@@ -592,6 +630,32 @@ void ObjectTrackingNode::EuclideanClustering() {
 
 void ObjectTrackingNode::Reset() {
     execution_time_ = -1.0;
+}
+
+// JN addition for camera detection only tracking
+void ObjectTrackingNode::CameraCentroidEstimate() {
+    try {
+        // bbox already in camera before update
+        Eigen::Vector3d camera_centroid_rdf =
+            ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
+                detections_message_,
+                camera_info_message_);
+        // Swap to flu
+        bounding_box_centroid_ = Eigen::Vector3d(camera_centroid_rdf.x(),
+                                                 camera_centroid_rdf.y(),
+                                                 camera_centroid_rdf.z());
+        // bbox already in camera before update
+        //bounding_box_centroid_ = TransformToCoordinates(
+        //    detections_message_.header.frame_id,
+        //    point_cloud_message_->header.frame_id,
+        //    camera_centroid_rdf);
+        has_new_measurement_ = true;
+    } catch (...) {
+        RCLCPP_INFO_STREAM(get_logger(),
+        "Camera centroid failed: ");
+        has_new_measurement_ = false;
+        throw;
+    }
 }
 
 void ObjectTrackingNode::TransformPointCloudToCameraFrame(
@@ -743,9 +807,34 @@ void ObjectTrackingNode::DetectionsCallback(
 
     if (!target_found) {
         RCLCPP_INFO(get_logger(),
-                    "Target not found in the current detection, skipping ...");
+                    "Target %s not found in the current detection, skipping ...", target_class_.c_str());
         has_detection_ = false;
         return;
+    }
+
+    // Reject the detection if the bounding box touches any image edge.
+    // A clipped bbox produces a biased centroid estimate because part of the
+    // object is outside the frame; the range/bearing estimate from
+    // ConvertBBoxCoordinatesToPoseCentroid_rdf becomes unreliable.
+    if (has_camera_info_) {
+        const auto& bbox = detections_message->detections[0].bbox;
+        const double left   = bbox.center.position.x - bbox.size_x / 2.0;
+        const double right  = bbox.center.position.x + bbox.size_x / 2.0;
+        const double top    = bbox.center.position.y - bbox.size_y / 2.0;
+        const double bottom = bbox.center.position.y + bbox.size_y / 2.0;
+        if (left <= 0.0 ||
+            right  >= static_cast<double>(camera_info_message_->width) ||
+            top    <= 0.0 ||
+            bottom >= static_cast<double>(camera_info_message_->height)) {
+            RCLCPP_DEBUG(get_logger(),
+                         "Bounding box touches image edge (l=%.1f r=%.1f "
+                         "t=%.1f b=%.1f img=%ux%u) — skipping camera update.",
+                         left, right, top, bottom,
+                         camera_info_message_->width,
+                         camera_info_message_->height);
+            has_detection_ = false;
+            return;
+        }
     }
 
     // Store the vision_msgs/msg/Detection2DArray message, keep track of its
@@ -787,6 +876,44 @@ geometry_msgs::msg::TransformStamped ObjectTrackingNode::TransformPointCloud(
         RCLCPP_ERROR(get_logger(), "Transform lookup exception.");
         throw;
     }
+}
+
+// JN addition for camera detection only tracking
+// use vehicle height to estimate centroid using range from boundingbox height
+// expressed in righ-down-front (rdf) frame
+// Added to code by Jonas N
+Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
+    const vision_msgs::msg::Detection2DArray detections_message,
+    const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
+    const double car_size_z = camera_target_height_;
+    double target_z_f = (double)camera_info_message->k[4] / (double)detections_message.detections[0].bbox.size_y *
+        car_size_z;
+    double target_x_r = target_z_f / (double)camera_info_message->k[0] *
+        (double)(detections_message.detections[0].bbox.center.position.x - camera_info_message->k[2]);
+
+    double target_y_d = target_z_f / (double)camera_info_message->k[4] *
+        (double)(detections_message.detections[0].bbox.center.position.y - camera_info_message->k[5]);
+    Eigen::Vector3d camera_estimated_centroid_rdf(target_x_r, target_y_d, target_z_f);
+	
+	// covariance jacobians
+	const double s2_pixel = camera_bbox_pixel_sigma_ * camera_bbox_pixel_sigma_;
+	double s2_forwards = (double)camera_info_message->k[4] / pow((double)detections_message.detections[0].bbox.size_y,2) *
+        car_size_z * s2_pixel * (double)camera_info_message->k[4] /
+			pow((double)detections_message.detections[0].bbox.size_y, 2) *
+        car_size_z;
+	double s2_right = target_z_f / (double)camera_info_message->k[0] * s2_pixel *
+		target_z_f / (double)camera_info_message->k[0];
+	double s2_down = target_z_f / (double)camera_info_message->k[4] * s2_pixel *
+		target_z_f / (double)camera_info_message->k[4];
+
+	R_rdf_(0, 0) = std::max(filter_measurement_variance_,s2_right);
+	R_rdf_(1, 1) = std::max(filter_measurement_variance_, s2_down);
+	R_rdf_(2, 2) = std::max(filter_measurement_variance_, s2_forwards);
+    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size" << detections_message.detections[0].bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
+        << "[x, y ,z] = [ " << target_x_r
+        << ", " << target_y_d
+        << ", " << target_z_f << "]" << '\n');
+    return camera_estimated_centroid_rdf;
 }
 
 PixelCoordinates ObjectTrackingNode::ConvertPointToPixelCoordinates(
@@ -1018,6 +1145,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             has_detection_ = false;
             has_first_detection_ = false;
             filter_initialized_ = false;
+            has_had_first_lidar_measurement_ = false;
         }
     }
 
@@ -1025,6 +1153,35 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             filter_->SetInitialPosition(TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_));
             filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+            filter_initialized_ = true;
+    }
+
+    // Do not advance the filter when there is no active detection.
+    // Without a measurement to constrain the velocity, forward integration
+    // would cause the position estimate to drift away from the last known
+    // position indefinitely.
+    if (state_ == TrackerState::NO_DETECTION) {
+        if (publish_odometry_)     PublishOdometry();
+        if (publish_pose_)         PublishPose();
+        if (publish_detection_3d_) PublishDetection3D();
+        return;
+    }
+
+    // Freeze the filter if no valid LiDAR measurement has arrived within
+    // two tracking periods. A state-based check alone is unreliable because
+    // the tracking timer (10 Hz) and estimator timer (20 Hz) race each other:
+    // the estimator can read a stale FULL_TRACKING state between the moment
+    // the tracking timer starts its tick and the moment it discovers there
+    // is no new data and writes NO_DETECTION. The time-based check is immune
+    // to this race. It also handles CAMERA_ONLY_TRACKING, where camera range
+    // estimates are too noisy to sustain reliable velocity integration.
+    const double dt_since_lidar =
+        (get_clock()->now() - last_valid_target_time_).seconds();
+    if (has_tracked_target_ && dt_since_lidar > 2.0 / tracking_rate_) {
+        if (publish_odometry_)     PublishOdometry();
+        if (publish_pose_)         PublishPose();
+        if (publish_detection_3d_) PublishDetection3D();
+        return;
     }
 
     // Run the "Predict" step of the Kalman filter.
@@ -1036,20 +1193,40 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         bounding_box_centroid_global_ = TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_);
 
-        // The measurement vector contains the position vector components,
-        // each followed by its first (velocity) and second (acceleration)
-        // derivatives, hence (0, 0 + 3, 0 + 3 + 3) are the corresponding to
-        // the position vector.
-        Eigen::Vector<double, 9> measurement_vector =
-            Eigen::Vector<double, 9>::Zero();
+        // The IMM measurement vector is 3D [x, y, z].  Velocity and
+        // acceleration are estimated internally by each sub-filter.
+        Eigen::Matrix<double, 3, 1> measurement_vector;
         measurement_vector(0) = bounding_box_centroid_global_.x();
-        measurement_vector(3) = bounding_box_centroid_global_.y();
-        measurement_vector(6) = bounding_box_centroid_global_.z();
+        measurement_vector(1) = bounding_box_centroid_global_.y();
+        measurement_vector(2) = bounding_box_centroid_global_.z();
+		if (state_ == TrackerState::CAMERA_ONLY_TRACKING) {
+			geometry_msgs::msg::TransformStamped transform_message;
+			try {
+				transform_message = transform_buffer_->lookupTransform(
+					world_frame_.c_str(), camera_frame_.c_str(), tf2::TimePointZero);
+                Eigen::Quaterniond q;
+                tf2::fromMsg(transform_message.transform.rotation, q);
+                Eigen::Matrix3d RotMatrix = q.toRotationMatrix();
+                Eigen::Matrix3d R = RotMatrix * R_rdf_ * RotMatrix.transpose();
 
-        // Run the "Update" step of the Kalman filter and mark the latest
-        // measurement as processed.
-        filter_->Update(measurement_vector);
-        has_new_measurement_ = false;
+				// Run the IMM update step
+				// with custom R.
+				filter_->Update(measurement_vector,R);
+
+			}
+			catch (tf2::TransformException& exception) {
+				RCLCPP_ERROR(get_logger(), "Transform lookup exception.");
+			}
+
+		}
+		else {
+			// Run the IMM update step.
+			filter_->Update(measurement_vector);
+		}
+
+
+        // Mark the latest measurement as processed.
+		has_new_measurement_ = false;
     }
 
     // Get the filtered state, transform it to the world reference frame and
@@ -1089,6 +1266,8 @@ void ObjectTrackingNode::PublishPointCloud(
 void ObjectTrackingNode::Initialize() {
     pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
 
+    filter_initialized_ = false;
+
     // Configure the voxel grid filter.
     voxel_grid_filter_.setLeafSize(leaf_size_, leaf_size_, leaf_size_);
 
@@ -1105,11 +1284,16 @@ void ObjectTrackingNode::Initialize() {
     sac_segmentation_.setDistanceThreshold(sac_segmentation_threshold_);
     sac_segmentation_.setNumberOfThreads(0);
 
-    // Initialize the Kalman filter.
-    filter_ = std::make_shared<avt_341::perception::filtering::CVFilter<3>>(
-        1.0 / estimator_rate_, filter_process_variance_,
-        filter_measurement_variance_);
-    filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
+    // Initialize the IMM filter (CV + CTR + NM).
+    filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
+        1.0 / estimator_rate_,
+        filter_process_variance_,
+        filter_measurement_variance_,
+        imm_cv_init_prob_,
+        imm_ctr_init_prob_,
+        imm_nm_init_prob_,
+        imm_transition_prob_);
+    filter_->SetInitialPosition(Eigen::Vector3d::Zero());
 
     has_target_selection_ = (use_autostart_) ? true : false;
     target_class_ = (use_autostart_) ? autostart_target_class_ : "";
@@ -1224,6 +1408,32 @@ void ObjectTrackingNode::PublishOdometry() {
             bounding_box_centroid_filtered_.y();
         odometry_filtered_message.pose.pose.position.z =
             bounding_box_centroid_filtered_.z();
+        tf2::Quaternion q;
+        q.setRPY(0, 0, filter_->GetYaw());
+        // CTR state is now [x, vx, y, vy, omega]:
+        //   position x at index 0, position y at index 2.
+        Eigen::Matrix<double, 6, 6> OdometryCovariance =
+            Eigen::Matrix<double, 6, 6>::Zero();
+        Eigen::Matrix<double, 5, 5> P = filter_->GetCTRCovariance();
+        OdometryCovariance(0, 0) = P(0, 0);  // x variance
+        OdometryCovariance(0, 1) = P(0, 2);  // xy covariance
+        OdometryCovariance(1, 0) = P(2, 0);
+        OdometryCovariance(1, 1) = P(2, 2);  // y variance
+        OdometryCovariance(2, 2) = 100.0;    // no information on z
+        OdometryCovariance(3, 3) = 9.0;      // no information on roll
+        OdometryCovariance(4, 4) = 9.0;      // no information on pitch
+        OdometryCovariance(5, 5) = filter_->GetFusedYawVariance();
+        //odometry_filtered_message.pose.pose.orientation = tf2::toMsg(q);
+        odometry_filtered_message.pose.pose.orientation.x = 0;
+        odometry_filtered_message.pose.pose.orientation.y = 0;
+        odometry_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
+        odometry_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
+        // odometry_filtered_message.pose.pose.orientation.normalise();
+        for (size_t i = 0; i < 6; i++)  {
+            for (size_t j = 0; j < 6; j++) {
+                odometry_filtered_message.pose.covariance[i * 6 + j] = OdometryCovariance(i, j);
+            }
+        }
         odometry_filtered_publisher_->publish(odometry_filtered_message);
     }
 
@@ -1234,6 +1444,7 @@ void ObjectTrackingNode::PublishOdometry() {
     odometry_message.pose.pose.position.x = bounding_box_centroid_global_.x();
     odometry_message.pose.pose.position.y = bounding_box_centroid_global_.y();
     odometry_message.pose.pose.position.z = bounding_box_centroid_global_.z();
+   
     odometry_publisher_->publish(odometry_message);
 }
 

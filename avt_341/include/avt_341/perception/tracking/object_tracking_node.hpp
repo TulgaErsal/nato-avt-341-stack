@@ -96,7 +96,7 @@
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
-#include <avt_341/perception/filtering/cv_filter.hpp>
+#include <avt_341/perception/filtering/imm_filter.hpp>
 #include <avt_341/perception/tracking/exceptions.hpp>
 #include <avt_341/perception/tracking/pixel_coordinates.hpp>
 #include <avt_341_msgs/msg/mission_task_status.hpp>
@@ -128,7 +128,8 @@ enum TrackerState {
     INACTIVE = 1,
     NO_DETECTION = 2,
     LIDAR_ONLY_TRACKING = 3,
-    FULL_TRACKING = 4
+    FULL_TRACKING = 4,
+    CAMERA_ONLY_TRACKING = 5
 };
 
 class BoundingBox2D {
@@ -340,6 +341,13 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
         cropbox_cloud_publisher_;
 
+    // JN addition for camera detection only tracking
+    /** @brief Estimate range from BBox detection using pixel height vs vehicle height
+    * and return point measurment of BBox center in 3D. */
+    Eigen::Vector3d ConvertBBoxCoordinatesToPoseCentroid_rdf(
+        const vision_msgs::msg::Detection2DArray detections_message,
+        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
+
     // -------------------------------------
 
     // Passthrough filtering
@@ -388,20 +396,50 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
         ground_cloud_publisher_;
 
-    // Object state estimation
-    // -----------------------
+    // Object state estimation (IMM: CV + CTR + NM)
+    // ----------------------------------------
 
     void EstimatorTimerCallback();
 
-    std::shared_ptr<avt_341::perception::filtering::CVFilter<3>> filter_;
+    std::shared_ptr<avt_341::perception::filtering::IMMFilter> filter_;
 
     bool has_new_measurement_ = false;
+
+    /** @brief True once the first successful LiDAR cluster measurement has
+     *         been processed. Camera-only updates are suppressed until then
+     *         to prevent noisy range estimates from drifting the filter before
+     *         LiDAR confirms the target position. */
+    bool has_had_first_lidar_measurement_ = false;
 
     double estimator_rate_;
 
     double filter_process_variance_;
 
     double filter_measurement_variance_;
+
+    /** @brief Known height of the target vehicle [m], used for camera-based
+     *         range estimation from bounding-box pixel height. */
+    double camera_target_height_;
+
+    /** @brief Standard deviation of the bounding-box pixel measurement [px],
+     *         used to propagate pixel uncertainty into 3D position covariance. */
+    double camera_bbox_pixel_sigma_;
+
+    /** @brief Camera measurement covariance in the right-down-forward frame,
+     *         computed each tick from bbox pixel uncertainty and camera intrinsics. */
+    Eigen::Matrix3d R_rdf_ = Eigen::Matrix3d::Identity();
+
+    /** @brief IMM: initial probability for the CV model. */
+    double imm_cv_init_prob_;
+
+    /** @brief IMM: initial probability for the CTR model. */
+    double imm_ctr_init_prob_;
+
+    /** @brief IMM: initial probability for the NM model. */
+    double imm_nm_init_prob_;
+
+    /** @brief IMM: diagonal entry of the Markov model-transition matrix. */
+    double imm_transition_prob_;
 
     rclcpp::TimerBase::SharedPtr estimator_timer_;
 
@@ -714,6 +752,11 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     void EuclideanClustering();
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster_;
+
+    // JN addition
+    /** @brief Get coordinates from Camera boundingbox is lidar
+    *         centroid is un available. */
+    void CameraCentroidEstimate();
 
     // ---------------------------------------------------------------------- //
     // > Tracker timeout handling

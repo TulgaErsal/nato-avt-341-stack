@@ -8,7 +8,6 @@ Panels:
         - /Status1
         - /TF1/Frames1
         - /Map1
-        - /FOV PointCloud21
       Splitter Ratio: 0.3382137715816498
     Tree Height: 390
   - Class: rviz_common/Selection
@@ -86,6 +85,18 @@ Visualization Manager:
         All Enabled: true
         map:
           Value: true
+        mrzr2/base_link:
+          Value: true
+        mrzr2/front_camera:
+          Value: true
+        mrzr2/lidar:
+          Value: true
+        mrzr4/base_link:
+          Value: true
+        mrzr4/front_camera:
+          Value: true
+        mrzr4/lidar:
+          Value: true
         odom:
           Value: true
       Marker Scale: 15
@@ -95,6 +106,16 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
+          mrzr2/base_link:
+            mrzr2/front_camera:
+              {}
+            mrzr2/lidar:
+              {}
+          mrzr4/base_link:
+            mrzr4/front_camera:
+              {}
+            mrzr4/lidar:
+              {}
           odom:
             {}
       Update Interval: 0
@@ -407,7 +428,7 @@ Visualization Manager:
       Color: 249; 240; 107
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 249; 240; 107
       Max Intensity: 4096
@@ -428,7 +449,7 @@ Visualization Manager:
         Value: /object_tracking/points/cluster
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -555,8 +576,8 @@ Visualization Manager:
       Scale: 6.814720153808594
       Target Frame: base_link
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 47.122901916503906
-      Y: 48.32737350463867
+      X: 164.2223663330078
+      Y: 384.95159912109375
     Saved: ~
 Window Geometry:
   Displays:
