@@ -1,13 +1,5 @@
 /**
- * \file static_grid_layer_test.cpp
- *
- * Unit tests for StaticGridLayer::ParseSizeInfoFromFile.
- *
- * The method is static and pure (no ROS node or file-system access), so it
- * can be tested in isolation by passing crafted filename strings.
- *
- * Expected filename format:
- *   [prefix_]x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv
+ * Unit tests for StaticGridLayer
  */
 
 #include <gtest/gtest.h>
@@ -20,11 +12,12 @@ using avt_341::perception::CostmapSizeInfo;
 
 struct ParseSizeInfoTestParams
 {
-    std::string label;        // human-readable name for gtest output
-    std::string filename;     // input to ParseSizeInfoFromFile
-    CostmapSizeInfo expected; // expected parsed result
+    std::string label;
+    std::string filename;
+    CostmapSizeInfo expected;
 };
 
+// Expected filename format [prefix_]x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv
 class ParseSizeInfoFromFileTest
     : public ::testing::TestWithParam<ParseSizeInfoTestParams> {};
 
