@@ -19,20 +19,12 @@ void CostmapLayer::UpdateOdometry(const msg::Odometry& odom_msg)
 	current_odom_ = odom_msg;
 }
 
-// CTG, 5/8/25
 float CostmapLayer::GetRmsAtCoordinate(float x, float y) const
 {
 	const utils::ivec2 idx = size_info_.ToIdx(x, y);
 	return GetRmsAtCell(idx.x, idx.y);
 }
 
-// CTG, 5/8/25
-float CostmapLayer::GetRmsAtCell(int xi, int yi) const
-{
-	return cells_[yi][xi].rms;
-}
-
-// CTG, 5/8/25
 float CostmapLayer::GetTerrainSlopeAtCoordinate(float x, float y) {
 	const utils::ivec2 idx = size_info_.ToIdx(x, y);
 	return GetTerrainSlopeAtCell(idx.x, idx.y);

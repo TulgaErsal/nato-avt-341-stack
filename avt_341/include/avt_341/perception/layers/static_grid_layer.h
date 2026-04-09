@@ -17,13 +17,18 @@ namespace avt_341::perception
         std::string ToString() const override;
         void Clear() override;
 
+        void LoadFileData();
+        static CostmapSizeInfo ParseSizeInfoFromFile(const std::string& file_name);
+        void SetStaticData(const CostmapSizeInfo& size_info_in, const std::vector<float>& heights_in, const std::vector<int>& segs_in);
+
     private:
-        void LoadStaticGrid();
-        CostmapSizeInfo ParseSizeInfoFromFile(const std::string& file_name);
+        void ParseFileData(const CostmapSizeInfo& file_info, std::vector<float>& file_heights, std::vector<int>& file_segs);
+        void ReadLayerParams();
 
         std::string input_file_;
         std::string csv_height_field_;
         std::string csv_segmentation_field_;
+        bool input_y_dir_negative_;
     };
 }
 

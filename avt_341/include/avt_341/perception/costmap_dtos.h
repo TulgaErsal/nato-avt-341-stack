@@ -205,10 +205,17 @@ namespace avt_341::perception
       return utils::ivec2(ToXIdx(x), ToYIdx(y));
     }
 
-    float ToXWorld(const int i) const { return (static_cast<float>(i) + 0.5f) * res + llx; }
-    float ToYWorld(const int j) const { return (static_cast<float>(j) + 0.5f) * res + lly; }
-    int ToXIdx(const float x) const { return static_cast<int>((x - llx) / res); }
-    int ToYIdx(const float y) const { return static_cast<int>((y - lly) / res); }
+    float ToXWorld(const int i, const float offset=0.5f) const { return (static_cast<float>(i) + offset) * res + llx; }
+    float ToYWorld(const int j, const float offset=0.5) const { return (static_cast<float>(j) + offset) * res + lly; }
+
+    float ToXWorldLlc(const int i) const { return ToXWorld(i, 0.0f); }
+    float ToYWorldLlc(const int j) const { return ToYWorld(j, 0.0f); }
+
+    float ToXIdxFlt(const float x) const { return (x - llx) / res; }
+    float ToYIdxFlt(const float y) const { return (y - lly) / res; }
+
+    int ToXIdx(const float x) const { return static_cast<int>(ToXIdxFlt(x)); }
+    int ToYIdx(const float y) const { return static_cast<int>(ToYIdxFlt(y)); }
 
     nav_msgs::msg::MapMetaData ToRosMetadata() const {
       nav_msgs::msg::MapMetaData meta;

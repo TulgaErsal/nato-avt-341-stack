@@ -83,3 +83,4 @@ static_grid_layer:
   data_file: ''                             # Path to csv file containing static grid layer data. Assumed to be in the format map_x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv.
   height_field: 'height'                    # Field in csv file containing height values.
   segmentation_field: 'segmentation'        # Field in csv file containing segmentation values.
+  input_y_dir_negative: False               # If cells in the input data file are ordered with y-axis pointing downwards with respect to the lower-left corner origin
