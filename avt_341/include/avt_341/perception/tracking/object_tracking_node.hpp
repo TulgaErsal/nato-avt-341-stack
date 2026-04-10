@@ -250,7 +250,7 @@ class ObjectTrackingNode : public rclcpp::Node {
         const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
     /** @brief Whether or not camera info has been received. */
-    bool has_camera_info_;
+    bool has_camera_info_ = true;
 
     /** @brief Latest received camera info message. */
     sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message_;
