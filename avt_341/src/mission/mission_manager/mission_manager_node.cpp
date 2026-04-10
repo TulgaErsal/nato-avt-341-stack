@@ -87,10 +87,15 @@ void TargetContactsCallback(avt_341::msg::PathPtr msg) {
   }
 }
 
-// Receive information on navigation state (-1 startup, 0 active, 1 stopping, 2 shutdown, 3 shutdown hard)
+bool current_goal_rcvd = false;
+avt_341::msg::PoseStamped gp_goal_rcvd;
 void NavStateCallback(avt_341::msg::NavStatePtr msg) {
-	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->data << " navigation state" << std::endl;
     nav_run_state = msg->run_state;
+    if (msg->run_state == avt_341::utils::NavStackState::Active)
+    {
+        gp_goal_rcvd = avt_341::core::ToPoseStamped(msg->goal);
+        current_goal_rcvd = true;
+    }
 }
 
 bool reset_called = false;
@@ -102,13 +107,6 @@ void ResetCallback(avt_341::msg::StringPtr msg){
 
 void GoalReachedCallback(avt_341::msg::NavStatePtr msg){
   reached_goals.push(avt_341::core::ToPoseStamped(msg->goal));
-}
-
-bool current_goal_rcvd = false;
-avt_341::msg::PoseStamped gp_goal_rcvd;
-void CurrentGoalCallback(avt_341::msg::PoseStampedPtr msg){
-  gp_goal_rcvd = *msg;
-  current_goal_rcvd = true;
 }
 
 auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std::string & my_name, int target_idx,
@@ -204,7 +202,6 @@ int main(int argc, char **argv) {
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);
-    auto current_waypoint_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CurrentGoalCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
