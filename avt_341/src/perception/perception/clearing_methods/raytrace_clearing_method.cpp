@@ -319,6 +319,10 @@ void RaytraceClearingMethod::GetGridBounds(
 
 void RaytraceClearingMethod::Visualize() const {
 
+    if (!config_.visualize){
+        return;
+    }
+
     OccupancyClearingMethod::Visualize();
 
     const float& vx_h_res = rt_config_.voxel_height_res;
@@ -496,6 +500,11 @@ void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const msg::PointCloud
 }
 
 void RaytraceWithFilteringClearingMethod::Visualize() const {
+
+    if (!config_.visualize){
+        return;
+    }
+
     RaytraceClearingMethod::Visualize();
 
     const int N_size = 2 * static_cast<int>(rt_config_.raytrace_range / config_.res);
