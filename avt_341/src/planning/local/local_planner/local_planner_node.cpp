@@ -67,7 +67,8 @@ int main(int argc, char *argv[]){
   // planner params
   float path_look_ahead, vehicle_wheelbase, vehicle_width, steer_angle_limit, output_path_step, path_int_step, rate;
   float time_look_ahead, min_path_look_ahead, max_path_look_ahead, max_lateral_accel, min_steer_angle_limit, max_steer_angle_limit;
-  int dilation_factor, num_paths;
+  float dilation_factor_param;
+  int num_paths;
   float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist, max_theta;
   bool trim_path, use_global_path, use_blend, use_dynamic_window;
   std::string display, cost_vis, map_topic;
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~max_theta", max_theta, 1.0f);
   n->get_parameter("~output_path_step", output_path_step, 0.5f);
   n->get_parameter("~path_integration_step", path_int_step, 0.25f);
-  n->get_parameter("~dilation_factor", dilation_factor, 0);
+  n->get_parameter("~dilation_factor", dilation_factor_param, 0.0f);
   n->get_parameter("~w_c", w_c, 0.2f);
   n->get_parameter("~w_d", w_d, 0.2f);
   n->get_parameter("~w_s", w_s, 0.2f);
@@ -102,6 +103,7 @@ int main(int argc, char *argv[]){
   n->get_parameter("~cost_vis_text_size", cost_vis_text_size, 2.0f);
   n->get_parameter("~display", display, avt_341::visualization::default_display);
   n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
+  const int dilation_factor = static_cast<int>(dilation_factor_param);
 
     // Create publishers and subscribers
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);

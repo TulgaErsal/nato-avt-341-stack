@@ -2,7 +2,7 @@ import os
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, DeclareLaunchArgument, OpaqueFunction
+from launch.actions import ExecuteProcess, DeclareLaunchArgument, OpaqueFunction, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -26,46 +26,6 @@ def launch_setup(context, *args, **kwargs):
             if tracking_params is None:
                 tracking_params = {}
             
-            # Apply requested parameter configuration
-            tracking_params.update({
-                'tracking_rate': 10.0,
-                'camera_frame': 'mrzr2/front_camera',
-                'publish_clouds_cluster': True,
-                'publish_clouds_cropbox': True,
-                'publish_clouds_roi': True,
-                'publish_clouds_ground': True,
-                'publish_clouds_fov': True,
-                'publish_detection': True,
-                'publish_odometry': True,
-                'publish_pose': True,
-                'filters_pose': True,
-                'filters_odometry': True,
-                'tracker_use_mission_manager': False,
-                'filters_use_pca_centroid': True,
-                'tracker_target_class': '0',
-                'filters_use_manual_roi': True,
-                'filters_downsampling_leaf_size': 0.25,
-                'filters_ground_threshold': 0.2,
-                'filters_clustering_size_minimum': 30,
-                'filters_clustering_size_maximum': 500,
-                'filters_manual_roi_size': [5.0, 5.0, 5.0],
-                'filters_kalman_process': 0.01,
-                'filters_kalman_measurement': 0.1,
-                # Camera-based range estimation parameters
-                'camera_target_height': 5.0,
-                'camera_bbox_pixel_sigma': 4.0,
-                # IMM model probabilities and Markov transition probability
-                # CV model is preferred for straight-line driving; CTR kicks
-                # in when the likelihood of turning becomes higher.
-                'filters_imm_cv_init_prob': 0.33,
-                'filters_imm_ctr_init_prob': 0.33,
-                'filters_imm_nm_init_prob': 0.33,
-                'filters_imm_transition_prob': 0.9,
-                'world_frame': 'map',
-                'sync_enable': False,
-                'sync_detection': 0.1,
-                'sync_use_callback': True
-            })
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
@@ -73,11 +33,14 @@ def launch_setup(context, *args, **kwargs):
     # Define Nodes and Processes
     
     # 1. Play the rosbag
-    bag_play = ExecuteProcess(
-        cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1000'],
-        output='screen'
+    bag_topics = ['/flir_camera/camera_info', '/flir_camera/image_raw', '/mrzr/detections/vision', '/ouster/points', '/mrzr/avt_341/odometry', '/tf', '/tf_static']
+    bag_play = TimerAction(
+        period=5.0,  # Delay in seconds
+        actions=[ExecuteProcess(
+            cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1000', '--topics', *bag_topics],
+            output='screen'
+        )]
     )
-
 
     # 2. Object Tracking Node
     tracking_node = Node(
@@ -87,10 +50,10 @@ def launch_setup(context, *args, **kwargs):
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
         remappings=[
-            ('camera_info', '/mrzr2/front_camera/camera_info'),
-            ('image', '/mrzr2/front_camera/image'),
-            ('detection_2d', '/mrzr2/front_camera/detections_2d'),
-            ('points/input', '/mrzr2/avt_341/points'),
+            ('camera_info', '/flir_camera/camera_info'),
+            ('image', '/flir_camera/image_raw'),
+            ('detection_2d', '/mrzr/detections/vision'),
+            ('points/input', '/ouster/points'),
             ('points/fov', 'object_tracking/points/fov'),
             ('points/roi', 'object_tracking/points/roi'),
             ('points/ground', 'object_tracking/points/ground'),
@@ -139,8 +102,8 @@ def generate_launch_description():
     
     return LaunchDescription([
         DeclareLaunchArgument('bag_file', description='Path to the rosbag directory or file'),
-        DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'avt_341_ros2.rviz')),
-        DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'config', 'parameters', 'object_tracking.yaml')),
+        DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'static_target_detection_testing.rviz')),
+        DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'static_target_tracking.yaml')),
         DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
         DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),
         OpaqueFunction(function=launch_setup)

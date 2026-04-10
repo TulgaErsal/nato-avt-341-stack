@@ -18,7 +18,7 @@ vehicle_width: 5.0 #1.511               # Vehicle width.
 max_theta: 1.0                          # Maximum angle difference (in radians) between heading and goal used for generating paths.
 output_path_step: 0.5                   # Output path step size.
 path_integration_step: 0.35             # Path integration step size.
-dilation_factor: 0                      # Dilation to costmap to apply during local planning only.
+dilation_factor: 0.0                    # Dilation to costmap to apply during local planning only.
 w_c: 0.0                                # w_c conformability (minimize curvature) weighting factor
 w_s: 0.5                                # w_s static safety (avoid collisions) weighting factor
 w_d: 0.0                                # w_d dynamic safety weighting factor
