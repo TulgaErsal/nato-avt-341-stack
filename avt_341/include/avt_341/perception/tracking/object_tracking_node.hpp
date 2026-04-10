@@ -381,6 +381,20 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     int cluster_size_max_;
 
+    /** @brief Minimum vertical extent (m) for a cluster to be considered a
+     *         valid vehicle. Rejects flat ground patches missed by RANSAC and
+     *         very small returns. */
+    double cluster_height_min_;
+
+    /** @brief Maximum vertical extent (m) for a cluster to be considered a
+     *         valid vehicle. Rejects large static objects such as buildings. */
+    double cluster_height_max_;
+
+    /** @brief Reference range (m) at which filters_clustering_size_minimum
+     *         applies. The minimum point count scales as 1/d^2 relative to
+     *         this distance to account for LiDAR return density fall-off. */
+    double cluster_distance_ref_;
+
     // Ground plane segmentation
     // -------------------------
 

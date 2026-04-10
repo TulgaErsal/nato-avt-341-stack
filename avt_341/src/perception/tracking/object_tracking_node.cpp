@@ -108,6 +108,18 @@ void ObjectTrackingNode::GetParameters() {
     cluster_size_max_ =
         get_parameter("filters_clustering_size_maximum").as_int();
 
+    declare_parameter("filters_clustering_min_height", 1.0);
+    cluster_height_min_ =
+        get_parameter("filters_clustering_min_height").as_double();
+
+    declare_parameter("filters_clustering_max_height", 4.0);
+    cluster_height_max_ =
+        get_parameter("filters_clustering_max_height").as_double();
+
+    declare_parameter("filters_clustering_distance_reference", 10.0);
+    cluster_distance_ref_ =
+        get_parameter("filters_clustering_distance_reference").as_double();
+
     declare_parameter("filters_ground_max_iterations", 50);
     sac_segmentation_max_iterations_ =
         get_parameter("filters_ground_max_iterations").as_int();
@@ -1019,9 +1031,11 @@ ObjectTrackingNode::ExtractEuclideanClusters(
     kd_tree->setInputCloud(point_cloud);
 
     // Configure the Euclidean cluster extraction agent.
+    // A hard floor of 3 is used here; the distance-scaled minimum is
+    // enforced per cluster after extraction.
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> euclidean_clustering_;
     euclidean_clustering_.setClusterTolerance(clustering_tolerance_);
-    euclidean_clustering_.setMinClusterSize(cluster_size_min_);
+    euclidean_clustering_.setMinClusterSize(10);
     euclidean_clustering_.setMaxClusterSize(cluster_size_max_);
     euclidean_clustering_.setSearchMethod(kd_tree);
 
@@ -1052,6 +1066,7 @@ ObjectTrackingNode::ExtractEuclideanClusters(
         std::numeric_limits<float>::infinity());
 
     // Iterate over the cloud clusters to compute the cluster centroids.
+    bool found_valid_cluster = false;
     for (unsigned int cluster_index = 0;
          cluster_index < uint(clusters_indices.size()); ++cluster_index) {
         // Temporarily instantiate a point cloud to the current cluster.
@@ -1065,7 +1080,44 @@ ObjectTrackingNode::ExtractEuclideanClusters(
         // the point cloud origin.
         pcl::PointXYZ cloud_centroid;
         pcl::computeCentroid(*cloud_cluster, cloud_centroid);
-        auto distance = cloud_centroid.getVector3fMap().norm();
+        const float distance = cloud_centroid.getVector3fMap().norm();
+
+        // Distance-based minimum point count. LiDAR return density falls off
+        // roughly as 1/d^2, so the minimum required points is scaled down at
+        // longer ranges relative to the reference distance.
+        const float scale = cluster_distance_ref_ / std::max(distance, 0.1f);
+        const int dynamic_min = std::max(
+            3, static_cast<int>(cluster_size_min_ * scale * scale));
+        if (static_cast<int>(cloud_cluster->points.size()) < dynamic_min) {
+            RCLCPP_DEBUG(
+                get_logger(),
+                "Cluster %i rejected: %i points < dynamic minimum %i "
+                "at %.1f m.",
+                cluster_index,
+                static_cast<int>(cloud_cluster->points.size()),
+                dynamic_min, distance);
+            continue;
+        }
+
+        // Height sanity check. In the camera optical frame Y is the
+        // vertical axis (pointing down), so the Y extent of a cluster is
+        // its height. Reject clusters whose height falls outside car-like
+        // dimensions to filter out residual ground patches and large static
+        // structures such as buildings or walls.
+        pcl::PointXYZ min_pt, max_pt;
+        pcl::getMinMax3D(*cloud_cluster, min_pt, max_pt);
+        const float cluster_height = max_pt.y - min_pt.y;
+        if (cluster_height < static_cast<float>(cluster_height_min_) ||
+            cluster_height > static_cast<float>(cluster_height_max_)) {
+            RCLCPP_DEBUG(
+                get_logger(),
+                "Cluster %i rejected: height %.2f m outside [%.2f, %.2f] m.",
+                cluster_index, cluster_height,
+                cluster_height_min_, cluster_height_max_);
+            continue;
+        }
+
+        found_valid_cluster = true;
 
         // Compare the distance to the current cluster with the shortest
         // distance so far and update the closest cluster index accordingly.
@@ -1079,6 +1131,11 @@ ObjectTrackingNode::ExtractEuclideanClusters(
             cluster_index, uint(cloud_cluster->points.size()), distance);
     }
 
+    if (!found_valid_cluster) {
+        throw ClusteringException(
+            "All clusters failed sanity checks (point count or height).");
+    }
+
     return std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
                      const pcl::PointXYZ>(closest_cloud_cluster,
                                           closest_cluster_centroid);
@@ -1087,6 +1144,29 @@ ObjectTrackingNode::ExtractEuclideanClusters(
 void ObjectTrackingNode::SegmentGroundPlane(
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane) {
+    // Derive the ground plane normal from vehicle attitude via TF. The
+    // transform from world to camera frame reflects the IMU-estimated
+    // orientation of the vehicle, so the world "up" direction rotated into
+    // camera frame gives the true ground normal even when the vehicle is
+    // turning or traversing rough terrain where the plane is no longer
+    // near-horizontal in the sensor frame.
+    try {
+        auto tf_msg = transform_buffer_->lookupTransform(
+            camera_frame_, world_frame_, tf2::TimePointZero);
+        Eigen::Quaternionf q(
+            static_cast<float>(tf_msg.transform.rotation.w),
+            static_cast<float>(tf_msg.transform.rotation.x),
+            static_cast<float>(tf_msg.transform.rotation.y),
+            static_cast<float>(tf_msg.transform.rotation.z));
+        // In ROS convention, world Z is up; rotating it into camera frame
+        // gives the ground plane normal in local coordinates.
+        Eigen::Vector3f ground_normal =
+            (q * Eigen::Vector3f(0.0f, 0.0f, 1.0f)).normalized();
+        sac_segmentation_.setAxis(ground_normal);
+    } catch (const tf2::TransformException&) {
+        // TF not yet available; keep the static axis set during initialization.
+    }
+
     // Segment the largest planar component from the remaining cloud
     sac_segmentation_.setInputCloud(point_cloud);
     pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
@@ -1485,6 +1565,12 @@ ObjectTrackingNode::SetParametersCallback(
             cluster_size_min_ = parameter.as_int();
         } else if (parameter.get_name() == "filters_clustering_size_maximum") {
             cluster_size_max_ = parameter.as_int();
+        } else if (parameter.get_name() == "filters_clustering_min_height") {
+            cluster_height_min_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_max_height") {
+            cluster_height_max_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_distance_reference") {
+            cluster_distance_ref_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_ground_max_iterations") {
             sac_segmentation_max_iterations_ = parameter.as_int();
         } else if (parameter.get_name() == "filters_ground_threshold") {

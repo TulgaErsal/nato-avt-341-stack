@@ -129,7 +129,7 @@ class NMFilter {
 
     const StateVector& GetState()      const { return x_; }
     const StateMatrix& GetCovariance() const { return P_; }
-    const StateMatrix& GetS() const { return P_ + R_; }
+    StateMatrix GetS() const { return P_ + R_; }
 
     /** @brief Compute the scalar log-likelihood of measurement z given N(x, S). */
     double LogLikelihood(const MeasurementVector& z,
