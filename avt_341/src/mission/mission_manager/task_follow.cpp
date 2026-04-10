@@ -8,8 +8,8 @@ namespace avt_341 {
 namespace mission {
 
 // Follow
-Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def, double desired_speed)
-: Task(manager, sender, id, formation_def), path_generator_(formation_def->params) {
+Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def, double desired_speed, double d_approach)
+: Task(manager, sender, id, formation_def), path_generator_(formation_def->params), d_approach_(d_approach > 0.0 ? d_approach : formation_def_->params.follow_goal_threshold) {
     const std::string termination_method = formation_def->terminationMethod();
     terminate_on_leader_arrived_ = termination_method == "LEADER_ARRIVED";
     terminate_on_all_arrived_ = termination_method == "ALL_ARRIVED";
@@ -58,7 +58,7 @@ bool Follow::is_done() {
     }
     if(terminate_on_all_arrived_){
       bool leader_arrived = mgr->hasArrival(formation_def_->followedVehicle(), "TASK_" + std::to_string(msg_id));
-      bool at_termination_location = leader_arrived && PosePlanarDistance(mgr->odometry.pose.pose.position, terminalPose().pose.position) < formation_def_->params.follow_goal_threshold;
+      bool at_termination_location = leader_arrived && PosePlanarDistance(mgr->odometry.pose.pose.position, terminalPose().pose.position) < d_approach_;
       if(!arrived && at_termination_location){
         mgr->publishArrival(mgr->my_name, "TASK_" + std::to_string(msg_id));
       }

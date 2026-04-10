@@ -153,15 +153,23 @@ void SetRunState(const int run_state)
 
 void UpdateGoalState(const avt_341::msg::NavGoal& goal)
 {
-  state.goal_distance = avt_341::utils::GetDistance(goal.pose.position, odom.pose.pose.position);
   state.header.stamp = n->get_stamp();
 
   const auto t_now = n->get_now_seconds();
   if (avt_341::utils::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
     goal_start_time = t_now;
   }
-  state.goal = goal;
-  state.goal_duration = t_now - goal_start_time;
+
+  if (state.run_state == avt_341::utils::NavStackState::Active) {
+    state.goal = goal;
+    state.goal_distance = avt_341::utils::GetDistance(goal.pose.position, odom.pose.pose.position);
+    state.goal_duration = t_now - goal_start_time;
+  }else {
+    state.goal = avt_341::msg::NavGoal();
+    state.goal_distance = 0.0;
+    state.goal_duration = 0.0;
+  }
+
 }
 
 int main(int argc, char* argv[])
@@ -470,10 +478,6 @@ int main(int argc, char* argv[])
           global_path_pre_fill_pub->publish(ros_path_pre_fill);
         }
 
-        if (current_waypoint < nav_goals.goals.size()) {
-          state_pub->publish(state);
-        }
-
         if (nl % 20 == 0 && verbose_gp_log) { //update every second
           auto t_now = std::chrono::system_clock::now();
           auto calc_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t1);
@@ -492,9 +496,13 @@ int main(int argc, char* argv[])
           //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
           if (state.goal_distance < goal.threshold || shutdown_condition) {   // reached the goal
             // send arrival notification
+
+            if (state.run_state == avt_341::utils::NavStackState::Active) {
+              goal_reached_pub->publish(state);
+            }
+
             shutdown_condition = true;
             SetRunState(shutdown_behavior);// request shutdown behavior
-            goal_reached_pub->publish(state);
 
             //std::cout << "Shutdown " << shutdown_behavior << std::endl;
             if (state.run_state != avt_341::utils::NavStackState::Stopped) {
