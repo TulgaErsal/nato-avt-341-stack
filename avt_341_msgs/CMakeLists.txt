@@ -26,7 +26,7 @@ set(MESSAGE_DEFINITIONS
     "TrackerInfo"
     "NavGoal"
     "NavGoalSequence"
-    "GlobalPlannerState"
+    "NavState"
 )
 
 set(SERVICE_DEFINITIONS "LiorfSaveMap" "SetTarget")

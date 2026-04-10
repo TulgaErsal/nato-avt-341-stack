@@ -1,4 +1,4 @@
-# State of global planner module.
+# State of navigation
 
 # Stamped header for the message.
 std_msgs/Header header
@@ -15,7 +15,7 @@ avt_341_msgs/NavGoal goal
 int32 run_state
 
 # How long (in seconds) navigation to the current goal has been running.
-float64 navigation_duration
+float64 goal_duration
 
 # Current distance to the goal.
 float64 goal_distance

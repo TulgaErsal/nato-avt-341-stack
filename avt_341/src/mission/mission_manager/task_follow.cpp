@@ -2,6 +2,7 @@
 #include "avt_341/mission/task.h"
 #include <fstream>
 #include <iostream>
+#include <avt_341/core/dto_conversion.h>
 
 namespace avt_341 {
 namespace mission {
@@ -29,9 +30,12 @@ void Follow::run() {
     path_generator_.Update(mgr->leader_odometry, mgr->odometry, formation_def_->formation_status);
     const auto & follower_path = path_generator_.GetPath();
     if(path_generator_.useBreadcrumbs()){
-      mgr->publishPath(follower_path);
+        mgr->publishPath(follower_path);
     }else if(!follower_path.poses.empty()){
-      mgr->publishGoal(follower_path.poses.back());
+        auto target_pose = follower_path.poses.back();
+        // TODO: Another parameter for intermediate follower goal threshold? 0.5 was previously hardcoded in global planner node.
+        // NOTE: This is different than the follow_goal_threshold parameter which only applies to the follower terminal goal.
+        mgr->publishGoal(core::ToNavGoal(target_pose, 0.5f));
     }
 }
 

@@ -4,7 +4,7 @@
 std_msgs/Header header
 
 # Pose to navigate to.
-geometry_msgs/Pose goal
+geometry_msgs/Pose pose
 
 # Distance threshold at which to consider goal reached.
 float64 threshold

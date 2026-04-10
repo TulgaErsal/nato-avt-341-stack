@@ -48,6 +48,9 @@
 #include "std_msgs/Bool.h"
 
 #include "avt_341_msgs/Communication.h"
+#include "avt_341_msgs/NavGoal.h"
+#include "avt_341_msgs/NavGoalSequence.h"
+#include "avt_341_msgs/NavState.h"
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/MissionTaskStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
@@ -182,6 +185,15 @@ namespace avt_341 {
         using Communication = avt_341_msgs::Communication;
         using CommunicationPtr = const avt_341_msgs::Communication::ConstPtr &;
 
+        using NavGoal = avt_341_msgs::NavGoal;
+        using NavGoalPtr = const avt_341_msgs::NavGoal::ConstPtr &;
+
+        using NavGoalSequence = avt_341_msgs::NavGoalSequence;
+        using NavGoalSequencePtr = const avt_341_msgs::NavGoalSequence::ConstPtr &;
+
+        using NavState = avt_341_msgs::NavState;
+        using NavStatePtr = const avt_341_msgs::NavState::ConstPtr &;
+
         using MissionTaskStatus = avt_341_msgs::MissionTaskStatus;
         using MissionTaskStatusPtr = const avt_341_msgs::MissionTaskStatus::ConstPtr &;
 
@@ -267,6 +279,9 @@ namespace avt_341 {
 #include "std_msgs/msg/bool.hpp"
 
 #include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/mission_task_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
@@ -374,6 +389,15 @@ namespace avt_341 {
 
     using Communication = avt_341_msgs::msg::Communication;
     using CommunicationPtr = avt_341_msgs::msg::Communication::SharedPtr;
+
+    using NavGoal = avt_341_msgs::msg::NavGoal;
+    using NavGoalPtr = avt_341_msgs::msg::NavGoal::SharedPtr;
+
+    using NavGoalSequence = avt_341_msgs::msg::NavGoalSequence;
+    using NavGoalSequencePtr = avt_341_msgs::msg::NavGoalSequence::SharedPtr;
+
+    using NavState = avt_341_msgs::msg::NavState;
+    using NavStatePtr = avt_341_msgs::msg::NavState::SharedPtr;
 
     using MissionTaskStatus = avt_341_msgs::msg::MissionTaskStatus;
     using MissionTaskStatusPtr = avt_341_msgs::msg::MissionTaskStatus::SharedPtr;

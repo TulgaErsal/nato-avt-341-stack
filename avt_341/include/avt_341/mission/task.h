@@ -67,7 +67,7 @@ public:
     static const std::string ACTOR;
 
     MoveTo(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def = nullptr,
-           double x_offset = 0.0, double y_offset = 0.0, double d_approach=0.0, double desired_speed=-1.0);
+           double x_offset = 0.0, double y_offset = 0.0, double d_approach=-1.0, double desired_speed=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -89,7 +89,6 @@ public:
     std::string description() const override;
 private:
     bool setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
-    void applyApproachDistance();
     void applyOffset();
     double x_offset_;
     double y_offset_;

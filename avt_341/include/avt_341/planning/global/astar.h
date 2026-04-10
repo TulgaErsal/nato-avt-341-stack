@@ -8,12 +8,8 @@
 namespace avt_341 {
 namespace planning {
 
-typedef struct {
-  float x;
-  float y;
-} Point;
-
-typedef Point Vec2;
+typedef utils::vec2 Point;
+typedef utils::vec2 Vec2;
 
 class Index {
 public:
