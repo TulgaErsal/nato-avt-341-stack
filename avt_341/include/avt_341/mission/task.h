@@ -133,7 +133,7 @@ private:
 
 class Follow : public Task {
 public:
-    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def, double desired_speed = -1.0);
+    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def, double desired_speed = -1.0, double d_approach=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -146,6 +146,7 @@ private:
   bool terminate_on_leader_arrived_;
   bool terminate_on_all_arrived_;
   avt_341::mission::FormationPathGenerator path_generator_;
+  double d_approach_;
 }; // class Follow
 
 class PathFollow : public Task {
