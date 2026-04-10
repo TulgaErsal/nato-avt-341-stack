@@ -116,6 +116,22 @@ void ObjectTrackingNode::GetParameters() {
     cluster_height_max_ =
         get_parameter("filters_clustering_max_height").as_double();
 
+    declare_parameter("filters_clustering_min_width", 0.3);
+    cluster_width_min_ =
+        get_parameter("filters_clustering_min_width").as_double();
+
+    declare_parameter("filters_clustering_max_width", 4.0);
+    cluster_width_max_ =
+        get_parameter("filters_clustering_max_width").as_double();
+
+    declare_parameter("filters_clustering_min_depth", 0.3);
+    cluster_depth_min_ =
+        get_parameter("filters_clustering_min_depth").as_double();
+
+    declare_parameter("filters_clustering_max_depth", 6.0);
+    cluster_depth_max_ =
+        get_parameter("filters_clustering_max_depth").as_double();
+
     declare_parameter("filters_clustering_distance_reference", 10.0);
     cluster_distance_ref_ =
         get_parameter("filters_clustering_distance_reference").as_double();
@@ -1099,14 +1115,16 @@ ObjectTrackingNode::ExtractEuclideanClusters(
             continue;
         }
 
-        // Height sanity check. In the camera optical frame Y is the
-        // vertical axis (pointing down), so the Y extent of a cluster is
-        // its height. Reject clusters whose height falls outside car-like
-        // dimensions to filter out residual ground patches and large static
-        // structures such as buildings or walls.
+        // Bounding-box sanity checks. In the camera optical frame:
+        //   X = left-right (width), Y = down (height), Z = forward (depth).
+        // Reject clusters whose dimensions fall outside car-like ranges to
+        // filter out residual ground patches, walls, and other large structures.
         pcl::PointXYZ min_pt, max_pt;
         pcl::getMinMax3D(*cloud_cluster, min_pt, max_pt);
         const float cluster_height = max_pt.y - min_pt.y;
+        const float cluster_width  = max_pt.x - min_pt.x;
+        const float cluster_depth  = max_pt.z - min_pt.z;
+
         if (cluster_height < static_cast<float>(cluster_height_min_) ||
             cluster_height > static_cast<float>(cluster_height_max_)) {
             RCLCPP_DEBUG(
@@ -1114,6 +1132,24 @@ ObjectTrackingNode::ExtractEuclideanClusters(
                 "Cluster %i rejected: height %.2f m outside [%.2f, %.2f] m.",
                 cluster_index, cluster_height,
                 cluster_height_min_, cluster_height_max_);
+            continue;
+        }
+        if (cluster_width < static_cast<float>(cluster_width_min_) ||
+            cluster_width > static_cast<float>(cluster_width_max_)) {
+            RCLCPP_DEBUG(
+                get_logger(),
+                "Cluster %i rejected: width %.2f m outside [%.2f, %.2f] m.",
+                cluster_index, cluster_width,
+                cluster_width_min_, cluster_width_max_);
+            continue;
+        }
+        if (cluster_depth < static_cast<float>(cluster_depth_min_) ||
+            cluster_depth > static_cast<float>(cluster_depth_max_)) {
+            RCLCPP_DEBUG(
+                get_logger(),
+                "Cluster %i rejected: depth %.2f m outside [%.2f, %.2f] m.",
+                cluster_index, cluster_depth,
+                cluster_depth_min_, cluster_depth_max_);
             continue;
         }
 
@@ -1569,6 +1605,14 @@ ObjectTrackingNode::SetParametersCallback(
             cluster_height_min_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_clustering_max_height") {
             cluster_height_max_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_min_width") {
+            cluster_width_min_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_max_width") {
+            cluster_width_max_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_min_depth") {
+            cluster_depth_min_ = parameter.as_double();
+        } else if (parameter.get_name() == "filters_clustering_max_depth") {
+            cluster_depth_max_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_clustering_distance_reference") {
             cluster_distance_ref_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_ground_max_iterations") {

@@ -390,6 +390,20 @@ class ObjectTrackingNode : public rclcpp::Node {
      *         valid vehicle. Rejects large static objects such as buildings. */
     double cluster_height_max_;
 
+    /** @brief Minimum horizontal (left-right) extent (m) of a valid cluster.
+     *         In the camera optical frame this is the X axis. */
+    double cluster_width_min_;
+
+    /** @brief Maximum horizontal (left-right) extent (m) of a valid cluster. */
+    double cluster_width_max_;
+
+    /** @brief Minimum along-range extent (m) of a valid cluster.
+     *         In the camera optical frame this is the Z axis. */
+    double cluster_depth_min_;
+
+    /** @brief Maximum along-range extent (m) of a valid cluster. */
+    double cluster_depth_max_;
+
     /** @brief Reference range (m) at which filters_clustering_size_minimum
      *         applies. The minimum point count scales as 1/d^2 relative to
      *         this distance to account for LiDAR return density fall-off. */
