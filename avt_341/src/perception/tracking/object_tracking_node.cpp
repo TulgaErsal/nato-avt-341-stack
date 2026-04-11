@@ -550,6 +550,10 @@ void ObjectTrackingNode::TrackingTimerCallback() {
                         "LIDAR_ONLY clustering failed: %s", exception.what());
             has_point_cloud_ = false;
             has_detection_ = false;
+            // Don't suppress the timeout check - let CheckTargetTimeout() handle
+            // the state transition to NO_DETECTION after the timeout period.
+            // This ensures consistent timeout behavior across all tracking modes.
+            centroid_in_cloud_frame_ = true;  // Mark as cloud-frame for consistency
             return;
         }
     } else if (state_ == TrackerState::FULL_TRACKING) {
@@ -642,6 +646,12 @@ void ObjectTrackingNode::TrackingTimerCallback() {
 
     has_point_cloud_ = false;
     has_detection_ = false;
+
+    // Check for tracking timeout across all tracking modes (FULL_TRACKING,
+    // LIDAR_ONLY_TRACKING, and CAMERA_ONLY_TRACKING). This ensures that if
+    // no valid measurement is obtained for longer than target_timeout_, the
+    // tracker transitions to NO_DETECTION state.
+    CheckTargetTimeout();
 }
 
 void ObjectTrackingNode::CheckTargetTimeout() {
@@ -1071,11 +1081,12 @@ ObjectTrackingNode::ExtractEuclideanClusters(
     kd_tree->setInputCloud(point_cloud);
 
     // Configure the Euclidean cluster extraction agent.
-    // A hard floor of 3 is used here; the distance-scaled minimum is
-    // enforced per cluster after extraction.
+    // Use a conservative floor based on cluster_size_min_ to reduce wasted
+    // processing on undersized clusters. The distance-scaled minimum is
+    // enforced per cluster after extraction for more precise validation.
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> euclidean_clustering_;
     euclidean_clustering_.setClusterTolerance(clustering_tolerance_);
-    euclidean_clustering_.setMinClusterSize(10);
+    euclidean_clustering_.setMinClusterSize(std::max(3, static_cast<int>(cluster_size_min_)));
     euclidean_clustering_.setMaxClusterSize(cluster_size_max_);
     euclidean_clustering_.setSearchMethod(kd_tree);
 
@@ -1152,6 +1163,18 @@ ObjectTrackingNode::ExtractEuclideanClusters(
                     min_points);
                 continue;
             }
+        }
+
+        // Maximum point count. This should already be enforced by Euclidean
+        // clustering, but we validate explicitly here for safety and clarity.
+        if (static_cast<int>(cloud_cluster->points.size()) > cluster_size_max_) {
+            RCLCPP_WARN(
+                get_logger(),
+                "Cluster %i rejected: %i points > maximum %i.",
+                cluster_index,
+                static_cast<int>(cloud_cluster->points.size()),
+                cluster_size_max_);
+            continue;
         }
 
         // Bounding-box dimension checks. In the camera optical frame:
