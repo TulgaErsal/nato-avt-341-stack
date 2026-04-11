@@ -364,9 +364,18 @@ class ObjectTrackingNode : public rclcpp::Node {
     // Euclidean clustering
     // --------------------
 
+    /**
+     * @param reference_point Point in the cloud frame to use as the anchor
+     *        for selecting the best cluster. The cluster whose centroid is
+     *        closest to this point is returned. Pass the zero vector to fall
+     *        back to selecting the cluster closest to the sensor origin
+     *        (FULL_TRACKING behavior).
+     */
     const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
                     const pcl::PointXYZ>
-    ExtractEuclideanClusters(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
+    ExtractEuclideanClusters(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
+                             const Eigen::Vector3f& reference_point =
+                                 Eigen::Vector3f::Zero());
 
     bool publish_cluster_cloud_;
 

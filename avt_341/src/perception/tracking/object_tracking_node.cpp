@@ -517,14 +517,28 @@ void ObjectTrackingNode::TrackingTimerCallback() {
 
         CropRegionOfInterest();
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
-            new pcl::PointCloud<pcl::PointXYZ>);
-        SegmentGroundPlane(point_cloud_, cloud_plane);
+        // Ground plane removal is intentionally skipped in LIDAR_ONLY mode.
+        // Applying RANSAC on the small cropped cloud clips the bottom of the
+        // target cluster, reducing its vertical and depth extent below the
+        // configured minimum thresholds and causing the real target to be
+        // rejected. The crop box is already tight enough (5x5x5 m by default)
+        // that the ground contribution is limited; any residual flat ground
+        // cluster will be rejected by the point count minimum or the
+        // maximum dimension checks.
+
+        RCLCPP_INFO(get_logger(),
+                    "LIDAR_ONLY: cloud size after crop+ground: %i points, "
+                    "centroid anchor (%.2f, %.2f, %.2f) m.",
+                    static_cast<int>(point_cloud_->size()),
+                    bounding_box_centroid_.x(),
+                    bounding_box_centroid_.y(),
+                    bounding_box_centroid_.z());
 
         try {
             EuclideanClustering();
             centroid_in_cloud_frame_ = true;
             last_valid_target_time_ = get_clock()->now();
+            has_tracked_target_ = true;
 
             if (cloud_cluster_->size() > 0) {
             } else {
@@ -532,6 +546,8 @@ void ObjectTrackingNode::TrackingTimerCallback() {
                 has_detection_ = false;
             }
         } catch (const ClusteringException& exception) {
+            RCLCPP_WARN(get_logger(),
+                        "LIDAR_ONLY clustering failed: %s", exception.what());
             has_point_cloud_ = false;
             has_detection_ = false;
             return;
@@ -639,7 +655,14 @@ void ObjectTrackingNode::CheckTargetTimeout() {
 
 void ObjectTrackingNode::EuclideanClustering() {
     try {
-        auto clustering_result = ExtractEuclideanClusters(point_cloud_);
+        // In LIDAR_ONLY mode, pass the predicted target position as the
+        // reference point so the best cluster is the one nearest to where
+        // the target is expected to be, not the one nearest to the sensor.
+        Eigen::Vector3f reference = Eigen::Vector3f::Zero();
+        if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
+            reference = bounding_box_centroid_.cast<float>();
+        }
+        auto clustering_result = ExtractEuclideanClusters(point_cloud_, reference);
         // Update the flags for centroid measurement.
         has_new_measurement_ = true;
         has_had_first_lidar_measurement_ = true;
@@ -1040,7 +1063,8 @@ void ObjectTrackingNode::LimitSensorDistance(
 
 const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr, const pcl::PointXYZ>
 ObjectTrackingNode::ExtractEuclideanClusters(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
+    const Eigen::Vector3f& reference_point) {
     // Instantiate a k-d tree to speed up the clustering process.
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
         new pcl::search::KdTree<pcl::PointXYZ>);
@@ -1072,14 +1096,16 @@ ObjectTrackingNode::ExtractEuclideanClusters(
                  uint(clusters_indices.size()));
 
     // Create a shared pointer to a new point cloud to store the closest
-    // cluster and keep track of the cluster distances from the origin as
-    // the clustering results are traversed.
+    // cluster. When a non-zero reference point is provided (LIDAR_ONLY mode),
+    // "closest" means closest to the predicted target position; otherwise it
+    // means closest to the sensor origin (FULL_TRACKING default).
     pcl::PointCloud<pcl::PointXYZ>::Ptr closest_cloud_cluster(
         new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointXYZ closest_cluster_centroid(
         std::numeric_limits<float>::infinity(),
         std::numeric_limits<float>::infinity(),
         std::numeric_limits<float>::infinity());
+    float closest_distance = std::numeric_limits<float>::infinity();
 
     // Iterate over the cloud clusters to compute the cluster centroids.
     bool found_valid_cluster = false;
@@ -1092,33 +1118,44 @@ ObjectTrackingNode::ExtractEuclideanClusters(
             cloud_cluster->push_back((*point_cloud)[idx]);
         }
 
-        // Compute the distance to the centroid of the current cluster from
-        // the point cloud origin.
         pcl::PointXYZ cloud_centroid;
         pcl::computeCentroid(*cloud_cluster, cloud_centroid);
-        const float distance = cloud_centroid.getVector3fMap().norm();
 
-        // Distance-based minimum point count. LiDAR return density falls off
-        // roughly as 1/d^2, so the minimum required points is scaled down at
-        // longer ranges relative to the reference distance.
-        const float scale = cluster_distance_ref_ / std::max(distance, 0.1f);
-        const int dynamic_min = std::max(
-            3, static_cast<int>(cluster_size_min_ * scale * scale));
-        if (static_cast<int>(cloud_cluster->points.size()) < dynamic_min) {
-            RCLCPP_DEBUG(
-                get_logger(),
-                "Cluster %i rejected: %i points < dynamic minimum %i "
-                "at %.1f m.",
-                cluster_index,
-                static_cast<int>(cloud_cluster->points.size()),
-                dynamic_min, distance);
-            continue;
+        // Bounding-box and point-count sanity checks applied uniformly in
+        // all tracking modes. In LIDAR_ONLY mode, ground plane removal is
+        // skipped upstream so cluster extents are not artificially clipped,
+        // and these thresholds apply cleanly to the full cluster geometry.
+
+        // Minimum point count.
+        // In LIDAR_ONLY mode, cluster_size_min_ is used as a fixed absolute
+        // floor. The dynamic 1/d^2 formula is not applied because the crop
+        // box puts the target close to the sensor origin, making the formula
+        // produce an unreasonably large threshold.
+        // In FULL_TRACKING the threshold is distance-scaled because the cloud
+        // covers the full scene and long-range targets naturally return fewer
+        // points.
+        {
+            const int min_points =
+                (state_ == TrackerState::LIDAR_ONLY_TRACKING)
+                    ? cluster_size_min_
+                    : std::max(3, static_cast<int>(
+                          cluster_size_min_ *
+                          std::pow(cluster_distance_ref_ /
+                              std::max(cloud_centroid.getVector3fMap().norm(),
+                                       0.1f), 2)));
+            if (static_cast<int>(cloud_cluster->points.size()) < min_points) {
+                RCLCPP_WARN(
+                    get_logger(),
+                    "Cluster %i rejected: %i points < minimum %i.",
+                    cluster_index,
+                    static_cast<int>(cloud_cluster->points.size()),
+                    min_points);
+                continue;
+            }
         }
 
-        // Bounding-box sanity checks. In the camera optical frame:
+        // Bounding-box dimension checks. In the camera optical frame:
         //   X = left-right (width), Y = down (height), Z = forward (depth).
-        // Reject clusters whose dimensions fall outside car-like ranges to
-        // filter out residual ground patches, walls, and other large structures.
         pcl::PointXYZ min_pt, max_pt;
         pcl::getMinMax3D(*cloud_cluster, min_pt, max_pt);
         const float cluster_height = max_pt.y - min_pt.y;
@@ -1127,7 +1164,7 @@ ObjectTrackingNode::ExtractEuclideanClusters(
 
         if (cluster_height < static_cast<float>(cluster_height_min_) ||
             cluster_height > static_cast<float>(cluster_height_max_)) {
-            RCLCPP_DEBUG(
+            RCLCPP_WARN(
                 get_logger(),
                 "Cluster %i rejected: height %.2f m outside [%.2f, %.2f] m.",
                 cluster_index, cluster_height,
@@ -1136,7 +1173,7 @@ ObjectTrackingNode::ExtractEuclideanClusters(
         }
         if (cluster_width < static_cast<float>(cluster_width_min_) ||
             cluster_width > static_cast<float>(cluster_width_max_)) {
-            RCLCPP_DEBUG(
+            RCLCPP_WARN(
                 get_logger(),
                 "Cluster %i rejected: width %.2f m outside [%.2f, %.2f] m.",
                 cluster_index, cluster_width,
@@ -1145,7 +1182,7 @@ ObjectTrackingNode::ExtractEuclideanClusters(
         }
         if (cluster_depth < static_cast<float>(cluster_depth_min_) ||
             cluster_depth > static_cast<float>(cluster_depth_max_)) {
-            RCLCPP_DEBUG(
+            RCLCPP_WARN(
                 get_logger(),
                 "Cluster %i rejected: depth %.2f m outside [%.2f, %.2f] m.",
                 cluster_index, cluster_depth,
@@ -1155,16 +1192,21 @@ ObjectTrackingNode::ExtractEuclideanClusters(
 
         found_valid_cluster = true;
 
-        // Compare the distance to the current cluster with the shortest
-        // distance so far and update the closest cluster index accordingly.
-        if (distance < closest_cluster_centroid.getVector3fMap().norm()) {
+        // Select the cluster closest to the reference point. In LIDAR_ONLY
+        // mode this picks the cluster nearest the predicted target position.
+        // In FULL_TRACKING mode (reference = zero) it picks the cluster
+        // nearest the sensor origin.
+        const float selection_distance =
+            (cloud_centroid.getVector3fMap() - reference_point).norm();
+        if (selection_distance < closest_distance) {
+            closest_distance = selection_distance;
             closest_cluster_centroid = cloud_centroid;
             closest_cloud_cluster = cloud_cluster;
         }
 
         RCLCPP_DEBUG(
-            get_logger(), "Cluster %i: %i points, centroid %0.2f meters away.",
-            cluster_index, uint(cloud_cluster->points.size()), distance);
+            get_logger(), "Cluster %i: %i points, %.2f m from reference.",
+            cluster_index, uint(cloud_cluster->points.size()), selection_distance);
     }
 
     if (!found_valid_cluster) {
@@ -1255,7 +1297,15 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
     // Reset the target state estimator if the target is currently being
     // tracked but no valid detections have been received during the timeout
     // window.
-    if ((get_clock()->now() - last_valid_detection_time_).seconds() >
+    // In LIDAR_ONLY_TRACKING the camera may be permanently lost, so the
+    // timeout is measured from the last successful LiDAR cluster rather
+    // than the last camera detection. This allows LiDAR-only tracking to
+    // continue for as long as the LiDAR keeps finding the target.
+    const rclcpp::Time& timeout_reference =
+        (state_ == TrackerState::LIDAR_ONLY_TRACKING)
+            ? last_valid_target_time_
+            : last_valid_detection_time_;
+    if ((get_clock()->now() - timeout_reference).seconds() >
         target_timeout_) {
         if (state_ == TrackerState::LIDAR_ONLY_TRACKING ||
             state_ == TrackerState::NO_DETECTION) {
@@ -1389,6 +1439,14 @@ void ObjectTrackingNode::Initialize() {
     pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
 
     filter_initialized_ = false;
+
+    // Pre-seed object_size_ so that CropRegionOfInterest() has a valid
+    // non-zero box on the very first LIDAR_ONLY_TRACKING tick. Without this,
+    // Eigen default-initializes object_size_ to zero, the crop box collapses
+    // to a single point, the cloud is empty, and clustering fails immediately.
+    // The value is updated after each successful bounding box estimation, so
+    // this seed only affects the first attempt.
+    object_size_ = roi_bounding_box_3d_size_;
 
     // Configure the voxel grid filter.
     voxel_grid_filter_.setLeafSize(leaf_size_, leaf_size_, leaf_size_);
