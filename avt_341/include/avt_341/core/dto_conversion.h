@@ -3,6 +3,8 @@
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
+#include <algorithm>
+#include <stdexcept>
 
 namespace avt_341::core
 {
@@ -127,7 +129,7 @@ namespace avt_341::core
             throw std::runtime_error("goals_x and goals_y must have the same size");
         }
 
-        for (int32_t i = 0; i < goals_x.size(); i++) {
+        for (size_t i = 0; i < goals_x.size(); i++) {
             const auto nav_goal = ToNavGoal(goals_x[i] - tx.x, goals_y[i] - tx.y, arrival_threshold, frame_id);
             nav_goals.goals.push_back(nav_goal);
         }

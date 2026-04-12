@@ -25,6 +25,8 @@ bool speedometer_rcvd = false;
 bool des_speed_rcvd = false;
 float desired_speed = 0.0f;
 
+using avt_341::utils::NavStackState;
+
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_state) {
 	state = *rcv_state; 
 }
@@ -47,7 +49,7 @@ void PathCallback(avt_341::msg::PathPtr rcv_control){
 
 void StateCallback(avt_341::msg::NavStatePtr rcv_state){
   current_run_state = rcv_state->run_state;
-  if (current_run_state==2)shutdown_condition = true;
+  if (current_run_state==NavStackState::Shutdown) shutdown_condition = true;
 }
 
 double length(avt_341::msg::Point a, avt_341::msg::Point b){
@@ -206,7 +208,7 @@ int main(int argc, char *argv[]){
       dc.linear.x = 0.0f;
       dc.angular.z = 0.0f;
     }
-    else if (current_run_state==0){    // active running state
+    else if (current_run_state==NavStackState::Active){    // active running state
       double max_curvature = GetMaxCurvature(control_msg);
       double lateral_g_force = ((vel*vel)*max_curvature)/9.806;
       float desired_velocity = vehicle_speed;
@@ -220,7 +222,7 @@ int main(int argc, char *argv[]){
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);
     }
-    else if (current_run_state==-1 || current_run_state==1){
+    else if (current_run_state==NavStackState::NotInit || current_run_state==NavStackState::Stopped){
       // bring to a smooth stop and wait / idle
 	    // std::cout << " Setting desired speed to 0 " << std::endl;
       controller.SetDesiredSpeed(0.0f);
@@ -230,7 +232,7 @@ int main(int argc, char *argv[]){
 	    dc.linear.y = 1.0f;
 	    dc.angular.z = 0.0f;
     }
-    else if (current_run_state==3){
+    else if (current_run_state==NavStackState::HardShutdown){
       // bring to a hard stop and shut down
       dc.linear.x = 0.0f;
       dc.linear.y = 1.0f;

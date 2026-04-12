@@ -5,6 +5,7 @@
 #include "avt_341/mission/mission_manager_parser.h"
 #include <queue>
 #include <avt_341/core/dto_conversion.h>
+#include <optional>
 
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"

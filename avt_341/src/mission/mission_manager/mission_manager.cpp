@@ -192,6 +192,8 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
 void MissionManager::publishGoal(const msg::NavGoal & goal_in){
 
     msg::NavGoal goal = goal_in;
+    goal.header.stamp = node_proxy_->get_stamp();
+    goal.header.frame_id = "map";
 
     Task* current_task = currentTask();
     if (current_task != nullptr
@@ -201,10 +203,8 @@ void MissionManager::publishGoal(const msg::NavGoal & goal_in){
     }
 
     msg::NavGoalSequence goal_seq_msg;
-    goal_seq_msg.goals.clear();
-    goal_seq_msg.goals.push_back(goal);
-    goal_seq_msg.header.stamp = node_proxy_->get_stamp();
-    goal_seq_msg.header.frame_id = "map";
+    goal_seq_msg.header = goal.header;
+    goal_seq_msg.goals = {goal};
     waypoint_pub->publish(goal_seq_msg);
 }
 

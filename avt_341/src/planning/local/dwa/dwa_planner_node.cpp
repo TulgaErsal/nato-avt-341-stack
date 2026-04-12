@@ -23,7 +23,7 @@ avt_341::msg::Odometry msg_odom;
 avt_341::msg::OccupancyGrid msg_grid_occ;
 avt_341::msg::OccupancyGrid msg_grid_seg;
 avt_341::msg::Path msg_waypoints;
-avt_341::msg::PoseStamped msg_waypoint_pose;
+avt_341::msg::Pose msg_waypoint_pose;
 avt_341::msg::Path msg_path;
 
 // Initialise receive flags.
@@ -86,8 +86,11 @@ void CallbackWaypoints(avt_341::msg::PathPtr msg_rcvd_path) {
     rcvd_path = true;
 }
 
-void CallbackWaypoint(avt_341::msg::PoseStampedPtr msg_rcvd_waypoint_pose) {
-    msg_waypoint_pose = *msg_rcvd_waypoint_pose;
+void NavStateCallback(avt_341::msg::NavStatePtr gp_nav_state) {
+    if (gp_nav_state->run_state != avt_341::utils::NavStackState::Active) {
+        return;
+    }
+    msg_waypoint_pose = gp_nav_state->goal.pose;
     rcvd_waypoint = true;
 }
 
@@ -129,8 +132,8 @@ void UpdateGoal(avt_341::planning::dwa::Planner& planner) {
 
     if(planner.GetUseGlobalPath()) {
         if(use_current_waypoint && rcvd_waypoint) {
-            goal_x = msg_waypoint_pose.pose.position.x;
-            goal_y = msg_waypoint_pose.pose.position.y;
+            goal_x = msg_waypoint_pose.position.x;
+            goal_y = msg_waypoint_pose.position.y;
         } else {
             double min_distance = global_path_lookahead;
             int optimal_pose_index = 0;
@@ -161,8 +164,8 @@ void UpdateGoal(avt_341::planning::dwa::Planner& planner) {
         planner.SetGlobalPath(path);
     } else {
         if(use_current_waypoint && rcvd_waypoint) {
-            goal_x = msg_waypoint_pose.pose.position.x;
-            goal_y = msg_waypoint_pose.pose.position.y;
+            goal_x = msg_waypoint_pose.position.x;
+            goal_y = msg_waypoint_pose.position.y;
         } else {
             // Set the goal to the last waypoint in the list of waypoints.
             // TODO: Integrate with the mission planner to pass the next mission
@@ -309,10 +312,10 @@ int main(int argc, char* argv[]) {
         node->create_subscription<avt_341::msg::Path>("avt_341/global_path",
                                                       1,
                                                       CallbackPath);
-    auto sub_waypoint = node->create_subscription<avt_341::msg::PoseStamped>(
-        "avt_341/current_waypoint",
+    auto sub_waypoint = node->create_subscription<avt_341::msg::NavState>(
+        "avt_341/state",
         1,
-        CallbackWaypoint);
+        NavStateCallback);
     auto sub_waypoints =
         node->create_subscription<avt_341::msg::Path>("avt_341/waypoints",
                                                       1,

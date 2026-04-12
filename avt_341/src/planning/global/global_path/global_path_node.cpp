@@ -25,6 +25,8 @@
 #include <chrono>
 #include <utility>
 
+using avt_341::utils::NavStackState;
+
 #ifdef Bool
 #undef Bool // Fix conflicting definition in Xlib.h
 #endif
@@ -41,7 +43,6 @@ bool waypoints_rcvd = false;
 bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
-bool is_follower = false;
 bool verbose_gp_log = false;
 bool shutdown_condition = false;
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
@@ -86,12 +87,16 @@ void WaypointCallback(avt_341::msg::NavGoalSequencePtr rcv_waypoints)
   nav_goals = nav_goals_in;
   waypoints_rcvd = true;
   if (verbose_gp_log) {
-    n->log_info("%d waypoint(s) received! %.2f, %.2f @ %.2f",
-                nav_goals.goals.size(),
-                nav_goals.goals[0].pose.position.x,
-                nav_goals.goals[0].pose.position.y,
-                nav_goals.goals[0].threshold
-                );
+    if (nav_goals.goals.empty()) {
+      n->log_info("Empty waypoint sequence received!");
+    }else {
+      n->log_info("%d waypoint(s) received! %.2f, %.2f @ %.2f",
+                  nav_goals.goals.size(),
+                  nav_goals.goals[0].pose.position.x,
+                  nav_goals.goals[0].pose.position.y,
+                  nav_goals.goals[0].threshold
+                  );
+    }
   }
 }
 
@@ -122,16 +127,6 @@ void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
   waypoints_rcvd = true;
 }
 
-void Reset()
-{
-  n->log_info("Resetting node");
-  state.run_state = avt_341::utils::NavStackState::NotInit; // start up state
-  current_waypoint = 0;
-  odom_rcvd = false;
-  shutdown_condition = false;
-  nav_goals.goals.clear();
-}
-
 void ResetCallback(avt_341::msg::StringPtr msg)
 {
   if (msg->data.find(avt_341::node::NodeType::GlobalPlanner) != std::string::npos) {
@@ -155,12 +150,11 @@ void UpdateGoalState(const avt_341::msg::NavGoal& goal)
 {
   state.header.stamp = n->get_stamp();
 
-  const auto t_now = n->get_now_seconds();
-  if (avt_341::utils::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
-    goal_start_time = t_now;
-  }
-
-  if (state.run_state == avt_341::utils::NavStackState::Active) {
+  if (state.run_state == NavStackState::Active) {
+    const auto t_now = n->get_now_seconds();
+    if (avt_341::utils::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
+      goal_start_time = t_now;
+    }
     state.goal = goal;
     state.goal_distance = avt_341::utils::GetDistance(goal.pose.position, odom.pose.pose.position);
     state.goal_duration = t_now - goal_start_time;
@@ -169,7 +163,17 @@ void UpdateGoalState(const avt_341::msg::NavGoal& goal)
     state.goal_distance = 0.0;
     state.goal_duration = 0.0;
   }
+}
 
+void Reset()
+{
+  n->log_info("Resetting node");
+  nav_goals.goals.clear();
+  current_waypoint = 0;
+  UpdateGoalState(avt_341::msg::NavGoal());
+  SetRunState(NavStackState::NotInit);
+  odom_rcvd = false;
+  shutdown_condition = false;
 }
 
 int main(int argc, char* argv[])
@@ -234,7 +238,7 @@ int main(int argc, char* argv[])
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
   }
 
-  int shutdown_behavior = avt_341::utils::NavStackState::Stopped;
+  int shutdown_behavior = NavStackState::Stopped;
   n->get_parameter("~shutdown_behavior", shutdown_behavior, shutdown_behavior);
   if (shutdown_behavior > 3 || shutdown_behavior < 1)shutdown_behavior = 1;
 
@@ -257,7 +261,7 @@ int main(int argc, char* argv[])
   auto fastmatching_costs_pub = n->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/fm_map", 1);
 
   state_pub = n->create_publisher<avt_341::msg::NavState>("avt_341/state", 10);
-  state.run_state = avt_341::utils::NavStackState::NotInit;
+  state.run_state = NavStackState::NotInit;
 
   Reset();
 
@@ -267,7 +271,7 @@ int main(int argc, char* argv[])
 
   if (!nav_goals.goals.empty()) {
     UpdateGoalState(nav_goals.goals[0]);
-    SetRunState(avt_341::utils::NavStackState::Active);
+    SetRunState(NavStackState::Active);
   }
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
@@ -349,7 +353,7 @@ int main(int argc, char* argv[])
       ros_path.header.stamp = n->get_stamp();
       if (use_global_path)
         path_pub->publish(ros_path);
-      SetRunState(avt_341::utils::NavStackState::NotInit);
+      SetRunState(NavStackState::NotInit);
 
       avt_341::msg::String reset_ack_msg;
       reset_ack_msg.data = avt_341::node::NodeType::GlobalPlanner;
@@ -363,10 +367,10 @@ int main(int argc, char* argv[])
 
     // Handle Go command
     if (nav_command_rcvd) {
-      if (nav_command == avt_341::utils::NavStateCmd::GoActive && (state.run_state == avt_341::utils::NavStackState::NotInit)
-        || state.run_state == avt_341::utils::NavStackState::Stopped) {
+      if (nav_command == avt_341::utils::NavStateCmd::GoActive &&
+        (state.run_state == NavStackState::NotInit || state.run_state == NavStackState::Stopped)) {
         // startup/idling - go active
-        SetRunState(avt_341::utils::NavStackState::Active);
+        SetRunState(NavStackState::Active);
         shutdown_condition = false;
         nav_command_rcvd = false;
         nav_command = avt_341::utils::NavStateCmd::GoInactive;
@@ -389,11 +393,11 @@ int main(int argc, char* argv[])
         shutdown_condition = false;
         // Maintaining current state - if we're idle, we'll need an explicit GO command unless auto_active option
         if (auto_active_on_new_waypoint) {
-          SetRunState(avt_341::utils::NavStackState::Active);
+          SetRunState(NavStackState::Active);
         }
       }
 
-      if (odom_rcvd && state.run_state != avt_341::utils::NavStackState::NotInit
+      if (odom_rcvd && state.run_state != NavStackState::NotInit
         && !nav_goals.goals.empty()) { // data received and not in startup mode
         Point position{static_cast<float>(odom.pose.pose.position.x), static_cast<float>(odom.pose.pose.position.y)};
 
@@ -497,7 +501,7 @@ int main(int argc, char* argv[])
           if (state.goal_distance < goal.threshold || shutdown_condition) {   // reached the goal
             // send arrival notification
 
-            if (state.run_state == avt_341::utils::NavStackState::Active) {
+            if (state.run_state == NavStackState::Active) {
               goal_reached_pub->publish(state);
             }
 
@@ -505,7 +509,7 @@ int main(int argc, char* argv[])
             SetRunState(shutdown_behavior);// request shutdown behavior
 
             //std::cout << "Shutdown " << shutdown_behavior << std::endl;
-            if (state.run_state != avt_341::utils::NavStackState::Stopped) {
+            if (state.run_state != NavStackState::Stopped) {
               shutdown_count++;
               if (shutdown_count > 10) {
                 std::cout << "Shutting down" << std::endl;
@@ -518,10 +522,10 @@ int main(int argc, char* argv[])
             goal_reached_pub->publish(state);
             current_waypoint++;
           }
-          if (state.run_state != avt_341::utils::NavStackState::Active) {
+          if (state.run_state != NavStackState::Active) {
             std::cout << "Why are we here? Current state: " << state.run_state << std::endl;
           }
-          SetRunState(avt_341::utils::NavStackState::Active); // request active behavior
+          SetRunState(NavStackState::Active); // request active behavior
         }
       } // if odom_recvd
       //else if(state.data != -1){  // not in startup
@@ -529,7 +533,7 @@ int main(int argc, char* argv[])
       //  state_pub->publish(state);
       //}
     } else {
-      SetRunState(avt_341::utils::NavStackState::Active);
+      SetRunState(NavStackState::Active);
     }
 
     n->spin_some();
