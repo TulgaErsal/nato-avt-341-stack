@@ -34,10 +34,15 @@ def launch_setup(context, *args, **kwargs):
     obstacle_detector_params_path = os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'obstacle_detector.yaml')
     try:
         with open(obstacle_detector_params_path, 'r') as f:
-            obstacle_detector_params = yaml.safe_load(f)
-            if obstacle_detector_params is None:
+            _raw = yaml.safe_load(f)
+            if _raw is None:
                 obstacle_detector_params = {}
-            
+            elif '/**' in _raw:
+                obstacle_detector_params = _raw['/**'].get('ros__parameters', {})
+            else:
+                obstacle_detector_params = _raw
+            print(f"Loaded obstacle detector parameters: {obstacle_detector_params}")
+
     except Exception as e:
         print(f"Error loading obstacle detector parameters: {e}")
         obstacle_detector_params = {}
