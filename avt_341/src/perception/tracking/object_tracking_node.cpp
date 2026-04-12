@@ -838,7 +838,7 @@ void ObjectTrackingNode::DetectionsCallback(
         }
     }
 
-    // Store the vision_msgs/msg/Detection2DArray message, keep track of its
+    // Store the vision_msgs/msg/Detection2D message, keep track of its
     // timestamp and mark detections as received.
     detections_message_ = detections_message->detections[target_idx];
     last_valid_detection_time_ = detections_message->header.stamp;
