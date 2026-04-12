@@ -818,7 +818,7 @@ void ObjectTrackingNode::DetectionsCallback(
     // object is outside the frame; the range/bearing estimate from
     // ConvertBBoxCoordinatesToPoseCentroid_rdf becomes unreliable.
     if (has_camera_info_) {
-        const auto& bbox = detections_message->detections[0].bbox;
+        const auto& bbox = detections_message->detections[target_idx].bbox;
         const double left   = bbox.center.position.x - bbox.size_x / 2.0;
         const double right  = bbox.center.position.x + bbox.size_x / 2.0;
         const double top    = bbox.center.position.y - bbox.size_y / 2.0;
@@ -1573,31 +1573,24 @@ void ObjectTrackingNode::ProjectPointsToPixel(
     RCLCPP_DEBUG(get_logger(),
                  "Finding cloud points in the region of interest ...");
 
-    unsigned int x_min =
-        detections_message_.bbox.center.position.x -
-        detections_message_.bbox.size_x / 2;
-    unsigned int x_max =
-        detections_message_.bbox.center.position.x +
-        detections_message_.bbox.size_x / 2;
+    const double cx = detections_message_.bbox.center.position.x;
+    const double cy = detections_message_.bbox.center.position.y;
+    const double half_w = detections_message_.bbox.size_x / 2;
+    const double half_h = detections_message_.bbox.size_y / 2;
 
-    unsigned int y_min =
-        detections_message_.bbox.center.position.y -
-        detections_message_.bbox.size_y / 2;
-    unsigned int y_max =
-        detections_message_.bbox.center.position.y +
-        detections_message_.bbox.size_y / 2;
+    const auto x_min_flt = cx - half_w;
+    const auto x_max_flt = cx + half_w;
+    const auto y_min_flt = cy - half_h;
+    const auto y_max_flt = cy + half_h;
 
     RCLCPP_DEBUG(
         get_logger(),
         "Trimming region of interest to the camera image frame bounds ...");
-    if (x_min < 0)
-        x_min = 0;
-    if (x_max > camera_info_message_->width)
-        x_max = camera_info_message_->width;
-    if (y_min < 0)
-        y_min = 0;
-    if (y_max > camera_info_message_->height)
-        y_max = camera_info_message_->height;
+
+    auto x_min = static_cast<unsigned int>(std::max(0.0, x_min_flt));
+    auto x_max = static_cast<unsigned int>(std::min(static_cast<double>(camera_info_message_->width), x_max_flt));
+    auto y_min = static_cast<unsigned int>(std::max(0.0, y_min_flt));
+    auto y_max = static_cast<unsigned int>(std::min(static_cast<double>(camera_info_message_->height), y_max_flt));
 
     RCLCPP_DEBUG(get_logger(),
                  "Selected the following bounding box as region of interest: "
