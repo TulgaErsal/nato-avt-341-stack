@@ -14,30 +14,19 @@ namespace avt_341::perception
 PointCloudLayer::PointCloudLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
     const CostmapSettings& cm_settings,
-    const std::string & label
+    const std::string & label,
+    const bool setup_subscriptions
     )
         : CostmapLayer(node_ref, cm_settings, label), pc_callback_time_(40)
 {
-    std::string clear_only_points_topic;
-    node_ref_->get_parameter("~perception_points_topic", pc_topic_id_, std::string("avt_341/points"));
-    node_ref_->get_parameter("~clear_only_points_topic", clear_only_points_topic, std::string("avt_341/ground_points"));
-	node_ref_->get_parameter("~pc_callback_warn_time", pc_callback_warn_dur, 0.1);
+	node_ref_->get_parameter("~pc_callback_warn_time", pc_callback_warn_dur_, 0.1);
+	node_ref_->get_parameter("~pc_seg_channel", pc_seg_channel_, std::string("segmentation"));
 
     SetupGridClearingMethod();
     SetupPointCloudFilter();
-
-    pc_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
-        pc_topic_id_,
-        10,
-        std::bind(&PointCloudLayer::PointCloudCallback, this, std::placeholders::_1)
-        );
-
-    if (!clear_only_points_topic.empty())
+    if (setup_subscriptions)
     {
-        pc_ground_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
-            clear_only_points_topic,
-            10,
-            std::bind(&PointCloudLayer::ClearOnlyPointsCallback, this, std::placeholders::_1));
+        SetupPcSubscriptions();
     }
 
     node_ref_->params()->add_parameter_callback(std::vector<std::string>{"slope_threshold", "slope_threshold_max"},
@@ -49,6 +38,27 @@ PointCloudLayer::PointCloudLayer(
         RecomputeGridDilation();
     });
 
+}
+
+void PointCloudLayer::SetupPcSubscriptions()
+{
+    std::string clear_only_points_topic;
+    node_ref_->get_parameter("~perception_points_topic", pc_topic_id_, std::string("avt_341/points"));
+    node_ref_->get_parameter("~clear_only_points_topic", clear_only_points_topic, std::string("avt_341/ground_points"));
+
+    pc_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
+        pc_topic_id_,
+        10,
+        std::bind(&PointCloudLayer::PointCloudCallback, this, std::placeholders::_1)
+    );
+
+    if (!clear_only_points_topic.empty())
+    {
+        pc_ground_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
+            clear_only_points_topic,
+            10,
+            std::bind(&PointCloudLayer::ClearOnlyPointsCallback, this, std::placeholders::_1));
+    }
 }
 
 ClearMethodRosParameters PointCloudLayer::ParseClearMethodsConfig() const {
@@ -143,10 +153,10 @@ void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
     ProcessPoints(pc, origin_pose.pose);
 
     pc_callback_time_.AddSample(node_ref_->get_now_seconds() - callback_start_time);
-    if (pc_callback_time_.GetMean() > pc_callback_warn_dur) {
+    if (pc_callback_time_.GetMean() > pc_callback_warn_dur_) {
         node_ref_->log_warning_throttle(1.0, "PointCloudCallback took %.2f ms (> %.2f ms warning threshold).",
             pc_callback_time_.GetMean()*1e3,
-            pc_callback_warn_dur*1e3
+            pc_callback_warn_dur_*1e3
             );
     }
 }
@@ -204,7 +214,7 @@ void PointCloudLayer::ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_p
 
 void PointCloudLayer::AddOccupancy(const msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) {
 
-    bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == "segmentation";
+    bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == pc_seg_channel_;
     has_segmentation_ = has_segmentation_local || has_segmentation_;
 
     const auto llx = size_info_.llx;

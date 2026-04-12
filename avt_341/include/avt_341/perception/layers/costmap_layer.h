@@ -17,6 +17,8 @@ namespace avt_341::perception
 			const std::string& label
 		);
 
+		virtual ~CostmapLayer() = default;
+
 		bool HasSegmentation() const { return has_segmentation_; }
 
 		Cell& CellAt(const int x, const int y) { return cells_[y][x]; }
