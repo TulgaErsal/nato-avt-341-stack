@@ -793,19 +793,20 @@ void ObjectTrackingNode::DetectionsCallback(
         return;
     }
 
-    bool target_found = false;
-    for (const auto& detection : detections_message->detections) {
+    int target_idx = -1;
+    for (int i = 0; i < detections_message->detections.size(); ++i) {
         // We only consider the highest scoring result for each detection,
         // under the assumption that the hypotheses array is sorted from
         // highest to lowest scoring.
+        const auto & detection = detections_message->detections[i];
         if (detection.results[0].hypothesis.class_id == target_class_) {
             detection_score_ = detection.results[0].hypothesis.score;
-            target_found = true;
+            target_idx = i;
             break;
         }
     }
 
-    if (!target_found) {
+    if (target_idx == -1) {
         RCLCPP_INFO(get_logger(),
                     "Target %s not found in the current detection, skipping ...", target_class_.c_str());
         has_detection_ = false;
@@ -839,7 +840,7 @@ void ObjectTrackingNode::DetectionsCallback(
 
     // Store the vision_msgs/msg/Detection2DArray message, keep track of its
     // timestamp and mark detections as received.
-    detections_message_ = *detections_message;
+    detections_message_ = detections_message->detections[target_idx];
     last_valid_detection_time_ = detections_message->header.stamp;
     last_valid_detection_callback_time_ = get_clock()->now();
 
@@ -883,23 +884,23 @@ geometry_msgs::msg::TransformStamped ObjectTrackingNode::TransformPointCloud(
 // expressed in righ-down-front (rdf) frame
 // Added to code by Jonas N
 Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
-    const vision_msgs::msg::Detection2DArray detections_message,
+    const vision_msgs::msg::Detection2D& detections_message,
     const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
     const double car_size_z = camera_target_height_;
-    double target_z_f = (double)camera_info_message->k[4] / (double)detections_message.detections[0].bbox.size_y *
+    double target_z_f = (double)camera_info_message->k[4] / (double)detections_message.bbox.size_y *
         car_size_z;
     double target_x_r = target_z_f / (double)camera_info_message->k[0] *
-        (double)(detections_message.detections[0].bbox.center.position.x - camera_info_message->k[2]);
+        (double)(detections_message.bbox.center.position.x - camera_info_message->k[2]);
 
     double target_y_d = target_z_f / (double)camera_info_message->k[4] *
-        (double)(detections_message.detections[0].bbox.center.position.y - camera_info_message->k[5]);
+        (double)(detections_message.bbox.center.position.y - camera_info_message->k[5]);
     Eigen::Vector3d camera_estimated_centroid_rdf(target_x_r, target_y_d, target_z_f);
 	
 	// covariance jacobians
 	const double s2_pixel = camera_bbox_pixel_sigma_ * camera_bbox_pixel_sigma_;
-	double s2_forwards = (double)camera_info_message->k[4] / pow((double)detections_message.detections[0].bbox.size_y,2) *
+	double s2_forwards = (double)camera_info_message->k[4] / pow((double)detections_message.bbox.size_y,2) *
         car_size_z * s2_pixel * (double)camera_info_message->k[4] /
-			pow((double)detections_message.detections[0].bbox.size_y, 2) *
+			pow((double)detections_message.bbox.size_y, 2) *
         car_size_z;
 	double s2_right = target_z_f / (double)camera_info_message->k[0] * s2_pixel *
 		target_z_f / (double)camera_info_message->k[0];
@@ -909,7 +910,7 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
 	R_rdf_(0, 0) = std::max(filter_measurement_variance_,s2_right);
 	R_rdf_(1, 1) = std::max(filter_measurement_variance_, s2_down);
 	R_rdf_(2, 2) = std::max(filter_measurement_variance_, s2_forwards);
-    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size" << detections_message.detections[0].bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
+    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size" << detections_message.bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
         << "[x, y ,z] = [ " << target_x_r
         << ", " << target_y_d
         << ", " << target_z_f << "]" << '\n');
@@ -1573,18 +1574,18 @@ void ObjectTrackingNode::ProjectPointsToPixel(
                  "Finding cloud points in the region of interest ...");
 
     unsigned int x_min =
-        detections_message_.detections[0].bbox.center.position.x -
-        detections_message_.detections[0].bbox.size_x / 2;
+        detections_message_.bbox.center.position.x -
+        detections_message_.bbox.size_x / 2;
     unsigned int x_max =
-        detections_message_.detections[0].bbox.center.position.x +
-        detections_message_.detections[0].bbox.size_x / 2;
+        detections_message_.bbox.center.position.x +
+        detections_message_.bbox.size_x / 2;
 
     unsigned int y_min =
-        detections_message_.detections[0].bbox.center.position.y -
-        detections_message_.detections[0].bbox.size_y / 2;
+        detections_message_.bbox.center.position.y -
+        detections_message_.bbox.size_y / 2;
     unsigned int y_max =
-        detections_message_.detections[0].bbox.center.position.y +
-        detections_message_.detections[0].bbox.size_y / 2;
+        detections_message_.bbox.center.position.y +
+        detections_message_.bbox.size_y / 2;
 
     RCLCPP_DEBUG(
         get_logger(),

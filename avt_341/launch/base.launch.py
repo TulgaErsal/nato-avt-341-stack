@@ -319,12 +319,11 @@ def generate_launch_description():
                             {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
                         ],
                         remappings=[
-                            ('camera_info','front_camera/camera_info'),
+                            ('camera_info','front_camera/info'),
                             ('image','front_camera/image'),
-                            ('detection_2d', 'front_camera/detections_2d'),
-                            ('input','avt_341/points'),
-                            ('odometry','avt_341/mrzr4/tracked_odom'),
-                            ('pose','avt_341/mrzr4/tracked_pose'),
+                            ('detection_2d', 'front_camera/detection_2d'),
+                            ('points/input','avt_341/points'),
+                            ('task','avt_341/mission_task_state')
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),
