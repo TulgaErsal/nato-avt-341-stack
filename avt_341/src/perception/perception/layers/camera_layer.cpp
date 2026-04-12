@@ -1,5 +1,4 @@
 #include "avt_341/perception/layers/camera_layer.h"
-#include <image_geometry/pinhole_camera_model.h>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 namespace avt_341::perception
@@ -10,37 +9,37 @@ namespace avt_341::perception
         const std::string& label)
             : PointCloudLayer(node_ref, cm_settings, label)
     {
-        camera_model_ = std::make_unique<image_geometry::PinholeCameraModel>();
         SetupCameraSubscriptions();
     }
 
     void CameraLayer::SetupCameraSubscriptions()
     {
-        std::string depth_img_topic, seg_img_topic, camera_info_topic;
-        node_ref_->get_parameter("~" + label_ + "_depth_image_topic", depth_img_topic, std::string(""));
-        node_ref_->get_parameter("~" + label_ + "_seg_image_topic", seg_img_topic, std::string(""));
-        node_ref_->get_parameter("~" + label_ + "_camera_info_topic", camera_info_topic, std::string(""));
 
-        if (depth_img_topic.empty() || camera_info_topic.empty())
+        node_ref_->get_parameter("~" + label_ + "_depth_topic", depth_img_topic_, std::string(""));
+        node_ref_->get_parameter("~" + label_ + "_segmentation_topic", seg_img_topic_, std::string(""));
+        node_ref_->get_parameter("~" + label_ + "_info_topic", camera_info_topic_, std::string(""));
+
+        if (depth_img_topic_.empty() || camera_info_topic_.empty())
         {
-            is_valid_ = false;
+            is_enabled_ = false;
             return;
         }
+        is_enabled_ = true;
 
         std::shared_ptr<rclcpp::Node> raw_node = node_ref_->get_raw_node();
 
         camera_info_sub_ = raw_node->create_subscription<msg::CameraInfo>(
-            camera_info_topic, 10,
+            camera_info_topic_, 10,
             std::bind(&CameraLayer::CameraInfoCallback, this, std::placeholders::_1));
 
-        has_segmentation_ = !seg_img_topic.empty();
+        has_segmentation_ = !seg_img_topic_.empty();
         if (has_segmentation_)
         {
             // Use approximate time synchronizer for depth + segmentation images
             depth_sub_ = std::make_shared<message_filters::Subscriber<msg::Image>>(
-                raw_node, depth_img_topic);
+                raw_node, depth_img_topic_);
             seg_sub_ = std::make_shared<message_filters::Subscriber<msg::Image>>(
-                raw_node, seg_img_topic);
+                raw_node, seg_img_topic_);
 
             sync_ = std::make_shared<message_filters::Synchronizer<ImageSyncPolicy>>(
                 ImageSyncPolicy(10), *depth_sub_, *seg_sub_);
@@ -52,20 +51,16 @@ namespace avt_341::perception
         {
             // No segmentation topic: subscribe to depth only
             depth_only_sub_ = raw_node->create_subscription<msg::Image>(
-                depth_img_topic, 10,
+                depth_img_topic_, 10,
                 std::bind(&CameraLayer::DepthImageCallback, this, std::placeholders::_1));
         }
 
-        node_ref_->log_info("CameraLayer subscriptions: depth=%s, seg=%s, info=%s",
-            depth_img_topic.c_str(),
-            seg_img_topic.empty() ? "(none)" : seg_img_topic.c_str(),
-            camera_info_topic.c_str());
     }
 
     void CameraLayer::CameraInfoCallback(const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg)
     {
         // fromCameraInfo returns true when calibration parameters changed
-        bool params_changed = camera_model_->fromCameraInfo(msg);
+        bool params_changed = camera_model_.fromCameraInfo(msg);
 
         if (!camera_info_received_ || params_changed)
         {
@@ -78,8 +73,8 @@ namespace avt_341::perception
 
     void CameraLayer::RebuildRayCache()
     {
-        const auto width = camera_model_->cameraInfo().width;
-        const auto height = camera_model_->cameraInfo().height;
+        const auto width = camera_model_.cameraInfo().width;
+        const auto height = camera_model_.cameraInfo().height;
         ray_cache_.resize(width * height);
 
         for (uint32_t v = 0; v < height; ++v)
@@ -88,7 +83,7 @@ namespace avt_341::perception
             {
                 // projectPixelTo3dRay accounts for distortion via the rectified projection.
                 // The returned ray has z = 1.0.
-                ray_cache_[v * width + u] = camera_model_->projectPixelTo3dRay(
+                ray_cache_[v * width + u] = camera_model_.projectPixelTo3dRay(
                     cv::Point2d(static_cast<double>(u), static_cast<double>(v)));
             }
         }
@@ -98,22 +93,23 @@ namespace avt_341::perception
         const msg::Image::ConstSharedPtr& depth_msg,
         const msg::Image::ConstSharedPtr& seg_msg)
     {
-        ProcessDepthImage(depth_msg, seg_msg);
+        ProcessToPointCloud(depth_msg, seg_msg);
     }
 
     void CameraLayer::DepthImageCallback(const msg::Image::ConstSharedPtr& depth_msg)
     {
-        ProcessDepthImage(depth_msg, nullptr);
+        ProcessToPointCloud(depth_msg, nullptr);
     }
 
-    void CameraLayer::ProcessDepthImage(
+    void CameraLayer::ProcessToPointCloud(
         const msg::Image::ConstSharedPtr& depth_msg,
         const msg::Image::ConstSharedPtr& seg_msg)
     {
         // Guard: must have received a CameraInfo before we can project pixels
         if (!camera_info_received_)
         {
-            node_ref_->log_warning_throttle(2.0, "CameraLayer: depth image received but no CameraInfo yet, skipping.");
+            node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
+                "CameraLayer: depth image received but no CameraInfo yet, skipping.");
             return;
         }
 
@@ -123,18 +119,18 @@ namespace avt_341::perception
         // Verify the ray cache matches the image dimensions
         if (ray_cache_.size() != static_cast<size_t>(width * height))
         {
-            node_ref_->log_warning_throttle(2.0,
+            node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
                 "CameraLayer: ray cache size (%zu) does not match image (%ux%u), skipping.",
                 ray_cache_.size(), width, height);
             return;
         }
 
-        // Depth must be 32FC1
-        if (depth_msg->encoding != "32FC1")
+        if (depth_msg->encoding != EXPECTED_DEPTH_FORMAT)
         {
-            node_ref_->log_warning_throttle(2.0,
-                "CameraLayer: unsupported depth encoding '%s', expected 32FC1.",
-                depth_msg->encoding.c_str());
+            node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
+                "CameraLayer: unsupported depth encoding '%s', expected %s.",
+                depth_msg->encoding.c_str(),
+                std::string(EXPECTED_DEPTH_FORMAT).c_str());
             return;
         }
 
@@ -142,18 +138,18 @@ namespace avt_341::perception
         const bool has_seg = (seg_msg != nullptr);
         if (has_seg)
         {
-            // Segmentation must be 8UC1
-            if (seg_msg->encoding != "8UC1")
+            if (seg_msg->encoding != EXPECTED_SEG_FORMAT)
             {
-                node_ref_->log_warning_throttle(2.0,
-                    "CameraLayer: unsupported segmentation encoding '%s', expected 8UC1.",
-                    seg_msg->encoding.c_str());
+                node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
+                    "CameraLayer: unsupported segmentation encoding '%s', expected %s.",
+                    seg_msg->encoding.c_str(),
+                    std::string(EXPECTED_SEG_FORMAT).c_str());
                 return;
             }
 
             if (seg_msg->width != width || seg_msg->height != height)
             {
-                node_ref_->log_warning_throttle(2.0,
+                node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
                     "CameraLayer: segmentation image size (%ux%u) doesn't match depth (%ux%u).",
                     seg_msg->width, seg_msg->height, width, height);
                 return;
@@ -240,5 +236,13 @@ namespace avt_341::perception
 
         // Forward the generated point cloud to the base PointCloudLayer
         PointCloudCallback(cloud);
+    }
+
+    std::string CameraLayer::ToString() const
+    {
+        return "[CameraLayer] id: " + label_
+            + ", depth_topic: " + depth_img_topic_
+            + ", info_topic: " + camera_info_topic_
+            + ", seg_topic: " + (seg_img_topic_.empty() ? "none" : seg_img_topic_);
     }
 }

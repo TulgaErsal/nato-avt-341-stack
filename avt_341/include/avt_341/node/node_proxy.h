@@ -428,8 +428,10 @@ namespace avt_341 {
         if(is_empty_waypoints_ && (name_local == "/waypoints_x" || name_local == "/waypoints_y")){
             return;
         }
-
-        node_->declare_parameter(name_local, default_value);
+        if (!node_->has_parameter(name_local))
+        {
+          node_->declare_parameter(name_local, default_value);
+        }
         node_->get_parameter(name_local, parameter_out);
       }
 

@@ -44,7 +44,7 @@ void PointCloudLayer::SetupPcSubscriptions()
 
     if (pc_topic_id_.empty())
     {
-        is_valid_ = false;
+        is_enabled_ = false;
         return;
     }
 
@@ -245,8 +245,7 @@ void PointCloudLayer::AddOccupancy(const msg::PointCloud& point_cloud, std::vect
                     cell.low.age = 0.0f;
                 }
                 if (has_segmentation_local) {
-                    const int terr_val = static_cast<int>(point_cloud.channels[0].values[i]);
-                    cell.terrain_seg = std::max(cell.terrain_seg, terr_val);
+                    cell.terrain_seg = static_cast<int>(point_cloud.channels[0].values[i]);
                 }
 
                 // CTG 5/8/25, add calculations necessary for tracking RMS

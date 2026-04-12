@@ -15,7 +15,7 @@ Costmap::Costmap(
 	: node_ref_(node_ref), size_info_(settings.size_info), thresholds_(settings.thresholds),
 	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms), layer_cmb_method_(layer_cmb_method)
 {
-	// TODO: Should only create those which exist in configuration file, needs parameter refactoring
+	// TODO: Should create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
 		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
 		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
@@ -26,7 +26,7 @@ Costmap::Costmap(
 	layers_.clear();
 	std::copy_if(candidate_layers.begin(), candidate_layers.end(), std::back_inserter(layers_),
 		[](const std::shared_ptr<CostmapLayer>& layer) {
-		return layer->IsValid();
+		return layer->IsEnabled();
 	});
 
 	LayerCombinationMethod::SetFlags(layer_cmb_method_, layer_cmb_last_, layer_cmd_mn_);
@@ -90,6 +90,11 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 		}
 	}
 
+	layers.erase(std::remove_if(layers.begin(), layers.end(),
+		[is_segmentation](const std::shared_ptr<CostmapLayer>& layer) {
+			return is_segmentation ? !layer->ContributeSegmentation() : !layer->ContributeOccupancy();
+		}), layers.end());
+
 	int c = 0;
 	for (int i = region.y_min; i < region.y_max; i++) {
 		for (int j = region.x_min; j < region.x_max; j++) {
@@ -125,17 +130,14 @@ msg::OccupancyGridUpdate Costmap::GetGridUpdate(
 	grid_update_msg.data.resize(dilated_region.Width()*dilated_region.Height());
 
 	FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation, target_layer);
-
-	// Reset update regions on full grid retrieval when target_layer = "".
-	// Perhaps add another parameter for more control.
-	const bool reset_regions = target_layer.empty();
-	if (reset_regions){
-		for (const auto & layer : layers_) {
-			layer->ResetUpdateRegion();
-		}
-	}
-
 	return grid_update_msg;
+}
+
+void Costmap::ResetUpdateRegion()
+{
+	for (const auto & layer : layers_) {
+		layer->ResetUpdateRegion();
+	}
 }
 
 msg::OccupancyGrid Costmap::GetGrid(
