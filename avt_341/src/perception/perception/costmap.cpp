@@ -2,6 +2,7 @@
 #include "avt_341/perception/layers/point_cloud_layer.h"
 #include "avt_341/perception/layers/polygon_layer.h"
 #include "avt_341/perception/layers/static_grid_layer.h"
+#include "avt_341/perception/layers/camera_layer.h"
 #include <algorithm>
 
 namespace avt_341::perception {
@@ -18,6 +19,7 @@ Costmap::Costmap(
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
 		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
 		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
+		std::make_shared<CameraLayer>(node_ref, settings, "camera_layer"),
 		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer"),
 	};
 

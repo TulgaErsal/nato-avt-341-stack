@@ -14,8 +14,7 @@ namespace avt_341::perception
 PointCloudLayer::PointCloudLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
     const CostmapSettings& cm_settings,
-    const std::string & label,
-    const bool setup_subscriptions
+    const std::string & label
     )
         : CostmapLayer(node_ref, cm_settings, label), pc_callback_time_(40)
 {
@@ -24,10 +23,7 @@ PointCloudLayer::PointCloudLayer(
 
     SetupGridClearingMethod();
     SetupPointCloudFilter();
-    if (setup_subscriptions)
-    {
-        SetupPcSubscriptions();
-    }
+    SetupPcSubscriptions();
 
     node_ref_->params()->add_parameter_callback(std::vector<std::string>{"slope_threshold", "slope_threshold_max"},
     [&](const node::RosParameterEvent & p) {
@@ -43,8 +39,14 @@ PointCloudLayer::PointCloudLayer(
 void PointCloudLayer::SetupPcSubscriptions()
 {
     std::string clear_only_points_topic;
-    node_ref_->get_parameter("~perception_points_topic", pc_topic_id_, std::string("avt_341/points"));
-    node_ref_->get_parameter("~clear_only_points_topic", clear_only_points_topic, std::string("avt_341/ground_points"));
+    node_ref_->get_parameter("~" + label_ + "_topic", pc_topic_id_, std::string(""));
+    node_ref_->get_parameter("~" + label_ + "_clear_topic", clear_only_points_topic, std::string(""));
+
+    if (pc_topic_id_.empty())
+    {
+        is_valid_ = false;
+        return;
+    }
 
     pc_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
         pc_topic_id_,

@@ -8,17 +8,18 @@ namespace avt_341::perception
         const std::shared_ptr<node::NodeProxy>& node_ref,
         const CostmapSettings& cm_settings,
         const std::string& label)
-            : PointCloudLayer(node_ref, cm_settings, label, false)
+            : PointCloudLayer(node_ref, cm_settings, label)
     {
+        camera_model_ = std::make_unique<image_geometry::PinholeCameraModel>();
         SetupCameraSubscriptions();
     }
 
     void CameraLayer::SetupCameraSubscriptions()
     {
         std::string depth_img_topic, seg_img_topic, camera_info_topic;
-        node_ref_->get_parameter("~camera_layer_depth_image_topic", depth_img_topic, std::string("avt_341/depth_image"));
-        node_ref_->get_parameter("~camera_layer_seg_image_topic", seg_img_topic, std::string("avt_341/seg_image"));
-        node_ref_->get_parameter("~camera_layer_camera_info_topic", camera_info_topic, std::string("avt_341/camera_info"));
+        node_ref_->get_parameter("~" + label_ + "_depth_image_topic", depth_img_topic, std::string(""));
+        node_ref_->get_parameter("~" + label_ + "_seg_image_topic", seg_img_topic, std::string(""));
+        node_ref_->get_parameter("~" + label_ + "_camera_info_topic", camera_info_topic, std::string(""));
 
         if (depth_img_topic.empty() || camera_info_topic.empty())
         {
@@ -64,7 +65,7 @@ namespace avt_341::perception
     void CameraLayer::CameraInfoCallback(const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg)
     {
         // fromCameraInfo returns true when calibration parameters changed
-        bool params_changed = camera_model_.fromCameraInfo(msg);
+        bool params_changed = camera_model_->fromCameraInfo(msg);
 
         if (!camera_info_received_ || params_changed)
         {
@@ -77,8 +78,8 @@ namespace avt_341::perception
 
     void CameraLayer::RebuildRayCache()
     {
-        const auto width = camera_model_.cameraInfo().width;
-        const auto height = camera_model_.cameraInfo().height;
+        const auto width = camera_model_->cameraInfo().width;
+        const auto height = camera_model_->cameraInfo().height;
         ray_cache_.resize(width * height);
 
         for (uint32_t v = 0; v < height; ++v)
@@ -87,7 +88,7 @@ namespace avt_341::perception
             {
                 // projectPixelTo3dRay accounts for distortion via the rectified projection.
                 // The returned ray has z = 1.0.
-                ray_cache_[v * width + u] = camera_model_.projectPixelTo3dRay(
+                ray_cache_[v * width + u] = camera_model_->projectPixelTo3dRay(
                     cv::Point2d(static_cast<double>(u), static_cast<double>(v)));
             }
         }
@@ -128,31 +129,27 @@ namespace avt_341::perception
             return;
         }
 
-        // Determine depth encoding and step size
-        const bool is_float = (depth_msg->encoding == "32FC1");
-        const bool is_uint16 = (depth_msg->encoding == "16UC1");
-        if (!is_float && !is_uint16)
+        // Depth must be 32FC1
+        if (depth_msg->encoding != "32FC1")
         {
             node_ref_->log_warning_throttle(2.0,
-                "CameraLayer: unsupported depth encoding '%s', expected 32FC1 or 16UC1.",
+                "CameraLayer: unsupported depth encoding '%s', expected 32FC1.",
                 depth_msg->encoding.c_str());
             return;
         }
 
-        // TODO: Assume 32FC1 for depth and 8UC1 for Segmentation
         // Determine segmentation encoding if present
         const bool has_seg = (seg_msg != nullptr);
-        bool seg_is_uint8 = false;
-        bool seg_is_uint16 = false;
-        bool seg_is_int32 = false;
         if (has_seg)
         {
-            if (seg_msg->encoding == "8UC1" || seg_msg->encoding == "mono8")
-                seg_is_uint8 = true;
-            else if (seg_msg->encoding == "16UC1" || seg_msg->encoding == "mono16")
-                seg_is_uint16 = true;
-            else if (seg_msg->encoding == "32SC1")
-                seg_is_int32 = true;
+            // Segmentation must be 8UC1
+            if (seg_msg->encoding != "8UC1")
+            {
+                node_ref_->log_warning_throttle(2.0,
+                    "CameraLayer: unsupported segmentation encoding '%s', expected 8UC1.",
+                    seg_msg->encoding.c_str());
+                return;
+            }
 
             if (seg_msg->width != width || seg_msg->height != height)
             {
@@ -163,30 +160,28 @@ namespace avt_341::perception
             }
         }
 
-        // Count valid depth pixels to size the point cloud
-        size_t valid_count = 0;
+        // Collect valid depth pixels (depth value + pixel coordinates)
+        struct ValidPixel { float depth; uint32_t v; uint32_t u; };
+        std::vector<ValidPixel> valid_pixels;
+        valid_pixels.reserve(width * height);
+
         for (uint32_t v = 0; v < height; ++v)
         {
             for (uint32_t u = 0; u < width; ++u)
             {
                 float depth;
-                if (is_float)
-                {
-                    std::memcpy(&depth, &depth_msg->data[v * depth_msg->step + u * sizeof(float)], sizeof(float));
-                }
-                else
-                {
-                    uint16_t d_raw;
-                    std::memcpy(&d_raw, &depth_msg->data[v * depth_msg->step + u * sizeof(uint16_t)], sizeof(uint16_t));
-                    depth = static_cast<float>(d_raw) * 0.001f; // mm to m
-                }
+                std::memcpy(&depth, &depth_msg->data[v * depth_msg->step + u * sizeof(float)], sizeof(float));
                 if (std::isfinite(depth) && depth > 0.0f)
-                    ++valid_count;
+                {
+                    valid_pixels.push_back({depth, v, u});
+                }
             }
         }
 
-        if (valid_count == 0)
+        if (valid_pixels.empty())
             return;
+
+        const size_t valid_count = valid_pixels.size();
 
         // Build the PointCloud2 message
         auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
@@ -223,59 +218,24 @@ namespace avt_341::perception
             iter_seg = std::make_unique<sensor_msgs::PointCloud2Iterator<float>>(*cloud, pc_seg_channel_);
         }
 
-        // Project each pixel to 3D using the cached rays
-        for (uint32_t v = 0; v < height; ++v)
+        // Project each valid pixel to 3D using the cached rays
+        for (const auto& px : valid_pixels)
         {
-            for (uint32_t u = 0; u < width; ++u)
+            const cv::Point3d& ray = ray_cache_[px.v * width + px.u];
+            // ray.z == 1.0, so depth directly scales the ray
+            *iter_x = static_cast<float>(ray.x * px.depth);
+            *iter_y = static_cast<float>(ray.y * px.depth);
+            *iter_z = static_cast<float>(ray.z * px.depth);
+
+            if (has_seg && iter_seg)
             {
-                float depth;
-                if (is_float)
-                {
-                    std::memcpy(&depth, &depth_msg->data[v * depth_msg->step + u * sizeof(float)], sizeof(float));
-                }
-                else
-                {
-                    uint16_t d_raw;
-                    std::memcpy(&d_raw, &depth_msg->data[v * depth_msg->step + u * sizeof(uint16_t)], sizeof(uint16_t));
-                    depth = static_cast<float>(d_raw) * 0.001f;
-                }
-
-                if (!std::isfinite(depth) || depth <= 0.0f)
-                    continue;
-
-                const cv::Point3d& ray = ray_cache_[v * width + u];
-                // ray.z == 1.0, so depth directly scales the ray
-                *iter_x = static_cast<float>(ray.x * depth);
-                *iter_y = static_cast<float>(ray.y * depth);
-                *iter_z = static_cast<float>(ray.z * depth);
-
-                if (has_seg && iter_seg)
-                {
-                    float seg_val = 0.0f;
-                    if (seg_is_uint8)
-                    {
-                        seg_val = static_cast<float>(seg_msg->data[v * seg_msg->step + u]);
-                    }
-                    else if (seg_is_uint16)
-                    {
-                        uint16_t s_raw;
-                        std::memcpy(&s_raw, &seg_msg->data[v * seg_msg->step + u * sizeof(uint16_t)], sizeof(uint16_t));
-                        seg_val = static_cast<float>(s_raw);
-                    }
-                    else if (seg_is_int32)
-                    {
-                        int32_t s_raw;
-                        std::memcpy(&s_raw, &seg_msg->data[v * seg_msg->step + u * sizeof(int32_t)], sizeof(int32_t));
-                        seg_val = static_cast<float>(s_raw);
-                    }
-                    **iter_seg = seg_val;
-                    ++(*iter_seg);
-                }
-
-                ++iter_x;
-                ++iter_y;
-                ++iter_z;
+                **iter_seg = static_cast<float>(seg_msg->data[px.v * seg_msg->step + px.u]);
+                ++(*iter_seg);
             }
+
+            ++iter_x;
+            ++iter_y;
+            ++iter_z;
         }
 
         // Forward the generated point cloud to the base PointCloudLayer

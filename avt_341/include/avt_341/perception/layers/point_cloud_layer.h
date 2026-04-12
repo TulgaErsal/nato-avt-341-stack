@@ -17,8 +17,7 @@ namespace avt_341::perception
         PointCloudLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
             const CostmapSettings& cm_settings,
-            const std::string & label,
-            bool setup_subscriptions = true
+            const std::string & label
             );
 
         void SetupPointCloudFilter();
