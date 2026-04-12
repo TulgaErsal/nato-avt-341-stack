@@ -79,6 +79,7 @@
 
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/detection3_d_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
@@ -818,6 +819,44 @@ class ObjectTrackingNode : public rclcpp::Node {
     Eigen::Vector3d roi_bounding_box_3d_size_;
 
     BoundingBox2D roi_bounding_box_2d_;
+
+    // ---------------------------------------------------------------------- //
+    // > Obstacle detector integration
+    // ---------------------------------------------------------------------- //
+
+    /** @brief Subscription to bounding box markers from the LiDAR obstacle
+     *         detector node. Replaces the internal PCL clustering pipeline
+     *         for LiDAR-based target position measurement. */
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr
+        obstacle_markers_subscription_;
+
+    /**
+     * @brief Callback for obstacle detector bounding box markers.
+     *
+     * @param msg Incoming MarkerArray from the LiDAR obstacle detector.
+     */
+    void ObstacleMarkersCallback(
+        const visualization_msgs::msg::MarkerArray::SharedPtr msg);
+
+    /** @brief Latest MarkerArray received from the obstacle detector. */
+    visualization_msgs::msg::MarkerArray latest_obstacle_markers_;
+
+    /** @brief True once at least one non-empty MarkerArray has been received. */
+    bool has_obstacle_markers_ = false;
+
+    /** @brief ID of the obstacle detector marker associated with the tracked
+     *         target. Set to -1 when no association has been established. */
+    int tracked_obstacle_id_ = -1;
+
+    /** @brief Topic on which the obstacle detector publishes its bounding
+     *         box markers. Configurable via the obstacle_markers_topic
+     *         parameter. */
+    std::string obstacle_markers_topic_;
+
+    /** @brief Maximum distance [m] in world frame between the camera-estimated
+     *         target position and an obstacle marker centroid for the marker
+     *         to be considered a candidate for association. */
+    double obstacle_association_max_dist_;
 };
 
 }  // namespace perception

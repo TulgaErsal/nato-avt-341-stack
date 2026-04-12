@@ -238,6 +238,15 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_use_manual_roi", false);
     use_manual_roi_size_ = get_parameter("filters_use_manual_roi").as_bool();
 
+    declare_parameter("obstacle_markers_topic",
+                      std::string("/avt_341/lidar_detector/jsk_bboxes"));
+    obstacle_markers_topic_ =
+        get_parameter("obstacle_markers_topic").as_string();
+
+    declare_parameter("obstacle_association_max_dist", 5.0);
+    obstacle_association_max_dist_ =
+        get_parameter("obstacle_association_max_dist").as_double();
+
     declare_parameter("filters_manual_roi_size",
                       std::vector<double>{1.0, 1.0, 1.0});
     roi_bounding_box_3d_size_ = Eigen::Vector3d(
@@ -286,6 +295,12 @@ void ObjectTrackingNode::CreateSubscriptions() {
                 std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
                         std::placeholders::_1));
     }
+
+    obstacle_markers_subscription_ =
+        create_subscription<visualization_msgs::msg::MarkerArray>(
+            obstacle_markers_topic_, RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+            std::bind(&ObjectTrackingNode::ObstacleMarkersCallback, this,
+                      std::placeholders::_1));
 }
 
 void ObjectTrackingNode::CreateServices() {
@@ -457,128 +472,117 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         RCLCPP_DEBUG(get_logger(), "Setting tracker to full tracking ...");
     }
 
-    if (!has_point_cloud_ || point_cloud_->size() <= 0) {
-        state_ = TrackerState::NO_DETECTION;
-        RCLCPP_DEBUG(
-            get_logger(),
-            "Point cloud missing, too old or empty, skipping tracking ...");
-        return;
-    }
+    // Note: point cloud availability is no longer required. The tracking
+    // measurement comes from the obstacle detector MarkerArray, not from
+    // the internal PCL pipeline.
 
     if (sync_messages_) {
-        double detection_skew =
-            (use_callback_time_)
-                ? get_clock()->now().nanoseconds() / 1.0e9 -
-                      last_valid_detection_callback_time_.nanoseconds() / 1.0e9
-                : rclcpp::Time(point_cloud_message_->header.stamp)
-                              .nanoseconds() /
-                          1.0e9 -
-                      last_valid_detection_time_.nanoseconds() / 1.0e9;
-        if (detection_skew > max_detection_skew_) {
-            if (state_ != TrackerState::LIDAR_ONLY_TRACKING) {
-                RCLCPP_WARN(get_logger(),
-                            "Last detection is too old %0.2lf, skipping camera "
-                            "tracking ...",
-                            detection_skew);
-
-                state_ = TrackerState::LIDAR_ONLY_TRACKING;
+        // When sync is enabled use callback time to detect stale detections.
+        // The point-cloud-timestamp path is removed because the point cloud
+        // is no longer part of the tracking measurement loop.
+        if (use_callback_time_) {
+            const double detection_skew =
+                get_clock()->now().nanoseconds() / 1.0e9 -
+                last_valid_detection_callback_time_.nanoseconds() / 1.0e9;
+            if (detection_skew > max_detection_skew_) {
+                if (state_ != TrackerState::LIDAR_ONLY_TRACKING) {
+                    RCLCPP_WARN(get_logger(),
+                                "Last detection is too old %.2lf s, switching "
+                                "to LiDAR-only tracking ...",
+                                detection_skew);
+                    state_ = TrackerState::LIDAR_ONLY_TRACKING;
+                }
+                has_detection_ = false;
             }
-            has_detection_ = false;
         }
     }
 
     auto start_time = get_clock()->now();
 
-    // Transform the point cloud to the camera frame and apply the filter
-    // stack to limit the keep the size of the dataset contained.
-    try {
-        TransformPointCloudToCameraFrame(point_cloud_, point_cloud_message_);
-    } catch (const TransformException& exception) {
-        RCLCPP_WARN(get_logger(),
-                    "Could not transform point cloud to camera frame.");
-
-        has_point_cloud_ = false;
-        has_detection_ = false;
-        return;
-    }
+    // Tracking measurement via obstacle detector bounding box markers.
+    // The LiDAR obstacle detector node runs its own clustering and tracking
+    // pipeline and publishes bounding boxes as a MarkerArray. We subscribe
+    // to that topic and use the marker positions as LiDAR measurements,
+    // replacing the internal PCL clustering pipeline.
 
     if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
-        LimitSensorDistance(point_cloud_, true);
-        DownsampleCloud(point_cloud_);
-
-        // The camera frame moves with the vehicle, so the stale camera-frame
-        // centroid from the last FULL_TRACKING cycle will be wrong once the
-        // vehicle has moved. Reanchor the crop box by transforming the last
-        // known world-frame centroid back to the current camera frame.
-        if (filter_initialized_) {
-            bounding_box_centroid_ = TransformToCoordinates(
-                world_frame_, camera_frame_, bounding_box_centroid_global_);
-        }
-
-        CropRegionOfInterest();
-
-        // Ground plane removal is intentionally skipped in LIDAR_ONLY mode.
-        // Applying RANSAC on the small cropped cloud clips the bottom of the
-        // target cluster, reducing its vertical and depth extent below the
-        // configured minimum thresholds and causing the real target to be
-        // rejected. The crop box is already tight enough (5x5x5 m by default)
-        // that the ground contribution is limited; any residual flat ground
-        // cluster will be rejected by the point count minimum or the
-        // maximum dimension checks.
-
-        RCLCPP_INFO(get_logger(),
-                    "LIDAR_ONLY: cloud size after crop+ground: %i points, "
-                    "centroid anchor (%.2f, %.2f, %.2f) m.",
-                    static_cast<int>(point_cloud_->size()),
-                    bounding_box_centroid_.x(),
-                    bounding_box_centroid_.y(),
-                    bounding_box_centroid_.z());
-
-        try {
-            EuclideanClustering();
-            centroid_in_cloud_frame_ = true;
-            last_valid_target_time_ = get_clock()->now();
-            has_tracked_target_ = true;
-
-            if (cloud_cluster_->size() > 0) {
-            } else {
-                has_point_cloud_ = false;
-                has_detection_ = false;
-            }
-        } catch (const ClusteringException& exception) {
+        // In LIDAR_ONLY mode we already have an associated obstacle ID from
+        // a previous FULL_TRACKING cycle. Find that marker in the latest
+        // MarkerArray and use its position as the measurement.
+        if (tracked_obstacle_id_ < 0 || !has_obstacle_markers_) {
             RCLCPP_WARN(get_logger(),
-                        "LIDAR_ONLY clustering failed: %s", exception.what());
+                        "LIDAR_ONLY: no tracked obstacle ID (%d) or no "
+                        "obstacle markers received yet.",
+                        tracked_obstacle_id_);
             has_point_cloud_ = false;
             has_detection_ = false;
-            // Don't suppress the timeout check - let CheckTargetTimeout() handle
-            // the state transition to NO_DETECTION after the timeout period.
-            // This ensures consistent timeout behavior across all tracking modes.
-            centroid_in_cloud_frame_ = true;  // Mark as cloud-frame for consistency
+            CheckTargetTimeout();
             return;
         }
-    } else if (state_ == TrackerState::FULL_TRACKING) {
-        LimitSensorDistance(point_cloud_, false);
-        DownsampleCloud(point_cloud_);
-        ProjectPointsToPixel(point_cloud_, point_cloud_message_);
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
-            new pcl::PointCloud<pcl::PointXYZ>);
+        bool found = false;
+        for (const auto& marker : latest_obstacle_markers_.markers) {
+            if (marker.action ==
+                visualization_msgs::msg::Marker::DELETEALL) {
+                continue;
+            }
+            if (marker.id != tracked_obstacle_id_) {
+                continue;
+            }
 
-        SegmentGroundPlane(point_cloud_, cloud_plane);
-
-        try {
-            EuclideanClustering();
+            // Transform marker position from its native frame to camera frame
+            // so that the EstimatorTimerCallback can handle it uniformly.
+            const Eigen::Vector3d marker_pos(marker.pose.position.x,
+                                             marker.pose.position.y,
+                                             marker.pose.position.z);
+            bounding_box_centroid_ = TransformToCoordinates(
+                marker.header.frame_id, camera_frame_, marker_pos);
             centroid_in_cloud_frame_ = false;
-        } catch (const ClusteringException& exception) {
+
+            bounding_box_size_ = Eigen::Vector3d(
+                marker.scale.x, marker.scale.y, marker.scale.z);
+            object_size_ = bounding_box_size_;
+            bounding_box_orientation_ = Eigen::Quaterniond(
+                marker.pose.orientation.w, marker.pose.orientation.x,
+                marker.pose.orientation.y, marker.pose.orientation.z);
+
+            has_new_measurement_ = true;
+            has_had_first_lidar_measurement_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            found = true;
+
+            RCLCPP_INFO(get_logger(),
+                        "LIDAR_ONLY: tracking obstacle ID %d at "
+                        "(%.2f, %.2f, %.2f) camera-frame.",
+                        tracked_obstacle_id_,
+                        bounding_box_centroid_.x(),
+                        bounding_box_centroid_.y(),
+                        bounding_box_centroid_.z());
+            break;
+        }
+
+        if (!found) {
             RCLCPP_WARN(get_logger(),
-                        "Could not isolate any clusters from the camera "
-                        "detection region ROI!");
-            centroid_in_cloud_frame_ = false;
-            // Fall back to camera-only tracking whenever LiDAR clustering
-            // fails, including before any LiDAR measurement has been received.
-            // This allows the tracker to initialize from a camera detection
-            // alone and begin tracking distant objects before they enter LiDAR
-            // range.
+                        "LIDAR_ONLY: obstacle ID %d not present in latest "
+                        "markers; waiting for it to reappear.",
+                        tracked_obstacle_id_);
+            has_point_cloud_ = false;
+            has_detection_ = false;
+            CheckTargetTimeout();
+            return;
+        }
+
+    } else if (state_ == TrackerState::FULL_TRACKING) {
+        // When the camera detects the target, find the obstacle detector
+        // marker that is closest to the camera-estimated 3D position. That
+        // marker is then associated with the target and its ID is stored so
+        // that LIDAR_ONLY tracking can continue even after camera detection
+        // is lost.
+        if (!has_obstacle_markers_) {
+            RCLCPP_WARN(get_logger(),
+                        "FULL_TRACKING: no obstacle markers received yet, "
+                        "falling back to camera-only tracking.");
             CameraCentroidEstimate();
             has_point_cloud_ = false;
             has_detection_ = true;
@@ -589,55 +593,103 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             return;
         }
 
+        // Get the camera-based 3D position estimate in world frame for
+        // association distance computation.
+        Eigen::Vector3d camera_pos_cam_frame;
+        try {
+            camera_pos_cam_frame = ConvertBBoxCoordinatesToPoseCentroid_rdf(
+                detections_message_, camera_info_message_);
+        } catch (...) {
+            RCLCPP_WARN(get_logger(),
+                        "FULL_TRACKING: camera centroid estimate failed, "
+                        "falling back to camera-only tracking.");
+            CameraCentroidEstimate();
+            has_point_cloud_ = false;
+            has_detection_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
+            CheckTargetTimeout();
+            return;
+        }
+        const Eigen::Vector3d camera_pos_world = TransformToCoordinates(
+            camera_frame_, world_frame_, camera_pos_cam_frame);
+
+        // Find the obstacle marker whose centroid in world frame is closest
+        // to the camera-estimated target position.
+        double best_dist = obstacle_association_max_dist_;
+        int best_id = -1;
+        Eigen::Vector3d best_pos_cam;
+        Eigen::Vector3d best_size;
+        Eigen::Quaterniond best_quat = Eigen::Quaterniond::Identity();
+
+        for (const auto& marker : latest_obstacle_markers_.markers) {
+            if (marker.action ==
+                visualization_msgs::msg::Marker::DELETEALL) {
+                continue;
+            }
+            const Eigen::Vector3d pos(marker.pose.position.x,
+                                      marker.pose.position.y,
+                                      marker.pose.position.z);
+            const Eigen::Vector3d pos_world = TransformToCoordinates(
+                marker.header.frame_id, world_frame_, pos);
+            const double dist = (pos_world - camera_pos_world).norm();
+            if (dist < best_dist) {
+                best_dist = dist;
+                best_id = marker.id;
+                best_pos_cam = TransformToCoordinates(
+                    marker.header.frame_id, camera_frame_, pos);
+                best_size = Eigen::Vector3d(
+                    marker.scale.x, marker.scale.y, marker.scale.z);
+                best_quat = Eigen::Quaterniond(
+                    marker.pose.orientation.w, marker.pose.orientation.x,
+                    marker.pose.orientation.y, marker.pose.orientation.z);
+            }
+        }
+
+        if (best_id < 0) {
+            // No obstacle marker close enough to the camera detection;
+            // use the camera estimate alone until the obstacle detector
+            // picks up the target.
+            RCLCPP_INFO(get_logger(),
+                        "FULL_TRACKING: no obstacle marker within %.1f m of "
+                        "camera detection (%.2f, %.2f, %.2f) world-frame; "
+                        "using camera-only measurement.",
+                        obstacle_association_max_dist_,
+                        camera_pos_world.x(),
+                        camera_pos_world.y(),
+                        camera_pos_world.z());
+            CameraCentroidEstimate();
+            has_point_cloud_ = false;
+            has_detection_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
+            CheckTargetTimeout();
+            return;
+        }
+
+        // Associate this obstacle with the target.
+        tracked_obstacle_id_ = best_id;
+        bounding_box_centroid_ = best_pos_cam;
+        centroid_in_cloud_frame_ = false;
+        bounding_box_size_ = best_size;
+        object_size_ = best_size;
+        bounding_box_orientation_ = best_quat;
+
+        has_new_measurement_ = true;
+        has_had_first_lidar_measurement_ = true;
         has_tracked_target_ = true;
         last_valid_target_time_ = get_clock()->now();
+
+        RCLCPP_INFO(get_logger(),
+                    "FULL_TRACKING: associated obstacle ID %d at %.2f m from "
+                    "camera detection.",
+                    tracked_obstacle_id_, best_dist);
     }
 
-    // ORIENTED BOUNDING BOX ESTIMATION
-    // --------------------------------
-
-    if (cloud_cluster_->size() > 0) {
-
-        try {
-            pcl::PointXYZ bounding_box_min, bounding_box_max,
-                bounding_box_centroid;
-            Eigen::Matrix3f bounding_box_rotation;
-
-            GetOrientedBoundingBox(cloud_cluster_, bounding_box_min,
-                                   bounding_box_max, bounding_box_centroid,
-                                   bounding_box_rotation);
-
-            if (use_pca_centroid_) {
-                bounding_box_centroid_ = Eigen::Vector3d(
-                    bounding_box_centroid.x, bounding_box_centroid.y,
-                    bounding_box_centroid.z);
-            }
-
-            bounding_box_size_ =
-                Eigen::Vector3d(bounding_box_max.x - bounding_box_min.x,
-                                bounding_box_max.y - bounding_box_min.y,
-                                bounding_box_max.z - bounding_box_min.z);
-
-            bounding_box_kernel_ = bounding_box_centroid_;
-            object_size_ = (!use_manual_roi_size_) ? bounding_box_size_
-                                                   : roi_bounding_box_3d_size_;
-
-            // Convert the rotation matrix to an orientation quaternion.
-            bounding_box_orientation_ =
-                Eigen::Quaterniond(bounding_box_rotation.cast<double>());
-
-            if (publish_image_) {
-                PublishImage();
-            }
-        } catch (const PCAException& exception) {
-            RCLCPP_ERROR_STREAM(
-                get_logger(),
-                "Bounding box estimation exception: " << exception.what());
-        }
-    } else {
-        RCLCPP_ERROR(get_logger(),
-                     "Invalid cluster of size zero! Skipping bounding box "
-                     "estimation ...");
+    if (publish_image_) {
+        PublishImage();
     }
 
     execution_time_ = (get_clock()->now() - start_time).nanoseconds() / 1.0e6;
@@ -696,6 +748,22 @@ void ObjectTrackingNode::EuclideanClustering() {
 
 void ObjectTrackingNode::Reset() {
     execution_time_ = -1.0;
+}
+
+void ObjectTrackingNode::ObstacleMarkersCallback(
+    const visualization_msgs::msg::MarkerArray::SharedPtr msg) {
+    // Ignore messages that contain only a DELETEALL marker and no real boxes.
+    bool has_real_markers = false;
+    for (const auto& m : msg->markers) {
+        if (m.action != visualization_msgs::msg::Marker::DELETEALL) {
+            has_real_markers = true;
+            break;
+        }
+    }
+    if (has_real_markers) {
+        latest_obstacle_markers_ = *msg;
+        has_obstacle_markers_ = true;
+    }
 }
 
 // JN addition for camera detection only tracking
@@ -1341,6 +1409,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             has_first_detection_ = false;
             filter_initialized_ = false;
             has_had_first_lidar_measurement_ = false;
+            tracked_obstacle_id_ = -1;
         }
     }
 
@@ -1500,6 +1569,9 @@ void ObjectTrackingNode::Initialize() {
 
     has_target_selection_ = (use_autostart_) ? true : false;
     target_class_ = (use_autostart_) ? autostart_target_class_ : "";
+
+    tracked_obstacle_id_ = -1;
+    has_obstacle_markers_ = false;
 
     last_valid_detection_time_ = get_clock()->now();
     last_valid_target_time_ = get_clock()->now();

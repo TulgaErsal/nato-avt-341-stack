@@ -71,7 +71,10 @@ def launch_setup(context, *args, **kwargs):
                 'world_frame': 'map',
                 'sync_enable': False,
                 'sync_detection': 0.1,
-                'sync_use_callback': True
+                'sync_use_callback': True,
+                # Obstacle detector integration
+                'obstacle_markers_topic': '/avt_341/lidar_detector/jsk_bboxes',
+                'obstacle_association_max_dist': 5.0
             })
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
