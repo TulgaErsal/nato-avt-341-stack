@@ -74,6 +74,11 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("camera_frame", "camera_optical");
     camera_frame_ = get_parameter("camera_frame").as_string();
 
+    declare_parameter("frame_prefix", "");
+    const std::string frame_prefix = get_parameter("frame_prefix").as_string();
+
+    camera_frame_ = frame_prefix + camera_frame_;
+
     declare_parameter("world_frame", "Q");
     world_frame_ = get_parameter("world_frame").as_string();
 

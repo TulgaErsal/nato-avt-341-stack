@@ -231,7 +231,8 @@ def generate_launch_description():
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
                                  'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
-                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
+                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))
+                                 }]
                 ),
                 Node(
                     package='avt_341',
@@ -316,6 +317,9 @@ def generate_launch_description():
                         executable='avt_341_object_tracking_node',
                         name='object_tracking_node',
                         parameters=[
+                            {'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
+                                                                TextSubstitution(text=''),
+                                                                IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))},
                             {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
                         ],
                         remappings=[
