@@ -317,10 +317,10 @@ def generate_launch_description():
                         executable='avt_341_object_tracking_node',
                         name='object_tracking_node',
                         parameters=[
+                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
                             {'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
-                                                                TextSubstitution(text=''),
-                                                                IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))},
-                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+                                                                 TextSubstitution(text=''),
+                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
                         ],
                         remappings=[
                             ('camera_info','front_camera/info'),
