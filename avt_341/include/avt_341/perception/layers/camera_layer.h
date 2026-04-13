@@ -63,8 +63,6 @@ namespace avt_341::perception
         std::string depth_img_topic_;
         std::string seg_img_topic_;
         std::string camera_info_topic_;
-        bool contribute_occupancy_;
-
     };
 }
 

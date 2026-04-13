@@ -81,10 +81,8 @@ namespace avt_341::perception
         {
             for (uint32_t u = 0; u < width; ++u)
             {
-                // projectPixelTo3dRay accounts for distortion via the rectified projection.
-                // The returned ray has z = 1.0.
-                ray_cache_[v * width + u] = camera_model_.projectPixelTo3dRay(
-                    cv::Point2d(static_cast<double>(u), static_cast<double>(v)));
+                const cv::Point2d uv_rect = camera_model_.rectifyPoint(cv::Point2d(u, v));
+                ray_cache_[v * width + u] = camera_model_.projectPixelTo3dRay(uv_rect);
             }
         }
     }

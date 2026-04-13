@@ -87,7 +87,7 @@ namespace avt_341 {
         using ImagePtr = const sensor_msgs::Image::ConstPtr &;
 
         using CameraInfo = sensor_msgs::CameraInfo;
-        using CameraInfoPtr = const sensor_msgs::CameraInfo::ConstPtr &
+        using CameraInfoPtr = const sensor_msgs::CameraInfo::ConstPtr &;
 
         using TwistStamped = geometry_msgs::TwistStamped;
         using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;

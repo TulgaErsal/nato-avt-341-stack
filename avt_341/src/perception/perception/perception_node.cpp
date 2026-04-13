@@ -38,7 +38,11 @@ void PublishGrid(
 	avt_341::msg::OccupancyGrid grid_msg;
 
 	std::map<std::string, double> & last_full_grid_update = is_segmentation ? seg_last_full_grid_update : occ_last_full_grid_update;
-	
+
+	if (last_full_grid_update.find(target_layer) == last_full_grid_update.end()) {
+		last_full_grid_update[target_layer] = 0.0;
+	}
+
 	if (grid_pub_method == avt_341::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
 			max_grid_width,
@@ -223,6 +227,8 @@ int main(int argc, char* argv[]) {
 
 		if (reset_called) {
 			n->log_info("Resetting node");
+			occ_last_full_grid_update.clear();
+			seg_last_full_grid_update.clear();
 			grid.Reset();
 			avt_341::msg::String reset_ack_msg;
 			reset_ack_msg.data = avt_341::node::NodeType::Perception;
