@@ -786,7 +786,7 @@ void ObjectTrackingNode::DetectionsCallback(
         return;
     }
 
-    if (!detections_message->detections.size() > 0) {
+    if (detections_message->detections.empty()) {
         RCLCPP_DEBUG(get_logger(),
                      "No detections in the current frame, skipping ...");
         has_detection_ = false;
@@ -794,14 +794,14 @@ void ObjectTrackingNode::DetectionsCallback(
     }
 
     int target_idx = -1;
-    for (int i = 0; i < detections_message->detections.size(); ++i) {
+    for (size_t i = 0; i < detections_message->detections.size(); ++i) {
         // We only consider the highest scoring result for each detection,
         // under the assumption that the hypotheses array is sorted from
         // highest to lowest scoring.
         const auto & detection = detections_message->detections[i];
         if (detection.results[0].hypothesis.class_id == target_class_) {
             detection_score_ = detection.results[0].hypothesis.score;
-            target_idx = i;
+            target_idx = static_cast<int>(i);
             break;
         }
     }
@@ -1575,26 +1575,19 @@ void ObjectTrackingNode::ProjectPointsToPixel(
 
     const double cx = detections_message_.bbox.center.position.x;
     const double cy = detections_message_.bbox.center.position.y;
-    const double half_w = detections_message_.bbox.size_x / 2;
-    const double half_h = detections_message_.bbox.size_y / 2;
+    const double half_roi_w = detections_message_.bbox.size_x / 2;
+    const double half_roi_h = detections_message_.bbox.size_y / 2;
+    const double w = camera_info_message_->width;
+    const double h = camera_info_message_->height;
 
-    const auto x_min_flt = cx - half_w;
-    const auto x_max_flt = cx + half_w;
-    const auto y_min_flt = cy - half_h;
-    const auto y_max_flt = cy + half_h;
-
-    RCLCPP_DEBUG(
-        get_logger(),
-        "Trimming region of interest to the camera image frame bounds ...");
-
-    auto x_min = static_cast<unsigned int>(std::max(0.0, x_min_flt));
-    auto x_max = static_cast<unsigned int>(std::min(static_cast<double>(camera_info_message_->width), x_max_flt));
-    auto y_min = static_cast<unsigned int>(std::max(0.0, y_min_flt));
-    auto y_max = static_cast<unsigned int>(std::min(static_cast<double>(camera_info_message_->height), y_max_flt));
+    auto x_min = static_cast<unsigned int>(std::clamp(cx - half_roi_w, 0.0, w));
+    auto x_max = static_cast<unsigned int>(std::clamp(std::ceil(cx + half_roi_w), 0.0, w));
+    auto y_min = static_cast<unsigned int>(std::clamp(cy - half_roi_h, 0.0, h));
+    auto y_max = static_cast<unsigned int>(std::clamp(std::ceil(cy + half_roi_h), 0.0, h));
 
     RCLCPP_DEBUG(get_logger(),
                  "Selected the following bounding box as region of interest: "
-                 "[X_MIN: %i, X_MAX: %i Y_MIN: %i Y_MAX: %i]",
+                 "[X_MIN: %u, X_MAX: %u Y_MIN: %u Y_MAX: %u]",
                  x_min, x_max, y_min, y_max);
 
     // Find the points lying in the region of interest (ROI) defined by the
