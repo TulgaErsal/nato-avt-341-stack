@@ -194,11 +194,21 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   avt_341::msg::TransformStamped fixed_tf = nh->lookup_transform(fixed_frame_, robot_base_link_);
   Eigen::Quaternionf q(fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x, fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
+  // Guard against a degenerate quaternion (all zeros) returned when TF is
+  // not yet available. A zero quaternion produces a NaN rotation matrix and
+  // an empty fixed_cloud after the transform, which crashes the KdTree
+  // inside pclFilterNorms.
+  if (q.norm() < 1e-6f) {
+    nh->log_warning("Fixed-frame TF not yet available, skipping this scan.");
+    return;
+  }
   Eigen::Matrix4f mat4 = Eigen::Matrix4f::Identity();
   mat4.block<3,3>(0,0) = q.normalized().toRotationMatrix();
   Eigen::Affine3f transform_fixed;
   transform_fixed.matrix() = mat4;
   pcl::transformPointCloud(*filtered_cloud, *fixed_cloud, transform_fixed);
+
+  if(fixed_cloud->size() < 10) return;
 
   // Segment ground and obstacle points using normal filtering
   pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(new pcl::PointCloud<pcl::PointXYZ>);

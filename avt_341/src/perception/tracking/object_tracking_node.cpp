@@ -574,11 +574,12 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         }
 
     } else if (state_ == TrackerState::FULL_TRACKING) {
-        // When the camera detects the target, find the obstacle detector
-        // marker that is closest to the camera-estimated 3D position. That
-        // marker is then associated with the target and its ID is stored so
-        // that LIDAR_ONLY tracking can continue even after camera detection
-        // is lost.
+        // When the camera detects the target, associate the obstacle detector
+        // marker that projects closest to the detection bounding-box center
+        // in the camera image. This approach is independent of the camera
+        // range estimate (which is noisy because it relies on the assumed
+        // target height), so it remains robust even when the 3D position
+        // estimate is inaccurate.
         if (!has_obstacle_markers_) {
             RCLCPP_WARN(get_logger(),
                         "FULL_TRACKING: no obstacle markers received yet, "
@@ -593,31 +594,26 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             return;
         }
 
-        // Get the camera-based 3D position estimate in world frame for
-        // association distance computation.
-        Eigen::Vector3d camera_pos_cam_frame;
-        try {
-            camera_pos_cam_frame = ConvertBBoxCoordinatesToPoseCentroid_rdf(
-                detections_message_, camera_info_message_);
-        } catch (...) {
-            RCLCPP_WARN(get_logger(),
-                        "FULL_TRACKING: camera centroid estimate failed, "
-                        "falling back to camera-only tracking.");
-            CameraCentroidEstimate();
-            has_point_cloud_ = false;
-            has_detection_ = true;
-            has_tracked_target_ = true;
-            last_valid_target_time_ = get_clock()->now();
-            state_ = TrackerState::CAMERA_ONLY_TRACKING;
-            CheckTargetTimeout();
-            return;
-        }
-        const Eigen::Vector3d camera_pos_world = TransformToCoordinates(
-            camera_frame_, world_frame_, camera_pos_cam_frame);
+        // Detection bounding-box center in pixel coordinates.
+        const double det_u =
+            detections_message_.detections[0].bbox.center.position.x;
+        const double det_v =
+            detections_message_.detections[0].bbox.center.position.y;
 
-        // Find the obstacle marker whose centroid in world frame is closest
-        // to the camera-estimated target position.
-        double best_dist = obstacle_association_max_dist_;
+        // Maximum allowed pixel distance: the half-diagonal of the detection
+        // bounding box, scaled by obstacle_association_max_dist_. Using
+        // obstacle_association_max_dist_ = 1.0 means the marker's projection
+        // must land within one half-diagonal of the bbox center. Increase it
+        // to be more permissive.
+        const double bbox_half_diag = 0.5 * std::sqrt(
+            detections_message_.detections[0].bbox.size_x *
+            detections_message_.detections[0].bbox.size_x +
+            detections_message_.detections[0].bbox.size_y *
+            detections_message_.detections[0].bbox.size_y);
+        const double max_pixel_dist =
+            obstacle_association_max_dist_ * bbox_half_diag;
+
+        double best_pixel_dist = max_pixel_dist;
         int best_id = -1;
         Eigen::Vector3d best_pos_cam;
         Eigen::Vector3d best_size;
@@ -628,17 +624,41 @@ void ObjectTrackingNode::TrackingTimerCallback() {
                 visualization_msgs::msg::Marker::DELETEALL) {
                 continue;
             }
+
+            // Transform marker position to camera frame.
             const Eigen::Vector3d pos(marker.pose.position.x,
                                       marker.pose.position.y,
                                       marker.pose.position.z);
-            const Eigen::Vector3d pos_world = TransformToCoordinates(
-                marker.header.frame_id, world_frame_, pos);
-            const double dist = (pos_world - camera_pos_world).norm();
-            if (dist < best_dist) {
-                best_dist = dist;
+            const Eigen::Vector3d pos_cam = TransformToCoordinates(
+                marker.header.frame_id, camera_frame_, pos);
+
+            // Skip markers behind the camera.
+            if (pos_cam.z() <= 0.0) continue;
+
+            // Project to image pixel coordinates using camera intrinsics.
+            const double fx = camera_info_message_->k[0];
+            const double fy = camera_info_message_->k[4];
+            const double cx = camera_info_message_->k[2];
+            const double cy = camera_info_message_->k[5];
+            const double proj_u = fx * pos_cam.x() / pos_cam.z() + cx;
+            const double proj_v = fy * pos_cam.y() / pos_cam.z() + cy;
+
+            // Skip projections outside the image.
+            if (proj_u < 0.0 ||
+                proj_u > static_cast<double>(camera_info_message_->width) ||
+                proj_v < 0.0 ||
+                proj_v > static_cast<double>(camera_info_message_->height)) {
+                continue;
+            }
+
+            const double pixel_dist = std::sqrt(
+                (proj_u - det_u) * (proj_u - det_u) +
+                (proj_v - det_v) * (proj_v - det_v));
+
+            if (pixel_dist < best_pixel_dist) {
+                best_pixel_dist = pixel_dist;
                 best_id = marker.id;
-                best_pos_cam = TransformToCoordinates(
-                    marker.header.frame_id, camera_frame_, pos);
+                best_pos_cam = pos_cam;
                 best_size = Eigen::Vector3d(
                     marker.scale.x, marker.scale.y, marker.scale.z);
                 best_quat = Eigen::Quaterniond(
@@ -648,17 +668,14 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         }
 
         if (best_id < 0) {
-            // No obstacle marker close enough to the camera detection;
+            // No obstacle marker projects near the camera detection bbox;
             // use the camera estimate alone until the obstacle detector
             // picks up the target.
             RCLCPP_INFO(get_logger(),
-                        "FULL_TRACKING: no obstacle marker within %.1f m of "
-                        "camera detection (%.2f, %.2f, %.2f) world-frame; "
+                        "FULL_TRACKING: no obstacle marker projects within "
+                        "%.0f px of detection center (%.0f, %.0f); "
                         "using camera-only measurement.",
-                        obstacle_association_max_dist_,
-                        camera_pos_world.x(),
-                        camera_pos_world.y(),
-                        camera_pos_world.z());
+                        max_pixel_dist, det_u, det_v);
             CameraCentroidEstimate();
             has_point_cloud_ = false;
             has_detection_ = true;
@@ -683,9 +700,9 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         last_valid_target_time_ = get_clock()->now();
 
         RCLCPP_INFO(get_logger(),
-                    "FULL_TRACKING: associated obstacle ID %d at %.2f m from "
-                    "camera detection.",
-                    tracked_obstacle_id_, best_dist);
+                    "FULL_TRACKING: associated obstacle ID %d "
+                    "(projected %.0f px from detection center).",
+                    tracked_obstacle_id_, best_pixel_dist);
     }
 
     if (publish_image_) {
