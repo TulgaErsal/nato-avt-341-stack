@@ -239,7 +239,7 @@ void ObjectTrackingNode::GetParameters() {
     use_manual_roi_size_ = get_parameter("filters_use_manual_roi").as_bool();
 
     declare_parameter("obstacle_markers_topic",
-                      std::string("/avt_341/lidar_detector/jsk_bboxes"));
+                      std::string("/avt_341/lidar_detector/bboxes"));
     obstacle_markers_topic_ =
         get_parameter("obstacle_markers_topic").as_string();
 

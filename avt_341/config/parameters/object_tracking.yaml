@@ -33,7 +33,7 @@ tracker_target_class: mrzr4
 tracker_timeout: 5.0
 
 # Obstacle detector integration
-obstacle_markers_topic: '/avt_341/lidar_detector/jsk_bboxes'  # MarkerArray topic from the LiDAR obstacle detector
+obstacle_markers_topic: '/avt_341/lidar_detector/bboxes'      # MarkerArray topic from the LiDAR obstacle detector
 obstacle_association_max_dist: 5.0                             # max distance [m] to associate a marker with the camera detection
 sync_enable: true
 sync_use_callback: false

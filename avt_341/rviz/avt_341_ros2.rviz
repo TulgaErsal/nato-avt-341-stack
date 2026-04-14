@@ -528,7 +528,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/lidar_detector/jsk_bboxes
+        Value: /avt_341/lidar_detector/bboxes
       Value: true
     - Alpha: 1
       Axes Length: 2

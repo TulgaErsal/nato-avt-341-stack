@@ -73,7 +73,7 @@ def launch_setup(context, *args, **kwargs):
                 'sync_detection': 0.1,
                 'sync_use_callback': True,
                 # Obstacle detector integration
-                'obstacle_markers_topic': '/avt_341/lidar_detector/jsk_bboxes',
+                'obstacle_markers_topic': '/avt_341/lidar_detector/bboxes',
                 'obstacle_association_max_dist': 5.0
             })
     except Exception as e:
@@ -101,7 +101,7 @@ def launch_setup(context, *args, **kwargs):
         'lidar_points_topic': '/mrzr2/avt_341/points',
         'cloud_ground_topic': '/avt_341/lidar_detector/cloud_ground',
         'cloud_clusters_topic': '/avt_341/lidar_detector/cloud_clusters',
-        'jsk_bboxes_topic': '/avt_341/lidar_detector/jsk_bboxes',
+        'bboxes_topic': '/avt_341/lidar_detector/bboxes',
     })
 
     # Define Nodes and Processes

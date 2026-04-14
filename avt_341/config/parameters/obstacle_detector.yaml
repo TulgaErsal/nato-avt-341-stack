@@ -51,7 +51,7 @@ fixed_frame: 'map'                                              # World-fixed fr
 lidar_points_topic: 'avt_341/points'                            # Input sensor point cloud topic
 cloud_ground_topic: 'avt_341/lidar_detector/cloud_ground'      # Output ground points topic
 cloud_clusters_topic: 'avt_341/lidar_detector/cloud_clusters'  # Output obstacle points topic
-jsk_bboxes_topic: 'avt_341/lidar_detector/jsk_bboxes'          # Output cluster bounding boxes
+bboxes_topic: 'avt_341/lidar_detector/bboxes'                  # Output cluster bounding boxes
 
 publish_seg_as_one: True                                       # If true publishes ground plane segmented pointcloud in single message with mask put in additional an channel
 publish_seg_as_one_field: 'gnd_seg'                             # Channel name to use if publish_seg_as_one is true

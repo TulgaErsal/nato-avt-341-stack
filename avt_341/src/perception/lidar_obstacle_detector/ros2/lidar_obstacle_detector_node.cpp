@@ -47,7 +47,7 @@ std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 // Publishers
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> pub_cloud_ground;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> pub_cloud_clusters;
-std::shared_ptr<avt_341::node::Publisher<visualization_msgs::msg::MarkerArray>> pub_jsk_bboxes;
+std::shared_ptr<avt_341::node::Publisher<visualization_msgs::msg::MarkerArray>> pub_bboxes;
 
 void publishJointCloud(
     const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> &segmented_clouds,
@@ -156,7 +156,7 @@ void publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& c
     marker.lifetime = rclcpp::Duration::from_seconds(0.5);
     marker_array.markers.push_back(marker);
   }
-  pub_jsk_bboxes->publish(marker_array);
+  pub_bboxes->publish(marker_array);
 
   // Update previous bounding boxes
   prev_boxes_.swap(curr_boxes_);
@@ -247,7 +247,7 @@ int main(int argc, char** argv)
   std::string lidar_points_topic;
   std::string cloud_ground_topic;
   std::string cloud_clusters_topic;
-  std::string jsk_bboxes_topic;
+  std::string bboxes_topic;
 
   float roi_max_x, roi_max_y, roi_max_z, roi_min_x, roi_min_y, roi_min_z;
   float body_max_x, body_max_y, body_max_z, body_min_x, body_min_y, body_min_z;
@@ -255,7 +255,7 @@ int main(int argc, char** argv)
   nh->get_parameter("~lidar_points_topic", lidar_points_topic, std::string("/ouster/points"));
   nh->get_parameter("~cloud_ground_topic", cloud_ground_topic, std::string("/avt_341/lidar_detector/cloud_ground"));
   nh->get_parameter("~cloud_clusters_topic", cloud_clusters_topic, std::string("/avt_341/lidar_detector/cloud_clusters"));
-  nh->get_parameter("~jsk_bboxes_topic", jsk_bboxes_topic, std::string("/avt_341/lidar_detector/jsk_bboxes"));
+  nh->get_parameter("~bboxes_topic", bboxes_topic, std::string("/avt_341/lidar_detector/bboxes"));
   nh->get_parameter("~bbox_target_frame", bbox_target_frame_, std::string("base_link"));
   nh->get_parameter("~robot_base_link", robot_base_link_, std::string("mrzr/base_link"));
   nh->get_parameter("~fixed_frame", fixed_frame_, std::string("map"));
@@ -298,7 +298,7 @@ int main(int argc, char** argv)
   auto sub_lidar_points = nh->create_subscription<avt_341::msg::PointCloud2>(lidar_points_topic, 1, lidarPointsCallback);
   pub_cloud_ground = nh->create_publisher<avt_341::msg::PointCloud2>(cloud_ground_topic, 1);
   pub_cloud_clusters = nh->create_publisher<avt_341::msg::PointCloud2>(cloud_clusters_topic, 1);
-  pub_jsk_bboxes = nh->create_publisher<visualization_msgs::msg::MarkerArray>(jsk_bboxes_topic, 1);
+  pub_bboxes = nh->create_publisher<visualization_msgs::msg::MarkerArray>(bboxes_topic, 1);
 
   // Create point processor
   obstacle_detector = std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
