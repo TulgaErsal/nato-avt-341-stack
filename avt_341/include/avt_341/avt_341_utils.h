@@ -15,6 +15,8 @@
 #include <iostream>
 #include <numeric> // for std::accumulate
 
+// TODO: Refactor to dto.h and utils.h under core
+
 namespace avt_341 {
 namespace utils {
 
@@ -31,6 +33,7 @@ enum NavStateCmd : int {
   GoActive = 1
 };
 
+// TODO: Just use Eigen? If not, rename in future, should also be pascal case.
 struct vec2{
 	vec2(){
 		x = 0.0f;
@@ -136,6 +139,13 @@ inline float cross(vec2 v1, vec2 v2) {
 	return v1.x*v2.y - v1.y*v2.x;
 }
 
+inline double GetDistance(msg::Point p1, msg::Point p2)
+{
+	const double dx = p1.x - p2.x;
+	const double dy = p1.y - p2.y;
+	return sqrt(dx*dx + dy*dy);
+}
+
 inline float PointLineDistance(vec2 x1, vec2 x2, vec2 x0) {
 	float sx1 = x0.x - x1.x;
 	float sy1 = x0.y - x1.y;
@@ -168,18 +178,6 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 	}
 	float d0 = PointLineDistance(ep1, ep2, p);
 	return d0;
-}
-
-inline avt_341::msg::Pose TransformToPose(const avt_341::msg::Transform & tx) {
-	avt_341::msg::Pose pose_msg;
-
-	pose_msg.position.x = tx.translation.x;
-	pose_msg.position.y = tx.translation.y;
-	pose_msg.position.z = tx.translation.z;
-
-	pose_msg.orientation = tx.rotation;
-
-	return pose_msg;
 }
 
 inline float GetHeadingFromOrientation(avt_341::msg::Quaternion orientation){

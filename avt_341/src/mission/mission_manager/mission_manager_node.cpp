@@ -4,6 +4,8 @@
 #include "avt_341/mission/mission_manager.h"
 #include "avt_341/mission/mission_manager_parser.h"
 #include <queue>
+#include <avt_341/core/dto_conversion.h>
+#include <optional>
 
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
@@ -15,8 +17,7 @@ std::queue<avt_341::msg::Path> contacts;
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
 
-avt_341::msg::Int32 nav_state;
-bool nav_state_rcvd = false;
+std::optional<int> nav_run_state;
 
 std::string mission_definition_filename, mission_paths_file;
 float sodist_threshold;
@@ -87,11 +88,15 @@ void TargetContactsCallback(avt_341::msg::PathPtr msg) {
   }
 }
 
-// Receive information on navigation state (-1 startup, 0 active, 1 stopping, 2 shutdown, 3 shutdown hard)
-void NavStateCallback(avt_341::msg::Int32Ptr msg) {
-	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->data << " navigation state" << std::endl;
-	nav_state = *msg;
-	nav_state_rcvd = true;
+bool current_goal_rcvd = false;
+avt_341::msg::PoseStamped gp_goal_rcvd;
+void NavStateCallback(avt_341::msg::NavStatePtr msg) {
+    nav_run_state = msg->run_state;
+    if (msg->run_state == avt_341::utils::NavStackState::Active)
+    {
+        gp_goal_rcvd = avt_341::core::ToPoseStamped(msg->goal);
+        current_goal_rcvd = true;
+    }
 }
 
 bool reset_called = false;
@@ -101,15 +106,8 @@ void ResetCallback(avt_341::msg::StringPtr msg){
   }
 }
 
-void GoalReachedCallback(avt_341::msg::PoseStampedPtr msg){
-  reached_goals.push(*msg);
-}
-
-bool current_goal_rcvd = false;
-avt_341::msg::PoseStamped gp_goal_rcvd;
-void CurrentGoalCallback(avt_341::msg::PoseStampedPtr msg){
-  gp_goal_rcvd = *msg;
-  current_goal_rcvd = true;
+void GoalReachedCallback(avt_341::msg::NavStatePtr msg){
+  reached_goals.push(avt_341::core::ToPoseStamped(msg->goal));
 }
 
 auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std::string & my_name, int target_idx,
@@ -196,7 +194,7 @@ int main(int argc, char **argv) {
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
-    auto nav_state_sub = nh->create_subscription<avt_341::msg::Int32>("avt_341/state", 10, NavStateCallback);
+    auto nav_state_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
     auto veh1_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 0, tracking_veh, tracked_veh);
     auto veh2_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 1, tracking_veh, tracked_veh);
@@ -204,8 +202,7 @@ int main(int argc, char **argv) {
     auto veh4_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 3, tracking_veh, tracked_veh);
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-    auto goal_reached_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10, GoalReachedCallback);
-    auto current_waypoint_sub = nh->create_subscription<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10, CurrentGoalCallback);
+    auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);
 
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
@@ -283,10 +280,9 @@ int main(int argc, char **argv) {
 
         // Incoming internal notifications
         // Monitor navigation state
-        if(nav_state_rcvd) {
+        if(nav_run_state.has_value()) {
             // Update navigation state in manager
-            mgr->nav_state = nav_state.data;
-            nav_state_rcvd = false;
+            mgr->nav_state = nav_run_state.value();
         }
         // Update our own odometry
         if(odom_rcvd) {

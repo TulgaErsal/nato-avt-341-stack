@@ -23,7 +23,11 @@ set(MESSAGE_DEFINITIONS
     "OccupiedCell"
     "OccupiedCells"
     "Sinkage"
-    "TrackerInfo")
+    "TrackerInfo"
+    "NavGoal"
+    "NavGoalSequence"
+    "NavState"
+)
 
 set(SERVICE_DEFINITIONS "LiorfSaveMap" "SetTarget")
 
@@ -41,6 +45,7 @@ string(REGEX REPLACE "([^;]+)" "srv/\\1.srv" SERVICE_DEFINITIONS_AMENT
 find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -53,7 +58,9 @@ rosidl_generate_interfaces(
   builtin_interfaces
   std_msgs
   nav_msgs
-  sensor_msgs)
+  sensor_msgs
+  geometry_msgs
+)
 
 install(FILES "ros_bridge_mappings.yaml" DESTINATION "share/${PROJECT_NAME}")
 
