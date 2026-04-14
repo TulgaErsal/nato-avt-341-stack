@@ -60,3 +60,35 @@ target_compile_definitions(global_path_node_test
   PRIVATE
     "GLOBAL_PLANNER_YAML_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../config/parameters/global_planner.yaml\""
 )
+
+# Static Grid Layer Tests
+# -----------------------
+# ParseSizeInfoFromFile is a static, pure method (no ROS node needed at runtime)
+# but the translation unit pulls in CostmapLayer, so we compile the layer sources.
+set(STATIC_GRID_LAYER_SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/perception/layers/static_grid_layer.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/perception/layers/costmap_layer.cpp"
+)
+
+message(STATUS "Adding static grid layer unit tests")
+ament_add_gtest(static_grid_layer_test
+  perception/layers/static_grid_layer_test.cpp
+  ${STATIC_GRID_LAYER_SOURCES}
+)
+
+target_include_directories(static_grid_layer_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(static_grid_layer_test
+  ${PROJECT_NAME}_proxy
+)
+
+ament_target_dependencies(static_grid_layer_test
+  rclcpp
+  nav_msgs
+  std_msgs
+  geometry_msgs
+)
+

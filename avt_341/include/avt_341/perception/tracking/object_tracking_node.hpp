@@ -250,7 +250,7 @@ class ObjectTrackingNode : public rclcpp::Node {
         const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
     /** @brief Whether or not camera info has been received. */
-    bool has_camera_info_;
+    bool has_camera_info_ = false;
 
     /** @brief Latest received camera info message. */
     sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message_;
@@ -275,7 +275,7 @@ class ObjectTrackingNode : public rclcpp::Node {
      * target. */
     rclcpp::Time last_valid_detection_time_;
 
-    vision_msgs::msg::Detection2DArray detections_message_;
+    vision_msgs::msg::Detection2D detections_message_;
 
     double max_detection_skew_;
 
@@ -345,7 +345,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief Estimate range from BBox detection using pixel height vs vehicle height
     * and return point measurment of BBox center in 3D. */
     Eigen::Vector3d ConvertBBoxCoordinatesToPoseCentroid_rdf(
-        const vision_msgs::msg::Detection2DArray detections_message,
+        const vision_msgs::msg::Detection2D& detections_message,
         const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
     // -------------------------------------
