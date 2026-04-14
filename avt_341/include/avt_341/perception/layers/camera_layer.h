@@ -2,7 +2,14 @@
 #define AVT_341_CAMERA_LAYER_H
 
 #include "avt_341/perception/layers/point_cloud_layer.h"
+
+#ifdef GTE_ROS_JAZZY
+#include <image_geometry/pinhole_camera_model.hpp>
+#else
 #include <image_geometry/pinhole_camera_model.h>
+#endif
+
+
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
