@@ -123,5 +123,3 @@ jobs:
           aws s3 cp ros_ws/build/avt_341/unit_test_badge.svg s3://${{ secrets.AWS_S3_BUCKET_NAME }}/unit_test_badge.svg --acl public-read
           aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/test_results/*"
           aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/unit_test_badge.svg"
-          urls=$(curl -sLk "https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/tree/${{ steps.branch-name.outputs.current_branch }}" | grep -Eo "(http|https)://camo.githubusercontent.com[a-zA-Z0-9./?=_%:-]*")
-          while IFS= read -r url; do curl -X PURGE "$url"; done <<< "$urls"
