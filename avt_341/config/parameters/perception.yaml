@@ -22,9 +22,6 @@ rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slop
 rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
 pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
 
-perception_points_topic: 'avt_341/points'           # The name of the points topic listened to by the perception node.
-clear_only_points_topic: 'avt_341/ground_points'    # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
-
 # Point Cloud Culling
 # ======================================================================================================================
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
@@ -75,6 +72,16 @@ global_grid_csv_path: "$Python:os.path.join(get_package_share_directory('avt_341
 # ======================================================================================================================
 layer_combination_method: 'last'            # Method for combining layers. 'last' | 'max' | 'mean'. 'last' = last layer in list with valid dat data in cell, 'max' = max value among layers, 'mean' = mean value among layers.
 publish_layers: ''                          # Comma separated list of layers to publish individual costmaps for. Note that aggregate costmap of all layers always published regardless.
+
+point_cloud_layer:
+  topic: 'avt_341/points'                   # The name of the points topic listened to by the perception node.
+  clear_topic: 'avt_341/ground_points'      # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
+
+camera_layer:
+  depth_topic: ''                           # Depth image topic
+  segmentation_topic: ''                    # Segmentation image topic
+  info_topic: ''                            # Camera info topic
+  contribute_occupancy: True                # Disable to only contribute segmentation values through camera stream.
 
 polygon_layer:
   data_file: ''                             # Path to json file containing polygon zones definition.

@@ -34,6 +34,8 @@
   <depend>tf2_sensor_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>qtbase5-dev</depend>
+  <depend>image_geometry</depend>
+  <depend>message_filters</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -26,7 +26,7 @@ namespace avt_341::perception
 
         if (input_file_.empty())
         {
-            is_valid_ = false;
+            is_enabled_ = false;
             return;
         }
 
@@ -56,7 +56,7 @@ namespace avt_341::perception
 
         } catch (const std::exception& e) {
             node_ref_->log_error("Failed to polygon zones: %s", e.what());
-            is_valid_ = false;
+            is_enabled_ = false;
         }
     }
 
@@ -74,6 +74,7 @@ namespace avt_341::perception
         const int    w   = size_info_.nx();
         const int    h   = size_info_.ny();
         int marked_cells = 0;
+        has_segmentation_ = std::any_of(zones_.begin(), zones_.end(), [](const auto& zone) { return zone.seg_value >= 0; });
 
         for (int i = 0; i < h; ++i) {
             for (int j = 0; j < w; ++j) {

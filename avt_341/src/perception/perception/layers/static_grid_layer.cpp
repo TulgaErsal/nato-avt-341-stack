@@ -113,7 +113,7 @@ namespace avt_341::perception
             node_ref_->log_warning(
                 "[StaticGridLayer] '%s': height field '%s' not found in CSV header. Layer is invalid.",
                 label_.c_str(), csv_height_field_.c_str());
-            is_valid_ = false;
+            is_enabled_ = false;
             return;
         }
 
@@ -215,7 +215,7 @@ namespace avt_341::perception
         try
         {
             if (input_file_.empty()){
-                is_valid_ = false;
+                is_enabled_ = false;
                 return;
             }
 
@@ -234,7 +234,7 @@ namespace avt_341::perception
         catch(const std::exception& e)
         {
             node_ref_->log_error("Failed to load static grid layer: %s", e.what());
-            is_valid_ = false;
+            is_enabled_ = false;
         }
     }
 

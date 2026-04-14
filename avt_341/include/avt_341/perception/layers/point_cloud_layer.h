@@ -45,12 +45,16 @@ namespace avt_341::perception
         bool PastSlopeThreshold(const Cell& cell) const override { return CostmapLayer::PastSlopeThreshold(cell); }
         float Slope(const Cell& cell) const override { return CostmapLayer::Slope(cell); }
 
+        void SetupPcSubscriptions();
+
         std::string ToString() const override;
 
-    private:
-        double pc_callback_warn_dur = 0.0; // in seconds
-
+    protected:
+        std::string pc_seg_channel_;
         void PointCloudCallback(msg::PointCloud2Ptr rcv_cloud);
+
+    private:
+        double pc_callback_warn_dur_ = 0.0; // in seconds
         void ClearOnlyPointsCallback(msg::PointCloud2Ptr rcv_cloud);
         std::shared_ptr<msg::PointCloud> RegisterPc2Msg(const msg::PointCloud2Ptr & rcv_cloud);
 

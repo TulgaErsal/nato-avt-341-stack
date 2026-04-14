@@ -22,9 +22,6 @@ rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slop
 rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
 pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
 
-perception_points_topic: '/avt_341/lidar_detector/cloud_clusters'   # Primary point cloud input topic. Points received will go through grid addition and clearing methods.
-clear_only_points_topic: '/avt_341/lidar_detector/cloud_ground'     # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
-
 # Point Cloud Culling
 # ======================================================================================================================
 cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
@@ -79,6 +76,16 @@ publish_layers: ''                          # Comma separated list of layers to 
 polygon_layer:
   data_file: ''                             # Path to json file containing polygon zones definition.
   visualize: True                           # Debug visualize zones using ROS markers for polygon perimeters and labels.
+
+point_cloud_layer:
+  topic: '/avt_341/lidar_detector/cloud_clusters'   # Primary point cloud input topic. Points received will go through grid addition and clearing methods.
+  clear_topic: '/avt_341/lidar_detector/cloud_ground'     # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
+
+camera_layer:
+  depth_topic: ''                           # Depth image topic
+  segmentation_topic: ''                    # Segmentation image topic
+  info_topic: ''                            # Camera info topic
+  contribute_occupancy: True                # Disable to only contribute segmentation values through camera stream.
 
 static_grid_layer:
   data_file: ''                             # Path to csv file containing static grid layer data. Assumed to be in the format map_x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv.

@@ -29,6 +29,7 @@ public:
 	bool HasSegmentation() const;
 
 	void Clear() const;
+	void ResetUpdateRegion();
 
 	msg::OccupancyGrid GetGrid(bool is_segmentation = false, const std::string& target_layer = "") const;
 	msg::OccupancyGrid GetGrid(double width, double height, bool is_segmentation = false) const;

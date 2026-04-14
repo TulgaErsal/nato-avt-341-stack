@@ -13,6 +13,7 @@
 #include "sensor_msgs/point_cloud2_iterator.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/CameraInfo.h"
 #include "sensor_msgs/NavSatFix.h"
 
 #include "geometry_msgs/TwistStamped.h"
@@ -84,6 +85,9 @@ namespace avt_341 {
 
         using Image = sensor_msgs::Image;
         using ImagePtr = const sensor_msgs::Image::ConstPtr &;
+
+        using CameraInfo = sensor_msgs::CameraInfo;
+        using CameraInfoPtr = const sensor_msgs::CameraInfo::ConstPtr &;
 
         using TwistStamped = geometry_msgs::TwistStamped;
         using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;
@@ -232,6 +236,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
@@ -298,6 +303,9 @@ namespace avt_341 {
 
     using Image = sensor_msgs::msg::Image;
     using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
+
+    using CameraInfo = sensor_msgs::msg::CameraInfo;
+    using CameraInfoPtr = sensor_msgs::msg::CameraInfo::ConstSharedPtr;
 
     using Imu = sensor_msgs::msg::Imu;
     using ImuPtr = sensor_msgs::msg::Imu::ConstSharedPtr;

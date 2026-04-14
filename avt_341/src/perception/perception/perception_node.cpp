@@ -10,7 +10,8 @@ double start_time = 0.0;
 float max_grid_width = 0.0f;
 float max_grid_height = 0.0f;
 double grid_pub_force_full_every_x_sec = 0.0;
-std::map<std::string, double> last_full_grid_update;
+std::map<std::string, double> occ_last_full_grid_update;
+std::map<std::string, double> seg_last_full_grid_update;
 
 std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr> occ_publisher;
 std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr> seg_publisher;
@@ -35,6 +36,12 @@ void PublishGrid(
 	) {
 
 	avt_341::msg::OccupancyGrid grid_msg;
+
+	std::map<std::string, double> & last_full_grid_update = is_segmentation ? seg_last_full_grid_update : occ_last_full_grid_update;
+
+	if (last_full_grid_update.find(target_layer) == last_full_grid_update.end()) {
+		last_full_grid_update[target_layer] = 0.0;
+	}
 
 	if (grid_pub_method == avt_341::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
@@ -200,6 +207,7 @@ int main(int argc, char* argv[]) {
 					PublishGrid(true, grid_pub_method, now_seconds, pub_layer, grid);
 				}
 			}
+			grid.ResetUpdateRegion();
 
 			// get the slope and RMS
 			avt_341::msg::Float64 rms_msg, slope_msg;
@@ -219,6 +227,8 @@ int main(int argc, char* argv[]) {
 
 		if (reset_called) {
 			n->log_info("Resetting node");
+			occ_last_full_grid_update.clear();
+			seg_last_full_grid_update.clear();
 			grid.Reset();
 			avt_341::msg::String reset_ack_msg;
 			reset_ack_msg.data = avt_341::node::NodeType::Perception;

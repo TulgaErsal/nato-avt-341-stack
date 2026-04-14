@@ -17,7 +17,11 @@ namespace avt_341::perception
 			const std::string& label
 		);
 
+		virtual ~CostmapLayer() = default;
+
 		bool HasSegmentation() const { return has_segmentation_; }
+		bool ContributeOccupancy() const { return contribute_occupancy_; }
+		bool ContributeSegmentation() const { return contribute_segmentation_; }
 
 		Cell& CellAt(const int x, const int y) { return cells_[y][x]; }
 
@@ -39,7 +43,7 @@ namespace avt_341::perception
 		virtual float Slope(const Cell& cell) const { return cell.height() / size_info_.res; }
 
 		virtual void Reset();
-		bool IsValid() const { return is_valid_; }
+		bool IsEnabled() const { return is_enabled_; }
 		bool HasData() const;
 		void Resize();
 		virtual void Clear();
@@ -62,7 +66,9 @@ namespace avt_341::perception
 		std::vector< std::vector<Cell> > cells_;
 		bool has_segmentation_ = false;
 		bool is_resetting_ = false;
-		bool is_valid_ = true;
+		bool is_enabled_ = true;
+		bool contribute_occupancy_ = true;
+		bool contribute_segmentation_ = true;
 
 		std::shared_ptr<node::NodeProxy> node_ref_;
 		CostmapSizeInfo size_info_;
