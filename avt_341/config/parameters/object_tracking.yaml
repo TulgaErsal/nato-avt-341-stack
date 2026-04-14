@@ -1,4 +1,5 @@
-camera_frame: "mrzr2/front_camera_rdf"
+camera_frame: "front_camera"
+frame_prefix: ""
 world_frame: "map"
 odometry_child_frame: "odom"
 tracking_rate: 10.0
