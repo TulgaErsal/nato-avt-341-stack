@@ -804,8 +804,9 @@ class ObjectTrackingNode : public rclcpp::Node {
      *         centroid is available. */
     bool has_tracked_target_ = false;
 
-    /** @brief Time stamp of the last valid detection message containing the
-     *         target. */
+    /** @brief Time stamp of the last valid measurement from any source
+     *         (camera or LiDAR). CheckTargetTimeout() fires after
+     *         target_timeout_ seconds without an update from either sensor. */
     rclcpp::Time last_valid_target_time_;
 
     void CheckTargetTimeout();
@@ -857,6 +858,33 @@ class ObjectTrackingNode : public rclcpp::Node {
      *         target position and an obstacle marker centroid for the marker
      *         to be considered a candidate for association. */
     double obstacle_association_max_dist_;
+
+    // ---------------------------------------------------------------------- //
+    // > LiDAR obstacle re-acquisition after brief drop-out
+    // ---------------------------------------------------------------------- //
+
+    /** @brief Last known world-frame position of the tracked obstacle.
+     *         Used to re-acquire the obstacle if the LiDAR briefly loses it
+     *         and reassigns it a new ID. */
+    Eigen::Vector3d last_lidar_world_pos_;
+
+    /** @brief Time at which the tracked obstacle was last successfully matched
+     *         in a LIDAR_ONLY tracking cycle. Used together with
+     *         lidar_reacquire_max_time_ to decide whether a nearby marker that
+     *         appeared after a drop-out belongs to the same physical object. */
+    rclcpp::Time last_lidar_seen_time_;
+
+    /** @brief Maximum elapsed time [s] since the tracked obstacle was last
+     *         seen during which a nearby marker is accepted as a re-acquisition
+     *         of the same obstacle (even if it carries a different ID).
+     *         Tunable via the lidar_reacquire_max_time parameter. */
+    double lidar_reacquire_max_time_;
+
+    /** @brief Maximum world-frame distance [m] between the last known obstacle
+     *         position and a candidate marker centroid for the marker to be
+     *         accepted as a re-acquisition of the same obstacle.
+     *         Tunable via the lidar_reacquire_max_dist parameter. */
+    double lidar_reacquire_max_dist_;
 };
 
 }  // namespace perception

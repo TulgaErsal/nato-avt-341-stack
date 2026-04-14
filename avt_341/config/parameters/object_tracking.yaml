@@ -35,6 +35,8 @@ tracker_timeout: 5.0
 # Obstacle detector integration
 obstacle_markers_topic: '/avt_341/lidar_detector/bboxes'      # MarkerArray topic from the LiDAR obstacle detector
 obstacle_association_max_dist: 5.0                             # max distance [m] to associate a marker with the camera detection
+lidar_reacquire_max_time: 0.5                                  # max elapsed time [s] to re-acquire a briefly lost obstacle by proximity
+lidar_reacquire_max_dist: 3.0                                  # max world-frame distance [m] for re-acquisition of a re-labeled obstacle
 sync_enable: true
 sync_use_callback: false
 sync_detection: 0.1

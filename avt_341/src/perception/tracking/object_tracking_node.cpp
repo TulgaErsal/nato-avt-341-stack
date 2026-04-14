@@ -247,6 +247,14 @@ void ObjectTrackingNode::GetParameters() {
     obstacle_association_max_dist_ =
         get_parameter("obstacle_association_max_dist").as_double();
 
+    declare_parameter("lidar_reacquire_max_time", 0.5);
+    lidar_reacquire_max_time_ =
+        get_parameter("lidar_reacquire_max_time").as_double();
+
+    declare_parameter("lidar_reacquire_max_dist", 3.0);
+    lidar_reacquire_max_dist_ =
+        get_parameter("lidar_reacquire_max_dist").as_double();
+
     declare_parameter("filters_manual_roi_size",
                       std::vector<double>{1.0, 1.0, 1.0});
     roi_bounding_box_3d_size_ = Eigen::Vector3d(
@@ -550,6 +558,12 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             has_had_first_lidar_measurement_ = true;
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
+            last_lidar_seen_time_ = last_valid_target_time_;
+            // Record world-frame position for re-acquisition after a brief
+            // drop-out: if the obstacle disappears and reappears with a new
+            // ID within lidar_reacquire_max_time_, we match it by proximity.
+            last_lidar_world_pos_ = TransformToCoordinates(
+                marker.header.frame_id, world_frame_, marker_pos);
             found = true;
 
             RCLCPP_INFO(get_logger(),
@@ -563,14 +577,87 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         }
 
         if (!found) {
-            RCLCPP_WARN(get_logger(),
-                        "LIDAR_ONLY: obstacle ID %d not present in latest "
-                        "markers; waiting for it to reappear.",
-                        tracked_obstacle_id_);
-            has_point_cloud_ = false;
-            has_detection_ = false;
-            CheckTargetTimeout();
-            return;
+            // The tracked obstacle is not in the latest markers.
+            // Before giving up, attempt re-acquisition: if the elapsed time
+            // since the obstacle was last seen is within lidar_reacquire_max_time_,
+            // search all current markers for one whose world-frame position is
+            // within lidar_reacquire_max_dist_ of the last known position.
+            // If found, adopt its ID — the LiDAR briefly lost the obstacle and
+            // reassigned a new ID when it reappeared.
+            const double elapsed_since_seen =
+                (get_clock()->now() - last_lidar_seen_time_).seconds();
+
+            if (elapsed_since_seen < lidar_reacquire_max_time_) {
+                int reacquire_id = -1;
+                double best_dist = lidar_reacquire_max_dist_;
+                Eigen::Vector3d best_cam_pos;
+                Eigen::Vector3d best_size;
+                Eigen::Quaterniond best_quat = Eigen::Quaterniond::Identity();
+
+                for (const auto& m : latest_obstacle_markers_.markers) {
+                    if (m.action == visualization_msgs::msg::Marker::DELETEALL)
+                        continue;
+                    if (m.id == tracked_obstacle_id_)
+                        continue;  // already checked above, not present
+                    const Eigen::Vector3d mpos(m.pose.position.x,
+                                               m.pose.position.y,
+                                               m.pose.position.z);
+                    const Eigen::Vector3d mpos_world = TransformToCoordinates(
+                        m.header.frame_id, world_frame_, mpos);
+                    const double d = (mpos_world - last_lidar_world_pos_).norm();
+                    if (d < best_dist) {
+                        best_dist = d;
+                        reacquire_id = m.id;
+                        best_cam_pos = TransformToCoordinates(
+                            m.header.frame_id, camera_frame_, mpos);
+                        best_size = Eigen::Vector3d(
+                            m.scale.x, m.scale.y, m.scale.z);
+                        best_quat = Eigen::Quaterniond(
+                            m.pose.orientation.w, m.pose.orientation.x,
+                            m.pose.orientation.y, m.pose.orientation.z);
+                    }
+                }
+
+                if (reacquire_id >= 0) {
+                    RCLCPP_INFO(get_logger(),
+                                "LIDAR_ONLY: re-acquired obstacle as new ID %d "
+                                "(was %d, %.2f m away, %.2f s gap).",
+                                reacquire_id, tracked_obstacle_id_,
+                                best_dist, elapsed_since_seen);
+                    tracked_obstacle_id_ = reacquire_id;
+                    bounding_box_centroid_ = best_cam_pos;
+                    centroid_in_cloud_frame_ = false;
+                    bounding_box_size_ = best_size;
+                    object_size_ = best_size;
+                    bounding_box_orientation_ = best_quat;
+                    has_new_measurement_ = true;
+                    has_had_first_lidar_measurement_ = true;
+                    has_tracked_target_ = true;
+                    last_valid_target_time_ = get_clock()->now();
+                    last_lidar_seen_time_ = last_valid_target_time_;
+                    last_lidar_world_pos_ = TransformToCoordinates(
+                        camera_frame_, world_frame_, best_cam_pos);
+                    // Skip further processing — measurement is ready.
+                } else {
+                    RCLCPP_WARN(get_logger(),
+                                "LIDAR_ONLY: obstacle ID %d not present in latest "
+                                "markers; waiting for it to reappear (%.2f s elapsed).",
+                                tracked_obstacle_id_, elapsed_since_seen);
+                    has_point_cloud_ = false;
+                    has_detection_ = false;
+                    CheckTargetTimeout();
+                    return;
+                }
+            } else {
+                RCLCPP_WARN(get_logger(),
+                            "LIDAR_ONLY: obstacle ID %d not present in latest "
+                            "markers; waiting for it to reappear.",
+                            tracked_obstacle_id_);
+                has_point_cloud_ = false;
+                has_detection_ = false;
+                CheckTargetTimeout();
+                return;
+            }
         }
 
     } else if (state_ == TrackerState::FULL_TRACKING) {
@@ -698,6 +785,9 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         has_had_first_lidar_measurement_ = true;
         has_tracked_target_ = true;
         last_valid_target_time_ = get_clock()->now();
+        last_lidar_seen_time_ = last_valid_target_time_;
+        last_lidar_world_pos_ = TransformToCoordinates(
+            camera_frame_, world_frame_, best_pos_cam);
 
         RCLCPP_INFO(get_logger(),
                     "FULL_TRACKING: associated obstacle ID %d "
@@ -724,6 +814,10 @@ void ObjectTrackingNode::TrackingTimerCallback() {
 }
 
 void ObjectTrackingNode::CheckTargetTimeout() {
+    // Timeout fires only when neither camera nor LiDAR has produced a valid
+    // measurement for longer than target_timeout_. last_valid_target_time_ is
+    // updated by any valid measurement from either source, so this correctly
+    // keeps the tracker alive as long as at least one sensor sees the target.
     if ((get_clock()->now() - last_valid_target_time_).seconds() >
         target_timeout_) {
         RCLCPP_WARN(get_logger(), "Tracker timeout reached.");
@@ -1589,6 +1683,8 @@ void ObjectTrackingNode::Initialize() {
 
     tracked_obstacle_id_ = -1;
     has_obstacle_markers_ = false;
+    last_lidar_world_pos_ = Eigen::Vector3d::Zero();
+    last_lidar_seen_time_ = get_clock()->now();
 
     last_valid_detection_time_ = get_clock()->now();
     last_valid_target_time_ = get_clock()->now();
