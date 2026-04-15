@@ -29,7 +29,7 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
 
   // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>
   // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>,<priority>
-  // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>,<x_scale>,<y_scale>,<x_offset>,<y_offset>,<distance>,<termination_method>,<priority>
+  // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>,<x_scale>,<y_scale>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<termination_method>,<priority>
   if(message.type == MissionMsgType::Formation) {
     message.formation = tokens[3];
     message.leader_name = tokens[4];
@@ -43,6 +43,7 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.x_offset = 0.0;
     message.y_offset = 0.0;
     message.distance = 0.0;
+    message.yaw_threshold = -1.0;
 
     if(tokens.size() == 11) {
       message.priority_type = tokens[10];
@@ -52,8 +53,9 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
       message.x_offset = std::stod(tokens[12]);
       message.y_offset = std::stod(tokens[13]);
       message.distance = std::stod(tokens[14]);
-      message.termination_method = tokens[15];
-      message.priority_type = tokens[16];
+      message.yaw_threshold = std::stod(tokens[15]);
+      message.termination_method = tokens[16];
+      message.priority_type = tokens[17];
     }
   }
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
@@ -70,7 +72,8 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.receiver_name = tokens[3];
     message.target_msg_id = atoi(tokens[4].c_str());
   }
-    // <sender>,<msg_id>,MOVETO,<receiver>,<objective>
+    // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<priority>
+    // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>
   else if(message.type == MissionMsgType::MoveTo) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
@@ -83,7 +86,8 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
       message.x_offset = std::stod(tokens[5]);
       message.y_offset = std::stod(tokens[6]);
       message.distance = std::stod(tokens[7]);
-      message.priority_type = tokens[8];
+      message.yaw_threshold = std::stod(tokens[8]);
+      message.priority_type = tokens[9];
     }
   }
     // <sender>,<msg_id>,SHUTDOWN,<receiver>
@@ -120,11 +124,12 @@ std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
   std::ostringstream stream;
   stream << msg.sender_name << "," << msg.msg_id << "," << msg.type;
 
-  // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>,<x_scale>,<y_scale>,<x_offset>,<y_offset>,<distance>,<termination_method>,<priority>
+  // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>,<x_scale>,<y_scale>,<x_offset>,<y_offset>,<distance>,<msg.yaw_threshold>,<termination_method>,<priority>
   if(msg.type == MissionMsgType::Formation) {
     stream << "," << msg.formation << "," << msg.leader_name << "," << msg.follower1_name << "," << msg.follower2_name
-    << "," << msg.follower3_name << "," << msg.objective_name << "," << msg.desired_speed << "," << msg.x_scale << ","
-    << msg.y_scale << "," << msg.x_offset << "," << msg.y_offset << "," << msg.distance << "," << msg.termination_method << "," << msg.priority_type;
+    << "," << msg.follower3_name << "," << msg.objective_name << "," << msg.desired_speed << "," << msg.x_scale
+    << "," << msg.y_scale << "," << msg.x_offset << "," << msg.y_offset << "," << msg.distance << "," << msg.yaw_threshold
+    << "," << msg.termination_method << "," << msg.priority_type;
   }
   // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
   else if(msg.type == MissionMsgType::Acknowledge) {
@@ -138,9 +143,10 @@ std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
   else if(msg.type == MissionMsgType::TaskComplete) {
     stream << "," << msg.receiver_name << "," << msg.target_msg_id;
   }
-  // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<priority>
+  // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>
   else if(msg.type == MissionMsgType::MoveTo) {
-    stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.x_offset << "," << msg.y_offset << "," << msg.distance << "," << msg.priority_type;
+    stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.x_offset << "," << msg.y_offset
+    << "," << msg.distance << "," << msg.yaw_threshold << "," << msg.priority_type;
   }
   // <sender>,<msg_id>,SHUTDOWN,<receiver>,<priority>
   else if(msg.type == MissionMsgType::Shutdown) {

@@ -50,21 +50,22 @@ MoveToMsg::MoveToMsg() : MissionManagerDto() {}
 
 MoveToMsg::MoveToMsg(const avt_341::msg::Communication &msg)
   : MissionManagerDto(msg), objective_name(msg.objective_name), goal_x_offset(msg.x_offset), goal_y_offset(msg.y_offset),
-    approach_distance(msg.distance) {
+    yaw_threshold(msg.yaw_threshold), dist_threshold(msg.distance) {
 }
 
 MoveToMsg::MoveToMsg(const std::string &sender, int msgId, const std::string &recipient,
-                     const std::string &objectiveName, double xOffset, double yOffset, double distance,
-                     const std::string &priority)
+                     const std::string &objectiveName, double xOffset, double yOffset, double dist_threshold,
+                     double yaw_threshold, const std::string &priority)
     : MissionManagerDto(sender, msgId, recipient, priority), objective_name(objectiveName), goal_x_offset(xOffset),
-      goal_y_offset(yOffset), approach_distance(distance) {}
+      goal_y_offset(yOffset), yaw_threshold(yaw_threshold), dist_threshold(dist_threshold) {}
 
 avt_341::msg::Communication MoveToMsg::toROSMsg() {
   avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.objective_name = objective_name;
   msg.x_offset = goal_x_offset;
   msg.y_scale = goal_y_offset;
-  msg.distance = approach_distance;
+  msg.distance = dist_threshold;
+  msg.yaw_threshold = yaw_threshold;
   return msg;
 }
 
@@ -109,10 +110,10 @@ FormationMsg::FormationMsg(const avt_341::msg::Communication &msg)
 
 FormationMsg::FormationMsg(const std::string &sender, int msgId, const std::string & recipient,
   const std::string &objectiveName, const std::string &formation, double desiredSpeed,
-  double xOffset, double yOffset, double distance,
+  double xOffset, double yOffset, double distance, double yaw_threshold,
   double xScale, double yScale, const std::string & terminationMethod,
   const std::string &priority)
-  : MoveToMsg(sender, msgId, recipient, objectiveName, xOffset, yOffset, distance, priority),
+  : MoveToMsg(sender, msgId, recipient, objectiveName, xOffset, yOffset, distance, yaw_threshold, priority),
   formation(formation), desired_speed(desiredSpeed),
   x_scale(xScale), y_scale(yScale), termination_method(terminationMethod)
 {
@@ -134,7 +135,7 @@ avt_341::msg::Communication FormationMsg::toROSMsg(){
   msg.y_scale = y_scale;
   msg.x_offset = goal_x_offset;
   msg.y_offset = goal_y_offset;
-  msg.distance = approach_distance;
+  msg.distance = dist_threshold;
 
   return msg;
 }
