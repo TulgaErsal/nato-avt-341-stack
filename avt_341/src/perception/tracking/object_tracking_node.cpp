@@ -176,8 +176,8 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_imm_nm_init_prob", 0.33);
     imm_nm_init_prob_ = get_parameter("filters_imm_nm_init_prob").as_double();
 
-    declare_parameter("filters_imm_transition_prob", 0.9);
-    imm_transition_prob_ = get_parameter("filters_imm_transition_prob").as_double();
+    declare_parameter("filters_imm_persistence_prob", 0.9);
+    imm_persistence_prob_ = get_parameter("filters_imm_persistence_prob").as_double();
 
     declare_parameter("filters_use_pca_centroid", false);
     use_pca_centroid_ = get_parameter("filters_use_pca_centroid").as_bool();
@@ -1675,7 +1675,7 @@ void ObjectTrackingNode::Initialize() {
         imm_cv_init_prob_,
         imm_ctr_init_prob_,
         imm_nm_init_prob_,
-        imm_transition_prob_);
+        imm_persistence_prob_);
     filter_->SetInitialPosition(Eigen::Vector3d::Zero());
 
     has_target_selection_ = (use_autostart_) ? true : false;

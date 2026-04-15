@@ -477,7 +477,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     double imm_nm_init_prob_;
 
     /** @brief IMM: diagonal entry of the Markov model-transition matrix. */
-    double imm_transition_prob_;
+    double imm_persistence_prob_;
 
     rclcpp::TimerBase::SharedPtr estimator_timer_;
 

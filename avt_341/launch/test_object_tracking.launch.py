@@ -68,7 +68,7 @@ def launch_setup(context, *args, **kwargs):
                 'filters_imm_cv_init_prob': 0.33,
                 'filters_imm_ctr_init_prob': 0.33,
                 'filters_imm_nm_init_prob': 0.33,
-                'filters_imm_transition_prob': 0.9,
+                'filters_imm_persistence_prob': 0.9,
                 'sync_enable': False,
                 'sync_detection': 0.1,
                 'sync_use_callback': True,

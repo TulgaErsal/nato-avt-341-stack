@@ -73,7 +73,7 @@ class IMMFilter {
      * @param cv_init_prob         Initial probability for the CV model.
      * @param ctr_init_prob        Initial probability for the CTR model.
      * @param nm_init_prob         Initial probability for the NM model.
-     * @param transition_prob      Diagonal entry of the Markov transition matrix
+     * @param persistence_prob      Diagonal entry of the Markov transition matrix
      *                             (probability of staying in the same model).
      */
     IMMFilter(const double dt,
@@ -82,7 +82,7 @@ class IMMFilter {
               const double cv_init_prob    = 0.33,
               const double ctr_init_prob   = 0.33,
               const double nm_init_prob    = 0.33,
-              const double transition_prob = 0.9)
+              const double persistence_prob = 0.9)
         : cv_ (dt, process_variance, measurement_variance),
           ctr_(dt, process_variance, measurement_variance),
           nm_ (dt, process_variance, measurement_variance),
@@ -93,7 +93,7 @@ class IMMFilter {
         mu_[1] = ctr_init_prob  / sum;
         mu_[2] = nm_init_prob   / sum;
 
-        const double p_stay   = std::max(0.01, std::min(0.99, transition_prob));
+        const double p_stay   = std::max(0.01, std::min(0.99, persistence_prob));
         const double p_switch = (1.0 - p_stay) / (kNumModels - 1);
         for (int i = 0; i < kNumModels; ++i)
             for (int j = 0; j < kNumModels; ++j)
