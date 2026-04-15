@@ -683,9 +683,9 @@ void ObjectTrackingNode::TrackingTimerCallback() {
 
         // Detection bounding-box center in pixel coordinates.
         const double det_u =
-            detections_message_.detections[0].bbox.center.position.x;
+            detections_message_.bbox.center.position.x;
         const double det_v =
-            detections_message_.detections[0].bbox.center.position.y;
+            detections_message_.bbox.center.position.y;
 
         // Maximum allowed pixel distance: the half-diagonal of the detection
         // bounding box, scaled by obstacle_association_max_dist_. Using
@@ -693,10 +693,10 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         // must land within one half-diagonal of the bbox center. Increase it
         // to be more permissive.
         const double bbox_half_diag = 0.5 * std::sqrt(
-            detections_message_.detections[0].bbox.size_x *
-            detections_message_.detections[0].bbox.size_x +
-            detections_message_.detections[0].bbox.size_y *
-            detections_message_.detections[0].bbox.size_y);
+            detections_message_.bbox.size_x *
+            detections_message_.bbox.size_x +
+            detections_message_.bbox.size_y *
+            detections_message_.bbox.size_y);
         const double max_pixel_dist =
             obstacle_association_max_dist_ * bbox_half_diag;
 
