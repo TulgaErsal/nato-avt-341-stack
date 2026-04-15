@@ -26,6 +26,7 @@
 #include <utility>
 
 using avt_341::utils::NavStackState;
+using avt_341::utils::IsGoalReached;
 
 #ifdef Bool
 #undef Bool // Fix conflicting definition in Xlib.h
@@ -50,9 +51,13 @@ bool use_segmentation = false;
 avt_341::msg::NavState state;
 int current_waypoint = 0;
 bool reset_called = false;
-float default_goal_threshold = 0.0f;
+
+double dft_dist_threshold = 0.0f;
+double dft_yaw_threshold = 30.0f;
+
 double goal_start_time = 0.0;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavState>> state_pub = nullptr;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavState>> goal_reached_pub = nullptr;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -79,9 +84,13 @@ void WaypointCallback(avt_341::msg::NavGoalSequencePtr rcv_waypoints)
   auto nav_goals_in = *rcv_waypoints;
   for (auto & nav_goal : nav_goals_in.goals)
   {
-    if (nav_goal.threshold < 0.0)
+    if (nav_goal.dist_threshold < 0.0)
     {
-      nav_goal.threshold = default_goal_threshold;
+      nav_goal.dist_threshold = dft_dist_threshold;
+    }
+    if (nav_goal.yaw_threshold < 0.0)
+    {
+      nav_goal.yaw_threshold = dft_yaw_threshold;
     }
   }
   nav_goals = nav_goals_in;
@@ -90,14 +99,39 @@ void WaypointCallback(avt_341::msg::NavGoalSequencePtr rcv_waypoints)
     if (nav_goals.goals.empty()) {
       n->log_info("Empty waypoint sequence received!");
     }else {
-      n->log_info("%d waypoint(s) received! %.2f, %.2f @ %.2f",
+      n->log_info("%d waypoint(s) received! %.2f, %.2f @ (dist=%.2f, yaw=%.2f)",
                   nav_goals.goals.size(),
                   nav_goals.goals[0].pose.position.x,
                   nav_goals.goals[0].pose.position.y,
-                  nav_goals.goals[0].threshold
+                  nav_goals.goals[0].dist_threshold,
+                  nav_goals.goals[0].yaw_threshold
                   );
     }
   }
+}
+
+void PublishGoalReached(const avt_341::msg::NavState& msg)
+{
+  if (avt_341::utils::UseGoalOrientation(msg.goal))
+  {
+    n->log_info("Goal reached (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f) after %.2f seconds",
+        msg.goal.pose.position.x,
+        msg.goal.pose.position.y,
+        avt_341::utils::GetHeadingFromOrientation(msg.goal.pose.orientation)/M_PI*180.0,
+        msg.goal.dist_threshold,
+        msg.goal.yaw_threshold/M_PI*180.0,
+        msg.goal_duration);
+  }
+  else
+  {
+    n->log_info("Goal reached (%.2f, %.2f) @ threshold (dist=%.2f) after %.2f seconds",
+        msg.goal.pose.position.x,
+        msg.goal.pose.position.y,
+        msg.goal.dist_threshold,
+        msg.goal_duration);
+  }
+
+  goal_reached_pub->publish(msg);
 }
 
 void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle)
@@ -118,10 +152,14 @@ void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand)
 // Needs to remain PoseStamped to support RVIZ goal
 void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
 {
-  const auto nav_goal = ToNavGoal(*rcv_goal_pose, default_goal_threshold);
-  if (verbose_gp_log) {
-    n->log_info("Setting goal (%.2f, %.2f) @ %.2f", nav_goal.pose.position.x, nav_goal.pose.position.y, nav_goal.threshold);
-  }
+  const auto nav_goal = ToNavGoal(*rcv_goal_pose, dft_dist_threshold, dft_yaw_threshold);
+  n->log_info("Setting goal (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f)",
+    nav_goal.pose.position.x,
+    nav_goal.pose.position.y,
+    avt_341::utils::GetHeadingFromOrientation(nav_goal.pose.orientation)/M_PI*180.0,
+    nav_goal.dist_threshold,
+    nav_goal.yaw_threshold/M_PI*180.0
+    );
   nav_goals.goals.clear();
   nav_goals.goals.push_back(nav_goal);
   waypoints_rcvd = true;
@@ -156,11 +194,15 @@ void UpdateGoalState(const avt_341::msg::NavGoal& goal)
       goal_start_time = t_now;
     }
     state.goal = goal;
-    state.goal_distance = avt_341::utils::GetDistance(goal.pose.position, odom.pose.pose.position);
+    double dist_diff, yaw_diff;
+    avt_341::utils::GetGoalError(odom.pose.pose, goal, dist_diff, yaw_diff);
+    state.goal_distance = dist_diff;
+    state.goal_yaw_difference = yaw_diff;
     state.goal_duration = t_now - goal_start_time;
   }else {
     state.goal = avt_341::msg::NavGoal();
     state.goal_distance = 0.0;
+    state.goal_yaw_difference = 0.0;
     state.goal_duration = 0.0;
   }
 }
@@ -193,11 +235,13 @@ int main(int argc, char* argv[])
   std::string map_topic, seg_topic;
   std::string planning_method, clearance_penalty_type, path_extraction_method;
 
-  n->get_parameter("~goal_dist", default_goal_threshold, 3.0f);
+  n->get_parameter("~goal_dist", dft_dist_threshold, 3.0);
+  n->get_parameter("~goal_yaw_threshold", dft_yaw_threshold, 30.0);
   n->get_parameter("~display", display_type, avt_341::visualization::default_display);
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
   n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
+  dft_yaw_threshold *= M_PI / 180.0;
 
   // TODO: Would like to get rid of these, name if confusing and just does coordinate transform which should be done by ROS2 tf system using frame ids
   // TODO: Or Maybe encode them in file with waypoints?
@@ -238,8 +282,8 @@ int main(int argc, char* argv[])
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
   }
 
-  int shutdown_behavior = NavStackState::Stopped;
-  n->get_parameter("~shutdown_behavior", shutdown_behavior, shutdown_behavior);
+  int shutdown_behavior;
+  n->get_parameter("~shutdown_behavior", shutdown_behavior, static_cast<int>(NavStackState::Stopped));
   if (shutdown_behavior > 3 || shutdown_behavior < 1)shutdown_behavior = 1;
 
   n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s\n clipping_distance: %.2f",
@@ -247,7 +291,7 @@ int main(int argc, char* argv[])
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 1);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
-  auto goal_reached_pub = n->create_publisher<avt_341::msg::NavState>("avt_341/goal_reached", 10);
+  goal_reached_pub = n->create_publisher<avt_341::msg::NavState>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = avt_341::node::OccupancyGridSubscriber(n, map_topic, 10, MapCallback);
@@ -267,7 +311,7 @@ int main(int argc, char* argv[])
 
   // Initialize current waypoints with the data from the waypoint yaml params
   const auto map_origin = Point{static_cast<float>(local_origin_x), static_cast<float>(local_origin_y)};
-  nav_goals = ToNavGoalSequence(waypoints_x_list, waypoints_y_list, map_origin, default_goal_threshold, "map");
+  nav_goals = ToNavGoalSequence(waypoints_x_list, waypoints_y_list, map_origin, dft_dist_threshold, dft_yaw_threshold, "map");
 
   if (!nav_goals.goals.empty()) {
     UpdateGoalState(nav_goals.goals[0]);
@@ -387,7 +431,8 @@ int main(int argc, char* argv[])
         current_waypoint = 0;
         if (verbose_gp_log) {
           const auto goal = GetCurrentGoal();
-          n->log_info("New waypoints! Updated goal %.2f, %.2f @ %.2f", goal.pose.position.x, goal.pose.position.y, goal.threshold);
+          n->log_info("New waypoints! Updated goal %.2f, %.2f @ (dist=%.2f, yaw=%.2f)",
+            goal.pose.position.x, goal.pose.position.y, goal.dist_threshold, goal.yaw_threshold);
         }
         waypoints_rcvd = false;
         shutdown_condition = false;
@@ -435,7 +480,7 @@ int main(int argc, char* argv[])
         // ctg 8/19/21
         // if not on the last waypoint, add a straight path to the next waypoint to the global path
         // this helps the local planner make smooth transitions between waypoints
-        if (state.goal_distance < goal.threshold || ros_path.poses.size() > 1) {
+        if (IsGoalReached(state, goal) || ros_path.poses.size() > 1) {
           int cp = current_waypoint;
           while (cp < nav_goals.goals.size() - 1) {
             avt_341::utils::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
@@ -498,11 +543,11 @@ int main(int argc, char* argv[])
         }
         if (current_waypoint == nav_goals.goals.size() - 1) {  // last waypoint
           //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
-          if (state.goal_distance < goal.threshold || shutdown_condition) {   // reached the goal
+          if (IsGoalReached(state, goal) || shutdown_condition) {   // reached the goal
             // send arrival notification
 
             if (state.run_state == NavStackState::Active) {
-              goal_reached_pub->publish(state);
+              PublishGoalReached(state);
             }
 
             shutdown_condition = true;
@@ -518,8 +563,8 @@ int main(int argc, char* argv[])
             }
           }
         } else {     // intermediate waypoint
-          if (state.goal_distance < goal.threshold ) {   // reached the waypoint
-            goal_reached_pub->publish(state);
+          if (IsGoalReached(state, goal)) {   // reached the waypoint
+            PublishGoalReached(state);
             current_waypoint++;
           }
           if (state.run_state != NavStackState::Active) {

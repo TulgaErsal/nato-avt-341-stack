@@ -1,6 +1,7 @@
 # Global Parameters
 # ======================================================================================================================
 goal_dist: 10.0                               # Lookahead threshold within which next waypoint selected.
+goal_yaw_threshold: 30.0                      # Goal reached yaw threshold (in degrees) when use_orientation is set on goal.
 global_lookahead: 75.0                        # Global path lookahead
 debug_visualize: True                         # Enables debug visualization of global planner.
 w_distance: 1.0                               # Weight for distance cost.
