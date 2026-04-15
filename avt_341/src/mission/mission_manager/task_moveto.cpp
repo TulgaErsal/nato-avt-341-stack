@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <avt_341/core/dto_conversion.h>
 
 #include "avt_341/mission/task.h"
 #include "avt_341/avt_341_utils.h"
@@ -18,8 +19,8 @@ const std::string MoveTo::ACTOR = "ACTOR";
 
 // MoveTo
 MoveTo::MoveTo(MissionManager* manager, const std::string & sender, int id, FormationDefinition* formation_def,
-               double x_offset, double y_offset, double d_approach, double desired_speed)
-: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), d_approach_(d_approach) {
+               double x_offset, double y_offset, double goal_threshold, double desired_speed)
+: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), goal_threshold_(goal_threshold > 0.0 ? goal_threshold : -1.0) {
     setGoalInternal(avt_341::msg::PoseStamped(), "", MoveTo::NONE);
     terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
     task_speed = desired_speed;
@@ -67,33 +68,18 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
     }
 }
 
-void MoveTo::applyApproachDistance(){
-  if(d_approach_ > 0.0){
-    avt_341::msg::Pose current_pose = mgr->odometry.pose.pose;
-    auto unit_vect = avt_341::utils::vec2(goal.pose.position.x - current_pose.position.x, goal.pose.position.y - current_pose.position.y);
-    unit_vect.normalize();
-    target_pose.pose.position.x = goal.pose.position.x - unit_vect.x*d_approach_;
-    target_pose.pose.position.y = goal.pose.position.y - unit_vect.y*d_approach_;
-  }
-
-}
-
 void MoveTo::init_() {
     target_pose = goal;
 
-    applyApproachDistance();
-    mgr->publishGoal(target_pose);
+    mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_));
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 }
 
 void MoveTo::run() {
-  // Need to recalculate if approach distance set or keep publishing to gp if did not receive callback yet
-  if(d_approach_ > 0.0){
-    applyApproachDistance();
-    mgr->publishGoal(target_pose);
-  }else if (PosePlanarDistance(mgr->current_gp_goal.pose.position, target_pose.pose.position) > 1.0){
-    mgr->publishGoal(target_pose);
+  // Keep publishing to gp if did not receive callback yet
+  if (PosePlanarDistance(mgr->current_gp_goal.pose.position, target_pose.pose.position) > 1.0){
+    mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_));
   }
   // Nothing to do per timestep but wait for goal to be reached
 }
@@ -118,7 +104,7 @@ void MoveTo::onPreempt(){
 
 std::string MoveTo::description() const {
   std::ostringstream stream;
-  stream << "ID " << msg_id << " MOVE_TO: " << goal_type << " " << name << " (" << goal.pose.position.x << "," << goal.pose.position.y << ") " << "off=(" << x_offset_ << "," << y_offset_ << ")" << " d=" << d_approach_;
+  stream << "ID " << msg_id << " MOVE_TO: " << goal_type << " " << name << " (" << goal.pose.position.x << "," << goal.pose.position.y << ") " << "off=(" << x_offset_ << "," << y_offset_ << ")" << " d=" << goal_threshold_;
   return stream.str();
 }
 

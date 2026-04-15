@@ -95,7 +95,7 @@ class MissionManager{
     void postUpdateTasks();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(const avt_341::msg::Path& path);
-    void publishGoal(const avt_341::msg::PoseStamped & target_pose);
+    void publishGoal(const msg::NavGoal & goal_in);
     void publishGoalPath(const avt_341::msg::Path& path);
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
@@ -132,7 +132,7 @@ class MissionManager{
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
 
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> waypoint_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavGoalSequence>> waypoint_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> reset_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> gp_path_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;

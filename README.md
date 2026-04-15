@@ -21,11 +21,11 @@ __Documentation:__
 
 __Tests Results:__ 
 
-| Report Link                                                                                           | Status                                                                              |
-|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| [Unit Tests](https://d1nxz9z3nv7fn1.cloudfront.net/test_results/avt_341/avt_341_unit_tests.gtest.xml) | ![Unit Tests Badge](https://img.shields.io/badge/Unit_Tests-None-black)             |
-| [Bag Replay Tests](https://github.com/TulgaErsal/nato-avt-341-stack)                                  | ![Bag Replay Tests Badge](https://img.shields.io/badge/Bag_Replay_Tests-None-black) |
-| [Simulation Tests](https://d2h0xo5vmhaxdp.cloudfront.net)                                             | ![Simulatin Tests Badge](https://d2h0xo5vmhaxdp.cloudfront.net/api/latest_status)   |
+| Report Link                                                                        | Status                                                                              |
+|------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [Unit Tests](https://d1nxz9z3nv7fn1.cloudfront.net/test_results/test_results.html) | ![Unit Tests Badge](https://d1nxz9z3nv7fn1.cloudfront.net/unit_test_badge.svg)             |
+| [Bag Replay Tests](https://github.com/TulgaErsal/nato-avt-341-stack)               | ![Bag Replay Tests Badge](https://img.shields.io/badge/Bag_Replay_Tests-None-black) |
+| [Simulation Tests](https://d2h0xo5vmhaxdp.cloudfront.net)                          | ![Simulatin Tests Badge](https://d2h0xo5vmhaxdp.cloudfront.net/api/latest_status)   |
 
 ## Acknowledgements
 

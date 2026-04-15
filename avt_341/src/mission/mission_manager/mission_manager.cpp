@@ -2,6 +2,7 @@
 #include "avt_341/mission/mission_manager.h"
 #include <fstream>
 #include <sstream>
+#include <avt_341/core/dto_conversion.h>
 
 namespace avt_341 {
 namespace mission {
@@ -26,7 +27,7 @@ MissionManager::MissionManager(
     node_proxy_->get_parameter("/map_origin_x", local_origin_x, 0.0);
     node_proxy_->get_parameter("/map_origin_y", local_origin_y, 0.0);
 
-    waypoint_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/new_waypoints", 10);
+    waypoint_pub = node_proxy_->create_publisher<avt_341::msg::NavGoalSequence>("avt_341/new_waypoints", 10);
     reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
     gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
     navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
@@ -188,25 +189,23 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     return true;
 }
 
-void MissionManager::publishGoal(const avt_341::msg::PoseStamped & target_pose){
+void MissionManager::publishGoal(const msg::NavGoal & goal_in){
 
-    avt_341::msg::PoseStamped target_pose_msg = target_pose;
+    msg::NavGoal goal = goal_in;
+    goal.header.stamp = node_proxy_->get_stamp();
+    goal.header.frame_id = "map";
 
     Task* current_task = currentTask();
     if (current_task != nullptr
         && current_task->hasFormation() && current_task->getFormationDef()->isFollowing()) {
 
-        target_pose_msg.pose = goal_filter_->Filter(
-            target_pose.pose,
-            leader_odometry.pose.pose);
+        goal.pose = goal_filter_->Filter(goal.pose, leader_odometry.pose.pose);
     }
 
-    avt_341::msg::Path goal_msg;
-    goal_msg.poses.clear();
-    goal_msg.poses.push_back(target_pose_msg);
-    goal_msg.header.stamp = node_proxy_->get_stamp();
-    goal_msg.header.frame_id = "map";
-    waypoint_pub->publish(goal_msg);
+    msg::NavGoalSequence goal_seq_msg;
+    goal_seq_msg.header = goal.header;
+    goal_seq_msg.goals = {goal};
+    waypoint_pub->publish(goal_seq_msg);
 }
 
 void MissionManager::publishGoalPath(const avt_341::msg::Path& path) {
@@ -214,7 +213,7 @@ void MissionManager::publishGoalPath(const avt_341::msg::Path& path) {
     path_msg.header.stamp = node_proxy_->get_stamp();
     path_msg.header.frame_id = "map";
     path_msg.poses = path.poses;
-    waypoint_pub->publish(path_msg);
+    waypoint_pub->publish(core::ToNavGoalSequence(path_msg));
 }
 
 void MissionManager::publishPath(const avt_341::msg::Path& path){

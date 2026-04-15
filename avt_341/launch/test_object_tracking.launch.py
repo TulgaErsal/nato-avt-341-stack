@@ -41,7 +41,7 @@ def launch_setup(context, *args, **kwargs):
                 'filters_pose': True,
                 'filters_odometry': True,
                 'tracker_use_mission_manager': False,
-                'tracker_use_pca_centroid': True,
+                'filters_use_pca_centroid': True,
                 'tracker_target_class': '0',
                 'filters_use_manual_roi': True,
                 'filters_downsampling_leaf_size': 0.25,
@@ -49,8 +49,18 @@ def launch_setup(context, *args, **kwargs):
                 'filters_clustering_size_minimum': 30,
                 'filters_clustering_size_maximum': 500,
                 'filters_manual_roi_size': [5.0, 5.0, 5.0],
-                'filters_kalman_process': 0.1,
-                'filters_kalman_measurement': 0.001,
+                'filters_kalman_process': 0.01,
+                'filters_kalman_measurement': 0.1,
+                # Camera-based range estimation parameters
+                'camera_target_height': 5.0,
+                'camera_bbox_pixel_sigma': 4.0,
+                # IMM model probabilities and Markov transition probability
+                # CV model is preferred for straight-line driving; CTR kicks
+                # in when the likelihood of turning becomes higher.
+                'filters_imm_cv_init_prob': 0.33,
+                'filters_imm_ctr_init_prob': 0.33,
+                'filters_imm_nm_init_prob': 0.33,
+                'filters_imm_transition_prob': 0.9,
                 'world_frame': 'map',
                 'sync_enable': False,
                 'sync_detection': 0.1,
@@ -130,7 +140,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('bag_file', description='Path to the rosbag directory or file'),
         DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'avt_341_ros2.rviz')),
-        DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'mrzr_tracking.yaml')),
+        DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'config', 'parameters', 'object_tracking.yaml')),
         DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
         DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),
         OpaqueFunction(function=launch_setup)

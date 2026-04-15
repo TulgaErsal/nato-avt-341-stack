@@ -15,6 +15,8 @@
 #include <iostream>
 #include <numeric> // for std::accumulate
 
+// TODO: Refactor to dto.h and utils.h under core
+
 namespace avt_341 {
 namespace utils {
 
@@ -31,6 +33,7 @@ enum NavStateCmd : int {
   GoActive = 1
 };
 
+// TODO: Just use Eigen? If not, rename in future, should also be pascal case.
 struct vec2{
 	vec2(){
 		x = 0.0f;
@@ -136,6 +139,13 @@ inline float cross(vec2 v1, vec2 v2) {
 	return v1.x*v2.y - v1.y*v2.x;
 }
 
+inline double GetDistance(msg::Point p1, msg::Point p2)
+{
+	const double dx = p1.x - p2.x;
+	const double dy = p1.y - p2.y;
+	return sqrt(dx*dx + dy*dy);
+}
+
 inline float PointLineDistance(vec2 x1, vec2 x2, vec2 x0) {
 	float sx1 = x0.x - x1.x;
 	float sy1 = x0.y - x1.y;
@@ -170,18 +180,6 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 	return d0;
 }
 
-inline avt_341::msg::Pose TransformToPose(const avt_341::msg::Transform & tx) {
-	avt_341::msg::Pose pose_msg;
-
-	pose_msg.position.x = tx.translation.x;
-	pose_msg.position.y = tx.translation.y;
-	pose_msg.position.z = tx.translation.z;
-
-	pose_msg.orientation = tx.rotation;
-
-	return pose_msg;
-}
-
 inline float GetHeadingFromOrientation(avt_341::msg::Quaternion orientation){
     avt_341::msg_tf::Quaternion q(
         orientation.x,
@@ -201,6 +199,59 @@ inline std::string ToString(int x, int zero_padding){
   std::string str = ss.str();
   return str;
 };
+
+/// Ray-casting point-in-polygon test (works for non-convex polygons).
+/// https://en.wikipedia.org/wiki/Point_in_polygon
+inline bool IsInsidePolygon(const std::vector<vec2>& poly, double px, double py)
+{
+	bool inside = false;
+	const int n = static_cast<int>(poly.size());
+	for (int i = 0, j = n - 1; i < n; j = i++) {
+		const double xi = poly[i].x, yi = poly[i].y;
+		const double xj = poly[j].x, yj = poly[j].y;
+		if (((yi > py) != (yj > py)) &&
+			(px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+			inside = !inside;
+			}
+	}
+	return inside;
+}
+
+/**
+ * @brief Trims the input string, removing all leading and trailing characters that match
+ * the specified character (default is space).
+ *
+ * @param str String to be trimmed.
+ * @param char_to_remove Character to remove.
+ * @return Trimmed string.
+ */
+inline std::string Trim(const std::string& str, const char char_to_remove = ' ')
+{
+    const auto start = str.find_first_not_of(char_to_remove);
+    if (start == std::string::npos) return "";
+    const auto end = str.find_last_not_of(char_to_remove);
+    return str.substr(start, end - start + 1);
+}
+
+/**
+ * @brief Split a string with a specified delimiter.
+ *
+ * @param str String to be split.
+ * @param delimiter Delimiter character used to split the string.
+ * @param trim_whitespace If set, trims whitespaces from split substrings.
+ * @return std::vector<std::string> Vector of split substrings (excluding the delimiter).
+ */
+inline std::vector<std::string> SplitByDelimiter(
+	const std::string& str,
+	const char delimiter = '-',
+	const bool trim_whitespace = true
+	){
+	std::stringstream stream(str);
+	std::vector<std::string> tokens;
+	std::string token;
+	while(std::getline(stream, token, delimiter)) { tokens.push_back(trim_whitespace ? Trim(token) : token); }
+	return tokens;
+}
 
 } //namespace utils
 } //namespace avt_341

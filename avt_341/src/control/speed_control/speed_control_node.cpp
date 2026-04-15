@@ -48,8 +48,8 @@ void DesiredSteerCallback(avt_341::msg::Float64Ptr rcv_des_steer) {
 	desired_steer_radians = rcv_des_steer->data;
 }
 
-void StateCallback(avt_341::msg::Int32Ptr rcv_state){
-  current_run_state = rcv_state->data;
+void StateCallback(avt_341::msg::NavStatePtr rcv_state){
+  current_run_state = rcv_state->run_state;
   if (current_run_state==avt_341::utils::NavStackState::Shutdown)shutdown_condition = true;
 }
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]){
 
   auto state_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",1, OdometryCallback);
 
-  auto control_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/state",1,StateCallback);
+  auto control_sub = n->create_subscription<avt_341::msg::NavState>("avt_341/state",1,StateCallback);
 
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
 

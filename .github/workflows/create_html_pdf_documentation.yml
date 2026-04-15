@@ -54,8 +54,8 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Copy HTML and PDF Documentation to S3
         run: |
-          aws s3 cp docs/build/html s3://${{ secrets.AWS_S3_BUCKET_NAME }} --recursive --acl public-read
-          aws s3 cp docs/build/latex/nato-avt-341-stack.pdf s3://${{ secrets.AWS_S3_BUCKET_NAME }} --acl public-read
+          aws s3 cp docs/build/html s3://${{ secrets.AWS_S3_BUCKET_NAME }} --recursive
+          aws s3 cp docs/build/latex/nato-avt-341-stack.pdf s3://${{ secrets.AWS_S3_BUCKET_NAME }}
           aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
         
 

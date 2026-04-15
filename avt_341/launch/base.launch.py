@@ -231,7 +231,8 @@ def generate_launch_description():
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
                                  'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
-                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
+                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))
+                                 }]
                 ),
                 Node(
                     package='avt_341',
@@ -316,15 +317,17 @@ def generate_launch_description():
                         executable='avt_341_object_tracking_node',
                         name='object_tracking_node',
                         parameters=[
-                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
+                            {'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
+                                                                 TextSubstitution(text=''),
+                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
                         ],
                         remappings=[
-                            ('camera_info','front_camera/camera_info'),
+                            ('camera_info','front_camera/info'),
                             ('image','front_camera/image'),
-                            ('detection_2d', 'front_camera/detections_2d'),
-                            ('input','avt_341/points'),
-                            ('odometry','avt_341/mrzr4/tracked_odom'),
-                            ('pose','avt_341/mrzr4/tracked_pose'),
+                            ('detection_2d', 'front_camera/detection_2d'),
+                            ('points/input','avt_341/points'),
+                            ('task','avt_341/mission_task_state')
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),
