@@ -672,11 +672,11 @@ void ObjectTrackingNode::TrackingTimerCallback() {
                         "FULL_TRACKING: no obstacle markers received yet, "
                         "falling back to camera-only tracking.");
             CameraCentroidEstimate();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             has_point_cloud_ = false;
             has_detection_ = true;
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
-            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             CheckTargetTimeout();
             return;
         }
@@ -755,20 +755,20 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         }
 
         if (best_id < 0) {
-            // No obstacle marker projects near the camera detection bbox;
-            // use the camera estimate alone until the obstacle detector
-            // picks up the target.
+            // No obstacle marker projects near the camera detection bbox.
+            // Fall back to the camera range estimate until the obstacle
+            // detector picks up the target again.
             RCLCPP_INFO(get_logger(),
                         "FULL_TRACKING: no obstacle marker projects within "
                         "%.0f px of detection center (%.0f, %.0f); "
                         "using camera-only measurement.",
                         max_pixel_dist, det_u, det_v);
             CameraCentroidEstimate();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             has_point_cloud_ = false;
             has_detection_ = true;
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
-            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             CheckTargetTimeout();
             return;
         }
@@ -780,6 +780,18 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         bounding_box_size_ = best_size;
         object_size_ = best_size;
         bounding_box_orientation_ = best_quat;
+
+        // On the first LiDAR lock-on, reset the Kalman filter so it
+        // re-initializes from the reliable LiDAR position rather than
+        // continuing from the noisy camera-only state that preceded it.
+        // Subsequent LiDAR updates carry on from the already-initialized filter.
+        if (!has_had_first_lidar_measurement_) {
+            RCLCPP_INFO(get_logger(),
+                        "FULL_TRACKING: first LiDAR lock on obstacle ID %d; "
+                        "re-initializing filter from LiDAR position.",
+                        best_id);
+            filter_initialized_ = false;
+        }
 
         has_new_measurement_ = true;
         has_had_first_lidar_measurement_ = true;
@@ -863,18 +875,12 @@ void ObjectTrackingNode::Reset() {
 
 void ObjectTrackingNode::ObstacleMarkersCallback(
     const visualization_msgs::msg::MarkerArray::SharedPtr msg) {
-    // Ignore messages that contain only a DELETEALL marker and no real boxes.
-    bool has_real_markers = false;
-    for (const auto& m : msg->markers) {
-        if (m.action != visualization_msgs::msg::Marker::DELETEALL) {
-            has_real_markers = true;
-            break;
-        }
-    }
-    if (has_real_markers) {
-        latest_obstacle_markers_ = *msg;
-        has_obstacle_markers_ = true;
-    }
+    // Always store the latest message, including DELETEALL-only messages.
+    // A DELETEALL-only message signals that the obstacle detector found no
+    // obstacles this frame; ignoring it would leave latest_obstacle_markers_
+    // stale with the previous frame's boxes, preventing tracking timeout.
+    latest_obstacle_markers_ = *msg;
+    has_obstacle_markers_ = true;
 }
 
 // JN addition for camera detection only tracking
@@ -1524,11 +1530,11 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         }
     }
 
-    if(!filter_initialized_) {
-            filter_->SetInitialPosition(TransformToCoordinates(
+    if (!filter_initialized_) {
+        filter_->SetInitialPosition(TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_));
-            filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
-            filter_initialized_ = true;
+        filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        filter_initialized_ = true;
     }
 
     // Do not advance the filter when there is no active detection.

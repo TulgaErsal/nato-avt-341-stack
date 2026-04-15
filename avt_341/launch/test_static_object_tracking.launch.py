@@ -52,7 +52,7 @@ def launch_setup(context, *args, **kwargs):
     # 1. Play the rosbag
     bag_topics = ['/flir_camera/camera_info', '/flir_camera/image_raw', '/mrzr/detections/vision', '/ouster/points', '/mrzr/avt_341/odometry', '/tf', '/tf_static']
     bag_play = TimerAction(
-        period=5.0,  # Delay in seconds
+        period=0.0,  # Delay in seconds
         actions=[ExecuteProcess(
             cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1000', '--topics', *bag_topics],
             output='screen'

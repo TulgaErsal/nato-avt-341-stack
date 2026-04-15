@@ -163,6 +163,17 @@ void publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& c
   curr_boxes_.clear();
 }
 
+void publishDeleteAll(const avt_341::msg::Header& header)
+{
+  visualization_msgs::msg::MarkerArray marker_array;
+  visualization_msgs::msg::Marker delete_marker;
+  delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+  delete_marker.header.stamp = header.stamp;
+  delete_marker.header.frame_id = bbox_source_frame_;
+  marker_array.markers.push_back(delete_marker);
+  pub_bboxes->publish(marker_array);
+}
+
 void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
 {
   // Transform point cloud
@@ -171,6 +182,7 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   {
     if (!nh->transform_cloud(*lidar_points, lidar_points_transformed, robot_base_link_)) {
       nh->log_warning("Unable to transform pointcloud from %s -> %s",lidar_points->header.frame_id.c_str(),robot_base_link_.c_str());
+      publishDeleteAll(lidar_points->header);
       return;
     }
   }
@@ -188,7 +200,10 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   // Downsampling, ROI, and removing the car roof
   auto filtered_cloud = obstacle_detector->filterCloud(raw_cloud, voxel_grid_size, roi_min_point, roi_max_point, body_min_point, body_max_point);
 
-  if(filtered_cloud->size() < 10) return;
+  if(filtered_cloud->size() < 10) {
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
 
   // Transform pointcloud to fixed frame (rotation only)
   pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -200,6 +215,7 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   // inside pclFilterNorms.
   if (q.norm() < 1e-6f) {
     nh->log_warning("Fixed-frame TF not yet available, skipping this scan.");
+    publishDeleteAll(pointcloud_header);
     return;
   }
   Eigen::Matrix4f mat4 = Eigen::Matrix4f::Identity();
@@ -208,7 +224,10 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   transform_fixed.matrix() = mat4;
   pcl::transformPointCloud(*filtered_cloud, *fixed_cloud, transform_fixed);
 
-  if(fixed_cloud->size() < 10) return;
+  if(fixed_cloud->size() < 10) {
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
 
   // Segment ground and obstacle points using normal filtering
   pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(new pcl::PointCloud<pcl::PointXYZ>);
@@ -229,7 +248,10 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   }
 
 
-  if(segmented_clouds.first->size()<= 0) return;
+  if(segmented_clouds.first->size() <= 0) {
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
 
   // Cluster objects
   auto cloud_clusters = obstacle_detector->clustering(segmented_clouds.first, cluster_threshold, cluster_min_size, cluster_max_size);
