@@ -8,16 +8,17 @@
 
 namespace avt_341::core
 {
-    inline utils::vec2 ToPoint(const msg::Point & p)
+    inline auto ToVec2(const msg::Point & p)
     {
-        return utils::vec2(p.x, p.y);
+        return utils::vec2{
+            static_cast<float>(p.x),
+            static_cast<float>(p.y)
+        };
     }
 
-    inline msg::Int32 ToIntState(const msg::NavState& msg)
+    inline bool HasActiveGoal(const msg::NavStatePtr& msg)
     {
-        msg::Int32 state_msg;
-        state_msg.data = msg.run_state;
-        return state_msg;
+        return msg->run_state == utils::NavStackState::Active;
     }
 
     inline msg::PoseStamped ToPoseStamped(const msg::NavGoal & nav_goal)
@@ -28,12 +29,12 @@ namespace avt_341::core
         return pose;
     }
 
-    inline msg::NavGoal ToNavGoal(const msg::PoseStamped & pose, const double arrival_threshold = -1.0) {
+    inline msg::NavGoal ToNavGoal(const msg::PoseStamped & pose, const double arrival_threshold = -1.0, const bool use_orientation = true) {
         msg::NavGoal goal;
         goal.header = pose.header;
         goal.pose = pose.pose;
         goal.threshold = arrival_threshold;
-        goal.use_orientation = false;
+        goal.use_orientation = use_orientation;
         return goal;
     }
 

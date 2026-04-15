@@ -4,6 +4,7 @@
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/core/dto_conversion.h"
 #include <memory>
 // Globals
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_steering_angle;
@@ -79,18 +80,21 @@ void callback_follower_status(avt_341::msg::FollowerStatusPtr follower_status) {
     follower_status_input = *follower_status;
 }
 
-void callback_goal_pose(avt_341::msg::PoseStampedPtr msg) {
-    // Extract yaw from the goal pose orientation and store as the desired final heading.
-    // The RViz "2D Goal Pose" tool sets the orientation to encode the user-specified heading.
+void callback_gp_state(avt_341::msg::NavStatePtr msg) {
+
+	if (!avt_341::core::HasActiveGoal(msg)) {
+		return;
+	}
+
     avt_341::msg_tf::Quaternion q(
-        msg->pose.orientation.x,
-        msg->pose.orientation.y,
-        msg->pose.orientation.z,
-        msg->pose.orientation.w);
+        msg->goal.pose.orientation.x,
+        msg->goal.pose.orientation.y,
+        msg->goal.pose.orientation.z,
+        msg->goal.pose.orientation.w);
     double roll, pitch, yaw;
     avt_341::msg_tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
     finalHeading = static_cast<float>(yaw);
-    finalHeadingSet = true;
+    finalHeadingSet = msg->goal.use_orientation;
 }
 
 void publishSteeringRate(double current_angle) {
@@ -265,7 +269,7 @@ int main(int argc, char* argv[]) {
     auto sub_veh = n->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
     auto sub_speed = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
     auto sub_follow = n->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
-    auto sub_goal_pose = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose",1,callback_goal_pose);
+    auto sub_goal_pose = n->create_subscription<avt_341::msg::NavState>("avt_341/nav_state",1,callback_gp_state);
 
     pub_time_gap = n->create_publisher<avt_341::msg::Float64>("time_gap",10);
     pub_steering_angle = n->create_publisher<avt_341::msg::Float64>("steering_angle",10);

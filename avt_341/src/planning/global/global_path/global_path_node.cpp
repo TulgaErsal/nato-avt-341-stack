@@ -405,7 +405,7 @@ int main(int argc, char* argv[])
         auto goal = GetCurrentGoal();
         UpdateGoalState(goal);
 
-        std::vector<Point> path = path_planner->PlanPath(&current_grid, &segmentation_grid, ToPoint(goal.pose.position), position);
+        std::vector<Point> path = path_planner->PlanPath(&current_grid, &segmentation_grid, ToVec2(goal.pose.position), position);
         if (planning_method == "fast_marching" && !path.empty()) {
           avt_341::msg::OccupancyGrid fast_marching_grid;
           fast_marching_grid.header = current_grid.header;
