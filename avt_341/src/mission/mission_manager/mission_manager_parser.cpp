@@ -26,6 +26,7 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
   message.type = tokens[2];
   message.priority_type = "Q";
   message.receiver_name = "";
+  message.yaw_threshold = -1.0;
 
   // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>
   // <sender>,<msg_id>,FORM,<formation>,<leader>,<f1>,<f2>,<f3>,<objective>,<speed>,<priority>
@@ -43,7 +44,6 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.x_offset = 0.0;
     message.y_offset = 0.0;
     message.distance = 0.0;
-    message.yaw_threshold = -1.0;
 
     if(tokens.size() == 11) {
       message.priority_type = tokens[10];

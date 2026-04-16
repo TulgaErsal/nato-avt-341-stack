@@ -57,6 +57,6 @@ sr_max: 0.523         # Maximum steering rate constraint for MPC planner
 
 use_corridor_culling: True  # Filter obstacles to those within corridor_half_width of the previous MPC trajectory
 corridor_half_width: 10.0   # Half-width of the trajectory corridor [m]; obstacles outside are dropped before the NLP
-visualize_culled_obstacles: True  # Publish culled obstacle clusters as orange MarkerArray on avt_341/culled_obstacle_markers
+visualize_culled_obstacles: True  # Publish culled obstacle clusters as red MarkerArray on avt_341/culled_obstacle_markers
 
 use_auto_final_heading: True  # Auto-compute terminal heading from the last two global path waypoints when no manual heading has been set via goal_pose

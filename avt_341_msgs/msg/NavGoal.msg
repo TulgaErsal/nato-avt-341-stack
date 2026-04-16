@@ -10,6 +10,6 @@ geometry_msgs/Pose pose
 # Put value < 0 to use stack default.
 float64 dist_threshold
 
-# Yaw threshold (in degrees) at which to consider goal reached.
+# Yaw threshold (in radians) at which to consider goal reached.
 # Put value > pi to disable, value < 0 to use stack default.
 float64 yaw_threshold

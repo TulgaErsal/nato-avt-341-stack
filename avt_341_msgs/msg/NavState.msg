@@ -20,5 +20,5 @@ float64 goal_duration
 # Current distance to the goal.
 float64 goal_distance
 
-# Current yaw difference to the goal
+# Current yaw difference (radians) to the goal
 float64 goal_yaw_difference

@@ -63,7 +63,7 @@ avt_341::msg::Communication MoveToMsg::toROSMsg() {
   avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.objective_name = objective_name;
   msg.x_offset = goal_x_offset;
-  msg.y_scale = goal_y_offset;
+  msg.y_offset = goal_y_offset;
   msg.distance = dist_threshold;
   msg.yaw_threshold = yaw_threshold;
   return msg;
@@ -136,6 +136,8 @@ avt_341::msg::Communication FormationMsg::toROSMsg(){
   msg.x_offset = goal_x_offset;
   msg.y_offset = goal_y_offset;
   msg.distance = dist_threshold;
+  msg.termination_method = termination_method;
+  msg.yaw_threshold = yaw_threshold;
 
   return msg;
 }
