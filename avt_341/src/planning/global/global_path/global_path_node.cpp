@@ -23,13 +23,9 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/core/dto_conversion.h"
 #include <chrono>
-#include <utility>
+#include <stdexcept>
 
 using avt_341::utils::NavStackState;
-
-#ifdef Bool
-#undef Bool // Fix conflicting definition in Xlib.h
-#endif
 
 using namespace avt_341::core;
 using avt_341::planning::Point;
@@ -240,7 +236,9 @@ int main(int argc, char* argv[])
   n->get_parameter("~shutdown_behavior", shutdown_behavior, static_cast<int>(NavStackState::InactiveCoast));
 
   if (!avt_341::utils::IsValidShutdownBehavior(shutdown_behavior)){
-    throw std::runtime_error("Invalid shutdown behavior parameter: " + std::to_string(shutdown_behavior));
+    const std::string error_msg = "Invalid shutdown behavior parameter: " + std::to_string(shutdown_behavior);
+    n->log_error("%s", error_msg.c_str());
+    throw std::runtime_error(error_msg);
   }
 
   n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s\n clipping_distance: %.2f",

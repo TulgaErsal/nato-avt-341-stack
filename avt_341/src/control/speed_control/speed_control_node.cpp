@@ -168,9 +168,6 @@ int main(int argc, char *argv[]){
       controller.SetSetpoint(desired_speed_factor*desired_speed);
       dc.linear.x = use_speed_controller ? controller.GetControlVariable(vel,dt) : desired_speed_factor*desired_speed;
       dc.angular.z = std::clamp(desired_steer_radians*steering_gain, -max_steer_angle_rad, max_steer_angle_rad);
-      if (output_steering_percent) {
-        dc.angular.z /= max_steer_angle_rad;
-      }
       dc.linear.y = 0.0;
     }
     else
@@ -220,6 +217,10 @@ int main(int argc, char *argv[]){
       if (dc_safe.linear.x > dc.linear.x) dc_safe.linear.x = dc.linear.x;
       // Calculate maximum steering angle for current speed
       dc_safe.angular.z = atan((max_lat_g*9.81) * wheelbase / (vel*vel)) * (dc_safe.angular.z/abs(dc_safe.angular.z));
+    }
+
+    if (output_steering_percent) {
+      dc_safe.angular.z /= max_steer_angle_rad;
     }
 
     // Publish command
