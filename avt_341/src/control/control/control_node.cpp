@@ -49,7 +49,7 @@ void PathCallback(avt_341::msg::PathPtr rcv_control){
 
 void StateCallback(avt_341::msg::NavStatePtr rcv_state){
   current_run_state = rcv_state->run_state;
-  if (current_run_state==NavStackState::Shutdown) shutdown_condition = true;
+  if (current_run_state==NavStackState::InactiveGradualStop) shutdown_condition = true;
 }
 
 double length(avt_341::msg::Point a, avt_341::msg::Point b){
@@ -222,7 +222,7 @@ int main(int argc, char *argv[]){
       controller.SetDesiredSpeed(desired_velocity);
       dc = controller.GetDcFromTraj(control_msg, goal);
     }
-    else if (current_run_state==NavStackState::NotInit || current_run_state==NavStackState::Stopped){
+    else if (current_run_state==NavStackState::NotInit || current_run_state==NavStackState::InactiveCoast){
       // bring to a smooth stop and wait / idle
 	    // std::cout << " Setting desired speed to 0 " << std::endl;
       controller.SetDesiredSpeed(0.0f);
@@ -232,7 +232,7 @@ int main(int argc, char *argv[]){
 	    dc.linear.y = 1.0f;
 	    dc.angular.z = 0.0f;
     }
-    else if (current_run_state==NavStackState::HardShutdown){
+    else if (current_run_state==NavStackState::InactiveHardStop){
       // bring to a hard stop and shut down
       dc.linear.x = 0.0f;
       dc.linear.y = 1.0f;

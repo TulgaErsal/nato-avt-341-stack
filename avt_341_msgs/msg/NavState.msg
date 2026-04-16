@@ -7,11 +7,11 @@ std_msgs/Header header
 avt_341_msgs/NavGoal goal
 
 # Running state of global planner.
-# -1 - startup (stopped and not shut down)
+# -1 - uninitialized
 # 0 - active
-# 1 - bring to a smooth stop but do not shut down
-# 2 - bring to a smooth stop and shut down
-# 3 - bring to an immediate stop (hard braking) and shut down
+# 1 - no active goal - ctrl applies coasting cmd (vel_x/thr~0, str=0, brk=0)
+# 2 - no active goal - ctrl applies ramping brake cmd (vel_x/thr=0, str=0, brk=0-1)
+# 3 - no active goal - ctrl applies immediate max brake cmd (vel_x/thr=0, str=0, brk=1)
 int32 run_state
 
 # How long (in seconds) navigation to the current goal has been running.

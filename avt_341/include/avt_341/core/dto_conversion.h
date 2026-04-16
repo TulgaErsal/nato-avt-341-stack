@@ -28,14 +28,22 @@ namespace avt_341::core
         return pose;
     }
 
-    inline msg::NavGoal ToNavGoal(const msg::PoseStamped & pose, const double arrival_threshold = -1.0) {
+    inline msg::NavGoal ToNavGoal(const msg::Header & header, const msg::Pose& pose, const double arrival_threshold = -1.0) {
         msg::NavGoal goal;
-        goal.header = pose.header;
-        goal.pose = pose.pose;
+        goal.header = header;
+        goal.pose = pose;
         goal.threshold = arrival_threshold;
         goal.use_orientation = false;
         return goal;
     }
+
+    inline msg::NavGoal ToNavGoal(const msg::PoseStamped & pose, const double arrival_threshold = -1.0) {
+        return ToNavGoal(pose.header, pose.pose, arrival_threshold);
+    }
+
+    // inline msg::NavGoal ToNavGoal(const msg::Odometry& odom, const double arrival_threshold = -1.0) {
+    //     return ToNavGoal(odom.header, odom.pose.pose, arrival_threshold);
+    // }
 
     inline msg::NavGoalSequence ToNavGoalSequence(const msg::Path & path, const double arrival_threshold = -1.0) {
         msg::NavGoalSequence sequence;

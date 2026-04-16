@@ -23,15 +23,20 @@ namespace utils {
 enum NavStackState : int {
   NotInit = -1,
   Active = 0,
-  Stopped = 1,
-  Shutdown = 2,
-  HardShutdown = 3
+  InactiveCoast = 1,
+  InactiveGradualStop = 2,
+  InactiveHardStop = 3
 };
 
 enum NavStateCmd : int {
   GoInactive = 0,
   GoActive = 1
 };
+
+inline bool IsValidShutdownBehavior(const int shutdown_behavior)
+{
+	return shutdown_behavior >= static_cast<int>(InactiveCoast) && shutdown_behavior <= static_cast<int>(InactiveHardStop);
+}
 
 // TODO: Just use Eigen? If not, rename in future, should also be pascal case.
 struct vec2{

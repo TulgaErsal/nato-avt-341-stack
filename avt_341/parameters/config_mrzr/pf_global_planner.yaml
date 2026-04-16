@@ -1,7 +1,7 @@
 # General
 # ======================================================================================================================
 goal_dist: 5.0                                # Lookahead threshold within which next waypoint selected.
-shutdown_behavior: 1                          # behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown).
+shutdown_behavior: 1                          # Behavior upon reaching goal (1 - go idle, 2 - stop and shutdown, 3 - hard stop and shutdown).
 auto_active_on_new_waypoint: True             # Automatically set navstsack to active state on new goal received. If false, seperate activate command must be sent in addition to target waypoint.
 verbose_gp_log: True                          # Activates verbose logging for global planner.
 max_separation: 1.0                           # Maximum separation between waypoints [m].

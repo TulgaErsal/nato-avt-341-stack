@@ -44,7 +44,6 @@ bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
 bool verbose_gp_log = false;
-bool shutdown_condition = false;
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
 bool use_segmentation = false;
 avt_341::msg::NavState state;
@@ -173,7 +172,6 @@ void Reset()
   UpdateGoalState(avt_341::msg::NavGoal());
   SetRunState(NavStackState::NotInit);
   odom_rcvd = false;
-  shutdown_condition = false;
 }
 
 int main(int argc, char* argv[])
@@ -238,9 +236,12 @@ int main(int argc, char* argv[])
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
   }
 
-  int shutdown_behavior = NavStackState::Stopped;
-  n->get_parameter("~shutdown_behavior", shutdown_behavior, shutdown_behavior);
-  if (shutdown_behavior > 3 || shutdown_behavior < 1)shutdown_behavior = 1;
+  int shutdown_behavior;
+  n->get_parameter("~shutdown_behavior", shutdown_behavior, static_cast<int>(NavStackState::InactiveCoast));
+
+  if (!avt_341::utils::IsValidShutdownBehavior(shutdown_behavior)){
+    throw std::runtime_error("Invalid shutdown behavior parameter: " + std::to_string(shutdown_behavior));
+  }
 
   n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s\n clipping_distance: %.2f",
     w_distance, w_occupancy, w_segmentation, planning_method.c_str(), clipping_distance);
@@ -339,7 +340,6 @@ int main(int argc, char* argv[])
 
   avt_341::node::Rate r(20.0f); // Hz
   int nl = 0;
-  int shutdown_count = 0;
   auto t1 = std::chrono::system_clock::now();
   //while (avt_341::node::ok() && !goal_reached){
   while (avt_341::node::ok()) {
@@ -367,14 +367,11 @@ int main(int argc, char* argv[])
 
     // Handle Go command
     if (nav_command_rcvd) {
-      if (nav_command == avt_341::utils::NavStateCmd::GoActive &&
-        (state.run_state == NavStackState::NotInit || state.run_state == NavStackState::Stopped)) {
+      if (nav_command == avt_341::utils::NavStateCmd::GoActive && state.run_state != NavStackState::Active) {
         // startup/idling - go active
         SetRunState(NavStackState::Active);
-        shutdown_condition = false;
         nav_command_rcvd = false;
         nav_command = avt_341::utils::NavStateCmd::GoInactive;
-        //n->log_info("Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
       }
     } else if (use_global_planner) {
       state_pub->publish(state);
@@ -390,7 +387,6 @@ int main(int argc, char* argv[])
           n->log_info("New waypoints! Updated goal %.2f, %.2f @ %.2f", goal.pose.position.x, goal.pose.position.y, goal.threshold);
         }
         waypoints_rcvd = false;
-        shutdown_condition = false;
         // Maintaining current state - if we're idle, we'll need an explicit GO command unless auto_active option
         if (auto_active_on_new_waypoint) {
           SetRunState(NavStackState::Active);
@@ -496,42 +492,22 @@ int main(int argc, char* argv[])
                       state.goal_distance);
           t1 = t_now;
         }
-        if (current_waypoint == nav_goals.goals.size() - 1) {  // last waypoint
-          //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
-          if (state.goal_distance < goal.threshold || shutdown_condition) {   // reached the goal
-            // send arrival notification
 
-            if (state.run_state == NavStackState::Active) {
-              goal_reached_pub->publish(state);
-            }
+        if (state.goal_distance < goal.threshold && state.run_state == NavStackState::Active)
+        {
+          // Goal reached
+          goal_reached_pub->publish(state);
 
-            shutdown_condition = true;
-            SetRunState(shutdown_behavior);// request shutdown behavior
+          const bool terminal_goal = current_waypoint == nav_goals.goals.size() - 1;
+          current_waypoint += terminal_goal ? 0 : 1;
 
-            //std::cout << "Shutdown " << shutdown_behavior << std::endl;
-            if (state.run_state != NavStackState::Stopped) {
-              shutdown_count++;
-              if (shutdown_count > 10) {
-                std::cout << "Shutting down" << std::endl;
-                break;
-              }
-            }
+          if (terminal_goal)
+          {
+            SetRunState(shutdown_behavior);
           }
-        } else {     // intermediate waypoint
-          if (state.goal_distance < goal.threshold ) {   // reached the waypoint
-            goal_reached_pub->publish(state);
-            current_waypoint++;
-          }
-          if (state.run_state != NavStackState::Active) {
-            std::cout << "Why are we here? Current state: " << state.run_state << std::endl;
-          }
-          SetRunState(NavStackState::Active); // request active behavior
         }
-      } // if odom_recvd
-      //else if(state.data != -1){  // not in startup
-      //  state.data = 1;       // request smooth stop but don't shutdown (waiting for odom data)
-      //  state_pub->publish(state);
-      //}
+
+      }
     } else {
       SetRunState(NavStackState::Active);
     }
