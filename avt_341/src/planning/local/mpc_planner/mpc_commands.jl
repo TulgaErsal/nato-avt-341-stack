@@ -317,8 +317,9 @@ end
 
 function GetSpeed()
 	num_path_points = size(mpc_path)[1]
-	if skipCount < num_path_points - 5
-		return mpc_speed[5+ skipCount]
+	speed_idx = div(numColPoints,2)
+	if skipCount < num_path_points - speed_idx
+		return mpc_speed[speed_idx + skipCount]
 	end
 	return 0.0
 end
