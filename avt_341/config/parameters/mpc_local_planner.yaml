@@ -54,6 +54,7 @@ sa_min: -0.628319        # Minimum steering angle constraint for MPC planner
 sa_max: 0.628319         # Maximum steering angle constraint for MPC planner
 sr_min: -0.523        # Minimum steering rate constraint for MPC planner
 sr_max: 0.523         # Maximum steering rate constraint for MPC planner
+ax_max: 10.0          # Maximum longitudinal acceleration constraint [m/s^2]; also used by goal_point_processor for kinematic lookahead
 
 use_corridor_culling: True  # Filter obstacles to those within corridor_half_width of the previous MPC trajectory
 corridor_half_width: 20.0   # Half-width of the trajectory corridor [m]; obstacles outside are dropped before the NLP

@@ -41,6 +41,7 @@ bool goal_is_end = false;
 // Params
 float max_speed, la, predictionTimeHorizon, frontAngleGoal;
 float goal_lookahead_padding;
+float ax_max;
 bool use_goal_lookahead_maxspeed;
 
 void callback_global_path(avt_341::msg::PathPtr global_path) {
@@ -138,7 +139,27 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
 	avt_341::utils::vec2 vehiclePosition(x_veh, y_veh);
 	avt_341::utils::vec2 globalPoint(0.0, 0.0);
-    const double lookahead_speed = use_goal_lookahead_maxspeed ? speedSetpoint : longvel;
+
+    const double T = static_cast<double>(predictionTimeHorizon + goal_lookahead_padding);
+    double lookahead_dist;
+    if (use_goal_lookahead_maxspeed) {
+        lookahead_dist = speedSetpoint * T;
+    } else {
+        const double v0 = longvel;
+        const double v_sp = static_cast<double>(speedSetpoint);
+        if (v0 >= v_sp) {
+            lookahead_dist = v_sp * T;
+        } else {
+            const double t_accel = (v_sp - v0) / ax_max;
+            if (t_accel >= T) {
+                lookahead_dist = v0 * T + 0.5 * ax_max * T * T;
+            } else {
+                const double d_accel = v0 * t_accel + 0.5 * ax_max * t_accel * t_accel;
+                const double d_cruise = v_sp * (T - t_accel);
+                lookahead_dist = d_accel + d_cruise;
+            }
+        }
+    }
 
     if (follower_status_input.use_leader) { //asked to follow a leader
 		if (!priorUseLeader){
@@ -168,7 +189,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 pathLength += (globalPoint - prevPoint).mag();
             }
             lastIndexConsidered = gp;
-            if (pathLength > (predictionTimeHorizon + goal_lookahead_padding) * lookahead_speed) {
+            if (pathLength > lookahead_dist) {
                 break;
             }
         }
@@ -196,7 +217,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
             }
 			lastIndexConsidered = gp;
 			// Check prediction horizon
-			if (pathLength > (predictionTimeHorizon+goal_lookahead_padding) * lookahead_speed){
+			if (pathLength > lookahead_dist){
 				break;
             }
 		}
@@ -281,6 +302,7 @@ int main(int argc, char* argv[]) {
     n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
 	n->get_parameter("~goal_lookahead_time_padding", goal_lookahead_padding, 0.1f);
 	n->get_parameter("~use_goal_lookahead_maxspeed", use_goal_lookahead_maxspeed, false);
+    n->get_parameter("~ax_max", ax_max, 10.0f);
     n->get_parameter("~use_auto_final_heading", useAutoFinalHeading, true);
 
     // Initialize variables

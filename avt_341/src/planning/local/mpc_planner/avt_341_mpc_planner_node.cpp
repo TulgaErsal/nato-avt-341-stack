@@ -418,6 +418,7 @@ void DeclareParameters()
     node->get_parameter("~sa_max", sa_max, 0.485);
     node->get_parameter("~sr_min", sr_min, -0.523);
     node->get_parameter("~sr_max", sr_max, 0.523);
+    node->get_parameter("~ax_max", ax_max, 10.0);
     node->get_parameter("~use_corridor_culling", use_corridor_culling, true);
     node->get_parameter("~corridor_half_width", corridor_half_width, 20.0);
     node->get_parameter("~visualize_culled_obstacles", visualize_culled_obstacles, false);
@@ -609,6 +610,7 @@ void InitialiseJuliaAPI()
     j_set_sa_max = jl_get_function(mpc_module, "SetSteeringAngleMax");
     j_set_sr_min = jl_get_function(mpc_module, "SetSteeringRateMin");
     j_set_sr_max = jl_get_function(mpc_module, "SetSteeringRateMax");
+    j_set_ax_max = jl_get_function(mpc_module, "SetAxMax");
     // -------------------------------
 
     // Convert params to Julia types
@@ -644,6 +646,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_sa_max = jl_box_float64(sa_max);
     jl_value_t *j_sr_min = jl_box_float64(sr_min);
     jl_value_t *j_sr_max = jl_box_float64(sr_max);
+    jl_value_t *j_ax_max = jl_box_float64(ax_max);
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -678,6 +681,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_sa_max, j_sa_max);
     jl_call1(j_set_sr_min, j_sr_min);
     jl_call1(j_set_sr_max, j_sr_max);
+    jl_call1(j_set_ax_max, j_ax_max);
     CATCH_JULIA_EXCEPTION;
 }
 

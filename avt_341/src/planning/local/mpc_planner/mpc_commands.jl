@@ -101,6 +101,10 @@ function SetSteeringRateMax(sr_max_in::Float64)
 	global sr_max = sr_max_in
 end
 
+function SetAxMax(ax_max_in::Float64)
+	global ax_max = ax_max_in
+end
+
 function SetSpeedAroundLargeSlopesAndRMS(speed_around_large_slopes_and_rms::Float64)
 	global speedAroundLargeSlopesAndRMS = speed_around_large_slopes_and_rms
 end
