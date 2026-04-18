@@ -8,16 +8,17 @@
 
 namespace avt_341::core
 {
-    inline utils::vec2 ToPoint(const msg::Point & p)
+    inline auto ToVec2(const msg::Point & p)
     {
-        return utils::vec2(p.x, p.y);
+        return utils::vec2{
+            static_cast<float>(p.x),
+            static_cast<float>(p.y)
+        };
     }
 
-    inline msg::Int32 ToIntState(const msg::NavState& msg)
+    inline bool HasActiveGoal(const msg::NavStatePtr& msg)
     {
-        msg::Int32 state_msg;
-        state_msg.data = msg.run_state;
-        return state_msg;
+        return msg->run_state == utils::NavStackState::Active;
     }
 
     inline msg::PoseStamped ToPoseStamped(const msg::NavGoal & nav_goal)
@@ -28,29 +29,28 @@ namespace avt_341::core
         return pose;
     }
 
-    inline msg::NavGoal ToNavGoal(const msg::Header & header, const msg::Pose& pose, const double arrival_threshold = -1.0) {
+    inline msg::NavGoal ToNavGoal(
+            const msg::PoseStamped & pose,
+            const double dist_threshold = -1.0,
+            const double yaw_threshold = -1.0) {
         msg::NavGoal goal;
-        goal.header = header;
-        goal.pose = pose;
-        goal.threshold = arrival_threshold;
-        goal.use_orientation = false;
+        goal.header = pose.header;
+        goal.pose = pose.pose;
+        goal.dist_threshold = dist_threshold;
+        goal.yaw_threshold = yaw_threshold;
         return goal;
     }
 
-    inline msg::NavGoal ToNavGoal(const msg::PoseStamped & pose, const double arrival_threshold = -1.0) {
-        return ToNavGoal(pose.header, pose.pose, arrival_threshold);
-    }
-
-    // inline msg::NavGoal ToNavGoal(const msg::Odometry& odom, const double arrival_threshold = -1.0) {
-    //     return ToNavGoal(odom.header, odom.pose.pose, arrival_threshold);
-    // }
-
-    inline msg::NavGoalSequence ToNavGoalSequence(const msg::Path & path, const double arrival_threshold = -1.0) {
+    inline msg::NavGoalSequence ToNavGoalSequence(
+            const msg::Path & path,
+            const double dist_threshold = -1.0,
+            const double yaw_threshold = -1.0
+            ) {
         msg::NavGoalSequence sequence;
         sequence.header = path.header;
         sequence.goals.reserve(path.poses.size());
         for (const auto & pose : path.poses) {
-            sequence.goals.push_back(ToNavGoal(pose, arrival_threshold));
+            sequence.goals.push_back(ToNavGoal(pose, dist_threshold, yaw_threshold));
         }
         return sequence;
     }
@@ -97,8 +97,13 @@ namespace avt_341::core
         return pose;
     }
 
-    inline msg::NavGoal ToNavGoal(const double x, const double y, const double arrival_threshold, const std::string& frame_id = "map") {
-        return ToNavGoal(ToPoseStamped(frame_id, static_cast<float>(x), static_cast<float>(y)), arrival_threshold);
+    inline msg::NavGoal ToNavGoal(const double x,
+        const double y,
+        const double dist_threshold,
+        const double yaw_threshold,
+        const std::string& frame_id = "map"
+        ) {
+        return ToNavGoal(ToPoseStamped(frame_id, static_cast<float>(x), static_cast<float>(y)), dist_threshold, yaw_threshold);
     }
 
     inline msg::Pose ToPose(const msg::Transform & tx) {
@@ -127,7 +132,8 @@ namespace avt_341::core
         const std::vector<double> & goals_x,
         const std::vector<double> & goals_y,
         const utils::vec2 tx,
-        const double arrival_threshold,
+        const double dist_threshold,
+        const double yaw_threshold,
         const std::string& frame_id = "map"
     ) {
         msg::NavGoalSequence nav_goals;
@@ -138,7 +144,7 @@ namespace avt_341::core
         }
 
         for (size_t i = 0; i < goals_x.size(); i++) {
-            const auto nav_goal = ToNavGoal(goals_x[i] - tx.x, goals_y[i] - tx.y, arrival_threshold, frame_id);
+            const auto nav_goal = ToNavGoal(goals_x[i] - tx.x, goals_y[i] - tx.y, dist_threshold, yaw_threshold, frame_id);
             nav_goals.goals.push_back(nav_goal);
         }
         return nav_goals;

@@ -7,7 +7,9 @@ std_msgs/Header header
 geometry_msgs/Pose pose
 
 # Distance threshold at which to consider goal reached.
-float64 threshold
+# Put value < 0 to use stack default.
+float64 dist_threshold -1
 
-# If provided orientation in goal pose should be matched.
-bool use_orientation
+# Yaw threshold (in radians) at which to consider goal reached.
+# Put value > pi to disable, value < 0 to use stack default.
+float64 yaw_threshold -1

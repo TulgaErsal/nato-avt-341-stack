@@ -1,3 +1,5 @@
+// TODO: Remove, no longer used. Logic in mission manager itself.
+
 // ros includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"

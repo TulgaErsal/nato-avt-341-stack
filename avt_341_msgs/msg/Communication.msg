@@ -16,4 +16,5 @@ float64 y_scale
 float64 x_offset
 float64 y_offset
 float64 distance
+float64 yaw_threshold
 int32 target_msg_id

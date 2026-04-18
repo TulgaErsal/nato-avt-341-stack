@@ -92,7 +92,7 @@ bool current_goal_rcvd = false;
 avt_341::msg::PoseStamped gp_goal_rcvd;
 void NavStateCallback(avt_341::msg::NavStatePtr msg) {
     nav_run_state = msg->run_state;
-    if (msg->run_state == avt_341::utils::NavStackState::Active)
+    if (avt_341::core::HasActiveGoal(msg))
     {
         gp_goal_rcvd = avt_341::core::ToPoseStamped(msg->goal);
         current_goal_rcvd = true;

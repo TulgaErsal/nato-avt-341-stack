@@ -7,8 +7,8 @@ rate: 20.0 # Planner update rate
 
 tire_model: "P" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
-num_col_points: 10 # number of collocation points to use in MPC
-prediction_time_horizon: 2.0 # MPC prediction time horizon [s]
+num_col_points: 20 # number of collocation points to use in MPC
+prediction_time_horizon: 4.0 # MPC prediction time horizon [s]
 max_num_obs: 500 # maximum number of obstacles allowed in MPC
 max_num_seg: 2000 # maximum number of obstacles allowed in MPC
 min_speed: 0.5 # minimum allowed vehicle speed [m/s]
@@ -25,6 +25,7 @@ w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
 w_yaw_accel: 0.8 #  weight on yawAccel in the objective function
 w_traversability_cost: 0.1  #weight on traversability cost in the objective function
 w_final_speed: 200. # weight on deviationFromDesiredFinalSpeed in the objective function
+w_final_heading: 100. # weight on the terminal heading cost; active only near the end of the global path
 
 safety_margin: 0.0 # safety margin [m] around obstacles
 grid_resolution: 0.5 # resolution of the occupancy grid [m]
@@ -53,3 +54,10 @@ sa_min: -0.628319        # Minimum steering angle constraint for MPC planner
 sa_max: 0.628319         # Maximum steering angle constraint for MPC planner
 sr_min: -0.523        # Minimum steering rate constraint for MPC planner
 sr_max: 0.523         # Maximum steering rate constraint for MPC planner
+ax_max: 10.0          # Maximum longitudinal acceleration constraint [m/s^2]; also used by goal_point_processor for kinematic lookahead
+
+use_corridor_culling: True  # Filter obstacles to those within corridor_half_width of the previous MPC trajectory
+corridor_half_width: 20.0   # Half-width of the trajectory corridor [m]; obstacles outside are dropped before the NLP
+visualize_culled_obstacles: False  # Publish culled obstacle clusters as red MarkerArray on avt_341/culled_obstacle_markers
+
+use_auto_final_heading: True  # Auto-compute terminal heading from the last two global path waypoints when no manual heading has been set via goal_pose
