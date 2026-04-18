@@ -236,7 +236,7 @@ int main(int argc, char* argv[])
   std::string planning_method, clearance_penalty_type, path_extraction_method;
 
   n->get_parameter("~goal_dist", dft_dist_threshold, 3.0);
-  n->get_parameter("~goal_yaw_threshold", dft_yaw_threshold, 30.0);
+  n->get_parameter("~goal_yaw_threshold", dft_yaw_threshold, 360.0);    // Set value > 180.0 degrees to disable
   n->get_parameter("~display", display_type, avt_341::visualization::default_display);
   n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
   n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
