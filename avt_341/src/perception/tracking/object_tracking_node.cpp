@@ -1161,7 +1161,7 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
 	R_rdf_(0, 0) = std::max(filter_measurement_variance_,s2_right);
 	R_rdf_(1, 1) = std::max(filter_measurement_variance_, s2_down);
 	R_rdf_(2, 2) = std::max(filter_measurement_variance_, s2_forwards);
-    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size" << detections_message.bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
+    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size " << detections_message.bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
         << "[x, y ,z] = [ " << target_x_r
         << ", " << target_y_d
         << ", " << target_z_f << "]" << '\n');
