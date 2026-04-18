@@ -61,7 +61,7 @@ def launch_setup(context, *args, **kwargs):
                 'filters_kalman_process': 0.01,
                 'filters_kalman_measurement': 0.1,
                 # Camera-based range estimation parameters
-                'camera_target_height': 5.0,
+                'camera_target_height': 1.9,
                 'camera_bbox_pixel_sigma': 4.0,
                 # IMM model probabilities and Markov transition probability
                 # CV model is preferred for straight-line driving; CTR kicks
