@@ -1,3 +1,8 @@
+if(AVT341_DISABLE_UAB)
+    message(STATUS "UAB build disabled.")
+    return()
+endif()
+
 function(DownloadWindowsDll)
     # Download the Windows DLL
     message("Downloading Windows DLL for UAB terrain perception node...")
