@@ -17,10 +17,10 @@ const std::string MoveTo::MISSION_POINT = "MISSION_POINT";
 const std::string MoveTo::CONTACT = "CONTACT";
 const std::string MoveTo::ACTOR = "ACTOR";
 
-// MoveTo
+// TODO: Too many parameters, can place most goal parameters in NavGoal structure
 MoveTo::MoveTo(MissionManager* manager, const std::string & sender, int id, FormationDefinition* formation_def,
-               double x_offset, double y_offset, double goal_threshold, double desired_speed)
-: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), goal_threshold_(goal_threshold > 0.0 ? goal_threshold : -1.0) {
+               double x_offset, double y_offset, double goal_threshold, double yaw_threshold, double desired_speed)
+: Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), goal_threshold_(goal_threshold > 0.0 ? goal_threshold : -1.0), yaw_threshold_(yaw_threshold) {
     setGoalInternal(avt_341::msg::PoseStamped(), "", MoveTo::NONE);
     terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
     task_speed = desired_speed;
@@ -71,7 +71,7 @@ bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
 void MoveTo::init_() {
     target_pose = goal;
 
-    mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_));
+    mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_, yaw_threshold_));
     mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 }
@@ -79,7 +79,7 @@ void MoveTo::init_() {
 void MoveTo::run() {
   // Keep publishing to gp if did not receive callback yet
   if (PosePlanarDistance(mgr->current_gp_goal.pose.position, target_pose.pose.position) > 1.0){
-    mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_));
+    mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_, yaw_threshold_));
   }
   // Nothing to do per timestep but wait for goal to be reached
 }
@@ -104,7 +104,9 @@ void MoveTo::onPreempt(){
 
 std::string MoveTo::description() const {
   std::ostringstream stream;
-  stream << "ID " << msg_id << " MOVE_TO: " << goal_type << " " << name << " (" << goal.pose.position.x << "," << goal.pose.position.y << ") " << "off=(" << x_offset_ << "," << y_offset_ << ")" << " d=" << goal_threshold_;
+  const double goal_yaw = utils::GetHeadingFromOrientation(goal.pose.orientation) * 180.0 / M_PI;
+  stream << "ID " << msg_id << " MOVE_TO: " << goal_type << " " << name << " (" << goal.pose.position.x << "," << goal.pose.position.y << ","
+  << goal_yaw << ") " << "off=(" << x_offset_ << "," << y_offset_ << ")" << " d=" << goal_threshold_ << " yaw_thresh=" << yaw_threshold_;
   return stream.str();
 }
 

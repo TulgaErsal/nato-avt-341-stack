@@ -66,8 +66,9 @@ public:
     static const std::string CONTACT;
     static const std::string ACTOR;
 
+    // TODO: Too many parameters, can place most goal parameters in NavGoal structure
     MoveTo(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def = nullptr,
-           double x_offset = 0.0, double y_offset = 0.0, double goal_threshold=-1.0, double desired_speed=-1.0);
+           double x_offset = 0.0, double y_offset = 0.0, double goal_threshold=-1.0, double yaw_threshold=-1.0, double desired_speed=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -93,6 +94,7 @@ private:
     double x_offset_;
     double y_offset_;
     double goal_threshold_;
+    double yaw_threshold_;
 }; // class MoveTo
 
 class WaitUntilComplete : public Task {

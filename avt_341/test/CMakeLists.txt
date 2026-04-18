@@ -85,6 +85,20 @@ target_link_libraries(static_grid_layer_test
   ${PROJECT_NAME}_proxy
 )
 
+message(STATUS "Adding utils unit tests")
+ament_add_gtest(utils_test
+        core/utils_test.cpp
+)
+
+target_include_directories(utils_test
+        PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(utils_test
+        ${PROJECT_NAME}_proxy
+)
+
 ament_target_dependencies(static_grid_layer_test
   rclcpp
   nav_msgs

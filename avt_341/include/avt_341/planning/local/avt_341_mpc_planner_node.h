@@ -85,6 +85,7 @@ double front_angle_goal;
 double front_angle_obstacle;
 double front_angle_segmentation;
 double w_final_speed;
+double w_final_heading;
 bool adaptive;
 double vehicle_axle_distance_front;
 bool obstacles_vizualize;
@@ -96,6 +97,10 @@ double sa_min;
 double sa_max;
 double sr_min;
 double sr_max;
+double ax_max;
+bool use_corridor_culling;
+double corridor_half_width;
+bool visualize_culled_obstacles;
 // --------------
 
 // Globals
@@ -104,6 +109,14 @@ double sr_max;
 bool recv_veh_input = false;
 bool recv_seg_input = false;
 bool is_initialized = false;
+
+// Cached MPC path used for obstacle corridor culling (x, y pairs).
+// Populated each planning cycle from GetMPCPath().
+std::vector<std::pair<double, double>> mpc_path_cache;
+
+// Optional publisher for the corridor-culled obstacle MarkerArray.
+// Null when visualize_culled_obstacles is false.
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> culled_obs_marker_pub;
 // --------------
 
 // Julia modules
@@ -197,7 +210,10 @@ jl_function_t* j_set_sa_min = NULL;
 jl_function_t* j_set_sa_max = NULL;
 jl_function_t* j_set_sr_min = NULL;
 jl_function_t* j_set_sr_max = NULL;
+jl_function_t* j_set_ax_max = NULL;
 jl_function_t* j_set_w_final_speed = NULL;
+jl_function_t* j_set_final_heading = NULL;
+jl_function_t* j_set_w_final_heading = NULL;
 jl_function_t* j_set_leader_speed = NULL;
 jl_function_t* j_set_follower_status = NULL;
 jl_function_t* j_set_goal_point_is_end_of_global_path = NULL;

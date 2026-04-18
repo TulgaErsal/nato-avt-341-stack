@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include <algorithm>
 #include <avt_341/node/occupancy_grid_subscriber.h>
@@ -160,7 +161,11 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
 
     obstacle_size_meters = grid.info.resolution;
     int poi_width = (int)(prediction_horizon / obstacle_size_meters * 2.0);
-    obstacles_origin = {x_vehicle-prediction_horizon,y_vehicle-prediction_horizon};
+    // Snap origin to grid resolution so that cell→index→world reconstruction
+    // is exact regardless of vehicle position (avoids cluster-center drift).
+    const double r = obstacle_size_meters;
+    obstacles_origin = {std::floor((x_vehicle - prediction_horizon) / r) * r,
+                        std::floor((y_vehicle - prediction_horizon) / r) * r};
     std::vector<std::vector<double>> obstacle_cells;
     obstacles.clear();
     std::vector<bool> obstacle_row;
@@ -236,7 +241,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
             avt_341::msg::Marker obs_marker;
             obs_marker.header.frame_id = "map";
             obs_marker.header.stamp = node->get_stamp();
-            obs_marker.id = i;
+            obs_marker.id = i + 1; // 0 is reserved for the DELETEALL marker
             obs_marker.type = avt_341::msg::Marker::CUBE;
             obs_marker.action = avt_341::msg::Marker::ADD;
             obs_marker.scale.x = obs_size;
@@ -244,7 +249,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
             obs_marker.scale.z = obs_size;
             obs_marker.color.a = 1.0;
             obs_marker.color.r = 1.0;
-            obs_marker.color.g = 0.0;
+            obs_marker.color.g = 0.5;
             obs_marker.color.b = 0.0;
             obs_marker.pose.position.x = x;
             obs_marker.pose.position.y = y;
