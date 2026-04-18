@@ -18,6 +18,7 @@ def launch_setup(context, *args, **kwargs):
     rviz_config = LaunchConfiguration('rviz_config').perform(context)
     record = LaunchConfiguration('record').perform(context).lower() == 'true'
     output_bag = LaunchConfiguration('output_bag').perform(context)
+    disable_lidar = LaunchConfiguration('disable_lidar').perform(context).lower() == 'true'
 
     # Load tracking parameters
     try:
@@ -163,10 +164,12 @@ def launch_setup(context, *args, **kwargs):
     actions = [
         bag_play,
         tracking_node,
-        lidar_obstacle_detector_node,
         rviz_node,
         task_status_pub
     ]
+
+    if not disable_lidar:
+        actions.append(lidar_obstacle_detector_node)
 
     if record:
         bag_record = ExecuteProcess(
@@ -187,5 +190,6 @@ def generate_launch_description():
         DeclareLaunchArgument('obstacle_detector_params', default_value=os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'obstacle_detector.yaml')),
         DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
         DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),
+        DeclareLaunchArgument('disable_lidar', default_value='false', description='Disable the LiDAR obstacle detector (for camera-only testing)'),
         OpaqueFunction(function=launch_setup)
     ])
