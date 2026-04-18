@@ -413,9 +413,9 @@ int main(int argc, char* argv[])
       if (nav_command == avt_341::utils::NavStateCmd::GoActive && state.run_state != NavStackState::Active) {
         // startup/idling - go active
         SetRunState(NavStackState::Active);
-        nav_command_rcvd = false;
         nav_command = avt_341::utils::NavStateCmd::GoInactive;
       }
+      nav_command_rcvd = false;
     } else if (use_global_planner) {
       state_pub->publish(state);
     }

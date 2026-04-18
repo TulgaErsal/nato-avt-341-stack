@@ -16,6 +16,7 @@
 #include "avt_341/avt_341_utils.h"
 //avt_341 includes
 #include "avt_341/control/pid_controller.h"
+#include <algorithm>
 
 using avt_341::utils::NavStackState;
 
@@ -176,6 +177,7 @@ int main(int argc, char *argv[]){
       controller.SetSetpoint(0.0);
       dc.linear.x = use_speed_controller ? controller.GetControlVariable(vel, dt) : 0.0;
       dc.angular.z = 0.0;
+      dc.linear.y = 0.0;
       if (use_speed_controller)
       {
         if (current_run_state == NavStackState::InactiveGradualStop)
@@ -186,10 +188,6 @@ int main(int argc, char *argv[]){
         {
           dc.linear.y = 1.0;
         }
-      }
-      else
-      {
-        dc.linear.y = 0.0;
       }
     }
 
