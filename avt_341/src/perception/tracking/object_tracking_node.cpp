@@ -1030,14 +1030,16 @@ void ObjectTrackingNode::RunObstacleDetection(
     const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg) {
     std_msgs::msg::Header header = cloud_msg->header;
 
-    // Transform to robot base link if needed.
+    // Transform to robot base link if needed, using the cloud's own timestamp
+    // so that the TF lookup matches the moment the scan was captured (same as
+    // the original standalone obstacle detector node).
     sensor_msgs::msg::PointCloud2 transformed_cloud;
     if (cloud_msg->header.frame_id != od_robot_base_link_) {
         geometry_msgs::msg::TransformStamped tf;
         try {
             tf = transform_buffer_->lookupTransform(
                 od_robot_base_link_, cloud_msg->header.frame_id,
-                tf2::TimePointZero);
+                cloud_msg->header.stamp, tf2::durationFromSec(0.2));
         } catch (tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(),
                         "RunObstacleDetection: TF %s -> %s failed: %s",
@@ -1069,12 +1071,14 @@ void ObjectTrackingNode::RunObstacleDetection(
     }
 
     // Rotation-only transform to fixed frame for normal estimation.
+    // Use the cloud's timestamp to match the original standalone node behavior.
     pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
     geometry_msgs::msg::TransformStamped fixed_tf;
     try {
         fixed_tf = transform_buffer_->lookupTransform(
-            world_frame_, od_robot_base_link_, tf2::TimePointZero);
+            world_frame_, od_robot_base_link_,
+            cloud_msg->header.stamp, tf2::durationFromSec(0.2));
     } catch (tf2::TransformException& ex) {
         RCLCPP_WARN(get_logger(),
                     "RunObstacleDetection: fixed-frame TF not available: %s",
