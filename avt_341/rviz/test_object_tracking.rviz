@@ -548,7 +548,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/lidar_detector/cloud_clusters
+        Value: /lidar_detector/cloud_clusters
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -562,7 +562,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/lidar_detector/bboxes
+        Value: /lidar_detector/bboxes
       Value: true
     - Alpha: 1
       Axes Length: 2

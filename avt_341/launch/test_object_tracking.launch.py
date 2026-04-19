@@ -14,11 +14,9 @@ def launch_setup(context, *args, **kwargs):
     # Retrieve parameter paths
     avt_341_dir = get_package_share_directory('avt_341')
     tracking_params_path = LaunchConfiguration('tracking_params').perform(context)
-    obstacle_detector_params_path = LaunchConfiguration('obstacle_detector_params').perform(context)
     rviz_config = LaunchConfiguration('rviz_config').perform(context)
     record = LaunchConfiguration('record').perform(context).lower() == 'true'
     output_bag = LaunchConfiguration('output_bag').perform(context)
-    disable_lidar = LaunchConfiguration('disable_lidar').perform(context).lower() == 'true'
 
     # Load tracking parameters
     try:
@@ -73,37 +71,14 @@ def launch_setup(context, *args, **kwargs):
                 'sync_enable': False,
                 'sync_detection': 0.1,
                 'sync_use_callback': True,
-                # Obstacle detector integration
-                'obstacle_markers_topic': '/avt_341/lidar_detector/bboxes',
-                'obstacle_association_max_dist': 5.0
+                # Obstacle detector integration (now embedded in tracking node)
+                'obstacle_association_max_dist': 5.0,
+                'od_robot_base_link': 'mrzr2/base_link',
+                'od_publish_cluster_cloud': True,
             })
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
-
-    # Load obstacle detector parameters, unwrapping the ROS 2 YAML nesting if present
-    try:
-        with open(obstacle_detector_params_path, 'r') as f:
-            _raw = yaml.safe_load(f)
-            if _raw is None:
-                obstacle_detector_params = {}
-            elif '/**' in _raw:
-                obstacle_detector_params = _raw['/**'].get('ros__parameters', {})
-            else:
-                obstacle_detector_params = _raw
-    except Exception as e:
-        print(f"Error loading obstacle detector parameters: {e}")
-        obstacle_detector_params = {}
-
-    # Override frames and topics to match the mrzr2 bag
-    obstacle_detector_params.update({
-        'robot_base_link': 'mrzr2/base_link',
-        'fixed_frame': 'map',
-        'lidar_points_topic': '/mrzr2/avt_341/points',
-        'cloud_ground_topic': '/avt_341/lidar_detector/cloud_ground',
-        'cloud_clusters_topic': '/avt_341/lidar_detector/cloud_clusters',
-        'bboxes_topic': '/avt_341/lidar_detector/bboxes',
-    })
 
     # Define Nodes and Processes
 
@@ -133,16 +108,7 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
-    # 3. LiDAR Obstacle Detector Node
-    lidar_obstacle_detector_node = Node(
-        package='avt_341',
-        executable='avt_341_lidar_obstacle_detector_node',
-        name='lidar_obstacle_detector_node',
-        output='screen',
-        parameters=[obstacle_detector_params, {'use_sim_time': True}]
-    )
-
-    # 4. RViz2
+    # 3. RViz2
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -168,9 +134,6 @@ def launch_setup(context, *args, **kwargs):
         task_status_pub
     ]
 
-    if not disable_lidar:
-        actions.append(lidar_obstacle_detector_node)
-
     if record:
         bag_record = ExecuteProcess(
             cmd=['ros2', 'bag', 'record', '-a', '-o', output_bag],
@@ -187,9 +150,7 @@ def generate_launch_description():
         DeclareLaunchArgument('bag_file', description='Path to the rosbag directory or file'),
         DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'test_object_tracking.rviz')),
         DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'config', 'parameters', 'object_tracking.yaml')),
-        DeclareLaunchArgument('obstacle_detector_params', default_value=os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'obstacle_detector.yaml')),
         DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
         DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),
-        DeclareLaunchArgument('disable_lidar', default_value='false', description='Disable the LiDAR obstacle detector (for camera-only testing)'),
         OpaqueFunction(function=launch_setup)
     ])
