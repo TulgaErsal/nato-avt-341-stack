@@ -12,7 +12,6 @@ def launch_setup(context, *args, **kwargs):
     bag_file = os.path.expanduser(bag_file)
     
     # Retrieve parameter paths
-    avt_341_dir = get_package_share_directory('avt_341')
     tracking_params_path = LaunchConfiguration('tracking_params').perform(context)
     rviz_config = LaunchConfiguration('rviz_config').perform(context)
     record = LaunchConfiguration('record').perform(context).lower() == 'true'
@@ -30,22 +29,11 @@ def launch_setup(context, *args, **kwargs):
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
 
-    # Load obstacle detector parameters
-    obstacle_detector_params_path = os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'obstacle_detector.yaml')
-    try:
-        with open(obstacle_detector_params_path, 'r') as f:
-            _raw = yaml.safe_load(f)
-            if _raw is None:
-                obstacle_detector_params = {}
-            elif '/**' in _raw:
-                obstacle_detector_params = _raw['/**'].get('ros__parameters', {})
-            else:
-                obstacle_detector_params = _raw
-            print(f"Loaded obstacle detector parameters: {obstacle_detector_params}")
-
-    except Exception as e:
-        print(f"Error loading obstacle detector parameters: {e}")
-        obstacle_detector_params = {}
+    # Obstacle detector is now embedded in the tracking node; inject its parameters directly.
+    tracking_params.update({
+        'od_robot_base_link': 'mrzr/base_link',
+        'od_publish_cluster_cloud': True,
+    })
 
     # Define Nodes and Processes
     
@@ -79,21 +67,7 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
-    # 3. LiDAR Obstacle Detector Node
-    lidar_obstacle_detector_node = Node(
-        package='avt_341',
-        executable='avt_341_lidar_obstacle_detector_node',
-        name='lidar_obstacle_detector_node',
-        output='screen',
-        parameters=[obstacle_detector_params, {'use_sim_time': True}],
-        remappings=[
-            ('/ouster/points', '/ouster/points'),
-            ('/avt_341/lidar_detector/cloud_ground', '/avt_341/lidar_detector/cloud_ground'),
-            ('/avt_341/lidar_detector/cloud_clusters', '/avt_341/lidar_detector/cloud_clusters')
-        ]
-    )
-
-    # 4. RViz2
+    # 3. RViz2
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -114,7 +88,8 @@ def launch_setup(context, *args, **kwargs):
     # 5. Record Bag (Optional)
     actions = [
         bag_play,
-        tracking_node,        lidar_obstacle_detector_node,        rviz_node,
+        tracking_node,
+        rviz_node,
         task_status_pub
     ]
 
