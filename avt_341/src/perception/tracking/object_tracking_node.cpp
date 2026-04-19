@@ -238,14 +238,99 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_use_manual_roi", false);
     use_manual_roi_size_ = get_parameter("filters_use_manual_roi").as_bool();
 
-    declare_parameter("obstacle_markers_topic",
-                      std::string("/avt_341/lidar_detector/bboxes"));
-    obstacle_markers_topic_ =
-        get_parameter("obstacle_markers_topic").as_string();
-
     declare_parameter("obstacle_association_max_dist", 5.0);
     obstacle_association_max_dist_ =
         get_parameter("obstacle_association_max_dist").as_double();
+
+    // Integrated LiDAR obstacle detector parameters
+    declare_parameter("od_robot_base_link", std::string("base_link"));
+    od_robot_base_link_ = get_parameter("od_robot_base_link").as_string();
+
+    declare_parameter("od_use_pca_box", false);
+    od_use_pca_box_ = get_parameter("od_use_pca_box").as_bool();
+
+    declare_parameter("od_use_tracking", true);
+    od_use_tracking_ = get_parameter("od_use_tracking").as_bool();
+
+    declare_parameter("od_voxel_grid_size", 0.2);
+    od_voxel_grid_size_ =
+        static_cast<float>(get_parameter("od_voxel_grid_size").as_double());
+
+    declare_parameter("od_roi_max_x", 70.0);
+    declare_parameter("od_roi_max_y", 30.0);
+    declare_parameter("od_roi_max_z", 3.0);
+    declare_parameter("od_roi_min_x", -5.0);
+    declare_parameter("od_roi_min_y", -30.0);
+    declare_parameter("od_roi_min_z", -2.5);
+    od_roi_max_point_ = Eigen::Vector4f(
+        get_parameter("od_roi_max_x").as_double(),
+        get_parameter("od_roi_max_y").as_double(),
+        get_parameter("od_roi_max_z").as_double(), 1.0f);
+    od_roi_min_point_ = Eigen::Vector4f(
+        get_parameter("od_roi_min_x").as_double(),
+        get_parameter("od_roi_min_y").as_double(),
+        get_parameter("od_roi_min_z").as_double(), 1.0f);
+
+    declare_parameter("od_body_max_x", 0.3);
+    declare_parameter("od_body_max_y", 0.8);
+    declare_parameter("od_body_max_z", 2.0);
+    declare_parameter("od_body_min_x", -2.2);
+    declare_parameter("od_body_min_y", -0.8);
+    declare_parameter("od_body_min_z", -0.3);
+    od_body_max_point_ = Eigen::Vector4f(
+        get_parameter("od_body_max_x").as_double(),
+        get_parameter("od_body_max_y").as_double(),
+        get_parameter("od_body_max_z").as_double(), 1.0f);
+    od_body_min_point_ = Eigen::Vector4f(
+        get_parameter("od_body_min_x").as_double(),
+        get_parameter("od_body_min_y").as_double(),
+        get_parameter("od_body_min_z").as_double(), 1.0f);
+
+    declare_parameter("od_ground_normal_x", 0.0);
+    declare_parameter("od_ground_normal_y", 0.0);
+    declare_parameter("od_ground_normal_z", 1.0);
+    od_ground_normal_ = Eigen::Vector3f(
+        get_parameter("od_ground_normal_x").as_double(),
+        get_parameter("od_ground_normal_y").as_double(),
+        get_parameter("od_ground_normal_z").as_double());
+
+    declare_parameter("od_ground_normal_threshold", 0.4);
+    od_ground_normal_threshold_ = static_cast<float>(
+        get_parameter("od_ground_normal_threshold").as_double());
+
+    declare_parameter("od_obstacle_scale", 1.0);
+    od_obstacle_scale_ =
+        static_cast<float>(get_parameter("od_obstacle_scale").as_double());
+
+    declare_parameter("od_obstacle_min_neighbors", 10);
+    od_obstacle_min_neighbors_ =
+        get_parameter("od_obstacle_min_neighbors").as_int();
+
+    declare_parameter("od_cluster_threshold", 0.6);
+    od_cluster_threshold_ = static_cast<float>(
+        get_parameter("od_cluster_threshold").as_double());
+
+    declare_parameter("od_cluster_min_size", 10);
+    od_cluster_min_size_ = get_parameter("od_cluster_min_size").as_int();
+
+    declare_parameter("od_cluster_max_size", 5000);
+    od_cluster_max_size_ = get_parameter("od_cluster_max_size").as_int();
+
+    declare_parameter("od_displacement_threshold", 1.0);
+    od_displacement_threshold_ = static_cast<float>(
+        get_parameter("od_displacement_threshold").as_double());
+
+    declare_parameter("od_iou_threshold", 1.0);
+    od_iou_threshold_ =
+        static_cast<float>(get_parameter("od_iou_threshold").as_double());
+
+    declare_parameter("od_publish_ground_cloud", false);
+    od_publish_ground_cloud_ =
+        get_parameter("od_publish_ground_cloud").as_bool();
+
+    declare_parameter("od_publish_cluster_cloud", false);
+    od_publish_cluster_cloud_ =
+        get_parameter("od_publish_cluster_cloud").as_bool();
 
     declare_parameter("lidar_reacquire_max_time", 0.5);
     lidar_reacquire_max_time_ =
@@ -304,11 +389,10 @@ void ObjectTrackingNode::CreateSubscriptions() {
                         std::placeholders::_1));
     }
 
-    obstacle_markers_subscription_ =
-        create_subscription<visualization_msgs::msg::MarkerArray>(
-            obstacle_markers_topic_, RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::ObstacleMarkersCallback, this,
-                      std::placeholders::_1));
+    // Initialize the integrated obstacle detector.
+    obstacle_detector_ =
+        std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
+    obstacle_id_ = 0;
 }
 
 void ObjectTrackingNode::CreateServices() {
@@ -414,6 +498,23 @@ void ObjectTrackingNode::CreatePublishers() {
 
     info_publisher_ =
         create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
+
+    // Integrated obstacle detector publishers.
+    obstacle_bboxes_publisher_ =
+        create_publisher<visualization_msgs::msg::MarkerArray>(
+            "lidar_detector/bboxes", 1);
+
+    if (od_publish_ground_cloud_) {
+        obstacle_ground_cloud_publisher_ =
+            create_publisher<sensor_msgs::msg::PointCloud2>(
+                "lidar_detector/cloud_ground", 1);
+    }
+
+    if (od_publish_cluster_cloud_) {
+        obstacle_clusters_cloud_publisher_ =
+            create_publisher<sensor_msgs::msg::PointCloud2>(
+                "lidar_detector/cloud_clusters", 1);
+    }
 }
 
 void ObjectTrackingNode::TrackerInfoCallback() {
@@ -873,14 +974,189 @@ void ObjectTrackingNode::Reset() {
     execution_time_ = -1.0;
 }
 
-void ObjectTrackingNode::ObstacleMarkersCallback(
-    const visualization_msgs::msg::MarkerArray::SharedPtr msg) {
-    // Always store the latest message, including DELETEALL-only messages.
-    // A DELETEALL-only message signals that the obstacle detector found no
-    // obstacles this frame; ignoring it would leave latest_obstacle_markers_
-    // stale with the previous frame's boxes, preventing tracking timeout.
-    latest_obstacle_markers_ = *msg;
+void ObjectTrackingNode::PublishObstacleDeleteAll(
+    const std_msgs::msg::Header& header) {
+    visualization_msgs::msg::MarkerArray marker_array;
+    visualization_msgs::msg::Marker delete_marker;
+    delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+    delete_marker.header = header;
+    marker_array.markers.push_back(delete_marker);
+    latest_obstacle_markers_ = marker_array;
     has_obstacle_markers_ = true;
+    obstacle_bboxes_publisher_->publish(marker_array);
+}
+
+void ObjectTrackingNode::PublishObstacleMarkers(
+    const std_msgs::msg::Header& header) {
+    visualization_msgs::msg::MarkerArray marker_array;
+
+    // Always prepend a DELETEALL to clear stale markers from previous frames.
+    visualization_msgs::msg::Marker delete_marker;
+    delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+    delete_marker.header = header;
+    marker_array.markers.push_back(delete_marker);
+
+    for (const auto& box : curr_boxes_) {
+        visualization_msgs::msg::Marker marker;
+        marker.header = header;
+        marker.ns = "lidar_bboxes";
+        marker.id = box.id;
+        marker.type = visualization_msgs::msg::Marker::CUBE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.pose.position.x = box.position.x();
+        marker.pose.position.y = box.position.y();
+        marker.pose.position.z = box.position.z();
+        marker.pose.orientation.w = box.quaternion.w();
+        marker.pose.orientation.x = box.quaternion.x();
+        marker.pose.orientation.y = box.quaternion.y();
+        marker.pose.orientation.z = box.quaternion.z();
+        marker.scale.x = box.dimension.x();
+        marker.scale.y = box.dimension.y();
+        marker.scale.z = box.dimension.z();
+        marker.color.r = 1.0f;
+        marker.color.g = 0.5f;
+        marker.color.b = 0.0f;
+        marker.color.a = 0.3f;
+        marker.lifetime = rclcpp::Duration::from_seconds(0.5);
+        marker_array.markers.push_back(marker);
+    }
+
+    latest_obstacle_markers_ = marker_array;
+    has_obstacle_markers_ = true;
+    obstacle_bboxes_publisher_->publish(marker_array);
+}
+
+void ObjectTrackingNode::RunObstacleDetection(
+    const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg) {
+    std_msgs::msg::Header header = cloud_msg->header;
+
+    // Transform to robot base link if needed.
+    sensor_msgs::msg::PointCloud2 transformed_cloud;
+    if (cloud_msg->header.frame_id != od_robot_base_link_) {
+        geometry_msgs::msg::TransformStamped tf;
+        try {
+            tf = transform_buffer_->lookupTransform(
+                od_robot_base_link_, cloud_msg->header.frame_id,
+                tf2::TimePointZero);
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_WARN(get_logger(),
+                        "RunObstacleDetection: TF %s -> %s failed: %s",
+                        cloud_msg->header.frame_id.c_str(),
+                        od_robot_base_link_.c_str(), ex.what());
+            PublishObstacleDeleteAll(header);
+            return;
+        }
+        tf2::doTransform(*cloud_msg, transformed_cloud, tf);
+        transformed_cloud.header.frame_id = od_robot_base_link_;
+    } else {
+        transformed_cloud = *cloud_msg;
+    }
+    header.frame_id = od_robot_base_link_;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromROSMsg(transformed_cloud, *raw_cloud);
+
+    // Downsample, crop ROI, remove ego-vehicle body.
+    auto filtered_cloud = obstacle_detector_->filterCloud(
+        raw_cloud, od_voxel_grid_size_,
+        od_roi_min_point_, od_roi_max_point_,
+        od_body_min_point_, od_body_max_point_);
+
+    if (static_cast<int>(filtered_cloud->size()) < od_cluster_min_size_) {
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    // Rotation-only transform to fixed frame for normal estimation.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    geometry_msgs::msg::TransformStamped fixed_tf;
+    try {
+        fixed_tf = transform_buffer_->lookupTransform(
+            world_frame_, od_robot_base_link_, tf2::TimePointZero);
+    } catch (tf2::TransformException& ex) {
+        RCLCPP_WARN(get_logger(),
+                    "RunObstacleDetection: fixed-frame TF not available: %s",
+                    ex.what());
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    Eigen::Quaternionf q(
+        fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x,
+        fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
+    if (q.norm() < 1e-6f) {
+        RCLCPP_WARN(get_logger(),
+                    "RunObstacleDetection: fixed-frame TF quaternion is zero.");
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+    Eigen::Matrix4f mat4 = Eigen::Matrix4f::Identity();
+    mat4.block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
+    Eigen::Affine3f transform_fixed;
+    transform_fixed.matrix() = mat4;
+    pcl::transformPointCloud(*filtered_cloud, *fixed_cloud, transform_fixed);
+
+    if (static_cast<int>(fixed_cloud->size()) < od_cluster_min_size_) {
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    // Separate ground and obstacle points via normal filtering.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr ground_filtered(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    obstacle_detector_->pclFilterNorms(
+        filtered_cloud, fixed_cloud,
+        norm_filtered, ground_filtered,
+        od_ground_normal_, od_ground_normal_threshold_,
+        od_obstacle_scale_, od_obstacle_min_neighbors_);
+
+    if (od_publish_ground_cloud_ && obstacle_ground_cloud_publisher_) {
+        sensor_msgs::msg::PointCloud2 ground_msg;
+        pcl::toROSMsg(*ground_filtered, ground_msg);
+        ground_msg.header = header;
+        obstacle_ground_cloud_publisher_->publish(ground_msg);
+    }
+
+    if (od_publish_cluster_cloud_ && obstacle_clusters_cloud_publisher_) {
+        sensor_msgs::msg::PointCloud2 cluster_msg;
+        pcl::toROSMsg(*norm_filtered, cluster_msg);
+        cluster_msg.header = header;
+        obstacle_clusters_cloud_publisher_->publish(cluster_msg);
+    }
+
+    if (norm_filtered->empty()) {
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    // Cluster and build bounding boxes.
+    auto cloud_clusters = obstacle_detector_->clustering(
+        norm_filtered, od_cluster_threshold_,
+        od_cluster_min_size_, od_cluster_max_size_);
+
+    curr_boxes_.clear();
+    for (auto& cluster : cloud_clusters) {
+        Box box = od_use_pca_box_
+            ? obstacle_detector_->pcaBoundingBox(cluster, obstacle_id_)
+            : obstacle_detector_->axisAlignedBoundingBox(cluster, obstacle_id_);
+        obstacle_id_ = (obstacle_id_ < SIZE_MAX) ? obstacle_id_ + 1 : 0;
+        curr_boxes_.emplace_back(box);
+    }
+
+    if (od_use_tracking_) {
+        obstacle_detector_->obstacleTracking(
+            prev_boxes_, curr_boxes_,
+            od_displacement_threshold_, od_iou_threshold_);
+    }
+
+    PublishObstacleMarkers(header);
+
+    prev_boxes_.swap(curr_boxes_);
+    curr_boxes_.clear();
 }
 
 // JN addition for camera detection only tracking
@@ -970,6 +1246,10 @@ void ObjectTrackingNode::PointCloudCallback(
     point_cloud_ = ToPCLCloud(point_cloud_message);
     point_cloud_message_ = point_cloud_message;
     has_point_cloud_ = true;
+
+    // Run the integrated obstacle detector synchronously so that
+    // latest_obstacle_markers_ is up-to-date before the next tracking tick.
+    RunObstacleDetection(point_cloud_message);
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr ObjectTrackingNode::ToPCLCloud(

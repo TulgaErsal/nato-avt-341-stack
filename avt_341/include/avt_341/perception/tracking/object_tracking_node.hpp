@@ -98,6 +98,8 @@
 #include <opencv2/opencv.hpp>
 
 #include <avt_341/perception/filtering/imm_filter.hpp>
+#include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
+#include <avt_341/perception/box.hpp>
 #include <avt_341/perception/tracking/exceptions.hpp>
 #include <avt_341/perception/tracking/pixel_coordinates.hpp>
 #include <avt_341_msgs/msg/mission_task_status.hpp>
@@ -822,41 +824,125 @@ class ObjectTrackingNode : public rclcpp::Node {
     BoundingBox2D roi_bounding_box_2d_;
 
     // ---------------------------------------------------------------------- //
-    // > Obstacle detector integration
+    // > Integrated LiDAR obstacle detector
     // ---------------------------------------------------------------------- //
 
-    /** @brief Subscription to bounding box markers from the LiDAR obstacle
-     *         detector node. Replaces the internal PCL clustering pipeline
-     *         for LiDAR-based target position measurement. */
-    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr
-        obstacle_markers_subscription_;
+    /** @brief Runs the obstacle detection pipeline on the latest point cloud
+     *         and directly updates latest_obstacle_markers_. Called from
+     *         PointCloudCallback so the markers are ready before the next
+     *         tracking timer tick. */
+    void RunObstacleDetection(
+        const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg);
 
-    /**
-     * @brief Callback for obstacle detector bounding box markers.
-     *
-     * @param msg Incoming MarkerArray from the LiDAR obstacle detector.
-     */
-    void ObstacleMarkersCallback(
-        const visualization_msgs::msg::MarkerArray::SharedPtr msg);
+    /** @brief Builds and publishes (and stores) a DELETEALL MarkerArray. */
+    void PublishObstacleDeleteAll(const std_msgs::msg::Header& header);
 
-    /** @brief Latest MarkerArray received from the obstacle detector. */
+    /** @brief Builds markers from curr_boxes_ and publishes them. */
+    void PublishObstacleMarkers(const std_msgs::msg::Header& header);
+
+    /** @brief The obstacle detector algorithm (filter / cluster / track). */
+    std::shared_ptr<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>
+        obstacle_detector_;
+
+    /** @brief Rolling counter used to assign unique IDs to new boxes. */
+    size_t obstacle_id_ = 0;
+
+    /** @brief Box list from the previous obstacle detection frame.
+     *         Used by the Hungarian-algorithm tracker. */
+    std::vector<Box> prev_boxes_;
+
+    /** @brief Box list built during the current obstacle detection frame. */
+    std::vector<Box> curr_boxes_;
+
+    // Obstacle detector parameters ----------------------------------------
+
+    /** @brief Frame ID of the robot base link (used for initial TF of the
+     *         incoming point cloud). */
+    std::string od_robot_base_link_;
+
+    /** @brief Whether to use PCA-aligned bounding boxes (true) or
+     *         axis-aligned bounding boxes (false). */
+    bool od_use_pca_box_;
+
+    /** @brief Whether to run the Hungarian-algorithm box tracker across
+     *         frames to keep box IDs stable. */
+    bool od_use_tracking_;
+
+    /** @brief Voxel grid leaf size [m] for downsampling before clustering. */
+    float od_voxel_grid_size_;
+
+    /** @brief ROI crop-box corners in the robot base link frame. */
+    Eigen::Vector4f od_roi_max_point_;
+    Eigen::Vector4f od_roi_min_point_;
+
+    /** @brief Ego-vehicle body crop-box corners (removed from the cloud). */
+    Eigen::Vector4f od_body_max_point_;
+    Eigen::Vector4f od_body_min_point_;
+
+    /** @brief Ground normal used for normal-based ground/obstacle separation.
+     *         Expressed in the fixed frame. */
+    Eigen::Vector3f od_ground_normal_;
+
+    /** @brief Dot-product threshold for classifying a point as ground via
+     *         surface normal comparison. */
+    float od_ground_normal_threshold_;
+
+    /** @brief Normal estimation search radius [m] and radius-outlier removal
+     *         radius [m]. */
+    float od_obstacle_scale_;
+
+    /** @brief Minimum number of neighbors within od_obstacle_scale_ for a
+     *         point to survive the radius-outlier removal step. */
+    int od_obstacle_min_neighbors_;
+
+    /** @brief Euclidean cluster tolerance [m]. */
+    float od_cluster_threshold_;
+
+    /** @brief Minimum and maximum cluster point counts. */
+    int od_cluster_min_size_;
+    int od_cluster_max_size_;
+
+    /** @brief Displacement and IoU thresholds for the box tracker. */
+    float od_displacement_threshold_;
+    float od_iou_threshold_;
+
+    // Obstacle detector publishers -----------------------------------------
+
+    /** @brief Publishes the obstacle bounding-box markers. */
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+        obstacle_bboxes_publisher_;
+
+    /** @brief Publishes the ground-classified point cloud (optional). */
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+        obstacle_ground_cloud_publisher_;
+
+    /** @brief Publishes the non-ground obstacle point cloud (optional). */
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+        obstacle_clusters_cloud_publisher_;
+
+    /** @brief Whether to publish the obstacle ground cloud. */
+    bool od_publish_ground_cloud_;
+
+    /** @brief Whether to publish the non-ground obstacle cluster cloud. */
+    bool od_publish_cluster_cloud_;
+
+    // Obstacle tracker state (shared with tracker) -------------------------
+
+    /** @brief Latest MarkerArray produced by the integrated obstacle detector.
+     *         Populated synchronously in PointCloudCallback. */
     visualization_msgs::msg::MarkerArray latest_obstacle_markers_;
 
-    /** @brief True once at least one non-empty MarkerArray has been received. */
+    /** @brief True once at least one MarkerArray (including DELETEALL) has
+     *         been produced by the obstacle detector. */
     bool has_obstacle_markers_ = false;
 
     /** @brief ID of the obstacle detector marker associated with the tracked
      *         target. Set to -1 when no association has been established. */
     int tracked_obstacle_id_ = -1;
 
-    /** @brief Topic on which the obstacle detector publishes its bounding
-     *         box markers. Configurable via the obstacle_markers_topic
-     *         parameter. */
-    std::string obstacle_markers_topic_;
-
-    /** @brief Maximum distance [m] in world frame between the camera-estimated
-     *         target position and an obstacle marker centroid for the marker
-     *         to be considered a candidate for association. */
+    /** @brief Maximum pixel distance (as a multiple of the detection bbox
+     *         half-diagonal) for associating an obstacle marker with a camera
+     *         detection. */
     double obstacle_association_max_dist_;
 
     // ---------------------------------------------------------------------- //
