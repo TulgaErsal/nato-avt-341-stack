@@ -52,12 +52,7 @@ def launch_setup(context, *args, **kwargs):
             ('camera_info', '/flir_camera/camera_info'),
             ('image', '/flir_camera/image_raw'),
             ('detection_2d', '/mrzr/detections/vision'),
-            ('points/input', '/ouster/points'),
-            ('points/fov', 'object_tracking/points/fov'),
-            ('points/roi', 'object_tracking/points/roi'),
-            ('points/ground', 'object_tracking/points/ground'),
-            ('points/cluster', 'object_tracking/points/cluster'),
-            ('points/cropbox', 'object_tracking/points/cropbox')
+            ('points/input', '/ouster/points')
         ]
     )
 

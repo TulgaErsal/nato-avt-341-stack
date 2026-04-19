@@ -81,17 +81,8 @@
 #include <vision_msgs/msg/detection3_d_array.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-#include <pcl/common/centroid.h>
-#include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
-#include <pcl/features/moment_of_inertia_estimation.h>
-#include <pcl/filters/crop_box.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -223,23 +214,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     void PointCloudCallback(
         sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
-    /**
-     * @brief Convert a ROS sensor_msgs/PointCloud2 message to PCL XYZ point
-     * cloud.
-     *
-     * @param point_cloud_message ROS sensor_msgs/PointCloud2 message.
-     * @return pcl::PointCloud<pcl::PointXYZ>::Ptr PCL XYZ point cloud.
-     */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr ToPCLCloud(
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
-
-    /**
-     * @brief Remove points with NaN values from a PCL XYZ point cloud.
-     *
-     * @param point_cloud PCL XYZ point cloud.
-     */
-    void RemoveNaNPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
     /** @brief Camera info subscription. */
     rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr
         camera_info_subscription_;
@@ -302,48 +276,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief Unique pointer to the transform buffer. */
     std::unique_ptr<tf2_ros::Buffer> transform_buffer_;
 
-    geometry_msgs::msg::TransformStamped TransformPointCloud(
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message,
-        const std::string target_frame);
-
-    // Projection
-    // ----------
-
-    PixelCoordinates ConvertPointToPixelCoordinates(
-        const pcl::PointXYZ& point,
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    std::vector<PixelCoordinates> ConvertPointCloudToPixelCoordinates(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    // Camera FOV
-    // ----------
-
-    void FindPointsInCameraFOV(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                               const std::vector<PixelCoordinates>& coordinates,
-                               const int height, const int width);
-
-    /** @brief Whether or not to publish the camera field of view segmented
-     * point cloud. */
-    bool publish_fov_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        fov_cloud_publisher_;
-
-    void FindPointsInROI(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                         const std::vector<PixelCoordinates>& coordinates,
-                         const unsigned int x_min, const unsigned int x_max,
-                         const unsigned int y_min, const unsigned int y_max);
-
-    bool publish_roi_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        roi_cloud_publisher_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        cropbox_cloud_publisher_;
-
     // JN addition for camera detection only tracking
     /** @brief Estimate range from BBox detection using pixel height vs vehicle height
     * and return point measurment of BBox center in 3D. */
@@ -352,89 +284,6 @@ class ObjectTrackingNode : public rclcpp::Node {
         const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
     // -------------------------------------
-
-    // Passthrough filtering
-    // ---------------------
-    pcl::PassThrough<pcl::PointXYZ> passthrough_filter_;
-
-    double passthrough_distance_min_;
-
-    double passthrough_distance_max_;
-
-    void LimitSensorDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                             bool symmetric);
-
-    // Euclidean clustering
-    // --------------------
-
-    /**
-     * @param reference_point Point in the cloud frame to use as the anchor
-     *        for selecting the best cluster. The cluster whose centroid is
-     *        closest to this point is returned. Pass the zero vector to fall
-     *        back to selecting the cluster closest to the sensor origin
-     *        (FULL_TRACKING behavior).
-     */
-    const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
-                    const pcl::PointXYZ>
-    ExtractEuclideanClusters(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                             const Eigen::Vector3f& reference_point =
-                                 Eigen::Vector3f::Zero());
-
-    bool publish_cluster_cloud_;
-
-    bool publish_cropbox_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        cluster_publisher_;
-
-    double clustering_tolerance_;
-
-    int cluster_size_min_;
-
-    int cluster_size_max_;
-
-    /** @brief Minimum vertical extent (m) for a cluster to be considered a
-     *         valid vehicle. Rejects flat ground patches missed by RANSAC and
-     *         very small returns. */
-    double cluster_height_min_;
-
-    /** @brief Maximum vertical extent (m) for a cluster to be considered a
-     *         valid vehicle. Rejects large static objects such as buildings. */
-    double cluster_height_max_;
-
-    /** @brief Minimum horizontal (left-right) extent (m) of a valid cluster.
-     *         In the camera optical frame this is the X axis. */
-    double cluster_width_min_;
-
-    /** @brief Maximum horizontal (left-right) extent (m) of a valid cluster. */
-    double cluster_width_max_;
-
-    /** @brief Minimum along-range extent (m) of a valid cluster.
-     *         In the camera optical frame this is the Z axis. */
-    double cluster_depth_min_;
-
-    /** @brief Maximum along-range extent (m) of a valid cluster. */
-    double cluster_depth_max_;
-
-    /** @brief Reference range (m) at which filters_clustering_size_minimum
-     *         applies. The minimum point count scales as 1/d^2 relative to
-     *         this distance to account for LiDAR return density fall-off. */
-    double cluster_distance_ref_;
-
-    // Ground plane segmentation
-    // -------------------------
-
-    void SegmentGroundPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane);
-
-    /** @brief Whether or not to publish the point cloud of the segmented ground
-     * plane. */
-    bool publish_ground_cloud_;
-
-    /** @brief Shared pointer to the segmented ground plane point cloud
-     * publisher */
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        ground_cloud_publisher_;
 
     // Object state estimation (IMM: CV + CTR + NM)
     // ----------------------------------------
@@ -498,43 +347,6 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     void Initialize();
 
-    // Voxel grid downsampling filter
-    // -------------------------------------------------------------------------
-
-    double leaf_size_;
-
-    void DownsampleCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
-    pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter_;
-    // -------------------------------------------------------------------------
-
-    // PCA oriented bounding box estimation
-    // -------------------------------------------------------------------------
-    /** @brief Whether or not to use the centroid of the PCA oriented bounding
-     * box as cluster centroid. */
-    bool use_pca_centroid_;
-
-    /** @brief Point cloud moment of inertia estimator. */
-    pcl::MomentOfInertiaEstimation<pcl::PointXYZ> moi_estimation_;
-
-    /**
-     * @brief Estimate the PCA oriented bounding box for a point cloud.
-     *
-     * @param point_cloud The point clouds for which the PCA oriented bounding
-     * box will be estimated.
-     * @param bounding_box_min The minimum XYZ coordinates of the bounding box.
-     * @param bounding_box_max The maximum XYZ coordinates of the bounding box.
-     * @param bounding_box_centroid The XYZ coordinates of the bounding box
-     * centroid.
-     * @param bounding_box_rotation The rotation matrix for the bounding box.
-     */
-    void GetOrientedBoundingBox(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                                pcl::PointXYZ& bounding_box_min,
-                                pcl::PointXYZ& bounding_box_max,
-                                pcl::PointXYZ& bounding_box_centroid,
-                                Eigen::Matrix3f& bounding_box_rotation);
-    // -------------------------------------------------------------------------
-
     // Detection publisher
     // -------------------
 
@@ -568,26 +380,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_filtered_publisher_;
 
     void PublishOdometry();
-
-    // Crop box
-    // --------
-
-    pcl::CropBox<pcl::PointXYZ> crop_box_;
-
-    void CropRegionOfInterest();
-
-    // SAC segmentation
-    // --------------------
-
-    pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
-
-    double sac_segmentation_angle_;
-
-    /** @brief RANSAC fit distance threshold. */
-    double sac_segmentation_threshold_;
-
-    /** @brief Maximum number of RANSAC fit iterations. */
-    int sac_segmentation_max_iterations_;
 
     // Detection image publishing
     // --------------------------
@@ -666,35 +458,8 @@ class ObjectTrackingNode : public rclcpp::Node {
      * message. */
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message_;
 
-    /** @brief Shared pointer to the latest parsed point cloud. */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_;
-
-    // Euclidean clustering
-    // -------------------------------------------------------------------------
-
-    std::vector<Cluster> clusters_;
-
-    Cluster tracked_cluster_;
-    // -------------------------------------------------------------------------
-
     // Coordinate transformations
     // -------------------------------------------------------------------------
-
-    /**
-     * @brief Transform a point cloud from its originating frame to the camera
-     * frame.
-     *
-     * @details A valid transform must be available in the TF tree at the time
-     * of invocation. Note that the transform is performed in-place, hence the
-     * original point coordinates are overwritten in the process.
-     *
-     * @param point_cloud The point cloud to be transformed in-place.
-     * @param point_cloud_message The ROS sensor_msgs/msg/PointCloud2 message
-     * for the point cloud.
-     */
-    void TransformPointCloudToCameraFrame(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
     /**
      * @brief Transform a three-dimensional point from the camera frame to the
@@ -711,10 +476,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief The frame ID of the world (fixed) frame. */
     std::string world_frame_;
     // -------------------------------------------------------------------------
-
-    void ProjectPointsToPixel(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
     std::string ToString(TrackerState& state);
 
@@ -789,9 +550,6 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     double execution_time_ = -1.0;
     void Reset();
-
-    void EuclideanClustering();
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster_;
 
     // JN addition
     /** @brief Get coordinates from Camera boundingbox is lidar

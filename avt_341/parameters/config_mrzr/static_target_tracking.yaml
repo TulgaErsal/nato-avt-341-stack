@@ -3,23 +3,7 @@ camera_frame: "flir_optical"
 odometry_child_frame: "odom"
 world_frame: "map"
 filters_use_manual_roi: true
-filters_downsampling_leaf_size: 0.25
-filters_passthrough_min: 3.0
-filters_passthrough_max: 30.0
-filters_clustering_tolerance: 0.6
-filters_clustering_size_minimum: 100        # minimum point count at the reference distance
-filters_clustering_size_maximum: 500
-filters_clustering_distance_reference: 10.0  # range [m] at which size_minimum applies; min scales as 1/d^2
-filters_clustering_min_height: 1.0           # minimum cluster vertical extent [m]
-filters_clustering_max_height: 4.0           # maximum cluster vertical extent [m]
-filters_clustering_min_width: 0.1            # minimum cluster left-right extent [m]
-filters_clustering_max_width: 4.0            # maximum cluster left-right extent [m]
-filters_clustering_min_depth: 0.1            # minimum cluster along-range extent [m]
-filters_clustering_max_depth: 6.0            # maximum cluster along-range extent [m]
 filters_manual_roi_size: [5.0, 5.0, 5.0]
-filters_ground_max_iterations: 50
-filters_ground_threshold: 0.2
-filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
 filters_kalman_measurement: 0.5
@@ -67,17 +51,11 @@ lidar_reacquire_max_dist: 3.0                                  # max world-frame
 sync_enable: false
 sync_use_callback: true
 sync_detection: 0.1
-publish_clouds_fov: true
-publish_clouds_roi: true
-publish_clouds_ground: true
-publish_clouds_cluster: true
-publish_clouds_cropbox: true
 publish_pose: true
 filters_pose: true
 publish_odometry: true
 filters_odometry: true
 tracker_use_mission_manager: false
-filters_use_pca_centroid: true
 publish_detection: true
 publish_image: true
 
