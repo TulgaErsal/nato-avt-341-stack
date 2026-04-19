@@ -29,12 +29,6 @@ def launch_setup(context, *args, **kwargs):
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
 
-    # Obstacle detector is now embedded in the tracking node; inject its parameters directly.
-    tracking_params.update({
-        'od_robot_base_link': 'mrzr/base_link',
-        'od_publish_cluster_cloud': True,
-    })
-
     # Define Nodes and Processes
     
     # 1. Play the rosbag

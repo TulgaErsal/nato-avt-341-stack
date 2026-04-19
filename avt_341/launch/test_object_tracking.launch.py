@@ -73,8 +73,6 @@ def launch_setup(context, *args, **kwargs):
                 'sync_use_callback': True,
                 # Obstacle detector integration (now embedded in tracking node)
                 'obstacle_association_max_dist': 5.0,
-                'od_robot_base_link': 'mrzr2/base_link',
-                'od_publish_cluster_cloud': True,
             })
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
