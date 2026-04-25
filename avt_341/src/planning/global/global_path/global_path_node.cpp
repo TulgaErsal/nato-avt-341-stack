@@ -22,6 +22,7 @@
 #include "avt_341/visualization/visualization_factory.h"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/core/dto_conversion.h"
+#include <avt_341_msgs/srv/compute_global_path.hpp>
 #include <chrono>
 #include <stdexcept>
 
@@ -53,6 +54,7 @@ double dft_yaw_threshold = 30.0f;
 double goal_start_time = 0.0;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavState>> state_pub = nullptr;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavState>> goal_reached_pub = nullptr;
+std::shared_ptr<avt_341::planning::Astar> path_planner = nullptr;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -212,6 +214,82 @@ void Reset()
   odom_rcvd = false;
 }
 
+static std::vector<Point> TrimPathEnd(const std::vector<Point>& path, double trim_distance)
+{
+  if (trim_distance <= 0.0 || path.size() < 2) {
+    return path;
+  }
+  double accumulated = 0.0;
+  for (int i = static_cast<int>(path.size()) - 1; i > 0; --i) {
+    Point seg = path[i] - path[i - 1];
+    const double seg_len = seg.mag();
+    if (accumulated + seg_len >= trim_distance) {
+      const double remaining = trim_distance - accumulated;
+      const double t = (seg_len - remaining) / seg_len;
+      Point interp;
+      interp.x = path[i - 1].x + static_cast<float>(t) * seg.x;
+      interp.y = path[i - 1].y + static_cast<float>(t) * seg.y;
+      std::vector<Point> trimmed(path.begin(), path.begin() + i);
+      trimmed.push_back(interp);
+      return trimmed;
+    }
+    accumulated += seg_len;
+  }
+  return std::vector<Point>{ path.front() };
+}
+
+void ComputeGlobalPathServiceCallback(
+    const std::shared_ptr<avt_341_msgs::srv::ComputeGlobalPath::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::ComputeGlobalPath::Response> response)
+{
+  avt_341::msg::Path full_path;
+  full_path.header.stamp = n->get_stamp();
+  full_path.header.frame_id = "map";
+
+  if (request->goals.goals.empty()) {
+    n->log_warning("ComputeGlobalPath: empty goal sequence received");
+    response->path = full_path;
+    return;
+  }
+
+  Point segment_start = ToVec2(request->start_pose.pose);
+
+  const std::size_t num_goals = request->goals.goals.size();
+  for (std::size_t i = 0; i < num_goals; ++i) {
+    auto& goal = request->goals.goals[i];
+    const auto dist_threshold = goal.dist_threshold < 0.0 ? dft_dist_threshold : goal.dist_threshold;
+    const Point goal_pt = ToVec2(goal.pose);
+
+    std::vector<Point> segment = path_planner->PlanPath(
+      &current_grid, &segmentation_grid, goal_pt, segment_start);
+
+    if (segment.empty()) {
+      n->log_warning("ComputeGlobalPath: planner returned empty segment for goal %zu (%.2f, %.2f)", i, goal_pt.x, goal_pt.y);
+      continue;
+    }
+
+    if (request->remove_threshold) {
+      segment = TrimPathEnd(segment, dist_threshold);
+    }
+
+    // Append segment poses, skipping the duplicated junction point (start of this
+    // segment matches the end of the previous one) for all but the first segment.
+    const std::size_t skip = full_path.poses.empty() ? 0 : 1;
+    for (std::size_t k = skip; k < segment.size(); ++k) {
+      auto pose = ToPoseStamped(full_path.header.frame_id, segment[k].x, segment[k].y);
+      pose.header.stamp = full_path.header.stamp;
+      full_path.poses.push_back(pose);
+    }
+
+    // Next segment starts from the (possibly trimmed) terminal point of this one.
+    segment_start = segment.back();
+  }
+
+  response->path = full_path;
+  n->log_info("ComputeGlobalPath: produced path with %zu poses across %zu goals",
+              full_path.poses.size(), num_goals);
+}
+
 int main(int argc, char* argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
@@ -319,7 +397,6 @@ int main(int argc, char* argv[])
 
   auto visualizer = avt_341::visualization::create_visualizer(display_type);
 
-  std::shared_ptr<avt_341::planning::Astar> path_planner;
   if (planning_method == "fast_marching") {
     path_planner = std::make_shared<avt_341::planning::FastMarching>(visualizer,
                                                        w_distance,
@@ -379,6 +456,11 @@ int main(int argc, char* argv[])
   if (dilation_factor > 0.0) {
     path_planner->SetDilationFactor(static_cast<int>(dilation_factor));
   }
+
+  // Service: compute a global path through a sequence of NavGoals starting from a given pose.
+  auto compute_global_path_srv =
+      n->get_raw_node()->create_service<avt_341_msgs::srv::ComputeGlobalPath>(
+          "avt_341/compute_global_path", &ComputeGlobalPathServiceCallback);
 
   avt_341::node::Rate r(20.0f); // Hz
   int nl = 0;

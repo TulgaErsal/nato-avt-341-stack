@@ -16,6 +16,14 @@ namespace avt_341::core
         };
     }
 
+    inline auto ToVec2(const msg::Pose & p)
+    {
+        return utils::vec2{
+            static_cast<float>(p.position.x),
+            static_cast<float>(p.position.y)
+        };
+    }
+
     inline bool HasActiveGoal(const msg::NavStatePtr& msg)
     {
         return msg->run_state == utils::NavStackState::Active;

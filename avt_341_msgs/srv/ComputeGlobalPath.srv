@@ -1,0 +1,9 @@
+# Request: a sequence of navigation goals to plan a global path through
+avt_341_msgs/NavGoalSequence goals
+# If true, the path will be trimmed to the goal reached threshold distance from each NavGoal
+bool remove_threshold
+# Starting pose from which to plan the global path
+geometry_msgs/PoseStamped start_pose
+---
+# Response: the computed global path
+nav_msgs/Path path
