@@ -504,7 +504,8 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
         handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
     } else if(formation_def->isFollowing()) {
-        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def, msg.desired_speed);
+        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def,
+            msg.desired_speed, msg.dist_threshold, msg.yaw_threshold);
         addTask(followTask, msg.priority_type);
     }
 
