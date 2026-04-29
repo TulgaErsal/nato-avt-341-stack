@@ -228,6 +228,7 @@ def generate_launch_description():
                     executable='robot_state_publisher',
                     name='robot_state_publisher',
                     output='screen',
+                    condition=IfCondition(LaunchConfiguration('publish_urdf_to_tf')),
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
                                  'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
