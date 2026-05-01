@@ -9,7 +9,7 @@ function(DownloadWindowsDll)
     file(DOWNLOAD
     "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=6fqeeadg&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=babc9a321db56d959d37cd14684d4c7efe7f338c6c6c82b5ccf6775f0d76b322
+    EXPECTED_HASH SHA256=28d59e39d01f8cc7a9f39c65f4dfd441d490c99d026bb946ad84913cfa16deb0
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
@@ -19,7 +19,7 @@ function(DownloadLinuxSharedLibrary)
     file(DOWNLOAD
     "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=fe9g2jvb&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=e7c95a9d10482a09819eefb30c02d3b62ca6e7a626afcf6f86b19dfa9b28dbce
+    EXPECTED_HASH SHA256=14aae86b7fabd1ebaa89c92a67523ddc540f769585ce20c10485758fe0cc821f
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
