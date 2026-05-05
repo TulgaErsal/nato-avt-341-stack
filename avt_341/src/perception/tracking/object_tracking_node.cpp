@@ -370,6 +370,9 @@ void ObjectTrackingNode::CreatePublishers() {
             create_publisher<nav_msgs::msg::Odometry>("odometry/filtered", 1);
     }
 
+    tracked_target_odometry_publisher_ =
+        create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry/tracked", 1);
+
     info_publisher_ =
         create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
 
@@ -1494,8 +1497,21 @@ void ObjectTrackingNode::PublishOdometry() {
     odometry_message.pose.pose.position.x = bounding_box_centroid_global_.x();
     odometry_message.pose.pose.position.y = bounding_box_centroid_global_.y();
     odometry_message.pose.pose.position.z = bounding_box_centroid_global_.z();
-   
+
     odometry_publisher_->publish(odometry_message);
+
+    nav_msgs::msg::Odometry tracked_target_message;
+    tracked_target_message.header.stamp = get_clock()->now();
+    tracked_target_message.header.frame_id = world_frame_;
+    tracked_target_message.child_frame_id = odometry_child_frame_;
+    tracked_target_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
+    tracked_target_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
+    tracked_target_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
+    tracked_target_message.pose.pose.orientation.x = 0;
+    tracked_target_message.pose.pose.orientation.y = 0;
+    tracked_target_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
+    tracked_target_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
+    tracked_target_odometry_publisher_->publish(tracked_target_message);
 }
 
 void ObjectTrackingNode::TaskStatusCallback(

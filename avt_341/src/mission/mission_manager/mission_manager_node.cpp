@@ -115,9 +115,12 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std
 
   bool target_veh_present = target_idx < veh_namespaces.size();
   std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
-  std::string sub_postfix = my_name == tracking_veh && !tracked_veh.empty() && toUpper(target_veh_ns) == tracked_veh ? "/tracked" : "";
+  bool use_tracker = my_name == tracking_veh && !tracked_veh.empty() && toUpper(target_veh_ns) == tracked_veh;
+  std::string topic = use_tracker
+    ? "avt_341/odometry/tracked"
+    : "/" + target_veh_ns + "/avt_341/odometry";
   return target_veh_present
-    ? nh->create_subscription<avt_341::msg::Odometry>("/" + target_veh_ns + "/avt_341/odometry" + sub_postfix, 10, VehicleOdometryCallback)
+    ? nh->create_subscription<avt_341::msg::Odometry>(topic, 10, VehicleOdometryCallback)
     : nullptr;
 }
 

@@ -379,6 +379,8 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_filtered_publisher_;
 
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr tracked_target_odometry_publisher_;
+
     void PublishOdometry();
 
     // Detection image publishing
