@@ -165,6 +165,7 @@ void ObjectTrackingNode::GetParameters() {
     // Integrated LiDAR obstacle detector parameters
     declare_parameter("od_robot_base_link", std::string("base_link"));
     od_robot_base_link_ = get_parameter("od_robot_base_link").as_string();
+    od_robot_base_link_ = frame_prefix + od_robot_base_link_;
 
     declare_parameter("od_use_pca_box", false);
     od_use_pca_box_ = get_parameter("od_use_pca_box").as_bool();
@@ -1263,8 +1264,20 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
                 Eigen::Matrix3d R = RotMatrix * R_rdf_ * RotMatrix.transpose();
 
 				// Run the IMM update step
-				// with custom R.
-				filter_->Update(measurement_vector,R);
+				// with custom R. if chi2 is acceptable
+                double chi2 = filter_->GetChi2IMM2D(measurement_vector, R);
+                // Hard 4-sigma treshold TODO open up for soft and as parameter
+                if (chi2 <4*4) 
+				    filter_->Update(measurement_vector,R);
+                else {
+                    const auto state_filtered = filter_->GetState();
+
+                    RCLCPP_WARN(get_logger(),
+                        "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(2)-y = %.2lf current detection, skipping ...", 
+                        chi2, measurement_vector(0) - state_filtered(0), measurement_vector(2) - state_filtered(3) );
+                    state_ == TrackerState::NO_DETECTION;
+                }
+
 
 			}
 			catch (tf2::TransformException& exception) {
@@ -1273,8 +1286,19 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
 
 		}
 		else {
-			// Run the IMM update step.
-			filter_->Update(measurement_vector);
+			// Run the IMM update step.  if chi2 is acceptable
+            double chi2 = filter_->GetChi2IMM2D(measurement_vector);
+            // Hard 4-sigma treshold TODO open up for soft and as parameter
+            if (chi2 < 4 * 4)
+                filter_->Update(measurement_vector);
+            else {
+                const auto state_filtered = filter_->GetState();
+
+                RCLCPP_WARN(get_logger(),
+                    "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(2)-y = %.2lf current detection, skipping ...",
+                    chi2, measurement_vector(0) - state_filtered(0), measurement_vector(2) - state_filtered(3));
+                state_ == TrackerState::NO_DETECTION;
+            }
 		}
 
 
