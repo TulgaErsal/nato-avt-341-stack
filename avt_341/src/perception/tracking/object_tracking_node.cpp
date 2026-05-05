@@ -149,6 +149,9 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_odometry", true);
     use_filtered_odometry_ = get_parameter("filters_odometry").as_bool();
 
+    declare_parameter("heading_min_speed", 0.5);
+    heading_min_speed_ = get_parameter("heading_min_speed").as_double();
+
     declare_parameter("publish_detection", false);
     publish_detection_3d_ = get_parameter("publish_detection").as_bool();
 
@@ -1419,6 +1422,10 @@ void ObjectTrackingNode::PublishDetection3D() {
 }
 
 void ObjectTrackingNode::PublishPose() {
+    if (filter_->GetCTRSpeed() >= heading_min_speed_) {
+        last_reliable_yaw_ = filter_->GetYaw();
+    }
+
     if (use_filtered_pose_) {
         geometry_msgs::msg::PoseWithCovarianceStamped pose_filtered_message;
         pose_filtered_message.header.stamp = get_clock()->now();
@@ -1428,8 +1435,8 @@ void ObjectTrackingNode::PublishPose() {
         pose_filtered_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
         pose_filtered_message.pose.pose.orientation.x = 0;
         pose_filtered_message.pose.pose.orientation.y = 0;
-        pose_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
-        pose_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
+        pose_filtered_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
+        pose_filtered_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
         Eigen::Matrix<double, 6, 6> PoseCovariance =
             Eigen::Matrix<double, 6, 6>::Zero();
         Eigen::Matrix<double, 5, 5> P = filter_->GetCTRCovariance();
@@ -1463,8 +1470,11 @@ void ObjectTrackingNode::PublishPose() {
 }
 
 void ObjectTrackingNode::PublishOdometry() {
-    // Note that the filter does not predict orientation, hence the orientation
-    // fields in the odometry message pose entry are not populated.
+    // Hold the last heading estimated while the vehicle was moving fast enough
+    // for the CTR filter to produce a reliable yaw.
+    if (filter_->GetCTRSpeed() >= heading_min_speed_) {
+        last_reliable_yaw_ = filter_->GetYaw();
+    }
 
     if (use_filtered_odometry_) {
         nav_msgs::msg::Odometry odometry_filtered_message;
@@ -1477,8 +1487,6 @@ void ObjectTrackingNode::PublishOdometry() {
             bounding_box_centroid_filtered_.y();
         odometry_filtered_message.pose.pose.position.z =
             bounding_box_centroid_filtered_.z();
-        tf2::Quaternion q;
-        q.setRPY(0, 0, filter_->GetYaw());
         // CTR state is now [x, vx, y, vy, omega]:
         //   position x at index 0, position y at index 2.
         Eigen::Matrix<double, 6, 6> OdometryCovariance =
@@ -1492,12 +1500,10 @@ void ObjectTrackingNode::PublishOdometry() {
         OdometryCovariance(3, 3) = 9.0;      // no information on roll
         OdometryCovariance(4, 4) = 9.0;      // no information on pitch
         OdometryCovariance(5, 5) = filter_->GetFusedYawVariance();
-        //odometry_filtered_message.pose.pose.orientation = tf2::toMsg(q);
         odometry_filtered_message.pose.pose.orientation.x = 0;
         odometry_filtered_message.pose.pose.orientation.y = 0;
-        odometry_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
-        odometry_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
-        // odometry_filtered_message.pose.pose.orientation.normalise();
+        odometry_filtered_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
+        odometry_filtered_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
         for (size_t i = 0; i < 6; i++)  {
             for (size_t j = 0; j < 6; j++) {
                 odometry_filtered_message.pose.covariance[i * 6 + j] = OdometryCovariance(i, j);
@@ -1525,8 +1531,8 @@ void ObjectTrackingNode::PublishOdometry() {
     tracked_target_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
     tracked_target_message.pose.pose.orientation.x = 0;
     tracked_target_message.pose.pose.orientation.y = 0;
-    tracked_target_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
-    tracked_target_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
+    tracked_target_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
+    tracked_target_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
     tracked_target_odometry_publisher_->publish(tracked_target_message);
 }
 
@@ -1569,6 +1575,8 @@ ObjectTrackingNode::SetParametersCallback(
             use_filtered_pose_ = parameter.as_bool();
         } else if (parameter.get_name() == "filters_odometry") {
             use_filtered_odometry_ = parameter.as_bool();
+        } else if (parameter.get_name() == "heading_min_speed") {
+            heading_min_speed_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_use_manual_roi") {
             use_manual_roi_size_ = parameter.as_bool();
         }

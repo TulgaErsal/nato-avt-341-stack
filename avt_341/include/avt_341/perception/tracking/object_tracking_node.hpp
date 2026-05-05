@@ -383,6 +383,10 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     void PublishOdometry();
 
+    double heading_min_speed_ = 0.5;
+    double last_reliable_yaw_ = 0.0;
+
+
     // Detection image publishing
     // --------------------------
 
