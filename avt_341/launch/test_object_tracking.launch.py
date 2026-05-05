@@ -53,6 +53,7 @@ def launch_setup(context, *args, **kwargs):
                 'sync_detection': 0.1,
                 'sync_use_callback': True,
                 # Obstacle detector integration (now embedded in tracking node)
+                'od_robot_base_link': 'mrzr2/base_link',
                 'obstacle_association_max_dist': 5.0,
             })
     except Exception as e:
