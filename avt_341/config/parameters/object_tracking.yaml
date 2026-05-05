@@ -5,7 +5,7 @@ odometry_child_frame: "odom"
 tracking_rate: 10.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
-filters_kalman_measurement: 0.5
+filters_kalman_measurement: 1.1
 camera_target_height: 1.9       # known height of the tracked vehicle [m]
 camera_bbox_pixel_sigma: 4.0    # bounding-box measurement uncertainty [px]
 filters_use_manual_roi: true
