@@ -1273,9 +1273,9 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
                     const auto state_filtered = filter_->GetState();
 
                     RCLCPP_WARN(get_logger(),
-                        "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(2)-y = %.2lf current detection, skipping ...", 
-                        chi2, measurement_vector(0) - state_filtered(0), measurement_vector(2) - state_filtered(3) );
-                    state_ == TrackerState::NO_DETECTION;
+                        "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(1)-y = %.2lf current detection, skipping ...",
+                        chi2, measurement_vector(0) - state_filtered(0), measurement_vector(1) - state_filtered(3) );
+                    state_ = TrackerState::NO_DETECTION;
                 }
 
 
@@ -1295,9 +1295,9 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
                 const auto state_filtered = filter_->GetState();
 
                 RCLCPP_WARN(get_logger(),
-                    "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(2)-y = %.2lf current detection, skipping ...",
-                    chi2, measurement_vector(0) - state_filtered(0), measurement_vector(2) - state_filtered(3));
-                state_ == TrackerState::NO_DETECTION;
+                    "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(1)-y = %.2lf current detection, skipping ...",
+                    chi2, measurement_vector(0) - state_filtered(0), measurement_vector(1) - state_filtered(3));
+                state_ = TrackerState::NO_DETECTION;
             }
 		}
 

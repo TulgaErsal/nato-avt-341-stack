@@ -618,7 +618,7 @@ class IMMFilter {
     Vec3   fused_position_;
     Vec3   fused_velocity_;
     double fused_yaw_ = 0.0;
-    double sigma_;
+    double sigma_ = 0.0;
     Vec3   chi2_;
 
     static constexpr double cv_measurement_variance_approx_ = 0.01;
