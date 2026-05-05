@@ -12,7 +12,6 @@ def launch_setup(context, *args, **kwargs):
     bag_file = os.path.expanduser(bag_file)
     
     # Retrieve parameter paths
-    avt_341_dir = get_package_share_directory('avt_341')
     tracking_params_path = LaunchConfiguration('tracking_params').perform(context)
     rviz_config = LaunchConfiguration('rviz_config').perform(context)
     record = LaunchConfiguration('record').perform(context).lower() == 'true'
@@ -35,7 +34,7 @@ def launch_setup(context, *args, **kwargs):
     # 1. Play the rosbag
     bag_topics = ['/flir_camera/camera_info', '/flir_camera/image_raw', '/mrzr/detections/vision', '/ouster/points', '/mrzr/avt_341/odometry', '/tf', '/tf_static']
     bag_play = TimerAction(
-        period=5.0,  # Delay in seconds
+        period=0.0,  # Delay in seconds
         actions=[ExecuteProcess(
             cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1000', '--topics', *bag_topics],
             output='screen'
@@ -53,12 +52,7 @@ def launch_setup(context, *args, **kwargs):
             ('camera_info', '/flir_camera/camera_info'),
             ('image', '/flir_camera/image_raw'),
             ('detection_2d', '/mrzr/detections/vision'),
-            ('points/input', '/ouster/points'),
-            ('points/fov', 'object_tracking/points/fov'),
-            ('points/roi', 'object_tracking/points/roi'),
-            ('points/ground', 'object_tracking/points/ground'),
-            ('points/cluster', 'object_tracking/points/cluster'),
-            ('points/cropbox', 'object_tracking/points/cropbox')
+            ('points/input', '/ouster/points')
         ]
     )
 

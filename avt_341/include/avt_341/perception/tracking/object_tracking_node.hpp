@@ -79,24 +79,18 @@
 
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/detection3_d_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
-#include <pcl/common/centroid.h>
-#include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
-#include <pcl/features/moment_of_inertia_estimation.h>
-#include <pcl/filters/crop_box.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
 #include <avt_341/perception/filtering/imm_filter.hpp>
+#include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
+#include <avt_341/perception/box.hpp>
 #include <avt_341/perception/tracking/exceptions.hpp>
 #include <avt_341/perception/tracking/pixel_coordinates.hpp>
 #include <avt_341_msgs/msg/mission_task_status.hpp>
@@ -220,23 +214,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     void PointCloudCallback(
         sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
-    /**
-     * @brief Convert a ROS sensor_msgs/PointCloud2 message to PCL XYZ point
-     * cloud.
-     *
-     * @param point_cloud_message ROS sensor_msgs/PointCloud2 message.
-     * @return pcl::PointCloud<pcl::PointXYZ>::Ptr PCL XYZ point cloud.
-     */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr ToPCLCloud(
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
-
-    /**
-     * @brief Remove points with NaN values from a PCL XYZ point cloud.
-     *
-     * @param point_cloud PCL XYZ point cloud.
-     */
-    void RemoveNaNPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
     /** @brief Camera info subscription. */
     rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr
         camera_info_subscription_;
@@ -299,48 +276,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief Unique pointer to the transform buffer. */
     std::unique_ptr<tf2_ros::Buffer> transform_buffer_;
 
-    geometry_msgs::msg::TransformStamped TransformPointCloud(
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message,
-        const std::string target_frame);
-
-    // Projection
-    // ----------
-
-    PixelCoordinates ConvertPointToPixelCoordinates(
-        const pcl::PointXYZ& point,
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    std::vector<PixelCoordinates> ConvertPointCloudToPixelCoordinates(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    // Camera FOV
-    // ----------
-
-    void FindPointsInCameraFOV(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                               const std::vector<PixelCoordinates>& coordinates,
-                               const int height, const int width);
-
-    /** @brief Whether or not to publish the camera field of view segmented
-     * point cloud. */
-    bool publish_fov_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        fov_cloud_publisher_;
-
-    void FindPointsInROI(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                         const std::vector<PixelCoordinates>& coordinates,
-                         const unsigned int x_min, const unsigned int x_max,
-                         const unsigned int y_min, const unsigned int y_max);
-
-    bool publish_roi_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        roi_cloud_publisher_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        cropbox_cloud_publisher_;
-
     // JN addition for camera detection only tracking
     /** @brief Estimate range from BBox detection using pixel height vs vehicle height
     * and return point measurment of BBox center in 3D. */
@@ -349,52 +284,6 @@ class ObjectTrackingNode : public rclcpp::Node {
         const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
     // -------------------------------------
-
-    // Passthrough filtering
-    // ---------------------
-    pcl::PassThrough<pcl::PointXYZ> passthrough_filter_;
-
-    double passthrough_distance_min_;
-
-    double passthrough_distance_max_;
-
-    void LimitSensorDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                             bool symmetric);
-
-    // Euclidean clustering
-    // --------------------
-
-    const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
-                    const pcl::PointXYZ>
-    ExtractEuclideanClusters(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
-    bool publish_cluster_cloud_;
-
-    bool publish_cropbox_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        cluster_publisher_;
-
-    double clustering_tolerance_;
-
-    int cluster_size_min_;
-
-    int cluster_size_max_;
-
-    // Ground plane segmentation
-    // -------------------------
-
-    void SegmentGroundPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane);
-
-    /** @brief Whether or not to publish the point cloud of the segmented ground
-     * plane. */
-    bool publish_ground_cloud_;
-
-    /** @brief Shared pointer to the segmented ground plane point cloud
-     * publisher */
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        ground_cloud_publisher_;
 
     // Object state estimation (IMM: CV + CTR + NM)
     // ----------------------------------------
@@ -439,7 +328,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     double imm_nm_init_prob_;
 
     /** @brief IMM: diagonal entry of the Markov model-transition matrix. */
-    double imm_transition_prob_;
+    double imm_persistence_prob_;
 
     rclcpp::TimerBase::SharedPtr estimator_timer_;
 
@@ -457,43 +346,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     bool sync_messages_;
 
     void Initialize();
-
-    // Voxel grid downsampling filter
-    // -------------------------------------------------------------------------
-
-    double leaf_size_;
-
-    void DownsampleCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
-    pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter_;
-    // -------------------------------------------------------------------------
-
-    // PCA oriented bounding box estimation
-    // -------------------------------------------------------------------------
-    /** @brief Whether or not to use the centroid of the PCA oriented bounding
-     * box as cluster centroid. */
-    bool use_pca_centroid_;
-
-    /** @brief Point cloud moment of inertia estimator. */
-    pcl::MomentOfInertiaEstimation<pcl::PointXYZ> moi_estimation_;
-
-    /**
-     * @brief Estimate the PCA oriented bounding box for a point cloud.
-     *
-     * @param point_cloud The point clouds for which the PCA oriented bounding
-     * box will be estimated.
-     * @param bounding_box_min The minimum XYZ coordinates of the bounding box.
-     * @param bounding_box_max The maximum XYZ coordinates of the bounding box.
-     * @param bounding_box_centroid The XYZ coordinates of the bounding box
-     * centroid.
-     * @param bounding_box_rotation The rotation matrix for the bounding box.
-     */
-    void GetOrientedBoundingBox(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                                pcl::PointXYZ& bounding_box_min,
-                                pcl::PointXYZ& bounding_box_max,
-                                pcl::PointXYZ& bounding_box_centroid,
-                                Eigen::Matrix3f& bounding_box_rotation);
-    // -------------------------------------------------------------------------
 
     // Detection publisher
     // -------------------
@@ -528,26 +380,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_filtered_publisher_;
 
     void PublishOdometry();
-
-    // Crop box
-    // --------
-
-    pcl::CropBox<pcl::PointXYZ> crop_box_;
-
-    void CropRegionOfInterest();
-
-    // SAC segmentation
-    // --------------------
-
-    pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
-
-    double sac_segmentation_angle_;
-
-    /** @brief RANSAC fit distance threshold. */
-    double sac_segmentation_threshold_;
-
-    /** @brief Maximum number of RANSAC fit iterations. */
-    int sac_segmentation_max_iterations_;
 
     // Detection image publishing
     // --------------------------
@@ -626,35 +458,8 @@ class ObjectTrackingNode : public rclcpp::Node {
      * message. */
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message_;
 
-    /** @brief Shared pointer to the latest parsed point cloud. */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_;
-
-    // Euclidean clustering
-    // -------------------------------------------------------------------------
-
-    std::vector<Cluster> clusters_;
-
-    Cluster tracked_cluster_;
-    // -------------------------------------------------------------------------
-
     // Coordinate transformations
     // -------------------------------------------------------------------------
-
-    /**
-     * @brief Transform a point cloud from its originating frame to the camera
-     * frame.
-     *
-     * @details A valid transform must be available in the TF tree at the time
-     * of invocation. Note that the transform is performed in-place, hence the
-     * original point coordinates are overwritten in the process.
-     *
-     * @param point_cloud The point cloud to be transformed in-place.
-     * @param point_cloud_message The ROS sensor_msgs/msg/PointCloud2 message
-     * for the point cloud.
-     */
-    void TransformPointCloudToCameraFrame(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
     /**
      * @brief Transform a three-dimensional point from the camera frame to the
@@ -671,10 +476,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief The frame ID of the world (fixed) frame. */
     std::string world_frame_;
     // -------------------------------------------------------------------------
-
-    void ProjectPointsToPixel(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
     std::string ToString(TrackerState& state);
 
@@ -750,9 +551,6 @@ class ObjectTrackingNode : public rclcpp::Node {
     double execution_time_ = -1.0;
     void Reset();
 
-    void EuclideanClustering();
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster_;
-
     // JN addition
     /** @brief Get coordinates from Camera boundingbox is lidar
     *         centroid is un available. */
@@ -766,8 +564,9 @@ class ObjectTrackingNode : public rclcpp::Node {
      *         centroid is available. */
     bool has_tracked_target_ = false;
 
-    /** @brief Time stamp of the last valid detection message containing the
-     *         target. */
+    /** @brief Time stamp of the last valid measurement from any source
+     *         (camera or LiDAR). CheckTargetTimeout() fires after
+     *         target_timeout_ seconds without an update from either sensor. */
     rclcpp::Time last_valid_target_time_;
 
     void CheckTargetTimeout();
@@ -781,6 +580,155 @@ class ObjectTrackingNode : public rclcpp::Node {
     Eigen::Vector3d roi_bounding_box_3d_size_;
 
     BoundingBox2D roi_bounding_box_2d_;
+
+    // ---------------------------------------------------------------------- //
+    // > Integrated LiDAR obstacle detector
+    // ---------------------------------------------------------------------- //
+
+    /** @brief Runs the obstacle detection pipeline on the latest point cloud
+     *         and directly updates latest_obstacle_markers_. Called from
+     *         PointCloudCallback so the markers are ready before the next
+     *         tracking timer tick. */
+    void RunObstacleDetection(
+        const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg);
+
+    /** @brief Builds and publishes (and stores) a DELETEALL MarkerArray. */
+    void PublishObstacleDeleteAll(const std_msgs::msg::Header& header);
+
+    /** @brief Builds markers from curr_boxes_ and publishes them. */
+    void PublishObstacleMarkers(const std_msgs::msg::Header& header);
+
+    /** @brief The obstacle detector algorithm (filter / cluster / track). */
+    std::shared_ptr<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>
+        obstacle_detector_;
+
+    /** @brief Rolling counter used to assign unique IDs to new boxes. */
+    size_t obstacle_id_ = 0;
+
+    /** @brief Box list from the previous obstacle detection frame.
+     *         Used by the Hungarian-algorithm tracker. */
+    std::vector<Box> prev_boxes_;
+
+    /** @brief Box list built during the current obstacle detection frame. */
+    std::vector<Box> curr_boxes_;
+
+    // Obstacle detector parameters ----------------------------------------
+
+    /** @brief Frame ID of the robot base link (used for initial TF of the
+     *         incoming point cloud). */
+    std::string od_robot_base_link_;
+
+    /** @brief Whether to use PCA-aligned bounding boxes (true) or
+     *         axis-aligned bounding boxes (false). */
+    bool od_use_pca_box_;
+
+    /** @brief Whether to run the Hungarian-algorithm box tracker across
+     *         frames to keep box IDs stable. */
+    bool od_use_tracking_;
+
+    /** @brief Voxel grid leaf size [m] for downsampling before clustering. */
+    float od_voxel_grid_size_;
+
+    /** @brief ROI crop-box corners in the robot base link frame. */
+    Eigen::Vector4f od_roi_max_point_;
+    Eigen::Vector4f od_roi_min_point_;
+
+    /** @brief Ego-vehicle body crop-box corners (removed from the cloud). */
+    Eigen::Vector4f od_body_max_point_;
+    Eigen::Vector4f od_body_min_point_;
+
+    /** @brief Ground normal used for normal-based ground/obstacle separation.
+     *         Expressed in the fixed frame. */
+    Eigen::Vector3f od_ground_normal_;
+
+    /** @brief Dot-product threshold for classifying a point as ground via
+     *         surface normal comparison. */
+    float od_ground_normal_threshold_;
+
+    /** @brief Normal estimation search radius [m] and radius-outlier removal
+     *         radius [m]. */
+    float od_obstacle_scale_;
+
+    /** @brief Minimum number of neighbors within od_obstacle_scale_ for a
+     *         point to survive the radius-outlier removal step. */
+    int od_obstacle_min_neighbors_;
+
+    /** @brief Euclidean cluster tolerance [m]. */
+    float od_cluster_threshold_;
+
+    /** @brief Minimum and maximum cluster point counts. */
+    int od_cluster_min_size_;
+    int od_cluster_max_size_;
+
+    /** @brief Displacement and IoU thresholds for the box tracker. */
+    float od_displacement_threshold_;
+    float od_iou_threshold_;
+
+    // Obstacle detector publishers -----------------------------------------
+
+    /** @brief Publishes the obstacle bounding-box markers. */
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+        obstacle_bboxes_publisher_;
+
+    /** @brief Publishes the ground-classified point cloud (optional). */
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+        obstacle_ground_cloud_publisher_;
+
+    /** @brief Publishes the non-ground obstacle point cloud (optional). */
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+        obstacle_clusters_cloud_publisher_;
+
+    /** @brief Whether to publish the obstacle ground cloud. */
+    bool od_publish_ground_cloud_;
+
+    /** @brief Whether to publish the non-ground obstacle cluster cloud. */
+    bool od_publish_cluster_cloud_;
+
+    // Obstacle tracker state (shared with tracker) -------------------------
+
+    /** @brief Latest MarkerArray produced by the integrated obstacle detector.
+     *         Populated synchronously in PointCloudCallback. */
+    visualization_msgs::msg::MarkerArray latest_obstacle_markers_;
+
+    /** @brief True once at least one MarkerArray (including DELETEALL) has
+     *         been produced by the obstacle detector. */
+    bool has_obstacle_markers_ = false;
+
+    /** @brief ID of the obstacle detector marker associated with the tracked
+     *         target. Set to -1 when no association has been established. */
+    int tracked_obstacle_id_ = -1;
+
+    /** @brief Maximum pixel distance (as a multiple of the detection bbox
+     *         half-diagonal) for associating an obstacle marker with a camera
+     *         detection. */
+    double obstacle_association_max_dist_;
+
+    // ---------------------------------------------------------------------- //
+    // > LiDAR obstacle re-acquisition after brief drop-out
+    // ---------------------------------------------------------------------- //
+
+    /** @brief Last known world-frame position of the tracked obstacle.
+     *         Used to re-acquire the obstacle if the LiDAR briefly loses it
+     *         and reassigns it a new ID. */
+    Eigen::Vector3d last_lidar_world_pos_;
+
+    /** @brief Time at which the tracked obstacle was last successfully matched
+     *         in a LIDAR_ONLY tracking cycle. Used together with
+     *         lidar_reacquire_max_time_ to decide whether a nearby marker that
+     *         appeared after a drop-out belongs to the same physical object. */
+    rclcpp::Time last_lidar_seen_time_;
+
+    /** @brief Maximum elapsed time [s] since the tracked obstacle was last
+     *         seen during which a nearby marker is accepted as a re-acquisition
+     *         of the same obstacle (even if it carries a different ID).
+     *         Tunable via the lidar_reacquire_max_time parameter. */
+    double lidar_reacquire_max_time_;
+
+    /** @brief Maximum world-frame distance [m] between the last known obstacle
+     *         position and a candidate marker centroid for the marker to be
+     *         accepted as a re-acquisition of the same obstacle.
+     *         Tunable via the lidar_reacquire_max_dist parameter. */
+    double lidar_reacquire_max_dist_;
 };
 
 }  // namespace perception

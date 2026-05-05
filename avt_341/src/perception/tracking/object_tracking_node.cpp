@@ -85,40 +85,6 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("odometry_child_frame", "odom");
     odometry_child_frame_ = get_parameter("odometry_child_frame").as_string();
 
-    declare_parameter("filters_downsampling_leaf_size", 0.3);
-    leaf_size_ = get_parameter("filters_downsampling_leaf_size").as_double();
-
-    declare_parameter("filters_passthrough_min", 3.0);
-    passthrough_distance_min_ =
-        get_parameter("filters_passthrough_min").as_double();
-
-    declare_parameter("filters_passthrough_max", 40.0);
-    passthrough_distance_max_ =
-        get_parameter("filters_passthrough_max").as_double();
-
-    declare_parameter("filters_clustering_tolerance", 0.6);
-    clustering_tolerance_ =
-        get_parameter("filters_clustering_tolerance").as_double();
-
-    declare_parameter("filters_clustering_size_minimum", 50);
-    cluster_size_min_ =
-        get_parameter("filters_clustering_size_minimum").as_int();
-
-    declare_parameter("filters_clustering_size_maximum", 500);
-    cluster_size_max_ =
-        get_parameter("filters_clustering_size_maximum").as_int();
-
-    declare_parameter("filters_ground_max_iterations", 50);
-    sac_segmentation_max_iterations_ =
-        get_parameter("filters_ground_max_iterations").as_int();
-
-    declare_parameter("filters_ground_threshold", 0.2);
-    sac_segmentation_threshold_ =
-        get_parameter("filters_ground_threshold").as_double();
-
-    declare_parameter("filters_ground_angle", 3.0);
-    sac_segmentation_angle_ = get_parameter("filters_ground_angle").as_double();
-
     declare_parameter("filters_roi_scale_factor", 1.5);
     roi_scale_factor_ = get_parameter("filters_roi_scale_factor").as_double();
 
@@ -148,11 +114,8 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("filters_imm_nm_init_prob", 0.33);
     imm_nm_init_prob_ = get_parameter("filters_imm_nm_init_prob").as_double();
 
-    declare_parameter("filters_imm_transition_prob", 0.9);
-    imm_transition_prob_ = get_parameter("filters_imm_transition_prob").as_double();
-
-    declare_parameter("filters_use_pca_centroid", false);
-    use_pca_centroid_ = get_parameter("filters_use_pca_centroid").as_bool();
+    declare_parameter("filters_imm_persistence_prob", 0.9);
+    imm_persistence_prob_ = get_parameter("filters_imm_persistence_prob").as_double();
 
     declare_parameter("tracker_autostart", true);
     use_autostart_ = get_parameter("tracker_autostart").as_bool();
@@ -174,21 +137,6 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("sync_detection", 0.1);
     max_detection_skew_ = get_parameter("sync_detection").as_double();
 
-    declare_parameter("publish_clouds_fov", false);
-    publish_fov_cloud_ = get_parameter("publish_clouds_fov").as_bool();
-
-    declare_parameter("publish_clouds_roi", false);
-    publish_roi_cloud_ = get_parameter("publish_clouds_roi").as_bool();
-
-    declare_parameter("publish_clouds_ground", false);
-    publish_ground_cloud_ = get_parameter("publish_clouds_ground").as_bool();
-
-    declare_parameter("publish_clouds_cluster", false);
-    publish_cluster_cloud_ = get_parameter("publish_clouds_cluster").as_bool();
-
-    declare_parameter("publish_clouds_cropbox", false);
-    publish_cropbox_cloud_ = get_parameter("publish_clouds_cropbox").as_bool();
-
     declare_parameter("publish_pose", true);
     publish_pose_ = get_parameter("publish_pose").as_bool();
 
@@ -209,6 +157,109 @@ void ObjectTrackingNode::GetParameters() {
 
     declare_parameter("filters_use_manual_roi", false);
     use_manual_roi_size_ = get_parameter("filters_use_manual_roi").as_bool();
+
+    declare_parameter("obstacle_association_max_dist", 5.0);
+    obstacle_association_max_dist_ =
+        get_parameter("obstacle_association_max_dist").as_double();
+
+    // Integrated LiDAR obstacle detector parameters
+    declare_parameter("od_robot_base_link", std::string("base_link"));
+    od_robot_base_link_ = get_parameter("od_robot_base_link").as_string();
+    od_robot_base_link_ = frame_prefix + od_robot_base_link_;
+
+    declare_parameter("od_use_pca_box", false);
+    od_use_pca_box_ = get_parameter("od_use_pca_box").as_bool();
+
+    declare_parameter("od_use_tracking", true);
+    od_use_tracking_ = get_parameter("od_use_tracking").as_bool();
+
+    declare_parameter("od_voxel_grid_size", 0.2);
+    od_voxel_grid_size_ =
+        static_cast<float>(get_parameter("od_voxel_grid_size").as_double());
+
+    declare_parameter("od_roi_max_x", 70.0);
+    declare_parameter("od_roi_max_y", 30.0);
+    declare_parameter("od_roi_max_z", 3.0);
+    declare_parameter("od_roi_min_x", -5.0);
+    declare_parameter("od_roi_min_y", -30.0);
+    declare_parameter("od_roi_min_z", -2.5);
+    od_roi_max_point_ = Eigen::Vector4f(
+        get_parameter("od_roi_max_x").as_double(),
+        get_parameter("od_roi_max_y").as_double(),
+        get_parameter("od_roi_max_z").as_double(), 1.0f);
+    od_roi_min_point_ = Eigen::Vector4f(
+        get_parameter("od_roi_min_x").as_double(),
+        get_parameter("od_roi_min_y").as_double(),
+        get_parameter("od_roi_min_z").as_double(), 1.0f);
+
+    declare_parameter("od_body_max_x", 0.3);
+    declare_parameter("od_body_max_y", 0.8);
+    declare_parameter("od_body_max_z", 2.0);
+    declare_parameter("od_body_min_x", -2.2);
+    declare_parameter("od_body_min_y", -0.8);
+    declare_parameter("od_body_min_z", -0.3);
+    od_body_max_point_ = Eigen::Vector4f(
+        get_parameter("od_body_max_x").as_double(),
+        get_parameter("od_body_max_y").as_double(),
+        get_parameter("od_body_max_z").as_double(), 1.0f);
+    od_body_min_point_ = Eigen::Vector4f(
+        get_parameter("od_body_min_x").as_double(),
+        get_parameter("od_body_min_y").as_double(),
+        get_parameter("od_body_min_z").as_double(), 1.0f);
+
+    declare_parameter("od_ground_normal_x", 0.0);
+    declare_parameter("od_ground_normal_y", 0.0);
+    declare_parameter("od_ground_normal_z", 1.0);
+    od_ground_normal_ = Eigen::Vector3f(
+        get_parameter("od_ground_normal_x").as_double(),
+        get_parameter("od_ground_normal_y").as_double(),
+        get_parameter("od_ground_normal_z").as_double());
+
+    declare_parameter("od_ground_normal_threshold", 0.4);
+    od_ground_normal_threshold_ = static_cast<float>(
+        get_parameter("od_ground_normal_threshold").as_double());
+
+    declare_parameter("od_obstacle_scale", 1.0);
+    od_obstacle_scale_ =
+        static_cast<float>(get_parameter("od_obstacle_scale").as_double());
+
+    declare_parameter("od_obstacle_min_neighbors", 10);
+    od_obstacle_min_neighbors_ =
+        get_parameter("od_obstacle_min_neighbors").as_int();
+
+    declare_parameter("od_cluster_threshold", 0.6);
+    od_cluster_threshold_ = static_cast<float>(
+        get_parameter("od_cluster_threshold").as_double());
+
+    declare_parameter("od_cluster_min_size", 10);
+    od_cluster_min_size_ = get_parameter("od_cluster_min_size").as_int();
+
+    declare_parameter("od_cluster_max_size", 5000);
+    od_cluster_max_size_ = get_parameter("od_cluster_max_size").as_int();
+
+    declare_parameter("od_displacement_threshold", 1.0);
+    od_displacement_threshold_ = static_cast<float>(
+        get_parameter("od_displacement_threshold").as_double());
+
+    declare_parameter("od_iou_threshold", 1.0);
+    od_iou_threshold_ =
+        static_cast<float>(get_parameter("od_iou_threshold").as_double());
+
+    declare_parameter("od_publish_ground_cloud", false);
+    od_publish_ground_cloud_ =
+        get_parameter("od_publish_ground_cloud").as_bool();
+
+    declare_parameter("od_publish_cluster_cloud", false);
+    od_publish_cluster_cloud_ =
+        get_parameter("od_publish_cluster_cloud").as_bool();
+
+    declare_parameter("lidar_reacquire_max_time", 0.5);
+    lidar_reacquire_max_time_ =
+        get_parameter("lidar_reacquire_max_time").as_double();
+
+    declare_parameter("lidar_reacquire_max_dist", 3.0);
+    lidar_reacquire_max_dist_ =
+        get_parameter("lidar_reacquire_max_dist").as_double();
 
     declare_parameter("filters_manual_roi_size",
                       std::vector<double>{1.0, 1.0, 1.0});
@@ -258,6 +309,11 @@ void ObjectTrackingNode::CreateSubscriptions() {
                 std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
                         std::placeholders::_1));
     }
+
+    // Initialize the integrated obstacle detector.
+    obstacle_detector_ =
+        std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
+    obstacle_id_ = 0;
 }
 
 void ObjectTrackingNode::CreateServices() {
@@ -288,53 +344,6 @@ void ObjectTrackingNode::CreateTimers() {
 }
 
 void ObjectTrackingNode::CreatePublishers() {
-    if (publish_fov_cloud_) {
-        RCLCPP_WARN_ONCE(get_logger(),
-                         "Field-of-view (FOV) cloud publishing enabled: this "
-                         "is for debugging purposes only and will have a "
-                         "negative effect on tracking performance.");
-        fov_cloud_publisher_ =
-            create_publisher<sensor_msgs::msg::PointCloud2>("points/fov", 1);
-    }
-
-    if (publish_roi_cloud_) {
-        RCLCPP_WARN_ONCE(
-            get_logger(),
-            "Region of interest (ROI) cloud publishing enabled: this is for "
-            "debugging purposes only and will have a negative effect on "
-            "tracking performance.");
-        roi_cloud_publisher_ =
-            create_publisher<sensor_msgs::msg::PointCloud2>("points/roi", 1);
-    }
-
-    if (publish_ground_cloud_) {
-        RCLCPP_WARN_ONCE(get_logger(),
-                         "Ground cloud publishing enabled: this is for "
-                         "debugging purposes only and will have a negative "
-                         "effect on tracking performance.");
-        ground_cloud_publisher_ =
-            create_publisher<sensor_msgs::msg::PointCloud2>("points/ground", 1);
-    }
-
-    if (publish_cluster_cloud_) {
-        RCLCPP_WARN_ONCE(
-            get_logger(),
-            "Cluster cloud publishing enabled: this is for debugging purposes "
-            "only and will have a negative effect on tracking performance.");
-        cluster_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>(
-            "points/cluster", 1);
-    }
-
-    if (publish_cropbox_cloud_) {
-        RCLCPP_WARN_ONCE(
-            get_logger(),
-            "Cropbox cloud publishing enabled: this is for debugging purposes "
-            "only and will have a negative effect on tracking performance.");
-        cropbox_cloud_publisher_ =
-            create_publisher<sensor_msgs::msg::PointCloud2>("points/cropbox",
-                                                            1);
-    }
-
     detection_publisher_ =
         create_publisher<vision_msgs::msg::Detection3D>("detection_3d", 1);
 
@@ -363,6 +372,23 @@ void ObjectTrackingNode::CreatePublishers() {
 
     info_publisher_ =
         create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
+
+    // Integrated obstacle detector publishers.
+    obstacle_bboxes_publisher_ =
+        create_publisher<visualization_msgs::msg::MarkerArray>(
+            "lidar_detector/bboxes", 1);
+
+    if (od_publish_ground_cloud_) {
+        obstacle_ground_cloud_publisher_ =
+            create_publisher<sensor_msgs::msg::PointCloud2>(
+                "lidar_detector/cloud_ground", 1);
+    }
+
+    if (od_publish_cluster_cloud_) {
+        obstacle_clusters_cloud_publisher_ =
+            create_publisher<sensor_msgs::msg::PointCloud2>(
+                "lidar_detector/cloud_clusters", 1);
+    }
 }
 
 void ObjectTrackingNode::TrackerInfoCallback() {
@@ -371,35 +397,6 @@ void ObjectTrackingNode::TrackerInfoCallback() {
     info_message.header.frame_id = "none";
     info_message.state = state_;
     info_publisher_->publish(info_message);
-}
-
-void ObjectTrackingNode::CropRegionOfInterest() {
-    RCLCPP_DEBUG(get_logger(),
-                "Running crop box filter around the region of interest ...");
-
-    // Define the crop box origin and its bounds relative to the last known
-    // object centroid position. Note that we MUST use 4D floating-point vectors
-    // to easily propagate through the affine transforms in the PCL library.
-    crop_box_.setTranslation(bounding_box_centroid_.cast<float>());
-    Eigen::Vector4f crop_box_roi_min(
-        -roi_scale_factor_ * object_size_.x() / 2.0,
-        -roi_scale_factor_ * object_size_.y() / 2.0,
-        -roi_scale_factor_ * object_size_.z() / 2.0, 1.0f);
-    Eigen::Vector4f crop_box_roi_max(roi_scale_factor_ * object_size_.x() / 2.0,
-                                     roi_scale_factor_ * object_size_.y() / 2.0,
-                                     roi_scale_factor_ * object_size_.z() / 2.0,
-                                     1.0f);
-    crop_box_.setMin(crop_box_roi_min);
-    crop_box_.setMax(crop_box_roi_max);
-
-    // Run the crop box filter in-place.
-    crop_box_.setInputCloud(point_cloud_);
-    crop_box_.filter(*point_cloud_);
-
-    if (publish_cropbox_cloud_) {
-        PublishPointCloud(point_cloud_, point_cloud_message_->header.stamp,
-                          camera_frame_, cropbox_cloud_publisher_);
-    }
 }
 
 void ObjectTrackingNode::TrackingTimerCallback() {
@@ -429,167 +426,335 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         RCLCPP_DEBUG(get_logger(), "Setting tracker to full tracking ...");
     }
 
-    if (!has_point_cloud_ || point_cloud_->size() <= 0) {
-        state_ = TrackerState::NO_DETECTION;
-        RCLCPP_DEBUG(
-            get_logger(),
-            "Point cloud missing, too old or empty, skipping tracking ...");
-        return;
-    }
+    // Note: point cloud availability is no longer required. The tracking
+    // measurement comes from the obstacle detector MarkerArray, not from
+    // the internal PCL pipeline.
 
     if (sync_messages_) {
-        double detection_skew =
-            (use_callback_time_)
-                ? get_clock()->now().nanoseconds() / 1.0e9 -
-                      last_valid_detection_callback_time_.nanoseconds() / 1.0e9
-                : rclcpp::Time(point_cloud_message_->header.stamp)
-                              .nanoseconds() /
-                          1.0e9 -
-                      last_valid_detection_time_.nanoseconds() / 1.0e9;
-        if (detection_skew > max_detection_skew_) {
-            if (state_ != TrackerState::LIDAR_ONLY_TRACKING) {
-                RCLCPP_WARN(get_logger(),
-                            "Last detection is too old %0.2lf, skipping camera "
-                            "tracking ...",
-                            detection_skew);
-
-                state_ = TrackerState::LIDAR_ONLY_TRACKING;
+        // When sync is enabled use callback time to detect stale detections.
+        // The point-cloud-timestamp path is removed because the point cloud
+        // is no longer part of the tracking measurement loop.
+        if (use_callback_time_) {
+            const double detection_skew =
+                get_clock()->now().nanoseconds() / 1.0e9 -
+                last_valid_detection_callback_time_.nanoseconds() / 1.0e9;
+            if (detection_skew > max_detection_skew_) {
+                if (state_ != TrackerState::LIDAR_ONLY_TRACKING) {
+                    RCLCPP_WARN(get_logger(),
+                                "Last detection is too old %.2lf s, switching "
+                                "to LiDAR-only tracking ...",
+                                detection_skew);
+                    state_ = TrackerState::LIDAR_ONLY_TRACKING;
+                }
+                has_detection_ = false;
             }
-            has_detection_ = false;
         }
     }
 
     auto start_time = get_clock()->now();
 
-    // Transform the point cloud to the camera frame and apply the filter
-    // stack to limit the keep the size of the dataset contained.
-    try {
-        TransformPointCloudToCameraFrame(point_cloud_, point_cloud_message_);
-    } catch (const TransformException& exception) {
-        RCLCPP_WARN(get_logger(),
-                    "Could not transform point cloud to camera frame.");
-
-        has_point_cloud_ = false;
-        has_detection_ = false;
-        return;
-    }
+    // Tracking measurement via obstacle detector bounding box markers.
+    // The LiDAR obstacle detector node runs its own clustering and tracking
+    // pipeline and publishes bounding boxes as a MarkerArray. We subscribe
+    // to that topic and use the marker positions as LiDAR measurements,
+    // replacing the internal PCL clustering pipeline.
 
     if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
-        LimitSensorDistance(point_cloud_, true);
-        DownsampleCloud(point_cloud_);
-
-        // The camera frame moves with the vehicle, so the stale camera-frame
-        // centroid from the last FULL_TRACKING cycle will be wrong once the
-        // vehicle has moved. Reanchor the crop box by transforming the last
-        // known world-frame centroid back to the current camera frame.
-        if (filter_initialized_) {
-            bounding_box_centroid_ = TransformToCoordinates(
-                world_frame_, camera_frame_, bounding_box_centroid_global_);
-        }
-
-        CropRegionOfInterest();
-
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
-            new pcl::PointCloud<pcl::PointXYZ>);
-        SegmentGroundPlane(point_cloud_, cloud_plane);
-
-        try {
-            EuclideanClustering();
-            centroid_in_cloud_frame_ = true;
-            last_valid_target_time_ = get_clock()->now();
-
-            if (cloud_cluster_->size() > 0) {
-            } else {
-                has_point_cloud_ = false;
-                has_detection_ = false;
-            }
-        } catch (const ClusteringException& exception) {
+        // In LIDAR_ONLY mode we already have an associated obstacle ID from
+        // a previous FULL_TRACKING cycle. Find that marker in the latest
+        // MarkerArray and use its position as the measurement.
+        if (tracked_obstacle_id_ < 0 || !has_obstacle_markers_) {
+            RCLCPP_WARN(get_logger(),
+                        "LIDAR_ONLY: no tracked obstacle ID (%d) or no "
+                        "obstacle markers received yet.",
+                        tracked_obstacle_id_);
             has_point_cloud_ = false;
             has_detection_ = false;
-            return;
-        }
-    } else if (state_ == TrackerState::FULL_TRACKING) {
-        LimitSensorDistance(point_cloud_, false);
-        DownsampleCloud(point_cloud_);
-        ProjectPointsToPixel(point_cloud_, point_cloud_message_);
-
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(
-            new pcl::PointCloud<pcl::PointXYZ>);
-
-        SegmentGroundPlane(point_cloud_, cloud_plane);
-
-        try {
-            EuclideanClustering();
-            centroid_in_cloud_frame_ = false;
-        } catch (const ClusteringException& exception) {
-            RCLCPP_WARN(get_logger(),
-                        "Could not isolate any clusters from the camera "
-                        "detection region ROI!");
-            centroid_in_cloud_frame_ = false;
-            // Fall back to camera-only tracking whenever LiDAR clustering
-            // fails, including before any LiDAR measurement has been received.
-            // This allows the tracker to initialize from a camera detection
-            // alone and begin tracking distant objects before they enter LiDAR
-            // range.
-            CameraCentroidEstimate();
-            has_point_cloud_ = false;
-            has_detection_ = true;
-            has_tracked_target_ = true;
-            last_valid_target_time_ = get_clock()->now();
-            state_ = TrackerState::CAMERA_ONLY_TRACKING;
             CheckTargetTimeout();
             return;
         }
 
+        bool found = false;
+        for (const auto& marker : latest_obstacle_markers_.markers) {
+            if (marker.action ==
+                visualization_msgs::msg::Marker::DELETEALL) {
+                continue;
+            }
+            if (marker.id != tracked_obstacle_id_) {
+                continue;
+            }
+
+            // Transform marker position from its native frame to camera frame
+            // so that the EstimatorTimerCallback can handle it uniformly.
+            const Eigen::Vector3d marker_pos(marker.pose.position.x,
+                                             marker.pose.position.y,
+                                             marker.pose.position.z);
+            bounding_box_centroid_ = TransformToCoordinates(
+                marker.header.frame_id, camera_frame_, marker_pos);
+            centroid_in_cloud_frame_ = false;
+
+            bounding_box_size_ = Eigen::Vector3d(
+                marker.scale.x, marker.scale.y, marker.scale.z);
+            object_size_ = bounding_box_size_;
+            bounding_box_orientation_ = Eigen::Quaterniond(
+                marker.pose.orientation.w, marker.pose.orientation.x,
+                marker.pose.orientation.y, marker.pose.orientation.z);
+
+            has_new_measurement_ = true;
+            has_had_first_lidar_measurement_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            last_lidar_seen_time_ = last_valid_target_time_;
+            // Record world-frame position for re-acquisition after a brief
+            // drop-out: if the obstacle disappears and reappears with a new
+            // ID within lidar_reacquire_max_time_, we match it by proximity.
+            last_lidar_world_pos_ = TransformToCoordinates(
+                marker.header.frame_id, world_frame_, marker_pos);
+            found = true;
+
+            RCLCPP_INFO(get_logger(),
+                        "LIDAR_ONLY: tracking obstacle ID %d at "
+                        "(%.2f, %.2f, %.2f) camera-frame.",
+                        tracked_obstacle_id_,
+                        bounding_box_centroid_.x(),
+                        bounding_box_centroid_.y(),
+                        bounding_box_centroid_.z());
+            break;
+        }
+
+        if (!found) {
+            // The tracked obstacle is not in the latest markers.
+            // Before giving up, attempt re-acquisition: if the elapsed time
+            // since the obstacle was last seen is within lidar_reacquire_max_time_,
+            // search all current markers for one whose world-frame position is
+            // within lidar_reacquire_max_dist_ of the last known position.
+            // If found, adopt its ID — the LiDAR briefly lost the obstacle and
+            // reassigned a new ID when it reappeared.
+            const double elapsed_since_seen =
+                (get_clock()->now() - last_lidar_seen_time_).seconds();
+
+            if (elapsed_since_seen < lidar_reacquire_max_time_) {
+                int reacquire_id = -1;
+                double best_dist = lidar_reacquire_max_dist_;
+                Eigen::Vector3d best_cam_pos;
+                Eigen::Vector3d best_size;
+                Eigen::Quaterniond best_quat = Eigen::Quaterniond::Identity();
+
+                for (const auto& m : latest_obstacle_markers_.markers) {
+                    if (m.action == visualization_msgs::msg::Marker::DELETEALL)
+                        continue;
+                    if (m.id == tracked_obstacle_id_)
+                        continue;  // already checked above, not present
+                    const Eigen::Vector3d mpos(m.pose.position.x,
+                                               m.pose.position.y,
+                                               m.pose.position.z);
+                    const Eigen::Vector3d mpos_world = TransformToCoordinates(
+                        m.header.frame_id, world_frame_, mpos);
+                    const double d = (mpos_world - last_lidar_world_pos_).norm();
+                    if (d < best_dist) {
+                        best_dist = d;
+                        reacquire_id = m.id;
+                        best_cam_pos = TransformToCoordinates(
+                            m.header.frame_id, camera_frame_, mpos);
+                        best_size = Eigen::Vector3d(
+                            m.scale.x, m.scale.y, m.scale.z);
+                        best_quat = Eigen::Quaterniond(
+                            m.pose.orientation.w, m.pose.orientation.x,
+                            m.pose.orientation.y, m.pose.orientation.z);
+                    }
+                }
+
+                if (reacquire_id >= 0) {
+                    RCLCPP_INFO(get_logger(),
+                                "LIDAR_ONLY: re-acquired obstacle as new ID %d "
+                                "(was %d, %.2f m away, %.2f s gap).",
+                                reacquire_id, tracked_obstacle_id_,
+                                best_dist, elapsed_since_seen);
+                    tracked_obstacle_id_ = reacquire_id;
+                    bounding_box_centroid_ = best_cam_pos;
+                    centroid_in_cloud_frame_ = false;
+                    bounding_box_size_ = best_size;
+                    object_size_ = best_size;
+                    bounding_box_orientation_ = best_quat;
+                    has_new_measurement_ = true;
+                    has_had_first_lidar_measurement_ = true;
+                    has_tracked_target_ = true;
+                    last_valid_target_time_ = get_clock()->now();
+                    last_lidar_seen_time_ = last_valid_target_time_;
+                    last_lidar_world_pos_ = TransformToCoordinates(
+                        camera_frame_, world_frame_, best_cam_pos);
+                    // Skip further processing — measurement is ready.
+                } else {
+                    RCLCPP_WARN(get_logger(),
+                                "LIDAR_ONLY: obstacle ID %d not present in latest "
+                                "markers; waiting for it to reappear (%.2f s elapsed).",
+                                tracked_obstacle_id_, elapsed_since_seen);
+                    has_point_cloud_ = false;
+                    has_detection_ = false;
+                    CheckTargetTimeout();
+                    return;
+                }
+            } else {
+                RCLCPP_WARN(get_logger(),
+                            "LIDAR_ONLY: obstacle ID %d not present in latest "
+                            "markers; waiting for it to reappear.",
+                            tracked_obstacle_id_);
+                has_point_cloud_ = false;
+                has_detection_ = false;
+                CheckTargetTimeout();
+                return;
+            }
+        }
+
+    } else if (state_ == TrackerState::FULL_TRACKING) {
+        // When the camera detects the target, associate the obstacle detector
+        // marker that projects closest to the detection bounding-box center
+        // in the camera image. This approach is independent of the camera
+        // range estimate (which is noisy because it relies on the assumed
+        // target height), so it remains robust even when the 3D position
+        // estimate is inaccurate.
+        if (!has_obstacle_markers_) {
+            RCLCPP_WARN(get_logger(),
+                        "FULL_TRACKING: no obstacle markers received yet, "
+                        "falling back to camera-only tracking.");
+            CameraCentroidEstimate();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
+            has_point_cloud_ = false;
+            has_detection_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            CheckTargetTimeout();
+            return;
+        }
+
+        // Detection bounding-box center in pixel coordinates.
+        const double det_u =
+            detections_message_.bbox.center.position.x;
+        const double det_v =
+            detections_message_.bbox.center.position.y;
+
+        // Maximum allowed pixel distance: the half-diagonal of the detection
+        // bounding box, scaled by obstacle_association_max_dist_. Using
+        // obstacle_association_max_dist_ = 1.0 means the marker's projection
+        // must land within one half-diagonal of the bbox center. Increase it
+        // to be more permissive.
+        const double bbox_half_diag = 0.5 * std::sqrt(
+            detections_message_.bbox.size_x *
+            detections_message_.bbox.size_x +
+            detections_message_.bbox.size_y *
+            detections_message_.bbox.size_y);
+        const double max_pixel_dist =
+            obstacle_association_max_dist_ * bbox_half_diag;
+
+        double best_pixel_dist = max_pixel_dist;
+        int best_id = -1;
+        Eigen::Vector3d best_pos_cam;
+        Eigen::Vector3d best_size;
+        Eigen::Quaterniond best_quat = Eigen::Quaterniond::Identity();
+
+        for (const auto& marker : latest_obstacle_markers_.markers) {
+            if (marker.action ==
+                visualization_msgs::msg::Marker::DELETEALL) {
+                continue;
+            }
+
+            // Transform marker position to camera frame.
+            const Eigen::Vector3d pos(marker.pose.position.x,
+                                      marker.pose.position.y,
+                                      marker.pose.position.z);
+            const Eigen::Vector3d pos_cam = TransformToCoordinates(
+                marker.header.frame_id, camera_frame_, pos);
+
+            // Skip markers behind the camera.
+            if (pos_cam.z() <= 0.0) continue;
+
+            // Project to image pixel coordinates using camera intrinsics.
+            const double fx = camera_info_message_->k[0];
+            const double fy = camera_info_message_->k[4];
+            const double cx = camera_info_message_->k[2];
+            const double cy = camera_info_message_->k[5];
+            const double proj_u = fx * pos_cam.x() / pos_cam.z() + cx;
+            const double proj_v = fy * pos_cam.y() / pos_cam.z() + cy;
+
+            // Skip projections outside the image.
+            if (proj_u < 0.0 ||
+                proj_u > static_cast<double>(camera_info_message_->width) ||
+                proj_v < 0.0 ||
+                proj_v > static_cast<double>(camera_info_message_->height)) {
+                continue;
+            }
+
+            const double pixel_dist = std::sqrt(
+                (proj_u - det_u) * (proj_u - det_u) +
+                (proj_v - det_v) * (proj_v - det_v));
+
+            if (pixel_dist < best_pixel_dist) {
+                best_pixel_dist = pixel_dist;
+                best_id = marker.id;
+                best_pos_cam = pos_cam;
+                best_size = Eigen::Vector3d(
+                    marker.scale.x, marker.scale.y, marker.scale.z);
+                best_quat = Eigen::Quaterniond(
+                    marker.pose.orientation.w, marker.pose.orientation.x,
+                    marker.pose.orientation.y, marker.pose.orientation.z);
+            }
+        }
+
+        if (best_id < 0) {
+            // No obstacle marker projects near the camera detection bbox.
+            // Fall back to the camera range estimate until the obstacle
+            // detector picks up the target again.
+            RCLCPP_INFO(get_logger(),
+                        "FULL_TRACKING: no obstacle marker projects within "
+                        "%.0f px of detection center (%.0f, %.0f); "
+                        "using camera-only measurement.",
+                        max_pixel_dist, det_u, det_v);
+            CameraCentroidEstimate();
+            state_ = TrackerState::CAMERA_ONLY_TRACKING;
+            has_point_cloud_ = false;
+            has_detection_ = true;
+            has_tracked_target_ = true;
+            last_valid_target_time_ = get_clock()->now();
+            CheckTargetTimeout();
+            return;
+        }
+
+        // Associate this obstacle with the target.
+        tracked_obstacle_id_ = best_id;
+        bounding_box_centroid_ = best_pos_cam;
+        centroid_in_cloud_frame_ = false;
+        bounding_box_size_ = best_size;
+        object_size_ = best_size;
+        bounding_box_orientation_ = best_quat;
+
+        // On the first LiDAR lock-on, reset the Kalman filter so it
+        // re-initializes from the reliable LiDAR position rather than
+        // continuing from the noisy camera-only state that preceded it.
+        // Subsequent LiDAR updates carry on from the already-initialized filter.
+        if (!has_had_first_lidar_measurement_) {
+            RCLCPP_INFO(get_logger(),
+                        "FULL_TRACKING: first LiDAR lock on obstacle ID %d; "
+                        "re-initializing filter from LiDAR position.",
+                        best_id);
+            filter_initialized_ = false;
+        }
+
+        has_new_measurement_ = true;
+        has_had_first_lidar_measurement_ = true;
         has_tracked_target_ = true;
         last_valid_target_time_ = get_clock()->now();
+        last_lidar_seen_time_ = last_valid_target_time_;
+        last_lidar_world_pos_ = TransformToCoordinates(
+            camera_frame_, world_frame_, best_pos_cam);
+
+        RCLCPP_INFO(get_logger(),
+                    "FULL_TRACKING: associated obstacle ID %d "
+                    "(projected %.0f px from detection center).",
+                    tracked_obstacle_id_, best_pixel_dist);
     }
 
-    // ORIENTED BOUNDING BOX ESTIMATION
-    // --------------------------------
-
-    if (cloud_cluster_->size() > 0) {
-
-        try {
-            pcl::PointXYZ bounding_box_min, bounding_box_max,
-                bounding_box_centroid;
-            Eigen::Matrix3f bounding_box_rotation;
-
-            GetOrientedBoundingBox(cloud_cluster_, bounding_box_min,
-                                   bounding_box_max, bounding_box_centroid,
-                                   bounding_box_rotation);
-
-            if (use_pca_centroid_) {
-                bounding_box_centroid_ = Eigen::Vector3d(
-                    bounding_box_centroid.x, bounding_box_centroid.y,
-                    bounding_box_centroid.z);
-            }
-
-            bounding_box_size_ =
-                Eigen::Vector3d(bounding_box_max.x - bounding_box_min.x,
-                                bounding_box_max.y - bounding_box_min.y,
-                                bounding_box_max.z - bounding_box_min.z);
-
-            bounding_box_kernel_ = bounding_box_centroid_;
-            object_size_ = (!use_manual_roi_size_) ? bounding_box_size_
-                                                   : roi_bounding_box_3d_size_;
-
-            // Convert the rotation matrix to an orientation quaternion.
-            bounding_box_orientation_ =
-                Eigen::Quaterniond(bounding_box_rotation.cast<double>());
-
-            if (publish_image_) {
-                PublishImage();
-            }
-        } catch (const PCAException& exception) {
-            RCLCPP_ERROR_STREAM(
-                get_logger(),
-                "Bounding box estimation exception: " << exception.what());
-        }
-    } else {
-        RCLCPP_ERROR(get_logger(),
-                     "Invalid cluster of size zero! Skipping bounding box "
-                     "estimation ...");
+    if (publish_image_) {
+        PublishImage();
     }
 
     execution_time_ = (get_clock()->now() - start_time).nanoseconds() / 1.0e6;
@@ -598,9 +763,19 @@ void ObjectTrackingNode::TrackingTimerCallback() {
 
     has_point_cloud_ = false;
     has_detection_ = false;
+
+    // Check for tracking timeout across all tracking modes (FULL_TRACKING,
+    // LIDAR_ONLY_TRACKING, and CAMERA_ONLY_TRACKING). This ensures that if
+    // no valid measurement is obtained for longer than target_timeout_, the
+    // tracker transitions to NO_DETECTION state.
+    CheckTargetTimeout();
 }
 
 void ObjectTrackingNode::CheckTargetTimeout() {
+    // Timeout fires only when neither camera nor LiDAR has produced a valid
+    // measurement for longer than target_timeout_. last_valid_target_time_ is
+    // updated by any valid measurement from either source, so this correctly
+    // keeps the tracker alive as long as at least one sensor sees the target.
     if ((get_clock()->now() - last_valid_target_time_).seconds() >
         target_timeout_) {
         RCLCPP_WARN(get_logger(), "Tracker timeout reached.");
@@ -609,32 +784,197 @@ void ObjectTrackingNode::CheckTargetTimeout() {
     }
 }
 
-void ObjectTrackingNode::EuclideanClustering() {
-    try {
-        auto clustering_result = ExtractEuclideanClusters(point_cloud_);
-        // Update the flags for centroid measurement.
-        has_new_measurement_ = true;
-        has_had_first_lidar_measurement_ = true;
-
-        cloud_cluster_ = clustering_result.first;
-        bounding_box_centroid_ = Eigen::Vector3d(clustering_result.second.x,
-                                                 clustering_result.second.y,
-                                                 clustering_result.second.z);
-
-        if (publish_cluster_cloud_) {
-            PublishPointCloud(cloud_cluster_,
-                              point_cloud_message_->header.stamp, camera_frame_,
-                              cluster_publisher_);
-        }
-    } catch (const ClusteringException& exception) {
-        RCLCPP_DEBUG_STREAM(get_logger(),
-                            "Clustering exception: " << exception.what());
-        throw;
-    }
-}
-
 void ObjectTrackingNode::Reset() {
     execution_time_ = -1.0;
+}
+
+void ObjectTrackingNode::PublishObstacleDeleteAll(
+    const std_msgs::msg::Header& header) {
+    visualization_msgs::msg::MarkerArray marker_array;
+    visualization_msgs::msg::Marker delete_marker;
+    delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+    delete_marker.header = header;
+    marker_array.markers.push_back(delete_marker);
+    latest_obstacle_markers_ = marker_array;
+    has_obstacle_markers_ = true;
+    obstacle_bboxes_publisher_->publish(marker_array);
+}
+
+void ObjectTrackingNode::PublishObstacleMarkers(
+    const std_msgs::msg::Header& header) {
+    visualization_msgs::msg::MarkerArray marker_array;
+
+    // Always prepend a DELETEALL to clear stale markers from previous frames.
+    visualization_msgs::msg::Marker delete_marker;
+    delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+    delete_marker.header = header;
+    marker_array.markers.push_back(delete_marker);
+
+    for (const auto& box : curr_boxes_) {
+        visualization_msgs::msg::Marker marker;
+        marker.header = header;
+        marker.ns = "lidar_bboxes";
+        marker.id = box.id;
+        marker.type = visualization_msgs::msg::Marker::CUBE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.pose.position.x = box.position.x();
+        marker.pose.position.y = box.position.y();
+        marker.pose.position.z = box.position.z();
+        marker.pose.orientation.w = box.quaternion.w();
+        marker.pose.orientation.x = box.quaternion.x();
+        marker.pose.orientation.y = box.quaternion.y();
+        marker.pose.orientation.z = box.quaternion.z();
+        marker.scale.x = box.dimension.x();
+        marker.scale.y = box.dimension.y();
+        marker.scale.z = box.dimension.z();
+        marker.color.r = 1.0f;
+        marker.color.g = 0.5f;
+        marker.color.b = 0.0f;
+        marker.color.a = 0.3f;
+        marker.lifetime = rclcpp::Duration::from_seconds(0.5);
+        marker_array.markers.push_back(marker);
+    }
+
+    latest_obstacle_markers_ = marker_array;
+    has_obstacle_markers_ = true;
+    obstacle_bboxes_publisher_->publish(marker_array);
+}
+
+void ObjectTrackingNode::RunObstacleDetection(
+    const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg) {
+    std_msgs::msg::Header header = cloud_msg->header;
+
+    // Transform to robot base link if needed, using the cloud's own timestamp
+    // so that the TF lookup matches the moment the scan was captured (same as
+    // the original standalone obstacle detector node).
+    sensor_msgs::msg::PointCloud2 transformed_cloud;
+    if (cloud_msg->header.frame_id != od_robot_base_link_) {
+        geometry_msgs::msg::TransformStamped tf;
+        try {
+            tf = transform_buffer_->lookupTransform(
+                od_robot_base_link_, cloud_msg->header.frame_id,
+                cloud_msg->header.stamp, tf2::durationFromSec(0.2));
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_WARN(get_logger(),
+                        "RunObstacleDetection: TF %s -> %s failed: %s",
+                        cloud_msg->header.frame_id.c_str(),
+                        od_robot_base_link_.c_str(), ex.what());
+            PublishObstacleDeleteAll(header);
+            return;
+        }
+        tf2::doTransform(*cloud_msg, transformed_cloud, tf);
+        transformed_cloud.header.frame_id = od_robot_base_link_;
+    } else {
+        transformed_cloud = *cloud_msg;
+    }
+    header.frame_id = od_robot_base_link_;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromROSMsg(transformed_cloud, *raw_cloud);
+
+    // Downsample, crop ROI, remove ego-vehicle body.
+    auto filtered_cloud = obstacle_detector_->filterCloud(
+        raw_cloud, od_voxel_grid_size_,
+        od_roi_min_point_, od_roi_max_point_,
+        od_body_min_point_, od_body_max_point_);
+
+    if (static_cast<int>(filtered_cloud->size()) < od_cluster_min_size_) {
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    // Rotation-only transform to fixed frame for normal estimation.
+    // Use the cloud's timestamp to match the original standalone node behavior.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    geometry_msgs::msg::TransformStamped fixed_tf;
+    try {
+        fixed_tf = transform_buffer_->lookupTransform(
+            world_frame_, od_robot_base_link_,
+            cloud_msg->header.stamp, tf2::durationFromSec(0.2));
+    } catch (tf2::TransformException& ex) {
+        RCLCPP_WARN(get_logger(),
+                    "RunObstacleDetection: fixed-frame TF not available: %s",
+                    ex.what());
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    Eigen::Quaternionf q(
+        fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x,
+        fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
+    if (q.norm() < 1e-6f) {
+        RCLCPP_WARN(get_logger(),
+                    "RunObstacleDetection: fixed-frame TF quaternion is zero.");
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+    Eigen::Matrix4f mat4 = Eigen::Matrix4f::Identity();
+    mat4.block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
+    Eigen::Affine3f transform_fixed;
+    transform_fixed.matrix() = mat4;
+    pcl::transformPointCloud(*filtered_cloud, *fixed_cloud, transform_fixed);
+
+    if (static_cast<int>(fixed_cloud->size()) < od_cluster_min_size_) {
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    // Separate ground and obstacle points via normal filtering.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr ground_filtered(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    obstacle_detector_->pclFilterNorms(
+        filtered_cloud, fixed_cloud,
+        norm_filtered, ground_filtered,
+        od_ground_normal_, od_ground_normal_threshold_,
+        od_obstacle_scale_, od_obstacle_min_neighbors_);
+
+    if (od_publish_ground_cloud_ && obstacle_ground_cloud_publisher_) {
+        sensor_msgs::msg::PointCloud2 ground_msg;
+        pcl::toROSMsg(*ground_filtered, ground_msg);
+        ground_msg.header = header;
+        obstacle_ground_cloud_publisher_->publish(ground_msg);
+    }
+
+    if (od_publish_cluster_cloud_ && obstacle_clusters_cloud_publisher_) {
+        sensor_msgs::msg::PointCloud2 cluster_msg;
+        pcl::toROSMsg(*norm_filtered, cluster_msg);
+        cluster_msg.header = header;
+        obstacle_clusters_cloud_publisher_->publish(cluster_msg);
+    }
+
+    if (norm_filtered->empty()) {
+        PublishObstacleDeleteAll(header);
+        return;
+    }
+
+    // Cluster and build bounding boxes.
+    auto cloud_clusters = obstacle_detector_->clustering(
+        norm_filtered, od_cluster_threshold_,
+        od_cluster_min_size_, od_cluster_max_size_);
+
+    curr_boxes_.clear();
+    for (auto& cluster : cloud_clusters) {
+        Box box = od_use_pca_box_
+            ? obstacle_detector_->pcaBoundingBox(cluster, obstacle_id_)
+            : obstacle_detector_->axisAlignedBoundingBox(cluster, obstacle_id_);
+        obstacle_id_ = (obstacle_id_ < SIZE_MAX) ? obstacle_id_ + 1 : 0;
+        curr_boxes_.emplace_back(box);
+    }
+
+    if (od_use_tracking_) {
+        obstacle_detector_->obstacleTracking(
+            prev_boxes_, curr_boxes_,
+            od_displacement_threshold_, od_iou_threshold_);
+    }
+
+    PublishObstacleMarkers(header);
+
+    prev_boxes_.swap(curr_boxes_);
+    curr_boxes_.clear();
 }
 
 // JN addition for camera detection only tracking
@@ -663,41 +1003,6 @@ void ObjectTrackingNode::CameraCentroidEstimate() {
     }
 }
 
-void ObjectTrackingNode::TransformPointCloudToCameraFrame(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    if (point_cloud_message->header.frame_id.empty() ||
-        !(transform_buffer_->canTransform(camera_frame_,
-                                          point_cloud_message->header.frame_id,
-                                          rclcpp::Time(0)))) {
-
-        std::string message(
-            "Could not lookup the transform between point cloud frame "
-            "and camera frame!");
-        RCLCPP_ERROR(get_logger(), message.c_str());
-        throw TransformException(message.c_str());
-    }
-
-    if (tf2::getFrameId(*point_cloud_message) != camera_frame_) {
-        RCLCPP_DEBUG(get_logger(),
-                     "Transforming point cloud between LiDAR frame \"%s\" and "
-                     "camera frame \"%s\" ...",
-                     tf2::getFrameId(*point_cloud_message).c_str(),
-                     camera_frame_.c_str());
-        try {
-            auto transform_message =
-                TransformPointCloud(point_cloud_message, camera_frame_);
-
-            pcl::transformPointCloud(
-                *point_cloud, *point_cloud,
-                tf2::transformToEigen(transform_message.transform).matrix());
-        } catch (tf2::TransformException& exception) {
-            RCLCPP_WARN(get_logger(), exception.what());
-            return;
-        }
-    }
-}
-
 Eigen::Vector3d ObjectTrackingNode::TransformToCoordinates(
     const std::string& source_frame, const std::string& target_frame,
     const Eigen::Vector3d& point) const {
@@ -719,41 +1024,12 @@ void ObjectTrackingNode::PointCloudCallback(
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Point cloud callback triggered!");
 
-    // Convert the ROS sensor_msgs/msg/PointCloud2 message to a PCL XYZ
-    // point cloud.
-    point_cloud_ = ToPCLCloud(point_cloud_message);
     point_cloud_message_ = point_cloud_message;
     has_point_cloud_ = true;
-}
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr ObjectTrackingNode::ToPCLCloud(
-    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(
-        new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::fromROSMsg(*point_cloud_message, *point_cloud);
-
-    RCLCPP_DEBUG(get_logger(), "Number of points in the raw point cloud: %i",
-                 int(point_cloud->points.size()));
-
-    return point_cloud;
-}
-
-void ObjectTrackingNode::RemoveNaNPoints(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud) {
-    RCLCPP_DEBUG(get_logger(),
-                 "Removing invalid values (NaN) from the point cloud ...");
-
-    unsigned int points_before_filtering = point_cloud->points.size();
-
-    std::vector<int> removed_indices;
-    pcl::removeNaNFromPointCloud(*point_cloud, *point_cloud, removed_indices);
-
-    unsigned int points_after_filtering = point_cloud->points.size();
-
-    RCLCPP_DEBUG(get_logger(),
-                 "Total points after NaN filtering: %i -> %i (%i)",
-                 points_before_filtering, points_after_filtering,
-                 points_before_filtering - points_after_filtering);
+    // Run the integrated obstacle detector synchronously so that
+    // latest_obstacle_markers_ is up-to-date before the next tracking tick.
+    RunObstacleDetection(point_cloud_message);
 }
 
 void ObjectTrackingNode::ImageCallback(
@@ -853,37 +1129,6 @@ void ObjectTrackingNode::DetectionsCallback(
     has_detection_ = true;
 }
 
-void ObjectTrackingNode::DownsampleCloud(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud) {
-    RCLCPP_DEBUG(get_logger(),
-                 "Applying voxel grid downsampling with leaf size %0.3f ...",
-                 leaf_size_);
-
-    // Filter the point cloud in-place.
-    voxel_grid_filter_.setInputCloud(point_cloud);
-    voxel_grid_filter_.filter(*point_cloud);
-
-    RCLCPP_DEBUG(get_logger(),
-                 "Number of points in the processed point cloud after voxel "
-                 "grid downsampling: %i",
-                 int(point_cloud->points.size()));
-}
-
-geometry_msgs::msg::TransformStamped ObjectTrackingNode::TransformPointCloud(
-    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message,
-    const std::string target_frame) {
-    // Retrieve the transform from the point cloud message native frame to
-    // the target frame from the published transform tree.
-    try {
-        return transform_buffer_->lookupTransform(
-            target_frame, tf2::getFrameId(*point_cloud_message),
-            tf2::TimePointZero);
-    } catch (tf2::TransformException& exception) {
-        RCLCPP_ERROR(get_logger(), "Transform lookup exception.");
-        throw;
-    }
-}
-
 // JN addition for camera detection only tracking
 // use vehicle height to estimate centroid using range from boundingbox height
 // expressed in righ-down-front (rdf) frame
@@ -915,217 +1160,11 @@ Eigen::Vector3d ObjectTrackingNode::ConvertBBoxCoordinatesToPoseCentroid_rdf(
 	R_rdf_(0, 0) = std::max(filter_measurement_variance_,s2_right);
 	R_rdf_(1, 1) = std::max(filter_measurement_variance_, s2_down);
 	R_rdf_(2, 2) = std::max(filter_measurement_variance_, s2_forwards);
-    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size" << detections_message.bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
+    RCLCPP_INFO_STREAM(get_logger(), "ConvertBBoxCoordinatesToPoseCentroid of size " << detections_message.bbox.size_y << " pixel, " << car_size_z << "m" << '\n'
         << "[x, y ,z] = [ " << target_x_r
         << ", " << target_y_d
         << ", " << target_z_f << "]" << '\n');
     return camera_estimated_centroid_rdf;
-}
-
-PixelCoordinates ObjectTrackingNode::ConvertPointToPixelCoordinates(
-    const pcl::PointXYZ& point,
-    const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
-    return PixelCoordinates(camera_info_message->k[0] * point.x / point.z +
-                                camera_info_message->k[2],
-                            camera_info_message->k[4] * point.y / point.z +
-                                camera_info_message->k[5]);
-}
-
-std::vector<PixelCoordinates>
-ObjectTrackingNode::ConvertPointCloudToPixelCoordinates(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
-    std::vector<PixelCoordinates> coordinates;
-    coordinates.reserve(point_cloud->size());
-
-    for (auto& point : point_cloud->points) {
-        coordinates.emplace_back(
-            ConvertPointToPixelCoordinates(point, camera_info_message));
-    }
-
-    return coordinates;
-}
-
-void ObjectTrackingNode::FindPointsInCameraFOV(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    const std::vector<PixelCoordinates>& coordinates, const int height,
-    const int width) {
-    pcl::PointIndices::Ptr fov_points_indices(new pcl::PointIndices());
-    fov_points_indices->indices.reserve(point_cloud->size());
-
-    for (unsigned int index = 0; index < coordinates.size(); ++index) {
-        if (point_cloud->points[index].z > 0.0 && coordinates[index].x_ >= 0 &&
-            coordinates[index].x_ <= width && coordinates[index].y_ >= 0 &&
-            coordinates[index].y_ <= height) {
-            fov_points_indices->indices.push_back(index);
-        }
-    }
-
-    pcl::ExtractIndices<pcl::PointXYZ> extract_fov_indices;
-    extract_fov_indices.setInputCloud(point_cloud);
-    extract_fov_indices.setIndices(fov_points_indices);
-    extract_fov_indices.setNegative(false);
-    extract_fov_indices.setKeepOrganized(true);
-    extract_fov_indices.filterDirectly(point_cloud);
-}
-
-void ObjectTrackingNode::FindPointsInROI(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    const std::vector<PixelCoordinates>& coordinates, const unsigned int x_min,
-    const unsigned int x_max, const unsigned int y_min,
-    const unsigned int y_max) {
-    pcl::PointIndices::Ptr roi_points_indices(new pcl::PointIndices());
-
-    for (unsigned int index = 0; index < coordinates.size(); ++index) {
-        if (coordinates[index].x_ >= x_min && coordinates[index].x_ < x_max &&
-            coordinates[index].y_ >= y_min && coordinates[index].y_ < y_max) {
-            roi_points_indices->indices.push_back(index);
-        }
-    }
-
-    pcl::ExtractIndices<pcl::PointXYZ> extract_fov_indices;
-    extract_fov_indices.setInputCloud(point_cloud);
-    extract_fov_indices.setIndices(roi_points_indices);
-    extract_fov_indices.setNegative(false);
-    extract_fov_indices.setKeepOrganized(true);
-    extract_fov_indices.filterDirectly(point_cloud);
-}
-
-void ObjectTrackingNode::LimitSensorDistance(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, bool symmetric) {
-    passthrough_filter_.setInputCloud(point_cloud);
-    if (symmetric) {
-        passthrough_filter_.setFilterLimits(-passthrough_distance_max_,
-                                            passthrough_distance_max_);
-        passthrough_filter_.filter(*point_cloud);
-        passthrough_filter_.setNegative(true);
-        passthrough_filter_.setFilterLimits(-passthrough_distance_min_,
-                                            passthrough_distance_min_);
-        passthrough_filter_.filter(*point_cloud);
-        passthrough_filter_.setNegative(false);
-    } else {
-        passthrough_filter_.setFilterLimits(passthrough_distance_min_,
-                                            passthrough_distance_max_);
-        passthrough_filter_.filter(*point_cloud);
-    }
-}
-
-const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr, const pcl::PointXYZ>
-ObjectTrackingNode::ExtractEuclideanClusters(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud) {
-    // Instantiate a k-d tree to speed up the clustering process.
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
-        new pcl::search::KdTree<pcl::PointXYZ>);
-    kd_tree->setInputCloud(point_cloud);
-
-    // Configure the Euclidean cluster extraction agent.
-    pcl::EuclideanClusterExtraction<pcl::PointXYZ> euclidean_clustering_;
-    euclidean_clustering_.setClusterTolerance(clustering_tolerance_);
-    euclidean_clustering_.setMinClusterSize(cluster_size_min_);
-    euclidean_clustering_.setMaxClusterSize(cluster_size_max_);
-    euclidean_clustering_.setSearchMethod(kd_tree);
-
-    // Run the cluster extraction algorithm and store the results in a
-    // vector of vectors of cluster indices.
-    euclidean_clustering_.setInputCloud(point_cloud);
-    std::vector<pcl::PointIndices> clusters_indices;
-    euclidean_clustering_.extract(clusters_indices);
-
-    // Throw an exception to be caught upstream if clustering was unsuccessful.
-    if (uint(clusters_indices.size()) < 1) {
-        throw ClusteringException(
-            "Could not find any valid clusters in the provided point "
-            "cloud.");
-    }
-
-    RCLCPP_DEBUG(get_logger(), "Euclidean clustering found %i clusters.",
-                 uint(clusters_indices.size()));
-
-    // Create a shared pointer to a new point cloud to store the closest
-    // cluster and keep track of the cluster distances from the origin as
-    // the clustering results are traversed.
-    pcl::PointCloud<pcl::PointXYZ>::Ptr closest_cloud_cluster(
-        new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointXYZ closest_cluster_centroid(
-        std::numeric_limits<float>::infinity(),
-        std::numeric_limits<float>::infinity(),
-        std::numeric_limits<float>::infinity());
-
-    // Iterate over the cloud clusters to compute the cluster centroids.
-    for (unsigned int cluster_index = 0;
-         cluster_index < uint(clusters_indices.size()); ++cluster_index) {
-        // Temporarily instantiate a point cloud to the current cluster.
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
-            new pcl::PointCloud<pcl::PointXYZ>);
-        for (const auto& idx : clusters_indices[cluster_index].indices) {
-            cloud_cluster->push_back((*point_cloud)[idx]);
-        }
-
-        // Compute the distance to the centroid of the current cluster from
-        // the point cloud origin.
-        pcl::PointXYZ cloud_centroid;
-        pcl::computeCentroid(*cloud_cluster, cloud_centroid);
-        auto distance = cloud_centroid.getVector3fMap().norm();
-
-        // Compare the distance to the current cluster with the shortest
-        // distance so far and update the closest cluster index accordingly.
-        if (distance < closest_cluster_centroid.getVector3fMap().norm()) {
-            closest_cluster_centroid = cloud_centroid;
-            closest_cloud_cluster = cloud_cluster;
-        }
-
-        RCLCPP_DEBUG(
-            get_logger(), "Cluster %i: %i points, centroid %0.2f meters away.",
-            cluster_index, uint(cloud_cluster->points.size()), distance);
-    }
-
-    return std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
-                     const pcl::PointXYZ>(closest_cloud_cluster,
-                                          closest_cluster_centroid);
-}
-
-void ObjectTrackingNode::SegmentGroundPlane(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane) {
-    // Segment the largest planar component from the remaining cloud
-    sac_segmentation_.setInputCloud(point_cloud);
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-    sac_segmentation_.segment(*inliers, *coefficients);
-
-    if (inliers->indices.size() == 0) {
-        RCLCPP_DEBUG(get_logger(),
-                     "Could not estimate a planar model for the given "
-                     "dataset.");
-        return;
-    }
-
-    // Extract the planar inliers from the input cloud
-    pcl::ExtractIndices<pcl::PointXYZ> extract_indices;
-    extract_indices.setInputCloud(point_cloud);
-    extract_indices.setIndices(inliers);
-    extract_indices.setNegative(false);
-    extract_indices.setKeepOrganized(true);
-
-    // Get the points associated with the planar surface
-    extract_indices.filter(*cloud_plane);
-
-    RCLCPP_DEBUG(
-        get_logger(),
-        "Point cloud representing the planar component: %i data points.",
-        int(cloud_plane->size()));
-
-    // Remove the planar inliers, extract the rest
-    extract_indices.setNegative(true);
-    extract_indices.setKeepOrganized(true);
-    extract_indices.filterDirectly(point_cloud);
-
-    RemoveNaNPoints(point_cloud);
-
-    if (publish_ground_cloud_) {
-        PublishPointCloud(cloud_plane, point_cloud_message_->header.stamp,
-                          camera_frame_, ground_cloud_publisher_);
-    }
 }
 
 void ObjectTrackingNode::EstimatorTimerCallback() {
@@ -1139,7 +1178,15 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
     // Reset the target state estimator if the target is currently being
     // tracked but no valid detections have been received during the timeout
     // window.
-    if ((get_clock()->now() - last_valid_detection_time_).seconds() >
+    // In LIDAR_ONLY_TRACKING the camera may be permanently lost, so the
+    // timeout is measured from the last successful LiDAR cluster rather
+    // than the last camera detection. This allows LiDAR-only tracking to
+    // continue for as long as the LiDAR keeps finding the target.
+    const rclcpp::Time& timeout_reference =
+        (state_ == TrackerState::LIDAR_ONLY_TRACKING)
+            ? last_valid_target_time_
+            : last_valid_detection_time_;
+    if ((get_clock()->now() - timeout_reference).seconds() >
         target_timeout_) {
         if (state_ == TrackerState::LIDAR_ONLY_TRACKING ||
             state_ == TrackerState::NO_DETECTION) {
@@ -1152,14 +1199,15 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
             has_first_detection_ = false;
             filter_initialized_ = false;
             has_had_first_lidar_measurement_ = false;
+            tracked_obstacle_id_ = -1;
         }
     }
 
-    if(!filter_initialized_) {
-            filter_->SetInitialPosition(TransformToCoordinates(
+    if (!filter_initialized_) {
+        filter_->SetInitialPosition(TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_));
-            filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
-            filter_initialized_ = true;
+        filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        filter_initialized_ = true;
     }
 
     // Do not advance the filter when there is no active detection.
@@ -1216,8 +1264,20 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
                 Eigen::Matrix3d R = RotMatrix * R_rdf_ * RotMatrix.transpose();
 
 				// Run the IMM update step
-				// with custom R.
-				filter_->Update(measurement_vector,R);
+				// with custom R. if chi2 is acceptable
+                double chi2 = filter_->GetChi2IMM2D(measurement_vector, R);
+                // Hard 4-sigma treshold TODO open up for soft and as parameter
+                if (chi2 <4*4) 
+				    filter_->Update(measurement_vector,R);
+                else {
+                    const auto state_filtered = filter_->GetState();
+
+                    RCLCPP_WARN(get_logger(),
+                        "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(1)-y = %.2lf current detection, skipping ...",
+                        chi2, measurement_vector(0) - state_filtered(0), measurement_vector(1) - state_filtered(3) );
+                    state_ = TrackerState::NO_DETECTION;
+                }
+
 
 			}
 			catch (tf2::TransformException& exception) {
@@ -1226,8 +1286,19 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
 
 		}
 		else {
-			// Run the IMM update step.
-			filter_->Update(measurement_vector);
+			// Run the IMM update step.  if chi2 is acceptable
+            double chi2 = filter_->GetChi2IMM2D(measurement_vector);
+            // Hard 4-sigma treshold TODO open up for soft and as parameter
+            if (chi2 < 4 * 4)
+                filter_->Update(measurement_vector);
+            else {
+                const auto state_filtered = filter_->GetState();
+
+                RCLCPP_WARN(get_logger(),
+                    "chi2 test failed chi2 at %.2lf z(0)-x = %.2lf, z(1)-y = %.2lf current detection, skipping ...",
+                    chi2, measurement_vector(0) - state_filtered(0), measurement_vector(1) - state_filtered(3));
+                state_ = TrackerState::NO_DETECTION;
+            }
 		}
 
 
@@ -1274,22 +1345,6 @@ void ObjectTrackingNode::Initialize() {
 
     filter_initialized_ = false;
 
-    // Configure the voxel grid filter.
-    voxel_grid_filter_.setLeafSize(leaf_size_, leaf_size_, leaf_size_);
-
-    // Configure the passthrough filter.
-    passthrough_filter_.setFilterFieldName("z");
-
-    // Configure the SAC segmentation filter.
-    sac_segmentation_.setOptimizeCoefficients(true);
-    sac_segmentation_.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
-    sac_segmentation_.setEpsAngle((M_PI / 180.0) * sac_segmentation_angle_);
-    sac_segmentation_.setAxis(Eigen::Vector3f{0.0, 1.0, 0.0});
-    sac_segmentation_.setMethodType(pcl::SAC_RANSAC);
-    sac_segmentation_.setMaxIterations(sac_segmentation_max_iterations_);
-    sac_segmentation_.setDistanceThreshold(sac_segmentation_threshold_);
-    sac_segmentation_.setNumberOfThreads(0);
-
     // Initialize the IMM filter (CV + CTR + NM).
     filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
         1.0 / estimator_rate_,
@@ -1298,11 +1353,16 @@ void ObjectTrackingNode::Initialize() {
         imm_cv_init_prob_,
         imm_ctr_init_prob_,
         imm_nm_init_prob_,
-        imm_transition_prob_);
+        imm_persistence_prob_);
     filter_->SetInitialPosition(Eigen::Vector3d::Zero());
 
     has_target_selection_ = (use_autostart_) ? true : false;
     target_class_ = (use_autostart_) ? autostart_target_class_ : "";
+
+    tracked_obstacle_id_ = -1;
+    has_obstacle_markers_ = false;
+    last_lidar_world_pos_ = Eigen::Vector3d::Zero();
+    last_lidar_seen_time_ = get_clock()->now();
 
     last_valid_detection_time_ = get_clock()->now();
     last_valid_target_time_ = get_clock()->now();
@@ -1324,22 +1384,6 @@ void ObjectTrackingNode::PublishImage() {
     cv_image.encoding = "bgr8";
     cv_image.image = image_copy;
     image_publisher_->publish(*cv_image.toImageMsg());
-}
-
-void ObjectTrackingNode::GetOrientedBoundingBox(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    pcl::PointXYZ& bounding_box_min, pcl::PointXYZ& bounding_box_max,
-    pcl::PointXYZ& bounding_box_centroid,
-    Eigen::Matrix3f& bounding_box_rotation) {
-    moi_estimation_.setInputCloud(point_cloud);
-    moi_estimation_.compute();
-
-    if (!moi_estimation_.getOBB(bounding_box_min, bounding_box_max,
-                                bounding_box_centroid, bounding_box_rotation)) {
-        throw PCAException(
-            "Could not estimate the oriented bounding box for "
-            "the provided point cloud cluster.");
-    }
 }
 
 void ObjectTrackingNode::PublishDetection3D() {
@@ -1473,24 +1517,6 @@ ObjectTrackingNode::SetParametersCallback(
             world_frame_ = parameter.as_string();
         } else if (parameter.get_name() == "odometry_child_frame") {
             odometry_child_frame_ = parameter.as_string();
-        } else if (parameter.get_name() == "filters_downsampling_leaf_size") {
-            leaf_size_ = parameter.as_double();
-        } else if (parameter.get_name() == "filters_passthrough_min") {
-            passthrough_distance_min_ = parameter.as_double();
-        } else if (parameter.get_name() == "filters_passthrough_max") {
-            passthrough_distance_max_ = parameter.as_double();
-        } else if (parameter.get_name() == "filters_clustering_tolerance") {
-            clustering_tolerance_ = parameter.as_double();
-        } else if (parameter.get_name() == "filters_clustering_size_minimum") {
-            cluster_size_min_ = parameter.as_int();
-        } else if (parameter.get_name() == "filters_clustering_size_maximum") {
-            cluster_size_max_ = parameter.as_int();
-        } else if (parameter.get_name() == "filters_ground_max_iterations") {
-            sac_segmentation_max_iterations_ = parameter.as_int();
-        } else if (parameter.get_name() == "filters_ground_threshold") {
-            sac_segmentation_threshold_ = parameter.as_double();
-        } else if (parameter.get_name() == "filters_ground_angle") {
-            sac_segmentation_angle_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_roi_scale_factor") {
             roi_scale_factor_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_kalman_rate") {
@@ -1499,8 +1525,6 @@ ObjectTrackingNode::SetParametersCallback(
             filter_process_variance_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_kalman_measurement") {
             filter_measurement_variance_ = parameter.as_double();
-        } else if (parameter.get_name() == "filters_use_pca_centroid") {
-            use_pca_centroid_ = parameter.as_bool();
         } else if (parameter.get_name() == "tracker_timeout") {
             target_timeout_ = parameter.as_double();
         } else if (parameter.get_name() == "sync_enable") {
@@ -1533,6 +1557,8 @@ std::string ObjectTrackingNode::ToString(TrackerState& state) {
         return "lidar_only";
     } else if (state == TrackerState::FULL_TRACKING) {
         return "full";
+    } else if (state == TrackerState::CAMERA_ONLY_TRACKING) {
+        return "camera_only";
     }
     throw std::invalid_argument("Unknown tracker state.");
 }
@@ -1550,61 +1576,6 @@ void ObjectTrackingNode::SetTargetServiceCallback(
     RCLCPP_INFO(get_logger(), message.c_str());
     response->success = true;
     response->message = message.c_str();
-}
-
-void ObjectTrackingNode::ProjectPointsToPixel(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-    sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
-    // Find the mapping between the 3D coordinates (X, Y, Z) of a point and
-    // the corresponding pixel coordinates in the camera image frame.
-    const std::vector<PixelCoordinates> coordinates =
-        ConvertPointCloudToPixelCoordinates(point_cloud, camera_info_message_);
-
-    // Find the cloud points in the camera field of view and store them in a
-    // separate point cloud. We keep the original downsampled point cloud to
-    // account for objects that are not yet in the field-of-view.
-    FindPointsInCameraFOV(point_cloud, coordinates,
-                          camera_info_message_->height,
-                          camera_info_message_->width);
-
-    if (publish_fov_cloud_) {
-        PublishPointCloud(point_cloud, point_cloud_message->header.stamp,
-                          camera_frame_, fov_cloud_publisher_);
-    }
-
-    // Find cloud points the region of interest defined by the first
-    // detection.
-
-    RCLCPP_DEBUG(get_logger(),
-                 "Finding cloud points in the region of interest ...");
-
-    const double cx = detections_message_.bbox.center.position.x;
-    const double cy = detections_message_.bbox.center.position.y;
-    const double half_roi_w = detections_message_.bbox.size_x / 2;
-    const double half_roi_h = detections_message_.bbox.size_y / 2;
-    const double w = camera_info_message_->width;
-    const double h = camera_info_message_->height;
-
-    auto x_min = static_cast<unsigned int>(std::clamp(cx - half_roi_w, 0.0, w));
-    auto x_max = static_cast<unsigned int>(std::clamp(std::ceil(cx + half_roi_w), 0.0, w));
-    auto y_min = static_cast<unsigned int>(std::clamp(cy - half_roi_h, 0.0, h));
-    auto y_max = static_cast<unsigned int>(std::clamp(std::ceil(cy + half_roi_h), 0.0, h));
-
-    RCLCPP_DEBUG(get_logger(),
-                 "Selected the following bounding box as region of interest: "
-                 "[X_MIN: %u, X_MAX: %u Y_MIN: %u Y_MAX: %u]",
-                 x_min, x_max, y_min, y_max);
-
-    // Find the points lying in the region of interest (ROI) defined by the
-    // detection bounding box.
-    FindPointsInROI(point_cloud, coordinates, x_min, x_max, y_min, y_max);
-
-    if (publish_roi_cloud_) {
-        PublishPointCloud(point_cloud, point_cloud_message->header.stamp,
-                          camera_frame_, roi_cloud_publisher_);
-    }
-
-    RemoveNaNPoints(point_cloud);
 }
 
 }  // namespace perception

@@ -17,13 +17,14 @@ if(USING_AMENT)
   find_package(pcl_conversions REQUIRED)
   find_package(pcl_ros REQUIRED)
   find_package(rclcpp REQUIRED)
-  find_package(sensor_msgs REQUIRED)  
+  find_package(sensor_msgs REQUIRED)
   find_package(tf2 REQUIRED)
   find_package(tf2_eigen REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
   find_package(tf2_ros REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(vision_msgs REQUIRED)
+  find_package(visualization_msgs REQUIRED)
 
   if(PCL_FOUND)
     add_definitions(${PCL_DEFINITIONS})
@@ -50,7 +51,8 @@ if(USING_AMENT)
     tf2_geometry_msgs
     tf2_ros
     tf2_sensor_msgs
-    vision_msgs)
+    vision_msgs
+    visualization_msgs)
 
   install(
     TARGETS ${PROJECT_NAME}_object_tracking_node
