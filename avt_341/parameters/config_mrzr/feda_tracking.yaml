@@ -26,5 +26,6 @@ filters_pose: false
 publish_odometry: true
 filters_odometry: false
 heading_min_speed: 0.5
+heading_resume_speed: 1.0
 publish_detection: true
 publish_image: true

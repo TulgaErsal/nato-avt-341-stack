@@ -152,6 +152,9 @@ void ObjectTrackingNode::GetParameters() {
     declare_parameter("heading_min_speed", 0.5);
     heading_min_speed_ = get_parameter("heading_min_speed").as_double();
 
+    declare_parameter("heading_resume_speed", 1.0);
+    heading_resume_speed_ = get_parameter("heading_resume_speed").as_double();
+
     declare_parameter("publish_detection", false);
     publish_detection_3d_ = get_parameter("publish_detection").as_bool();
 
@@ -1421,10 +1424,20 @@ void ObjectTrackingNode::PublishDetection3D() {
     detection_publisher_->publish(detection_message);
 }
 
-void ObjectTrackingNode::PublishPose() {
-    if (filter_->GetCTRSpeed() >= heading_min_speed_) {
+void ObjectTrackingNode::UpdateHeadingHold() {
+    const double speed = filter_->GetCTRSpeed();
+    if (!heading_held_ && speed < heading_min_speed_) {
+        heading_held_ = true;
+    } else if (heading_held_ && speed >= heading_resume_speed_) {
+        heading_held_ = false;
+    }
+    if (!heading_held_) {
         last_reliable_yaw_ = filter_->GetYaw();
     }
+}
+
+void ObjectTrackingNode::PublishPose() {
+    UpdateHeadingHold();
 
     if (use_filtered_pose_) {
         geometry_msgs::msg::PoseWithCovarianceStamped pose_filtered_message;
@@ -1470,11 +1483,7 @@ void ObjectTrackingNode::PublishPose() {
 }
 
 void ObjectTrackingNode::PublishOdometry() {
-    // Hold the last heading estimated while the vehicle was moving fast enough
-    // for the CTR filter to produce a reliable yaw.
-    if (filter_->GetCTRSpeed() >= heading_min_speed_) {
-        last_reliable_yaw_ = filter_->GetYaw();
-    }
+    UpdateHeadingHold();
 
     if (use_filtered_odometry_) {
         nav_msgs::msg::Odometry odometry_filtered_message;
@@ -1577,6 +1586,8 @@ ObjectTrackingNode::SetParametersCallback(
             use_filtered_odometry_ = parameter.as_bool();
         } else if (parameter.get_name() == "heading_min_speed") {
             heading_min_speed_ = parameter.as_double();
+        } else if (parameter.get_name() == "heading_resume_speed") {
+            heading_resume_speed_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_use_manual_roi") {
             use_manual_roi_size_ = parameter.as_bool();
         }
