@@ -1430,6 +1430,22 @@ void ObjectTrackingNode::PublishPose() {
         pose_filtered_message.pose.pose.orientation.y = 0;
         pose_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
         pose_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
+        Eigen::Matrix<double, 6, 6> PoseCovariance =
+            Eigen::Matrix<double, 6, 6>::Zero();
+        Eigen::Matrix<double, 5, 5> P = filter_->GetCTRCovariance();
+        PoseCovariance(0, 0) = P(0, 0);  // x variance
+        PoseCovariance(0, 1) = P(0, 2);  // xy covariance
+        PoseCovariance(1, 0) = P(2, 0);
+        PoseCovariance(1, 1) = P(2, 2);  // y variance
+        PoseCovariance(2, 2) = 100.0;    // no information on z
+        PoseCovariance(3, 3) = 9.0;      // no information on roll
+        PoseCovariance(4, 4) = 9.0;      // no information on pitch
+        PoseCovariance(5, 5) = filter_->GetFusedYawVariance();
+        for (size_t i = 0; i < 6; i++) {
+            for (size_t j = 0; j < 6; j++) {
+                pose_filtered_message.pose.covariance[i * 6 + j] = PoseCovariance(i, j);
+            }
+        }
         pose_filtered_publisher_->publish(pose_filtered_message);
     }
 
