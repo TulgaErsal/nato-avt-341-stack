@@ -102,6 +102,7 @@ class IMMFilter {
         fused_position_.setZero();
         fused_velocity_.setZero();
         fused_yaw_ = 0.0;
+        sigma_ = measurement_variance; // variance here is actually std dev
     }
 
     // -----------------------------------------------------------------------
@@ -422,17 +423,17 @@ class IMMFilter {
      * linearized Jacobian of yaw = atan2(vy, vx).
      */
     Eigen::Matrix<double, 6, 6> GetPoseCovariance() const {
-        const auto& x_cv  = cv_ .GetState();
-        const auto& P_cv  = cv_ .GetCovariance();
+        const auto& P_nm = nm_.GetCovariance();
+        const auto& P_cv = cv_.GetCovariance();
         const auto& P_ctr = ctr_.GetCovariance();
 
         Eigen::Matrix<double, 6, 6> P = Eigen::Matrix<double, 6, 6>::Zero();
 
         // Fused position covariance: weighted sum of [x,y] blocks from CV and CTR
-        P(0, 0) = mu_[0]*P_cv(0,0) + mu_[1]*P_ctr(0,0);
-        P(0, 1) = mu_[0]*P_cv(0,2) + mu_[1]*P_ctr(0,2);
+        P(0, 0) = mu_[0] * P_cv(0,0) + mu_[1] * P_ctr(0,0) + mu_[2] * P_nm(0,0);
+        P(0, 1) = mu_[0] * P_cv(0,2) + mu_[1] * P_ctr(0,2) + mu_[2] * P_nm(0,1);
         P(1, 0) = P(0, 1);
-        P(1, 1) = mu_[0]*P_cv(2,2) + mu_[1]*P_ctr(2,2);
+        P(1, 1) = mu_[0] * P_cv(2,2) + mu_[1] * P_ctr(2,2) + mu_[2] * P_nm(1,1);
         P(2, 2) = P_cv(4, 4);   // z from CV only
 
         // Roll and pitch: no information
@@ -506,6 +507,34 @@ class IMMFilter {
 
     Vec3 GetAllChi2() { return chi2_; }
 
+    /**  @brief Get a chi2 estimate for the current mixed model and a new measurement only in plane(x,y) */
+    double GetChi2IMM2D(const MeasurementVector3D& z, 
+        const std::optional<Eigen::Matrix3d>& R_override = std::nullopt) {
+        const auto& x_imm = GetState();
+        const auto  Pimm = GetPoseCovariance();
+
+        Eigen::Matrix<double, 2, 1> y;
+        y(0) = z(0) - (x_imm(0)); // should also use prediction w. velocity* dt 
+        y(1) = z(1) - (x_imm(3)); // should also use prediction w. velocity* dt 
+        Eigen::Matrix<double, 2, 6> H = Eigen::Matrix<double, 2, 6>::Zero();
+        H(0, 0) = 1.0; H(1, 1) = 1.0; // pose covariance: [x, y, z, roll, pitch, yaw]
+        Eigen::Matrix2d S = Eigen::Matrix2d::Zero();
+        if (R_override) {
+            const Eigen::Matrix2d R2d = R_override->topLeftCorner<2, 2>();
+            S = H * Pimm * H.transpose() + R2d;
+        }
+        else {
+            const double r_diag = sigma_ * sigma_;
+            S = H * Pimm * H.transpose() + Eigen::Matrix2d::Identity() * r_diag;
+        }
+        if (S.determinant() <= 0.0)
+            return -1e9;
+        else
+            return (y.transpose() * S.inverse() * y)(0, 0);
+
+    }
+
+    /** @brief NM state covariance (2x2). */
     Eigen::Matrix<double, 2, 2> GetnmStatecovariance() { return nm_.GetS(); }
 
   private:
@@ -548,7 +577,7 @@ class IMMFilter {
         Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero();
         H(0, 0) = 1.0; H(1, 2) = 1.0; H(2, 4) = 1.0;
 
-        const double r_diag = R3 ? R3->coeff(0, 0) : cv_measurement_variance_approx_;
+        const double r_diag = R3 ? R3->coeff(0, 0) : sigma_ * sigma_;
         const Eigen::Matrix3d S =
             H * Pcv * H.transpose() + Eigen::Matrix3d::Identity() * r_diag;
         const double det = S.determinant();
@@ -571,7 +600,7 @@ class IMMFilter {
         Eigen::Matrix<double, 3, 6> H = Eigen::Matrix<double, 3, 6>::Zero();
         H(0, 0) = 1.0; H(1, 2) = 1.0; H(2, 4) = 1.0;
 
-        const double r_diag = R3 ? R3->coeff(0, 0) : cv_measurement_variance_approx_;
+        const double r_diag = R3 ? R3->coeff(0, 0) : sigma_ * sigma_;
         const Eigen::Matrix3d S =
             H * Pcv * H.transpose() + Eigen::Matrix3d::Identity() * r_diag;
         if (S.determinant() <= 0.0) return -1e9;
@@ -589,6 +618,7 @@ class IMMFilter {
     Vec3   fused_position_;
     Vec3   fused_velocity_;
     double fused_yaw_ = 0.0;
+    double sigma_;
     Vec3   chi2_;
 
     static constexpr double cv_measurement_variance_approx_ = 0.01;
