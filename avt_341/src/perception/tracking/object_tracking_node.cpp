@@ -1557,6 +1557,8 @@ std::string ObjectTrackingNode::ToString(TrackerState& state) {
         return "lidar_only";
     } else if (state == TrackerState::FULL_TRACKING) {
         return "full";
+    } else if (state == TrackerState::CAMERA_ONLY_TRACKING) {
+        return "camera_only";
     }
     throw std::invalid_argument("Unknown tracker state.");
 }
