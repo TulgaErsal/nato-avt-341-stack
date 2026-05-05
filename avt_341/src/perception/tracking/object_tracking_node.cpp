@@ -1423,10 +1423,10 @@ void ObjectTrackingNode::PublishPose() {
         pose_filtered_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
         pose_filtered_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
         pose_filtered_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
-        pose_filtered_message.pose.pose.orientation.w = bounding_box_orientation_.w();
-        pose_filtered_message.pose.pose.orientation.x = bounding_box_orientation_.x();
-        pose_filtered_message.pose.pose.orientation.y = bounding_box_orientation_.y();
-        pose_filtered_message.pose.pose.orientation.z = bounding_box_orientation_.z();
+        pose_filtered_message.pose.pose.orientation.x = 0;
+        pose_filtered_message.pose.pose.orientation.y = 0;
+        pose_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
+        pose_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
         pose_filtered_publisher_->publish(pose_filtered_message);
     }
 
