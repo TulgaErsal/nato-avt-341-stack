@@ -36,7 +36,7 @@ toi:
 use_avt_tracker: false                                                                  # Set true to subscribe to the local object tracker for leader odometry
 ot:
   tracking_veh: ""                                                                      # Vehicle running the object tracker. If set, only this vehicle uses the tracker topic (required for shared simulation configs to prevent topic collision).
-  tracked_veh: ""                                                                       # Vehicle being tracked by the local object tracker (uppercase, e.g. "FEDA")
+  tracked_veh: "mrzr2"                                                                       # Vehicle being tracked by the local object tracker (uppercase, e.g. "FEDA")
 
 # Goal Filtering
 # ======================================================================================================================
