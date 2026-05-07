@@ -1542,6 +1542,22 @@ void ObjectTrackingNode::PublishOdometry() {
     tracked_target_message.pose.pose.orientation.y = 0;
     tracked_target_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
     tracked_target_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
+    Eigen::Matrix<double, 6, 6> TrackedCovariance =
+        Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::Matrix<double, 5, 5> Pt = filter_->GetCTRCovariance();
+    TrackedCovariance(0, 0) = Pt(0, 0);  // x variance
+    TrackedCovariance(0, 1) = Pt(0, 2);  // xy covariance
+    TrackedCovariance(1, 0) = Pt(2, 0);
+    TrackedCovariance(1, 1) = Pt(2, 2);  // y variance
+    TrackedCovariance(2, 2) = 100.0;     // no information on z
+    TrackedCovariance(3, 3) = 9.0;       // no information on roll
+    TrackedCovariance(4, 4) = 9.0;       // no information on pitch
+    TrackedCovariance(5, 5) = filter_->GetFusedYawVariance();
+    for (size_t i = 0; i < 6; i++) {
+        for (size_t j = 0; j < 6; j++) {
+            tracked_target_message.pose.covariance[i * 6 + j] = TrackedCovariance(i, j);
+        }
+    }
     tracked_target_odometry_publisher_->publish(tracked_target_message);
 }
 
