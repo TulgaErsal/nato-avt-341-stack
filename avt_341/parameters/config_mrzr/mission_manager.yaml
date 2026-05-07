@@ -56,3 +56,4 @@ fgf_obs_avoid:
 # Formation Control
 # ======================================================================================================================
 use_leader_breadcrumbs: false                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
+use_tangent_heading: false                                                              # If true, leader heading is estimated from position history tangent rather than the orientation in the leader odometry message

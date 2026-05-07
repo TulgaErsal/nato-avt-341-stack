@@ -177,6 +177,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~use_leader_breadcrumbs", formation_params.use_breadcrumbs, true);
     nh->get_parameter("~x_offset_on_path", formation_params.x_offset_on_path, false);
     nh->get_parameter("~formation_prune_gp", formation_params.prune_global_path, false);
+    nh->get_parameter("~use_tangent_heading", formation_params.use_tangent_heading, false);
     nh->get_parameter("~follow_goal_threshold", formation_params.follow_goal_threshold, 10.0f);
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
     nh->get_parameter("~max_speed", formation_params.default_max_speed, 5.0);
