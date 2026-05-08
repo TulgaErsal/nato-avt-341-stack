@@ -1568,11 +1568,13 @@ void ObjectTrackingNode::TaskStatusCallback(
     target_class_ = task_status_message->tracked_vehicle;
     has_target_selection_ = true;
 
-    std::string veh_ns = target_class_;
-    std::transform(veh_ns.begin(), veh_ns.end(), veh_ns.begin(), ::tolower);
-    odometry_child_frame_ = veh_ns + "/odom";
-    tracked_target_odometry_publisher_ =
-        create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+    if (!target_class_.empty()) {
+        std::string veh_ns = target_class_;
+        std::transform(veh_ns.begin(), veh_ns.end(), veh_ns.begin(), ::tolower);
+        odometry_child_frame_ = veh_ns + "/odom";
+        tracked_target_odometry_publisher_ =
+            create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+    }
 
     filter_->SetInitialPosition(Eigen::Vector3d::Zero());
     filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
