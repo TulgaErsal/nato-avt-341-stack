@@ -79,6 +79,33 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     }
 }
 
+void TrackedVehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
+    avt_341::mission::Task* current_task = mgr->currentTask();
+    if (current_task == nullptr || !current_task->hasFormation()) return;
+
+    const std::string leader_name = current_task->getFormationDef()->followedVehicle();
+    if (leader_name.empty()) return;
+
+    // Verify the tracker is reporting on the current leader; it may lag briefly after a leader change.
+    std::string child_frame_id = toUpper(msg->child_frame_id);
+    std::string tracked_name = child_frame_id.substr(0, child_frame_id.find('/'));
+    if (tracked_name != leader_name) return;
+
+    formation_poses[leader_name] = *msg;
+
+    avt_341::msg::Odometry leader_odom = *msg;
+    if (msg->header.frame_id != "map") {
+        avt_341::msg::PoseStamped leader_pose, leader_pose_map;
+        leader_pose.header = msg->header;
+        leader_pose.pose = leader_odom.pose.pose;
+        nh->transform_pose(leader_pose, leader_pose_map, "map", 0.2);
+        leader_odom.pose.pose = leader_pose_map.pose;
+    }
+    mgr->leader_odometry = leader_odom;
+    mgr->rcvd_leader_odom = true;
+    leader_pub->publish(*msg);
+}
+
 // Receive information on target contacts
 void TargetContactsCallback(avt_341::msg::PathPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
@@ -203,7 +230,7 @@ int main(int argc, char **argv) {
     // When set (shared simulation configs), only the designated vehicle subscribes to the tracker topic.
     bool ego_is_tracker = tracking_veh.empty() || formation_params.my_name == tracking_veh;
     auto tracked_sub = (use_avt_tracker && ego_is_tracker)
-        ? nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry/tracked", 10, VehicleOdometryCallback)
+        ? nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry/tracked", 10, TrackedVehicleOdometryCallback)
         : nullptr;
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
