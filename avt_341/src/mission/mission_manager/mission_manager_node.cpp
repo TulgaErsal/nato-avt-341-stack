@@ -79,33 +79,6 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     }
 }
 
-void TrackedVehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
-    avt_341::mission::Task* current_task = mgr->currentTask();
-    if (current_task == nullptr || !current_task->hasFormation()) return;
-
-    const std::string leader_name = current_task->getFormationDef()->followedVehicle();
-    if (leader_name.empty()) return;
-
-    // Verify the tracker is reporting on the current leader; it may lag briefly after a leader change.
-    std::string child_frame_id = toUpper(msg->child_frame_id);
-    std::string tracked_name = child_frame_id.substr(0, child_frame_id.find('/'));
-    if (tracked_name != leader_name) return;
-
-    formation_poses[leader_name] = *msg;
-
-    avt_341::msg::Odometry leader_odom = *msg;
-    if (msg->header.frame_id != "map") {
-        avt_341::msg::PoseStamped leader_pose, leader_pose_map;
-        leader_pose.header = msg->header;
-        leader_pose.pose = leader_odom.pose.pose;
-        nh->transform_pose(leader_pose, leader_pose_map, "map", 0.2);
-        leader_odom.pose.pose = leader_pose_map.pose;
-    }
-    mgr->leader_odometry = leader_odom;
-    mgr->rcvd_leader_odom = true;
-    leader_pub->publish(*msg);
-}
-
 // Receive information on target contacts
 void TargetContactsCallback(avt_341::msg::PathPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
@@ -137,12 +110,15 @@ void GoalReachedCallback(avt_341::msg::NavStatePtr msg){
   reached_goals.push(avt_341::core::ToPoseStamped(msg->goal));
 }
 
-auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int target_idx) {
+auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int target_idx,
+                      bool use_avt_tracker) {
   bool target_veh_present = target_idx < static_cast<int>(veh_namespaces.size());
   const std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
+  const std::string topic = use_avt_tracker
+    ? "avt_341/odometry/estimated/" + target_veh_ns
+    : "/" + target_veh_ns + "/avt_341/odometry";
   return target_veh_present
-    ? nh->create_subscription<avt_341::msg::Odometry>(
-        "/" + target_veh_ns + "/avt_341/odometry", 10, VehicleOdometryCallback)
+    ? nh->create_subscription<avt_341::msg::Odometry>(topic, 10, VehicleOdometryCallback)
     : nullptr;
 }
 
@@ -157,7 +133,7 @@ int main(int argc, char **argv) {
     avt_341::mission::FormationSpeedControlParams fsc_params{};
     avt_341::mission::FormationParameters formation_params;
     avt_341::mission::ToiParameters toi_params;
-    std::string fsc_type, tracking_veh;
+    std::string fsc_type;
     bool use_avt_tracker;
     std::vector<std::string> veh_namespaces;
 
@@ -197,13 +173,10 @@ int main(int argc, char **argv) {
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
 
     nh->get_parameter("~use_avt_tracker", use_avt_tracker, false);
-    nh->get_parameter("~ot_tracking_veh", tracking_veh, std::string(""));
 
     std::string goal_filter_method;
     nh->get_parameter("~formation_goal_filter", goal_filter_method, std::string("none"));
     std::shared_ptr<avt_341::mission::GoalFilter> goal_filter = avt_341::mission::create_goal_filter(formation_params.my_name, goal_filter_method, nh);
-
-    tracking_veh = toUpper(tracking_veh);
 
     mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, goal_filter);
     mgr->sodist_threshold = sodist_threshold;
@@ -222,16 +195,10 @@ int main(int argc, char **argv) {
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
-    auto veh1_sub = get_veh_odom_sub(veh_namespaces, 0);
-    auto veh2_sub = get_veh_odom_sub(veh_namespaces, 1);
-    auto veh3_sub = get_veh_odom_sub(veh_namespaces, 2);
-    auto veh4_sub = get_veh_odom_sub(veh_namespaces, 3);
-    // tracking_veh may be left empty when each vehicle has its own config (physical experiments).
-    // When set (shared simulation configs), only the designated vehicle subscribes to the tracker topic.
-    bool ego_is_tracker = tracking_veh.empty() || formation_params.my_name == tracking_veh;
-    auto tracked_sub = (use_avt_tracker && ego_is_tracker)
-        ? nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry/tracked", 10, TrackedVehicleOdometryCallback)
-        : nullptr;
+    auto veh1_sub = get_veh_odom_sub(veh_namespaces, 0, use_avt_tracker);
+    auto veh2_sub = get_veh_odom_sub(veh_namespaces, 1, use_avt_tracker);
+    auto veh3_sub = get_veh_odom_sub(veh_namespaces, 2, use_avt_tracker);
+    auto veh4_sub = get_veh_odom_sub(veh_namespaces, 3, use_avt_tracker);
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);

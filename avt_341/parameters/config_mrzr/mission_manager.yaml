@@ -33,10 +33,7 @@ toi:
   goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
 
 # Mission Manager - Object Tracking
-use_avt_tracker: false                                                                  # Set true to subscribe to the local object tracker for leader odometry
-ot:
-  tracking_veh: ""                                                                      # Vehicle running the object tracker. If set, only this vehicle uses the tracker topic (required for shared simulation configs to prevent topic collision).
-  tracked_veh: ""                                                                       # Vehicle being tracked by the local object tracker (uppercase, e.g. "FEDA")
+use_avt_tracker: false                                                                  # Set true to subscribe to avt_341/odometry/estimated/<veh_ns> per vehicle instead of cross-namespace ground truth
 
 # Goal Filtering
 # ======================================================================================================================

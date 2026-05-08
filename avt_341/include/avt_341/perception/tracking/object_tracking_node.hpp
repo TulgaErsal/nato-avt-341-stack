@@ -381,6 +381,14 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr tracked_target_odometry_publisher_;
 
+    std::string TrackedOdometryTopic() const {
+        const auto slash = odometry_child_frame_.find('/');
+        const std::string veh_ns = (slash != std::string::npos)
+            ? odometry_child_frame_.substr(0, slash)
+            : odometry_child_frame_;
+        return "avt_341/odometry/estimated/" + veh_ns;
+    }
+
     void PublishOdometry();
 
     double heading_min_speed_ = 0.5;

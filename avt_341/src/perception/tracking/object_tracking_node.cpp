@@ -377,7 +377,7 @@ void ObjectTrackingNode::CreatePublishers() {
     }
 
     tracked_target_odometry_publisher_ =
-        create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry/tracked", 1);
+        create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
 
     info_publisher_ =
         create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
@@ -1580,6 +1580,8 @@ ObjectTrackingNode::SetParametersCallback(
             world_frame_ = parameter.as_string();
         } else if (parameter.get_name() == "odometry_child_frame") {
             odometry_child_frame_ = parameter.as_string();
+            tracked_target_odometry_publisher_ =
+                create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
         } else if (parameter.get_name() == "filters_roi_scale_factor") {
             roi_scale_factor_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_kalman_rate") {
