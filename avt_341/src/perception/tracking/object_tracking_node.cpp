@@ -1203,6 +1203,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
                         "Target timeout, resetting estimator ...");
             filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
             filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+            filter_->ResetCovariance();
             state_ = TrackerState::INACTIVE;
             has_detection_ = false;
             has_first_detection_ = false;
@@ -1216,6 +1217,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         filter_->SetInitialPosition(TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_));
         filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        filter_->ResetCovariance();
         filter_initialized_ = true;
     }
 
@@ -1572,6 +1574,16 @@ void ObjectTrackingNode::TaskStatusCallback(
     tracked_target_odometry_publisher_ =
         create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
 
+    filter_->SetInitialPosition(Eigen::Vector3d::Zero());
+    filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
+    filter_->ResetCovariance();
+    filter_initialized_ = false;
+    has_first_detection_ = false;
+    has_detection_ = false;
+    state_ = TrackerState::INACTIVE;
+    has_had_first_lidar_measurement_ = false;
+    tracked_obstacle_id_ = -1;
+
     RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".", target_class_.c_str());
 }
 
@@ -1648,6 +1660,16 @@ void ObjectTrackingNode::SetTargetServiceCallback(
     odometry_child_frame_ = veh_ns + "/odom";
     tracked_target_odometry_publisher_ =
         create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+
+    filter_->SetInitialPosition(Eigen::Vector3d::Zero());
+    filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
+    filter_->ResetCovariance();
+    filter_initialized_ = false;
+    has_first_detection_ = false;
+    has_detection_ = false;
+    state_ = TrackerState::INACTIVE;
+    has_had_first_lidar_measurement_ = false;
+    tracked_obstacle_id_ = -1;
 
     std::string message("Target selection set to \"" + target_class_ + "\".");
     RCLCPP_INFO(get_logger(), message.c_str());
