@@ -111,10 +111,11 @@ void GoalReachedCallback(avt_341::msg::NavStatePtr msg){
 }
 
 auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int target_idx,
-                      bool use_avt_tracker) {
+                      bool use_avt_tracker, const std::string & my_name) {
   bool target_veh_present = target_idx < static_cast<int>(veh_namespaces.size());
   const std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
-  const std::string topic = use_avt_tracker
+  bool use_estimated = use_avt_tracker && (toUpper(target_veh_ns) != my_name);
+  const std::string topic = use_estimated
     ? "avt_341/odometry/estimated/" + target_veh_ns
     : "/" + target_veh_ns + "/avt_341/odometry";
   return target_veh_present
@@ -195,10 +196,10 @@ int main(int argc, char **argv) {
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
-    auto veh1_sub = get_veh_odom_sub(veh_namespaces, 0, use_avt_tracker);
-    auto veh2_sub = get_veh_odom_sub(veh_namespaces, 1, use_avt_tracker);
-    auto veh3_sub = get_veh_odom_sub(veh_namespaces, 2, use_avt_tracker);
-    auto veh4_sub = get_veh_odom_sub(veh_namespaces, 3, use_avt_tracker);
+    auto veh1_sub = get_veh_odom_sub(veh_namespaces, 0, use_avt_tracker, formation_params.my_name);
+    auto veh2_sub = get_veh_odom_sub(veh_namespaces, 1, use_avt_tracker, formation_params.my_name);
+    auto veh3_sub = get_veh_odom_sub(veh_namespaces, 2, use_avt_tracker, formation_params.my_name);
+    auto veh4_sub = get_veh_odom_sub(veh_namespaces, 3, use_avt_tracker, formation_params.my_name);
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);

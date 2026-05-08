@@ -1640,11 +1640,14 @@ std::string ObjectTrackingNode::ToString(TrackerState& state) {
 void ObjectTrackingNode::SetTargetServiceCallback(
     const std::shared_ptr<avt_341_msgs::srv::SetTarget::Request> request,
     std::shared_ptr<avt_341_msgs::srv::SetTarget::Response> response) {
-    // Suppress unused variable compiler warning.
-    (void)request;
-
     target_class_ = request->id;
     has_target_selection_ = true;
+
+    std::string veh_ns = target_class_;
+    std::transform(veh_ns.begin(), veh_ns.end(), veh_ns.begin(), ::tolower);
+    odometry_child_frame_ = veh_ns + "/odom";
+    tracked_target_odometry_publisher_ =
+        create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
 
     std::string message("Target selection set to \"" + target_class_ + "\".");
     RCLCPP_INFO(get_logger(), message.c_str());
