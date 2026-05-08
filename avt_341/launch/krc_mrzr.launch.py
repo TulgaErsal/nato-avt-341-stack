@@ -93,20 +93,20 @@ def tf2_nodes(context):
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='lidar_ns_fix_publisher',
+            name='os_sensor_ns_fix_publisher',
             arguments=["0", "0", "0", "0", "0", "0", "mrzr/os_sensor", "os_sensor"]
         ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='lidar_ns_fix_publisher',
+            name='ouster_static_transform_publisher',
             arguments=["0", "0", "0", "0", "0", "0", "os_lidar", "mrzr/os_lidar"]
         ),
         # LIDAR/CAMERA CALIBRATION
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='lidar_ns_fix_publisher',
+            name='camera_calibration_tf_publisher',
             arguments=["-0.283517", "0.0682941", "-0.136282", "1.5783145437948567", "-0.017688723295176803", "-1.481708200033002", "os_lidar", "flir_optical"]
         ), 
         Node(
