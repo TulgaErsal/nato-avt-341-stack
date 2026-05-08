@@ -1566,8 +1566,13 @@ void ObjectTrackingNode::TaskStatusCallback(
     target_class_ = task_status_message->tracked_vehicle;
     has_target_selection_ = true;
 
-    std::string message("Target selection set to \"" + target_class_ + "\".");
-    RCLCPP_INFO(get_logger(), message.c_str());
+    std::string veh_ns = target_class_;
+    std::transform(veh_ns.begin(), veh_ns.end(), veh_ns.begin(), ::tolower);
+    odometry_child_frame_ = veh_ns + "/odom";
+    tracked_target_odometry_publisher_ =
+        create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+
+    RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".", target_class_.c_str());
 }
 
 rcl_interfaces::msg::SetParametersResult
