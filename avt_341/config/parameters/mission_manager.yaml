@@ -4,7 +4,7 @@ follow_scale_x: 15.0                                                            
 follow_scale_y: 10.0                                                                    # Y Scale distance between vehicles in formation in vehicle coordinates
 mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'sim_mission_points.csv')"     # Mission Manager - file describing mission reference points
 mission_paths_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_paths - NAD83_m.csv')" # Mission Manager - file describing paths of mission points
-fsc_type: 'slow_down_leader'                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
+fsc_type: 'speed_up_follower'                                                           # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
 fsc_follower_obt_stop: True                                                             # While in the 'speed_up_follower' formation speed control mode, follower vehicle will stop if oblique heading angle difference to leader.
 x_offset_on_path: False                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
 formation_prune_gp: True                                                                # If true prunes the formation controller generated follower global path to the closer point
