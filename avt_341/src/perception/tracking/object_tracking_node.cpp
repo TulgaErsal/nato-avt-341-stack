@@ -47,6 +47,7 @@
 */
 
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
+#include <avt_341/node/node_proxy.h>
 
 namespace avt_341 {
 namespace perception {
@@ -316,6 +317,10 @@ void ObjectTrackingNode::CreateSubscriptions() {
                         std::placeholders::_1));
     }
 
+    reset_subscription_ = create_subscription<std_msgs::msg::String>(
+        "avt_341/reset", 10,
+        std::bind(&ObjectTrackingNode::ResetCallback, this, std::placeholders::_1));
+
     // Initialize the integrated obstacle detector.
     obstacle_detector_ =
         std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
@@ -382,6 +387,9 @@ void ObjectTrackingNode::CreatePublishers() {
     info_publisher_ =
         create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
 
+    reset_ack_publisher_ =
+        create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
+
     // Integrated obstacle detector publishers.
     obstacle_bboxes_publisher_ =
         create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -410,6 +418,24 @@ void ObjectTrackingNode::TrackerInfoCallback() {
 
 void ObjectTrackingNode::TrackingTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Tracking timer callback triggered!");
+
+    if (reset_called_) {
+        filter_->SetInitialPosition(Eigen::Vector3d::Zero());
+        filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
+        filter_->ResetCovariance();
+        filter_initialized_ = false;
+        has_first_detection_ = false;
+        has_detection_ = false;
+        state_ = TrackerState::INACTIVE;
+        has_had_first_lidar_measurement_ = false;
+        tracked_obstacle_id_ = -1;
+        std_msgs::msg::String ack;
+        ack.data = avt_341::node::NodeType::Perception;
+        reset_ack_publisher_->publish(ack);
+        reset_called_ = false;
+        RCLCPP_INFO(get_logger(), "Reset complete.");
+    }
+
     if (!has_camera_info_) {
         state_ = TrackerState::INACTIVE;
         RCLCPP_DEBUG(get_logger(),
@@ -1587,6 +1613,11 @@ void ObjectTrackingNode::TaskStatusCallback(
     tracked_obstacle_id_ = -1;
 
     RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".", target_class_.c_str());
+}
+
+void ObjectTrackingNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {
+    if (msg->data.find(avt_341::node::NodeType::Perception) == std::string::npos) return;
+    reset_called_ = true;
 }
 
 rcl_interfaces::msg::SetParametersResult

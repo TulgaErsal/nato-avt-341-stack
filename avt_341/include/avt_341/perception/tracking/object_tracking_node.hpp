@@ -63,6 +63,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/string.hpp>
 
 #ifdef GTE_ROS_HUMBLE
 #include <tf2_eigen/tf2_eigen.hpp>
@@ -454,6 +455,11 @@ class ObjectTrackingNode : public rclcpp::Node {
      */
     void TaskStatusCallback(
         avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message);
+
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr reset_subscription_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_ack_publisher_;
+    bool reset_called_ = false;
+    void ResetCallback(std_msgs::msg::String::SharedPtr msg);
 
     rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
         info_publisher_;
