@@ -38,6 +38,13 @@ class FormationPathGenerator{
 	avt_341::msg::Path leader_path_history_;
   const avt_341::mission::FormationParameters & params_;
 
+	// tangent heading state
+	double prev_leader_x_;
+	double prev_leader_y_;
+	bool tangent_heading_valid_;
+	float tangent_vx_[2];
+	float tangent_vy_[2];
+
 	// utility functions and intermediate calculations
 	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);
 

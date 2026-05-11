@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /Odometry1/Topic1
         - /Odometry1/Shape1
+        - /PoseWithCovariance1
         - /PoseWithCovariance1/Covariance1/Position1
         - /PoseWithCovariance1/Covariance1/Orientation1
       Splitter Ratio: 0.5
@@ -298,7 +299,7 @@ Visualization Manager:
           Color: 204; 51; 204
           Scale: 1
           Value: true
-        Value: true
+        Value: false
       Enabled: true
       Head Length: 0.4000000059604645
       Head Radius: 0.4000000059604645

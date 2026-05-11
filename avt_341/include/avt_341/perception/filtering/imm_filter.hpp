@@ -92,6 +92,7 @@ class IMMFilter {
         mu_[0] = cv_init_prob   / sum;
         mu_[1] = ctr_init_prob  / sum;
         mu_[2] = nm_init_prob   / sum;
+        mu_init_ = mu_;
 
         const double p_stay   = std::max(0.01, std::min(0.99, persistence_prob));
         const double p_switch = (1.0 - p_stay) / (kNumModels - 1);
@@ -120,6 +121,23 @@ class IMMFilter {
         cv_ .SetInitialVelocity(vel);
         ctr_.SetInitialVelocity(vel);
         nm_ .SetInitialVelocity(vel);
+    }
+
+    /**
+     * @brief Reset all sub-filter covariances to their constructor-time initial
+     *        values (100 * Identity for each model) and restore model
+     *        probabilities to their initial distribution.  Call this whenever
+     *        the tracker loses its target so the next acquisition starts with
+     *        appropriately high uncertainty.
+     */
+    void ResetCovariance() {
+        cv_ .SetCovariance(CVFilter<3>::StateMatrix::Identity() * 100.0);
+        ctr_.SetCovariance(CTRFilter::StateMatrix::Identity()   * 100.0);
+        nm_ .SetCovariance(NMFilter::StateMatrix::Identity()    * 100.0);
+        mu_ = mu_init_;
+        fused_position_.setZero();
+        fused_velocity_.setZero();
+        fused_yaw_ = 0.0;
     }
 
     // -----------------------------------------------------------------------
@@ -613,6 +631,7 @@ class IMMFilter {
     double       dt_;
 
     std::array<double, kNumModels> mu_;
+    std::array<double, kNumModels> mu_init_;
     double pi_[kNumModels][kNumModels];
 
     Vec3   fused_position_;

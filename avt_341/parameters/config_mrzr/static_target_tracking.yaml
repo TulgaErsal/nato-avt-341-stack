@@ -55,6 +55,8 @@ publish_pose: true
 filters_pose: true
 publish_odometry: true
 filters_odometry: true
+heading_min_speed: 0.5
+heading_resume_speed: 1.0
 tracker_use_mission_manager: false
 publish_detection: true
 publish_image: true

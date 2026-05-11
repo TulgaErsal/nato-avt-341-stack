@@ -35,6 +35,7 @@ struct FormationParameters{
   bool use_breadcrumbs;
   bool x_offset_on_path;
   bool prune_global_path;
+  bool use_tangent_heading;
   double default_max_speed;
 };
 

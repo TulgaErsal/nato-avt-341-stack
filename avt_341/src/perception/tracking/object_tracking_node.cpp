@@ -47,6 +47,7 @@
 */
 
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
+#include <avt_341/node/node_proxy.h>
 
 namespace avt_341 {
 namespace perception {
@@ -148,6 +149,12 @@ void ObjectTrackingNode::GetParameters() {
 
     declare_parameter("filters_odometry", true);
     use_filtered_odometry_ = get_parameter("filters_odometry").as_bool();
+
+    declare_parameter("heading_min_speed", 0.5);
+    heading_min_speed_ = get_parameter("heading_min_speed").as_double();
+
+    declare_parameter("heading_resume_speed", 1.0);
+    heading_resume_speed_ = get_parameter("heading_resume_speed").as_double();
 
     declare_parameter("publish_detection", false);
     publish_detection_3d_ = get_parameter("publish_detection").as_bool();
@@ -310,6 +317,10 @@ void ObjectTrackingNode::CreateSubscriptions() {
                         std::placeholders::_1));
     }
 
+    reset_subscription_ = create_subscription<std_msgs::msg::String>(
+        "avt_341/reset", 10,
+        std::bind(&ObjectTrackingNode::ResetCallback, this, std::placeholders::_1));
+
     // Initialize the integrated obstacle detector.
     obstacle_detector_ =
         std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
@@ -370,8 +381,14 @@ void ObjectTrackingNode::CreatePublishers() {
             create_publisher<nav_msgs::msg::Odometry>("odometry/filtered", 1);
     }
 
+    tracked_target_odometry_publisher_ =
+        create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+
     info_publisher_ =
         create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
+
+    reset_ack_publisher_ =
+        create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
     // Integrated obstacle detector publishers.
     obstacle_bboxes_publisher_ =
@@ -401,6 +418,24 @@ void ObjectTrackingNode::TrackerInfoCallback() {
 
 void ObjectTrackingNode::TrackingTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Tracking timer callback triggered!");
+
+    if (reset_called_) {
+        filter_->SetInitialPosition(Eigen::Vector3d::Zero());
+        filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
+        filter_->ResetCovariance();
+        filter_initialized_ = false;
+        has_first_detection_ = false;
+        has_detection_ = false;
+        state_ = TrackerState::INACTIVE;
+        has_had_first_lidar_measurement_ = false;
+        tracked_obstacle_id_ = -1;
+        std_msgs::msg::String ack;
+        ack.data = avt_341::node::NodeType::Perception;
+        reset_ack_publisher_->publish(ack);
+        reset_called_ = false;
+        RCLCPP_INFO(get_logger(), "Reset complete.");
+    }
+
     if (!has_camera_info_) {
         state_ = TrackerState::INACTIVE;
         RCLCPP_DEBUG(get_logger(),
@@ -1194,6 +1229,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
                         "Target timeout, resetting estimator ...");
             filter_->SetInitialPosition(Eigen::Vector<double, 3>::Zero());
             filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+            filter_->ResetCovariance();
             state_ = TrackerState::INACTIVE;
             has_detection_ = false;
             has_first_detection_ = false;
@@ -1207,6 +1243,7 @@ void ObjectTrackingNode::EstimatorTimerCallback() {
         filter_->SetInitialPosition(TransformToCoordinates(
             camera_frame_, world_frame_, bounding_box_centroid_));
         filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        filter_->ResetCovariance();
         filter_initialized_ = true;
     }
 
@@ -1415,7 +1452,21 @@ void ObjectTrackingNode::PublishDetection3D() {
     detection_publisher_->publish(detection_message);
 }
 
+void ObjectTrackingNode::UpdateHeadingHold() {
+    const double speed = filter_->GetCTRSpeed();
+    if (!heading_held_ && speed < heading_min_speed_) {
+        heading_held_ = true;
+    } else if (heading_held_ && speed >= heading_resume_speed_) {
+        heading_held_ = false;
+    }
+    if (!heading_held_) {
+        last_reliable_yaw_ = filter_->GetYaw();
+    }
+}
+
 void ObjectTrackingNode::PublishPose() {
+    UpdateHeadingHold();
+
     if (use_filtered_pose_) {
         geometry_msgs::msg::PoseWithCovarianceStamped pose_filtered_message;
         pose_filtered_message.header.stamp = get_clock()->now();
@@ -1423,10 +1474,26 @@ void ObjectTrackingNode::PublishPose() {
         pose_filtered_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
         pose_filtered_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
         pose_filtered_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
-        pose_filtered_message.pose.pose.orientation.w = bounding_box_orientation_.w();
-        pose_filtered_message.pose.pose.orientation.x = bounding_box_orientation_.x();
-        pose_filtered_message.pose.pose.orientation.y = bounding_box_orientation_.y();
-        pose_filtered_message.pose.pose.orientation.z = bounding_box_orientation_.z();
+        pose_filtered_message.pose.pose.orientation.x = 0;
+        pose_filtered_message.pose.pose.orientation.y = 0;
+        pose_filtered_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
+        pose_filtered_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
+        Eigen::Matrix<double, 6, 6> PoseCovariance =
+            Eigen::Matrix<double, 6, 6>::Zero();
+        Eigen::Matrix<double, 5, 5> P = filter_->GetCTRCovariance();
+        PoseCovariance(0, 0) = P(0, 0);  // x variance
+        PoseCovariance(0, 1) = P(0, 2);  // xy covariance
+        PoseCovariance(1, 0) = P(2, 0);
+        PoseCovariance(1, 1) = P(2, 2);  // y variance
+        PoseCovariance(2, 2) = 100.0;    // no information on z
+        PoseCovariance(3, 3) = 9.0;      // no information on roll
+        PoseCovariance(4, 4) = 9.0;      // no information on pitch
+        PoseCovariance(5, 5) = filter_->GetFusedYawVariance();
+        for (size_t i = 0; i < 6; i++) {
+            for (size_t j = 0; j < 6; j++) {
+                pose_filtered_message.pose.covariance[i * 6 + j] = PoseCovariance(i, j);
+            }
+        }
         pose_filtered_publisher_->publish(pose_filtered_message);
     }
 
@@ -1444,8 +1511,7 @@ void ObjectTrackingNode::PublishPose() {
 }
 
 void ObjectTrackingNode::PublishOdometry() {
-    // Note that the filter does not predict orientation, hence the orientation
-    // fields in the odometry message pose entry are not populated.
+    UpdateHeadingHold();
 
     if (use_filtered_odometry_) {
         nav_msgs::msg::Odometry odometry_filtered_message;
@@ -1458,8 +1524,6 @@ void ObjectTrackingNode::PublishOdometry() {
             bounding_box_centroid_filtered_.y();
         odometry_filtered_message.pose.pose.position.z =
             bounding_box_centroid_filtered_.z();
-        tf2::Quaternion q;
-        q.setRPY(0, 0, filter_->GetYaw());
         // CTR state is now [x, vx, y, vy, omega]:
         //   position x at index 0, position y at index 2.
         Eigen::Matrix<double, 6, 6> OdometryCovariance =
@@ -1473,12 +1537,10 @@ void ObjectTrackingNode::PublishOdometry() {
         OdometryCovariance(3, 3) = 9.0;      // no information on roll
         OdometryCovariance(4, 4) = 9.0;      // no information on pitch
         OdometryCovariance(5, 5) = filter_->GetFusedYawVariance();
-        //odometry_filtered_message.pose.pose.orientation = tf2::toMsg(q);
         odometry_filtered_message.pose.pose.orientation.x = 0;
         odometry_filtered_message.pose.pose.orientation.y = 0;
-        odometry_filtered_message.pose.pose.orientation.z = sin(filter_->GetYaw() / 2);
-        odometry_filtered_message.pose.pose.orientation.w = cos(filter_->GetYaw() / 2);
-        // odometry_filtered_message.pose.pose.orientation.normalise();
+        odometry_filtered_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
+        odometry_filtered_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
         for (size_t i = 0; i < 6; i++)  {
             for (size_t j = 0; j < 6; j++) {
                 odometry_filtered_message.pose.covariance[i * 6 + j] = OdometryCovariance(i, j);
@@ -1494,8 +1556,37 @@ void ObjectTrackingNode::PublishOdometry() {
     odometry_message.pose.pose.position.x = bounding_box_centroid_global_.x();
     odometry_message.pose.pose.position.y = bounding_box_centroid_global_.y();
     odometry_message.pose.pose.position.z = bounding_box_centroid_global_.z();
-   
+
     odometry_publisher_->publish(odometry_message);
+
+    nav_msgs::msg::Odometry tracked_target_message;
+    tracked_target_message.header.stamp = get_clock()->now();
+    tracked_target_message.header.frame_id = world_frame_;
+    tracked_target_message.child_frame_id = odometry_child_frame_;
+    tracked_target_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
+    tracked_target_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
+    tracked_target_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
+    tracked_target_message.pose.pose.orientation.x = 0;
+    tracked_target_message.pose.pose.orientation.y = 0;
+    tracked_target_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
+    tracked_target_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
+    Eigen::Matrix<double, 6, 6> TrackedCovariance =
+        Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::Matrix<double, 5, 5> Pt = filter_->GetCTRCovariance();
+    TrackedCovariance(0, 0) = Pt(0, 0);  // x variance
+    TrackedCovariance(0, 1) = Pt(0, 2);  // xy covariance
+    TrackedCovariance(1, 0) = Pt(2, 0);
+    TrackedCovariance(1, 1) = Pt(2, 2);  // y variance
+    TrackedCovariance(2, 2) = 100.0;     // no information on z
+    TrackedCovariance(3, 3) = 9.0;       // no information on roll
+    TrackedCovariance(4, 4) = 9.0;       // no information on pitch
+    TrackedCovariance(5, 5) = filter_->GetFusedYawVariance();
+    for (size_t i = 0; i < 6; i++) {
+        for (size_t j = 0; j < 6; j++) {
+            tracked_target_message.pose.covariance[i * 6 + j] = TrackedCovariance(i, j);
+        }
+    }
+    tracked_target_odometry_publisher_->publish(tracked_target_message);
 }
 
 void ObjectTrackingNode::TaskStatusCallback(
@@ -1503,8 +1594,30 @@ void ObjectTrackingNode::TaskStatusCallback(
     target_class_ = task_status_message->tracked_vehicle;
     has_target_selection_ = true;
 
-    std::string message("Target selection set to \"" + target_class_ + "\".");
-    RCLCPP_INFO(get_logger(), message.c_str());
+    if (!target_class_.empty()) {
+        std::string veh_ns = target_class_;
+        std::transform(veh_ns.begin(), veh_ns.end(), veh_ns.begin(), ::tolower);
+        odometry_child_frame_ = veh_ns + "/odom";
+        tracked_target_odometry_publisher_ =
+            create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+    }
+
+    filter_->SetInitialPosition(Eigen::Vector3d::Zero());
+    filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
+    filter_->ResetCovariance();
+    filter_initialized_ = false;
+    has_first_detection_ = false;
+    has_detection_ = false;
+    state_ = TrackerState::INACTIVE;
+    has_had_first_lidar_measurement_ = false;
+    tracked_obstacle_id_ = -1;
+
+    RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".", target_class_.c_str());
+}
+
+void ObjectTrackingNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {
+    if (msg->data.find(avt_341::node::NodeType::Perception) == std::string::npos) return;
+    reset_called_ = true;
 }
 
 rcl_interfaces::msg::SetParametersResult
@@ -1517,6 +1630,8 @@ ObjectTrackingNode::SetParametersCallback(
             world_frame_ = parameter.as_string();
         } else if (parameter.get_name() == "odometry_child_frame") {
             odometry_child_frame_ = parameter.as_string();
+            tracked_target_odometry_publisher_ =
+                create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
         } else if (parameter.get_name() == "filters_roi_scale_factor") {
             roi_scale_factor_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_kalman_rate") {
@@ -1537,6 +1652,10 @@ ObjectTrackingNode::SetParametersCallback(
             use_filtered_pose_ = parameter.as_bool();
         } else if (parameter.get_name() == "filters_odometry") {
             use_filtered_odometry_ = parameter.as_bool();
+        } else if (parameter.get_name() == "heading_min_speed") {
+            heading_min_speed_ = parameter.as_double();
+        } else if (parameter.get_name() == "heading_resume_speed") {
+            heading_resume_speed_ = parameter.as_double();
         } else if (parameter.get_name() == "filters_use_manual_roi") {
             use_manual_roi_size_ = parameter.as_bool();
         }
@@ -1566,11 +1685,24 @@ std::string ObjectTrackingNode::ToString(TrackerState& state) {
 void ObjectTrackingNode::SetTargetServiceCallback(
     const std::shared_ptr<avt_341_msgs::srv::SetTarget::Request> request,
     std::shared_ptr<avt_341_msgs::srv::SetTarget::Response> response) {
-    // Suppress unused variable compiler warning.
-    (void)request;
-
     target_class_ = request->id;
     has_target_selection_ = true;
+
+    std::string veh_ns = target_class_;
+    std::transform(veh_ns.begin(), veh_ns.end(), veh_ns.begin(), ::tolower);
+    odometry_child_frame_ = veh_ns + "/odom";
+    tracked_target_odometry_publisher_ =
+        create_publisher<nav_msgs::msg::Odometry>(TrackedOdometryTopic(), 1);
+
+    filter_->SetInitialPosition(Eigen::Vector3d::Zero());
+    filter_->SetInitialVelocity(Eigen::Vector3d::Zero());
+    filter_->ResetCovariance();
+    filter_initialized_ = false;
+    has_first_detection_ = false;
+    has_detection_ = false;
+    state_ = TrackerState::INACTIVE;
+    has_had_first_lidar_measurement_ = false;
+    tracked_obstacle_id_ = -1;
 
     std::string message("Target selection set to \"" + target_class_ + "\".");
     RCLCPP_INFO(get_logger(), message.c_str());

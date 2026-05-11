@@ -63,6 +63,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/string.hpp>
 
 #ifdef GTE_ROS_HUMBLE
 #include <tf2_eigen/tf2_eigen.hpp>
@@ -379,7 +380,25 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_filtered_publisher_;
 
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr tracked_target_odometry_publisher_;
+
+    std::string TrackedOdometryTopic() const {
+        const auto slash = odometry_child_frame_.find('/');
+        const std::string veh_ns = (slash != std::string::npos)
+            ? odometry_child_frame_.substr(0, slash)
+            : odometry_child_frame_;
+        return "avt_341/odometry/estimated/" + veh_ns;
+    }
+
     void PublishOdometry();
+
+    double heading_min_speed_ = 0.5;
+    double heading_resume_speed_ = 1.0;
+    double last_reliable_yaw_ = 0.0;
+    bool heading_held_ = false;
+
+    void UpdateHeadingHold();
+
 
     // Detection image publishing
     // --------------------------
@@ -436,6 +455,11 @@ class ObjectTrackingNode : public rclcpp::Node {
      */
     void TaskStatusCallback(
         avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message);
+
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr reset_subscription_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_ack_publisher_;
+    bool reset_called_ = false;
+    void ResetCallback(std_msgs::msg::String::SharedPtr msg);
 
     rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
         info_publisher_;
