@@ -15,9 +15,8 @@ const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
 std::shared_ptr<avt_341::node::NodeProxy> node;
-
 geometry_msgs::msg::TransformStamped lidar_to_base_link_tf;
-geometry_msgs::msg::TransformStamped lidar_to_camera_tf;
+geometry_msgs::msg::TransformStamped camera_to_lidar_tf;
 
 avt_341::msg::Odometry current_pose;
 bool odom_received = false;
@@ -91,13 +90,14 @@ static mxArray* toDoubleColumn(const std::array<double, 4>& vec)
 //packages up an Image message into matlab-friendly struct
 static mwArray imageToMwArray(const avt_341::msg::Image &img)
 {
-    const size_t num_fields = 4;
+    const size_t num_fields = 5;
     const char *field_names[]
     {
         "width",
         "height",
         "encoding",
-        "data"
+        "data",
+        "step"
     };
     
     const mwSize height = static_cast<mwSize>(img.height);
@@ -105,9 +105,10 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
     mxClassID encoding = mxUINT8_CLASS;
 
     mwArray mw_img(1, 1, num_fields, field_names);
-    mw_img("width", 1, 1) = mwArray((double)img.height);
-    mw_img("height", 1, 1) = mwArray((double)img.width);
+    mw_img("width", 1, 1) = mwArray((double)img.width);
+    mw_img("height", 1, 1) = mwArray((double)img.height);
     mw_img("encoding", 1, 1) = mwArray(img.encoding.c_str());
+    mw_img("step", 1,1 ) = mwArray((double)img.step);
 
     std::vector<uint8_t> img_data(std::begin(img.data), std::end(img.data));
     mwArray mw_img_data(1, img_data.size(), mxUINT8_CLASS);
@@ -120,27 +121,54 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
 //packages up PointCloud2 message into matlab-friendly struct
 static mwArray pcToMwArray(const avt_341::msg::PointCloud2 &pc)
 {
-    const size_t num_fields = 5;
+    const size_t num_fields = 7;
     const char* field_names[]
     {
         "height",
         "width",
         "point_step",
         "row_step",
-        "data"
+        "is_dense",
+        "data",
+        "fields"
     };
 
     mwArray mw_point_cloud(1, 1, num_fields, field_names);
+
     mw_point_cloud("height", 1, 1) = mwArray((double)pc.height);
     mw_point_cloud("width", 1, 1) = mwArray((double)pc.width);
     mw_point_cloud("point_step", 1, 1) = mwArray((double)pc.point_step);
     mw_point_cloud("row_step", 1, 1) = mwArray((double)pc.row_step);
-    
-    std::vector<uint8_t> pc_data(std::begin(pc.data), std::end(pc.data));
-    mwArray pcData(1, pc_data.size(), mxUINT8_CLASS);
-    pcData.SetData(&pc_data.front(), pc_data.size());
+    mw_point_cloud("is_dense", 1, 1) = mwArray((double)pc.is_dense);
+
+    mwSize dims[2];
+    dims[0] = pc.height;
+    dims[1] = pc.row_step;
+
+    mwArray pcData(2, dims, mxUINT8_CLASS);
+    pcData.SetData(&pc.data.front(), pc.data.size());
 
     mw_point_cloud("data", 1, 1) = pcData;
+
+    const size_t num_point_fields = 5;
+    const char* pf_names[] = {"name", "offset", "datatype", "count"};
+
+    mwArray fields(1, num_point_fields, 4, pf_names);
+
+    const char* names[5] = {"x", "y", "z", "intensity", "ring"};
+    const int offsets[5] = {0, 4, 8, 12, 16};
+    const int datatypes[5] = {7, 7, 7, 7, 4};
+    const int counts[5] = {1, 1, 1, 1, 1};
+
+    for (int i = 0; i < num_point_fields; i++)
+    {
+        fields("name", 1, i+1) = mwArray(names[i]);
+        fields("offset", 1, i+1) = mwArray((double)offsets[i]);
+        fields("datatype", 1, i+1) = mwArray((double)datatypes[i]);
+        fields("count", 1, i+1) = mwArray((double)counts[i]);
+    }
+
+    mw_point_cloud("fields", 1, 1) = fields;
 
     return mw_point_cloud;
 }
@@ -268,6 +296,8 @@ void GetCostmapFromMatlab(float width,
                             float grid_llx,
                             float grid_lly,
                             bool invert_lidar_z_rot,
+                            bool convert_ned_to_enu,
+                            bool correct_color,
                             std::vector<int8_t> &terrain_grid,
                             std::vector<double> &terrain_grid_modified_idxs,
                             std::vector<int8_t> &obstacle_grid,
@@ -284,7 +314,7 @@ void GetCostmapFromMatlab(float width,
             if (tf_buffer->canTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)))
             {
                 lidar_to_base_link_tf = tf_buffer->lookupTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero);
-                lidar_to_camera_tf = tf_buffer->lookupTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero);
+                camera_to_lidar_tf = tf_buffer->lookupTransform(lidar_frame_id, camera_frame_id, tf2::TimePointZero);
                 received_tform = true;
             }
         }
@@ -315,12 +345,18 @@ void GetCostmapFromMatlab(float width,
     mwArray mw_camera_info = cameraInfoToMwArray(cam_info);
 
     //lidar to camera transform
-    mwArray mw_lidar_to_camera_tform = tfToMwArray(lidar_to_camera_tf);
+    mwArray mw_camera_to_lidar_tform = tfToMwArray(camera_to_lidar_tf);
     //transform from lidar to robot base link for mapping pointcloud points to the grid
     mwArray mw_lidar_to_base_link_tform = tfToMwArray(lidar_to_base_link_tf);
 
     //used to invert pointcloud in the case of backwards mounting
     mwArray mw_invert_lidar_z_rot(invert_lidar_z_rot);
+
+    //flag to indicate odometry is in NED coordinates
+    mwArray mw_convert_ned_to_enu(convert_ned_to_enu);
+
+    //used to correct color to match model expectations
+    mwArray mw_correct_color(correct_color);
 
     //grid parameters
     mwArray mw_grid_width(width);
@@ -352,9 +388,11 @@ void GetCostmapFromMatlab(float width,
                             mw_pc, //pointcloud struct
                             mw_odom, //odometry struct
                             mw_camera_info, //camera info struct
-                            mw_lidar_to_camera_tform, //transform from camera to lidar
+                            mw_camera_to_lidar_tform, //transform from camera to lidar
                             mw_lidar_to_base_link_tform, //transform from lidar to robot base link
                             mw_invert_lidar_z_rot, //handle backwards lidar mounting by inverting rotation about z axis
+                            mw_convert_ned_to_enu, //flag to indicate odometry is in NED coordinates
+                            mw_correct_color, //used to correct color to match model expectations
                             mw_grid_width, mw_grid_height, mw_grid_res, mw_grid_llx, mw_grid_lly //grid parameters
                         );
 
@@ -449,9 +487,10 @@ int main(int argc, char *argv[])
     node->get_parameter("~odom_frame_id", odom_frame_id, std::string("base_link"));
     std::string camera_frame_id;
     node->get_parameter("~camera_frame_id", camera_frame_id, std::string("camera_link"));
-
-    width = width/grid_res;
-    height = height/grid_res;
+    bool convert_ned_to_enu;
+    node->get_parameter("~convert_ned_to_enu", convert_ned_to_enu, false);
+    bool correct_color;
+    node->get_parameter("~correct_color", correct_color, false);
 
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
@@ -517,6 +556,8 @@ int main(int argc, char *argv[])
                 grid_llx,
                 grid_lly,
                 invert_lidar_z_rot,
+                convert_ned_to_enu,
+                correct_color,
                 terrain_sub_grid,
                 terrain_sub_grid_idxs,
                 obstacle_sub_grid,

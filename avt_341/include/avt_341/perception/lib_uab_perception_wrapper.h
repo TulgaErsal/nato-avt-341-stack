@@ -1,6 +1,7 @@
 //
 // MATLAB Compiler: 8.6 (R2023a)
-// Date: Mon Mar  2 16:52:30 2026
+// Date: Sun May 10 23:25:03 2026
+//
 
 #ifndef lib_uab_perception_wrapper_h
 #define lib_uab_perception_wrapper_h 1
@@ -78,7 +79,7 @@ bool MW_CALL_CONV mlxPerception_wrapper(int nlhs, mxArray *plhs[], int nrhs, mxA
 
 #endif
 
-extern LIB_lib_uab_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& terrainSubGrid, mwArray& terrainSubgridSize, mwArray& terrainModifiedCellIdxs, mwArray& obstacleSubGrid, mwArray& obstacleSubgridSize, mwArray& obstacleModifiedCellIdxs, const mwArray& img, const mwArray& pc, const mwArray& odom, const mwArray& cameraInfo, const mwArray& cameraToLidarTform, const mwArray& lidarToVboxTform, const mwArray& invertLidarZRot, const mwArray& grid_width, const mwArray& grid_height, const mwArray& cell_size, const mwArray& grid_llx, const mwArray& grid_lly);
+extern LIB_lib_uab_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& terrainSubGrid, mwArray& terrainSubgridSize, mwArray& terrainModifiedCellIdxs, mwArray& obstacleSubGrid, mwArray& obstacleSubgridSize, mwArray& obstacleModifiedCellIdxs, const mwArray& img, const mwArray& pc, const mwArray& odom, const mwArray& cameraInfo, const mwArray& cameraToLidarTform, const mwArray& lidarToVboxTform, const mwArray& invertLidarZRot, const mwArray& convertNEDToENU, const mwArray& correctColor, const mwArray& grid_width, const mwArray& grid_height, const mwArray& cell_size, const mwArray& grid_llx, const mwArray& grid_lly);
 
 /* C++ INTERFACE -- WRAPPERS FOR USER-DEFINED MATLAB FUNCTIONS -- END */
 #endif

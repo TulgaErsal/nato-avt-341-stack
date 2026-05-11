@@ -7,9 +7,9 @@ function(DownloadWindowsDll)
     # Download the Windows DLL
     message("Downloading Windows DLL for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=6fqeeadg&dl=1"
+    "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=j8kdzrs6&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=28d59e39d01f8cc7a9f39c65f4dfd441d490c99d026bb946ad84913cfa16deb0
+    EXPECTED_HASH SHA256=bccf3b1e25566a8bb5068b1dee6f3e02aa175e5285de65238504e8893312a7fd
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
@@ -17,9 +17,9 @@ function(DownloadLinuxSharedLibrary)
     # Download the Linux shared library
     message("Downloading Linux shared library for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=fe9g2jvb&dl=1"
+    "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=sb0vo01n&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=14aae86b7fabd1ebaa89c92a67523ddc540f769585ce20c10485758fe0cc821f
+    EXPECTED_HASH SHA256=5b53a572423cc9d34abc8411297d762c1422756c8e7c9dfcbddcfa43d6379726
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
