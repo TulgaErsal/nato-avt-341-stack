@@ -215,6 +215,10 @@ int main(int argc, char **argv) {
         if(reset_called){
           nh->log_info("Resetting node");
           mgr->reset();
+          current_goal_rcvd = false;
+          mgr->rcvd_leader_odom = false;
+          while(!reached_goals.empty()) reached_goals.pop();
+          while(!contacts.empty()) contacts.pop();
           avt_341::msg::String reset_ack_msg;
           reset_ack_msg.data = avt_341::node::NodeType::Mission;
           reset_ack_pub->publish(reset_ack_msg);
