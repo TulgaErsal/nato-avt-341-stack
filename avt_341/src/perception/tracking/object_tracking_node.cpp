@@ -429,6 +429,8 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         state_ = TrackerState::INACTIVE;
         has_had_first_lidar_measurement_ = false;
         tracked_obstacle_id_ = -1;
+        bounding_box_centroid_filtered_ = Eigen::Vector3d::Zero();
+        bounding_box_centroid_global_ = Eigen::Vector3d::Zero();
         std_msgs::msg::String ack;
         ack.data = avt_341::node::NodeType::Perception;
         reset_ack_publisher_->publish(ack);
