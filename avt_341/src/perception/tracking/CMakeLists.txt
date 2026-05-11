@@ -35,6 +35,10 @@ if(USING_AMENT)
   add_executable(${PROJECT_NAME}_object_tracking_node
                  "object_tracking_node.cpp" "object_tracking_node_executor.cpp")
 
+  target_link_libraries(${PROJECT_NAME}_object_tracking_node
+    ${PROJECT_NAME}_proxy
+  )
+
   ament_target_dependencies(
     ${PROJECT_NAME}_object_tracking_node
     avt_341_msgs
