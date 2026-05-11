@@ -33,7 +33,7 @@ toi:
   goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
 
 # Mission Manager - Object Tracking
-use_avt_tracker: false                                                                  # Set true to subscribe to avt_341/odometry/estimated/<veh_ns> per vehicle instead of cross-namespace ground truth
+use_avt_tracker: true                                                                   # Set true to subscribe to avt_341/odometry/estimated/<veh_ns> per vehicle instead of cross-namespace ground truth
 
 # Goal Filtering
 # ======================================================================================================================

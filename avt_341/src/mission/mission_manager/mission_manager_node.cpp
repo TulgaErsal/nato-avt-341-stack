@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
 
-    nh->get_parameter("~use_avt_tracker", use_avt_tracker, false);
+    nh->get_parameter("~use_avt_tracker", use_avt_tracker, true);
 
     std::string goal_filter_method;
     nh->get_parameter("~formation_goal_filter", goal_filter_method, std::string("none"));
