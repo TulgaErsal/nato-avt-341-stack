@@ -24,15 +24,15 @@ function(DownloadLinuxSharedLibrary)
 endfunction(DownloadLinuxSharedLibrary)
 
 # Manually set MATLAB paths (optional, only needed if "find_package(Matlab)" fails)
-# These should point to the installation location of MATLAB Runtime 2024a
+# These should point to the installation location of MATLAB Runtime 2023a
 #
 # ex: Windows
-# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2024a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2024a\\extern\\include")
+# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
 #
 # ex. Linux
-# set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2024a/runtime/glnxa64/libmwmclmcrrt.so)
-# set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2024a/extern/include)
+# set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
+# set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
 find_package(Matlab)
 if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 
