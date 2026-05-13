@@ -39,7 +39,7 @@ void Follow::run() {
         auto target_pose = follower_path.poses.back();
         // TODO: Another parameter for intermediate follower goal threshold? 0.5 was previously hardcoded in global planner node.
         // NOTE: This is different than the follow_goal_threshold parameter which only applies to the follower terminal goal.
-        mgr->publishGoal(core::ToNavGoal(target_pose, 5.0f, yaw_threshold_));
+        mgr->publishGoal(core::ToNavGoal(target_pose, 0.5f, yaw_threshold_));
     }
 }
 
