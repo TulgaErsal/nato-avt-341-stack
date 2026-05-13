@@ -273,12 +273,15 @@ def generate_launch_description():
                         executable='uab_perception_node',
                         name='uab_perception_node',
                         parameters=[
-                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()},
+                            {'frame_prefix': TernarySubstitution(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx),
+                                                                 TextSubstitution(text=''),
+                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
                         ],
                         remappings=[
                             ('avt_341/odom','avt_341/odometry'),
                             ('avt_341/camera/image_raw','front_camera/image'),
-                            ('avt_341/camera/camera_info','front_camera/camera_info'),
+                            ('avt_341/camera/camera_info','front_camera/info'),
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_uab_perception')),

@@ -3,6 +3,7 @@
 #include "avt_341/perception/lib_uab_perception_wrapper.h"
 #include "mclcppclass.h"
 #include "mclmcrrt.h"
+#include <string>
 #include <vector>
 #include <array>
 #include <math.h>
@@ -467,6 +468,8 @@ int main(int argc, char *argv[])
     tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_raw_node()->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
+    std::string frame_prefix;
+    node->get_parameter("~frame_prefix", frame_prefix, std::string(""));
     float width;
     node->get_parameter("~grid_width", width, 100.0f);
     float height;
@@ -491,6 +494,11 @@ int main(int argc, char *argv[])
     node->get_parameter("~convert_ned_to_enu", convert_ned_to_enu, false);
     bool correct_color;
     node->get_parameter("~correct_color", correct_color, false);
+
+    for (auto f : {&lidar_frame_id, &odom_frame_id, &camera_frame_id})
+    {
+        *f = frame_prefix.empty() ? *f : frame_prefix + "/" + *f;
+    }
 
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
