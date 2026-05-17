@@ -229,13 +229,13 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/normal_segmentation_grid
+        Value: /avt_341/segmentation_grid_low_res
       Update Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /avt_341/normal_segmentation_grid_updates
+        Value: /avt_341/segmentation_grid_low_res_updates
       Use Timestamp: false
       Value: true
   Enabled: true

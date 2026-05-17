@@ -33,7 +33,7 @@ class GlobalPathTestNode(Node):
 
         # Publishers
         self.grid_pub = self.create_publisher(OccupancyGrid, 'avt_341/occupancy_grid_low_res', 10)
-        self.terrain_pub = self.create_publisher(OccupancyGrid, 'avt_341/normal_segmentation_grid', 10)
+        self.terrain_pub = self.create_publisher(OccupancyGrid, 'avt_341/segmentation_grid_low_res', 10)
         self.odom_pub = self.create_publisher(Odometry, 'avt_341/odometry', 10)
         self.goal_pub = self.create_publisher(PoseStamped, 'avt_341/goal_pose', 10)
         self.nav_state_pub = self.create_publisher(Int32, 'avt_341/nav_command_state', 10)
@@ -73,7 +73,7 @@ class GlobalPathTestNode(Node):
         size_y, size_x = int(height_m * res), int(width_m * res)
         
         occ_grid = np.zeros((size_y, size_x), dtype=np.int8)
-        terrain_grid = np.full((size_y, size_x), 100, dtype=np.int8)
+        terrain_grid = np.zeros((size_y, size_x), dtype=np.int8)
         
         def m_to_px(val): return int(val * res)
         
@@ -123,10 +123,10 @@ class GlobalPathTestNode(Node):
                 y_indices, x_indices = np.ogrid[:size_y, :size_x]
                 mask = (x_indices - cx)**2 + (y_indices - cy)**2 <= radius**2
                 
-                traversability_value = int(np.random.uniform(20, 50))
-                
-                terrain_grid[mask] = np.minimum(terrain_grid[mask], traversability_value)       
-                
+                cost_value = int(np.random.uniform(50, 80))
+
+                terrain_grid[mask] = np.maximum(terrain_grid[mask], cost_value)
+
         return occ_grid, terrain_grid, start_m, goal_m
 
     def create_grid_msg(self, data_np, frame_id, resolution):
