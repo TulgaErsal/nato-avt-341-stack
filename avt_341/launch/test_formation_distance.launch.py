@@ -51,6 +51,7 @@ Launch arguments
   y_scale            Formation y offset scale [m]     (default: 5.0)
   start_x_follow     Follower initial x [m]           (default: -5.0)
   start_y_follow     Follower initial y [m]           (default:  0.0)
+  formation_end_time Sim time [s] to end formation and return solo to origin; -1 = never (default: -1.0)
 
 Note: the Julia library path is read from JULIA_LIB_PATH at the top of this
 file.  Adjust if your Julia installation differs from ~/julia/julia-1.5.4.
@@ -111,6 +112,9 @@ def generate_launch_description():
     start_y_follow_arg = DeclareLaunchArgument(
         'start_y_follow', default_value='0.0',
         description='Follower initial y position [m]')
+    formation_end_time_arg = DeclareLaunchArgument(
+        'formation_end_time', default_value='-1.0',
+        description='Sim time [s] at which formation ends and ego drives solo to origin; -1 = never')
 
     return LaunchDescription([
         formation_arg,
@@ -123,6 +127,7 @@ def generate_launch_description():
         y_scale_arg,
         start_x_follow_arg,
         start_y_follow_arg,
+        formation_end_time_arg,
 
         # Static transform: map -> odom (identity)
         Node(
@@ -149,8 +154,9 @@ def generate_launch_description():
                 'straight_duration':  LaunchConfiguration('straight_duration'),
                 'x_scale':            LaunchConfiguration('x_scale'),
                 'y_scale':            LaunchConfiguration('y_scale'),
-                'start_x_follow':     LaunchConfiguration('start_x_follow'),
-                'start_y_follow':     LaunchConfiguration('start_y_follow'),
+                'start_x_follow':       LaunchConfiguration('start_x_follow'),
+                'start_y_follow':       LaunchConfiguration('start_y_follow'),
+                'formation_end_time':   LaunchConfiguration('formation_end_time'),
             }],
         ),
 

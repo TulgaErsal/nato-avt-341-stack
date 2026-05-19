@@ -161,6 +161,7 @@ class FormationDistanceTestDriver(Node):
         self.declare_parameter('sim_rate_hz', 50.0)
         self.declare_parameter('physics_dt', 0.001)          # [s]
         self.declare_parameter('mpc_max_speed', 4.0)         # must match max_speed in mpc_local_planner.yaml
+        self.declare_parameter('formation_end_time', -1.0)   # sim time [s] at which formation ends; -1 = never
 
         formation     = self.get_parameter('formation').value.lower()
         leader_motion = self.get_parameter('leader_motion').value.lower()
@@ -180,8 +181,9 @@ class FormationDistanceTestDriver(Node):
         self._y_scale      = float(self.get_parameter('y_scale').value)
         self._path_spacing = float(self.get_parameter('path_point_spacing').value)
         self._physics_dt   = float(self.get_parameter('physics_dt').value)
-        self._mpc_max_speed = float(self.get_parameter('mpc_max_speed').value)
-        sim_rate           = float(self.get_parameter('sim_rate_hz').value)
+        self._mpc_max_speed      = float(self.get_parameter('mpc_max_speed').value)
+        self._formation_end_time = float(self.get_parameter('formation_end_time').value)
+        sim_rate                 = float(self.get_parameter('sim_rate_hz').value)
         self._pub_dt       = 1.0 / sim_rate
 
         self._n_substeps = max(1, int(round(self._pub_dt / self._physics_dt)))
@@ -209,6 +211,10 @@ class FormationDistanceTestDriver(Node):
         self._path_pts: collections.deque = collections.deque(maxlen=_MAX_PATH_POINTS)
         self._last_leader_x_at_path: float | None = None
         self._last_leader_y_at_path: float | None = None
+
+        # -- Formation-end / solo return state -------------------------
+        self._formation_ended = False
+        self._return_path: list | None = None
 
         # -- TF broadcaster --------------------------------------------
         self._tf_br = TransformBroadcaster(self)
@@ -311,6 +317,8 @@ class FormationDistanceTestDriver(Node):
     # ------------------------------------------------------------------
     def _update_path(self):
         """Append a formation target waypoint when the leader has moved enough."""
+        if self._formation_ended:
+            return
         if self._last_leader_x_at_path is None:
             self._append_target()
             self._last_leader_x_at_path = self._xl
@@ -341,6 +349,38 @@ class FormationDistanceTestDriver(Node):
         self._path_pts.append(ps)
 
     # ------------------------------------------------------------------
+    # Formation end / solo return
+    # ------------------------------------------------------------------
+    def _end_formation(self):
+        """Freeze formation path and build a straight return path to the origin."""
+        self._formation_ended = True
+        tx, ty = 0.0, 0.0
+        dx = tx - self._x
+        dy = ty - self._y
+        dist = math.hypot(dx, dy)
+        if dist < 1e-3:
+            self._return_path = []
+            return
+        ux = dx / dist
+        uy = dy / dist
+        n_pts = int(dist / self._path_spacing) + 2
+        stamp = self.get_clock().now().to_msg()
+        pts = []
+        for i in range(n_pts):
+            d = min(i * self._path_spacing, dist)
+            ps = PoseStamped()
+            ps.header.frame_id = 'map'
+            ps.header.stamp = stamp
+            ps.pose.position.x = self._x + ux * d
+            ps.pose.position.y = self._y + uy * d
+            ps.pose.orientation.w = 1.0
+            pts.append(ps)
+        self._return_path = pts
+        self.get_logger().info(
+            f'Formation ended at t={self._t:.1f} s. '
+            f'Return path: {len(pts)} waypoints to origin.')
+
+    # ------------------------------------------------------------------
     # Main simulation timer callback (sim_rate_hz)
     # ------------------------------------------------------------------
     def _sim_step(self):
@@ -348,6 +388,12 @@ class FormationDistanceTestDriver(Node):
         for _ in range(self._n_substeps):
             self._step_leader(dt)
             self._step_follower(dt)
+
+        if (self._formation_end_time > 0.0
+                and self._t >= self._formation_end_time
+                and not self._formation_ended):
+            self._end_formation()
+
         self._update_path()
 
         now = self.get_clock().now().to_msg()
@@ -387,6 +433,14 @@ class FormationDistanceTestDriver(Node):
         self._leader_odom_pub.publish(msg)
 
     def _publish_path(self, stamp):
+        if self._formation_ended:
+            if self._return_path:
+                path = Path()
+                path.header.stamp    = stamp
+                path.header.frame_id = 'map'
+                path.poses = self._return_path
+                self._path_pub.publish(path)
+            return
         if not self._path_pts:
             return
         path = Path()
@@ -472,7 +526,7 @@ class FormationDistanceTestDriver(Node):
         self._speed_pub.publish(sp)
 
         ls      = Bool()
-        ls.data = False  # False = "I am not the leader" -> follower_status=true in MPC
+        ls.data = self._formation_ended  # False = follower mode; True = solo mode
         self._lead_stat_pub.publish(ls)
 
         unit_x, unit_y = _FORMATION_UNIT_OFFSETS[self._formation]
