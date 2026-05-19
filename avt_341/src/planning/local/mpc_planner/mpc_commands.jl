@@ -15,6 +15,12 @@ global yawrate = 0.0
 global longacc = 0.0
 global cmdLeaderSpeed = 0.0
 global follower_status = false
+global leaderX = 0.0
+global leaderY = 0.0
+global leaderYaw = 0.0
+global leaderYawRate = 0.0
+global formationXOffset = 0.0
+global formationYOffset = 0.0
 global numobs = 0
 global obstacle_size_meters = 0.0
 global obs_radius = 0.0
@@ -303,6 +309,18 @@ function SetLeaderSpeed(speed::Float64)
     global cmdLeaderSpeed = speed
 end
 
+function SetLeaderPose(x::Float64, y::Float64, yaw::Float64, yaw_rate::Float64)
+    global leaderX = x
+    global leaderY = y
+    global leaderYaw = yaw
+    global leaderYawRate = yaw_rate
+end
+
+function SetFormationOffset(xo::Float64, yo::Float64)
+    global formationXOffset = xo
+    global formationYOffset = yo
+end
+
 function SetFollowerStatus(status::Bool)
     global follower_status = status
 end
@@ -542,6 +560,8 @@ function Plan()
 	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint, slopeLimited
 	global follower_status
 	global cmdLeaderSpeed
+	global leaderX, leaderY, leaderYaw, leaderYawRate
+	global formationXOffset, formationYOffset
 	global distanceToGoal
 	global distanceToObstacles
 	global deviationInYaw
@@ -642,16 +662,33 @@ function Plan()
 		end
 
 		if follower_status
-			future_g1 = goal[1] + cmdLeaderSpeed * predictionTimeHorizon * cos(desiredHeading)
-			future_g2 = goal[2] + cmdLeaderSpeed * predictionTimeHorizon * sin(desiredHeading)
-			JuMP.setValue(g1, future_g1)
-			JuMP.setValue(g2, future_g2)
-			future_goal_dist = sqrt((future_g1 - x_veh)^2 + (future_g2 - y_veh)^2)
-			v_desired = clamp(future_goal_dist / predictionTimeHorizon, minSpeed, maxSpeed)
-			JuMP.setValue(leader_speed, v_desired)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
-		else
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+			JuMP.setValue(final_heading_w_param, 0.0)
+			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			T = predictionTimeHorizon
+			if abs(leaderYawRate) > 0.001
+				pred_yaw = leaderYaw + leaderYawRate * T
+				R = cmdLeaderSpeed / leaderYawRate
+				pred_lx = leaderX + R * (sin(pred_yaw) - sin(leaderYaw))
+				pred_ly = leaderY - R * (cos(pred_yaw) - cos(leaderYaw))
+			else
+				pred_yaw = leaderYaw
+				pred_lx = leaderX + cmdLeaderSpeed * T * cos(leaderYaw)
+				pred_ly = leaderY + cmdLeaderSpeed * T * sin(leaderYaw)
+			end
+			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset - sin(pred_yaw) * formationYOffset
+			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset + cos(pred_yaw) * formationYOffset
+			JuMP.setValue(g1, pred_target_x)
+			JuMP.setValue(g2, pred_target_y)
+			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset - sin(leaderYaw) * formationYOffset
+			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset + cos(leaderYaw) * formationYOffset
+			err_x = curr_target_x - x_veh
+			err_y = curr_target_y - y_veh
+			formation_error = err_x * cos(leaderYaw) + err_y * sin(leaderYaw)
+			v_desired = clamp(cmdLeaderSpeed + formation_error / T, minSpeed, speedSetpoint)
+			n.ocp.XU[7] = v_desired
+			for i=1:n.ocp.state.pts
+				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
+			end
 		end
 
 		if n.s.mpc.shiftX0

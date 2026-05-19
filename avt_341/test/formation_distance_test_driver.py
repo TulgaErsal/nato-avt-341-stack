@@ -468,7 +468,7 @@ class FormationDistanceTestDriver(Node):
         self._nav_pub.publish(nav)
 
         sp      = Float64()
-        sp.data = self._mpc_max_speed  # allow MPC to exceed leader speed for catch-up
+        sp.data = self._mpc_max_speed
         self._speed_pub.publish(sp)
 
         ls      = Bool()
