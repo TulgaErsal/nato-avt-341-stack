@@ -160,6 +160,7 @@ class FormationDistanceTestDriver(Node):
         self.declare_parameter('path_point_spacing', 0.5)    # [m]
         self.declare_parameter('sim_rate_hz', 50.0)
         self.declare_parameter('physics_dt', 0.001)          # [s]
+        self.declare_parameter('mpc_max_speed', 4.0)         # must match max_speed in mpc_local_planner.yaml
 
         formation     = self.get_parameter('formation').value.lower()
         leader_motion = self.get_parameter('leader_motion').value.lower()
@@ -179,6 +180,7 @@ class FormationDistanceTestDriver(Node):
         self._y_scale      = float(self.get_parameter('y_scale').value)
         self._path_spacing = float(self.get_parameter('path_point_spacing').value)
         self._physics_dt   = float(self.get_parameter('physics_dt').value)
+        self._mpc_max_speed = float(self.get_parameter('mpc_max_speed').value)
         sim_rate           = float(self.get_parameter('sim_rate_hz').value)
         self._pub_dt       = 1.0 / sim_rate
 
@@ -466,11 +468,11 @@ class FormationDistanceTestDriver(Node):
         self._nav_pub.publish(nav)
 
         sp      = Float64()
-        sp.data = self._leader_speed
+        sp.data = self._mpc_max_speed  # allow MPC to exceed leader speed for catch-up
         self._speed_pub.publish(sp)
 
         ls      = Bool()
-        ls.data = True
+        ls.data = False  # False = "I am not the leader" -> follower_status=true in MPC
         self._lead_stat_pub.publish(ls)
 
         unit_x, unit_y = _FORMATION_UNIT_OFFSETS[self._formation]

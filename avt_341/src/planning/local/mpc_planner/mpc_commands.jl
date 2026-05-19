@@ -641,10 +641,15 @@ function Plan()
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
 		end
 
-		# If user marked the goal point as the end of a global path, enable follower objective
-		if follower_status && goalPointIsEndOfGlobalPath
-			JuMP.setValue(leader_speed, cmdLeaderSpeed)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
+		if follower_status
+			future_g1 = goal[1] + cmdLeaderSpeed * predictionTimeHorizon * cos(desiredHeading)
+			future_g2 = goal[2] + cmdLeaderSpeed * predictionTimeHorizon * sin(desiredHeading)
+			JuMP.setValue(g1, future_g1)
+			JuMP.setValue(g2, future_g2)
+			future_goal_dist = sqrt((future_g1 - x_veh)^2 + (future_g2 - y_veh)^2)
+			v_desired = clamp(future_goal_dist / predictionTimeHorizon, minSpeed, maxSpeed)
+			JuMP.setValue(leader_speed, v_desired)
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
 		else
 			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 		end
