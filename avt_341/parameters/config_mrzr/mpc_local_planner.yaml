@@ -7,8 +7,8 @@ rate: 20.0 # Planner update rate
 
 tire_model: "P" # L for linear, P for Pacejka, N for neural network for deformable terrain
 
-num_col_points: 20 # number of collocation points to use in MPC
-prediction_time_horizon: 4.0 # MPC prediction time horizon [s]
+num_col_points: 10 # number of collocation points to use in MPC
+prediction_time_horizon: 2.0 # MPC prediction time horizon [s]
 max_num_obs: 500 # maximum number of obstacles allowed in MPC
 max_num_seg: 2000 # maximum number of obstacles allowed in MPC
 min_speed: 0.5 # minimum allowed vehicle speed [m/s]
