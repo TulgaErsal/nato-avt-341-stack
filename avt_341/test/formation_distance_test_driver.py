@@ -160,7 +160,7 @@ class FormationDistanceTestDriver(Node):
         self.declare_parameter('path_point_spacing', 0.5)    # [m]
         self.declare_parameter('sim_rate_hz', 50.0)
         self.declare_parameter('physics_dt', 0.001)          # [s]
-        self.declare_parameter('mpc_max_speed', 4.0)         # must match max_speed in mpc_local_planner.yaml
+        self.declare_parameter('mpc_max_speed', 8.0)         # [m/s]
         self.declare_parameter('formation_end_time', -1.0)   # sim time [s] at which formation ends; -1 = never
 
         formation     = self.get_parameter('formation').value.lower()
