@@ -60,6 +60,7 @@
 #include <tf2/convert.h>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -460,6 +461,10 @@ class ObjectTrackingNode : public rclcpp::Node {
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_ack_publisher_;
     bool reset_called_ = false;
     void ResetCallback(std_msgs::msg::String::SharedPtr msg);
+
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
+    bool encircle_triggered_ = false;
+    void PublishTargetContact();
 
     rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
         info_publisher_;
