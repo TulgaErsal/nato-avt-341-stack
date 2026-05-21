@@ -148,6 +148,7 @@ class MissionManager{
     auto getClosestNewContact();
     MissionPoint getClosestOverwatch();
     void addContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
+    void updateExistingContact(std::vector<Contact>::iterator it, const avt_341::msg::PoseStamped & pose);
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();

@@ -172,9 +172,9 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
       if(preempted_task == nullptr || preempted_task->is_preemptable){
         task_list.push_front(task);
       }else{
-        // Insert at front before first preemptable task
+        // Insert before the first preemptable task (or at the end if none exist).
         auto it = std::find_if(task_list.begin(), task_list.end(), [&](Task* t){return t->is_preemptable;});
-        preempted_task = *it;
+        preempted_task = (it != task_list.end()) ? *it : nullptr;
         task_list.insert(it, task);
       }
 
@@ -361,6 +361,34 @@ void MissionManager::addContact(const std::string & name, const avt_341::msg::Po
   mission_contacts.push_back(new_contact);
 }
 
+void MissionManager::updateExistingContact(
+    std::vector<Contact>::iterator it,
+    const avt_341::msg::PoseStamped & pose)
+{
+    it->pose = pose;
+    const std::string & name = it->name;
+    node_proxy_->log_info("Updated contact \"%s\" position to (%.2f, %.2f).",
+                          name.c_str(), pose.pose.position.x, pose.pose.position.y);
+
+    for (Task* task : task_list) {
+        if (auto* moveto = dynamic_cast<MoveTo*>(task)) {
+            if (moveto->goal_type == MoveTo::CONTACT && moveto->name == name) {
+                // Update the target so the vehicle steers toward the refined position.
+                // goal is used by init_() if the task hasn't started; target_pose is
+                // used by run() when the task is already executing.
+                moveto->goal = pose;
+                moveto->target_pose = pose;
+            }
+        } else if (auto* encircle = dynamic_cast<Encircle*>(task)) {
+            // Only update while the task is still queued (init_done=false).
+            // Once init_() has run the circle path is already computed.
+            if (!encircle->init_done && encircle->contactName() == name) {
+                encircle->updateTarget(pose);
+            }
+        }
+    }
+}
+
 void MissionManager::resetTaskList(bool send_completion_msg) {
   node_proxy_->log_info("%s CANCEL_ALL: Clearing task list of size %d.",  my_name.c_str(), task_list.size());
   for(auto task : task_list) {
@@ -403,40 +431,48 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
 void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
 
     for(const auto& pose: contacts.poses) {
-        if(!hasContact(pose.header.frame_id, pose)) {
-            addContact(pose.header.frame_id, pose);
-            Contact & contact = mission_contacts.back();
+        // If a contact with this name already exists, update its position and
+        // propagate to any queued tasks instead of creating duplicate tasks.
+        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+            [&](const Contact& c) { return c.name == pose.header.frame_id; });
+        if (existing != mission_contacts.end()) {
+            updateExistingContact(existing, pose);
+            continue;
+        }
 
-            node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
-            auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
-            investigateTask->setGoalByContact(contact);
-            investigateTask->is_preemptable = false;
-            addTask(investigateTask, PriorityType::PREEMPT);
+        addContact(pose.header.frame_id, pose);
+        Contact & contact = mission_contacts.back();
 
-            const int encircle_task_id = obj_detection_cnt--;
-            auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
-            encircleTask->is_preemptable = false;
-            addTask(encircleTask, PriorityType::PREEMPT);
+        node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
+        auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
+        investigateTask->setGoalByContact(contact);
+        investigateTask->is_preemptable = false;
+        addTask(investigateTask, PriorityType::PREEMPT);
 
-            // Get closest vehicle from vehh_poses
-            double min_dist = std::numeric_limits<double>::max();
-            std::string overwatch_veh;
-            for(const auto& veh_pose: veh_poses) {
-                if(veh_pose.first == my_name){
-                    continue;
-                }
-                double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
-                if(dist < min_dist) {
-                    min_dist = dist;
-                    overwatch_veh = veh_pose.first;
-                }
+        const int encircle_task_id = obj_detection_cnt--;
+        auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
+        encircleTask->setContactName(contact.name);
+        encircleTask->is_preemptable = false;
+        addTask(encircleTask, PriorityType::PREEMPT);
+
+        // Get closest vehicle from veh_poses
+        double min_dist = std::numeric_limits<double>::max();
+        std::string overwatch_veh;
+        for(const auto& veh_pose: veh_poses) {
+            if(veh_pose.first == my_name){
+                continue;
             }
-
-            if(overwatch_veh.empty()){
-                node_proxy_->log_info("Could not find overwatch vehicle");
-            }else{
-                communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
+            double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
+            if(dist < min_dist) {
+                min_dist = dist;
+                overwatch_veh = veh_pose.first;
             }
+        }
+
+        if(overwatch_veh.empty()){
+            node_proxy_->log_info("Could not find overwatch vehicle");
+        }else{
+            communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
         }
     }
 }

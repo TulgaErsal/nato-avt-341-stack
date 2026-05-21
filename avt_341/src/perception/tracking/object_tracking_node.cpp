@@ -435,7 +435,7 @@ void ObjectTrackingNode::PublishTargetContact() {
 
     target_contacts_publisher_->publish(contact_msg);
     RCLCPP_INFO(get_logger(),
-                "Tracking started: published target contact \"%s\" at (%.2f, %.2f, %.2f).",
+                "Published target contact \"%s\" at (%.2f, %.2f, %.2f).",
                 target_class_.c_str(),
                 bounding_box_centroid_filtered_.x(),
                 bounding_box_centroid_filtered_.y(),
@@ -462,6 +462,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         reset_ack_publisher_->publish(ack);
         reset_called_ = false;
         encircle_triggered_ = false;
+        contact_update_counter_ = 0;
         RCLCPP_INFO(get_logger(), "Reset complete.");
     }
 
@@ -688,6 +689,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
             CheckTargetTimeout();
+            MaybePublishContactUpdate();
             return;
         }
 
@@ -780,6 +782,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
             CheckTargetTimeout();
+            MaybePublishContactUpdate();
             return;
         }
 
@@ -834,12 +837,24 @@ void ObjectTrackingNode::TrackingTimerCallback() {
     // tracker transitions to NO_DETECTION state.
     CheckTargetTimeout();
 
-    if (!encircle_triggered_ && filter_initialized_ &&
+    MaybePublishContactUpdate();
+}
+
+void ObjectTrackingNode::MaybePublishContactUpdate() {
+    const bool is_actively_tracking = filter_initialized_ &&
         (state_ == TrackerState::FULL_TRACKING ||
          state_ == TrackerState::LIDAR_ONLY_TRACKING ||
-         state_ == TrackerState::CAMERA_ONLY_TRACKING)) {
+         state_ == TrackerState::CAMERA_ONLY_TRACKING);
+
+    if (!is_actively_tracking) return;
+
+    if (!encircle_triggered_) {
         PublishTargetContact();
         encircle_triggered_ = true;
+        contact_update_counter_ = 0;
+    } else if (++contact_update_counter_ >= contact_update_interval_ticks_) {
+        PublishTargetContact();
+        contact_update_counter_ = 0;
     }
 }
 
@@ -1649,6 +1664,7 @@ void ObjectTrackingNode::TaskStatusCallback(
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
     encircle_triggered_ = false;
+    contact_update_counter_ = 0;
 
     RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".", target_class_.c_str());
 }
@@ -1742,6 +1758,7 @@ void ObjectTrackingNode::SetTargetServiceCallback(
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
     encircle_triggered_ = false;
+    contact_update_counter_ = 0;
 
     std::string message("Target selection set to \"" + target_class_ + "\".");
     RCLCPP_INFO(get_logger(), message.c_str());

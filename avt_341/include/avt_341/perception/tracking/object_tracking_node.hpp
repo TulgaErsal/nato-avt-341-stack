@@ -464,7 +464,10 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
     bool encircle_triggered_ = false;
+    int contact_update_counter_ = 0;
+    static constexpr int contact_update_interval_ticks_ = 10;
     void PublishTargetContact();
+    void MaybePublishContactUpdate();
 
     rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
         info_publisher_;

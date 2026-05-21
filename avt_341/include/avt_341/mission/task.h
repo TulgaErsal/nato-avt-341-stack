@@ -123,9 +123,14 @@ public:
     std::string description() const override;
     avt_341::msg::PoseStamped terminalPose() const override;
 
+    void updateTarget(const avt_341::msg::PoseStamped & target) { target_ = target; }
+    void setContactName(const std::string & name) { contact_name_ = name; }
+    const std::string & contactName() const { return contact_name_; }
+
 private:
   bool arrived;
   avt_341::msg::PoseStamped target_;
+  std::string contact_name_;
   double radius_;
   double angular_range_degrees_;
   bool is_cw_;
