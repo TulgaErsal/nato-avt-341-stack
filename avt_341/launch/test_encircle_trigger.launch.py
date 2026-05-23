@@ -67,19 +67,33 @@ def launch_setup(context, *args, **kwargs):
         '/flir_camera/image_raw',
         '/mrzr/detections/vision',
         '/ouster/points',
-        '/mrzr/avt_341/odometry',
         '/tf',
         '/tf_static',
     ]
     bag_play = TimerAction(
         period=0.0,
         actions=[ExecuteProcess(
-            cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1000', '--topics', *bag_topics],
+            cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1', '--topics', *bag_topics],
             output='screen'
         )]
     )
 
-    # 2. Object Tracking Node (uses autostart to begin tracking immediately)
+    # 2. Derive vehicle odometry from TF (bag has no /mrzr/avt_341/odometry topic)
+    tf_odometry_node = Node(
+        package='avt_341',
+        executable='tf_to_odometry.py',
+        name='tf_to_odometry',
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'parent_frame': 'map',
+            'child_frame': 'mrzr/base_link',
+            'output_topic': '/mrzr/avt_341/odometry',
+            'rate_hz': 10.0,
+        }],
+    )
+
+    # 3. Object Tracking Node (uses autostart to begin tracking immediately)
     tracking_node = Node(
         package='avt_341',
         executable='avt_341_object_tracking_node',
@@ -94,7 +108,22 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
-    # 3. Mission Manager Node
+    # 3. Global Path Node
+    # Publishes avt_341/goal_reached when the vehicle arrives at a waypoint,
+    # which is what MoveTo uses to detect task completion.
+    global_planner_params = os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'global_planner.yaml')
+    global_path_node = Node(
+        package='avt_341',
+        executable='avt_341_global_path_node',
+        name='global_path_node',
+        output='screen',
+        parameters=[global_planner_params, {'use_sim_time': True}],
+        remappings=[
+            ('avt_341/odometry', '/mrzr/avt_341/odometry'),
+        ]
+    )
+
+    # 4. Mission Manager Node
     # Subscribes to avt_341/target_contacts; when the tracker publishes a contact
     # the mission manager adds a MoveTo + Encircle task pair.
     mission_manager_node = Node(
@@ -108,22 +137,23 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
-    # 4. Initialize the mission manager navigation state so it accepts contacts.
-    # run_state=0 means "active" (anything other than -1 / NotInit).
+    # 5. Send GoActive command to global path node so it transitions out of NotInit.
+    # The global path node subscribes to avt_341/nav_command_state (Int32); value 1 = GoActive.
+    # Once active it publishes run_state=0 to avt_341/state, which unblocks mission manager contact processing.
     nav_state_pub = TimerAction(
         period=2.0,
         actions=[ExecuteProcess(
             cmd=[
                 'ros2', 'topic', 'pub', '-t', '3',
-                '/avt_341/state',
-                'avt_341_msgs/msg/NavState',
-                '{run_state: 0}',
+                '/avt_341/nav_command_state',
+                'std_msgs/msg/Int32',
+                '{data: 1}',
             ],
             output='screen'
         )]
     )
 
-    # 5. RViz2
+    # 6. RViz2
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -135,7 +165,9 @@ def launch_setup(context, *args, **kwargs):
 
     actions = [
         bag_play,
+        tf_odometry_node,
         tracking_node,
+        global_path_node,
         mission_manager_node,
         nav_state_pub,
         rviz_node,
