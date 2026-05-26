@@ -358,6 +358,7 @@ void MissionManager::addContact(const std::string & name, const avt_341::msg::Po
   new_contact.investigating = false;
   new_contact.investigated = false;
   new_contact.is_new = true;
+  new_contact.first_seen_sec = node_proxy_->get_now_seconds();
   mission_contacts.push_back(new_contact);
 }
 
@@ -427,52 +428,74 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
   }
 }
 
+void MissionManager::createToiTasks(Contact & contact, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
+    contact.is_new = false;
+    contact.investigating = true;
+
+    node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
+    auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
+    investigateTask->setGoalByContact(contact);
+    investigateTask->is_preemptable = false;
+    addTask(investigateTask, PriorityType::PREEMPT);
+
+    const int encircle_task_id = obj_detection_cnt--;
+    auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
+    encircleTask->setContactName(contact.name);
+    encircleTask->is_preemptable = false;
+    addTask(encircleTask, PriorityType::PREEMPT);
+
+    double min_dist = std::numeric_limits<double>::max();
+    std::string overwatch_veh;
+    for(const auto& veh_pose: veh_poses) {
+        if(veh_pose.first == my_name){
+            continue;
+        }
+        double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
+        if(dist < min_dist) {
+            min_dist = dist;
+            overwatch_veh = veh_pose.first;
+        }
+    }
+
+    if(overwatch_veh.empty()){
+        node_proxy_->log_info("Could not find overwatch vehicle");
+    }else{
+        communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
+    }
+}
+
 // Message Handlers
 void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
+    const double now = node_proxy_->get_now_seconds();
 
     for(const auto& pose: contacts.poses) {
-        // If a contact with this name already exists, update its position and
-        // propagate to any queued tasks instead of creating duplicate tasks.
         auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
             [&](const Contact& c) { return c.name == pose.header.frame_id; });
+
         if (existing != mission_contacts.end()) {
-            updateExistingContact(existing, pose);
+            if (existing->is_new) {
+                // Tasks not yet created: keep updating the position and wait for the delay.
+                existing->pose = pose;
+                if (now - existing->first_seen_sec >= toi_params_.contact_trigger_delay_s) {
+                    node_proxy_->log_info("Contact \"%s\" confirmed after %.1f s; creating tasks.",
+                                         existing->name.c_str(), toi_params_.contact_trigger_delay_s);
+                    createToiTasks(*existing, veh_poses);
+                }
+            } else {
+                // Tasks already created: propagate refined position to queued tasks.
+                updateExistingContact(existing, pose);
+            }
             continue;
         }
 
         addContact(pose.header.frame_id, pose);
         Contact & contact = mission_contacts.back();
 
-        node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
-        auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
-        investigateTask->setGoalByContact(contact);
-        investigateTask->is_preemptable = false;
-        addTask(investigateTask, PriorityType::PREEMPT);
-
-        const int encircle_task_id = obj_detection_cnt--;
-        auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
-        encircleTask->setContactName(contact.name);
-        encircleTask->is_preemptable = false;
-        addTask(encircleTask, PriorityType::PREEMPT);
-
-        // Get closest vehicle from veh_poses
-        double min_dist = std::numeric_limits<double>::max();
-        std::string overwatch_veh;
-        for(const auto& veh_pose: veh_poses) {
-            if(veh_pose.first == my_name){
-                continue;
-            }
-            double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
-            if(dist < min_dist) {
-                min_dist = dist;
-                overwatch_veh = veh_pose.first;
-            }
-        }
-
-        if(overwatch_veh.empty()){
-            node_proxy_->log_info("Could not find overwatch vehicle");
-        }else{
-            communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
+        if (toi_params_.contact_trigger_delay_s <= 0.0) {
+            createToiTasks(contact, veh_poses);
+        } else {
+            node_proxy_->log_info("Contact \"%s\" first seen; waiting %.1f s before creating tasks.",
+                                  contact.name.c_str(), toi_params_.contact_trigger_delay_s);
         }
     }
 }

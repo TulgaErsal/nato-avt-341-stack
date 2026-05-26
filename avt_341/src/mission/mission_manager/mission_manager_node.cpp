@@ -172,6 +172,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
     nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
+    nh->get_parameter("~toi_contact_trigger_delay", toi_params.contact_trigger_delay_s, 0.0f);
 
     nh->get_parameter("~use_avt_tracker", use_avt_tracker, true);
 

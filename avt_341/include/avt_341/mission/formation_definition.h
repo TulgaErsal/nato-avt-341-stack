@@ -45,6 +45,7 @@ struct ToiParameters{
   float encircle_degrees;
   bool encircle_cw;
   float goal_threshold;
+  float contact_trigger_delay_s;
 };
 
 class FormationDefinition {

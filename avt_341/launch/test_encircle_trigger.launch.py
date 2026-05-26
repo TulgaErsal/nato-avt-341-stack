@@ -40,6 +40,7 @@ def launch_setup(context, *args, **kwargs):
         'toi_encircle_degrees': 180.0,
         'toi_encircle_cw': True,
         'toi_goal_threshold': 5.0,
+        'toi_contact_trigger_delay': 1.0,
         'max_speed': 3.0,
         'same_object_distance_threshold': 1.0,
         'follow_scale_x': 15.0,

@@ -31,6 +31,7 @@ toi:
   encircle_degrees: 180.0                                                               # Encircle degrees around target of interest
   encircle_cw: True                                                                     # If encircle should be in clock-wise (cw) direction around target of interest
   goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
+  contact_trigger_delay: 1.0                                                            # Seconds a contact must persist before MoveTo+Encircle tasks are created (0 = trigger immediately)
 
 # Mission Manager - Object Tracking
 use_avt_tracker: true                                                                   # Set true to subscribe to avt_341/odometry/estimated/<veh_ns> per vehicle instead of cross-namespace ground truth
