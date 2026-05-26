@@ -144,6 +144,7 @@ class FormationDistanceTestDriver(Node):
         self.declare_parameter('formation', 'column')
         self.declare_parameter('leader_motion', 'straight')
         self.declare_parameter('leader_speed', 3.0)
+        self.declare_parameter('sine_speed_amp', 0.0)        # [m/s]
         self.declare_parameter('sine_yaw_rate_amp', 0.15)   # [rad/s]
         self.declare_parameter('sine_period', 10.0)          # [s]
         self.declare_parameter('straight_duration', 10.0)    # [s]
@@ -174,6 +175,7 @@ class FormationDistanceTestDriver(Node):
         self._leader_motion = leader_motion
 
         self._leader_speed = float(self.get_parameter('leader_speed').value)
+        self._speed_amp    = float(self.get_parameter('sine_speed_amp').value)
         self._r_amp        = float(self.get_parameter('sine_yaw_rate_amp').value)
         self._sine_period  = float(self.get_parameter('sine_period').value)
         self._straight_dur = float(self.get_parameter('straight_duration').value)
@@ -271,7 +273,7 @@ class FormationDistanceTestDriver(Node):
         self._sa = msg.drive.steering_angle
 
     # ------------------------------------------------------------------
-    # Leader yaw rate
+    # Leader motion
     # ------------------------------------------------------------------
     def _leader_yaw_rate(self, t: float) -> float:
         motion = self._leader_motion
@@ -284,14 +286,21 @@ class FormationDistanceTestDriver(Node):
         # straight_then_sine
         return 0.0 if t < self._straight_dur else r_sine
 
+    def _leader_speed_at(self, t: float) -> float:
+        if self._speed_amp == 0.0:
+            return self._leader_speed
+        omega = 2.0 * math.pi / self._sine_period
+        return self._leader_speed + self._speed_amp * math.sin(omega * t)
+
     # ------------------------------------------------------------------
     # Physics integration (1 ms sub-steps)
     # ------------------------------------------------------------------
     def _step_leader(self, dt: float):
         """Advance leader kinematic state by dt seconds."""
+        spd          = self._leader_speed_at(self._t)
         r_l          = self._leader_yaw_rate(self._t)
-        self._xl    += self._leader_speed * math.cos(self._psi_l) * dt
-        self._yl    += self._leader_speed * math.sin(self._psi_l) * dt
+        self._xl    += spd * math.cos(self._psi_l) * dt
+        self._yl    += spd * math.sin(self._psi_l) * dt
         self._psi_l += r_l * dt
         self._t     += dt
 
@@ -428,7 +437,7 @@ class FormationDistanceTestDriver(Node):
         msg.pose.pose.position.x    = self._xl
         msg.pose.pose.position.y    = self._yl
         msg.pose.pose.orientation   = yaw_to_quaternion(self._psi_l)
-        msg.twist.twist.linear.x    = self._leader_speed
+        msg.twist.twist.linear.x    = self._leader_speed_at(self._t)
         msg.twist.twist.angular.z   = self._leader_yaw_rate(self._t)
         self._leader_odom_pub.publish(msg)
 
@@ -468,7 +477,7 @@ class FormationDistanceTestDriver(Node):
 
     def _publish_speed_markers(self, stamp):
         for ns, x, y, speed, pub in [
-            ('lead_speed',   self._xl, self._yl, self._leader_speed, self._lead_txt_pub),
+            ('lead_speed',   self._xl, self._yl, self._leader_speed_at(self._t), self._lead_txt_pub),
             ('follow_speed', self._x,  self._y,  self._ux,           self._follow_txt_pub),
         ]:
             m = Marker()

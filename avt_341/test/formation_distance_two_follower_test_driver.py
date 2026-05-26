@@ -145,6 +145,7 @@ class FormationDistanceTwoFollowerTestDriver(Node):
 
         self.declare_parameter('leader_motion',      'straight')
         self.declare_parameter('leader_speed',       3.0)
+        self.declare_parameter('sine_speed_amp',     0.0)
         self.declare_parameter('sine_yaw_rate_amp',  0.15)
         self.declare_parameter('sine_period',        10.0)
         self.declare_parameter('straight_duration',  10.0)
@@ -162,6 +163,7 @@ class FormationDistanceTwoFollowerTestDriver(Node):
 
         self._leader_motion = self.get_parameter('leader_motion').value.lower()
         self._leader_speed  = float(self.get_parameter('leader_speed').value)
+        self._speed_amp     = float(self.get_parameter('sine_speed_amp').value)
         self._r_amp         = float(self.get_parameter('sine_yaw_rate_amp').value)
         self._sine_period   = float(self.get_parameter('sine_period').value)
         self._straight_dur  = float(self.get_parameter('straight_duration').value)
@@ -230,10 +232,17 @@ class FormationDistanceTwoFollowerTestDriver(Node):
             return r_sine
         return 0.0 if t < self._straight_dur else r_sine
 
+    def _leader_speed_at(self, t: float) -> float:
+        if self._speed_amp == 0.0:
+            return self._leader_speed
+        omega = 2.0 * math.pi / self._sine_period
+        return self._leader_speed + self._speed_amp * math.sin(omega * t)
+
     def _step_leader(self, dt: float):
+        spd          = self._leader_speed_at(self._t)
         r_l          = self._leader_yaw_rate(self._t)
-        self._xl    += self._leader_speed * math.cos(self._psi_l) * dt
-        self._yl    += self._leader_speed * math.sin(self._psi_l) * dt
+        self._xl    += spd * math.cos(self._psi_l) * dt
+        self._yl    += spd * math.sin(self._psi_l) * dt
         self._psi_l += r_l * dt
         self._t     += dt
 
@@ -316,7 +325,7 @@ class FormationDistanceTwoFollowerTestDriver(Node):
         msg.pose.pose.position.x    = self._xl
         msg.pose.pose.position.y    = self._yl
         msg.pose.pose.orientation   = _yaw_to_quat(self._psi_l)
-        msg.twist.twist.linear.x    = self._leader_speed
+        msg.twist.twist.linear.x    = self._leader_speed_at(self._t)
         msg.twist.twist.angular.z   = self._leader_yaw_rate(self._t)
         ctx.lead_odom_pub.publish(msg)
 

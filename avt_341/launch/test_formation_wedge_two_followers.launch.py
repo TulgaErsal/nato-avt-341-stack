@@ -17,11 +17,14 @@ Usage
   ros2 launch avt_341 test_formation_wedge_two_followers.launch.py
   ros2 launch avt_341 test_formation_wedge_two_followers.launch.py \\
       leader_motion:=sine sine_yaw_rate_amp:=0.15 sine_period:=10.0
+  ros2 launch avt_341 test_formation_wedge_two_followers.launch.py \\
+      leader_motion:=sine sine_yaw_rate_amp:=0.15 sine_period:=10.0 sine_speed_amp:=1.5
 
 Launch arguments
 ----------------
   leader_motion      straight | sine | straight_then_sine  (default: straight)
   leader_speed       Leader forward speed [m/s]            (default: 3.0)
+  sine_speed_amp     Speed variation amplitude [m/s]       (default: 0.0)
   sine_yaw_rate_amp  Yaw rate amplitude [rad/s]            (default: 0.15)
   sine_period        Sine period [s]                       (default: 10.0)
   straight_duration  Straight phase before sine [s]        (default: 10.0)
@@ -98,6 +101,9 @@ def generate_launch_description():
     leader_speed_arg = DeclareLaunchArgument(
         'leader_speed', default_value='3.0',
         description='Leader forward speed [m/s]')
+    sine_speed_amp_arg = DeclareLaunchArgument(
+        'sine_speed_amp', default_value='0.0',
+        description='Speed variation amplitude [m/s]; 0 = constant speed')
     sine_amp_arg = DeclareLaunchArgument(
         'sine_yaw_rate_amp', default_value='0.15',
         description='Yaw rate amplitude [rad/s]')
@@ -117,6 +123,7 @@ def generate_launch_description():
     nodes = [
         leader_motion_arg,
         leader_speed_arg,
+        sine_speed_amp_arg,
         sine_amp_arg,
         sine_period_arg,
         straight_dur_arg,
@@ -140,6 +147,7 @@ def generate_launch_description():
             parameters=[{
                 'leader_motion':     LaunchConfiguration('leader_motion'),
                 'leader_speed':      LaunchConfiguration('leader_speed'),
+                'sine_speed_amp':    LaunchConfiguration('sine_speed_amp'),
                 'sine_yaw_rate_amp': LaunchConfiguration('sine_yaw_rate_amp'),
                 'sine_period':       LaunchConfiguration('sine_period'),
                 'straight_duration': LaunchConfiguration('straight_duration'),

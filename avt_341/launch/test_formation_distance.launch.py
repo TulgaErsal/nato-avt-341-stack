@@ -91,6 +91,9 @@ def generate_launch_description():
     leader_speed_arg = DeclareLaunchArgument(
         'leader_speed', default_value='3.0',
         description='Leader forward speed [m/s]')
+    sine_speed_amp_arg = DeclareLaunchArgument(
+        'sine_speed_amp', default_value='0.0',
+        description='Speed variation amplitude [m/s]; 0 = constant speed')
     sine_amp_arg = DeclareLaunchArgument(
         'sine_yaw_rate_amp', default_value='0.15',
         description='Yaw rate amplitude of the sine wave [rad/s]')
@@ -120,6 +123,7 @@ def generate_launch_description():
         formation_arg,
         leader_motion_arg,
         leader_speed_arg,
+        sine_speed_amp_arg,
         sine_amp_arg,
         sine_period_arg,
         straight_dur_arg,
@@ -149,6 +153,7 @@ def generate_launch_description():
                 'formation':          LaunchConfiguration('formation'),
                 'leader_motion':      LaunchConfiguration('leader_motion'),
                 'leader_speed':       LaunchConfiguration('leader_speed'),
+                'sine_speed_amp':     LaunchConfiguration('sine_speed_amp'),
                 'sine_yaw_rate_amp':  LaunchConfiguration('sine_yaw_rate_amp'),
                 'sine_period':        LaunchConfiguration('sine_period'),
                 'straight_duration':  LaunchConfiguration('straight_duration'),
