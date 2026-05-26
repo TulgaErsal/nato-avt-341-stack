@@ -37,52 +37,52 @@ log_topics:
 
   # Orientation of the vehicle body about x axis (roll)
   - name: '{vehicles}_roll'
-    topic: '/vbox/roll'
+    topic: '/vectornav/roll'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'deg'
+    units: 'rad'
 
   # Orientation of the vehicle body about y axis (pitch)
   - name: '{vehicles}_pitch'
-    topic: '/vbox/pitch'
+    topic: '/vectornav/pitch'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'deg'
+    units: 'rad'
 
   # Orientation of the vehicle body about z axis (yaw)
   - name: '{vehicles}_yaw'
-    topic: '/vbox/yaw'
+    topic: '/vectornav/yaw'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'deg'
+    units: 'rad'
 
   # Acceleration of the vehicle CG in the x axis
   - name: '{vehicles}_forward_accel'
-    topic: '/vbox/forwardaccel'
+    topic: '/vectornav/forwardaccel'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'g'
+    units: 'm/s^2'
 
   # Acceleration of the vehicle CG in the y axis
   - name: '{vehicles}_lateral_accel'
-    topic: '/vbox/lateralaccel'
+    topic: '/vectornav/lateralaccel'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'g'
+    units: 'm/s^2'
 
   # Acceleration of the vehicle CG in the z axis
   - name: '{vehicles}_vertical_accel'
-    topic: '/vbox/verticalaccel'
+    topic: '/vectornav/verticalaccel'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'g'
+    units: 'm/s^2'
 
   # Speed of the vehicle CG in the x-axis
   - name: '{vehicles}_forward_speed'
-    topic: '/vbox/forwardspeed'
+    topic: '/vectornav/forwardspeed'
     field: 'data'
     type: 'std_msgs/msg/Float64'
-    units: 'km/h'
+    units: 'm/s'
 
   # Front wheel angle position
   - name: '{vehicles}_steering_angle'
