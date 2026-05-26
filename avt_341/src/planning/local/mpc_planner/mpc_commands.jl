@@ -627,8 +627,8 @@ function Plan()
 				pred_lx = leaderX + cmdLeaderSpeed * T * cos(leaderYaw)
 				pred_ly = leaderY + cmdLeaderSpeed * T * sin(leaderYaw)
 			end
-			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset - sin(pred_yaw) * formationYOffset
-			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset + cos(pred_yaw) * formationYOffset
+			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset + sin(pred_yaw) * formationYOffset
+			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset - cos(pred_yaw) * formationYOffset
 			JuMP.setValue(g1, pred_target_x)
 			JuMP.setValue(g2, pred_target_y)
 			JuMP.setValue(desiredYaw, leaderYaw)
@@ -636,8 +636,8 @@ function Plan()
 			JuMP.setValue(final_heading_w_param, 0.0)
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
 			# Speed cap: drive formation error to zero over the prediction horizon
-			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset - sin(leaderYaw) * formationYOffset
-			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset + cos(leaderYaw) * formationYOffset
+			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset + sin(leaderYaw) * formationYOffset
+			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset - cos(leaderYaw) * formationYOffset
 			err_x = curr_target_x - x_veh
 			err_y = curr_target_y - y_veh
 			formation_error = err_x * cos(leaderYaw) + err_y * sin(leaderYaw)

@@ -1,22 +1,16 @@
 """
 Two-follower WEDGE formation test.
 
-Reproduces the follower-offset swap bug introduced in the
-fix-formation-distance-keeping branch.
-
-WEDGE assignment (from formation_definition.cpp):
-  MRZR4 -- follower1: x_offset = -x_scale (behind), y_offset = +y_scale (left)
-  MRZR2 -- follower2: x_offset = 0,                 y_offset = -y_scale (right)
+Formation layout (right-vector convention: positive y_offset = RIGHT of leader):
+  MRZR4: x_offset = -x_scale (behind), y_offset = -y_scale (left)
+  MRZR2: x_offset = -x_scale (behind), y_offset = +y_scale (right)
 
 Each follower's MPC stack runs in its own ROS2 namespace (mrzr2, mrzr4).
 The test driver publishes all support topics into both namespaces.
 
 Expected correct behavior:
   MRZR4 tracks the behind-left position of the leader.
-  MRZR2 tracks the right-side position of the leader.
-
-Bug (this branch):
-  MRZR4 and MRZR2 swap -- each ends up at the other vehicle's target.
+  MRZR2 tracks the behind-right position of the leader.
 
 Usage
 -----

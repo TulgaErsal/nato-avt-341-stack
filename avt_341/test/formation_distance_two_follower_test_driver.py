@@ -6,12 +6,12 @@ Reproduces the follower-offset swap bug introduced in the
 fix-formation-distance-keeping branch: in a WEDGE formation with two
 followers, each follower picks the other follower's target location.
 
-Fixed formation layout (WEDGE, from formation_definition.cpp):
-  MRZR4 -- follower1: x_offset = -x_scale (behind), y_offset = +y_scale (left)
-  MRZR2 -- follower2: x_offset = -x_scale (behind), y_offset = -y_scale (right)
+Fixed formation layout (right-vector convention: positive y_offset = RIGHT of leader):
+  MRZR4: x_offset = -x_scale (behind), y_offset = -y_scale (left)
+  MRZR2: x_offset = -x_scale (behind), y_offset = +y_scale (right)
 
 Expected: MRZR4 tracks the position behind-left of the leader;
-          MRZR2 tracks the position to the right of the leader.
+          MRZR2 tracks the position behind-right of the leader.
 Bug:      the two go to each other's target instead.
 
 Each follower's full stack (veh_converter, obstacle_processor,
@@ -43,8 +43,8 @@ TF frames broadcast:
 
 Default starting positions (nominal wedge at x_scale=5, y_scale=5):
   Leader  (0,  0)
-  MRZR4  (-5, +5)   [behind, left]
-  MRZR2  (-5, -5)   [behind, right]
+  MRZR4  (-5, +5)   [behind-left of leader]
+  MRZR2  (-5, -5)   [behind-right of leader]
 """
 
 import math
@@ -180,11 +180,13 @@ class FormationDistanceTwoFollowerTestDriver(Node):
         self._psi_l = math.radians(self.get_parameter('start_yaw_lead_deg').value)
         self._t     = 0.0
 
-        # WEDGE formation offsets:
+        # WEDGE formation offsets (right-vector convention: positive y_offset = RIGHT).
+        # MRZR4 = follower2: behind leader, displaced LEFT (y_offset negative).
+        # MRZR2 = follower1: behind leader, displaced RIGHT (y_offset positive).
         mrzr4_xo = -1.0 * x_scale
-        mrzr4_yo = +1.0 * y_scale
+        mrzr4_yo = -1.0 * y_scale
         mrzr2_xo = -1.0 * x_scale
-        mrzr2_yo = -1.0 * y_scale
+        mrzr2_yo = +1.0 * y_scale
 
         self._ctx_mrzr4 = _FollowerContext(
             self, 'mrzr4', mrzr4_xo, mrzr4_yo,
@@ -260,9 +262,11 @@ class FormationDistanceTwoFollowerTestDriver(Node):
             ctx.last_ly_at_path = self._yl
 
     def _append_target(self, ctx: _FollowerContext):
+        # Right-vector convention: target = leader + vx*xOff + vy*yOff
+        # vx = (cos, sin), vy = (sin, -cos)
         c, s = math.cos(self._psi_l), math.sin(self._psi_l)
-        tx = self._xl + c * ctx.x_offset - s * ctx.y_offset
-        ty = self._yl + s * ctx.x_offset + c * ctx.y_offset
+        tx = self._xl + c * ctx.x_offset + s * ctx.y_offset
+        ty = self._yl + s * ctx.x_offset - c * ctx.y_offset
         ps = PoseStamped()
         ps.header.frame_id = 'map'
         ps.header.stamp = self.get_clock().now().to_msg()
