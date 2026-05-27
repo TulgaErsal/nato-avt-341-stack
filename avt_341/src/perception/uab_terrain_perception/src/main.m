@@ -1,0 +1,46 @@
+function [costmap,terrainSubgridSize,costmapModifiedIdxs, ...
+    obstacleSubGrid,obstacleSubgridSize,obstacleModifiedCellIdxs,...
+    camera,segmentedCam,lidar,segmentedPC] = main(img, ...
+                                                    pc, ...
+                                                    cameraInfo,...
+                                                    cameraToLidarTform,...
+                                                    lidarToVboxTform,...
+                                                    invertLidarZRot, ...
+                                                    correctColor, ...
+                                                    odom, ...
+                                                    gridBuilder, ...
+                                                    segmentationModel, ...
+                                                    lidarProcessingModel, ...
+                                                    convertNEDToENU)
+% Read Camera
+camera = rosReadImage(img);
+
+% Read Lidar
+xyz = rosReadXYZ(pc); % Any advantage in preserving structure?
+lidar = pointCloud(xyz);
+
+% Segmentation
+[segmentedPC,segmentedCam] = perception(camera, lidar, cameraInfo, cameraToLidarTform, segmentationModel, lidarProcessingModel, correctColor);
+
+% Find any invalid lidar points
+nonNaN = sum(~isnan(segmentedPC.Location), 'all');
+
+% Filter Out of Range Lidar Points
+distanceIdx = findPointsInCylinder(segmentedPC, 30);
+segmentedPC = select(segmentedPC, distanceIdx);
+
+if nonNaN > 0
+    % build occupancy grid
+    [position, orientation] = ParseRosOdometry(odom);
+    [costmap, costmapModifiedIdxs, ...
+        obstacleSubGrid,obstacleModifiedCellIdxs] = percep2occ(segmentedPC, lidarToVboxTform, invertLidarZRot, position, orientation, gridBuilder, convertNEDToENU);
+    % Record size of subgrids for ROS node
+    terrainSubgridSize = length(costmap);
+    obstacleSubgridSize = length(obstacleSubGrid);
+else
+    % Found invalid lidar points, zero out the outputs
+    costmap = 0; obstacleSubGrid = 0;
+    terrainSubgridSize = 0; obstacleSubgridSize = 0; 
+    costmapModifiedIdxs = 0; obstacleModifiedCellIdxs = 0;
+end
+end

@@ -1,0 +1,186 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration build-checksum="905545808" file="C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo\perception_wrapper.prj" location="C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo" name="perception_wrapper" preferred-package-location="C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo\perception_wrapper\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>perception_wrapper</param.appname>
+    <param.icon />
+    <param.icons />
+    <param.version>1.0</param.version>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
+    <param.summary />
+    <param.description />
+    <param.screenshot />
+    <param.guid />
+    <param.installpath.string>\perception_wrapper\</param.installpath.string>
+    <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
+    <param.logo />
+    <param.install.notes />
+    <param.target.install.notes />
+    <param.intermediate>${PROJECT_ROOT}\perception_wrapper\for_testing</param.intermediate>
+    <param.files.only>${PROJECT_ROOT}\perception_wrapper\for_redistribution_files_only</param.files.only>
+    <param.output>${PROJECT_ROOT}\perception_wrapper\for_redistribution</param.output>
+    <param.logdir>${PROJECT_ROOT}\perception_wrapper</param.logdir>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.target.type>subtarget.library.cpp</param.target.type>
+    <param.support.packages>
+      <item>&lt;package displayname="Deploy Imported Models for ONNX Model Format Deep Learning Toolbox Converter" enabled="true" name="Deep Learning Toolbox Converter for ONNX Model Format" product="Deep Learning Toolbox"/&gt;</item>
+    </param.support.packages>
+    <param.namespace />
+    <param.classorg />
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <param.user.only.registration>false</param.user.only.registration>
+    <param.assembly.net.version>option.net.version.four</param.assembly.net.version>
+    <param.net.enable.remoting>false</param.net.enable.remoting>
+    <param.assembly.type>false</param.assembly.type>
+    <param.encryption.key.file />
+    <param.net.tsa.enable>false</param.net.tsa.enable>
+    <param.net.tsa.assembly />
+    <param.net.tsa.interface />
+    <param.net.tsa.namespace />
+    <param.net.tsa.superclass>Class1</param.net.tsa.superclass>
+    <param.net.tsa.metadata />
+    <param.net.tsa.metadata.assembly>C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo</param.net.tsa.metadata.assembly>
+    <param.net.saved.interface />
+    <param.cpp.api>option.cpp.all</param.cpp.api>
+    <unset>
+      <param.icon />
+      <param.icons />
+      <param.version />
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.summary />
+      <param.description />
+      <param.screenshot />
+      <param.guid />
+      <param.installpath.string />
+      <param.installpath.combo />
+      <param.logo />
+      <param.install.notes />
+      <param.target.install.notes />
+      <param.intermediate />
+      <param.files.only />
+      <param.output />
+      <param.logdir />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.namespace />
+      <param.classorg />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.web.mcr.name />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+      <param.user.only.registration />
+      <param.assembly.net.version />
+      <param.net.enable.remoting />
+      <param.assembly.type />
+      <param.encryption.key.file />
+      <param.net.tsa.enable />
+      <param.net.tsa.assembly />
+      <param.net.tsa.interface />
+      <param.net.tsa.namespace />
+      <param.net.tsa.superclass />
+      <param.net.tsa.metadata />
+      <param.net.tsa.metadata.assembly />
+      <param.net.saved.interface />
+      <param.cpp.api />
+    </unset>
+    <fileset.exports>
+      <file>${PROJECT_ROOT}\perception_wrapper.m</file>
+    </fileset.exports>
+    <fileset.classes>
+      <entity.package name="">
+        <entity.class name="Class1">
+          <file>${PROJECT_ROOT}\perception_wrapper.m</file>
+        </entity.class>
+      </entity.package>
+    </fileset.classes>
+    <fileset.resources>
+      <file>${PROJECT_ROOT}\calibration_images</file>
+      <file>${PROJECT_ROOT}\calibration_images\241106_KRC_cal.mat</file>
+      <file>${PROJECT_ROOT}\calibration_images\FLIR_parameters.mat</file>
+      <file>${PROJECT_ROOT}\calibration_images\FLIR_parameters_highRes.mat</file>
+      <file>${PROJECT_ROOT}\calibration_images\left_camera_parameters_MSU.mat</file>
+      <file>${PROJECT_ROOT}\calibration_images\lidarPOSEvbox.mat</file>
+      <file>${PROJECT_ROOT}\calibration_images\parameterEstimation.mlx</file>
+      <file>${PROJECT_ROOT}\MLmodels</file>
+    </fileset.resources>
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}\functions\BuildRosImageMsg.m</file>
+      <file>${PROJECT_ROOT}\functions\BuildRosOdometryMsg.m</file>
+      <file>${PROJECT_ROOT}\functions\BuildRosPointCloud2Msg.m</file>
+      <file>${PROJECT_ROOT}\functions\data_split.m</file>
+      <file>${PROJECT_ROOT}\functions\globalParams.m</file>
+      <file>${PROJECT_ROOT}\functions\GridBuilder.m</file>
+      <file>${PROJECT_ROOT}\functions\ParseRosOdometry.m</file>
+      <file>${PROJECT_ROOT}\functions\reservoir_update.m</file>
+      <file>${PROJECT_ROOT}\functions\reservoir_update_cesn.m</file>
+      <file>${PROJECT_ROOT}\functions\standalone_CESN_v2.m</file>
+      <file>${PROJECT_ROOT}\main.m</file>
+      <file>${PROJECT_ROOT}\percep2occ.m</file>
+      <file>${PROJECT_ROOT}\perception.m</file>
+    </fileset.depfun>
+    <fileset.package />
+    <fileset.examples />
+    <fileset.documentation />
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}\perception_wrapper\for_testing" name="perception_wrapper.dll" optional="false">C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo\perception_wrapper\for_testing\perception_wrapper.dll</file>
+      <file location="${PROJECT_ROOT}\perception_wrapper\for_testing" name="v2" optional="false">C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo\perception_wrapper\for_testing\v2</file>
+      <file location="${PROJECT_ROOT}\perception_wrapper\for_testing" name="perception_wrapper.lib" optional="false">C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo\perception_wrapper\for_testing\perception_wrapper.lib</file>
+      <file location="${PROJECT_ROOT}\perception_wrapper\for_testing" name="perception_wrapper.h" optional="false">C:\Users\Nic\Documents\git\PerceptionDemo\PerceptionDemo\perception_wrapper\for_testing\perception_wrapper.h</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2023a</root>
+      <toolboxes>
+        <toolbox name="matlabcoder" />
+        <toolbox name="embeddedcoder" />
+        <toolbox name="neuralnetwork" />
+      </toolboxes>
+      <toolbox>
+        <matlabcoder>
+          <enabled>true</enabled>
+        </matlabcoder>
+      </toolbox>
+      <toolbox>
+        <embeddedcoder>
+          <enabled>true</enabled>
+        </embeddedcoder>
+      </toolbox>
+      <toolbox>
+        <neuralnetwork>
+          <enabled>true</enabled>
+        </neuralnetwork>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>10.0</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
