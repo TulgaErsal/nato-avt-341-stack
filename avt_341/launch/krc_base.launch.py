@@ -586,6 +586,7 @@ def launch_setup(context, *args, **kwargs):
                     'ros2','run','avt_341','vehicle_logging.py',
                     f"{get_package_share_directory('avt_341')}/parameters/config_mrzr/vehicle_logging.yaml",
                     logging_path.perform(context),
+                    '--bag_format', 'mcap'
                 ],
                 output='screen'
             )
