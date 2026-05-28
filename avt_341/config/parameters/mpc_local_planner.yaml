@@ -56,7 +56,7 @@ sr_min: -0.523        # Minimum steering rate constraint for MPC planner
 sr_max: 0.523         # Maximum steering rate constraint for MPC planner
 ax_max: 10.0          # Maximum longitudinal acceleration constraint [m/s^2]; also used by goal_point_processor for kinematic lookahead
 
-use_corridor_culling: True  # Filter obstacles to those within corridor_half_width of the previous MPC trajectory
+use_corridor_culling: False  # Filter obstacles to those within corridor_half_width of the previous MPC trajectory
 corridor_half_width: 20.0   # Half-width of the trajectory corridor [m]; obstacles outside are dropped before the NLP
 visualize_culled_obstacles: False  # Publish culled obstacle clusters as red MarkerArray on avt_341/culled_obstacle_markers
 
