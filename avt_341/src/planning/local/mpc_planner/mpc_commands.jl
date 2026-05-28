@@ -15,6 +15,12 @@ global yawrate = 0.0
 global longacc = 0.0
 global cmdLeaderSpeed = 0.0
 global follower_status = false
+global leaderX = 0.0
+global leaderY = 0.0
+global leaderYaw = 0.0
+global leaderYawRate = 0.0
+global formationXOffset = 0.0
+global formationYOffset = 0.0
 global numobs = 0
 global obstacle_size_meters = 0.0
 global obs_radius = 0.0
@@ -303,6 +309,18 @@ function SetLeaderSpeed(speed::Float64)
     global cmdLeaderSpeed = speed
 end
 
+function SetLeaderPose(x::Float64, y::Float64, yaw::Float64, yaw_rate::Float64)
+    global leaderX = x
+    global leaderY = y
+    global leaderYaw = yaw
+    global leaderYawRate = yaw_rate
+end
+
+function SetFormationOffset(xo::Float64, yo::Float64)
+    global formationXOffset = xo
+    global formationYOffset = yo
+end
+
 function SetFollowerStatus(status::Bool)
     global follower_status = status
 end
@@ -542,6 +560,8 @@ function Plan()
 	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint, slopeLimited
 	global follower_status
 	global cmdLeaderSpeed
+	global leaderX, leaderY, leaderYaw, leaderYawRate
+	global formationXOffset, formationYOffset
 	global distanceToGoal
 	global distanceToObstacles
 	global deviationInYaw
@@ -577,15 +597,12 @@ function Plan()
 			####### END -- Change Sinkage Exponent ###########
 		end
 
-		JuMP.setValue(g1, goal[1])
-		JuMP.setValue(g2, goal[2])
-		JuMP.setValue(desiredYaw, desiredHeading)
 		push!(n.r.ip.X0p,X0)
 		n.ocp.X0 = X0
 		push!(n.r.ocp.X0, n.ocp.X0)
 		# setvalue(n.ocp.t0, copy(t0))
 
-		# modify speed setpoint if there is significant slope or rms
+		# Terrain slope/rms speed cap (common to both modes)
 		if terrainSlope > slopeThreshold || terrainRMS > rmsThreshold
 			speedSetpoint = speedAroundLargeSlopesAndRMS
 			slopeLimited = true
@@ -596,57 +613,80 @@ function Plan()
 			slopeLimited = false	# For when the limit is the same as commanded
 		end
 
-		# check if heading error is large (i.e., close to 180 degrees), and reduce speed further if so
-        dx_goal = goal[1] - x_veh
-        dy_goal = goal[2] - y_veh
-        dir_to_goal = atan(dy_goal, dx_goal)
-        heading_error = abs(atan(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
-        if abs(heading_error - π) <= angleThreshold
-            speedSetpoint = speedForTurningBack
-            n.ocp.XL[7] = speedForTurningBack # set a minimum speed for sharp turns
-            # Also update lower bounds of all trajectory points for longitudinal speed
-            for i in 1:n.ocp.state.pts
-                setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
-            end
-        else
-            # restore lower bound to the regular minimum
-            n.ocp.XL[7] = minSpeed
-            for i in 1:n.ocp.state.pts
-                setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
-            end
-        end
-
-		#set the new speed limit
-		n.ocp.XU[7]=speedSetpoint
-		for i=1:n.ocp.state.pts
-			setupperbound(n.r.ocp.xUnscaled[i,7],n.ocp.XU[7])
-		end
-		
-		# Update objective function based on follower status and goal proximity
-		# Check if goal is within prediction horizon
-		goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
-		horizon_dist = speedSetpoint * predictionTimeHorizon
-
-		# Activate terminal heading cost when the goal is the end of the global path
-		# and the vehicle is close enough that the prediction horizon reaches it.
-		# When terminal heading cost is active, disable the initial-heading cost so
-		# the two costs do not fight each other.
-		JuMP.setValue(final_heading_param, finalHeading)
-		terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
-		if terminal_heading_active
-			JuMP.setValue(final_heading_w_param, w_finalHeading)
-			JuMP.setValue(deviation_in_yaw_w_param, 0.0)
-		else
+		if follower_status
+			# Follower mode: all formulation parameters set here; none leak out.
+			# Predict formation target at t+T using a constant yaw-rate arc.
+			T = predictionTimeHorizon
+			if abs(leaderYawRate) > 0.001
+				pred_yaw = leaderYaw + leaderYawRate * T
+				R = cmdLeaderSpeed / leaderYawRate
+				pred_lx = leaderX + R * (sin(pred_yaw) - sin(leaderYaw))
+				pred_ly = leaderY - R * (cos(pred_yaw) - cos(leaderYaw))
+			else
+				pred_yaw = leaderYaw
+				pred_lx = leaderX + cmdLeaderSpeed * T * cos(leaderYaw)
+				pred_ly = leaderY + cmdLeaderSpeed * T * sin(leaderYaw)
+			end
+			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset + sin(pred_yaw) * formationYOffset
+			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset - cos(pred_yaw) * formationYOffset
+			JuMP.setValue(g1, pred_target_x)
+			JuMP.setValue(g2, pred_target_y)
+			JuMP.setValue(desiredYaw, leaderYaw)
+			JuMP.setValue(final_heading_param, leaderYaw)
 			JuMP.setValue(final_heading_w_param, 0.0)
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
-		end
-
-		# If user marked the goal point as the end of a global path, enable follower objective
-		if follower_status && goalPointIsEndOfGlobalPath
-			JuMP.setValue(leader_speed, cmdLeaderSpeed)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed + final_heading_w_param*finalHeadingCost)
+			# Speed cap: drive formation error to zero over the prediction horizon
+			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset + sin(leaderYaw) * formationYOffset
+			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset - cos(leaderYaw) * formationYOffset
+			err_x = curr_target_x - x_veh
+			err_y = curr_target_y - y_veh
+			formation_error = err_x * cos(leaderYaw) + err_y * sin(leaderYaw)
+			v_desired = clamp(cmdLeaderSpeed + formation_error / T, minSpeed, speedSetpoint)
+			n.ocp.XU[7] = v_desired
+			n.ocp.XL[7] = minSpeed
+			for i=1:n.ocp.state.pts
+				setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
+			end
 		else
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+			# Solo mode: all formulation parameters set here; explicit reversion of
+			# any follower-mode overrides is guaranteed by this branch executing.
+			JuMP.setValue(g1, goal[1])
+			JuMP.setValue(g2, goal[2])
+			JuMP.setValue(desiredYaw, desiredHeading)
+			JuMP.setValue(final_heading_param, finalHeading)
+			# Reduce speed for near-180-degree turns toward the goal
+			dx_goal = goal[1] - x_veh
+			dy_goal = goal[2] - y_veh
+			dir_to_goal = atan(dy_goal, dx_goal)
+			heading_error = abs(atan(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
+			if abs(heading_error - pi) <= angleThreshold
+				speedSetpoint = speedForTurningBack
+				n.ocp.XL[7] = speedForTurningBack
+				for i in 1:n.ocp.state.pts
+					setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				end
+			else
+				n.ocp.XL[7] = minSpeed
+				for i in 1:n.ocp.state.pts
+					setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				end
+			end
+			n.ocp.XU[7] = speedSetpoint
+			for i=1:n.ocp.state.pts
+				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
+			end
+			# Terminal heading: activate when goal is at path end and within horizon
+			goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
+			horizon_dist = speedSetpoint * predictionTimeHorizon
+			terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
+			if terminal_heading_active
+				JuMP.setValue(final_heading_w_param, w_finalHeading)
+				JuMP.setValue(deviation_in_yaw_w_param, 0.0)
+			else
+				JuMP.setValue(final_heading_w_param, 0.0)
+				JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			end
 		end
 
 		if n.s.mpc.shiftX0

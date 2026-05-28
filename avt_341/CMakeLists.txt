@@ -179,6 +179,8 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
   install(
     PROGRAMS "launch/vehicle_logging.py" "test/global_path_test_driver.py"
               "test/mpc_terminal_heading_test_driver.py"
+              "test/formation_distance_test_driver.py"
+              "test/formation_distance_two_follower_test_driver.py"
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
