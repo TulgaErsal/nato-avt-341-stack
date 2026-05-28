@@ -380,6 +380,7 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
                 ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+                ('avt_341/occupancy_grid_updates', 'avt_341/occupancy_grid_low_res_updates'),
             ]
         ),
         Node(
@@ -390,6 +391,7 @@ def launch_setup(context, *args, **kwargs):
             parameters=[{k: LaunchConfiguration(f'perception_rms_{k}') for k in params['perception_rms'].keys()}],
             remappings=[
                 ('avt_341/occupancy_grid', 'avt_341/rms_perception/occupancy_grid'),
+                ('avt_341/occupancy_grid_updates', 'avt_341/rms_perception/occupancy_grid_updates'),
                 ('avt_341/segmentation_grid', 'avt_341/rms_perception/segmentation_grid'),
             ]
         ),
