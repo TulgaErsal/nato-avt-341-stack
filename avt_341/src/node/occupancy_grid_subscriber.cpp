@@ -59,15 +59,29 @@ void OccupancyGridSubscriber::OccupancyGridUpdateCallback(msg::OccupancyGridUpda
         return;
     }
 
-    unsigned int nx = grid_msg_->info.width;
+    const int nx = static_cast<int>(grid_msg_->info.width);
+    const int ny = static_cast<int>(grid_msg_->info.height);
+    const std::size_t grid_size = grid_msg_->data.size();
     unsigned int di = 0;
 
-    for (unsigned int y = 0; y < update->height ; y++)
+    for (unsigned int y = 0; y < update->height; y++)
     {
-        unsigned int y_i = (update->y + y) * nx;
-        for (unsigned int x = 0; x < update->width ; x++)
+        const int grid_y = update->y + static_cast<int>(y);
+        if (grid_y < 0 || grid_y >= ny) {
+            di += update->width;
+            continue;
+        }
+        const std::size_t y_i = static_cast<std::size_t>(grid_y) * static_cast<std::size_t>(nx);
+        for (unsigned int x = 0; x < update->width; x++)
         {
-            grid_msg_->data[y_i + x + update->x] = update->data[di++];
+            const int grid_x = update->x + static_cast<int>(x);
+            if (grid_x >= 0 && grid_x < nx) {
+                const std::size_t idx = y_i + static_cast<std::size_t>(grid_x);
+                if (idx < grid_size) {
+                    grid_msg_->data[idx] = update->data[di];
+                }
+            }
+            di++;
         }
     }
 
