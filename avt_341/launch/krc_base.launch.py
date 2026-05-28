@@ -376,6 +376,7 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
                 ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+                ('avt_341/occupancy_grid_updates', 'avt_341/occupancy_grid_low_res_updates'),
             ]
         ),
         Node(
