@@ -1,6 +1,7 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
+#include <atomic>
 #include <vector>
 #include <avt_341/visualization/base_visualizer.h>
 #include "avt_341/node/ros_types.h"
@@ -208,9 +209,12 @@ public:
 
   /**
    * Set the factor by which to dilate the map
-   * \param dfac The dilation factor 
+   * \param dfac The dilation factor
    */
   void SetDilationFactor(int dfac) { dfac_ = dfac; }
+
+  void RequestCancel() { cancel_.store(true, std::memory_order_relaxed); }
+  void ClearCancel() { cancel_.store(false, std::memory_order_relaxed); }
 
 protected:
   static constexpr float INF = std::numeric_limits<float>::infinity();
@@ -256,6 +260,8 @@ protected:
   virtual bool ExtractPath();
   void PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>& out_path);
   virtual bool LineOfSight(const Index& i0, const Index& i1);
+
+  std::atomic<bool> cancel_{false};
 
   float llx_, lly_;
   float map_res_;
