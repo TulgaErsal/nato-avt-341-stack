@@ -161,6 +161,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
         }
     }
 
+    int pathStartIndex = 0;
     if (follower_status_input.use_leader) { //asked to follow a leader
 		if (!priorUseLeader){
             priorUseLeader = true;
@@ -206,17 +207,29 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			priorIndex = 0;
 			priorPathLength = 0;
         }
+        // Find nearest index on global path to vehicle position
+        float distanceToGlobalPoint = -1;
+        int closestIndex = 0;
+        for (int gp = 0; gp < (int)global_path.poses.size(); gp++) {
+            globalPoint.x = global_path.poses[gp].pose.position.x;
+            globalPoint.y = global_path.poses[gp].pose.position.y;
+            float currentDistance = (globalPoint - vehiclePosition).mag();
+            if (distanceToGlobalPoint < 0 || currentDistance < distanceToGlobalPoint) {
+                distanceToGlobalPoint = currentDistance;
+                closestIndex = gp;
+            }
+        }
+        pathStartIndex = closestIndex;
 		float pathLength = 0.0f;
-		int lastIndexConsidered = 0;
-		for (int gp=0;gp<global_path.poses.size();gp++) {
+		int lastIndexConsidered = closestIndex;
+		for (int gp = closestIndex; gp < (int)global_path.poses.size(); gp++) {
 			globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
-			if (gp > 0) {
+			if (gp > closestIndex) {
                 avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
 			lastIndexConsidered = gp;
-			// Check prediction horizon
 			if (pathLength > lookahead_dist){
 				break;
             }
@@ -260,9 +273,9 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
 	goal = globalPoint;
     avt_341::utils::vec2 heading;
-	if (global_path.poses.size() > 1 && !priorUseLeader) {
-		heading.x = global_path.poses[1].pose.position.x-global_path.poses[0].pose.position.x;
-        heading.y = global_path.poses[1].pose.position.y-global_path.poses[0].pose.position.y;
+	if (global_path.poses.size() > 1 && !priorUseLeader && pathStartIndex + 1 < (int)global_path.poses.size()) {
+		heading.x = global_path.poses[pathStartIndex+1].pose.position.x - global_path.poses[pathStartIndex].pose.position.x;
+        heading.y = global_path.poses[pathStartIndex+1].pose.position.y - global_path.poses[pathStartIndex].pose.position.y;
     }
     else {
 		heading = goal - vehiclePosition;
