@@ -36,7 +36,8 @@ MissionManager::MissionManager(
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
     follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
     leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
-    task_status_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/mission_task_state");
+    task_status_pub = node_proxy_->create_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_status", 10);
+    task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_change");
 }
 
 MissionManager::~MissionManager() {
@@ -264,21 +265,29 @@ void MissionManager::publishLeaderStatus(){
   leader_status_pub->publish(status_msg);
 }
 
-void MissionManager::publishCurrentTaskInfo() {
-    publishTaskInfo(currentTask());
-}
-
-void MissionManager::publishTaskInfo(const Task* task){
-
-    if(task == nullptr) {
+void MissionManager::publishTaskStatus() {
+    const auto task = currentTask();
+    if (task == nullptr) {
         return;
     }
+    const msg::MissionTaskStatus task_status = createTaskStatusMsg(task);
+    task_status_pub->publish(task_status);
+}
 
+msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const Task* task) const
+{
     msg::MissionTaskStatus status_msg;
     status_msg.header.stamp = node_proxy_->get_stamp();
     status_msg.header.frame_id = "map";
+
+    if(task == nullptr) {
+        status_msg.task_id = -1;
+        return status_msg;
+    }
+
     status_msg.task_id = task->msg_id;
     status_msg.task_description = task->description();
+    status_msg.target_pose = task->terminalPose().pose;
 
     if (const FormationDefinition * formation_def =  task->getFormationDef()) {
         status_msg.formation_type = formation_def->getFormationType();
@@ -289,7 +298,7 @@ void MissionManager::publishTaskInfo(const Task* task){
             [](unsigned char c){ return std::tolower(c); });
     }
 
-    task_status_pub->publish(status_msg);
+    return status_msg;
 }
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
@@ -305,7 +314,7 @@ void MissionManager::updateTasks() {
           active_task->init();
           goal_filter_->Reset();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
-          publishTaskInfo(active_task);
+          task_change_pub->publish(createTaskStatusMsg(active_task));
         }
 
         active_task->run();

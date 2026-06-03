@@ -331,7 +331,7 @@ def generate_launch_description():
                             ('image','front_camera/image'),
                             ('detection_2d', 'front_camera/detection_2d'),
                             ('points/input','avt_341/points'),
-                            ('task','avt_341/mission_task_state')
+                            ('task','avt_341/task_change')
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),
