@@ -539,21 +539,6 @@ def launch_setup(context, *args, **kwargs):
             output='screen'
         ),
 
-        # FEDA Detection
-        Node(
-            package='avt_341',
-            executable='avt_341_object_detector_node',
-            name='feda_detector_node',
-            namespace='feda_detector',
-            parameters=[
-                {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
-            ],
-            remappings=[
-                ('image','/flir_camera/image_raw'),
-            ],
-            output='screen'
-        ),
-
         # Object Tracking
         Node(
             package='avt_341',
@@ -576,6 +561,47 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/reset_ack','/mrzr/avt_341/reset_ack'),
             ],
             output='screen'
+        ),
+
+        GroupAction(
+            actions=[
+                PushRosNamespace('feda_tracker'),
+                # FEDA Detection
+                Node(
+                    package='avt_341',
+                    executable='avt_341_object_detector_node',
+                    name='feda_detector_node',
+                    parameters=[
+                        {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
+                    ],
+                    remappings=[
+                        ('image','/flir_camera/image_raw'),
+                    ],
+                    output='screen'
+                ),
+                # Object Tracking
+                Node(
+                    package='avt_341',
+                    executable='avt_341_object_tracking_node',
+                    name='feda_tracking_node',
+                    parameters=[
+                        {k: LaunchConfiguration(f'feda_tracking_{k}') for k in params['feda_tracking'].keys()}
+                    ],
+                    remappings=[
+                        # Subscribers
+                        ('camera_info','/flir_camera/camera_info'),
+                        ('image','/flir_camera/image_raw'),
+                        ('points/input','/ouster/points'),
+                        ('detection_2d', 'detections/vision'),
+                        ('avt_341/reset', '/mrzr/avt_341/reset'),
+                        ('task','/mrzr/avt_341/mission_task_state'),
+                        # Publishers
+                        ('avt_341/odometry/estimated/feda','/mrzr/avt_341/odometry/estimated/feda'),
+                        ('avt_341/reset_ack','/mrzr/avt_341/reset_ack'),
+                    ],
+                    output='screen'
+                )
+            ]
         ),
 
         # Vehicle Logging

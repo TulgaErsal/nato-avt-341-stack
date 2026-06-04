@@ -17,7 +17,7 @@ tracker_timeout: 5.0
 
 # Obstacle detector integration (embedded in tracking node)
 # ======================================================================================================================
-od_robot_base_link: 'base_link'                         # base link of the ego vehicle (used for TF and body exclusion box)
+od_robot_base_link: 'mrzr/base_link'                           # base link of the ego vehicle (used for TF and body exclusion box)
 od_use_pca_box: true                                           # use PCA bounding box to align clusters
 od_use_tracking: true                                          # use tracking to assign bbox IDs
 od_voxel_grid_size: 0.2                                        # voxel grid leaf size [m]
