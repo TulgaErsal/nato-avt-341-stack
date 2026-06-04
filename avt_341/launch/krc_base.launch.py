@@ -529,6 +529,7 @@ def launch_setup(context, *args, **kwargs):
             package='avt_341',
             executable='avt_341_object_detector_node',
             name='object_detector_node',
+            namespace='toi',
             parameters=[
                 {k: LaunchConfiguration(f'object_detector_{k}') for k in params['object_detector'].keys()}
             ],
@@ -558,16 +559,21 @@ def launch_setup(context, *args, **kwargs):
             package='avt_341',
             executable='avt_341_object_tracking_node',
             name='object_tracking_node',
+            namespace='toi',
             parameters=[
                 {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
             ],
             remappings=[
+                # Subscribers
                 ('camera_info','/flir_camera/camera_info'),
                 ('image','/flir_camera/image_raw'),
-                ('detection_2d', '/mrzr/feda_detector/detections/vision'),
-                ('input','/ouster/points'),
-                ('pose','/feda/pose'),
-                ('odometry','/feda/avt_341/odometry')
+                ('points/input','/ouster/points'),
+                ('detection_2d', 'detections/vision'),
+                ('avt_341/reset', '/mrzr/avt_341/reset'),
+                ('task','/mrzr/avt_341/mission_task_state'),
+                # Publishers
+                ('avt_341/odometry/estimated/odom','odometry/estimated'),
+                ('avt_341/reset_ack','/mrzr/avt_341/reset_ack'),
             ],
             output='screen'
         ),

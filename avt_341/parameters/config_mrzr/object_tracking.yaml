@@ -1,4 +1,4 @@
-camera_frame: "front_camera"
+camera_frame: "flir_optical"
 frame_prefix: ""
 world_frame: "map"
 odometry_child_frame: "odom"
@@ -12,7 +12,7 @@ filters_use_manual_roi: true
 filters_manual_roi_size: [5.0, 5.0, 5.0]
 tracker_autostart: true
 tracker_use_mission_manager: true
-tracker_target_class: mrzr4
+tracker_target_class: car
 tracker_timeout: 5.0
 
 # Obstacle detector integration (embedded in tracking node)
