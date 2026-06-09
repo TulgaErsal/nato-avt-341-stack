@@ -49,6 +49,8 @@
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
 #include <avt_341/node/node_proxy.h>
 
+#include <algorithm>
+
 namespace avt_341 {
 namespace perception {
 
@@ -128,6 +130,9 @@ void ObjectTrackingNode::GetParameters() {
     autostart_target_class_ = get_parameter("tracker_target_class").as_string();
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
+
+    declare_parameter("formation_vehicle_ids", std::vector<std::string>{});
+    formation_vehicle_ids_ = get_parameter("formation_vehicle_ids").as_string_array();
 
     declare_parameter("sync_enable", true);
     sync_messages_ = get_parameter("sync_enable").as_bool();
@@ -847,6 +852,13 @@ void ObjectTrackingNode::MaybePublishContactUpdate() {
          state_ == TrackerState::CAMERA_ONLY_TRACKING);
 
     if (!is_actively_tracking) return;
+
+    // Skip publishing contacts for known vehicles in our formation
+    if (std::find(formation_vehicle_ids_.begin(),
+                  formation_vehicle_ids_.end(),
+                  target_class_) != formation_vehicle_ids_.end()) {
+        return;
+    }
 
     if (!encircle_triggered_) {
         PublishTargetContact();

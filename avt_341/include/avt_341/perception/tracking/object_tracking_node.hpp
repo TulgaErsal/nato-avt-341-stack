@@ -525,6 +525,9 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     std::string autostart_target_class_;
 
+    /** @brief List of vehicle IDs in our formation. Contact updates are suppressed for these. */
+    std::vector<std::string> formation_vehicle_ids_;
+
     /** @brief Whether or not a target to be tracked has been selected. */
     bool has_target_selection_;
 

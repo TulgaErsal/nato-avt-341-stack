@@ -566,7 +566,8 @@ def launch_setup(context, *args, **kwargs):
             executable='avt_341_object_tracking_node',
             name='object_tracking_node',
             parameters=[
-                {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+                {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
+                {'formation_vehicle_ids': vehicle_namespaces}
             ],
             remappings=[
                 ('camera_info','/flir_camera/camera_info'),
