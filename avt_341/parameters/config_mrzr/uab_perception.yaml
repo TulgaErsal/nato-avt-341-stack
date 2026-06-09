@@ -4,5 +4,5 @@ grid_res: 0.5
 publish_uab_occupancy_grid: True
 invert_lidar_z_rot: False
 lidar_frame_id: "os_sensor"
-odom_frame_id: "vbox_link"
+odom_frame_id: "odom"
 camera_frame_id: "flir_optical"

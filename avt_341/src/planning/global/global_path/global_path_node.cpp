@@ -13,6 +13,7 @@
 // ros includes
 #include "avt_341/node/node_proxy.h"
 #include <avt_341/node/occupancy_grid_subscriber.h>
+#include <future>
 // local includes
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/global/astar.h"
@@ -55,6 +56,12 @@ double goal_start_time = 0.0;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavState>> state_pub = nullptr;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavState>> goal_reached_pub = nullptr;
 std::shared_ptr<avt_341::planning::Astar> path_planner = nullptr;
+
+// Async planning state
+std::future<std::vector<avt_341::planning::Point>> planning_future;
+avt_341::msg::Path last_valid_ros_path;
+std::chrono::steady_clock::time_point plan_start;
+bool timeout_logged = false;
 
 void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
 {
@@ -246,6 +253,12 @@ void ComputeGlobalPathServiceCallback(
   full_path.header.stamp = n->get_stamp();
   full_path.header.frame_id = "map";
 
+  if (planning_future.valid()) {
+    n->log_warning("ComputeGlobalPath: background planning in progress -- request ignored");
+    response->path = full_path;
+    return;
+  }
+
   if (request->goals.goals.empty()) {
     n->log_warning("ComputeGlobalPath: empty goal sequence received");
     response->path = full_path;
@@ -346,6 +359,8 @@ int main(int argc, char* argv[])
   n->get_parameter("~gradient_descent_max_steps", gradient_descent_max_steps, 2000);
   n->get_parameter("~gradient_descent_steps_per_point", gradient_descent_steps_per_point, 10);
   n->get_parameter("~clipping_distance", clipping_distance, 0.0f);
+  int planning_timeout_ms;
+  n->get_parameter("~planning_timeout_ms", planning_timeout_ms, 1000);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
@@ -470,6 +485,12 @@ int main(int argc, char* argv[])
   while (avt_341::node::ok()) {
 
     if (reset_called) {
+      if (planning_future.valid()) {
+        path_planner->RequestCancel();
+        planning_future.get();
+        path_planner->ClearCancel();
+      }
+      last_valid_ros_path = avt_341::msg::Path{};
       Reset();
 
       avt_341::msg::Path ros_path;
@@ -517,6 +538,9 @@ int main(int argc, char* argv[])
         if (auto_active_on_new_waypoint) {
           SetRunState(NavStackState::Active);
         }
+        if (planning_future.valid()) {
+          path_planner->RequestCancel();
+        }
       }
 
       if (odom_rcvd && state.run_state != NavStackState::NotInit
@@ -525,88 +549,107 @@ int main(int argc, char* argv[])
         // data received and not in startup mode
         Point position{static_cast<float>(odom.pose.pose.position.x), static_cast<float>(odom.pose.pose.position.y)};
 
-        // check the progression along the path
         auto goal = GetCurrentGoal();
         UpdateGoalState(goal);
 
-        std::vector<Point> path = path_planner->PlanPath(&current_grid, &segmentation_grid, ToVec2(goal.pose.position), position);
-        if (planning_method == "fast_marching" && !path.empty()) {
-          avt_341::msg::OccupancyGrid fast_marching_grid;
-          fast_marching_grid.header = current_grid.header;
-          fast_marching_grid.info = current_grid.info;
-          int height = path_planner->GetGridHeight();
-          int width = path_planner->GetGridWidth();
-          fast_marching_grid.data.resize(height*width);
+        if (planning_future.valid()) {
+          if (planning_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            auto new_path = planning_future.get();
+            timeout_logged = false;
 
-          float* fm_data = path_planner->ExtractCosts();
-          if (fm_data) {
-            for (int i = 0; i < width*height; i++) {
-              float value = fm_data[i];
-              if (value < 0.0f) {
-                fast_marching_grid.data[i] = -1; // Unknown
-              } else if (!isfinite(value)) {
-                fast_marching_grid.data[i] = -1;
-              } else {
-                fast_marching_grid.data[i] = static_cast<int>(std::round(value));
+            if (!new_path.empty()) {
+              if (planning_method == "fast_marching") {
+                avt_341::msg::OccupancyGrid fast_marching_grid;
+                fast_marching_grid.header = current_grid.header;
+                fast_marching_grid.info = current_grid.info;
+                int height = path_planner->GetGridHeight();
+                int width = path_planner->GetGridWidth();
+                fast_marching_grid.data.resize(height * width);
+                float* fm_data = path_planner->ExtractCosts();
+                if (fm_data) {
+                  for (int i = 0; i < width * height; i++) {
+                    float value = fm_data[i];
+                    if (value < 0.0f || !isfinite(value)) {
+                      fast_marching_grid.data[i] = -1;
+                    } else {
+                      fast_marching_grid.data[i] = static_cast<int>(std::round(value));
+                    }
+                  }
+                }
+                fastmatching_costs_pub->publish(fast_marching_grid);
               }
+
+              if (debug_visualize) {
+                auto path_pre_smoothing = path_planner->GetPathWorldPreSmoothing();
+                auto ros_path_pre_smoothing = ToPath(path_pre_smoothing);
+                ros_path_pre_smoothing.header.stamp = n->get_stamp();
+                global_path_pre_smooth_pub->publish(ros_path_pre_smoothing);
+
+                auto path_pre_fill = path_planner->GetPathWorldPreFill();
+                auto ros_path_pre_fill = ToPath(*path_pre_fill);
+                ros_path_pre_fill.header.stamp = n->get_stamp();
+                global_path_pre_fill_pub->publish(ros_path_pre_fill);
+              }
+
+              avt_341::msg::Path ros_path = ToPath(new_path);
+              if (IsGoalReached(state, goal) || ros_path.poses.size() > 1) {
+                int cp = current_waypoint;
+                while (cp < static_cast<int>(nav_goals.goals.size()) - 1) {
+                  avt_341::utils::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
+                                           static_cast<float>(nav_goals.goals[cp].pose.position.y));
+                  avt_341::utils::vec2 wp2(static_cast<float>(nav_goals.goals[cp + 1].pose.position.x),
+                                           static_cast<float>(nav_goals.goals[cp + 1].pose.position.y));
+                  avt_341::utils::vec2 wp_diff = wp2 - wp1;
+                  avt_341::utils::vec2 wp_diff_norm = wp_diff;
+                  wp_diff_norm.normalize();
+                  if (wp_diff.mag() > max_separation) {
+                    for (int step = max_separation; step < wp_diff.mag(); step += max_separation) {
+                      float px = wp1.x + step * wp_diff_norm.x;
+                      float py = wp1.y + step * wp_diff_norm.y;
+                      ros_path.poses.push_back(ToPoseStamped(ros_path.header.frame_id, px, py));
+                    }
+                  }
+                  ros_path.poses.push_back(ToPoseStamped(ros_path.header.frame_id, wp2.x, wp2.y));
+                  cp++;
+                }
+              }
+              last_valid_ros_path = ros_path;
+            }
+          } else {
+            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - plan_start).count();
+            if (elapsed_ms > planning_timeout_ms && !timeout_logged) {
+              path_planner->RequestCancel();
+              n->log_warning("Planning timeout (%ldms) -- cancelling and re-publishing previous path",
+                             static_cast<long>(elapsed_ms));
+              timeout_logged = true;
             }
           }
-          fastmatching_costs_pub->publish(fast_marching_grid);
-        }
-        //        n->log_info("Planned path of size %d", path.size());
-
-        avt_341::msg::Path ros_path = ToPath(path);
-        // ctg 8/19/21
-        // if not on the last waypoint, add a straight path to the next waypoint to the global path
-        // this helps the local planner make smooth transitions between waypoints
-        if (IsGoalReached(state, goal) || ros_path.poses.size() > 1) {
-          int cp = current_waypoint;
-          while (cp < nav_goals.goals.size() - 1) {
-            avt_341::utils::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
-                                     static_cast<float>(nav_goals.goals[cp].pose.position.y));
-            avt_341::utils::vec2 wp2(static_cast<float>(nav_goals.goals[cp + 1].pose.position.x),
-                                     static_cast<float>(nav_goals.goals[cp + 1].pose.position.y));
-            avt_341::utils::vec2 wp_diff = wp2 - wp1;
-            avt_341::utils::vec2 wp_diff_norm = wp_diff;
-            wp_diff_norm.normalize();
-            if (wp_diff.mag() > max_separation) {
-              // Add intermediate waypoints
-              for (int step = max_separation; step < wp_diff.mag(); step += max_separation) {
-                float px = wp1.x + step * wp_diff_norm.x;
-                float py = wp1.y + step * wp_diff_norm.y;
-                ros_path.poses.push_back(ToPoseStamped(ros_path.header.frame_id, px, py));
-              }
-            }
-            ros_path.poses.push_back(ToPoseStamped(ros_path.header.frame_id, wp2.x, wp2.y));
-            cp++;
-          }
         }
 
-        ros_path.header.stamp = n->get_stamp();
-
-        for (int i = 0; i < ros_path.poses.size(); i++) {
-          ros_path.poses[i].header = ros_path.header;
+        if (!planning_future.valid()) {
+          path_planner->ClearCancel();
+          auto grid_snap = current_grid;
+          auto seg_snap = segmentation_grid;
+          auto goal_pt = ToVec2(goal.pose.position);
+          auto pos_snap = position;
+          plan_start = std::chrono::steady_clock::now();
+          planning_future = std::async(std::launch::async,
+              [grid_snap, seg_snap, goal_pt, pos_snap]() mutable -> std::vector<Point> {
+                return path_planner->PlanPath(&grid_snap, &seg_snap, goal_pt, pos_snap);
+              });
         }
 
+        last_valid_ros_path.header.stamp = n->get_stamp();
+        for (auto& pose : last_valid_ros_path.poses) {
+          pose.header.stamp = last_valid_ros_path.header.stamp;
+        }
         if (use_global_path) {
-          path_pub->publish(ros_path);
+          path_pub->publish(last_valid_ros_path);
         }
         waypoint_pub->publish(ToPath(nav_goals));
-        //        n->log_info("Published path with %d waypoints", ros_path.poses.size());
 
-        if (debug_visualize) {
-          auto path_pre_smoothing = path_planner->GetPathWorldPreSmoothing();
-          auto ros_path_pre_smoothing = ToPath(path_pre_smoothing);
-          ros_path_pre_smoothing.header.stamp = n->get_stamp();
-          global_path_pre_smooth_pub->publish(ros_path_pre_smoothing);
-
-          auto path_pre_fill = path_planner->GetPathWorldPreFill();
-          auto ros_path_pre_fill = ToPath(*path_pre_fill);
-          ros_path_pre_fill.header.stamp = n->get_stamp();
-          global_path_pre_fill_pub->publish(ros_path_pre_fill);
-        }
-
-        if (nl % 20 == 0 && verbose_gp_log) { //update every second
+        if (nl % 20 == 0 && verbose_gp_log) { // update every second
           auto t_now = std::chrono::system_clock::now();
           auto calc_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t1);
           n->log_info("Global Path [%d]: Pos (%.2f, %.2f) Distance to goal (%.2f, %.2f) for %d of %d = %.2f",
@@ -615,22 +658,19 @@ int main(int argc, char* argv[])
                       odom.pose.pose.position.y,
                       goal.pose.position.x,
                       goal.pose.position.y,
-                      current_waypoint+1,
+                      current_waypoint + 1,
                       nav_goals.goals.size(),
                       state.goal_distance);
           t1 = t_now;
         }
 
-        if (state.run_state == NavStackState::Active && IsGoalReached(state, goal))
-        {
-          // Goal reached
+        if (state.run_state == NavStackState::Active && IsGoalReached(state, goal)) {
           goal_reached_pub->publish(state);
 
-          const bool terminal_goal = current_waypoint == nav_goals.goals.size() - 1;
+          const bool terminal_goal = current_waypoint == static_cast<int>(nav_goals.goals.size()) - 1;
           current_waypoint += terminal_goal ? 0 : 1;
 
-          if (terminal_goal)
-          {
+          if (terminal_goal) {
             SetRunState(shutdown_behavior);
           }
         }
@@ -642,6 +682,11 @@ int main(int argc, char* argv[])
     n->spin_some();
     r.sleep();
     nl++;
+  }
+
+  if (planning_future.valid()) {
+    path_planner->RequestCancel();
+    planning_future.get();
   }
 
   return 0;

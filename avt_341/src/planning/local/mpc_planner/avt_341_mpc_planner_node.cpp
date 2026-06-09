@@ -264,6 +264,29 @@ void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
     jl_value_t *j_speed = jl_box_float64(speed);
     jl_call1(j_set_leader_speed, j_speed);
     CATCH_JULIA_EXCEPTION;
+
+    double lx = msg->pose.pose.position.x;
+    double ly = msg->pose.pose.position.y;
+    double qw = msg->pose.pose.orientation.w;
+    double qxi = msg->pose.pose.orientation.x;
+    double qyi = msg->pose.pose.orientation.y;
+    double qzi = msg->pose.pose.orientation.z;
+    double lyaw = std::atan2(2.0*(qw*qzi + qxi*qyi), 1.0 - 2.0*(qyi*qyi + qzi*qzi));
+    double lyaw_rate = msg->twist.twist.angular.z;
+    jl_value_t *pose_args[4] = {
+        jl_box_float64(lx), jl_box_float64(ly),
+        jl_box_float64(lyaw), jl_box_float64(lyaw_rate)
+    };
+    jl_call(j_set_leader_pose, pose_args, 4);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void FollowerStatusCallback(avt_341::msg::FollowerStatusPtr msg)
+{
+    jl_value_t *j_xo = jl_box_float64(msg->x_offset);
+    jl_value_t *j_yo = jl_box_float64(msg->y_offset);
+    jl_call2(j_set_formation_offset, j_xo, j_yo);
+    CATCH_JULIA_EXCEPTION;
 }
 
 void LeaderStatusCallback(avt_341::msg::BoolPtr msg)
@@ -578,6 +601,8 @@ void InitialiseJuliaAPI()
     j_set_final_heading = jl_get_function(mpc_module, "SetFinalHeading");
     j_set_w_final_heading = jl_get_function(mpc_module, "SetWFinalHeading");
     j_set_goal_point_is_end_of_global_path = jl_get_function(mpc_module, "SetGoalPointIsEndOfGlobalPath");
+    j_set_leader_pose = jl_get_function(mpc_module, "SetLeaderPose");
+    j_set_formation_offset = jl_get_function(mpc_module, "SetFormationOffset");
 
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
@@ -765,6 +790,7 @@ int main(int argc, char *argv[])
     auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
     auto leader_odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
     auto leader_status_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
+    auto follower_status_sub = node->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
 
     // Register publishers
     // -------------------.

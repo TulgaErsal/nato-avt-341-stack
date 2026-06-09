@@ -230,9 +230,6 @@ def evaluate_local_planner(params, context, *args, **kwargs):
                 executable='segmentation_grid_processor_node',
                 name='segmentation_grid_processor_node',
                 output='screen',
-                remappings=[
-                    ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
-                ],
                 parameters=[{k: LaunchConfiguration(f'mpc_local_planner_{k}') for k in params['mpc_local_planner'].keys()}],
             ),
             # Vehicle Converter
@@ -376,6 +373,7 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
                 ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
                 ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+                ('avt_341/occupancy_grid_updates', 'avt_341/occupancy_grid_low_res_updates'),
             ]
         ),
         Node(
@@ -395,13 +393,6 @@ def launch_setup(context, *args, **kwargs):
             name='lidar_normal_estimation_node',
             output='screen',
             parameters=[{k: LaunchConfiguration(f'normal_estimation_{k}') for k in params['normal_estimation'].keys()}]
-        ),
-        Node(
-            package='avt_341',
-            executable='avt_341_normal_segmentation_grid_node',
-            name='normal_segmentation_grid_node',
-            output='screen',
-            parameters=[{k: LaunchConfiguration(f'normal_segmentation_grid_{k}') for k in params['normal_segmentation_grid'].keys()}]
         ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(
@@ -524,7 +515,9 @@ def launch_setup(context, *args, **kwargs):
             ],
             remappings=[
                 ('avt_341/points','/ouster/points'),
-                ('camera/rgb/image_raw','/flir_camera/image_raw'),
+                ('avt_341/camera/image_raw','/flir_camera/image_raw'),
+                ('avt_341/camera/camera_info','/flir_camera/camera_info'),
+                ('avt_341/odom','avt_341/odometry'),
                 ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
                 ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
             ],
@@ -536,23 +529,9 @@ def launch_setup(context, *args, **kwargs):
             package='avt_341',
             executable='avt_341_object_detector_node',
             name='object_detector_node',
+            namespace='toi',
             parameters=[
                 {k: LaunchConfiguration(f'object_detector_{k}') for k in params['object_detector'].keys()}
-            ],
-            remappings=[
-                ('image','/flir_camera/image_raw'),
-            ],
-            output='screen'
-        ),
-
-        # FEDA Detection
-        Node(
-            package='avt_341',
-            executable='avt_341_object_detector_node',
-            name='feda_detector_node',
-            namespace='feda_detector',
-            parameters=[
-                {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
             ],
             remappings=[
                 ('image','/flir_camera/image_raw'),
@@ -565,19 +544,65 @@ def launch_setup(context, *args, **kwargs):
             package='avt_341',
             executable='avt_341_object_tracking_node',
             name='object_tracking_node',
+            namespace='toi',
             parameters=[
                 {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
                 {'formation_vehicle_ids': vehicle_namespaces}
             ],
             remappings=[
+                # Subscribers
                 ('camera_info','/flir_camera/camera_info'),
                 ('image','/flir_camera/image_raw'),
-                ('detection_2d', '/mrzr/feda_detector/detections/vision'),
-                ('input','/ouster/points'),
-                ('pose','/feda/pose'),
-                ('odometry','/feda/avt_341/odometry')
+                ('points/input','/ouster/points'),
+                ('detection_2d', 'detections/vision'),
+                ('avt_341/reset', '/mrzr/avt_341/reset'),
+                ('task','/mrzr/avt_341/mission_task_state'),
+                # Publishers
+                ('avt_341/odometry/estimated/odom','odometry/estimated'),
+                ('avt_341/reset_ack','/mrzr/avt_341/reset_ack'),
             ],
             output='screen'
+        ),
+
+        GroupAction(
+            actions=[
+                PushRosNamespace('feda_tracker'),
+                # FEDA Detection
+                Node(
+                    package='avt_341',
+                    executable='avt_341_object_detector_node',
+                    name='feda_detector_node',
+                    parameters=[
+                        {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
+                    ],
+                    remappings=[
+                        ('image','/flir_camera/image_raw'),
+                    ],
+                    output='screen'
+                ),
+                # Object Tracking
+                Node(
+                    package='avt_341',
+                    executable='avt_341_object_tracking_node',
+                    name='feda_tracking_node',
+                    parameters=[
+                        {k: LaunchConfiguration(f'feda_tracking_{k}') for k in params['feda_tracking'].keys()}
+                    ],
+                    remappings=[
+                        # Subscribers
+                        ('camera_info','/flir_camera/camera_info'),
+                        ('image','/flir_camera/image_raw'),
+                        ('points/input','/ouster/points'),
+                        ('detection_2d', 'detections/vision'),
+                        ('avt_341/reset', '/mrzr/avt_341/reset'),
+                        ('task','/mrzr/avt_341/mission_task_state'),
+                        # Publishers
+                        ('avt_341/odometry/estimated/feda','/mrzr/avt_341/odometry/estimated/feda'),
+                        ('avt_341/reset_ack','/mrzr/avt_341/reset_ack'),
+                    ],
+                    output='screen'
+                )
+            ]
         ),
 
         # Vehicle Logging
@@ -587,6 +612,7 @@ def launch_setup(context, *args, **kwargs):
                     'ros2','run','avt_341','vehicle_logging.py',
                     f"{get_package_share_directory('avt_341')}/parameters/config_mrzr/vehicle_logging.yaml",
                     logging_path.perform(context),
+                    '--bag_format', 'mcap'
                 ],
                 output='screen'
             )

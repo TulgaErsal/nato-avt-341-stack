@@ -217,6 +217,8 @@ jl_function_t* j_set_w_final_heading = NULL;
 jl_function_t* j_set_leader_speed = NULL;
 jl_function_t* j_set_follower_status = NULL;
 jl_function_t* j_set_goal_point_is_end_of_global_path = NULL;
+jl_function_t* j_set_leader_pose = NULL;
+jl_function_t* j_set_formation_offset = NULL;
 
 // ---------------
 
