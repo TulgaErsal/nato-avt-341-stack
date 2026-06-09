@@ -49,6 +49,8 @@
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
 #include <avt_341/node/node_proxy.h>
 
+#include <algorithm>
+
 namespace avt_341 {
 namespace perception {
 
@@ -128,6 +130,9 @@ void ObjectTrackingNode::GetParameters() {
     autostart_target_class_ = get_parameter("tracker_target_class").as_string();
     declare_parameter("tracker_timeout", 5.0);
     target_timeout_ = get_parameter("tracker_timeout").as_double();
+
+    declare_parameter("formation_vehicle_ids", std::vector<std::string>{});
+    formation_vehicle_ids_ = get_parameter("formation_vehicle_ids").as_string_array();
 
     declare_parameter("sync_enable", true);
     sync_messages_ = get_parameter("sync_enable").as_bool();
@@ -390,6 +395,9 @@ void ObjectTrackingNode::CreatePublishers() {
     reset_ack_publisher_ =
         create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
+    target_contacts_publisher_ =
+        create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
+
     // Integrated obstacle detector publishers.
     obstacle_bboxes_publisher_ =
         create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -416,6 +424,29 @@ void ObjectTrackingNode::TrackerInfoCallback() {
     info_publisher_->publish(info_message);
 }
 
+void ObjectTrackingNode::PublishTargetContact() {
+    geometry_msgs::msg::PoseStamped contact_pose;
+    contact_pose.header.stamp = get_clock()->now();
+    contact_pose.header.frame_id = target_class_;
+    contact_pose.pose.position.x = bounding_box_centroid_filtered_.x();
+    contact_pose.pose.position.y = bounding_box_centroid_filtered_.y();
+    contact_pose.pose.position.z = bounding_box_centroid_filtered_.z();
+    contact_pose.pose.orientation.w = 1.0;
+
+    nav_msgs::msg::Path contact_msg;
+    contact_msg.header.stamp = get_clock()->now();
+    contact_msg.header.frame_id = "map";
+    contact_msg.poses.push_back(contact_pose);
+
+    target_contacts_publisher_->publish(contact_msg);
+    RCLCPP_INFO(get_logger(),
+                "Published target contact \"%s\" at (%.2f, %.2f, %.2f).",
+                target_class_.c_str(),
+                bounding_box_centroid_filtered_.x(),
+                bounding_box_centroid_filtered_.y(),
+                bounding_box_centroid_filtered_.z());
+}
+
 void ObjectTrackingNode::TrackingTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Tracking timer callback triggered!");
 
@@ -435,6 +466,8 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         ack.data = avt_341::node::NodeType::Perception;
         reset_ack_publisher_->publish(ack);
         reset_called_ = false;
+        encircle_triggered_ = false;
+        contact_update_counter_ = 0;
         RCLCPP_INFO(get_logger(), "Reset complete.");
     }
 
@@ -661,6 +694,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
             CheckTargetTimeout();
+            MaybePublishContactUpdate();
             return;
         }
 
@@ -753,6 +787,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             has_tracked_target_ = true;
             last_valid_target_time_ = get_clock()->now();
             CheckTargetTimeout();
+            MaybePublishContactUpdate();
             return;
         }
 
@@ -806,6 +841,33 @@ void ObjectTrackingNode::TrackingTimerCallback() {
     // no valid measurement is obtained for longer than target_timeout_, the
     // tracker transitions to NO_DETECTION state.
     CheckTargetTimeout();
+
+    MaybePublishContactUpdate();
+}
+
+void ObjectTrackingNode::MaybePublishContactUpdate() {
+    const bool is_actively_tracking = filter_initialized_ &&
+        (state_ == TrackerState::FULL_TRACKING ||
+         state_ == TrackerState::LIDAR_ONLY_TRACKING ||
+         state_ == TrackerState::CAMERA_ONLY_TRACKING);
+
+    if (!is_actively_tracking) return;
+
+    // Skip publishing contacts for known vehicles in our formation
+    if (std::find(formation_vehicle_ids_.begin(),
+                  formation_vehicle_ids_.end(),
+                  target_class_) != formation_vehicle_ids_.end()) {
+        return;
+    }
+
+    if (!encircle_triggered_) {
+        PublishTargetContact();
+        encircle_triggered_ = true;
+        contact_update_counter_ = 0;
+    } else if (++contact_update_counter_ >= contact_update_interval_ticks_) {
+        PublishTargetContact();
+        contact_update_counter_ = 0;
+    }
 }
 
 void ObjectTrackingNode::CheckTargetTimeout() {
@@ -1613,6 +1675,8 @@ void ObjectTrackingNode::TaskStatusCallback(
     state_ = TrackerState::INACTIVE;
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
+    encircle_triggered_ = false;
+    contact_update_counter_ = 0;
 
     RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".", target_class_.c_str());
 }
@@ -1705,6 +1769,8 @@ void ObjectTrackingNode::SetTargetServiceCallback(
     state_ = TrackerState::INACTIVE;
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
+    encircle_triggered_ = false;
+    contact_update_counter_ = 0;
 
     std::string message("Target selection set to \"" + target_class_ + "\".");
     RCLCPP_INFO(get_logger(), message.c_str());

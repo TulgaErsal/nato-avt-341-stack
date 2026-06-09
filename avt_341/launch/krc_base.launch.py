@@ -546,7 +546,8 @@ def launch_setup(context, *args, **kwargs):
             name='object_tracking_node',
             namespace='toi',
             parameters=[
-                {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()}
+                {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
+                {'formation_vehicle_ids': vehicle_namespaces}
             ],
             remappings=[
                 # Subscribers

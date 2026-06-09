@@ -72,8 +72,9 @@ set(AVT341_SOURCE_FILES
     "planning/global/pf_global_path")
 
 if(NOT AVT341_DISABLE_UI)
-  message(STATUS "UI build disabled.")
   list(APPEND AVT341_SOURCE_FILES "ui/mission_command_panel")
+else()
+  message(STATUS "UI build disabled.")
 endif()
 
 # Append src/ subdirectory to the path of each target.
@@ -177,7 +178,8 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
     DESTINATION "lib/${PROJECT_NAME}")
   
   install(
-    PROGRAMS "launch/vehicle_logging.py" "test/global_path_test_driver.py"
+    PROGRAMS "launch/vehicle_logging.py" "launch/tf_to_odometry.py"
+              "test/global_path_test_driver.py"
               "test/mpc_terminal_heading_test_driver.py"
               "test/formation_distance_test_driver.py"
               "test/formation_distance_two_follower_test_driver.py"

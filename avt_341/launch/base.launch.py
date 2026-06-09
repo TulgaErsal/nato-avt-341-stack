@@ -324,7 +324,8 @@ def generate_launch_description():
                             {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
                             {'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                  TextSubstitution(text=''),
-                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
+                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))},
+                            {'formation_vehicle_ids': LaunchConfiguration('vehicle_namespaces')}
                         ],
                         remappings=[
                             ('camera_info','front_camera/info'),

@@ -40,7 +40,8 @@ struct Contact {
     std::string name;
     bool investigated;
     bool investigating;
-    bool is_new;
+    bool is_new;       // true until MoveTo+Encircle tasks are created
+    double first_seen_sec;
 };
     
 /// Class for formation control
@@ -149,6 +150,8 @@ class MissionManager{
     auto getClosestNewContact();
     MissionPoint getClosestOverwatch();
     void addContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
+    void updateExistingContact(std::vector<Contact>::iterator it, const avt_341::msg::PoseStamped & pose);
+    void createToiTasks(Contact & contact, const std::map<std::string, avt_341::msg::Odometry> & veh_poses);
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();
