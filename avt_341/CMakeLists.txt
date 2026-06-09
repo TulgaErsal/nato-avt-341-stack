@@ -72,8 +72,9 @@ set(AVT341_SOURCE_FILES
     "planning/global/pf_global_path")
 
 if(NOT AVT341_DISABLE_UI)
-  message(STATUS "UI build disabled.")
   list(APPEND AVT341_SOURCE_FILES "ui/mission_command_panel")
+else()
+  message(STATUS "UI build disabled.")
 endif()
 
 # Append src/ subdirectory to the path of each target.
