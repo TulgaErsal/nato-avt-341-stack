@@ -41,13 +41,13 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
         ${Matlab_INCLUDE_DIRS})
 
     if(USING_CATKIN)
-        add_executable(object_tracker_node "object_tracker_node.cpp")
-        add_dependencies(object_tracker_node ${catkin_EXPORTED_TARGETS})
+        add_executable(uab_obstacle_tracker_node "uab_obstacle_tracker_node.cpp")
+        add_dependencies(uab_obstacle_tracker_node ${catkin_EXPORTED_TARGETS})
 
         if(WIN32 OR WIN64)
             DownloadWindowsDll()
 
-            target_link_libraries(object_tracker_node
+            target_link_libraries(uab_obstacle_tracker_node
                 ${PROJECT_NAME}_proxy
                 ${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.lib
                 ${Matlab_MCLMCRRT_LIB})
@@ -57,7 +57,7 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
         else()
             DownloadLinuxSharedLibrary()
 
-            target_link_libraries(object_tracker_node
+            target_link_libraries(uab_obstacle_tracker_node
                 ${PROJECT_NAME}_proxy
                 ${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.so
                 ${Matlab_MCLMCRRT_LIB})
@@ -67,19 +67,19 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
         endif()
 
         install(TARGETS
-                object_tracker_node
+                uab_obstacle_tracker_node
                 RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
                 LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
     endif() # if(USING_CATKIN)
 
     if(USING_AMENT)
-        add_executable(object_tracker_node "object_tracker_node.cpp")
-        target_link_libraries(object_tracker_node ${PROJECT_NAME}_proxy)
+        add_executable(uab_obstacle_tracker_node "uab_obstacle_tracker_node.cpp")
+        target_link_libraries(uab_obstacle_tracker_node ${PROJECT_NAME}_proxy)
 
         if(WIN32 OR WIN64)
             DownloadWindowsDll()
             
-            target_link_libraries(object_tracker_node
+            target_link_libraries(uab_obstacle_tracker_node
                 "${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.lib"
                 ${Matlab_MCLMCRRT_LIB})
             install(FILES "lib_tracker_wrapper.dll"
@@ -87,20 +87,20 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
         else()
             DownloadLinuxSharedLibrary()
         
-            target_link_libraries(object_tracker_node
+            target_link_libraries(uab_obstacle_tracker_node
                 "${CMAKE_CURRENT_SOURCE_DIR}/lib_tracker_wrapper.so"
                 ${Matlab_MCLMCRRT_LIB})
             install(FILES "lib_tracker_wrapper.so"
                     DESTINATION "lib")
         endif()
 
-        install(TARGETS object_tracker_node
+        install(TARGETS uab_obstacle_tracker_node
                 EXPORT export_${PROJECT_NAME}
                 DESTINATION "lib/${PROJECT_NAME}")
     endif() # if(USING_AMENT)
 else()
     message(
         WARNING
-        "Unable to build object tracker node. Failed to find MATLAB R2023a."
+        "Unable to build UAB obstacle tracker node. Failed to find MATLAB R2023a."
     )
 endif()

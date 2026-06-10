@@ -54,7 +54,7 @@
 namespace avt_341 {
 namespace perception {
 
-ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracker") {
+ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracking_node") {
     GetParameters();
     Initialize();
     CreateSubscriptions();
