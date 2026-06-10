@@ -97,6 +97,8 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
   find_package(rclpy REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
+  find_package(tf2_ros REQUIRED)
+  find_package(tf2_eigen REQUIRED)
   find_package(Eigen3 3.4 REQUIRED)
 
   if(WIN32 OR WIN64)
@@ -126,6 +128,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
           "src/node/occupancy_grid_subscriber.cpp"
           "src/core/grid_components.cpp"
           "src/core/monitoring.cpp"
+          "src/core/coord_transform.cpp"
   )
 
   target_include_directories(
@@ -135,7 +138,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
 
   ament_target_dependencies(
     ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
-    visualization_msgs map_msgs)
+    tf2_ros tf2_eigen Eigen3 visualization_msgs map_msgs)
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
     add_subdirectory(${SOURCE_FILE})

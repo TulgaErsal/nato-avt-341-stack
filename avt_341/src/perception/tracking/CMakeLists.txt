@@ -33,7 +33,10 @@ if(USING_AMENT)
   endif() # if(PCL_FOUND)
 
   add_executable(${PROJECT_NAME}_object_tracking_node
-                 "object_tracking_node.cpp" "object_tracking_node_executor.cpp")
+          "tracker_params.cpp"
+          "object_tracker.cpp"
+          "object_tracking_node.cpp"
+          "object_tracking_node_executor.cpp")
 
   target_link_libraries(${PROJECT_NAME}_object_tracking_node
     ${PROJECT_NAME}_proxy

@@ -127,6 +127,8 @@ message(STATUS "Adding object tracking reset unit tests")
 ament_add_gtest(object_tracking_reset_test
   perception/tracking/object_tracking_reset_test.cpp
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracking_node.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
 )
 
 target_include_directories(object_tracking_reset_test

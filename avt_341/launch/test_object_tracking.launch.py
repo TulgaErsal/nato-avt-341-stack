@@ -32,11 +32,8 @@ def launch_setup(context, *args, **kwargs):
                 'world_frame': 'map',
                 'publish_detection': True,
                 'publish_odometry': True,
-                'publish_pose': True,
-                'filters_pose': True,
-                'filters_odometry': True,
                 'tracker_use_mission_manager': False,
-                'tracker_target_class': '0',
+                'tracker_target_classes': ['0'],
                 'filters_kalman_process': 0.01,
                 'filters_kalman_measurement': 0.1,
                 # Camera-based range estimation parameters

@@ -12,7 +12,8 @@ filters_use_manual_roi: true
 filters_manual_roi_size: [5.0, 5.0, 5.0]
 tracker_autostart: true
 tracker_use_mission_manager: true
-tracker_target_class: "FED Alpha"
+tracker_target_classes: ["FED Alpha"]
+tracker_use_multi_tracking: false
 tracker_timeout: 5.0
 
 # Obstacle detector integration (embedded in tracking node)
@@ -53,10 +54,7 @@ lidar_reacquire_max_dist: 3.0                                  # max world-frame
 sync_enable: true
 sync_use_callback: false
 sync_detection: 0.1
-publish_pose: true
-filters_pose: true
 publish_odometry: true
-filters_odometry: true
 publish_detection: true
 publish_image: true
 

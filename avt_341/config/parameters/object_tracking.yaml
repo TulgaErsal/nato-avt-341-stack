@@ -12,7 +12,8 @@ filters_use_manual_roi: true
 filters_manual_roi_size: [5.0, 5.0, 5.0]
 tracker_autostart: true
 tracker_use_mission_manager: true
-tracker_target_class: mrzr4
+tracker_target_classes: ['mrzr4']
+tracker_use_multi_tracking: false
 tracker_timeout: 5.0
 
 # Obstacle detector integration (embedded in tracking node)
@@ -53,10 +54,7 @@ lidar_reacquire_max_dist: 3.0                                  # max world-frame
 sync_enable: true
 sync_use_callback: false
 sync_detection: 0.1
-publish_pose: true
-filters_pose: false
 publish_odometry: true
-filters_odometry: true
 heading_min_speed: 0.5
 heading_resume_speed: 1.0
 publish_detection: true
