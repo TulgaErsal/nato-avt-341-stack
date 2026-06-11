@@ -42,7 +42,13 @@ namespace avt_341::perception
         CAMERA_ONLY_TRACKING = 5
     };
 
-    inline std::string ToString(TrackerState state) {
+    inline bool IsActiveTrackerState(const TrackerState state) {
+        return state == TrackerState::FULL_TRACKING ||
+                state == TrackerState::LIDAR_ONLY_TRACKING ||
+                state == TrackerState::CAMERA_ONLY_TRACKING;
+    }
+
+    inline std::string ToString(const TrackerState state) {
         if (state == TrackerState::UNINITIALIZED) {
             return "uninitialized";
         } else if (state == TrackerState::INACTIVE) {

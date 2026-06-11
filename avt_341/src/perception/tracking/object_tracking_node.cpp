@@ -51,6 +51,8 @@
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
 #include <avt_341/node/node_proxy.h>
 
+#include <avt_341/core/eigen_dto_conversion.hpp>
+
 namespace avt_341 {
 namespace perception {
 
@@ -83,8 +85,8 @@ void ObjectTrackingNode::Initialize() {
 void ObjectTrackingNode::CreateSubscriptions() {
     // Create the transform listener.
     transform_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
-    transform_listener_ =
-        std::make_shared<tf2_ros::TransformListener>(*transform_buffer_);
+    transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*transform_buffer_);
+    coord_transformer_ = std::make_unique<core::CoordTransformer>(*transform_buffer_, get_logger());
 
     detections_subscription_ =
         create_subscription<vision_msgs::msg::Detection2DArray>(
@@ -222,7 +224,7 @@ ObjectTracker& ObjectTrackingNode::AddOrResetTracker(
     }
 
     auto tracker = std::make_unique<ObjectTracker>(
-        this, target_class, settings_, *transform_buffer_,
+        this, target_class, settings_, *coord_transformer_,
         target_contacts_publisher_);
     ObjectTracker& tracker_ref = *tracker;
     trackers_.emplace(target_class, std::move(tracker));
@@ -325,16 +327,9 @@ void ObjectTrackingNode::PublishObstacleMarkers(
         marker.id = box.id;
         marker.type = visualization_msgs::msg::Marker::CUBE;
         marker.action = visualization_msgs::msg::Marker::ADD;
-        marker.pose.position.x = box.position.x();
-        marker.pose.position.y = box.position.y();
-        marker.pose.position.z = box.position.z();
-        marker.pose.orientation.w = box.quaternion.w();
-        marker.pose.orientation.x = box.quaternion.x();
-        marker.pose.orientation.y = box.quaternion.y();
-        marker.pose.orientation.z = box.quaternion.z();
-        marker.scale.x = box.dimension.x();
-        marker.scale.y = box.dimension.y();
-        marker.scale.z = box.dimension.z();
+        marker.pose.position = core::ToPointMsg(box.position.cast<double>());
+        marker.pose.orientation = core::ToQuaternionMsg(box.quaternion.cast<double>());
+        marker.scale = core::ToVector3Msg(box.dimension.cast<double>());
         marker.color.r = 1.0f;
         marker.color.g = 0.5f;
         marker.color.b = 0.0f;
@@ -410,9 +405,7 @@ void ObjectTrackingNode::RunObstacleDetection(
         return;
     }
 
-    Eigen::Quaternionf q(
-        fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x,
-        fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
+    const Eigen::Quaternionf q = core::ToEigen(fixed_tf.transform.rotation).cast<float>();
     if (q.norm() < 1e-6f) {
         RCLCPP_WARN(get_logger(),
                     "RunObstacleDetection: fixed-frame TF quaternion is zero.");

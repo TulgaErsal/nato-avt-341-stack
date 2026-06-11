@@ -93,6 +93,7 @@
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
+#include <avt_341/core/coord_transform.hpp>
 #include <avt_341/perception/box.hpp>
 #include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
 #include <avt_341/perception/tracking/object_tracker.hpp>
@@ -186,6 +187,10 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     /** @brief Unique pointer to the transform buffer. */
     std::unique_ptr<tf2_ros::Buffer> transform_buffer_;
+
+    /** @brief Coordinate transformer bound to the transform buffer and the
+     *         node logger, shared with the child ObjectTracker instances. */
+    std::unique_ptr<core::CoordTransformer> coord_transformer_;
 
     // Input point cloud processing
     // -------------------------------------------------------------------------

@@ -7,34 +7,30 @@
 
 #include <avt_341/perception/tracking/object_tracker.hpp>
 
-#ifdef GTE_ROS_HUMBLE
-#include <tf2_eigen/tf2_eigen.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#else
-#include <tf2_eigen/tf2_eigen.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#endif
-
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <utility>
 
 #include <avt_341/core/coord_transform.hpp>
+#include <avt_341/core/eigen_dto_conversion.hpp>
+#include <avt_341/core/string_utils.hpp>
 
 namespace avt_341 {
 namespace perception {
 
 ObjectTracker::ObjectTracker(
     rclcpp::Node* node, const std::string& target_class,
-    const ObjectTrackerSettings& settings, const tf2_ros::Buffer& tf_buffer,
+    const ObjectTrackerSettings& settings,
+    const core::CoordTransformer& coord_transformer,
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher)
     : node_(node),
-      logger_(node->get_logger().get_child(MakeTargetNamespace(target_class))),
+      logger_(node->get_logger().get_child(core::SanitizeIdentifier(target_class))),
       target_class_(target_class),
-      target_ns_(MakeTargetNamespace(target_class)),
-      odometry_child_frame_(MakeTargetNamespace(target_class) + "/odom"),
+      target_ns_(core::SanitizeIdentifier(target_class)),
+      odometry_child_frame_(core::SanitizeIdentifier(target_class) + "/odom"),
       settings_(settings),
-      tf_buffer_(tf_buffer),
+      coord_transformer_(coord_transformer),
       target_contacts_publisher_(std::move(target_contacts_publisher)) {
     // Initialize the IMM filter (CV + CTR + NM).
     filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
@@ -156,19 +152,14 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
 
             // Transform marker position from its native frame to camera frame
             // so that the EstimatorTick can handle it uniformly.
-            const Eigen::Vector3d marker_pos(marker.pose.position.x,
-                                             marker.pose.position.y,
-                                             marker.pose.position.z);
-            bounding_box_centroid_ = Transform(
+            const Eigen::Vector3d marker_pos = core::ToEigen(marker.pose.position);
+            bounding_box_centroid_ = coord_transformer_.Transform(
                 marker.header.frame_id, settings_.frames.camera_frame,
                 marker_pos);
 
-            bounding_box_size_ = Eigen::Vector3d(
-                marker.scale.x, marker.scale.y, marker.scale.z);
+            bounding_box_size_ = core::ToEigen(marker.scale);
             object_size_ = bounding_box_size_;
-            bounding_box_orientation_ = Eigen::Quaterniond(
-                marker.pose.orientation.w, marker.pose.orientation.x,
-                marker.pose.orientation.y, marker.pose.orientation.z);
+            bounding_box_orientation_ = core::ToEigen(marker.pose.orientation);
 
             has_new_measurement_ = true;
             has_had_first_lidar_measurement_ = true;
@@ -178,7 +169,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             // Record world-frame position for re-acquisition after a brief
             // drop-out: if the obstacle disappears and reappears with a new
             // ID within lidar_reacquire_max_time, we match it by proximity.
-            last_lidar_world_pos_ = Transform(
+            last_lidar_world_pos_ = coord_transformer_.Transform(
                 marker.header.frame_id, settings_.frames.world_frame,
                 marker_pos);
             found = true;
@@ -217,23 +208,18 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                         continue;
                     if (m.id == tracked_obstacle_id_)
                         continue;  // already checked above, not present
-                    const Eigen::Vector3d mpos(m.pose.position.x,
-                                               m.pose.position.y,
-                                               m.pose.position.z);
-                    const Eigen::Vector3d mpos_world = Transform(
+                    const Eigen::Vector3d mpos = core::ToEigen(m.pose.position);
+                    const Eigen::Vector3d mpos_world = coord_transformer_.Transform(
                         m.header.frame_id, settings_.frames.world_frame, mpos);
                     const double d = (mpos_world - last_lidar_world_pos_).norm();
                     if (d < best_dist) {
                         best_dist = d;
                         reacquire_id = m.id;
-                        best_cam_pos = Transform(
+                        best_cam_pos = coord_transformer_.Transform(
                             m.header.frame_id, settings_.frames.camera_frame,
                             mpos);
-                        best_size = Eigen::Vector3d(
-                            m.scale.x, m.scale.y, m.scale.z);
-                        best_quat = Eigen::Quaterniond(
-                            m.pose.orientation.w, m.pose.orientation.x,
-                            m.pose.orientation.y, m.pose.orientation.z);
+                        best_size = core::ToEigen(m.scale);
+                        best_quat = core::ToEigen(m.pose.orientation);
                     }
                 }
 
@@ -253,7 +239,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                     has_tracked_target_ = true;
                     last_valid_target_time_ = node_->get_clock()->now();
                     last_lidar_seen_time_ = last_valid_target_time_;
-                    last_lidar_world_pos_ = Transform(
+                    last_lidar_world_pos_ = coord_transformer_.Transform(
                         settings_.frames.camera_frame,
                         settings_.frames.world_frame, best_cam_pos);
                     // Skip further processing — measurement is ready.
@@ -330,10 +316,8 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             }
 
             // Transform marker position to camera frame.
-            const Eigen::Vector3d pos(marker.pose.position.x,
-                                      marker.pose.position.y,
-                                      marker.pose.position.z);
-            const Eigen::Vector3d pos_cam = Transform(
+            const Eigen::Vector3d pos = core::ToEigen(marker.pose.position);
+            const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
                 marker.header.frame_id, settings_.frames.camera_frame, pos);
 
             // Skip markers behind the camera.
@@ -363,11 +347,8 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                 best_pixel_dist = pixel_dist;
                 best_id = marker.id;
                 best_pos_cam = pos_cam;
-                best_size = Eigen::Vector3d(
-                    marker.scale.x, marker.scale.y, marker.scale.z);
-                best_quat = Eigen::Quaterniond(
-                    marker.pose.orientation.w, marker.pose.orientation.x,
-                    marker.pose.orientation.y, marker.pose.orientation.z);
+                best_size = core::ToEigen(marker.scale);
+                best_quat = core::ToEigen(marker.pose.orientation);
             }
         }
 
@@ -414,7 +395,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         has_tracked_target_ = true;
         last_valid_target_time_ = node_->get_clock()->now();
         last_lidar_seen_time_ = last_valid_target_time_;
-        last_lidar_world_pos_ = Transform(
+        last_lidar_world_pos_ = coord_transformer_.Transform(
             settings_.frames.camera_frame, settings_.frames.world_frame,
             best_pos_cam);
 
@@ -471,7 +452,7 @@ void ObjectTracker::EstimatorTick() {
     }
 
     if (!filter_initialized_) {
-        filter_->SetInitialPosition(Transform(
+        filter_->SetInitialPosition(coord_transformer_.Transform(
             settings_.frames.camera_frame, settings_.frames.world_frame,
             bounding_box_centroid_));
         filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
@@ -512,7 +493,7 @@ void ObjectTracker::EstimatorTick() {
     // Check if a new measurement is available to be parsed, then provide a
     // matching measurement vector z_n.
     if (has_new_measurement_) {
-        bounding_box_centroid_global_ = Transform(
+        bounding_box_centroid_global_ = coord_transformer_.Transform(
             settings_.frames.camera_frame, settings_.frames.world_frame,
             bounding_box_centroid_);
 
@@ -523,15 +504,13 @@ void ObjectTracker::EstimatorTick() {
         measurement_vector(1) = bounding_box_centroid_global_.y();
         measurement_vector(2) = bounding_box_centroid_global_.z();
         if (state_ == TrackerState::CAMERA_ONLY_TRACKING) {
-            geometry_msgs::msg::TransformStamped transform_message;
-            try {
-                transform_message = tf_buffer_.lookupTransform(
-                    settings_.frames.world_frame.c_str(),
-                    settings_.frames.camera_frame.c_str(),
-                    tf2::TimePointZero);
-                Eigen::Quaterniond q;
-                tf2::fromMsg(transform_message.transform.rotation, q);
-                Eigen::Matrix3d RotMatrix = q.toRotationMatrix();
+            const std::optional<Eigen::Quaterniond> camera_to_world_rotation =
+                coord_transformer_.LookupRotation(
+                    settings_.frames.camera_frame,
+                    settings_.frames.world_frame);
+            if (camera_to_world_rotation) {
+                Eigen::Matrix3d RotMatrix =
+                    camera_to_world_rotation->toRotationMatrix();
                 Eigen::Matrix3d R = RotMatrix * R_rdf_ * RotMatrix.transpose();
 
                 // Run the IMM update step
@@ -549,10 +528,6 @@ void ObjectTracker::EstimatorTick() {
                     state_ = TrackerState::NO_DETECTION;
                 }
             }
-            catch (tf2::TransformException& exception) {
-                RCLCPP_ERROR(logger_, "Transform lookup exception.");
-            }
-
         }
         else {
             // Run the IMM update step.  if chi2 is acceptable
@@ -747,9 +722,8 @@ void ObjectTracker::PublishOdometry() {
     odometry_message.header.stamp = node_->get_clock()->now();
     odometry_message.header.frame_id = settings_.frames.world_frame;
     odometry_message.child_frame_id = odometry_child_frame_;
-    odometry_message.pose.pose.position.x = bounding_box_centroid_global_.x();
-    odometry_message.pose.pose.position.y = bounding_box_centroid_global_.y();
-    odometry_message.pose.pose.position.z = bounding_box_centroid_global_.z();
+    odometry_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_global_);
+    odometry_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
 
     odometry_publisher_->publish(odometry_message);
 
@@ -757,15 +731,9 @@ void ObjectTracker::PublishOdometry() {
     tracked_target_message.header.stamp = node_->get_clock()->now();
     tracked_target_message.header.frame_id = settings_.frames.world_frame;
     tracked_target_message.child_frame_id = odometry_child_frame_;
-    tracked_target_message.pose.pose.position.x = bounding_box_centroid_filtered_.x();
-    tracked_target_message.pose.pose.position.y = bounding_box_centroid_filtered_.y();
-    tracked_target_message.pose.pose.position.z = bounding_box_centroid_filtered_.z();
-    tracked_target_message.pose.pose.orientation.x = 0;
-    tracked_target_message.pose.pose.orientation.y = 0;
-    tracked_target_message.pose.pose.orientation.z = sin(last_reliable_yaw_ / 2);
-    tracked_target_message.pose.pose.orientation.w = cos(last_reliable_yaw_ / 2);
-    Eigen::Matrix<double, 6, 6> TrackedCovariance =
-        Eigen::Matrix<double, 6, 6>::Zero();
+    tracked_target_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
+    tracked_target_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
+    Eigen::Matrix<double, 6, 6> TrackedCovariance = Eigen::Matrix<double, 6, 6>::Zero();
     Eigen::Matrix<double, 5, 5> Pt = filter_->GetCTRCovariance();
     TrackedCovariance(0, 0) = Pt(0, 0);  // x variance
     TrackedCovariance(0, 1) = Pt(0, 2);  // xy covariance
@@ -775,11 +743,7 @@ void ObjectTracker::PublishOdometry() {
     TrackedCovariance(3, 3) = 9.0;       // no information on roll
     TrackedCovariance(4, 4) = 9.0;       // no information on pitch
     TrackedCovariance(5, 5) = filter_->GetFusedYawVariance();
-    for (size_t i = 0; i < 6; i++) {
-        for (size_t j = 0; j < 6; j++) {
-            tracked_target_message.pose.covariance[i * 6 + j] = TrackedCovariance(i, j);
-        }
-    }
+    tracked_target_message.pose.covariance = core::ToCovarianceMsg(TrackedCovariance);
     tracked_target_odometry_publisher_->publish(tracked_target_message);
 }
 
@@ -796,18 +760,9 @@ void ObjectTracker::PublishDetection3D() {
 
     detection_message.results.push_back(object_hypothesis_message);
 
-    detection_message.bbox.size.x = bounding_box_size_.x();
-    detection_message.bbox.size.y = bounding_box_size_.y();
-    detection_message.bbox.size.z = bounding_box_size_.z();
-
-    detection_message.bbox.center.position.x = bounding_box_centroid_global_.x();
-    detection_message.bbox.center.position.y = bounding_box_centroid_global_.y();
-    detection_message.bbox.center.position.z = bounding_box_centroid_global_.z();
-
-    detection_message.bbox.center.orientation.w = bounding_box_orientation_.w();
-    detection_message.bbox.center.orientation.x = bounding_box_orientation_.x();
-    detection_message.bbox.center.orientation.y = bounding_box_orientation_.y();
-    detection_message.bbox.center.orientation.z = bounding_box_orientation_.z();
+    detection_message.bbox.size = core::ToVector3Msg(bounding_box_size_);
+    detection_message.bbox.center.position = core::ToPointMsg(bounding_box_centroid_global_);
+    detection_message.bbox.center.orientation = core::ToQuaternionMsg(bounding_box_orientation_);
 
     detection_publisher_->publish(detection_message);
 }
@@ -816,10 +771,8 @@ void ObjectTracker::PublishTargetContact() {
     geometry_msgs::msg::PoseStamped contact_pose;
     contact_pose.header.stamp = node_->get_clock()->now();
     contact_pose.header.frame_id = target_class_;
-    contact_pose.pose.position.x = bounding_box_centroid_filtered_.x();
-    contact_pose.pose.position.y = bounding_box_centroid_filtered_.y();
-    contact_pose.pose.position.z = bounding_box_centroid_filtered_.z();
-    contact_pose.pose.orientation.w = 1.0;
+    contact_pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
+    contact_pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
 
     nav_msgs::msg::Path contact_msg;
     contact_msg.header.stamp = node_->get_clock()->now();
@@ -836,10 +789,7 @@ void ObjectTracker::PublishTargetContact() {
 }
 
 void ObjectTracker::MaybePublishContactUpdate() {
-    const bool is_actively_tracking = filter_initialized_ &&
-        (state_ == TrackerState::FULL_TRACKING ||
-         state_ == TrackerState::LIDAR_ONLY_TRACKING ||
-         state_ == TrackerState::CAMERA_ONLY_TRACKING);
+    const bool is_actively_tracking = filter_initialized_ && IsActiveTrackerState(state_);
 
     if (!is_actively_tracking) return;
 
@@ -859,28 +809,6 @@ void ObjectTracker::MaybePublishContactUpdate() {
         PublishTargetContact();
         contact_update_counter_ = 0;
     }
-}
-
-Eigen::Vector3d ObjectTracker::Transform(const std::string& source_frame,
-                                         const std::string& target_frame,
-                                         const Eigen::Vector3d& point) const {
-    return avt_341::core::TransformToCoordinates(
-        tf_buffer_, source_frame, target_frame, point, logger_);
-}
-
-std::string ObjectTracker::MakeTargetNamespace(
-    const std::string& target_class) {
-    std::string ns = target_class;
-    std::transform(ns.begin(), ns.end(), ns.begin(), ::tolower);
-    for (auto& character : ns) {
-        const bool valid = (character >= 'a' && character <= 'z') ||
-                           (character >= '0' && character <= '9') ||
-                           character == '_';
-        if (!valid) {
-            character = '_';
-        }
-    }
-    return ns;
 }
 
 }  // namespace perception

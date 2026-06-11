@@ -19,11 +19,11 @@
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
-#include <tf2_ros/buffer.h>
 #include <vision_msgs/msg/detection2_d.hpp>
 #include <vision_msgs/msg/detection3_d.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <avt_341/core/coord_transform.hpp>
 #include <avt_341/perception/filtering/imm_filter.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
 #include <avt_341/perception/tracking/tracker_dto.hpp>
@@ -45,7 +45,7 @@ class ObjectTracker {
     ObjectTracker(rclcpp::Node* node,
                   const std::string& target_class,
                   const ObjectTrackerSettings& settings,
-                  const tf2_ros::Buffer& tf_buffer,
+                  const core::CoordTransformer& coord_transformer,
                   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr
                       target_contacts_publisher);
 
@@ -110,13 +110,6 @@ class ObjectTracker {
 
     const std::string& GetTargetClass() const { return target_class_; }
 
-    /**
-     * @brief Lowercase the target class and replace any character outside
-     * [a-z0-9_] with '_'. Used as the per-target topic namespace and the
-     * odometry child-frame vehicle namespace.
-     */
-    static std::string MakeTargetNamespace(const std::string& target_class);
-
    private:
     void CreatePerTargetPublishers();
 
@@ -145,12 +138,6 @@ class ObjectTracker {
 
     void MaybePublishContactUpdate();
 
-    /** @brief Transform a point between TF frames via
-     *         avt_341::core::TransformToCoordinates. */
-    Eigen::Vector3d Transform(const std::string& source_frame,
-                              const std::string& target_frame,
-                              const Eigen::Vector3d& point) const;
-
     // Wiring (non-owning except the publishers)
     // -------------------------------------------------------------------------
 
@@ -168,7 +155,8 @@ class ObjectTracker {
 
     ObjectTrackerSettings settings_;
 
-    const tf2_ros::Buffer& tf_buffer_;
+    /** @brief Shared coordinate transformer owned by the node. */
+    const core::CoordTransformer& coord_transformer_;
 
     /** @brief Shared target contacts publisher owned by the node. */
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
@@ -287,8 +275,7 @@ class ObjectTracker {
 
     Eigen::Vector3d object_size_ = Eigen::Vector3d::Zero();
 
-    Eigen::Quaterniond bounding_box_orientation_ =
-        Eigen::Quaterniond::Identity();
+    Eigen::Quaterniond bounding_box_orientation_ = Eigen::Quaterniond::Identity();
 };
 
 }  // namespace perception
