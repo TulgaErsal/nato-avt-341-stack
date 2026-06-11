@@ -6,7 +6,10 @@
 #include <queue>
 #include <avt_341/core/dto_conversion.h>
 #include <optional>
+#include <set>
+#include <cmath>
 
+#include <avt_341_msgs/srv/set_nav_point_definitions.hpp>
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
@@ -123,6 +126,52 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int targe
     : nullptr;
 }
 
+void SetNavPointDefinitionsCallback(
+    const std::shared_ptr<avt_341_msgs::srv::SetNavPointDefinitions::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::SetNavPointDefinitions::Response> response)
+{
+    auto fail = [&](const std::string & reason) {
+        response->success = false;
+        response->message = reason;
+        nh->log_warning("SetNavPointDefinitions rejected: %s", reason.c_str());
+    };
+    if (request->labels.size() != request->poses.size()) {
+        fail("labels size (" + std::to_string(request->labels.size()) + ") does not match poses size ("
+             + std::to_string(request->poses.size()) + ").");
+        return;
+    }
+
+    std::vector<avt_341::mission::MissionPoint> mission_points;
+    mission_points.reserve(request->labels.size());
+    std::set<std::string> seen_labels;
+
+    for (size_t i = 0; i < request->labels.size(); i++) {
+        const std::string & label = request->labels[i];
+        const auto & pose = request->poses[i];
+
+        if (label.empty())
+        {
+            fail("label at position " + std::to_string(i) + " is empty.");
+            return;
+        }
+
+        avt_341::mission::MissionPoint mission_point;
+        mission_point.name = label;
+        mission_point.pos_x = pose.position.x;
+        mission_point.pos_y = pose.position.y;
+        mission_point.pos_z = pose.position.z;
+        mission_point.rot_x = pose.orientation.x;
+        mission_point.rot_y = pose.orientation.y;
+        mission_point.rot_z = pose.orientation.z;
+        mission_point.rot_w = pose.orientation.w;
+        mission_points.push_back(mission_point);
+    }
+
+    mgr->setMissionPoints(mission_points);
+    response->success = true;
+    response->message = "Set " + std::to_string(mission_points.size()) + " nav point definitions.";
+}
+
 int main(int argc, char **argv) {
 
     // initialize the node
@@ -208,6 +257,11 @@ int main(int argc, char **argv) {
     auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
     auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
     leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
+
+    // Services
+    auto compute_global_path_srv =
+        nh->get_raw_node()->create_service<avt_341_msgs::srv::SetNavPointDefinitions>(
+            "avt_341/set_nav_point_definitions", &SetNavPointDefinitionsCallback);
 
     // start the loop
     while(avt_341::node::ok()){

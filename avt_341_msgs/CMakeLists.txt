@@ -29,7 +29,12 @@ set(MESSAGE_DEFINITIONS
     "NavState"
 )
 
-set(SERVICE_DEFINITIONS "LiorfSaveMap" "SetTarget" "ComputeGlobalPath")
+set(SERVICE_DEFINITIONS
+    "LiorfSaveMap"
+    "SetTarget"
+    "ComputeGlobalPath"
+    "SetNavPointDefinitions"
+)
 
 # Append the ".msg" extension for both builds and preprend the "msg/" prefix to
 # message definitions for the ament build.

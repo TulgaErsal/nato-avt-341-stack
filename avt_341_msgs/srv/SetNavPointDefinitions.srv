@@ -1,0 +1,6 @@
+# Sets the nav point definitions (name and pose) in the autonomy stack
+string[] labels
+geometry_msgs/Pose[] poses
+---
+bool success
+string message

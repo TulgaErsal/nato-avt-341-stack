@@ -62,11 +62,11 @@ int MissionManager::loadMissionDefinition(std::string filename) {
     std::string line;
     std::vector<std::string> contents;
     MissionPoint missionPt;
+    std::vector<MissionPoint> mission_points;
 
     // Load the mission from file
     std::ifstream infile(filename);
     if(infile.is_open()) {
-        mission_data.clear();
         while(std::getline(infile, line))
         {
             std::istringstream iss(line);
@@ -81,14 +81,19 @@ int MissionManager::loadMissionDefinition(std::string filename) {
                 missionPt.rot_y = std::strtod(contents[5].c_str(), NULL);
                 missionPt.rot_z = std::strtod(contents[6].c_str(), NULL);
                 missionPt.rot_w = std::strtod(contents[7].c_str(), NULL);
-                mission_data.push_back(missionPt);
+                mission_points.push_back(missionPt);
                 //std::cout << "Pose: " << position.name << " " << position.pos_x << " " << position.rot_w << std::endl;
             }
-        }    
+        }
+        setMissionPoints(mission_points);
     } else {
         node_proxy_->log_info("Error reading mission definition %s", filename.c_str());
     }
 
+    return 0;
+}
+
+void MissionManager::updateOverwatchPositions() {
     // Find overwatch positions, assume starting with SP_
     overwatch_positions.clear();
     for(const auto & mp : mission_data){
@@ -96,8 +101,14 @@ int MissionManager::loadMissionDefinition(std::string filename) {
         overwatch_positions.push_back(mp);
       }
     }
+}
 
-    return 0;
+void MissionManager::setMissionPoints(const std::vector<MissionPoint> & mission_points) {
+    mission_data = mission_points;
+    updateOverwatchPositions();
+    node_proxy_->log_info("%s updated mission point definitions (%d points, %d overwatch).",
+                          my_name.c_str(), static_cast<int>(mission_data.size()),
+                          static_cast<int>(overwatch_positions.size()));
 }
 
 bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string name) {
