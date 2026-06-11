@@ -10,6 +10,8 @@
 #include <cmath>
 
 #include <avt_341_msgs/srv/set_nav_point_definitions.hpp>
+#include <avt_341_msgs/srv/check_speed.hpp>
+#include <avt_341_msgs/srv/get_odometry.hpp>
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
@@ -28,7 +30,7 @@ float sodist_threshold;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
 std::shared_ptr<avt_341::mission::MissionManager> mgr;
 
-std::map<std::string, avt_341::msg::Odometry> formation_poses;
+std::map<std::string, avt_341::msg::Odometry> formation_odoms;
 std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 
 // Receive updates from comms
@@ -56,7 +58,7 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
 
     child_frame_id = toUpper(child_frame_id);
     std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
-    formation_poses[veh_name] = *msg;
+    formation_odoms[veh_name] = *msg;
 
     if(current_task == nullptr || !current_task->hasFormation()){
       return;
@@ -126,7 +128,45 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int targe
     : nullptr;
 }
 
-void SetNavPointDefinitionsCallback(
+void CheckSpeedServiceImpl(
+    const std::shared_ptr<avt_341_msgs::srv::CheckSpeed::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::CheckSpeed::Response> response) {
+
+    const double ego_speed = std::abs(odom.twist.twist.linear.x);
+    const std::string & op = request->operation;
+
+    if (op == "eq") {
+        response->is_true = std::abs(ego_speed - request->speed) <= request->threshold;
+    } else if (op == "ne") {
+        response->is_true = std::abs(ego_speed - request->speed) > request->threshold;
+    } else if (op == "lt") {
+        response->is_true = ego_speed < request->speed + request->threshold;
+    } else if (op == "gt") {
+        response->is_true = ego_speed > request->speed - request->threshold;
+    } else {
+        nh->log_warning("CheckSpeed: unknown operation \"%s\" (expected eq, ne, lt or gt).", op.c_str());
+        response->is_true = false;
+    }
+}
+
+void GetOdometryServiceImpl(
+    const std::shared_ptr<avt_341_msgs::srv::GetOdometry::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::GetOdometry::Response> response) {
+
+    if (request->vehicle_id.empty()) {
+        response->odom = odom;
+        return;
+    }
+
+    const auto it = formation_odoms.find(toUpper(request->vehicle_id));
+    if (it == formation_odoms.end()) {
+        nh->log_warning("GetOdometry: no odometry received for vehicle \"%s\".", request->vehicle_id.c_str());
+        return;
+    }
+    response->odom = it->second;
+}
+
+void SetNavPointDefinitionsServiceImpl(
     const std::shared_ptr<avt_341_msgs::srv::SetNavPointDefinitions::Request> request,
     std::shared_ptr<avt_341_msgs::srv::SetNavPointDefinitions::Response> response)
 {
@@ -259,9 +299,17 @@ int main(int argc, char **argv) {
     leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
     // Services
-    auto compute_global_path_srv =
+    auto set_nav_point_definitions_srv =
         nh->get_raw_node()->create_service<avt_341_msgs::srv::SetNavPointDefinitions>(
-            "avt_341/set_nav_point_definitions", &SetNavPointDefinitionsCallback);
+            "avt_341/set_nav_point_definitions", &SetNavPointDefinitionsServiceImpl);
+
+    auto check_speed_srv =
+        nh->get_raw_node()->create_service<avt_341_msgs::srv::CheckSpeed>(
+            "avt_341/check_speed", &CheckSpeedServiceImpl);
+
+    auto get_odometry_srv =
+        nh->get_raw_node()->create_service<avt_341_msgs::srv::GetOdometry>(
+            "avt_341/get_odometry", &GetOdometryServiceImpl);
 
     // start the loop
     while(avt_341::node::ok()){
@@ -334,7 +382,7 @@ int main(int argc, char **argv) {
         while(!contacts.empty()){
           auto rcvd_msg = contacts.front();
           contacts.pop();
-          mgr->handleContacts(rcvd_msg, formation_poses);
+          mgr->handleContacts(rcvd_msg, formation_odoms);
         }
 
         // Incoming internal notifications
@@ -364,7 +412,7 @@ int main(int argc, char **argv) {
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
             avt_341::msg::Float64 speed_msg;
-            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses, mgr->getSpeedSetpoint());
+            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_odoms, mgr->getSpeedSetpoint());
             speed_factor_pub->publish(speed_msg);
         }else{
           speedController->clearVisualization();

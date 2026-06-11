@@ -34,6 +34,8 @@ set(SERVICE_DEFINITIONS
     "SetTarget"
     "ComputeGlobalPath"
     "SetNavPointDefinitions"
+    "CheckSpeed"
+    "GetOdometry"
 )
 
 # Append the ".msg" extension for both builds and preprend the "msg/" prefix to
