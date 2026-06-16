@@ -64,7 +64,7 @@ class FieldSymbol:
         return None, []
 
 
-class BagConfigLoader:
+class BagConfigTemplateParser:
 
     def __init__(self, config_path, vehicles_override: List[str], base_symbols: Dict[str, Any] = None):
         self._config_yaml : Dict[str, Any] = {}
@@ -236,11 +236,11 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    base_loader = BagConfigLoader(args.base_config_file, args.vehicles)
+    base_loader = BagConfigTemplateParser(args.base_config_file, args.vehicles)
     if base_loader.in_error():
         sys.exit(base_loader.error)
 
-    derived_loader = BagConfigLoader(args.config_file, args.vehicles, base_symbols=base_loader.symbols)
+    derived_loader = BagConfigTemplateParser(args.config_file, args.vehicles, base_symbols=base_loader.symbols)
     if derived_loader.in_error():
         sys.exit(derived_loader.error)
 
