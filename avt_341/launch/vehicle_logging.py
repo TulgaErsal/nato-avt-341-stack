@@ -178,7 +178,7 @@ def get_record_topics(config_yaml: Dict[str, Any]) -> List[str]:
     if not config_yaml:
         return []
 
-    return [t[BagConfigKeys.TOPIC] for t in config_yaml.get(BagConfigKeys.LOG_TOPICS, []) if t[BagConfigKeys.TOPIC]]
+    return [topic for t in config_yaml.get(BagConfigKeys.LOG_TOPICS, []) if (topic := t.get(BagConfigKeys.TOPIC))]
 
 def merge_configs(base_config: Dict[str, Any], derived_config: Dict[str, Any]) -> Dict[str, Any]:
     # Derived wins on every repeated key; lists are replaced wholesale by {**base, **derived}.

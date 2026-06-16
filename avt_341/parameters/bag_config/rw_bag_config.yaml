@@ -53,7 +53,7 @@ log_topics:
 
   # Desired Brake pressure or Pedal Position
   - name: '{vehicles}_desired_brake'
-    topic: '/mrzr/brake_rqst'
+    topic: '/{vehicles}/brake_rqst'
     field: 'data'
     units: '%'
 
