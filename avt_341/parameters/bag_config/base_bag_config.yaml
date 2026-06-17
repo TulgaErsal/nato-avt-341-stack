@@ -185,6 +185,14 @@ log_topics:
   # FORMATIONS
   # ==========================================================================================================
 
+  # Task Status - Tracked Vehicle id
+  - name: '{vehicles}_leader_id'
+    topic: '/{vehicles}/avt_341/task_status'
+    field: 'tracked_vehicle'
+    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    units: ''
+    channel_mapper: 'vehicle_id_to_idx'
+
   # Task Status - Formation Target
   - name: '{vehicles}_formation_target_{position_keys[:2]}'
     topic: '/{vehicles}/avt_341/task_status'
