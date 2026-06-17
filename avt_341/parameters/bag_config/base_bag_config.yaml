@@ -202,20 +202,20 @@ log_topics:
 
   # Perceived Chassis CG X, Y, Z of Lead Vehicle
   - name: '{vehicles}_perceived_leader_{position_keys}'
-    topic: '/{vehicles}/avt_341/odometry/estimated/leader'
+    topic: '/{vehicles}/avt_341/odometry_estimate/leader'
     field: 'pose.pose.position.{position_keys}'
     units: 'm'
 
   # Perceived Chassis Yaw Angle of Lead Vehicle
   - name: '{vehicles}_perceived_leader_yaw'
-    topic: '/{vehicles}/avt_341/odometry/estimated/leader'
+    topic: '/{vehicles}/avt_341/odometry_estimate/leader'
     field: 'pose.pose.orientation'
     units: 'rad'
     channel_mapper: 'quaternion_to_yaw'
 
   # Perceived Leader Forward Velocity
   - name: '{vehicles}_perceived_leader_vel_x'
-    topic: '/{vehicles}/avt_341/odometry/estimated/leader'
+    topic: '/{vehicles}/avt_341/odometry_estimate/leader'
     field: 'twist.twist.linear.x'
     units: 'm/s'
 

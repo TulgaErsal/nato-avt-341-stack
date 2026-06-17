@@ -16,7 +16,7 @@ log_topics:
 
   # Linear Acceleration
   - name: '{vehicles}_{direction_items.name}_accel'
-    topic: '/{vehicles}/accel'
+    topic: '/{vehicles}/avt_341/acceleration'
     field: 'accel.linear.{direction_items.field}'
     units: 'm/s^2'
 
