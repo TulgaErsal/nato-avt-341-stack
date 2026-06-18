@@ -17,7 +17,7 @@ const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
 std::shared_ptr<avt_341::node::NodeProxy> node;
 geometry_msgs::msg::TransformStamped lidar_to_base_link_tf;
-geometry_msgs::msg::TransformStamped camera_to_lidar_tf;
+geometry_msgs::msg::TransformStamped lidar_to_camera_tf;
 
 avt_341::msg::Odometry current_pose;
 bool odom_received = false;
@@ -28,7 +28,7 @@ bool pc_received = false;
 avt_341::msg::Image img;
 bool img_received = false;
 
-sensor_msgs::msg::CameraInfo cam_info;
+avt_341::msg::CameraInfo cam_info;
 bool cam_info_received = false;
 
 std::unique_ptr<tf2_ros::Buffer> tf_buffer;
@@ -52,7 +52,7 @@ void ImageCallback(avt_341::msg::ImagePtr rcv_img)
     img_received = true;
 }
 
-void CameraInfoCallback(sensor_msgs::msg::CameraInfo::SharedPtr msg)
+void CameraInfoCallback(avt_341::msg::CameraInfoPtr msg)
 {
     cam_info = *msg;
     cam_info_received = true;
@@ -80,7 +80,7 @@ static mxArray* toDoubleColumn(const std::array<double, 4>& vec)
 {
     mxArray* array = mxCreateDoubleMatrix(4, 1, mxREAL);
     double* data = mxGetPr(array);
-    for (size_t i = 0; i < 4; ++i) 
+    for (size_t i = 0; i < 4; ++i)
     {
         data[i] = vec[i];
     }
@@ -100,7 +100,7 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
         "data",
         "step"
     };
-    
+
     const mwSize height = static_cast<mwSize>(img.height);
     const mwSize width = static_cast<mwSize>(img.width);
     mxClassID encoding = mxUINT8_CLASS;
@@ -119,59 +119,36 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
     return mw_img;
 }
 
-//packages up PointCloud2 message into matlab-friendly struct
-static mwArray pcToMwArray(const avt_341::msg::PointCloud2 &pc)
+//extracts the xyz channels of a PointCloud2 into an Nx3 (x|y|z columns) matlab
+//matrix. Decoding here is cheaper than serializing the whole cloud into matlab
+//and de-serializing it on the matlab side.
+static mwArray pcToXyzMwArray(const avt_341::msg::PointCloud2 &pc)
 {
-    const size_t num_fields = 7;
-    const char* field_names[]
-    {
-        "height",
-        "width",
-        "point_step",
-        "row_step",
-        "is_dense",
-        "data",
-        "fields"
-    };
-
-    mwArray mw_point_cloud(1, 1, num_fields, field_names);
-
-    mw_point_cloud("height", 1, 1) = mwArray((double)pc.height);
-    mw_point_cloud("width", 1, 1) = mwArray((double)pc.width);
-    mw_point_cloud("point_step", 1, 1) = mwArray((double)pc.point_step);
-    mw_point_cloud("row_step", 1, 1) = mwArray((double)pc.row_step);
-    mw_point_cloud("is_dense", 1, 1) = mwArray((double)pc.is_dense);
-
-    mwSize dims[2];
-    dims[0] = pc.height;
-    dims[1] = pc.row_step;
-
-    mwArray pcData(2, dims, mxUINT8_CLASS);
-    pcData.SetData(&pc.data.front(), pc.data.size());
-
-    mw_point_cloud("data", 1, 1) = pcData;
-
-    const size_t num_point_fields = 5;
-    const char* pf_names[] = {"name", "offset", "datatype", "count"};
-
-    mwArray fields(1, num_point_fields, 4, pf_names);
-
-    const char* names[5] = {"x", "y", "z", "intensity", "ring"};
-    const int offsets[5] = {0, 4, 8, 12, 16};
-    const int datatypes[5] = {7, 7, 7, 7, 4};
-    const int counts[5] = {1, 1, 1, 1, 1};
-
-    for (int i = 0; i < num_point_fields; i++)
-    {
-        fields("name", 1, i+1) = mwArray(names[i]);
-        fields("offset", 1, i+1) = mwArray((double)offsets[i]);
-        fields("datatype", 1, i+1) = mwArray((double)datatypes[i]);
-        fields("count", 1, i+1) = mwArray((double)counts[i]);
+    int x_offset = -1, y_offset = -1, z_offset = -1;
+    for (const auto& field : pc.fields) {
+        if (field.name == "x") x_offset = field.offset;
+        else if (field.name == "y") y_offset = field.offset;
+        else if (field.name == "z") z_offset = field.offset;
     }
 
-    mw_point_cloud("fields", 1, 1) = fields;
+    int num_points = pc.width * pc.height;
+    std::vector<double> xyz_data(num_points * 3, 0.0);
+    if (x_offset >= 0 && y_offset >= 0 && z_offset >= 0) {
+        for (int i = 0; i < num_points; i++) {
+            int base = i * pc.point_step;
+            float x, y, z;
+            memcpy(&x, &pc.data[base + x_offset], sizeof(float));
+            memcpy(&y, &pc.data[base + y_offset], sizeof(float));
+            memcpy(&z, &pc.data[base + z_offset], sizeof(float));
+            xyz_data[i] = x;
+            xyz_data[i + num_points] = y;
+            xyz_data[i + 2 * num_points] = z;
+        }
+    }
+    mwArray mwXYZ(num_points, 3, mxDOUBLE_CLASS);
+    mwXYZ.SetData(xyz_data.data(), xyz_data.size());
 
-    return mw_point_cloud;
+    return mwXYZ;
 }
 
 //packages up CameraInfo message into matlab-friendly struct
@@ -296,9 +273,7 @@ void GetCostmapFromMatlab(float width,
                             float res,
                             float grid_llx,
                             float grid_lly,
-                            bool invert_lidar_z_rot,
-                            bool convert_ned_to_enu,
-                            bool correct_color,
+                            double brightness_offset,
                             std::vector<int8_t> &terrain_grid,
                             std::vector<double> &terrain_grid_modified_idxs,
                             std::vector<int8_t> &obstacle_grid,
@@ -315,7 +290,7 @@ void GetCostmapFromMatlab(float width,
             if (tf_buffer->canTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)))
             {
                 lidar_to_base_link_tf = tf_buffer->lookupTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero);
-                camera_to_lidar_tf = tf_buffer->lookupTransform(lidar_frame_id, camera_frame_id, tf2::TimePointZero);
+                lidar_to_camera_tf = tf_buffer->lookupTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero);
                 received_tform = true;
             }
         }
@@ -328,16 +303,16 @@ void GetCostmapFromMatlab(float width,
     //odometry
     mwArray mw_odom = odomToMwArray(current_pose);
 
-    //raw pointcloud, expected to be in lidar coordinate frame
-    mwArray mw_pc;
+    //raw pointcloud xyz, expected to be in lidar coordinate frame
+    mwArray mwXYZ;
     if (pc.header.frame_id != lidar_frame_id) {
         avt_341::msg::PointCloud2 pc_out;
         if (!node->transform_cloud(pc, pc_out, lidar_frame_id)) {
             return;
         }
-        mw_pc = pcToMwArray(pc_out);
+        mwXYZ = pcToXyzMwArray(pc_out);
     }else {
-        mw_pc = pcToMwArray(pc);
+        mwXYZ = pcToXyzMwArray(pc);
     }
 
     //raw image
@@ -346,18 +321,12 @@ void GetCostmapFromMatlab(float width,
     mwArray mw_camera_info = cameraInfoToMwArray(cam_info);
 
     //lidar to camera transform
-    mwArray mw_camera_to_lidar_tform = tfToMwArray(camera_to_lidar_tf);
+    mwArray mw_lidar_to_camera_tform = tfToMwArray(lidar_to_camera_tf);
     //transform from lidar to robot base link for mapping pointcloud points to the grid
     mwArray mw_lidar_to_base_link_tform = tfToMwArray(lidar_to_base_link_tf);
 
-    //used to invert pointcloud in the case of backwards mounting
-    mwArray mw_invert_lidar_z_rot(invert_lidar_z_rot);
-
-    //flag to indicate odometry is in NED coordinates
-    mwArray mw_convert_ned_to_enu(convert_ned_to_enu);
-
     //used to correct color to match model expectations
-    mwArray mw_correct_color(correct_color);
+    mwArray mw_brightness_offset(brightness_offset);
 
     //grid parameters
     mwArray mw_grid_width(width);
@@ -386,14 +355,12 @@ void GetCostmapFromMatlab(float width,
                             mw_obstacle_grid_size, //size of obstacle grid output
                             mw_obstacle_grid_modified_idxs, //cell indices of obstacle grid that were updated this iteration
                             mw_img, //image struct
-                            mw_pc, //pointcloud struct
+                            mwXYZ, //pointcloud xyz (Nx3 matrix)
                             mw_odom, //odometry struct
                             mw_camera_info, //camera info struct
-                            mw_camera_to_lidar_tform, //transform from camera to lidar
+                            mw_lidar_to_camera_tform, //transform from camera to lidar
                             mw_lidar_to_base_link_tform, //transform from lidar to robot base link
-                            mw_invert_lidar_z_rot, //handle backwards lidar mounting by inverting rotation about z axis
-                            mw_convert_ned_to_enu, //flag to indicate odometry is in NED coordinates
-                            mw_correct_color, //used to correct color to match model expectations
+                            mw_brightness_offset, //used to correct color to match model expectations
                             mw_grid_width, mw_grid_height, mw_grid_res, mw_grid_llx, mw_grid_lly //grid parameters
                         );
 
@@ -459,8 +426,8 @@ int main(int argc, char *argv[])
     auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
     auto img_sub = node->create_subscription<avt_341::msg::Image>("avt_341/camera/image_raw", 10, ImageCallback);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-    auto camera_info_sub = node->create_subscription<sensor_msgs::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
-    
+    auto camera_info_sub = node->create_subscription<avt_341::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
+
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
     auto occ_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
@@ -482,18 +449,14 @@ int main(int argc, char *argv[])
     node->get_parameter("~grid_res", grid_res, 1.0f);
     bool publish_occupancy_grid;
     node->get_parameter("~publish_uab_occupancy_grid", publish_occupancy_grid, false);
-    bool invert_lidar_z_rot = false;
-    node->get_parameter("~invert_lidar_z_rot", invert_lidar_z_rot, false);
     std::string lidar_frame_id;
     node->get_parameter("~lidar_frame_id", lidar_frame_id, std::string("lidar_link"));
     std::string odom_frame_id;
     node->get_parameter("~odom_frame_id", odom_frame_id, std::string("base_link"));
     std::string camera_frame_id;
     node->get_parameter("~camera_frame_id", camera_frame_id, std::string("camera_link"));
-    bool convert_ned_to_enu;
-    node->get_parameter("~convert_ned_to_enu", convert_ned_to_enu, false);
-    bool correct_color;
-    node->get_parameter("~correct_color", correct_color, false);
+    double brightness_offset;
+    node->get_parameter("~brightness_offset", brightness_offset, 0.0);
 
     for (auto f : {&lidar_frame_id, &odom_frame_id, &camera_frame_id})
     {
@@ -521,7 +484,7 @@ int main(int argc, char *argv[])
     //initialize obstacle grid with default cell values
     avt_341::msg::OccupancyGrid obstacle_grid;
     BuildOccupancyGrid(obstacle_grid, width, height, grid_llx, grid_lly, grid_res, OBSTACLE_GRID_DEFAULT_VAL);
-    
+
     avt_341::node::Rate rate(100.0);
     //number of seconds to wait for messages before exiting
     uint16_t timeout_sec = 20;
@@ -533,7 +496,7 @@ int main(int argc, char *argv[])
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }
-        
+
         //wait until we've received all necessary messages
         if (!allMsgsReceived())
         {
@@ -543,7 +506,7 @@ int main(int argc, char *argv[])
             if (!img_received) waiting_on += "image ";
             if (!cam_info_received) waiting_on += "camera_info";
             std::cout << waiting_on << std::endl;
-            
+
             avt_341::node::Rate wait(1.0);
             wait.sleep();
 
@@ -563,9 +526,7 @@ int main(int argc, char *argv[])
                 grid_res,
                 grid_llx,
                 grid_lly,
-                invert_lidar_z_rot,
-                convert_ned_to_enu,
-                correct_color,
+                brightness_offset,
                 terrain_sub_grid,
                 terrain_sub_grid_idxs,
                 obstacle_sub_grid,
