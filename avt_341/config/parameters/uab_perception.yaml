@@ -9,4 +9,4 @@ lidar_frame_id: "lidar"
 odom_frame_id: "base_link"
 camera_frame_id: "front_camera"
 convert_ned_to_enu: False
-correct_color: True
+brightness_offset: 75.0
