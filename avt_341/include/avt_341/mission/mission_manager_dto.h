@@ -50,8 +50,8 @@ struct MoveToMsg : public MissionManagerDto {
   MoveToMsg();
   explicit MoveToMsg(const avt_341::msg::Communication &msg);
   MoveToMsg(const std::string &sender, int msgId, const std::string & recipient,
-            const std::string &objectiveName, double xOffset = 0.0, double yOffset = 0.0, double distance = 0.0,
-            const std::string &priority = PriorityType::QUEUE);
+            const std::string &objectiveName, double xOffset = 0.0, double yOffset = 0.0,
+            double dist_threshold = 0.0, double yaw_threshold = -1.0, const std::string &priority = PriorityType::QUEUE);
 
   avt_341::msg::Communication toROSMsg() override;
   std::string getType() override;
@@ -59,7 +59,8 @@ struct MoveToMsg : public MissionManagerDto {
   std::string objective_name;
   double goal_x_offset;
   double goal_y_offset;
-  double approach_distance;
+  double dist_threshold;
+  double yaw_threshold;
 };
 
 struct PathFollowMsg : public MissionManagerDto {
@@ -92,7 +93,7 @@ struct FormationMsg : public MoveToMsg {
   explicit FormationMsg(const avt_341::msg::Communication &msg);
   FormationMsg(const std::string &sender, int msgId, const std::string & recipient,
                const std::string &objectiveName, const std::string &formation, double desiredSpeed,
-               double xOffset=0.0, double yOffset=0.0, double distance=0.0,
+               double xOffset=0.0, double yOffset=0.0, double distance=0.0, double yaw_threshold=-1.0,
                double xScale=-1.0, double yScale=-1.0, const std::string & terminationMethod = "",
                const std::string &priority = PriorityType::QUEUE);
 
@@ -124,7 +125,7 @@ struct AcknowledgeMsg : public MissionManagerDto {
 
 struct ArrivedMsg : public MissionManagerDto {
   explicit ArrivedMsg(const avt_341::msg::Communication &msg);
-  ArrivedMsg(const std::string &sender, int msgId, std::string objectiveName);
+  ArrivedMsg(const std::string &sender, int msgId, const std::string& objectiveName);
 
   avt_341::msg::Communication toROSMsg() override;
   std::string getType() override;

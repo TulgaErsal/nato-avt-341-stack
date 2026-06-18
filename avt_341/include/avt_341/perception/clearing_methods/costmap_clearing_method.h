@@ -3,7 +3,7 @@
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
-#include "avt_341/perception/elevation_grid_cell.h"
+#include "avt_341/perception/costmap_dtos.h"
 
 namespace avt_341::perception {
 

@@ -15,15 +15,17 @@
 #include <iostream>
 #include <numeric> // for std::accumulate
 
+// TODO: Refactor to dto.h and utils.h under core
+
 namespace avt_341 {
 namespace utils {
 
 enum NavStackState : int {
   NotInit = -1,
   Active = 0,
-  Stopped = 1,
-  Shutdown = 2,
-  HardShutdown = 3
+  InactiveCoast = 1,
+  InactiveGradualStop = 2,
+  InactiveHardStop = 3
 };
 
 enum NavStateCmd : int {
@@ -31,6 +33,12 @@ enum NavStateCmd : int {
   GoActive = 1
 };
 
+inline bool IsValidShutdownBehavior(const int shutdown_behavior)
+{
+	return shutdown_behavior >= static_cast<int>(InactiveCoast) && shutdown_behavior <= static_cast<int>(InactiveHardStop);
+}
+
+// TODO: Just use Eigen? If not, rename in future, should also be pascal case.
 struct vec2{
 	vec2(){
 		x = 0.0f;
@@ -136,6 +144,13 @@ inline float cross(vec2 v1, vec2 v2) {
 	return v1.x*v2.y - v1.y*v2.x;
 }
 
+inline double GetDistance(msg::Point p1, msg::Point p2)
+{
+	const double dx = p1.x - p2.x;
+	const double dy = p1.y - p2.y;
+	return sqrt(dx*dx + dy*dy);
+}
+
 inline float PointLineDistance(vec2 x1, vec2 x2, vec2 x0) {
 	float sx1 = x0.x - x1.x;
 	float sy1 = x0.y - x1.y;
@@ -170,28 +185,16 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 	return d0;
 }
 
-inline avt_341::msg::Pose TransformToPose(const avt_341::msg::Transform & tx) {
-	avt_341::msg::Pose pose_msg;
-
-	pose_msg.position.x = tx.translation.x;
-	pose_msg.position.y = tx.translation.y;
-	pose_msg.position.z = tx.translation.z;
-
-	pose_msg.orientation = tx.rotation;
-
-	return pose_msg;
-}
-
-inline float GetHeadingFromOrientation(avt_341::msg::Quaternion orientation){
+inline float GetHeadingFromOrientation(const avt_341::msg::Quaternion& orientation){
     avt_341::msg_tf::Quaternion q(
         orientation.x,
         orientation.y,
         orientation.z,
         orientation.w);
-    avt_341::msg_tf::Matrix3x3 m(q);
+    const avt_341::msg_tf::Matrix3x3 m(q);
 	double roll, pitch, yaw;
 	m.getRPY(roll, pitch, yaw);
-    return (float)yaw;
+    return static_cast<float>(yaw);
 }
 
 /// Convert any type to a string with zero padding
@@ -201,6 +204,104 @@ inline std::string ToString(int x, int zero_padding){
   std::string str = ss.str();
   return str;
 };
+
+/// Ray-casting point-in-polygon test (works for non-convex polygons).
+/// https://en.wikipedia.org/wiki/Point_in_polygon
+inline bool IsInsidePolygon(const std::vector<vec2>& poly, double px, double py)
+{
+	bool inside = false;
+	const int n = static_cast<int>(poly.size());
+	for (int i = 0, j = n - 1; i < n; j = i++) {
+		const double xi = poly[i].x, yi = poly[i].y;
+		const double xj = poly[j].x, yj = poly[j].y;
+		if (((yi > py) != (yj > py)) &&
+			(px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+			inside = !inside;
+			}
+	}
+	return inside;
+}
+
+/**
+ * @brief Trims the input string, removing all leading and trailing characters that match
+ * the specified character (default is space).
+ *
+ * @param str String to be trimmed.
+ * @param char_to_remove Character to remove.
+ * @return Trimmed string.
+ */
+inline std::string Trim(const std::string& str, const char char_to_remove = ' ')
+{
+    const auto start = str.find_first_not_of(char_to_remove);
+    if (start == std::string::npos) return "";
+    const auto end = str.find_last_not_of(char_to_remove);
+    return str.substr(start, end - start + 1);
+}
+
+/**
+ * @brief Split a string with a specified delimiter.
+ *
+ * @param str String to be split.
+ * @param delimiter Delimiter character used to split the string.
+ * @param trim_whitespace If set, trims whitespaces from split substrings.
+ * @return std::vector<std::string> Vector of split substrings (excluding the delimiter).
+ */
+inline std::vector<std::string> SplitByDelimiter(
+	const std::string& str,
+	const char delimiter = '-',
+	const bool trim_whitespace = true
+	){
+	std::stringstream stream(str);
+	std::vector<std::string> tokens;
+	std::string token;
+	while(std::getline(stream, token, delimiter)) { tokens.push_back(trim_whitespace ? Trim(token) : token); }
+	return tokens;
+}
+
+inline double DiffAngle(const double a, const double b) {
+	constexpr double two_pi = 2.0 * M_PI;
+	double diff = a - b;
+	diff -= two_pi * floor((diff + M_PI) / two_pi);
+	return diff;
+}
+
+inline double DiffDeg(const double a, const double b) {
+	constexpr double s = M_PI / 180.0;
+	return DiffAngle(a * s, b * s) / s;
+}
+
+inline bool UseGoalOrientation(const msg::NavGoal& msg)
+{
+	return msg.yaw_threshold < M_PI;
+}
+
+inline void GetGoalError(const msg::Pose& pose, const msg::NavGoal& goal, double& dist_error, double& yaw_error)
+{
+	if (UseGoalOrientation(goal))
+	{
+		const double pose_yaw = GetHeadingFromOrientation(pose.orientation);
+		const double goal_yaw = GetHeadingFromOrientation(goal.pose.orientation);
+		yaw_error = std::abs(DiffAngle(pose_yaw, goal_yaw));
+	}
+	else
+	{
+		yaw_error = 0.0;
+	}
+
+	dist_error = GetDistance(pose.position, goal.pose.position);
+}
+
+inline bool IsGoalReached(const msg::Pose& pose, const msg::NavGoal& goal)
+{
+	double dist_diff, yaw_diff;
+	GetGoalError(pose, goal, dist_diff, yaw_diff);
+	return yaw_diff < goal.yaw_threshold && dist_diff < goal.dist_threshold;
+}
+
+inline bool IsGoalReached(const msg::NavState& state, const msg::NavGoal& goal)
+{
+	return state.goal_distance < goal.dist_threshold && state.goal_yaw_difference < goal.yaw_threshold;
+}
 
 } //namespace utils
 } //namespace avt_341

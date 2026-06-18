@@ -1,25 +1,6 @@
 //
 // MATLAB Compiler: 8.6 (R2023a)
-// Date: Mon Apr 29 09:56:33 2024
-// Arguments:
-// "-B""macro_default""-W""cpplib:lib_uab_perception_wrapper,legacy,version=1.0.
-// 0.0""-T""link:lib""-d"".\lib_uab_perception_wrappercppSharedLibrary""-a""C:\U
-// sers\Nic\Documents\git\PerceptionDemo\calibration
-// images""-a""C:\Users\Nic\Documents\git\PerceptionDemo\MLmodels""-a""C:\Users\
-// Nic\Documents\git\PerceptionDemo\functions\BuildRosOdometryMsg.m""-a""C:\User
-// s\Nic\Documents\git\PerceptionDemo\functions\BuildRosPointCloud2Msg.m""-a""C:
-// \Users\Nic\Documents\git\PerceptionDemo\functions\data_split.m""-a""C:\Users\
-// Nic\Documents\git\PerceptionDemo\functions\GetCameraIntrinsics.m""-a""C:\User
-// s\Nic\Documents\git\PerceptionDemo\functions\GetSensorTform.m""-a""C:\Users\N
-// ic\Documents\git\PerceptionDemo\functions\globalParams.m""-a""C:\Users\Nic\Do
-// cuments\git\PerceptionDemo\functions\GridBuilder.m""-a""C:\Users\Nic\Document
-// s\git\PerceptionDemo\main.m""-a""C:\Users\Nic\Documents\git\PerceptionDemo\fu
-// nctions\ParseRosOdometry.m""-a""C:\Users\Nic\Documents\git\PerceptionDemo\per
-// cep2occ.m""-a""C:\Users\Nic\Documents\git\PerceptionDemo\perception.m""-a""C:
-// \Users\Nic\Documents\git\PerceptionDemo\functions\reservoir_update.m""-a""C:\
-// Users\Nic\Documents\git\PerceptionDemo\functions\reservoir_update_cesn.m""-a"
-// "C:\Users\Nic\Documents\git\PerceptionDemo\functions\standalone_CESN_v2.m""-Z
-// ""autodetect""C:\Users\Nic\Documents\git\PerceptionDemo\perception_wrapper.m"
+// Date: Sun May 10 23:25:03 2026
 //
 
 #ifndef lib_uab_perception_wrapper_h
@@ -98,7 +79,7 @@ bool MW_CALL_CONV mlxPerception_wrapper(int nlhs, mxArray *plhs[], int nrhs, mxA
 
 #endif
 
-extern LIB_lib_uab_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& terrainSubGrid, mwArray& terrainSubgridSize, mwArray& terrainModifiedCellIdxs, mwArray& obstacleSubGrid, mwArray& obstacleSubgridSize, mwArray& obstacleModifiedCellIdxs, const mwArray& rawImg, const mwArray& imgWidth, const mwArray& imgHeight, const mwArray& rawLidar, const mwArray& pcWidth, const mwArray& pcHeight, const mwArray& pcPointStep, const mwArray& pcRowStep, const mwArray& pose_point_x, const mwArray& pose_point_y, const mwArray& pose_point_z, const mwArray& pose_quat_w, const mwArray& pose_quat_x, const mwArray& pose_quat_y, const mwArray& pose_quat_z, const mwArray& grid_width, const mwArray& grid_height, const mwArray& cell_size, const mwArray& grid_llx, const mwArray& grid_lly);
+extern LIB_lib_uab_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& terrainSubGrid, mwArray& terrainSubgridSize, mwArray& terrainModifiedCellIdxs, mwArray& obstacleSubGrid, mwArray& obstacleSubgridSize, mwArray& obstacleModifiedCellIdxs, const mwArray& img, const mwArray& pc, const mwArray& odom, const mwArray& cameraInfo, const mwArray& cameraToLidarTform, const mwArray& lidarToVboxTform, const mwArray& invertLidarZRot, const mwArray& convertNEDToENU, const mwArray& correctColor, const mwArray& grid_width, const mwArray& grid_height, const mwArray& cell_size, const mwArray& grid_llx, const mwArray& grid_lly);
 
 /* C++ INTERFACE -- WRAPPERS FOR USER-DEFINED MATLAB FUNCTIONS -- END */
 #endif

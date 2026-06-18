@@ -38,45 +38,9 @@ namespace avt_341 {
 
     double NullFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
                                                         const avt_341::msg::PoseStamped &terminal_pose,
-                                                        std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+                                                        std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                        double speed_setpoint) {
       return 1.0;
-    }
-
-// SpeedUpFollowerSimpleFormationSpeedController
-// ====================================================================================================
-
-    SpeedUpFollowerSimpleFormationSpeedController::SpeedUpFollowerSimpleFormationSpeedController(
-        const std::string & veh_name, const FormationSpeedControlParams &params)
-        : FormationSpeedController(veh_name, params) {
-    }
-
-    double SpeedUpFollowerSimpleFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
-                                                                   const avt_341::msg::PoseStamped &terminal_pose,
-                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
-      if (formation_def == nullptr || !formation_def->has_formation() ||
-        formation_poses.find(my_name_) == formation_poses.end() || formation_def->isLeader()) {
-        return 1.0;
-      }
-
-      //Calculate target leader point
-      auto leader_odom = formation_poses[formation_def->followedVehicle()];
-      auto odom = formation_poses[my_name_];
-      const auto targetLeaderPose = getFollowerTargetPose(leader_odom, formation_def->formation_status);
-
-      //Calculate vector to target leader point
-      // CTG 2/23/23 - these were facing the wrong way, added the minus sign
-      float vec[2];
-      vec[0] = targetLeaderPose.pose.position.x - odom.pose.pose.position.x;
-      vec[1] = targetLeaderPose.pose.position.y - odom.pose.pose.position.y;
-
-      //Calculate the distance to target leader point
-      float dist = sqrt(vec[0]*vec[0] + vec[1]*vec[1]);
-
-      double speed_factor = 1.0;
-      if(dist > fsc_params_.oof_threshold){
-        speed_factor = dist * fsc_params_.oof_mult;
-      }
-      return std::min(std::max(speed_factor, 0.0), fsc_params_.max_speed_factor);
     }
 
 // SpeedUpFollowerFormationSpeedController
@@ -89,7 +53,8 @@ namespace avt_341 {
 
     double SpeedUpFollowerFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
                                                                    const avt_341::msg::PoseStamped &terminal_pose,
-                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                                   double speed_setpoint) {
 
       if (formation_def == nullptr || !formation_def->has_formation() ||
         formation_poses.find(my_name_) == formation_poses.end() || formation_def->isLeader()) {
@@ -101,35 +66,27 @@ namespace avt_341 {
       auto odom = formation_poses[my_name_];
       const auto targetLeaderPose = getFollowerTargetPose(leader_odom, formation_def->formation_status);
 
-      //Calculate vector to target leader point
-      // CTG 2/23/23 - these were facing the wrong way, added the minus sign
       float vec[2];
       vec[0] = targetLeaderPose.pose.position.x - odom.pose.pose.position.x;
       vec[1] = targetLeaderPose.pose.position.y - odom.pose.pose.position.y;
 
-      Vec2d vehicleVx, vehicleVy;
-      PoseToForwardRightVectors(odom.pose.pose, vehicleVx, vehicleVy);
+      const float dist = sqrt(vec[0]*vec[0] + vec[1]*vec[1]);
+      const bool is_out_of_formation = dist > fsc_params_.oof_threshold;
 
-      //Calculate the distance to target leader point
-      float dist = sqrt(vec[0]*vec[0] + vec[1]*vec[1]);
+      if (fsc_params_.follower_obt_stop && !is_out_of_formation)
+      {
+        Vec2d vehicleVx, vehicleVy;
+        PoseToForwardRightVectors(odom.pose.pose, vehicleVx, vehicleVy);
+        float dotP = vehicleVx[0]*vec[0] +  vehicleVx[1]*vec[1];
 
-      //Calculate the dot product of the vehicle heading vector and the vector to target leader point
-      float dotP = vehicleVx[0]*vec[0] +  vehicleVx[1]*vec[1];
-
-      float leaderVel[2];
-      leaderVel[0] = leader_odom.twist.twist.linear.x;
-      leaderVel[1] = leader_odom.twist.twist.linear.y;
-
-      //Speed along vehicle heading
-      float speedHeading = vehicleVx[0]*leaderVel[0] + vehicleVx[1]*leaderVel[1];
-
-      //If distance between vehicles is less than followerHeadingDistLimit_ meters, the vehicles are too close and distance cannot be used.
-      double speed_factor = 1.0;
-      if(dotP <= 0){
-        return 0.0; //Follower Vehicle is heading in the wrong direction. So stop.
+        if(dotP <= 0){
+          return 0.0; //Follower Vehicle is heading in the wrong direction. So stop.
+        }
       }
-      else if(dist > fsc_params_.oof_threshold){
-        speed_factor = dist * fsc_params_.oof_mult + speedHeading;
+
+      double speed_factor = 1.0;
+      if(is_out_of_formation){
+        speed_factor = dist * fsc_params_.oof_mult;
       }
       return std::min(std::max(speed_factor, 0.0), fsc_params_.max_speed_factor);
     }
@@ -148,7 +105,8 @@ namespace avt_341 {
 
     double SlowLeaderFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
                                                               const avt_341::msg::PoseStamped &terminal_pose,
-                                                              std::map<std::string, avt_341::msg::Odometry> &formation_poses) {
+                                                              std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                              double speed_setpoint) {
 
       if (formation_poses.find(my_name_) == formation_poses.end()) {
         node_proxy_->log_error_once("FormationSpeedController %s not found in formation_poses", my_name_.c_str());
@@ -158,7 +116,7 @@ namespace avt_341 {
       if (formation_def == nullptr || !formation_def->has_formation()) {
         auto current_pos = formation_poses[my_name_].pose.pose.position;
         double delta_pos = PosePlanarDistance(terminal_pose.pose.position, current_pos);
-        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false);
+        visualizeSpeedIndicators(1.0, delta_pos, terminal_pose, current_pos, false, false, speed_setpoint);
         return 1.0;
       }
 
@@ -217,7 +175,7 @@ namespace avt_341 {
       if (formation_def->formationAtGoal()) {
         if (fsc_params_.debug_visualize) {
           visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_],
-                                   formation_poses[my_name_].pose.pose.position, false, false);
+                                   formation_poses[my_name_].pose.pose.position, false, false, speed_setpoint);
         }
         return speed_factor;
       }
@@ -282,7 +240,7 @@ namespace avt_341 {
       if (fsc_params_.debug_visualize) {
         visualizeSpeedIndicators(speed_factor, delta_pos_map[my_name_], target_poses[my_name_],
                                  formation_poses[my_name_].pose.pose.position, heading_filter_on,
-                                 follower_dist_break_on);
+                                 follower_dist_break_on, speed_setpoint);
       }
 
       return speed_factor;
@@ -306,7 +264,7 @@ namespace avt_341 {
                                                                       const avt_341::msg::PoseStamped &target_pose,
                                                                       const avt_341::msg::Point &current_pos,
                                                                       bool heading_filter_on,
-                                                                      bool follower_dist_break_on) {
+                                                                      bool follower_dist_break_on, double speed_setpoint) {
 
       std::string str1 = "map";
       std::string str2 = my_name_ + "_target";
@@ -336,7 +294,7 @@ namespace avt_341 {
       std::ostringstream out;
       out.precision(2);
       out << std::fixed;
-      out << "(" << delta_pos << ", " << speed_factor << ")";
+      out << "(d: " << delta_pos << ", s: " << speed_setpoint << ", f: " << speed_factor << ")";
 
       if (heading_filter_on) {
         out << " [H]";
@@ -363,9 +321,6 @@ namespace avt_341 {
       }
       if (fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER) {
         return std::make_shared<SpeedUpFollowerFormationSpeedController>(veh_name, params);
-      }
-      if (fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER_SIMPLE) {
-        return std::make_shared<SpeedUpFollowerSimpleFormationSpeedController>(veh_name, params);
       }
       if (fsc_type == FormationSpeedControlType::NONE) {
         return std::make_shared<NullFormationSpeedController>(veh_name, params);

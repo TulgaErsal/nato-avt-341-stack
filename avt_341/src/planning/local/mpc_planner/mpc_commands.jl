@@ -15,6 +15,12 @@ global yawrate = 0.0
 global longacc = 0.0
 global cmdLeaderSpeed = 0.0
 global follower_status = false
+global leaderX = 0.0
+global leaderY = 0.0
+global leaderYaw = 0.0
+global leaderYawRate = 0.0
+global formationXOffset = 0.0
+global formationYOffset = 0.0
 global numobs = 0
 global obstacle_size_meters = 0.0
 global obs_radius = 0.0
@@ -24,11 +30,14 @@ global numSegCells = 0
 global count = 0
 global goal = [0. 0.]
 global desiredHeading = 0.0
+global finalHeading = 0.0
+global w_finalHeading = 0.0
 global speedSetpoint = 0.0
 global cmdSpeedSetpoint = 0.0
 global est_sink = 0.0
 global new_sinkage_available = false
 global linearSolverId = "ma27"
+global goalPointIsEndOfGlobalPath = false
 
 global n=0
 global XL=0
@@ -96,6 +105,10 @@ end
 
 function SetSteeringRateMax(sr_max_in::Float64)
 	global sr_max = sr_max_in
+end
+
+function SetAxMax(ax_max_in::Float64)
+	global ax_max = ax_max_in
 end
 
 function SetSpeedAroundLargeSlopesAndRMS(speed_around_large_slopes_and_rms::Float64)
@@ -270,6 +283,14 @@ function SetHeading(theta::Float64)
 	global desiredHeading = theta
 end
 
+function SetFinalHeading(theta::Float64)
+	global finalHeading = theta
+end
+
+function SetWFinalHeading(w::Float64)
+	global w_finalHeading = w
+end
+
 function SetSpeedSetpoint(ss::Float64)
 	global speedSetpoint = ss
 	global cmdSpeedSetpoint = ss
@@ -288,8 +309,24 @@ function SetLeaderSpeed(speed::Float64)
     global cmdLeaderSpeed = speed
 end
 
+function SetLeaderPose(x::Float64, y::Float64, yaw::Float64, yaw_rate::Float64)
+    global leaderX = x
+    global leaderY = y
+    global leaderYaw = yaw
+    global leaderYawRate = yaw_rate
+end
+
+function SetFormationOffset(xo::Float64, yo::Float64)
+    global formationXOffset = xo
+    global formationYOffset = yo
+end
+
 function SetFollowerStatus(status::Bool)
     global follower_status = status
+end
+
+function SetGoalPointIsEndOfGlobalPath(flag::Bool)
+    global goalPointIsEndOfGlobalPath = flag
 end
 
 function GetPath()
@@ -302,8 +339,9 @@ end
 
 function GetSpeed()
 	num_path_points = size(mpc_path)[1]
-	if skipCount < num_path_points - 5
-		return mpc_speed[5+ skipCount]
+	speed_idx = div(numColPoints,2)
+	if skipCount < num_path_points - speed_idx
+		return mpc_speed[speed_idx + skipCount]
 	end
 	return 0.0
 end
@@ -353,7 +391,11 @@ function Setup()
 	global leader_speed
 	global beta
 	global distanceToGoalAlongPath
-	
+	global finalHeadingCost
+	global final_heading_param
+	global final_heading_w_param
+	global deviation_in_yaw_w_param
+
 	global mpc_path = Array{Float64}(undef, numColPoints+1, 2)
 	global mpc_speed = Array{Float64}(undef, numColPoints+1, 1)
 	global mpc_steering = Array{Float64}(undef, numColPoints+1, 1)
@@ -366,15 +408,12 @@ function Setup()
 
 	global n, obs_r, Xobs_0, Yobs_0, cellX, cellY, cellZ, g1, g2, desiredYaw, n_f, n_r
 
-	XL = [NaN, NaN, NaN, NaN, psi_min, sa_min, minSpeed, -10.0]
-	XU = [NaN, NaN, NaN, NaN, psi_max, sa_max, maxSpeed,  10.0]
+	XL = [NaN, NaN, NaN, NaN, psi_min, sa_min, minSpeed, ax_min]
+	XU = [NaN, NaN, NaN, NaN, psi_max, sa_max, maxSpeed, ax_max]
 	CL=[jx_min, sr_min]
 	CU=[jx_max, sr_max]
 
 	n = define(numStates=8,numControls=2,X0=[x_veh, y_veh, latvel, yawrate, yaw, steer_angle, longvel, longacc],XF=[NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN], XL=XL, XU=XU, CL=CL,CU=CU);
-
-	# n.s.ocp.solver.settings[:max_cpu_time] = 10.0
-	# n.s.ocp.solver.settings[:max_iter] = 3000
 
 	defineMPC!(n;fixedTp=true,predictX0=false,tex=0.1,maxSim=1000000000)
 	states!(n,[:x,:y,:v,:r,:psi,:sa,:ux,:ax];descriptions=["x(t)","y(t)","v(t)","r(t)","psi(t)","sa(t)","ux(t)","ax(t)"]);
@@ -442,9 +481,7 @@ function Setup()
 		-sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts)
 	)
 	
-	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum(1/((x[j]-Xobs_0[i])^2+(y[j]-Yobs_0[i])^2+0.1) for i=1:maxNumObs for j=2:n.ocp.state.pts))
-	# distanceToObstacles = @NLexpression(n.ocp.mdl,sum((tanh(-1.3*((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
-	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2)) + 1)/2 for i=1:maxNumObs for j=2:n.ocp.state.pts))
+	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((ux[j] / maxSpeed) * (exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2))) for i=1:maxNumObs for j=2:n.ocp.state.pts))
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
@@ -452,13 +489,25 @@ function Setup()
 	if useSegmentation
 		traversabilityCost = @NLexpression(n.ocp.mdl, sum(cellZ[i]*exp(-((x[j] - cellX[i])^2/(sigma)^2 +(y[j] - cellY[i])^2/(sigma)^2)) for i=1:maxNumSeg for j=2:n.ocp.state.pts))
 	end
+
+	# Terminal heading cost: penalizes deviation from the desired heading at the end of
+	# the predicted trajectory. Activated only when near the end of the global path.
+	# The weight (final_heading_w_param) is set to zero when inactive.
+	@NLparameter(n.ocp.mdl, final_heading_param == 0.0)
+	@NLparameter(n.ocp.mdl, final_heading_w_param == 0.0)
+	finalHeadingCost = @NLexpression(n.ocp.mdl,
+		(cos(psi[end]) - cos(final_heading_param))^2 + (sin(psi[end]) - sin(final_heading_param))^2
+	)
+	# Weight on the initial-heading cost; zeroed out when terminal heading cost is active
+	# so the two costs do not fight each other.
+	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
+
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
-	# @NLobjective(n.ocp.mdl, Min, obj+100.0 * (distanceToGoal+1))
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	end
 	n.s.ocp.save = false
 
@@ -505,14 +554,14 @@ function Setup()
 		acceptable_compl_inf_tol = 0.01
 	))
 
-	# n.s.ocp.solver.settings[:max_cpu_time] = 1.0
-	# n.s.ocp.solver.settings[:max_iter] = 200
 end
 
 function Plan()
 	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint, slopeLimited
 	global follower_status
 	global cmdLeaderSpeed
+	global leaderX, leaderY, leaderYaw, leaderYawRate
+	global formationXOffset, formationYOffset
 	global distanceToGoal
 	global distanceToObstacles
 	global deviationInYaw
@@ -520,6 +569,10 @@ function Plan()
 	global deviationFromDesiredFinalSpeed
 	global traversabilityCost
 	global distanceToGoalAlongPath
+	global finalHeadingCost
+	global final_heading_param
+	global final_heading_w_param
+	global deviation_in_yaw_w_param
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -544,15 +597,12 @@ function Plan()
 			####### END -- Change Sinkage Exponent ###########
 		end
 
-		JuMP.setValue(g1, goal[1])
-		JuMP.setValue(g2, goal[2])
-		JuMP.setValue(desiredYaw, desiredHeading)
 		push!(n.r.ip.X0p,X0)
 		n.ocp.X0 = X0
 		push!(n.r.ocp.X0, n.ocp.X0)
 		# setvalue(n.ocp.t0, copy(t0))
 
-		# modify speed setpoint if there is significant slope or rms
+		# Terrain slope/rms speed cap (common to both modes)
 		if terrainSlope > slopeThreshold || terrainRMS > rmsThreshold
 			speedSetpoint = speedAroundLargeSlopesAndRMS
 			slopeLimited = true
@@ -563,41 +613,80 @@ function Plan()
 			slopeLimited = false	# For when the limit is the same as commanded
 		end
 
-		# check if heading error is large (i.e., close to 180 degrees), and reduce speed further if so
-        dx_goal = goal[1] - x_veh
-        dy_goal = goal[2] - y_veh
-        dir_to_goal = atan(dy_goal, dx_goal)
-        heading_error = abs(atan(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
-        if abs(heading_error - π) <= angleThreshold
-            speedSetpoint = speedForTurningBack
-            n.ocp.XL[7] = speedForTurningBack # set a minimum speed for sharp turns
-            # Also update lower bounds of all trajectory points for longitudinal speed
-            for i in 1:n.ocp.state.pts
-                setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
-            end
-        else
-            # restore lower bound to the regular minimum
-            n.ocp.XL[7] = minSpeed
-            for i in 1:n.ocp.state.pts
-                setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
-            end
-        end
-
-		#set the new speed limit
-		n.ocp.XU[7]=speedSetpoint
-		for i=1:n.ocp.state.pts
-			setupperbound(n.r.ocp.xUnscaled[i,7],n.ocp.XU[7])
-		end
-		
-		# Update objective function based on follower status and goal proximity
-		# Check if goal is within prediction horizon
-		goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
-		horizon_dist = speedSetpoint * predictionTimeHorizon
-		if follower_status && (goal_dist < horizon_dist)
-			JuMP.setValue(leader_speed, cmdLeaderSpeed)
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoalAlongPath + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel + w_finalSpeed*deviationFromDesiredFinalSpeed)
+		if follower_status
+			# Follower mode: all formulation parameters set here; none leak out.
+			# Predict formation target at t+T using a constant yaw-rate arc.
+			T = predictionTimeHorizon
+			if abs(leaderYawRate) > 0.001
+				pred_yaw = leaderYaw + leaderYawRate * T
+				R = cmdLeaderSpeed / leaderYawRate
+				pred_lx = leaderX + R * (sin(pred_yaw) - sin(leaderYaw))
+				pred_ly = leaderY - R * (cos(pred_yaw) - cos(leaderYaw))
+			else
+				pred_yaw = leaderYaw
+				pred_lx = leaderX + cmdLeaderSpeed * T * cos(leaderYaw)
+				pred_ly = leaderY + cmdLeaderSpeed * T * sin(leaderYaw)
+			end
+			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset + sin(pred_yaw) * formationYOffset
+			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset - cos(pred_yaw) * formationYOffset
+			JuMP.setValue(g1, pred_target_x)
+			JuMP.setValue(g2, pred_target_y)
+			JuMP.setValue(desiredYaw, leaderYaw)
+			JuMP.setValue(final_heading_param, leaderYaw)
+			JuMP.setValue(final_heading_w_param, 0.0)
+			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			# Speed cap: drive formation error to zero over the prediction horizon
+			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset + sin(leaderYaw) * formationYOffset
+			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset - cos(leaderYaw) * formationYOffset
+			err_x = curr_target_x - x_veh
+			err_y = curr_target_y - y_veh
+			formation_error = err_x * cos(leaderYaw) + err_y * sin(leaderYaw)
+			v_desired = clamp(cmdLeaderSpeed + formation_error / T, minSpeed, speedSetpoint)
+			n.ocp.XU[7] = v_desired
+			n.ocp.XL[7] = minSpeed
+			for i=1:n.ocp.state.pts
+				setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
+			end
 		else
-			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + w_deviationInYaw*deviationInYaw + w_yawAccel*yawAccel)
+			# Solo mode: all formulation parameters set here; explicit reversion of
+			# any follower-mode overrides is guaranteed by this branch executing.
+			JuMP.setValue(g1, goal[1])
+			JuMP.setValue(g2, goal[2])
+			JuMP.setValue(desiredYaw, desiredHeading)
+			JuMP.setValue(final_heading_param, finalHeading)
+			# Reduce speed for near-180-degree turns toward the goal
+			dx_goal = goal[1] - x_veh
+			dy_goal = goal[2] - y_veh
+			dir_to_goal = atan(dy_goal, dx_goal)
+			heading_error = abs(atan(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
+			if abs(heading_error - pi) <= angleThreshold
+				speedSetpoint = speedForTurningBack
+				n.ocp.XL[7] = speedForTurningBack
+				for i in 1:n.ocp.state.pts
+					setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				end
+			else
+				n.ocp.XL[7] = minSpeed
+				for i in 1:n.ocp.state.pts
+					setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				end
+			end
+			n.ocp.XU[7] = speedSetpoint
+			for i=1:n.ocp.state.pts
+				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
+			end
+			# Terminal heading: activate when goal is at path end and within horizon
+			goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
+			horizon_dist = speedSetpoint * predictionTimeHorizon
+			terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
+			if terminal_heading_active
+				JuMP.setValue(final_heading_w_param, w_finalHeading)
+				JuMP.setValue(deviation_in_yaw_w_param, 0.0)
+			else
+				JuMP.setValue(final_heading_w_param, 0.0)
+				JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			end
 		end
 
 		if n.s.mpc.shiftX0

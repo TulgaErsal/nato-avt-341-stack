@@ -1,0 +1,16 @@
+{
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "cschlosser.doxdocgen",
+                "josetr.cmake-language-support-vscode",
+                "Ranch-Hand-Robotics.rde-ros-2"
+            ]
+        }
+    },
+    "dockerComposeFile": [
+        "docker-compose.yml"
+    ],
+    "service": "ros",
+    "workspaceFolder": "/home/avt/ROS/src/nato-avt-341-stack"
+}

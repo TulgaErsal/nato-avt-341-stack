@@ -1,6 +1,6 @@
 # Obstacle Detection
 # ======================================================================================================================
-use_pca_box: false                                              # Use PCA Bounding box to align clusters
+use_pca_box: true                                              # Use PCA Bounding box to align clusters
 use_tracking: true                                              # Use tracking to assign bbox ids
 
 voxel_grid_size: 0.2                                            # Grid size for voxel grid filtering [m]
@@ -23,9 +23,9 @@ body_min_z: -0.3                                                # Minimum z for 
 
 ground_threshold: 0.3                                           # [UNUSED]
 
-cluster_threshold: 0.6                                          # Threshold distance for separation distance between clusters [m]
-cluster_max_size: 5000                                          # Maximum size of a cluster [points]
-cluster_min_size: 10                                            # Minimum size of a cluster [points]
+cluster_threshold: 0.5                                          # Threshold distance for separation distance between clusters [m]
+cluster_max_size: 1000                                          # Maximum size of a cluster [points]
+cluster_min_size: 50                                            # Minimum size of a cluster [points]
 
 displacement_threshold: 1.0                                     # Maximum displacement between frames for object tracking [m]
 iou_threshold: 1.0                                              # Intersection over union threshold for object tracking [m]
@@ -49,7 +49,7 @@ fixed_frame: 'map'                                              # World-fixed fr
 lidar_points_topic: '/ouster/points'                            # Input sensor point cloud topic
 cloud_ground_topic: '/avt_341/lidar_detector/cloud_ground'      # Output ground points topic
 cloud_clusters_topic: '/avt_341/lidar_detector/cloud_clusters'  # Output obstacle points topic
-jsk_bboxes_topic: '/avt_341/lidar_detector/jsk_bboxes'          # Output cluster bounding boxes
+bboxes_topic: '/avt_341/lidar_detector/bboxes'                  # Output cluster bounding boxes
 
 publish_seg_as_one: False                                       # If true publishes ground plane segmented pointcloud in single message with mask put in additional an channel
 publish_seg_as_one_field: 'gnd_seg'                           # Channel name to use if publish_seg_as_one is true

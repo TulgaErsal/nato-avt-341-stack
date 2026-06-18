@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
   n->get_parameter("~motion_model_res", motion_model_res, 0.5f);
   n->get_parameter("~pf_rate", rate, 50.0f);
 
-  int shutdown_behavior = avt_341::utils::NavStackState::Stopped;
+  int shutdown_behavior = avt_341::utils::NavStackState::InactiveCoast;
   n->get_parameter("~shutdown_behavior", shutdown_behavior, shutdown_behavior);
   if (shutdown_behavior>3 || shutdown_behavior<1)shutdown_behavior = 1;
 
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
     // Handle Go command
     if(nav_command_rcvd) {
 	    if(nav_command == avt_341::utils::NavStateCmd::GoActive
-      && (state.data == avt_341::utils::NavStackState::NotInit) || state.data == avt_341::utils::NavStackState::Stopped) {
+      && (state.data == avt_341::utils::NavStackState::NotInit) || state.data == avt_341::utils::NavStackState::InactiveCoast) {
         // startup/idling - go active
         state.data = avt_341::utils::NavStackState::Active;
         shutdown_condition = false;
@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
             goal_reached_pub->publish(current_waypoints.poses[current_waypoint]);
 
 			      //std::cout << "Shutdown " << shutdown_behavior << std::endl;
-			      if(state.data != avt_341::utils::NavStackState::Stopped) {
+			      if(state.data != avt_341::utils::NavStackState::InactiveCoast) {
               shutdown_count++;
             	if (shutdown_count>10)
 				      {

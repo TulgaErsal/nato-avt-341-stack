@@ -8,6 +8,7 @@ if(USING_CATKIN)
 endif() # if(USING_CATKIN)
 
 if(USING_AMENT)
+  find_package(avt_341_msgs REQUIRED)
   find_package(PCL REQUIRED QUIET)
   find_package(Eigen3 REQUIRED)
   find_package(cv_bridge REQUIRED)
@@ -23,6 +24,7 @@ if(USING_AMENT)
   find_package(tf2_ros REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(vision_msgs REQUIRED)
+  find_package(visualization_msgs REQUIRED)
 
   if(PCL_FOUND)
     add_definitions(${PCL_DEFINITIONS})
@@ -31,10 +33,18 @@ if(USING_AMENT)
   endif() # if(PCL_FOUND)
 
   add_executable(${PROJECT_NAME}_object_tracking_node
-                 "object_tracking_node.cpp" "object_tracking_node_executor.cpp")
+          "tracker_params.cpp"
+          "object_tracker.cpp"
+          "object_tracking_node.cpp"
+          "object_tracking_node_executor.cpp")
+
+  target_link_libraries(${PROJECT_NAME}_object_tracking_node
+    ${PROJECT_NAME}_proxy
+  )
 
   ament_target_dependencies(
     ${PROJECT_NAME}_object_tracking_node
+    avt_341_msgs
     Eigen3
     cv_bridge
     OpenCV
@@ -48,7 +58,8 @@ if(USING_AMENT)
     tf2_geometry_msgs
     tf2_ros
     tf2_sensor_msgs
-    vision_msgs)
+    vision_msgs
+    visualization_msgs)
 
   install(
     TARGETS ${PROJECT_NAME}_object_tracking_node

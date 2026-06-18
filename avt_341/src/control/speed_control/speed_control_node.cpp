@@ -16,11 +16,12 @@
 #include "avt_341/avt_341_utils.h"
 //avt_341 includes
 #include "avt_341/control/pid_controller.h"
+#include <algorithm>
 
+using avt_341::utils::NavStackState;
 
 avt_341::msg::Odometry state;
-int current_run_state = avt_341::utils::NavStackState::NotInit;   // startup state
-bool shutdown_condition = false;
+int current_run_state = NavStackState::NotInit;   // startup state
 double mrzr_speedometer = 0.0;
 bool speedometer_rcvd = false;
 double desired_speed = 0.0;
@@ -48,9 +49,8 @@ void DesiredSteerCallback(avt_341::msg::Float64Ptr rcv_des_steer) {
 	desired_steer_radians = rcv_des_steer->data;
 }
 
-void StateCallback(avt_341::msg::Int32Ptr rcv_state){
-  current_run_state = rcv_state->data;
-  if (current_run_state==avt_341::utils::NavStackState::Shutdown)shutdown_condition = true;
+void StateCallback(avt_341::msg::NavStatePtr rcv_state){
+  current_run_state = rcv_state->run_state;
 }
 
 bool reset_called = false;
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]){
 
   auto state_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",1, OdometryCallback);
 
-  auto control_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/state",1,StateCallback);
+  auto control_sub = n->create_subscription<avt_341::msg::NavState>("avt_341/state",1,StateCallback);
 
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
 
@@ -111,6 +111,8 @@ int main(int argc, char *argv[]){
   n->get_parameter("~output_steering_percent", output_steering_percent, true);
   n->get_parameter("~max_desired_lateral_g", max_lat_g, 1.0);
 
+  const double max_steer_angle_rad = vehicle_max_steer_angle_degrees * M_PI / 180.0;
+
   n->get_parameter("~steering_gain", steering_gain, 1.0);
 
   avt_341::control::PidController controller(anti_windup_method, output_min, output_max);
@@ -142,12 +144,11 @@ int main(int argc, char *argv[]){
 
   while (avt_341::node::ok()){
     avt_341::msg::Twist dc;
-    bool time_to_quit = false;
 
     if(reset_called){
       controller.Reset();
       desired_speed = 0.0;
-      current_run_state = avt_341::utils::NavStackState::NotInit;
+      current_run_state = NavStackState::NotInit;
       avt_341::msg::String reset_ack_msg;
       reset_ack_msg.data = avt_341::node::NodeType::Control;
       reset_ack_pub->publish(reset_ack_msg);
@@ -163,61 +164,45 @@ int main(int argc, char *argv[]){
       vel = sqrtf(state.twist.twist.linear.x*state.twist.twist.linear.x + state.twist.twist.linear.y*state.twist.twist.linear.y);
     }
 
-    if (shutdown_condition){  // current_run_state = 2
-      // bring to a smooth stop and shut down
-      controller.SetSetpoint(0.0);
-      if (vel<0.5)time_to_quit = true;
-      dc.linear.x = 0.0;
-      dc.angular.z = 0.0;
-
-    }
-    else if (current_run_state==avt_341::utils::NavStackState::Active){    // active running state
+    if (current_run_state==NavStackState::Active){
+      // Active goal being navigated to
       controller.SetSetpoint(desired_speed_factor*desired_speed);
-      dc.linear.x = (use_speed_controller) ? controller.GetControlVariable(vel,dt) : desired_speed_factor*desired_speed;
+      dc.linear.x = use_speed_controller ? controller.GetControlVariable(vel,dt) : desired_speed_factor*desired_speed;
+      dc.angular.z = std::clamp(desired_steer_radians*steering_gain, -max_steer_angle_rad, max_steer_angle_rad);
+      dc.linear.y = 0.0;
     }
-    else if (current_run_state==avt_341::utils::NavStackState::NotInit || current_run_state==avt_341::utils::NavStackState::Stopped){
-      // bring to a smooth stop and wait / idle
+    else
+    {
+      // No active goal, depending on state: 1) coast, 2) gradual brake, 3) or hard max brake stop
       controller.SetSetpoint(0.0);
-      dc.linear.x = (use_speed_controller) ? controller.GetControlVariable(vel,dt) : 0.0;
-    }
-    else if (current_run_state==avt_341::utils::NavStackState::HardShutdown){
-      // bring to a hard stop and shut down
-      dc.linear.x = 0.0;
-      dc.linear.y = (use_speed_controller) ? 1.0 : 0.0;
+      dc.linear.x = use_speed_controller ? controller.GetControlVariable(vel, dt) : 0.0;
       dc.angular.z = 0.0;
-      time_to_quit = true;
-    }
-
-    // apply the throttle scaling coefficient
-    if (use_speed_controller)
+      dc.linear.y = 0.0;
+      if (use_speed_controller)
       {
-      dc.linear.x *= throttle_coeff;
-      // check braking and throttle
-      if (std::abs(dc.linear.y) > 1e-5){
-        // apply the ramp up to the brake
-        if (current_brake_value>dc.linear.y){
-          dc.linear.y = current_brake_value - brake_step;
-          if (dc.linear.y<-1.0)dc.linear.y = -1.0;
-          if (dc.linear.y>0.0)dc.linear.y = 0.0;
+        if (current_run_state == NavStackState::InactiveGradualStop)
+        {
+          dc.linear.y = std::min(1.0, current_brake_value + brake_step);
         }
-        // make sure the throttle is zero when braking
-        dc.linear.x = 0.0;
+        else if (current_run_state == NavStackState::InactiveHardStop)
+        {
+          dc.linear.y = 1.0;
+        }
       }
-      // apply the throttle ramp up
-      if (dc.linear.x-current_throttle_value > max_throttle_step){
-        dc.linear.x = current_throttle_value + max_throttle_step;
-      }
-      // Clamp to 0<->1
-      dc.linear.x = std::max(0.0, std::min(dc.linear.x, 1.0));
     }
 
-    // Enforce bounds
-    if (output_steering_percent) {
-      dc.angular.z = std::max(-1.0,std::min(1.0,(180.0*desired_steer_radians/3.14159265358979)/vehicle_max_steer_angle_degrees*steering_gain));
-    }
-    else {
-      double vehicle_max_steer_angle_rad = vehicle_max_steer_angle_degrees * 3.14159265358979 / 180.0;
-      dc.angular.z = std::max(-vehicle_max_steer_angle_rad,std::min(vehicle_max_steer_angle_rad,desired_steer_radians*steering_gain));
+    // Throttle post-processing
+    if (use_speed_controller)
+    {
+      dc.linear.x *= throttle_coeff;
+      dc.linear.x = dc.linear.y > 0.0 ? 0.0 : dc.linear.x;    // make sure the throttle is zero when braking
+
+      // TODO: Bug? this doesn't account for decreasing throttle
+      if (dc.linear.x-current_throttle_value > max_throttle_step){
+        dc.linear.x = current_throttle_value + max_throttle_step;   // throttle can change at most max_throttle_step
+      }
+
+      dc.linear.x = std::clamp(dc.linear.x, 0.0, 1.0);
     }
 
     // Enforce maximum lateral acceleration
@@ -232,13 +217,14 @@ int main(int argc, char *argv[]){
       dc_safe.angular.z = atan((max_lat_g*9.81) * wheelbase / (vel*vel)) * (dc_safe.angular.z/abs(dc_safe.angular.z));
     }
 
+    if (output_steering_percent) {
+      dc_safe.angular.z /= max_steer_angle_rad;
+    }
+
     // Publish command
     dc_pub->publish(dc_safe);
     current_brake_value = dc_safe.linear.y;
     current_throttle_value = dc_safe.linear.x;
-
-    // break the loop when an end state is reached
-    if (time_to_quit)break;
 
     if(display_rviz){
       avt_341::msg::PointStamped next_waypoint_msg;

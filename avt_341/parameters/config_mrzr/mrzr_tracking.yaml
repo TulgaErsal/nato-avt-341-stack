@@ -12,7 +12,8 @@ filters_ground_angle: 3.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
 filters_kalman_measurement: 0.01
-tracker_target_class: 0
+tracker_target_classes: ['0']
+tracker_use_multi_tracking: false
 tracker_timeout: 5.0
 sync_enable: true
 sync_use_callback: false
@@ -21,9 +22,8 @@ publish_clouds_fov: true
 publish_clouds_roi: true
 publish_clouds_ground: true
 publish_clouds_cluster: true
-publish_pose: true
-filters_pose: true
 publish_odometry: true
-filters_odometry: true
+heading_min_speed: 0.5
+heading_resume_speed: 1.0
 publish_detection: true
 publish_image: true

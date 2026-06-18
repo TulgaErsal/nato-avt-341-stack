@@ -2,16 +2,22 @@
 #include "avt_341/mission/task.h"
 #include <fstream>
 #include <iostream>
+#include <avt_341/core/dto_conversion.h>
 
 namespace avt_341 {
 namespace mission {
 
 // Follow
-Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def)
-: Task(manager, sender, id, formation_def), path_generator_(formation_def->params) {
+Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDefinition* formation_def,
+    double desired_speed, double goal_threshold, double yaw_threshold)
+: Task(manager, sender, id, formation_def),
+    path_generator_(formation_def->params),
+    goal_threshold_(goal_threshold > 0.0 ? goal_threshold : formation_def_->params.follow_goal_threshold),
+    yaw_threshold_(yaw_threshold){
     const std::string termination_method = formation_def->terminationMethod();
     terminate_on_leader_arrived_ = termination_method == "LEADER_ARRIVED";
     terminate_on_all_arrived_ = termination_method == "ALL_ARRIVED";
+    task_speed = desired_speed;
 }
 
 void Follow::init_() {
@@ -28,9 +34,12 @@ void Follow::run() {
     path_generator_.Update(mgr->leader_odometry, mgr->odometry, formation_def_->formation_status);
     const auto & follower_path = path_generator_.GetPath();
     if(path_generator_.useBreadcrumbs()){
-      mgr->publishPath(follower_path);
+        mgr->publishPath(follower_path);
     }else if(!follower_path.poses.empty()){
-      mgr->publishGoal(follower_path.poses.back());
+        auto target_pose = follower_path.poses.back();
+        // TODO: Another parameter for intermediate follower goal threshold? 0.5 was previously hardcoded in global planner node.
+        // NOTE: This is different than the follow_goal_threshold parameter which only applies to the follower terminal goal.
+        mgr->publishGoal(core::ToNavGoal(target_pose, 0.5f, yaw_threshold_));
     }
 }
 
@@ -53,7 +62,7 @@ bool Follow::is_done() {
     }
     if(terminate_on_all_arrived_){
       bool leader_arrived = mgr->hasArrival(formation_def_->followedVehicle(), "TASK_" + std::to_string(msg_id));
-      bool at_termination_location = leader_arrived && PosePlanarDistance(mgr->odometry.pose.pose.position, terminalPose().pose.position) < formation_def_->params.follow_goal_threshold;
+      bool at_termination_location = leader_arrived && PosePlanarDistance(mgr->odometry.pose.pose.position, terminalPose().pose.position) < goal_threshold_;
       if(!arrived && at_termination_location){
         mgr->publishArrival(mgr->my_name, "TASK_" + std::to_string(msg_id));
       }

@@ -1,0 +1,102 @@
+networks:
+  ros:
+    name: avt-341-network
+
+services:
+  node:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities:  [ gpu ]
+              driver: nvidia
+              device_ids: [ nvidia.com/gpu=all ]
+    runtime: nvidia
+    environment:
+      - DOCKER_ROS_BUILD=true
+      - DOCKER_ROS_EXEC=node
+      - DOCKER_ROS_PACKAGE=avt_341
+      - DOCKER_ROS_NODE=avt_341_object_detector_node
+      - DOCKER_ROS_PARAMS=custom.yaml
+      - DOCKER_ROS_CMAKE_ARGS=-DGET_AVT341_DETECTION_MODELS=1
+    image: ghcr.io/tulgaersal/nato-avt-341-stack:ros2
+    networks:
+      - ros
+    user: "1000:1000"
+    volumes:
+      - build:/home/avt/ROS/build
+      - install:/home/avt/ROS/install
+      - ./custom.yaml:/home/avt/ROS/config/params/custom.yaml
+      - "../../:/home/avt/ROS/src/TulgaErsal"
+      - "./fedav8m-cuda-640x640.names:/home/avt/ROS/fedav8m-cuda-640x640.names"
+      - "./fedav8m-cuda-640x640.torchscript:/home/avt/ROS/fedav8m-cuda-640x640.torchscript"
+
+  cli:
+    command: /bin/bash
+    environment: [ DOCKER_ROS_EXEC=cli ]
+    image: ghcr.io/tulgaersal/nato-avt-341-stack:ros2
+    networks:
+      - ros
+    stdin_open: true
+    tty: true
+    user: "1000:1000"
+    volumes: [ install:/home/avtos/ROS/install ]
+
+  player:
+    environment:
+      - DOCKER_ROS_EXEC=play
+      - DOCKER_ROS_BAG_PATH=/home/avt/ROS/bags/240731_MRZR_Follow_Run3
+      - DOCKER_ROS_REMAPS=/flir_camera/image_raw:=/image
+    image: ghcr.io/tulgaersal/nato-avt-341-stack:ros2
+    networks:
+      - ros
+    user: "1000:1000"
+    volumes:
+      - install:/home/avt/ROS/install
+      - "./bags:/home/avt/ROS/bags"
+
+  rqt_image_view:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ]
+              driver: nvidia
+              device_ids: [ nvidia.com/gpu=all ]
+    runtime: nvidia
+    environment:
+      - DISPLAY=${DISPLAY}
+      - DOCKER_ROS_BUILD=true
+      - DOCKER_ROS_EXEC=node
+      - DOCKER_ROS_PACKAGE=rqt_image_view
+      - DOCKER_ROS_NODE=rqt_image_view
+    image: ghcr.io/tulgaersal/nato-avt-341-stack:ros2
+    networks:
+      - ros
+    user: "1000:1000"
+    volumes: [ /tmp/.X11-unix/:/tmp/.X11-unix ]
+
+  rviz:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ]
+              driver: nvidia
+              device_ids: [ nvidia.com/gpu=all ]
+    runtime: nvidia
+    environment:
+      - DISPLAY=${DISPLAY}
+      - DOCKER_ROS_BUILD=true
+      - DOCKER_ROS_EXEC=node
+      - DOCKER_ROS_PACKAGE=rviz2
+      - DOCKER_ROS_NODE=rviz2
+    image: ghcr.io/tulgaersal/nato-avt-341-stack:ros2
+    networks:
+      - ros
+    user: "1000:1000"
+    volumes: [ /tmp/.X11-unix/:/tmp/.X11-unix ]
+
+volumes:
+  build:
+  install:

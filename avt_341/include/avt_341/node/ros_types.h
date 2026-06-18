@@ -13,6 +13,7 @@
 #include "sensor_msgs/point_cloud2_iterator.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/CameraInfo.h"
 #include "sensor_msgs/NavSatFix.h"
 
 #include "geometry_msgs/TwistStamped.h"
@@ -48,6 +49,9 @@
 #include "std_msgs/Bool.h"
 
 #include "avt_341_msgs/Communication.h"
+#include "avt_341_msgs/NavGoal.h"
+#include "avt_341_msgs/NavGoalSequence.h"
+#include "avt_341_msgs/NavState.h"
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/MissionTaskStatus.h"
 #include "avt_341_msgs/OccupiedCell.h"
@@ -84,6 +88,9 @@ namespace avt_341 {
 
         using Image = sensor_msgs::Image;
         using ImagePtr = const sensor_msgs::Image::ConstPtr &;
+
+        using CameraInfo = sensor_msgs::CameraInfo;
+        using CameraInfoPtr = const sensor_msgs::CameraInfo::ConstPtr &;
 
         using TwistStamped = geometry_msgs::TwistStamped;
         using TwistStampedPtr = const geometry_msgs::TwistStamped::ConstPtr &;
@@ -182,6 +189,15 @@ namespace avt_341 {
         using Communication = avt_341_msgs::Communication;
         using CommunicationPtr = const avt_341_msgs::Communication::ConstPtr &;
 
+        using NavGoal = avt_341_msgs::NavGoal;
+        using NavGoalPtr = const avt_341_msgs::NavGoal::ConstPtr &;
+
+        using NavGoalSequence = avt_341_msgs::NavGoalSequence;
+        using NavGoalSequencePtr = const avt_341_msgs::NavGoalSequence::ConstPtr &;
+
+        using NavState = avt_341_msgs::NavState;
+        using NavStatePtr = const avt_341_msgs::NavState::ConstPtr &;
+
         using MissionTaskStatus = avt_341_msgs::MissionTaskStatus;
         using MissionTaskStatusPtr = const avt_341_msgs::MissionTaskStatus::ConstPtr &;
 
@@ -232,6 +248,7 @@ namespace avt_341 {
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
@@ -267,6 +284,9 @@ namespace avt_341 {
 #include "std_msgs/msg/bool.hpp"
 
 #include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/mission_task_status.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
@@ -298,6 +318,9 @@ namespace avt_341 {
 
     using Image = sensor_msgs::msg::Image;
     using ImagePtr = sensor_msgs::msg::Image::ConstSharedPtr;
+
+    using CameraInfo = sensor_msgs::msg::CameraInfo;
+    using CameraInfoPtr = sensor_msgs::msg::CameraInfo::ConstSharedPtr;
 
     using Imu = sensor_msgs::msg::Imu;
     using ImuPtr = sensor_msgs::msg::Imu::ConstSharedPtr;
@@ -374,6 +397,15 @@ namespace avt_341 {
 
     using Communication = avt_341_msgs::msg::Communication;
     using CommunicationPtr = avt_341_msgs::msg::Communication::SharedPtr;
+
+    using NavGoal = avt_341_msgs::msg::NavGoal;
+    using NavGoalPtr = avt_341_msgs::msg::NavGoal::SharedPtr;
+
+    using NavGoalSequence = avt_341_msgs::msg::NavGoalSequence;
+    using NavGoalSequencePtr = avt_341_msgs::msg::NavGoalSequence::SharedPtr;
+
+    using NavState = avt_341_msgs::msg::NavState;
+    using NavStatePtr = avt_341_msgs::msg::NavState::SharedPtr;
 
     using MissionTaskStatus = avt_341_msgs::msg::MissionTaskStatus;
     using MissionTaskStatusPtr = avt_341_msgs::msg::MissionTaskStatus::SharedPtr;

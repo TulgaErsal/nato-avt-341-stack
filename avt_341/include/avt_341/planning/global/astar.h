@@ -1,6 +1,7 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
+#include <atomic>
 #include <vector>
 #include <avt_341/visualization/base_visualizer.h>
 #include "avt_341/node/ros_types.h"
@@ -8,12 +9,8 @@
 namespace avt_341 {
 namespace planning {
 
-typedef struct {
-  float x;
-  float y;
-} Point;
-
-typedef Point Vec2;
+typedef utils::vec2 Point;
+typedef utils::vec2 Vec2;
 
 class Index {
 public:
@@ -85,7 +82,7 @@ public:
   static int GetGridValue(avt_341::msg::OccupancyGrid* segmentation_grid, double x, double y);
 
   /// Inherited from planner base class.
-  std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
+  virtual std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
                               avt_341::msg::OccupancyGrid* segmentation_grid,
                               Point goal,
                               Point position);
@@ -212,9 +209,12 @@ public:
 
   /**
    * Set the factor by which to dilate the map
-   * \param dfac The dilation factor 
+   * \param dfac The dilation factor
    */
   void SetDilationFactor(int dfac) { dfac_ = dfac; }
+
+  void RequestCancel() { cancel_.store(true, std::memory_order_relaxed); }
+  void ClearCancel() { cancel_.store(false, std::memory_order_relaxed); }
 
 protected:
   static constexpr float INF = std::numeric_limits<float>::infinity();
@@ -259,7 +259,9 @@ protected:
 
   virtual bool ExtractPath();
   void PostSmoothing(const std::vector<Index>& in_path, std::vector<Index>& out_path);
-  bool LineOfSight(const Index& i0, const Index& i1);
+  virtual bool LineOfSight(const Index& i0, const Index& i1);
+
+  std::atomic<bool> cancel_{false};
 
   float llx_, lly_;
   float map_res_;

@@ -1,10 +1,15 @@
+if(AVT341_DISABLE_UAB)
+    message(STATUS "UAB build disabled.")
+    return()
+endif()
+
 function(DownloadWindowsDll)
     # Download the Windows DLL
     message("Downloading Windows DLL for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=6fqeeadg&dl=1"
+    "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=orn34cri&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=9f3aa8d240fd99300accfafa57220920b281559bfaa5a2ee5882dd7d0beb844d
+    EXPECTED_HASH SHA256=4020bd26eba10ff01de55f68949f1708bc69fa2298524c121ab8eabc99801fdf
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
@@ -12,9 +17,9 @@ function(DownloadLinuxSharedLibrary)
     # Download the Linux shared library
     message("Downloading Linux shared library for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=fe9g2jvb&dl=1"
+    "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=sb0vo01n&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=e7c95a9d10482a09819eefb30c02d3b62ca6e7a626afcf6f86b19dfa9b28dbce
+    EXPECTED_HASH SHA256=5b53a572423cc9d34abc8411297d762c1422756c8e7c9dfcbddcfa43d6379726
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
@@ -30,6 +35,18 @@ set(Matlab_MCLMCRRT_LIB /opt/matlab/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
 set(Matlab_INCLUDE_DIRS /opt/matlab/R2023a/extern/include)
 find_package(Matlab)
 if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
+
+    if(NOT Matlab_MCLMCRRT_LIB)
+        if(WIN32 OR WIN64)
+             set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+             set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+        else()
+             set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
+             set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
+        endif()
+
+    endif()
+
     include_directories(
         include
         ${OpenCV_INCLUDE_DIRS}
@@ -73,7 +90,7 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 
         if(WIN32 OR WIN64)
             DownloadWindowsDll()
-            
+
             target_link_libraries(uab_perception_node
                 "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.lib"
                 ${Matlab_MCLMCRRT_LIB})
@@ -81,7 +98,7 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
                     DESTINATION "lib/${PROJECT_NAME}")
         else()
             DownloadLinuxSharedLibrary()
-        
+
             target_link_libraries(uab_perception_node
                 "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
                 ${Matlab_MCLMCRRT_LIB})

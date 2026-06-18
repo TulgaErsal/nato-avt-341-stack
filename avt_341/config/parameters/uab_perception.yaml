@@ -4,3 +4,9 @@ grid_llx: 0.0
 grid_lly: 0.0
 grid_res: 1.0
 publish_uab_occupancy_grid: False
+invert_lidar_z_rot: False
+lidar_frame_id: "lidar"
+odom_frame_id: "base_link"
+camera_frame_id: "front_camera"
+convert_ned_to_enu: False
+correct_color: True

@@ -1,0 +1,6 @@
+[submodule "avt_341_depth"]
+	path = avt_341_depth
+	url = https://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@github.com/Innervycs/avt_341_depth.git
+[submodule "avt_341_ganav"]
+	path = avt_341_ganav
+	url = https://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@github.com/Innervycs/avt_341_ganav.git

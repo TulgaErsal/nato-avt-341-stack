@@ -1,0 +1,13 @@
+# Checks if the vehicle's longitudinal speed meets the thresholded operation.
+
+# Request: a sequence of navigation goals to plan a global path through
+float64 speed
+
+# Comparison operator to use for the assertion. One of: "eq", "ne", "lt", "gt"
+string operation eq
+
+# Comparison threshold
+float64 threshold 1e-2
+
+---
+bool is_true

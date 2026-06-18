@@ -2,12 +2,14 @@
 # ======================================================================================================================
 follow_scale_x: 15.0                                                                    # X scale distance between vehicles in formation in vehicle coordinates
 follow_scale_y: 10.0                                                                    # Y Scale distance between vehicles in formation in vehicle coordinates
-mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'mission_points.csv')"     # Mission Manager - file describing mission reference points
+mission_definition_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'sim_mission_points.csv')"     # Mission Manager - file describing mission reference points
 mission_paths_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_paths - NAD83_m.csv')" # Mission Manager - file describing paths of mission points
-fsc_type: 'slow_down_leader'                                                            # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
+fsc_type: 'speed_up_follower'                                                           # Type of formation speed control (fsc) to use 'speed_up_follower' | 'slow_down_leader' | 'none'
+fsc_follower_obt_stop: True                                                             # While in the 'speed_up_follower' formation speed control mode, follower vehicle will stop if oblique heading angle difference to leader.
 x_offset_on_path: False                                                                 # If true follower x-offset is applied along leader path length. Else x-offset is applied from snap-shot poses of leader
 formation_prune_gp: True                                                                # If true prunes the formation controller generated follower global path to the closer point
 follow_goal_threshold: 10.0                                                             # Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal
+same_object_distance_threshold: 1.0                                                     # Distance for combining obstacles                                                             # Terminal goal threshold when to consider follow task done if termination method set to ALL_ARRIVE. Only checked once followed vehicle arrives at goal
 
 formation_debug_visualize: False                                                        # Debug visualize formation speed control
 offsets_from_leader: True                                                               # If true, formation offsets calculated from lead vehicle. If false, offsets calculated from next vehicle in column formation
@@ -29,12 +31,27 @@ toi:
   encircle_degrees: 180.0                                                               # Encircle degrees around target of interest
   encircle_cw: True                                                                     # If encircle should be in clock-wise (cw) direction around target of interest
   goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
+  contact_trigger_delay: 1.0                                                            # Seconds a contact must persist before MoveTo+Encircle tasks are created (0 = trigger immediately)
 
 # Mission Manager - Object Tracking
-ot:
-  tracking_veh: ""                                                                      # Vehicle doing the tracking. Disabled if empty
-  tracked_veh: ""                                                                       # Vehicle to track. Disabled if empty
+use_avt_tracker: true                                                                   # Set true to subscribe to avt_341/odometry/estimated/<veh_ns> per vehicle instead of cross-namespace ground truth
+
+# Goal Filtering
+# ======================================================================================================================
+formation_goal_filter: 'none'                                                           # Formation goal filtering method 'none' | 'obs_avoid'
+
+fgf_obs_avoid:
+  occ_threshold: 0                                                                      # Threshold for occupancy cells to be considered an obstacle.
+  padding: 1.0                                                                          # Amount of additional padding (m) beyond what is already included in grid dilation of perception node.
+  pub_unfiltered_goal: False                                                            # For debugging only. If true, publish unfiltered formation goal. Filtered goal will still be used as follower target.
+  patch_pad_width: 20.0                                                                 # Occupancy grid patch width (m) to search for free cells if candidate follower goal initially placed in occupied cell
+  min_obstacle_width: 5.0                                                               # Minimum obstacle width (m) between successive timestep goals after filtering to be considered in deadlock
+  follower_divergence_threshold: 30.0                                                   # Threshold (m) after which processed follower goal is considered to diverge from leader path
+  reset_side_on_free_space: True                                                        # If true, sidedness state will be reset when candidate goal falls in free space.
+  persist_state: True                                                                   # If true, persists state between invocations of goal filter
+  ignore_deadlock: True                                                                 # If true, deadlock condition will be ignored and the internal state of the filter reset
 
 # Formation Control
 # ======================================================================================================================
 use_leader_breadcrumbs: True                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
+use_tangent_heading: false                                                              # If true, leader heading is estimated from position history tangent rather than the orientation in the leader odometry message

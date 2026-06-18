@@ -40,5 +40,4 @@ bool IsClose(const avt_341::msg::Pose & p1, const avt_341::msg::Pose & p2, doubl
 
 const std::string FormationSpeedControlType::SLOW_DOWN_LEADER = "slow_down_leader";
 const std::string FormationSpeedControlType::SPEED_UP_FOLLOWER = "speed_up_follower";
-const std::string FormationSpeedControlType::SPEED_UP_FOLLOWER_SIMPLE = "speed_up_follower_simple";
 const std::string FormationSpeedControlType::NONE = "none";

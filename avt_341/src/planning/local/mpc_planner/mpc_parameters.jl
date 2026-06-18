@@ -31,6 +31,10 @@ const KZX     = 1/2*m*h_cg/(la+lb) #289.5
 const FzF0    = Fzf/2.
 const FzR0    = Fzr/2.
 
+# parameters for the deformable tire model
+const T = 0.002
+const RBY3 = 0.0349066         #Shift term for alpha in slope Fy reduction
+
 # surrogatePacejka parameters
 const mu = 0.977706
 const p1 = -7.33706
@@ -42,16 +46,18 @@ const x_min    = 0.
 const x_max    = 400.
 const y_min    = 0.
 const y_max    = 400.
-sa_min         = -0.485
-sa_max         = 0.485
+sa_min         = -0.628319
+sa_max         = 0.628319
 const psi_min  = -2*pi
 const psi_max  = 2*pi
 const u_min    = 1.0   #5.
 const u_max    = 30.
 sr_min         = -0.523
 sr_max         = 0.523
-const jx_min   = -2.0
+const jx_min   = -5.0
 const jx_max   = 2.0
+const ax_min   = -10.0
+const ax_max   = 10.0
 
 # epsilon
 const EP      = 0.01

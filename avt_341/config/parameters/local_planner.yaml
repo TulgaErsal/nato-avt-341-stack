@@ -8,7 +8,7 @@ vehicle_width: 3.0                      # Vehicle width.
 max_steer_angle: 0.5                    # Maximum steer angle in radians. Used to compute rho_max during local planning.
 output_path_step: 0.5                   # Output path step size.
 path_integration_step: 0.35             # Path integration step size.
-dilation_factor: 1                      # Dilation to costmap to apply during local planning only.
+dilation_factor: 1.0                    # Dilation to costmap to apply during local planning only.
 w_c: 0.0                                # w_c conformability (minimize curvature) weighting factor
 w_s: 0.4                                # w_s static safety (avoid collisions) weighting factor
 w_d: 0.0                                # w_d dynamic safety weighting factor

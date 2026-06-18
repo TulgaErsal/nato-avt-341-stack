@@ -2,6 +2,7 @@
 #define AVT_341_NODE_PROXY_H
 
 #include <string>
+#include <avt_341/node/params_proxy.h>
 
 namespace avt_341 {
 namespace node {
@@ -147,6 +148,8 @@ namespace avt_341 {
                 }
             }
 
+            std::shared_ptr<ParamsProxy> params();
+
             template <typename ParameterT>
             ParameterT get_parameter(const std::string& name,
                                      const ParameterT default_value) {
@@ -273,6 +276,7 @@ namespace avt_341 {
             std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
             std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+            std::shared_ptr<ParamsProxy> params_;
         };
 
         inline std::shared_ptr<NodeProxy> make_shared(const std::string &name) {
@@ -406,7 +410,10 @@ namespace avt_341 {
 
     public:
 
+      NodeProxy(rclcpp::Node* node);
       NodeProxy(const std::string &node_name);
+
+      std::shared_ptr<ParamsProxy> params();
 
       template<typename ParameterT>
       void get_parameter(const std::string &name, ParameterT &parameter_out, const ParameterT default_value) {
@@ -421,8 +428,10 @@ namespace avt_341 {
         if(is_empty_waypoints_ && (name_local == "/waypoints_x" || name_local == "/waypoints_y")){
             return;
         }
-
-        node_->declare_parameter(name_local, default_value);
+        if (!node_->has_parameter(name_local))
+        {
+          node_->declare_parameter(name_local, default_value);
+        }
         node_->get_parameter(name_local, parameter_out);
       }
 
@@ -526,6 +535,8 @@ namespace avt_341 {
 
     private:
       std::shared_ptr<rclcpp::Node> node_;
+      std::shared_ptr<ParamsProxy> params_;
+
       bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
       std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};

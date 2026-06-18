@@ -16,7 +16,9 @@
 * @file      object_tracking_node.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
 * @brief     Header file for the camera/LiDAR sensor fusion object tracker
-             rclcpp ROS node.
+             rclcpp ROS node. The node owns the shared sensor inputs (camera,
+             LiDAR obstacle detection, TF) and replicates one ObjectTracker
+             instance per tracked target class.
 * @copyright
   MIT License
 
@@ -48,8 +50,10 @@
 
 #pragma once
 
-#include <tuple>
-#include <utility>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #ifdef GTE_ROS_JAZZY
 #include <cv_bridge/cv_bridge.hpp>
@@ -57,12 +61,14 @@
 #include <cv_bridge/cv_bridge.h>
 #endif
 
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <tf2/convert.h>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <tf2/convert.h>
+#include <std_msgs/msg/string.hpp>
 
 #ifdef GTE_ROS_HUMBLE
 #include <tf2_eigen/tf2_eigen.hpp>
@@ -78,58 +84,116 @@
 #include <tf2_ros/transform_listener.h>
 
 #include <vision_msgs/msg/detection2_d_array.hpp>
-#include <vision_msgs/msg/detection3_d_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
+#include <pcl/common/transforms.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
-#include <pcl/common/centroid.h>
-#include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
-#include <pcl/features/moment_of_inertia_estimation.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/point_types.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl_conversions/pcl_conversions.h>
 
-#include <avt_341/perception/filtering/cv_filter.hpp>
-#include <avt_341/perception/tracking/exceptions.hpp>
-#include <avt_341/perception/tracking/pixel_coordinates.hpp>
+#include <avt_341/core/coord_transform.hpp>
+#include <avt_341/perception/box.hpp>
+#include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
+#include <avt_341/perception/tracking/object_tracker.hpp>
+#include <avt_341/perception/tracking/tracker_params.hpp>
+#include <avt_341_msgs/msg/mission_task_status.hpp>
+#include <avt_341_msgs/msg/tracker_info.hpp>
+#include <avt_341_msgs/srv/set_target.hpp>
 
 namespace avt_341 {
 namespace perception {
 
 class ObjectTrackingNode : public rclcpp::Node {
-  public:
+   public:
     ObjectTrackingNode();
 
-  protected:
+   private:
+    // ROS node interface
+    // -------------------------------------------------------------------------
     /**
-     * @brief Declare and retrieve the node parameters.
+     * @brief Declare and retrieve the ROS node parameters.
      */
     void GetParameters();
 
     /**
-     * @brief Create the node subscriptions.
+     * @brief Create the ROS node subscriptions.
      */
     void CreateSubscriptions();
 
     /**
-     * @brief Create the node timers.
+     * @brief Create the ROS node timers.
      */
     void CreateTimers();
 
     /**
-     * @brief Create the node publishers.
+     * @brief Create the ROS node publishers (shared topics only; the
+     * per-target publishers are created by each ObjectTracker instance).
      */
     void CreatePublishers();
 
-  private:
+    /**
+     * @brief Create the ROS node services.
+     */
+    void CreateServices();
+
+    void Initialize();
+
+    // Settings and runtime dynamic parameter reconfiguration
+    // -------------------------------------------------------------------------
+
+    /** @brief Settings shared by the node and every tracker instance. */
+    ObjectTrackerSettings settings_;
+
+    /** @brief Callback handle for runtime dynamic parameter reconfiguration. */
+    OnSetParametersCallbackHandle::SharedPtr on_set_parameters_callback_handle_;
+
+    /**
+     * @brief Callback for the runtime dynamic parameter reconfiguration.
+     * Updated settings are propagated to every live tracker instance.
+     *
+     * @param parameters A vector of modified parameters.
+     * @return rcl_interfaces::msg::SetParametersResult The outcome of the
+     * runtime dynamic parameter reconfiguration operation.
+     */
+    rcl_interfaces::msg::SetParametersResult SetParametersCallback(
+        const std::vector<rclcpp::Parameter>& parameters);
+
+    // Per-target trackers
+    // -------------------------------------------------------------------------
+
+    /** @brief One tracker instance per tracked target class. */
+    std::map<std::string, std::unique_ptr<ObjectTracker>> trackers_;
+
+    /**
+     * @brief Re-target or create the tracker for @p target_class: an existing
+     * tracker is Reset(); a new class constructs a new tracker (which creates
+     * its per-target publishers). With multi-tracking enabled existing
+     * trackers are never destroyed; in single-tracking mode every existing
+     * tracker is removed before the new one is created.
+     */
+    ObjectTracker& AddOrResetTracker(const std::string& target_class);
+
+    /** @brief Create one tracker per autostart target class (only the first
+     *         class in single-tracking mode). */
+    void SpawnAutostartTrackers();
+
+    // Coordinate transformations
+    // -------------------------------------------------------------------------
+
+    /** @brief Shared pointer to the transform listener. */
+    std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
+
+    /** @brief Unique pointer to the transform buffer. */
+    std::unique_ptr<tf2_ros::Buffer> transform_buffer_;
+
+    /** @brief Coordinate transformer bound to the transform buffer and the
+     *         node logger, shared with the child ObjectTracker instances. */
+    std::unique_ptr<core::CoordTransformer> coord_transformer_;
+
     // Input point cloud processing
-    // ----------------------------
+    // -------------------------------------------------------------------------
 
     /** @brief Point cloud subscription. */
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
@@ -143,25 +207,42 @@ class ObjectTrackingNode : public rclcpp::Node {
     void PointCloudCallback(
         sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
 
-    /**
-     * @brief Convert a ROS sensor_msgs/PointCloud2 message to PCL XYZ point
-     * cloud.
-     *
-     * @param point_cloud_message ROS sensor_msgs/PointCloud2 message.
-     * @return pcl::PointCloud<pcl::PointXYZ>::Ptr PCL XYZ point cloud.
-     */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr
-    ToPCLCloud(sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message);
+    /** @brief Camera info subscription. */
+    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr
+        camera_info_subscription_;
 
     /**
-     * @brief Remove points with NaN values from a PCL XYZ point cloud.
+     * @brief Camera info subscription callback.
      *
-     * @param point_cloud PCL XYZ point cloud.
+     * @param camera_info_message ROS sensor_msgs/CameraInfo message.
      */
-    void RemoveNaNPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
+    void CameraInfoCallback(
+        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
 
-    // Image
-    // -----
+    /** @brief Whether or not camera info has been received. */
+    bool has_camera_info_ = false;
+
+    /** @brief Latest received camera info message. */
+    sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message_;
+
+    // Detection
+    // -------------------------------------------------------------------------
+
+    /** @brief 2D detections subscription. */
+    rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr
+        detections_subscription_;
+
+    /**
+     * @brief 2D detections subscription callback. Dispatches the matching
+     * detection (by class ID) to each tracker instance.
+     *
+     * @param detections_message ROS vision_msgs/Detection2DArray message.
+     */
+    void DetectionsCallback(
+        const vision_msgs::msg::Detection2DArray::SharedPtr detections_message);
+
+    // Tracking image publishing
+    // -------------------------------------------------------------------------
 
     /** @brief Camera image subscription. */
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr
@@ -180,286 +261,139 @@ class ObjectTrackingNode : public rclcpp::Node {
     /** @brief Latest received camera image in a cv_bridge wrapper. */
     cv_bridge::CvImageConstPtr latest_image_;
 
-    /** @brief Camera info subscription. */
-    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr
-        camera_info_subscription_;
-
-    /**
-     * @brief Camera info subscription callback.
-     *
-     * @param camera_info_message ROS sensor_msgs/CameraInfo message.
-     */
-    void CameraInfoCallback(
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    /** @brief Whether or not camera info has been received. */
-    bool has_camera_info_;
-
-    /** @brief Latest received camera info message. */
-    sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message_;
-
-    // Detection
-    // ---------
-
-    void DetectionsCallback(
-        const vision_msgs::msg::Detection2DArray::SharedPtr detections_message);
-
-    /** @brief Whether or not the first valid detection containing the target
-     * has been received since the tracker reset. */
-    bool has_first_detection_ = false;
-
-    /** @brief Whether or not there is a valid detection containing the target
-     * within the synchronization window. */
-    bool has_detection_ = false;
-
-    double detection_score_;
-
-    /** @brief Time stamp of the last valid detection message containing the
-     * target. */
-    rclcpp::Time last_detection_time_;
-
-    vision_msgs::msg::Detection2DArray detections_message_;
-
-    double max_detection_skew_;
-
-    /** @brief Class ID of the target.
-     * @remark Despite its string representation meant for easy comparison with
-     * ROS vision_msgs/ObjectHypothesisWithPose messages, this is a numerical
-     * ID. */
-    std::string target_class_;
-
-    rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr
-        detections_subscription_;
-
-    // Input cloud downsampling
-    // ------------------------
-    double leaf_size_;
-
-    void DownsampleCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
-    // Camera field of view point projection
-    // -------------------------------------
-
-    /** @brief Frame ID of the camera optical frame. */
-    std::string camera_frame_;
-
-    /** @brief Child frame ID for the Odometry message. */
-    std::string odometry_child_frame_;
-
-    /** @brief Shared pointer to the transform listener. */
-    std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
-
-    /** @brief Unique pointer to the transform buffer. */
-    std::unique_ptr<tf2_ros::Buffer> transform_buffer_;
-
-    geometry_msgs::msg::TransformStamped TransformPointCloud(
-        sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message,
-        const std::string target_frame);
-
-    // Projection
-    // ----------
-
-    PixelCoordinates ConvertPointToPixelCoordinates(
-        const pcl::PointXYZ& point,
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    std::vector<PixelCoordinates> ConvertPointCloudToPixelCoordinates(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message);
-
-    // Camera FOV
-    // ----------
-
-    void FindPointsInCameraFOV(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                               const std::vector<PixelCoordinates>& coordinates,
-                               const int height,
-                               const int width);
-
-    /** @brief Whether or not to publish the camera field of view segmented
-     * point cloud. */
-    bool publish_fov_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        fov_cloud_publisher_;
-
-    void FindPointsInROI(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                         const std::vector<PixelCoordinates>& coordinates,
-                         const unsigned int x_min,
-                         const unsigned int x_max,
-                         const unsigned int y_min,
-                         const unsigned int y_max);
-
-    bool publish_roi_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        roi_cloud_publisher_;
-    // -------------------------------------
-
-    // Passthrough filtering
-    // ---------------------
-    pcl::PassThrough<pcl::PointXYZ> passthrough_filter_;
-
-    double passthrough_distance_min_;
-
-    double passthrough_distance_max_;
-
-    void LimitSensorDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
-    // Euclidean clustering
-    // --------------------
-
-    const std::pair<const pcl::PointCloud<pcl::PointXYZ>::Ptr,
-                    const pcl::PointXYZ>
-    ExtractEuclideanClusters(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-
-    bool publish_cluster_cloud_;
-
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        cluster_publisher_;
-
-    double clustering_tolerance_;
-
-    int cluster_size_min_;
-
-    int cluster_size_max_;
-
-    // Ground plane segmentation
-    // -------------------------
-
-    void SegmentGroundPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane);
-
-    /** @brief Whether or not to publish the point cloud of the segmented ground
-     * plane. */
-    bool publish_ground_cloud_;
-
-    /** @brief Shared pointer to the segmented ground plane point cloud
-     * publisher */
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-        ground_cloud_publisher_;
-
-    // Object state estimation
-    // -----------------------
-
-    void EstimatorTimerCallback();
-
-    std::shared_ptr<avt_341::perception::filtering::CVFilter<3>> filter_;
-
-    bool has_new_measurement_ = false;
-
-    double estimator_rate_;
-
-    double filter_process_variance_;
-
-    double filter_measurement_variance_;
-
-    rclcpp::TimerBase::SharedPtr estimator_timer_;
-
-    double target_timeout_;
-
-    // -----------------------
-
-    // Utilities
-    // ---------
-    void PublishPointCloud(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        const rclcpp::Time& stamp,
-        const std::string& frame_id,
-        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher);
-
-    bool sync_messages_;
-
-    void Initialize();
-
-    // Voxel grid downsampling
-    // -----------------------
-
-    pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter_;
-
-    bool is_ready_to_track_ = false;
-
-    void PublishImage();
-
-    void GetOrientedBoundingBox(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
-        pcl::PointXYZ& bounding_box_min,
-        pcl::PointXYZ& bounding_box_max,
-        pcl::PointXYZ& bounding_box_centroid,
-        Eigen::Matrix3f& bounding_box_rotation);
-
-    pcl::MomentOfInertiaEstimation<pcl::PointXYZ> moi_estimation_;
-
-    // Detection publisher
-    // -------------------
-
-    bool publish_detection_3d_;
-
-    rclcpp::Publisher<vision_msgs::msg::Detection3D>::SharedPtr
-        detection_publisher_;
-
-    void PublishDetection3D();
-
-    // Pose publisher
-    // -------------------
-
-    bool publish_pose_;
-
-    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-        pose_publisher_;
-
-    void PublishPose();
-
-    // Odometry publisher
-    // -------------------
-
-    bool publish_odometry_;
-
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_publisher_;
-
-    void PublishOdometry();
-
-    // SAC segmentation
-    // --------------------
-
-    pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
-
-    double sac_segmentation_angle_;
-
-    /** @brief RANSAC fit distance threshold. */
-    double sac_segmentation_threshold_;
-
-    /** @brief Maximum number of RANSAC fit iterations. */
-    int sac_segmentation_max_iterations_;
-
-    // Detection image publishing
-    // --------------------------
-
-    bool publish_image_;
-
     /** @brief Shared pointer to the object detections overlay image publisher.
      */
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_;
 
-    bool use_callback_time_;
+    void PublishImage();
 
-    rclcpp::Time last_detection_callback_time_;
+    // Task status
+    // -------------------------------------------------------------------------
 
-    bool is_tracking_ = false;
+    /** @brief Mission tasks status subscription. */
+    rclcpp::Subscription<avt_341_msgs::msg::MissionTaskStatus>::SharedPtr
+        task_status_subscription_;
 
-    Eigen::Vector3d bounding_box_size_;
+    /**
+     * @brief Mission task status subscription callback. A non-empty tracked
+     * vehicle adds or re-targets a tracker without disturbing the others.
+     *
+     * @param task_status_message ROS avt_341_msgs/MissionTaskStatus message.
+     */
+    void TaskStatusCallback(
+        avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message);
 
-    Eigen::Vector3d bounding_box_centroid_;
+    // Reset handling
+    // -------------------------------------------------------------------------
 
-    bool use_filtered_pose_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr reset_subscription_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_ack_publisher_;
+    bool reset_called_ = false;
+    void ResetCallback(std_msgs::msg::String::SharedPtr msg);
 
-    bool use_filtered_odometry_;
+    // Target contacts (shared topic, injected into every tracker)
+    // -------------------------------------------------------------------------
 
-    bool use_filtered_detection_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
 
-    Eigen::Vector3d bounding_box_centroid_filtered_;
+    /** Single common odometry topic for tracked lead vehicle */
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
 
-    Eigen::Quaterniond bounding_box_orientation_;
+    // Tracker information
+    // -------------------------------------------------------------------------
+
+    rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
+        info_publisher_;
+
+    /** @brief Publishes one TrackerInfo message per tracker on the shared
+     *         info topic, identified by header.frame_id = target class. */
+    void TrackerInfoCallback();
+
+    /** @brief The timer for the tracker information publishing callback. */
+    rclcpp::TimerBase::SharedPtr info_timer_;
+
+    // Timers (remain in the node; each tick iterates the trackers)
+    // -------------------------------------------------------------------------
+
+    rclcpp::TimerBase::SharedPtr estimator_timer_;
+
+    void EstimatorTimerCallback();
+
+    rclcpp::TimerBase::SharedPtr tracking_timer_;
+
+    void TrackingTimerCallback();
+
+    double execution_time_ = -1.0;
+
+    // Target selection service
+    // -------------------------------------------------------------------------
+
+    /** @brief Service server for the target selection service. */
+    rclcpp::Service<avt_341_msgs::srv::SetTarget>::SharedPtr
+        set_target_service_server_;
+
+    /**
+     * @brief Target selection service callback. Adds or re-targets a tracker
+     * for the requested target ID without disturbing the others.
+     *
+     * @param request Request containing the selected target ID.
+     * @param response Response containing the service outcome and report
+     * message.
+     */
+    void SetTargetServiceCallback(
+        const std::shared_ptr<avt_341_msgs::srv::SetTarget::Request> request,
+        std::shared_ptr<avt_341_msgs::srv::SetTarget::Response> response);
+
+    // Integrated LiDAR obstacle detector
+    // -------------------------------------------------------------------------
+
+    /** @brief Runs the obstacle detection pipeline on the latest point cloud
+     *         and directly updates latest_obstacle_markers_. Called from
+     *         PointCloudCallback so the markers are ready before the next
+     *         tracking timer tick. */
+    void RunObstacleDetection(
+        const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg);
+
+    /** @brief Builds and publishes (and stores) a DELETEALL MarkerArray. */
+    void PublishObstacleDeleteAll(const std_msgs::msg::Header& header);
+
+    /** @brief Builds markers from curr_boxes_ and publishes them. */
+    void PublishObstacleMarkers(const std_msgs::msg::Header& header);
+
+    /** @brief The obstacle detector algorithm (filter / cluster / track). */
+    std::shared_ptr<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>
+        obstacle_detector_;
+
+    /** @brief Rolling counter used to assign unique IDs to new boxes. */
+    size_t obstacle_id_ = 0;
+
+    /** @brief Box list from the previous obstacle detection frame.
+     *         Used by the Hungarian-algorithm tracker. */
+    std::vector<Box> prev_boxes_;
+
+    /** @brief Box list built during the current obstacle detection frame. */
+    std::vector<Box> curr_boxes_;
+
+    /** @brief Publishes the obstacle bounding-box markers. */
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+        obstacle_bboxes_publisher_;
+
+    /** @brief Publishes the ground-classified point cloud (optional). */
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+        obstacle_ground_cloud_publisher_;
+
+    /** @brief Publishes the non-ground obstacle point cloud (optional). */
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+        obstacle_clusters_cloud_publisher_;
+
+    /** @brief Latest MarkerArray produced by the integrated obstacle detector.
+     *         Populated synchronously in PointCloudCallback. */
+    visualization_msgs::msg::MarkerArray latest_obstacle_markers_;
+
+    /** @brief True once at least one MarkerArray (including DELETEALL) has
+     *         been produced by the obstacle detector. */
+    bool has_obstacle_markers_ = false;
 };
 
-} // namespace perception
-} // namespace avt_341
+}  // namespace perception
+}  // namespace avt_341

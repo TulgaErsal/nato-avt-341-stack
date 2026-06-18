@@ -22,8 +22,6 @@ Panels:
       - /Current View1
     Name: Views
     Splitter Ratio: 0.5
-  - Class: mrzr_tools/MRAKStat
-    Name: MRAKStat
   - Class: mrzr_tools/MissionCommand
     DesiredSpeed: 5.0
     Distance: 0.0
@@ -45,12 +43,6 @@ Panels:
     XScale: 1.0
     YOffset: 0.0
     YScale: 1.0
-  - Class: mrzr_tools/VBoxStatPanel
-    Name: VBoxStatPanel
-    Topic: /vbox/from_can_bus
-  - Class: mrzr_tools/VectornavStatPanel
-    Name: VectornavStatPanel
-    Topic: /vectornav/raw/ins
 Visualization Manager:
   Class: ""
   Displays:
@@ -562,10 +554,6 @@ Window Geometry:
   Selection:
     collapsed: false
   Tool Properties:
-    collapsed: false
-  VBoxStatPanel:
-    collapsed: false
-  VectornavStatPanel:
     collapsed: false
   Views:
     collapsed: false

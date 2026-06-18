@@ -71,6 +71,8 @@ class ObjectVisualizer {
 
     void SetBorderSize(int border_size);
 
+    unsigned int GetIndex(const std::string& label);
+
   private:
     std::vector<std::string> classes_;
 

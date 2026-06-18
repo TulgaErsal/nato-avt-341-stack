@@ -1,5 +1,5 @@
 if(AVT341_DISABLE_MPC)
-  message(STATUS "MPC build explicitly disabled.")
+  message(STATUS "MPC build disabled.")
   return()
 endif()
 

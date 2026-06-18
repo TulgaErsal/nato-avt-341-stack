@@ -46,6 +46,7 @@ public:
     bool init_done;
     bool is_preemptable;
     bool arrived = false;
+    double task_speed = -1.0;
     FormationDefinition* getFormationDef() const { return formation_def_; }
     virtual avt_341::msg::PoseStamped terminalPose() const;
 
@@ -65,8 +66,9 @@ public:
     static const std::string CONTACT;
     static const std::string ACTOR;
 
-    MoveTo(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr,
-           double x_offset = 0.0, double y_offset = 0.0, double d_approach=0.0, double desired_speed=0.0);
+    // TODO: Too many parameters, can place most goal parameters in NavGoal structure
+    MoveTo(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def = nullptr,
+           double x_offset = 0.0, double y_offset = 0.0, double goal_threshold=-1.0, double yaw_threshold=-1.0, double desired_speed=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -88,12 +90,11 @@ public:
     std::string description() const override;
 private:
     bool setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
-    void applyApproachDistance();
     void applyOffset();
     double x_offset_;
     double y_offset_;
-    double d_approach_;
-    double desired_speed_;
+    double goal_threshold_;
+    double yaw_threshold_;
 }; // class MoveTo
 
 class WaitUntilComplete : public Task {
@@ -122,9 +123,14 @@ public:
     std::string description() const override;
     avt_341::msg::PoseStamped terminalPose() const override;
 
+    void updateTarget(const avt_341::msg::PoseStamped & target) { target_ = target; }
+    void setContactName(const std::string & name) { contact_name_ = name; }
+    const std::string & contactName() const { return contact_name_; }
+
 private:
   bool arrived;
   avt_341::msg::PoseStamped target_;
+  std::string contact_name_;
   double radius_;
   double angular_range_degrees_;
   bool is_cw_;
@@ -134,7 +140,8 @@ private:
 
 class Follow : public Task {
 public:
-    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def);
+    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def,
+        double desired_speed = -1.0, double goal_threshold=-1.0, double yaw_threshold=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -147,11 +154,13 @@ private:
   bool terminate_on_leader_arrived_;
   bool terminate_on_all_arrived_;
   avt_341::mission::FormationPathGenerator path_generator_;
+  double goal_threshold_;
+  double yaw_threshold_;
 }; // class Follow
 
 class PathFollow : public Task {
 public:
-    PathFollow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def = nullptr, double desired_speed=0.0);
+    PathFollow(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def = nullptr, double desired_speed=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -170,7 +179,6 @@ public:
     std::string description() const override;
 private:
     bool setPathInternal(const avt_341::msg::Path & path_in, const std::string & name_in);
-    double desired_speed_;
 
 }; // class PathFollow
 

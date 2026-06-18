@@ -66,7 +66,7 @@ void ObjectVisualizer::DrawHypothesis(cv::Mat& image, BoundingBox2D& bounding_bo
                          bounding_box.GetHeight());
 
     std::stringstream stream;
-    stream << classes_[hypothesis.GetID()] << " ";
+    stream << classes_[GetIndex(hypothesis.GetID())] << " ";
     stream << std::fixed << std::setprecision(2) << hypothesis.GetScore();
 
     // Get text box size
@@ -77,7 +77,7 @@ void ObjectVisualizer::DrawHypothesis(cv::Mat& image, BoundingBox2D& bounding_bo
     cv::Point anchor_text(bounding_box.GetXMin(), bounding_box.GetYMin() - border_size_);
 
     // Draw the bounding box
-    cv::rectangle(image, overlay_box, colors_[hypothesis.GetID()], border_size_, cv::LINE_8);
+    cv::rectangle(image, overlay_box, colors_[GetIndex(hypothesis.GetID())], border_size_, cv::LINE_8);
 
     // Define the bounding box rectangle
     cv::Rect overlay_textbox(bounding_box.GetXMin() - border_size_,
@@ -89,9 +89,9 @@ void ObjectVisualizer::DrawHypothesis(cv::Mat& image, BoundingBox2D& bounding_bo
     if(use_textbox_) {
         text_color = cv::Scalar(255, 255, 255);
         // Draw the bounding box
-        cv::rectangle(image, overlay_textbox, colors_[hypothesis.GetID()], cv::FILLED);
+        cv::rectangle(image, overlay_textbox, colors_[GetIndex(hypothesis.GetID())], cv::FILLED);
     } else {
-        text_color = cv::Scalar(colors_[hypothesis.GetID()]);
+        text_color = cv::Scalar(colors_[GetIndex(hypothesis.GetID())]);
     }
 
     cv::putText(image,
@@ -115,6 +115,11 @@ void ObjectVisualizer::UseTextbox(bool use_textbox) { use_textbox_ = use_textbox
 void ObjectVisualizer::SetFontScale(double font_scale) { font_scale_ = font_scale; }
 
 void ObjectVisualizer::SetBorderSize(int border_size) { border_size_ = border_size; }
+
+unsigned int ObjectVisualizer::GetIndex(const std::string& label) {
+    auto iterator = std::find(classes_.begin(), classes_.end(), label);
+    return iterator - classes_.begin();
+}
 
 } // namespace perception
 } // namespace avt_341
