@@ -26,7 +26,7 @@ global_params = {
     '/grid_height': 2290.0, #877.0 #2290.0                       # Grid height.
     '/grid_width': 2955.0 #759.0 #2955.0                        # Grid width.
 }
-vehicle_namespaces = ['mrzr','mrzr2','feda']
+vehicle_namespaces = ['mrzr2','mrzr','feda']
 vehicle_config_folders = [f'{avt_341_dir}/parameters/config_mrzr']
 
 class ArrayIndexSubstitution(Substitution):
@@ -315,7 +315,7 @@ def generate_launch_description():
         "separate_camera_bag":	    ["True",	                                    "Separate camera topics into a separate bag file"],
         "compress_cameras":	        ["True",	                                    "Only save compressed camera topics (only for separate_camera_bag=true)"],
         "disable_sensor_drivers":   ["True",	                                    "Disable sensor drivers from launching. Drivers are already disabled if simulation_mode is set to true."],
-        # "enable_joystick":	        ["True",	                                    "Enable the stack controller joystick. WARNING: This will enable the avt-341 stack to publish directly to /cmd_vel"],
+        # "enable_joystick":	    ["True",	                                    "Enable the stack controller joystick. WARNING: This will enable the avt-341 stack to publish directly to /cmd_vel"],
         "auto_launch_rviz":	        ["True",	                                    "Automatically launch rviz"],
         "veh_index":	            ["0",	                                        f"Vehicle index of {vehicle_namespaces}"]
     }
