@@ -7,9 +7,9 @@ function(DownloadWindowsDll)
     # Download the Windows DLL
     message("Downloading Windows DLL for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/elgm351kcurqxngd1c4vj/lib_uab_perception_wrapper.dll?rlkey=ro5uu43knutq9dpd46c9a9k0r&st=orn34cri&dl=1"
+    "https://www.dropbox.com/scl/fi/5qonis63wjqlxfe4wzza9/lib_uab_perception_wrapper.dll?rlkey=b61advoh669vxgp96kjvzo8c0&st=ilkpve9y&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=4020bd26eba10ff01de55f68949f1708bc69fa2298524c121ab8eabc99801fdf
+    EXPECTED_HASH SHA256=f2935283e334bf1bd489bb054f0caf89eec40f6988586700dd7cab1c3d67f6e1
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
@@ -17,32 +17,36 @@ function(DownloadLinuxSharedLibrary)
     # Download the Linux shared library
     message("Downloading Linux shared library for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/okkxypdy10kxoe32o4aww/lib_uab_perception_wrapper.so?rlkey=rm8gk7rmubwylibp52esd8f0e&st=sb0vo01n&dl=1"
+    "https://www.dropbox.com/scl/fi/3wypl4ru1f3fgqd6vshil/lib_uab_perception_wrapper.so?rlkey=g33m7iqe1jd2zy9w1heob7cj2&st=tchyaeqg&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=5b53a572423cc9d34abc8411297d762c1422756c8e7c9dfcbddcfa43d6379726
+    EXPECTED_HASH SHA256=1e92a8ba9120e1945e0cefe8e28a951eeec1e55f80dc9a36000ab081f8d692ba
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
 # Manually set MATLAB paths (optional, only needed if "find_package(Matlab)" fails)
-# These should point to the installation location of MATLAB Runtime 2023a
+# These should point to the installation location of MATLAB Runtime 2025b
 #
-# ex: Windows
-# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+# ex: Windows Runtime
+# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
 #
-# ex. Linux
-# set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
-# set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
+# ex: Windows Full Installation
+# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\R2025b\\extern\\include")
+#
+# ex. Linux Runtime
+# set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2025b/runtime/glnxa64/libmwmclmcrrt.so)
+# set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2025b/extern/include)
 find_package(Matlab)
 if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 
     if(NOT Matlab_MCLMCRRT_LIB)
         if(WIN32 OR WIN64)
-             set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-             set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
+             set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+             set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
         else()
-             set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
-             set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
+             set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2025b/runtime/glnxa64/libmwmclmcrrt.so)
+             set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2025b/extern/include)
         endif()
 
     endif()
@@ -113,6 +117,6 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 else()
     message(
         WARNING
-        "Unable to build UAB Terrain Perception node. Failed to find MATLAB R2023a."
+        "Unable to build UAB Terrain Perception node. Failed to find MATLAB R2025b."
     )
 endif()
