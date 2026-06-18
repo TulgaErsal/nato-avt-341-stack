@@ -1,0 +1,235 @@
+symbols:
+  position_keys:
+    - 'x'
+    - 'y'
+    - 'z'
+  orientation_keys:
+    - 'roll'
+    - 'pitch'
+    - 'yaw'
+  direction_items:
+    - name: 'forward'
+      field: 'x'
+    - name: 'lateral'
+      field: 'y'
+    - name: 'vertical'
+      field: 'z'
+  orientation_items:
+    - name: 'roll'
+      field: 'x'
+    - name: 'pitch'
+      field: 'y'
+    - name: 'yaw'
+      field: 'z'
+  wheels:
+    - 'fl'
+    - 'fr'
+    - 'rl'
+    - 'rr'
+  twist_tbs_items:
+    - name: 'throttle'
+      field: 'linear.x'
+      units: '0:1'
+    - name: 'brake'
+      field: 'linear.y'
+      units: '0:1'
+    - name: 'steering'
+      field: 'angular.z'
+      units: '-1:1'
+
+gis:
+  crs: 'EPSG:6495'
+  local_origin_x: 7885314.3400268555
+  local_origin_y: 264132.3708496094
+vehicles:
+  - 'mrzr'
+segment_goals: [ ]
+segment_id: ''
+
+log_topics:
+
+  # ==========================================================================================================
+  # VEHICLE POSITION + INERTIAL STATE
+  # ==========================================================================================================
+
+  # Position
+  - name: '{vehicles}_{position_keys}'
+    topic: '/{vehicles}/avt_341/odometry'
+    field: 'pose.pose.position.{position_keys}'
+    units: 'm'
+
+  # Orientation
+  - name: '{vehicles}_{orientation_keys}'
+    topic: '/{vehicles}/avt_341/odometry'
+    field: 'pose.pose.orientation'
+    units: 'rad'
+    channel_mapper: 'quaternion_to_{orientation_keys}'
+
+  # Linear Velocity
+  - name: '{vehicles}_{direction_items.name}_speed'
+    topic: '/{vehicles}/avt_341/odometry'
+    field: 'twist.twist.linear.{direction_items.field}'
+    units: 'm/s'
+
+  # Angular Velocity
+  - name: '{vehicles}_ang_vel_{position_keys}'
+    topic: '/{vehicles}/avt_341/odometry'
+    field: 'twist.twist.angular.{position_keys}'
+    units: 'rad/s'
+
+  # TODO: Derived config: acceleration
+
+  # ==========================================================================================================
+  # VEHICLE ACTUATED THROTTLE, BRAKE, STEERING
+  # ==========================================================================================================
+
+  # TODO: Derived config: throttle, brake
+
+  # Steering Angle Position
+  - name: '{vehicles}_steering_angle'
+    topic: '/{vehicles}/avt_341/steering_angle'
+    field: 'data'
+    units: 'rad'
+
+  # ==========================================================================================================
+  # ENGINE, DRIVETRAIN
+  # ==========================================================================================================
+
+  # Engine torque output
+  - name: '{vehicles}_engine_torque'
+    topic: '/{vehicles}/engine_torque'
+    field: 'data'
+    units: 'Nm'
+
+  # Engine speed output
+  - name: '{vehicles}_engine_speed'
+    topic: '/{vehicles}/engine_speed'
+    field: 'data'
+    units: 'rad/s'
+
+  # Driveshaft speed output
+  - name: '{vehicles}_driveshaft_speed'
+    topic: '/{vehicles}/driveshaft_speed'
+    field: 'data'
+    units: 'rpm'
+
+  # ==========================================================================================================
+  # WHEELS
+  # ==========================================================================================================
+
+  # TODO: Derived config: wheel rotation speeds
+
+  # ==========================================================================================================
+  # VEHICLE DESIRED/COMMANDED STATE
+  # ==========================================================================================================
+
+  # TODO: Derived config: desired throttle, brake, steering angle
+
+  # Desired longitudinal speed
+  - name: '{vehicles}_desired_speed'
+    topic: '/{vehicles}/avt_341/desired_speed'
+    field: 'data'
+    units: 'm/s'
+
+  # Desired heading angle (desiredHeading)
+  - name: '{vehicles}_desired_heading_angle'
+    topic: '/{vehicles}/avt_341/mpc_desiredHeading'
+    field: 'data'
+    units: 'rad'
+
+  # Speed zone setpoint
+  - name: '{vehicles}_speed_zone_setpoint'
+    topic: '/{vehicles}/avt_341/speed_setpoint'
+    field: 'data'
+    units: 'm/s'
+
+  # ==========================================================================================================
+  # PLANNERS
+  # ==========================================================================================================
+
+  # Local Planned Path X, Y
+  - name: '{vehicles}_local_planned_path_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/local_path'
+    field: 'poses.pose.position.{position_keys[:2]}'
+    units: 'm'
+
+  # Global Planned Path X, Y
+  - name: '{vehicles}_global_planned_path_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/global_path'
+    field: 'poses.pose.position.{position_keys[:2]}'
+    units: 'm'
+
+  # ==========================================================================================================
+  # PERCEPTION COSTMAP
+  # ==========================================================================================================
+
+  # Occupancy Grid
+  - name: '{vehicles}_occupancy_grid'
+    topic: '/{vehicles}/avt_341/occupancy_grid'
+    field: 'data'
+    units: ''
+
+  # Occupancy Grid Origin x,y
+  - name: '{vehicles}_occupancy_grid_origin_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/occupancy_grid'
+    field: 'info.origin.position.{position_keys[:2]}'
+    units: 'm'
+
+  # Occupancy Grid Updates
+  - name: '{vehicles}_occupancy_grid_updates'
+    topic: '/{vehicles}/avt_341/occupancy_grid_updates'
+    field: ''
+    units: ''
+
+  # ==========================================================================================================
+  # FORMATIONS
+  # ==========================================================================================================
+
+  # Task Status - Tracked Vehicle id
+  - name: '{vehicles}_leader_id'
+    topic: '/{vehicles}/avt_341/task_status'
+    field: 'tracked_vehicle'
+    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    units: ''
+    channel_mapper: 'vehicle_id_to_idx'
+
+  # Task Status - Formation Target
+  - name: '{vehicles}_formation_target_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/task_status'
+    field: 'target_pose.position.{position_keys[:2]}'
+    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    units: 'm'
+
+  # Perceived Chassis CG X, Y, Z of Lead Vehicle
+  - name: '{vehicles}_perceived_leader_{position_keys}'
+    topic: '/{vehicles}/avt_341/odometry_estimate/leader'
+    field: 'pose.pose.position.{position_keys}'
+    units: 'm'
+
+  # Perceived Chassis Yaw Angle of Lead Vehicle
+  - name: '{vehicles}_perceived_leader_yaw'
+    topic: '/{vehicles}/avt_341/odometry_estimate/leader'
+    field: 'pose.pose.orientation'
+    units: 'rad'
+    channel_mapper: 'quaternion_to_yaw'
+
+  # Perceived Leader Forward Velocity
+  - name: '{vehicles}_perceived_leader_vel_x'
+    topic: '/{vehicles}/avt_341/odometry_estimate/leader'
+    field: 'twist.twist.linear.x'
+    units: 'm/s'
+
+  # ==========================================================================================================
+  # TARGETS OF INTEREST
+  # ==========================================================================================================
+
+  # Target of Interest Perceived Location X, Y
+  - name: '{vehicles}_perceived_toi_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/target_contacts'
+    field: 'poses.pose.position.{position_keys[:2]}'
+    units: 'm'
+
+  - name: '{vehicles}_perceived_toi_id'
+    topic: '/{vehicles}/avt_341/target_contacts'
+    field: 'poses.header.frame_id'
+    units: ''

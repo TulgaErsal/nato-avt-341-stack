@@ -46,8 +46,9 @@ class ObjectTracker {
                   const std::string& target_class,
                   const ObjectTrackerSettings& settings,
                   const core::CoordTransformer& coord_transformer,
-                  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr
-                      target_contacts_publisher);
+                  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
+                  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
+                  );
 
     // Per-tick entry points (called from the owning node's timers)
     // -------------------------------------------------------------------------
@@ -158,8 +159,13 @@ class ObjectTracker {
     /** @brief Shared coordinate transformer owned by the node. */
     const core::CoordTransformer& coord_transformer_;
 
+    // TODO: Move to node
     /** @brief Shared target contacts publisher owned by the node. */
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
+
+    // TODO: Move to node
+    /** Single common odometry topic for tracked lead vehicle */
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
 
     /** @brief Latest camera intrinsics, cached on each tracking tick. */
     sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info_;
