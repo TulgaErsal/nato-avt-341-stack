@@ -1,0 +1,63 @@
+# ==========================================================================================================
+# Concrete ROS bag configuration for Traxara KRC environment simulation.
+# Inherits from base_bag_config.yaml
+# ==========================================================================================================
+
+gis:
+  crs: 'EPSG:6495'
+  local_origin_x: 7886033.981
+  local_origin_y: 265598.6841
+
+log_topics:
+
+  # ==========================================================================================================
+  # VEHICLE POSITION + INERTIAL STATE
+  # ==========================================================================================================
+
+  # Linear Acceleration
+  - name: '{vehicles}_{direction_items.name}_accel'
+    topic: '/{vehicles}/avt_341/acceleration'
+    field: 'accel.linear.{direction_items.field}'
+    units: 'm/s^2'
+
+  # ==========================================================================================================
+  # VEHICLE ACTUATED THROTTLE, BRAKE, STEERING
+  # ==========================================================================================================
+
+  # Throttle Position
+  - name: '{vehicles}_throttle'
+    topic: '/{vehicles}/throttle'
+    field: 'data'
+    units: '0:1'
+
+  # Brake Position
+  - name: '{vehicles}_brake'
+    topic: '/{vehicles}/brake'
+    field: 'data'
+    units: '0:1'
+
+  # ==========================================================================================================
+  # WHEELS
+  # ==========================================================================================================
+
+  - name: '{vehicles}_wheel_rot_speed_{wheels}'
+    topic: '/{vehicles}/wheel_speed_{wheels}'
+    field: 'data'
+    units: 'm/s'
+
+  # ==========================================================================================================
+  # VEHICLE DESIRED/COMMANDED STATE
+  # ==========================================================================================================
+
+  # Desired Throttle, Brake, Steering
+  - name: '{vehicles}_desired_{twist_tbs_items.name}'
+    topic: '/{vehicles}/avt_341/cmd_vel'
+    field: '{twist_tbs_items.field}'
+    units: '{twist_tbs_items.units}'
+
+  # Desired Steering Angle (Front Wheel)
+  - name: '{vehicles}_desired_steering_angle'
+    topic: '/{vehicles}/avt_341/cmd_steer'
+    field: 'data'
+    units: 'rad'
+

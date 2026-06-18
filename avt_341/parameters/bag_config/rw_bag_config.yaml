@@ -1,0 +1,64 @@
+# ==========================================================================================================
+# Concrete ROS bag configuration for real-world KRC trials.
+# Inherits from base_bag_config.yaml
+# ==========================================================================================================
+
+log_topics:
+
+  # ==========================================================================================================
+  # VEHICLE POSITION + INERTIAL STATE
+  # ==========================================================================================================
+
+  # Linear Acceleration
+  - name: '{vehicles}_{direction_items.name}_accel'
+    topic: '/vectornav/{direction_items.name}accel'
+    field: 'data'
+    units: 'm/s^2'
+
+  # ==========================================================================================================
+  # VEHICLE ACTUATED THROTTLE, BRAKE, STEERING
+  # ==========================================================================================================
+
+  # Throttle Position
+  - name: '{vehicles}_throttle'
+    topic: '/{vehicles}/throttle'
+    field: 'data'
+    units: '%'
+
+  # Brake Position
+  - name: '{vehicles}_brake'
+    topic: '/{vehicles}/brake'
+    field: 'data'
+    units: '%'
+
+  # ==========================================================================================================
+  # WHEELS
+  # ==========================================================================================================
+
+  # Rotational speed of the wheels
+  - name: '{vehicles}_wheel_rot_speed_{wheels}'
+    topic: '/{vehicles}/wheel_speed_{wheels}'
+    field: 'data'
+    units: 'rpm'
+
+  # ==========================================================================================================
+  # VEHICLE DESIRED/COMMANDED STATE
+  # ==========================================================================================================
+
+  # Desired Throttle Position
+  - name: '{vehicles}_desired_throttle'
+    topic: '/{vehicles}/throttle_rqst'
+    field: 'data'
+    units: '%'
+
+  # Desired Brake pressure or Pedal Position
+  - name: '{vehicles}_desired_brake'
+    topic: '/{vehicles}/brake_rqst'
+    field: 'data'
+    units: '%'
+
+  # Desired Steering Angle (Front Wheel)
+  - name: '{vehicles}_desired_steering_angle'
+    topic: '/{vehicles}/avt_341/cmd_vel'
+    field: 'angular.z'
+    units: 'rad'

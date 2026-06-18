@@ -23,7 +23,9 @@ ObjectTracker::ObjectTracker(
     rclcpp::Node* node, const std::string& target_class,
     const ObjectTrackerSettings& settings,
     const core::CoordTransformer& coord_transformer,
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher)
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
+    )
     : node_(node),
       logger_(node->get_logger().get_child(core::SanitizeIdentifier(target_class))),
       target_class_(target_class),
@@ -31,7 +33,9 @@ ObjectTracker::ObjectTracker(
       odometry_child_frame_(core::SanitizeIdentifier(target_class) + "/odom"),
       settings_(settings),
       coord_transformer_(coord_transformer),
-      target_contacts_publisher_(std::move(target_contacts_publisher)) {
+      target_contacts_publisher_(std::move(target_contacts_publisher)),
+      leader_odom_publisher_(std::move(leader_odom_publisher))
+    {
     // Initialize the IMM filter (CV + CTR + NM).
     filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
         1.0 / settings_.filter.estimator_rate,
@@ -733,6 +737,8 @@ void ObjectTracker::PublishOdometry() {
     tracked_target_message.child_frame_id = odometry_child_frame_;
     tracked_target_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
     tracked_target_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
+    tracked_target_message.twist.twist.linear = core::ToVector3Msg(filter_->GetVelocity3D());
+
     Eigen::Matrix<double, 6, 6> TrackedCovariance = Eigen::Matrix<double, 6, 6>::Zero();
     Eigen::Matrix<double, 5, 5> Pt = filter_->GetCTRCovariance();
     TrackedCovariance(0, 0) = Pt(0, 0);  // x variance
@@ -745,6 +751,7 @@ void ObjectTracker::PublishOdometry() {
     TrackedCovariance(5, 5) = filter_->GetFusedYawVariance();
     tracked_target_message.pose.covariance = core::ToCovarianceMsg(TrackedCovariance);
     tracked_target_odometry_publisher_->publish(tracked_target_message);
+    leader_odom_publisher_->publish(tracked_target_message);
 }
 
 void ObjectTracker::PublishDetection3D() {
