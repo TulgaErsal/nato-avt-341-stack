@@ -67,8 +67,7 @@ static mxArray* toDoubleColumn(const std::vector<double> &vec)
 {
     mxArray *array = mxCreateDoubleMatrix(vec.size(), 1, mxREAL);
     double *data = mxGetPr(array);
-    //indexing starts at 1 for matlab arrays
-    for (size_t i = 1; i < vec.size(); i++)
+    for (size_t i = 0; i < vec.size(); i++)
     {
         data[i] = vec[i];
     }
@@ -80,7 +79,7 @@ static mxArray* toDoubleColumn(const std::array<double, 4>& vec)
 {
     mxArray* array = mxCreateDoubleMatrix(4, 1, mxREAL);
     double* data = mxGetPr(array);
-    for (size_t i = 0; i < 4; ++i)
+    for (size_t i = 0; i < 4; ++i) 
     {
         data[i] = vec[i];
     }
@@ -100,7 +99,7 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
         "data",
         "step"
     };
-
+    
     const mwSize height = static_cast<mwSize>(img.height);
     const mwSize width = static_cast<mwSize>(img.width);
     mxClassID encoding = mxUINT8_CLASS;
@@ -427,7 +426,7 @@ int main(int argc, char *argv[])
     auto img_sub = node->create_subscription<avt_341::msg::Image>("avt_341/camera/image_raw", 10, ImageCallback);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto camera_info_sub = node->create_subscription<avt_341::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
-
+    
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
     auto occ_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
@@ -484,7 +483,7 @@ int main(int argc, char *argv[])
     //initialize obstacle grid with default cell values
     avt_341::msg::OccupancyGrid obstacle_grid;
     BuildOccupancyGrid(obstacle_grid, width, height, grid_llx, grid_lly, grid_res, OBSTACLE_GRID_DEFAULT_VAL);
-
+    
     avt_341::node::Rate rate(100.0);
     //number of seconds to wait for messages before exiting
     uint16_t timeout_sec = 20;
@@ -496,7 +495,7 @@ int main(int argc, char *argv[])
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }
-
+        
         //wait until we've received all necessary messages
         if (!allMsgsReceived())
         {
@@ -506,7 +505,7 @@ int main(int argc, char *argv[])
             if (!img_received) waiting_on += "image ";
             if (!cam_info_received) waiting_on += "camera_info";
             std::cout << waiting_on << std::endl;
-
+            
             avt_341::node::Rate wait(1.0);
             wait.sleep();
 
@@ -567,6 +566,20 @@ int main(int argc, char *argv[])
         node->spin_some();
         rate.sleep();
     }
+
+    tf_listener.reset();
+    tf_buffer.reset();
+
+    odom_sub.reset();
+    pc_sub.reset();
+    img_sub.reset();
+    reset_sub.reset();
+    camera_info_sub.reset();
+    seg_grid_pub.reset();
+    occ_grid_pub.reset();
+    reset_ack_pub.reset();
+
+    node.reset();
 
     mclTerminateApplication();
     return 0;
