@@ -521,6 +521,15 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
                 ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
             ],
+            additional_env={
+                'LD_LIBRARY_PATH': ':'.join([
+                    os.environ.get('MCR_ROOT', '/usr/local/MATLAB/MATLAB_Runtime/R2025b') + '/runtime/glnxa64',
+                    os.environ.get('MCR_ROOT', '/usr/local/MATLAB/MATLAB_Runtime/R2025b') + '/bin/glnxa64',
+                    os.environ.get('MCR_ROOT', '/usr/local/MATLAB/MATLAB_Runtime/R2025b') + '/sys/os/glnxa64',
+                    os.environ.get('MCR_ROOT', '/usr/local/MATLAB/MATLAB_Runtime/R2025b') + '/extern/bin/glnxa64',
+                    os.environ.get('LD_LIBRARY_PATH', ''),
+                ]),
+            },
             output='screen'
         ),
 
