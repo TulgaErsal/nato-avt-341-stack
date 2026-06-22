@@ -114,26 +114,25 @@ def tf2_nodes(context):
             name='plate_to_ouster_publisher',
             arguments=["0", "-0.0425", "0.0735", "0", "0", "0", "plate_link", "os_sensor"]
         ),
+        # MEASUREMENTS FROM HARDWARE
+        # Node(
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     name='plate_to_flir_publisher',
+        #     arguments=["0.046", "0.0615", "0.03", "0", "0", "0", "plate_link", "flir_sensor_link"]
+        # ),
+        # Node(
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     name='flir_to_flir_rgb_publisher',
+        #     arguments=["0", "0", "0", "-1.570796", "0", "-1.570796", "flir_sensor_link", "flir_rgb_link"]
+        # ),
+        # MEASUREMENTS FROM LIDAR/CAMERA CALIBRATION
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='plate_to_flir_publisher',
-            arguments=["0.046", "0.0615", "0.03", "0", "0", "0", "plate_link", "flir_sensor_link"]
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='flir_to_flir_rgb_publisher',
-            arguments=["0", "0", "0", "-1.570796", "0", "-1.570796", "flir_sensor_link", "flir_rgb_link"]
-        ),
-        # LIDAR/CAMERA CALIBRATION
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='lidar_ns_fix_publisher',
-            #arguments=["0.537904", "-0.377448", "-0.0465617", "1.941151293010382", "1.5667626308005476", "-1.1943102744897447", "os_lidar", "flir_optical"]
-            #arguments=["0.133597135773211", "-0.094362075012651", "-0.0465617", "1.941151293010382", "1.5667626308005476", "-1.1943102744897447", "os_lidar", "flir_optical"]
-            arguments=["-0.0450898", "-0.54038", "-0.374075", "1.574556603141863", "0.006128297832243186", "-1.5693132942983006", "os_lidar", "flir_optical"]
+            name='lidar_to_flir_publisher',
+            arguments=['0.114996', '-0.090527', '-0.047696', '0.497703', '0.500851', '-0.500116', '0.501323', 'os_lidar', 'flir_camera']
         ), 
         # SKIP Node(
         #     package='mrzr_tools',
