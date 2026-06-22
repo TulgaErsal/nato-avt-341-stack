@@ -429,7 +429,7 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
             parameters=[{k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}],
             remappings=[
-                ('image', '/flir_camera/image_raw')
+                ('image', '/flir_camera_downsized/image_color_rect')
             ]
         ),
 
