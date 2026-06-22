@@ -554,10 +554,11 @@ def launch_setup(context, *args, **kwargs):
             ],
             remappings=[
                 ('avt_341/points','/ouster/points'),
-                #('camera/rgb/image_raw','/flir_camera/image_raw'),
-                ('camera/rgb/image_raw','/flir_camera/image_color'),
+                ('avt_341/camera/image_raw','/flir_camera_downsized/image_color_rect'),
+                ('avt_341/camera/camera_info','/flir_camera_downsized/camera_info'),
                 ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
                 ('avt_341/segmentation_grid','avt_341/terrain_seg/segmentation_grid'),
+                ('avt_341/odom', 'avt_341/odometry')
             ],
             additional_env={
                 'LD_LIBRARY_PATH': ':'.join([
