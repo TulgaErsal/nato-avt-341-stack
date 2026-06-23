@@ -95,12 +95,17 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 			return is_segmentation ? !layer->ContributeSegmentation() : !layer->ContributeOccupancy();
 		}), layers.end());
 
+	const int unknown_value = thresholds_.output_unknown_cells
+		? -1
+		: (is_segmentation ? thresholds_.replace_seg_unknown_with
+		                   : thresholds_.replace_occ_unknown_with);
+
 	int c = 0;
 	for (int i = region.y_min; i < region.y_max; i++) {
 		for (int j = region.x_min; j < region.x_max; j++) {
 			const int layer_val = GetCombinedLayerValue<int>(layers, [i, j, is_segmentation](const std::shared_ptr<CostmapLayer>& layer){
 				return is_segmentation ? layer->GetSegValue(i, j) : layer->GetOccValue(i, j);
-			});
+			}, unknown_value);
 			data[c++] = static_cast<int8_t>(layer_val);
 		}
 	}

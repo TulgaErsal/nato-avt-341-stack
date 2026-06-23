@@ -96,10 +96,10 @@ private:
 	}
 
 	template<typename T>
-	inline T CombineLayerValues(std::vector<T> layer_values) const
+	inline T CombineLayerValues(std::vector<T> layer_values, T unknown_value = T{0}) const
 	{
 		if (layer_values.empty()){
-			return T{0};
+			return unknown_value;
 		}
 
 		return layer_cmb_last_ ? layer_values.back()
@@ -110,13 +110,14 @@ private:
 	template<typename T>
 	inline T GetCombinedLayerValue(
 		const std::vector<std::shared_ptr<CostmapLayer>> & layers,
-		std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter
+		std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter,
+		T unknown_value = T{0}
 		) const
 	{
 		std::vector<T> layer_values;
 		layer_values.reserve(layers.size());
 		CollectLayerValues(layers, layer_values, value_getter);
-		return CombineLayerValues(layer_values);
+		return CombineLayerValues(layer_values, unknown_value);
 	}
 
 	std::deque<double> rms_buffer_;

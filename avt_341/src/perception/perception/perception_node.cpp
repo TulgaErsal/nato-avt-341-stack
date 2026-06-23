@@ -109,6 +109,9 @@ avt_341::perception::ThresholdSettings ParseThresholdSettings()
 	n->get_parameter("~use_elevation", settings.use_elevation, false);
 	n->get_parameter("~slope_threshold", settings.thresh, 0.5f);
 	n->get_parameter("~slope_threshold_max", settings.thresh_max, 2.5f);
+	n->get_parameter("~output_unknown_cells", settings.output_unknown_cells, false);
+	n->get_parameter("~replace_occ_unknown_with", settings.replace_occ_unknown_with, 0);
+	n->get_parameter("~replace_seg_unknown_with", settings.replace_seg_unknown_with, 0);
 	return settings;
 }
 
