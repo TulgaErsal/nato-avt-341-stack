@@ -499,8 +499,8 @@ int main(int argc, char *argv[])
     double brightness_offset;
 
     node->get_parameter("~frame_prefix", frame_prefix, std::string(""));
-    node->get_parameter("~grid_width", width, 100.0f);
-    node->get_parameter("~grid_height", height, 100.0f);
+    node->get_parameter("/grid_width", width, 100.0f);
+    node->get_parameter("/grid_height", height, 100.0f);
     node->get_parameter("~max_width", max_width, 100.0f);
     node->get_parameter("~max_height", max_height, 100.0f);
     node->get_parameter("~grid_llx", grid_llx, 0.0f);
