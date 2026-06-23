@@ -1,3 +1,10 @@
+// The MATLAB MCR headers pull in <windows.h> on Windows, which defines min/max as
+// macros and breaks std::min/std::max (error C2589). Define NOMINMAX before any
+// include so windows.h skips those macros.
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/perception/lib_uab_perception_wrapper.h"
@@ -267,8 +274,8 @@ static mwArray tfToMwArray(const geometry_msgs::msg::TransformStamped &tf)
 * the semantic segmentation model in Matlab, and populates an array of cost values based on
 * terrain traversability
 */
-void GetCostmapFromMatlab(float width,
-                            float height,
+void GetCostmapFromMatlab(float width_cells,
+                            float height_cells,
                             float res,
                             float grid_llx,
                             float grid_lly,
@@ -328,8 +335,8 @@ void GetCostmapFromMatlab(float width,
     mwArray mw_brightness_offset(brightness_offset);
 
     //grid parameters
-    mwArray mw_grid_width(width);
-    mwArray mw_grid_height(height);
+    mwArray mw_grid_width(width_cells);
+    mwArray mw_grid_height(height_cells);
     mwArray mw_grid_res(res);
     //lower left corner grid offset in meters (x/east direction)
     mwArray mw_grid_llx(grid_llx);
@@ -386,8 +393,8 @@ void GetCostmapFromMatlab(float width,
 }
 
 void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
-                        float width,
-                        float height,
+                        float width_cells,
+                        float height_cells,
                         float grid_llx,
                         float grid_lly,
                         float res,
@@ -395,16 +402,67 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
 {
     grid.header.frame_id = "map";
     grid.info.resolution = res;
-    grid.info.height = height;
-    grid.info.width = width;
+    grid.info.height = height_cells;
+    grid.info.width = width_cells;
     grid.info.origin.position.x = grid_llx;
     grid.info.origin.position.y = grid_lly;
     grid.info.origin.orientation.w = 1.0;
     grid.info.origin.orientation.x = 0.0;
     grid.info.origin.orientation.y = 0.0;
     grid.info.origin.orientation.z = 0.0;
-    std::vector<int8_t> initVals(width * height, default_cell_value);
+    std::vector<int8_t> initVals(width_cells * height_cells, default_cell_value);
     grid.data = initVals;
+}
+
+avt_341::msg::OccupancyGrid ExtractGridWindow(const avt_341::msg::OccupancyGrid &src,
+                                              double center_x,
+                                              double center_y,
+                                              float max_width,
+                                              float max_height,
+                                              float default_cell_value)
+{
+    const float res = src.info.resolution;
+    const int src_width_cells = src.info.width;
+    const int src_height_cells = src.info.height;
+    const double src_llx = src.info.origin.position.x;
+    const double src_lly = src.info.origin.position.y;
+    const int window_width_cells = static_cast<int>(max_width/res);
+    const int window_height_cells = static_cast<int>(max_height/res);
+
+    // Desired lower-left corner of the window in src cell coordinates (may fall outside src)
+    int start_col = static_cast<int>(std::round((center_x - max_width / 2.0 - src_llx) / res));
+    int start_row = static_cast<int>(std::round((center_y - max_height / 2.0 - src_lly) / res));
+    int end_col = start_col + window_width_cells;
+    int end_row = start_row + window_height_cells;
+
+    // Clamp the corners to the src bounds so the window does not extend past the overall grid
+    start_col = std::max(0, start_col);
+    start_row = std::max(0, start_row);
+    end_col = std::min(src_width_cells, end_col);
+    end_row = std::min(src_height_cells, end_row);
+
+    const int win_width_cells = std::max(0, end_col - start_col);
+    const int win_height_cells = std::max(0, end_row - start_row);
+
+    // Origin of the clamped window, snapped to the src cell grid
+    const double win_llx = src_llx + start_col * res;
+    const double win_lly = src_lly + start_row * res;
+
+    avt_341::msg::OccupancyGrid window;
+    BuildOccupancyGrid(window, win_width_cells, win_height_cells, win_llx, win_lly, res, default_cell_value);
+
+    // Copy the overlapping cells from src into the window
+    for (int r = 0; r < win_height_cells; r++)
+    {
+        for (int c = 0; c < win_width_cells; c++)
+        {
+            int src_idx = (start_row + r) * src_width_cells + (start_col + c);
+            int dst_idx = r * win_width_cells + c;
+            window.data[dst_idx] = src.data[src_idx];
+        }
+    }
+
+    return window;
 }
 
 bool reset_called = false;
@@ -435,26 +493,24 @@ int main(int argc, char *argv[])
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
     std::string frame_prefix;
-    node->get_parameter("~frame_prefix", frame_prefix, std::string(""));
-    float width;
-    node->get_parameter("~grid_width", width, 100.0f);
-    float height;
-    node->get_parameter("~grid_height", height, 100.0f);
-    float grid_llx;
-    node->get_parameter("~grid_llx", grid_llx, 0.0f);
-    float grid_lly;
-    node->get_parameter("~grid_lly", grid_lly, 0.0f);
-    float grid_res;
-    node->get_parameter("~grid_res", grid_res, 1.0f);
-    bool publish_occupancy_grid;
-    node->get_parameter("~publish_uab_occupancy_grid", publish_occupancy_grid, false);
-    std::string lidar_frame_id;
-    node->get_parameter("~lidar_frame_id", lidar_frame_id, std::string("lidar_link"));
-    std::string odom_frame_id;
-    node->get_parameter("~odom_frame_id", odom_frame_id, std::string("base_link"));
-    std::string camera_frame_id;
-    node->get_parameter("~camera_frame_id", camera_frame_id, std::string("camera_link"));
+    std::string lidar_frame_id, odom_frame_id, camera_frame_id;
+    float width, height, grid_llx, grid_lly, grid_res, max_width, max_height;
+    bool publish_occupancy_grid, publish_window;
     double brightness_offset;
+
+    node->get_parameter("~frame_prefix", frame_prefix, std::string(""));
+    node->get_parameter("~grid_width", width, 100.0f);
+    node->get_parameter("~grid_height", height, 100.0f);
+    node->get_parameter("~max_width", max_width, 100.0f);
+    node->get_parameter("~max_height", max_height, 100.0f);
+    node->get_parameter("~grid_llx", grid_llx, 0.0f);
+    node->get_parameter("~grid_lly", grid_lly, 0.0f);
+    node->get_parameter("~grid_res", grid_res, 1.0f);
+    node->get_parameter("~publish_uab_occupancy_grid", publish_occupancy_grid, false);
+    node->get_parameter("~publish_window", publish_window, false);
+    node->get_parameter("~lidar_frame_id", lidar_frame_id, std::string("lidar_link"));
+    node->get_parameter("~odom_frame_id", odom_frame_id, std::string("base_link"));
+    node->get_parameter("~camera_frame_id", camera_frame_id, std::string("camera_link"));
     node->get_parameter("~brightness_offset", brightness_offset, 0.0);
 
     for (auto f : {&lidar_frame_id, &odom_frame_id, &camera_frame_id})
@@ -476,14 +532,17 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    const int width_cells = static_cast<int>(width/grid_res);
+    const int height_cells = static_cast<int>(height/grid_res);
+
     //initialize terrain grid with default cell values
     avt_341::msg::OccupancyGrid terrain_grid;
-    BuildOccupancyGrid(terrain_grid, width, height, grid_llx, grid_lly, grid_res, TERRAIN_GRID_DEFAULT_VAL);
+    BuildOccupancyGrid(terrain_grid, width_cells, height_cells, grid_llx, grid_lly, grid_res, TERRAIN_GRID_DEFAULT_VAL);
 
     //initialize obstacle grid with default cell values
     avt_341::msg::OccupancyGrid obstacle_grid;
-    BuildOccupancyGrid(obstacle_grid, width, height, grid_llx, grid_lly, grid_res, OBSTACLE_GRID_DEFAULT_VAL);
-    
+    BuildOccupancyGrid(obstacle_grid, width_cells, height_cells, grid_llx, grid_lly, grid_res, OBSTACLE_GRID_DEFAULT_VAL);
+
     avt_341::node::Rate rate(100.0);
     //number of seconds to wait for messages before exiting
     uint16_t timeout_sec = 20;
@@ -520,8 +579,10 @@ int main(int argc, char *argv[])
             std::vector<double> terrain_sub_grid_idxs;
             std::vector<int8_t> obstacle_sub_grid;
             std::vector<double> obstacle_sub_grid_idxs;
-            GetCostmapFromMatlab(width,
-                height,
+
+            GetCostmapFromMatlab(
+                width_cells,
+                height_cells,
                 grid_res,
                 grid_llx,
                 grid_lly,
@@ -532,7 +593,9 @@ int main(int argc, char *argv[])
                 obstacle_sub_grid_idxs,
                 lidar_frame_id,
                 odom_frame_id,
-                camera_frame_id);
+                camera_frame_id
+                );
+
 
             //update the terrain grid with the new cell values
             int c = 0;
@@ -541,7 +604,6 @@ int main(int argc, char *argv[])
                 terrain_grid.data[i] = terrain_sub_grid[c++];
             }
 
-            seg_grid_pub->publish(terrain_grid);
 
             if (publish_occupancy_grid)
             {
@@ -559,9 +621,32 @@ int main(int argc, char *argv[])
                         obstacle_grid.data[i] = obstacle_probability_at_cell;
                     }
                 }
-
-                occ_grid_pub->publish(obstacle_grid);
             }
+
+            avt_341::msg::OccupancyGrid terrain_grid_window, obstacle_grid_window;
+            if (publish_window)
+            {
+                //extract a local grid centered at the vehicle pose, clamped so it does
+                //not extend past the overall grid
+                terrain_grid_window = ExtractGridWindow(terrain_grid,
+                                                        current_pose.pose.pose.position.x,
+                                                        current_pose.pose.pose.position.y,
+                                                        max_width, max_height,
+                                                        TERRAIN_GRID_DEFAULT_VAL);
+                obstacle_grid_window = ExtractGridWindow(obstacle_grid,
+                                                         current_pose.pose.pose.position.x,
+                                                         current_pose.pose.pose.position.y,
+                                                         max_width, max_height,
+                                                         OBSTACLE_GRID_DEFAULT_VAL);
+            }
+
+            seg_grid_pub->publish(publish_window ? terrain_grid_window : terrain_grid);
+
+            if (publish_occupancy_grid)
+            {
+                occ_grid_pub->publish(publish_window ? obstacle_grid_window : obstacle_grid);
+            }
+
         }
         node->spin_some();
         rate.sleep();

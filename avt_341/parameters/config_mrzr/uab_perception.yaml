@@ -1,8 +1,13 @@
-max_width: 200.0
-max_height: 200.0
+grid_width: 100.0
+grid_height: 100.0
+grid_llx: 0.0
+grid_lly: 0.0
 grid_res: 0.5
+max_width: 100.0
+max_height: 100.0
 publish_uab_occupancy_grid: True
-invert_lidar_z_rot: False
 lidar_frame_id: "os_sensor"
-odom_frame_id: "odom"
+odom_frame_id: "mrzr/base_link"
 camera_frame_id: "flir_optical"
+brightness_offset: 0.0
+publish_window: True
