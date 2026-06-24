@@ -79,6 +79,11 @@ namespace avt_341::perception
         /** @brief Latest camera intrinsics; nullptr until the first CameraInfo
      *         message has been received. */
         sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info;
+
+        /** @brief Global reference to point-cloud cluster
+     *         between obstacle detector and detector improvment. */
+        pcl::PointCloud<pcl::PointXYZ>::Ptr current_cluster; 
+
     };
 
     class PixelCoordinates {
@@ -88,7 +93,6 @@ namespace avt_341::perception
         int x_;
         int y_;
     };
-
 
 }
 

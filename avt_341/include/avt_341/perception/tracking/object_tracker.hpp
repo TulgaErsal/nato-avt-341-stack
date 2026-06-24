@@ -23,6 +23,14 @@
 #include <vision_msgs/msg/detection3_d.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <pcl/common/transforms.h>
+#include <pcl/filters/crop_box.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/sac_model_parallel_plane.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl_conversions/pcl_conversions.h>
+// #include <opencv2/opencv.hpp>
+
 #include <avt_341/core/coord_transform.hpp>
 #include <avt_341/perception/filtering/imm_filter.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
@@ -46,9 +54,8 @@ class ObjectTracker {
                   const std::string& target_class,
                   const ObjectTrackerSettings& settings,
                   const core::CoordTransformer& coord_transformer,
-                  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
-                  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
-                  );
+                  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr
+                      target_contacts_publisher);
 
     // Per-tick entry points (called from the owning node's timers)
     // -------------------------------------------------------------------------
@@ -128,7 +135,18 @@ class ObjectTracker {
     Eigen::Vector3d ConvertBBoxCoordinatesToPoseCentroid_rdf(
         const vision_msgs::msg::Detection2D& detections_message,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info_message);
-
+   
+    // JN addition for better pose measurement
+     /** @brief Improve detection by fitting planes to point cloude end and flank given current yaw 
+     *         Input: pcl cluster object_cluster from obstacle detector, current yaw is read from global variable (last_reliable_yaw_)
+     *        return covariance matirix and improved_centroid and improved_yaw */
+    Eigen::Matrix3d ImprovePoseMeasurement(pcl::PointCloud<pcl::PointXYZ>::Ptr object_cluster,
+        Eigen::Vector3d measured_centroid, const std::string& source_frame,
+        const std::string& target_frame, double current_yaw, double platform_yaw, double& improved_yaw);
+    double current_yaw_; //keep track of yaw from ImprovePoseMeasurement
+    double current_yaw_info_; //keep track of yaw information for fusion using informationfilter
+    double yaw_info_;
+    pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
     void UpdateHeadingHold();
 
     void PublishOdometry();
@@ -159,13 +177,8 @@ class ObjectTracker {
     /** @brief Shared coordinate transformer owned by the node. */
     const core::CoordTransformer& coord_transformer_;
 
-    // TODO: Move to node
     /** @brief Shared target contacts publisher owned by the node. */
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
-
-    // TODO: Move to node
-    /** Single common odometry topic for tracked lead vehicle */
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
 
     /** @brief Latest camera intrinsics, cached on each tracking tick. */
     sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info_;

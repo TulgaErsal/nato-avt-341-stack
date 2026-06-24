@@ -55,7 +55,7 @@
 
 namespace avt_341 {
 namespace perception {
-
+TrackerSensorContext context_;
 ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracking_node") {
     GetParameters();
     Initialize();
@@ -80,6 +80,8 @@ void ObjectTrackingNode::GetParameters() {
 
 void ObjectTrackingNode::Initialize() {
     pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
+
+
 }
 
 void ObjectTrackingNode::CreateSubscriptions() {
@@ -171,9 +173,6 @@ void ObjectTrackingNode::CreatePublishers() {
     target_contacts_publisher_ =
         create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
 
-    leader_odom_publisher_ =
-        create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry_estimate/leader", 1);
-
     // Integrated obstacle detector publishers.
     obstacle_bboxes_publisher_ =
         create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -228,7 +227,7 @@ ObjectTracker& ObjectTrackingNode::AddOrResetTracker(
 
     auto tracker = std::make_unique<ObjectTracker>(
         this, target_class, settings_, *coord_transformer_,
-        target_contacts_publisher_, leader_odom_publisher_);
+        target_contacts_publisher_);
     ObjectTracker& tracker_ref = *tracker;
     trackers_.emplace(target_class, std::move(tracker));
     RCLCPP_INFO(get_logger(), "Created tracker for target class \"%s\".",
@@ -272,13 +271,12 @@ void ObjectTrackingNode::TrackingTimerCallback() {
 
     auto start_time = get_clock()->now();
 
-    TrackerSensorContext context;
-    context.obstacle_markers = &latest_obstacle_markers_;
-    context.has_obstacle_markers = has_obstacle_markers_;
-    context.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;
+    context_.obstacle_markers = &latest_obstacle_markers_;
+    context_.has_obstacle_markers = has_obstacle_markers_;
+    context_.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;
 
     for (auto& [target_class, tracker] : trackers_) {
-        tracker->TrackingTick(context);
+        tracker->TrackingTick(context_);
     }
 
     // Note: the debug image is target-independent and is republished once per
@@ -455,7 +453,7 @@ void ObjectTrackingNode::RunObstacleDetection(
         PublishObstacleDeleteAll(header);
         return;
     }
-
+    context_.current_cluster = norm_filtered; // global version of norm_filtered
     // Cluster and build bounding boxes.
     auto cloud_clusters = obstacle_detector_->clustering(
         norm_filtered, od.cluster_threshold,

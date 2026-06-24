@@ -296,9 +296,6 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
 
-    /** Single common odometry topic for tracked lead vehicle */
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
-
     // Tracker information
     // -------------------------------------------------------------------------
 
