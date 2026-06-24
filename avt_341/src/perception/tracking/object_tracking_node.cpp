@@ -172,6 +172,9 @@ void ObjectTrackingNode::CreatePublishers() {
 
     target_contacts_publisher_ =
         create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
+	
+	leader_odom_publisher_ =
+		create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry_estimate/leader", 1);
 
     // Integrated obstacle detector publishers.
     obstacle_bboxes_publisher_ =
@@ -227,7 +230,7 @@ ObjectTracker& ObjectTrackingNode::AddOrResetTracker(
 
     auto tracker = std::make_unique<ObjectTracker>(
         this, target_class, settings_, *coord_transformer_,
-        target_contacts_publisher_);
+		target_contacts_publisher_, leader_odom_publisher_);
     ObjectTracker& tracker_ref = *tracker;
     trackers_.emplace(target_class, std::move(tracker));
     RCLCPP_INFO(get_logger(), "Created tracker for target class \"%s\".",
