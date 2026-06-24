@@ -62,7 +62,7 @@
 
 namespace avt_341_nav {
 namespace perception {
-
+TrackerSensorContext context_;
 namespace {
 
 // Compute time section ids. Obstacle detection is recorded as a real parent rather than being
@@ -122,6 +122,8 @@ const std::shared_ptr<core::ComputeTimeRecorder>& ObjectTrackerNode::Recorder() 
 
 void ObjectTrackerNode::Initialize() {
     pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
+
+
 }
 
 void ObjectTrackerNode::CreateSubscriptions() {
@@ -212,9 +214,9 @@ void ObjectTrackerNode::CreatePublishers() {
 
     target_contacts_publisher_ =
         create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
-
-    leader_odom_publisher_ =
-        create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry_estimate/leader", 1);
+	
+	leader_odom_publisher_ =
+		create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry_estimate/leader", 1);
 
     // Integrated obstacle detector publishers.
     obstacle_bboxes_publisher_ =
@@ -289,7 +291,10 @@ ObjectTracker* ObjectTrackerNode::AddOrResetTracker(
         trackers_.clear();
     }
 
-    ObjectTracker* tracker_ptr = tracker.get();
+    auto tracker = std::make_unique<ObjectTracker>(
+        this, target_class, settings_, *coord_transformer_,
+		target_contacts_publisher_, leader_odom_publisher_	);
+    ObjectTracker& tracker_ref = *tracker;
     trackers_.emplace(target_class, std::move(tracker));
     RCLCPP_INFO(get_logger(),
                 "Created %s tracker for target class \"%s\".",
@@ -447,15 +452,14 @@ void ObjectTrackerNode::TrackingTimerCallback() {
         RCLCPP_INFO(get_logger(), "Reset complete.");
     }
 
-    TrackerSensorContext context;
-    context.obstacle_markers = &latest_obstacle_markers_;
-    context.has_obstacle_markers = has_obstacle_markers_;
-    context.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;
+    context_.obstacle_markers = &latest_obstacle_markers_;
+    context_.has_obstacle_markers = has_obstacle_markers_;
+    context_.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;
 
     {
         auto recording = Recorder()->RecordScope(TRACKING_TICK_SECTION_ID);
         for (auto& [target_class, tracker] : trackers_) {
-            tracker->TrackingTick(context);
+        tracker->TrackingTick(context_);
         }
     }
 
@@ -649,7 +653,7 @@ void ObjectTrackerNode::RunObstacleDetection(
         PublishObstacleDeleteAll(header);
         return;
     }
-
+    context_.current_cluster = norm_filtered; // global version of norm_filtered
     // Cluster and build bounding boxes.
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_clusters;
     {
