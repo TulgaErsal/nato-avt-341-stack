@@ -21,7 +21,7 @@ max_separation: 1.0                           # Maximum separation between waypo
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
 use_segmentation: True                        # Whether to use segmentation grid data or not
 map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
-seg_topic: avt_341/segmentation_grid_low_res  # Segmentation grid topic
+seg_topic: avt_341/terrain_seg/segmentation_grid  # Segmentation grid topic
 planning_method: fast_marching                # 'astar', 'fast_marching', 'd_star_lite', 'fast_marching_square'
 obstacle_threshold: 0.0                       # Threshold above which cells are strictly impassable in EDT-based planners.
 

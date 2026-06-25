@@ -144,6 +144,10 @@ namespace avt_341::perception
     bool use_elevation;
     float thresh;
     float thresh_max;
+    bool output_unknown_cells;
+    int replace_occ_unknown_with;
+    int replace_seg_unknown_with;
+
     float grid_slope_mult() const { return static_cast<float>(GRID_MAX_VALUE) / (thresh_max - thresh);}
 
     void Update(
@@ -161,7 +165,10 @@ namespace avt_341::perception
 
     std::string ToString() const
     {
-      return "use_elevation: " + std::to_string(use_elevation) + ", thresh: " + std::to_string(thresh) + ", thresh_max: " + std::to_string(thresh_max);
+      return "use_elevation: " + std::to_string(use_elevation) + ", thresh: " + std::to_string(thresh) + ", thresh_max: " + std::to_string(thresh_max)
+        + ", output_unknown_cells: " + std::to_string(output_unknown_cells)
+        + ", replace_occ_unknown_with: " + std::to_string(replace_occ_unknown_with)
+        + ", replace_seg_unknown_with: " + std::to_string(replace_seg_unknown_with);
     }
   };
 

@@ -147,6 +147,19 @@ log_topics:
   # PLANNERS
   # ==========================================================================================================
 
+  # Nav Goal State
+  - name: '{vehicles}_goal_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/state'
+    field: 'goal.pose.position.{position_keys[:2]}'
+    type: 'avt_341_msgs/msg/NavState'
+    units: 'm'
+
+  - name: '{vehicles}_goal_reached_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/goal_reached'
+    field: 'goal.pose.position.{position_keys[:2]}'
+    type: 'avt_341_msgs/msg/NavState'
+    units: 'm'
+
   # Local Planned Path X, Y
   - name: '{vehicles}_local_planned_path_{position_keys[:2]}'
     topic: '/{vehicles}/avt_341/local_path'
@@ -192,6 +205,13 @@ log_topics:
     type: 'avt_341_msgs/msg/MissionTaskStatus'
     units: ''
     channel_mapper: 'vehicle_id_to_idx'
+
+  # Task Changed
+  - name: '{vehicles}_task_id'
+    topic: '/{vehicles}/avt_341/task_change'
+    field: 'task_id'
+    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    units: ''
 
   # Task Status - Formation Target
   - name: '{vehicles}_formation_target_{position_keys[:2]}'
