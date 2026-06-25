@@ -6,6 +6,6 @@ grid_res: 0.5
 publish_uab_occupancy_grid: False
 lidar_frame_id: "os_sensor"
 odom_frame_id: "mrzr/base_link"
-camera_frame_id: "flir_optical"
+camera_frame_id: "flir_camera"
 brightness_offset: 75.0
 publish_window: True

@@ -1,4 +1,4 @@
-camera_frame: "flir_optical"
+camera_frame: "flir_camera"
 frame_prefix: ""
 world_frame: "map"
 odometry_child_frame: "odom"

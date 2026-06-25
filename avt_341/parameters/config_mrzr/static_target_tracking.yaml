@@ -1,5 +1,5 @@
 tracking_rate: 10.0
-camera_frame: "flir_optical"
+camera_frame: "flir_camera"
 odometry_child_frame: "odom"
 world_frame: "map"
 filters_use_manual_roi: true

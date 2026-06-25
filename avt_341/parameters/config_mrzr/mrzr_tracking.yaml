@@ -1,4 +1,4 @@
-camera_frame: "flir_optical"
+camera_frame: "flir_camera"
 odometry_child_frame: "mrzr2/odom"
 filters_downsampling_leaf_size: 0.3
 filters_passthrough_min: 3.0
