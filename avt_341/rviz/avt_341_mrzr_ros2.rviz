@@ -7,8 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Tree1
-        - /OccupancyGridLocal1/Status1
-        - /OccupancyGridGlobal1/Status1
       Splitter Ratio: 0.5313807725906372
     Tree Height: 869
   - Class: rviz_common/Selection
@@ -130,11 +128,7 @@ Visualization Manager:
           Value: true
         ecef:
           Value: true
-        flir_optical:
-          Value: true
-        flir_rgb_link:
-          Value: true
-        flir_sensor_link:
+        flir_camera:
           Value: true
         lidar:
           Value: true
@@ -171,14 +165,11 @@ Visualization Manager:
             cage_link:
               cage_link_pitched:
                 plate_link:
-                  flir_sensor_link:
-                    flir_rgb_link:
-                      {}
                   os_sensor:
                     os_imu:
                       {}
                     os_lidar:
-                      flir_optical:
+                      flir_camera:
                         {}
                       lidar:
                         {}
@@ -437,7 +428,7 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -458,6 +449,27 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /flir_camera/image_rect
+      Value: false
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: false
+      Name: Terrain segmentation
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/terrain_seg/segmentation_grid
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/terrain_seg/segmentation_grid_updates
+      Use Timestamp: false
       Value: false
   Enabled: true
   Global Options:
