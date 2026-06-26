@@ -6,7 +6,7 @@ slope_threshold_max: 2.5                  # Maximum slope of cells after which t
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
 grid_res: 0.25                             # Grid resolution in meters.
-grid_dilate: True                        # Whether or not to apply dilation.
+grid_dilate: False                        # Whether or not to apply dilation.
 grid_dilate_x: 0.75                        # Amount of dilation in x.
 grid_dilate_y: 0.75                        # Amount of dilation in y.
 grid_dilate_proportion: 0.8               # Proportion of original grid cell to dilate with.

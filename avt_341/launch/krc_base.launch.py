@@ -515,7 +515,7 @@ def launch_setup(context, *args, **kwargs):
             ],
             remappings=[
                 ('avt_341/points','/ouster/points'),
-                ('avt_341/camera/image_raw','/flir_camera/image_raw'),
+                ('avt_341/camera/image_raw','/flir_camera/image_rect_color'),
                 ('avt_341/camera/camera_info','/flir_camera/camera_info'),
                 ('avt_341/odom','avt_341/odometry'),
                 ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
@@ -543,7 +543,7 @@ def launch_setup(context, *args, **kwargs):
                 {k: LaunchConfiguration(f'object_detector_{k}') for k in params['object_detector'].keys()}
             ],
             remappings=[
-                ('image','/flir_camera/image_raw'),
+                ('image','/flir_camera/image_rect_color'),
             ],
             output='screen'
         ),
@@ -561,7 +561,7 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 # Subscribers
                 ('camera_info','/flir_camera/camera_info'),
-                ('image','/flir_camera/image_raw'),
+                ('image','/flir_camera/image_rect_color'),
                 ('points/input','/ouster/points'),
                 ('detection_2d', 'detections/vision'),
                 ('avt_341/reset', '/mrzr/avt_341/reset'),
@@ -585,7 +585,7 @@ def launch_setup(context, *args, **kwargs):
                         {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
                     ],
                     remappings=[
-                        ('image','/flir_camera/image_raw'),
+                        ('image','/flir_camera/image_rect_color'),
                     ],
                     output='screen'
                 ),
@@ -600,7 +600,7 @@ def launch_setup(context, *args, **kwargs):
                     remappings=[
                         # Subscribers
                         ('camera_info','/flir_camera/camera_info'),
-                        ('image','/flir_camera/image_raw'),
+                        ('image','/flir_camera/image_rect_color'),
                         ('points/input','/ouster/points'),
                         ('detection_2d', 'detections/vision'),
                         ('avt_341/reset', '/mrzr/avt_341/reset'),

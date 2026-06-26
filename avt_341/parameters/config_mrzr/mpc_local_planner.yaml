@@ -15,8 +15,8 @@ min_speed: 0.5 # minimum allowed vehicle speed [m/s]
 max_speed: 4.0 # maximum allowed vehicle speed [m/s]
 
 use_hard_constraints: False # whether to include obstacles as hard constraints in addition to soft constraints
-use_segmentation: True
-segmentation_resolution: 0.5
+use_segmentation: False
+segmentation_resolution: 1.0
 linear_solver: "ma27" # See https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_linear_solver for list of linear solvers. Recommended: 'ma27'. Default: 'mumps'
 
 w_distance_to_obstacles: 50. # weight on distanceToObstacles in the objective function
