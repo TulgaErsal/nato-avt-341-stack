@@ -878,7 +878,6 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
     double platform_yaw,
     double& improved_yaw) {
 
-    RCLCPP_INFO(logger_, "ImprovePoseMeasurement cluster size: %i ", object_cluster->points.size());
     bool has_end_plane_ = false;
     bool has_flank_plane_ = false;
 	Eigen::Vector3d improved_centroid = measured_centroid; // initialize on cloud centroid
@@ -910,15 +909,11 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
         pcl::copyPointCloud(*object_cluster, *inliers_e, *cloud_e);
 
         pcl::compute3DCentroid(*cloud_e, centroid_e);
-        RCLCPP_INFO(logger_, " cluster centroid ( %.2lf, %.2lf, %.2lf)", centroid_e.x(), centroid_e.y(), centroid_e.z());
-        RCLCPP_INFO(logger_, " heading  ( %.2lf, %.2lf)", heading_perpendicular.x(), heading_perpendicular.y());
-
         pcl::computeCovarianceMatrix(*object_cluster, *inliers_e, centroid_e, covariance_matrix_e);
         has_end_plane_ = true;
 
     }
     else {
-        RCLCPP_INFO(logger_, "__ end plane too few  points %i ", inliers_e->indices.size());
         has_end_plane_ = false;
     }
 
@@ -941,12 +936,10 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
 
     }
     else {
-        RCLCPP_INFO(logger_, "!! flank plane too few  points %i ", inliers_f->indices.size());
 
         has_flank_plane_ = false;
     }
     if (has_end_plane_) {
-        RCLCPP_INFO(logger_, "Has endplane with  %i points", inliers_e->indices.size());
 
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver(covariance_matrix_e);
         Eigen::Matrix3d eigenVectors = eigen_solver.eigenvectors();
@@ -955,7 +948,6 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
         int r_d, c_d;
         double plane_deviation2_e = eigenValues.minCoeff(&r_d, &c_d);    // [s, i] = min(R(:)); [r, c] = ind2sub(size(R), i);
         Eigen::Vector3d n_hat = eigenVectors.col(c_d); // plane normal
-        RCLCPP_INFO(logger_, "n_hat_e = [% .2lf, % .2lf, % .2lf]", n_hat(0), n_hat(1), n_hat(2));
         n_hat(2) = 0.0; //vertical plane
 
         n_hat.normalize();
@@ -973,10 +965,7 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
         double plane_deviation2_f;
         if (has_flank_plane_) // can improve n_hat
         {
-            RCLCPP_INFO(logger_, "Has flankplane with  %i points, centroid [% .2lf, % .2lf,% .2lf]", inliers_f->indices.size(), centroid_f.x(), centroid_f.y(), centroid_f.z());
-            RCLCPP_INFO(logger_, "n_hat_e = [% .2lf, % .2lf]", n_hat(0), n_hat(1));
-            RCLCPP_INFO(logger_, "coefficients = [% .2lf, % .2lf,% .2lf, % .2lf]", coefficients_f->values[0], coefficients_f->values[1], coefficients_f->values[2], coefficients_f->values[3]);
-
+ 
             Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver_f(covariance_matrix_f);
             Eigen::Matrix3d eigenVectors_f = eigen_solver_f.eigenvectors();
             eigenVectors_f.col(2) = eigenVectors_f.col(0).cross(eigenVectors_f.col(1));  // ensure right hand matrix
@@ -992,9 +981,7 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
             if (direction_test < 0) {
                 n_hat = -n_hat;
                 y_hat = -y_hat;
-            }
-            RCLCPP_INFO(logger_, "n_hat_f = [% .2lf, % .2lf, % .2lf]", n_hat(0), n_hat(1), n_hat(2));
-        }
+            }        }
         Eigen::Matrix4d endTransform(Eigen::Matrix4d::Identity());
         endTransform.block(0, 0, 1, 3) = n_hat;
         endTransform.block(1, 0, 1, 3) = y_hat;
@@ -1021,7 +1008,6 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
             pcl::transformPointCloud(*cloud, *transformed, endTransform);
             pcl::compute3DCentroid(*transformed, centroid);
             double s2 = plane_deviation2_f; // estimated sigma of plane points
-            RCLCPP_INFO(logger_, "// flank transformed size  %i ", transformed->points.size());
             for (std::size_t idx = 0; idx < transformed->points.size(); idx++) {
                 info_plane += (transformed->points[idx].x - centroid.x()) * 1 / s2 *
                     (transformed->points[idx].x - centroid.x()); //flank plane along local x-direction 
@@ -1032,7 +1018,6 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
             pcl::transformPointCloud(*cloud, *transformed, endTransform);
             pcl::compute3DCentroid(*transformed, centroid);
             double s2 = plane_deviation2_e; // estimated sigma of plane points
-            RCLCPP_INFO(logger_, "__ endplane transformed size  %.2lf ", transformed->points.size());
             for (std::size_t idx = 0; idx < transformed->points.size(); idx++) {
                 info_plane += (transformed->points[idx].y - centroid.y()) * 1 / s2 *
                     (transformed->points[idx].y - centroid.y()); //end plane along local y-direction 
@@ -1042,9 +1027,6 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
         R_b(0, 0) = 0.2 * 0.2*25.0;
         R_b(1, 1) = 0.5 * 0.5 * 25.0;
         improved_yaw = -platform_yaw + improved_yaw;
-        RCLCPP_INFO(logger_, "improved yaw %.2lf, predicted yaw %.2lf, centroid  ( % .2lf, % .2lf, % .2lf ) ", 
-            improved_yaw, current_yaw, improved_centroid.x(), improved_centroid.y(), improved_centroid.z());
-        RCLCPP_INFO(logger_, "improved plane information %.2lf", info_plane);
         if (info_plane > 0) {
             R_b(2, 2) = 1 / info_plane;
             // ugly sideeffect on global because Eigen referencing is beyond me right now
@@ -1155,7 +1137,10 @@ void ObjectTracker::MaybePublishContactUpdate() {
                   target_class_) != formation_ids.end()) {
         return;
     }
-
+	// JN suggestion for tracker input given acces to filter_ and a function getMu in filter
+	//  mu = filter_.getMu()
+	//  P = 
+	// if  (mu[2]>0.5 & P(0,0,)<2.0 & P(1,1)<2.0) //2.0 and 0.5 should be parameters
     if (!encircle_triggered_) {
         PublishTargetContact();
         encircle_triggered_ = true;
