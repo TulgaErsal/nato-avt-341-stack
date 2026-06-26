@@ -217,14 +217,12 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             {
                 const auto q_w2b = coord_transformer_.LookupRotation(
                     marker_frame, settings_.frames.world_frame);
-                //Eigen::Quaternionf q_w2b = FrameOrientation(marker_frame, settings_.frames.world_frame);
                 Eigen::Vector3d euler = q_w2b->toRotationMatrix().eulerAngles(0, 1, 2);
                 float cloud_yaw = euler(2);
                 pcl::CropBox<pcl::PointXYZ> cropboxFilter(true);
                 Eigen::Vector4f min_pt(-bounding_box_size_.x()/2.0, -bounding_box_size_.y() / 2.0, -bounding_box_size_.z() / 2.0, 1.0);
                 Eigen::Vector4f max_pt(bounding_box_size_.x() / 2.0, bounding_box_size_.y() / 2.0, bounding_box_size_.z() / 2.0, 1.0);
-                //Eigen::Vector4f min_pt(-6.0, -6.0, -1.0, 1.0);
-                //Eigen::Vector4f max_pt(6.0, 6.0, 6.0, 6.0);
+
                 Eigen::Vector3d translation_d = coord_transformer_.Transform(
                     settings_.frames.camera_frame, settings_.frames.world_frame, bounding_box_centroid_);
                 Eigen::Vector3f translation = marker_pos.cast<float>(); // translation_d.
@@ -241,17 +239,6 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                 Eigen::Vector3d bounding_box_lidar = coord_transformer_.Transform(
                     settings_.frames.camera_frame, 
                     marker_frame, bounding_box_centroid_); //let ImprovePoseMeasurement work in marker-space
-
-                RCLCPP_INFO(logger_,
-                    "LIDAR_ONLY: transforming from "
-                    "(%.2f, %.2f, %.2f) camera-frame."
-                    "transform to (%.2f, %.2f, %.2f) marker-frame.",
-                    bounding_box_centroid_.x(),
-                    bounding_box_centroid_.y(),
-                    bounding_box_centroid_.z(),
-                    bounding_box_lidar.x(),
-                    bounding_box_lidar.y(),
-                    bounding_box_lidar.z());
                 Eigen::Vector3d improved_centroid;
                 double improved_yaw(old_yaw);
                 Eigen::Matrix3d R_improved;
@@ -529,8 +516,8 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                 best_pos_cam_marker,
 				marker_frame, settings_.frames.camera_frame, old_yaw, cloud_yaw, improved_yaw);
 
-            yaw_info_ = current_yaw_info_ + 100.0 / R_improved(2, 2);
-            last_reliable_yaw_ = (100.0 / R_improved(2, 2) * improved_yaw + current_yaw_info_ * old_yaw) /
+            yaw_info_ = current_yaw_info_ + 1.0 / R_improved(2, 2);
+            last_reliable_yaw_ = (1.0 / R_improved(2, 2) * improved_yaw + current_yaw_info_ * old_yaw) /
                 (yaw_info_);
 
             if (R_improved(2, 2) < 3 * 3) {
@@ -1052,8 +1039,8 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
             }
         }
         Eigen::Matrix4d R_b(Eigen::Matrix4d::Identity());
-        R_b(0, 0) = 0.2 * 0.2*25.0;
-        R_b(1, 1) = 0.5 * 0.5 * 25.0;
+        R_b(0, 0) = 0.2 * 0.2;
+        R_b(1, 1) = 0.5 * 0.5;
         improved_yaw = -platform_yaw + improved_yaw;
         if (info_plane > 0) {
             R_b(2, 2) = 1 / info_plane;
@@ -1149,9 +1136,9 @@ void ObjectTracker::PublishDetection3D() {
     detection_publisher_->publish(detection_message);
 }
 
-	// JN suggestion for tracker input given acces to filter_ and a function getMu in filter
-	//  mu = filter_.getMu()
-	//  P = 
-	// if  (mu[2]>0.5 & P(0,0,)<2.0 & P(1,1)<2.0) //2.0 and 0.5 should be parameters
+	// JN suggestion for tracker input given acces to filter_ and a function getMu in filter_
+	//  mu = filter_.getMu();
+	//  P = filter_.getPoseCovariance();
+	// if  (mu[2]>0.5 & P(0,0)<2.0 & P(1,1)<2.0) //2.0 and 0.5 should be parameters
 }  // namespace perception
 }  // namespace avt_341_nav
