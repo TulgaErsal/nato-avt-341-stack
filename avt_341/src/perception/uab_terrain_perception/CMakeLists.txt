@@ -9,7 +9,7 @@ function(DownloadWindowsDll)
     file(DOWNLOAD
     "https://www.dropbox.com/scl/fi/5qonis63wjqlxfe4wzza9/lib_uab_perception_wrapper.dll?rlkey=b61advoh669vxgp96kjvzo8c0&st=ilkpve9y&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=f2935283e334bf1bd489bb054f0caf89eec40f6988586700dd7cab1c3d67f6e1
+    EXPECTED_HASH SHA256=2061e9823b1372e3a1741731ca249603b70ad45a86bcba427d60186ad5b90d6b
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
@@ -38,6 +38,8 @@ endfunction(DownloadLinuxSharedLibrary)
 # set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2025b/runtime/glnxa64/libmwmclmcrrt.so)
 # set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2025b/extern/include)
 find_package(Matlab)
+find_package(cv_bridge REQUIRED)
+
 if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 
     if(NOT Matlab_MCLMCRRT_LIB)
@@ -91,6 +93,8 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
     if(USING_AMENT)
         add_executable(uab_perception_node "uab_perception_node.cpp")
         target_link_libraries(uab_perception_node ${PROJECT_NAME}_proxy)
+
+        ament_target_dependencies(uab_perception_node cv_bridge)
 
         if(WIN32 OR WIN64)
             DownloadWindowsDll()

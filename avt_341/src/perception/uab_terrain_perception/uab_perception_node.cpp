@@ -14,10 +14,17 @@
 #include <vector>
 #include <array>
 #include <math.h>
+#include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
+
+#ifdef GTE_ROS_JAZZY
+#include <cv_bridge/cv_bridge.hpp>
+#else
+#include <cv_bridge/cv_bridge.h>
+#endif
 
 const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
@@ -86,7 +93,7 @@ static mxArray* toDoubleColumn(const std::array<double, 4>& vec)
 {
     mxArray* array = mxCreateDoubleMatrix(4, 1, mxREAL);
     double* data = mxGetPr(array);
-    for (size_t i = 0; i < 4; ++i) 
+    for (size_t i = 0; i < 4; ++i)
     {
         data[i] = vec[i];
     }
@@ -106,7 +113,7 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
         "data",
         "step"
     };
-    
+
     const mwSize height = static_cast<mwSize>(img.height);
     const mwSize width = static_cast<mwSize>(img.width);
     mxClassID encoding = mxUINT8_CLASS;
@@ -269,6 +276,51 @@ static mwArray tfToMwArray(const geometry_msgs::msg::TransformStamped &tf)
     return mwTform;
 }
 
+//converts the MATLAB segmentation image (uint8 [height x width x 3], stored
+//column-major and planar) into an interleaved rgb8 cv::Mat
+static cv::Mat segMaskToMat(mwArray &mw_mask)
+{
+    mwArray dims = mw_mask.GetDimensions();
+    mwArray height_arr = dims(1, 1);
+    mwArray width_arr = dims(1, 2);
+    const int height = height_arr;
+    const int width = width_arr;
+    const int num_pixels = height * width;
+
+    std::vector<uint8_t> buf(static_cast<size_t>(num_pixels) * 3);
+    mw_mask.GetData(buf.data(), buf.size());
+
+    //each MATLAB channel plane is column-major, i.e. the transpose of the image
+    //when read row-major; transpose each plane and merge into an rgb image
+    std::vector<cv::Mat> channels;
+    channels.reserve(3);
+    for (int ch = 0; ch < 3; ch++)
+    {
+        cv::Mat plane_t(width, height, CV_8UC1, buf.data() + static_cast<size_t>(ch) * num_pixels);
+        channels.push_back(plane_t.t());
+    }
+
+    cv::Mat rgb;
+    cv::merge(channels, rgb);
+    return rgb;
+}
+
+//builds an rgb8 image message from an rgb cv::Mat, carrying the same header
+//(stamp/frame) as the source camera image
+static avt_341::msg::Image matToRgbMsg(const avt_341::msg::Image &reference, const cv::Mat &rgb)
+{
+    return *cv_bridge::CvImage(reference.header, "rgb8", rgb).toImageMsg();
+}
+
+//derives a sibling debug topic from the camera topic by replacing the final path
+//segment, e.g. "flir_camera/image_raw" + "segmentation" -> "flir_camera/segmentation"
+static std::string makeSiblingTopic(const std::string &camera_topic, const std::string &suffix)
+{
+    size_t last_slash = camera_topic.find_last_of('/');
+    std::string base = (last_slash == std::string::npos) ? std::string("") : camera_topic.substr(0, last_slash + 1);
+    return base + suffix;
+}
+
 /*
 * GetCostmapFromMatlab packages up all the data from ROS (odometry, pointcloud, and image), calls
 * the semantic segmentation model in Matlab, and populates an array of cost values based on
@@ -286,7 +338,9 @@ void GetCostmapFromMatlab(float width_cells,
                             std::vector<double> &obstacle_grid_modified_idxs,
                             std::string lidar_frame_id,
                             std::string odom_frame_id,
-                            std::string camera_frame_id)
+                            std::string camera_frame_id,
+                            bool debug_vis_segmentation,
+                            cv::Mat &seg_img)
 {
     bool received_tform = false;
     while (!received_tform)
@@ -343,6 +397,9 @@ void GetCostmapFromMatlab(float width_cells,
     //lower right corner grid offset in meters (y/north direction)
     mwArray mw_grid_lly(grid_lly);
 
+    //when set, the wrapper returns the (small) segmentation image for debug visualization
+    mwArray mw_debug_vis_segmentation(static_cast<double>(debug_vis_segmentation));
+
     try
     {
         //output variables
@@ -352,14 +409,17 @@ void GetCostmapFromMatlab(float width_cells,
         mwArray mw_obstacle_grid;
         mwArray mw_obstacle_grid_size;
         mwArray mw_obstacle_grid_modified_idxs;
+        //only requested (and only populated by the wrapper) when debug visualization is enabled
+        mwArray mw_debug_segmentation_mask;
         perception_wrapper(
-                            6, //number of output arguments
+                             7, //number of output arguments
                             mw_terrain_costmap, //terrain costmap output
                             mw_terrain_sub_grid_size, //size of terrain costmap output
                             mw_terrain_grid_modified_idxs, //cell indices of grid that were updated this iteration
                             mw_obstacle_grid, //obstacle grid output
                             mw_obstacle_grid_size, //size of obstacle grid output
                             mw_obstacle_grid_modified_idxs, //cell indices of obstacle grid that were updated this iteration
+                            mw_debug_segmentation_mask, //small segmentation image (only when debug_vis_segmentation)
                             mw_img, //image struct
                             mwXYZ, //pointcloud xyz (Nx3 matrix)
                             mw_odom, //odometry struct
@@ -367,7 +427,8 @@ void GetCostmapFromMatlab(float width_cells,
                             mw_lidar_to_camera_tform, //transform from camera to lidar
                             mw_lidar_to_base_link_tform, //transform from lidar to robot base link
                             mw_brightness_offset, //used to correct color to match model expectations
-                            mw_grid_width, mw_grid_height, mw_grid_res, mw_grid_llx, mw_grid_lly //grid parameters
+                            mw_grid_width, mw_grid_height, mw_grid_res, mw_grid_llx, mw_grid_lly, //grid parameters
+                            mw_debug_vis_segmentation //return the segmentation image for debug visualization
                         );
 
         // parse terrain sub grid
@@ -385,6 +446,12 @@ void GetCostmapFromMatlab(float width_cells,
 
         obstacle_grid.resize(obstacle_sub_grid_size);
         mw_obstacle_grid.GetData(obstacle_grid.data(), obstacle_grid.size());
+
+        // decode the (small) segmentation image for debug visualization
+        if (debug_vis_segmentation && !mw_debug_segmentation_mask.IsEmpty())
+        {
+            seg_img = segMaskToMat(mw_debug_segmentation_mask);
+        }
     }
     catch(const mwException& e)
     {
@@ -479,12 +546,16 @@ int main(int argc, char *argv[])
     node = avt_341::node::init_node(argc, argv, "uab_perception_node");
     node->initialize_tf_listener();
 
+    //camera topic is read first so the debug segmentation topics can be derived from it
+    std::string camera_topic;
+    node->get_parameter("~camera_topic", camera_topic, std::string("avt_341/camera/image_raw"));
+
     auto odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
     auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
-    auto img_sub = node->create_subscription<avt_341::msg::Image>("avt_341/camera/image_raw", 10, ImageCallback);
+    auto img_sub = node->create_subscription<avt_341::msg::Image>(camera_topic, 10, ImageCallback);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto camera_info_sub = node->create_subscription<avt_341::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
-    
+
     auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
     auto occ_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
@@ -495,7 +566,7 @@ int main(int argc, char *argv[])
     std::string frame_prefix;
     std::string lidar_frame_id, odom_frame_id, camera_frame_id;
     float width, height, grid_llx, grid_lly, grid_res, max_width, max_height;
-    bool publish_occupancy_grid, publish_window;
+    bool publish_occupancy_grid, publish_window, debug_vis_segmentation;
     double brightness_offset;
 
     node->get_parameter("~frame_prefix", frame_prefix, std::string(""));
@@ -512,10 +583,25 @@ int main(int argc, char *argv[])
     node->get_parameter("~odom_frame_id", odom_frame_id, std::string("base_link"));
     node->get_parameter("~camera_frame_id", camera_frame_id, std::string("camera_link"));
     node->get_parameter("~brightness_offset", brightness_offset, 0.0);
+    node->get_parameter("~debug_vis_segmentation", debug_vis_segmentation, false);
 
     for (auto f : {&lidar_frame_id, &odom_frame_id, &camera_frame_id})
     {
         *f = frame_prefix.empty() ? *f : frame_prefix + "/" + *f;
+    }
+
+    //debug segmentation visualization topics, derived from the camera topic by
+    //replacing its final path segment (e.g. flir_camera/image_raw ->
+    //flir_camera/segmentation and flir_camera/segmentation_overlay)
+    const std::string seg_topic = makeSiblingTopic(camera_topic, "segmentation");
+    const std::string seg_overlay_topic = makeSiblingTopic(camera_topic, "segmentation_overlay");
+    decltype(node->create_publisher<avt_341::msg::Image>(seg_topic, 1)) seg_pub, seg_overlay_pub;
+    if (debug_vis_segmentation)
+    {
+        seg_pub = node->create_publisher<avt_341::msg::Image>(seg_topic, 1);
+        seg_overlay_pub = node->create_publisher<avt_341::msg::Image>(seg_overlay_topic, 1);
+        std::cout << "debug_vis_segmentation enabled. Publishing debug topics: "
+                  << seg_topic << ", " << seg_overlay_topic << std::endl;
     }
 
     //initialize matlab runtime
@@ -554,7 +640,7 @@ int main(int argc, char *argv[])
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }
-        
+
         //wait until we've received all necessary messages
         if (!allMsgsReceived())
         {
@@ -564,7 +650,7 @@ int main(int argc, char *argv[])
             if (!img_received) waiting_on += "image ";
             if (!cam_info_received) waiting_on += "camera_info";
             std::cout << waiting_on << std::endl;
-            
+
             avt_341::node::Rate wait(1.0);
             wait.sleep();
 
@@ -579,6 +665,8 @@ int main(int argc, char *argv[])
             std::vector<double> terrain_sub_grid_idxs;
             std::vector<int8_t> obstacle_sub_grid;
             std::vector<double> obstacle_sub_grid_idxs;
+            //small (un-upsampled) rgb segmentation image, populated only in debug mode
+            cv::Mat seg_img;
 
             GetCostmapFromMatlab(
                 width_cells,
@@ -593,7 +681,9 @@ int main(int argc, char *argv[])
                 obstacle_sub_grid_idxs,
                 lidar_frame_id,
                 odom_frame_id,
-                camera_frame_id
+                camera_frame_id,
+                debug_vis_segmentation,
+                seg_img
                 );
 
 
@@ -647,6 +737,40 @@ int main(int argc, char *argv[])
                 occ_grid_pub->publish(publish_window ? obstacle_grid_window : obstacle_grid);
             }
 
+            if (debug_vis_segmentation && !seg_img.empty())
+            {
+                try
+                {
+                    //decode the original camera image to rgb (cv_bridge handles the
+                    //source encoding, including bayer demosaicing, automatically)
+                    cv::Mat original = cv_bridge::toCvCopy(img, "rgb8")->image;
+
+                    //upsample the small segmentation mask to the original camera
+                    //resolution (the resolution increase is done here, rather than in
+                    //MATLAB, to keep the data returned over the MATLAB boundary small)
+                    cv::Mat seg_full;
+                    if (seg_img.size() != original.size())
+                    {
+                        cv::resize(seg_img, seg_full, original.size(), 0, 0, cv::INTER_NEAREST);
+                    }
+                    else
+                    {
+                        seg_full = seg_img;
+                    }
+                    seg_pub->publish(matToRgbMsg(img, seg_full));
+
+                    //overlay the segmentation on the original camera image:
+                    //(1 - 0.3) * original + 0.3 * segmentation
+                    cv::Mat overlay;
+                    cv::addWeighted(original, 0.7, seg_full, 0.3, 0.0, overlay);
+                    seg_overlay_pub->publish(matToRgbMsg(img, overlay));
+                }
+                catch (const cv_bridge::Exception &e)
+                {
+                    std::cerr << "cv_bridge failed to convert debug segmentation image: " << e.what() << std::endl;
+                }
+            }
+
         }
         node->spin_some();
         rate.sleep();
@@ -663,6 +787,8 @@ int main(int argc, char *argv[])
     seg_grid_pub.reset();
     occ_grid_pub.reset();
     reset_ack_pub.reset();
+    seg_pub.reset();
+    seg_overlay_pub.reset();
 
     node.reset();
 
