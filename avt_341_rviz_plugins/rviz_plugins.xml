@@ -1,4 +1,4 @@
-<library path="avt_341_ui">
+<library path="avt_341_rviz_plugins">
   <class name="mrzr_tools/MissionCommand"
          type="avt_341::ui::MissionCommandPanel"
          base_class_type="rviz_common::Panel">

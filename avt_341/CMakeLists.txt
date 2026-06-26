@@ -71,12 +71,6 @@ set(AVT341_SOURCE_FILES
     "planning/global/global_path"
     "planning/global/pf_global_path")
 
-if(NOT AVT341_DISABLE_UI)
-  list(APPEND AVT341_SOURCE_FILES "ui/mission_command_panel")
-else()
-  message(STATUS "UI build disabled.")
-endif()
-
 # Append src/ subdirectory to the path of each target.
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
                      "${AVT341_SOURCE_FILES}")
@@ -189,17 +183,12 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
-  install(FILES rviz_plugins.xml DESTINATION "share/${PROJECT_NAME}")
 
   # Automated Tests
   # ===============
   if(BUILD_TESTING)
     add_subdirectory(test)
   endif()
-
-  # Export RViz Plugin
-  find_package(pluginlib REQUIRED)
-  pluginlib_export_plugin_description_file(rviz_common rviz_plugins.xml)
 
   ament_package()
 

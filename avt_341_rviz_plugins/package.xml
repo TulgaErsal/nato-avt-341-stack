@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<package format="3">
+  <name>avt_341_rviz_plugins</name>
+  <version>0.0.0</version>
+  <description>RViz panel plugins for the AVT-341 autonomy stack</description>
+
+  <maintainer email="cgoodin@cavs.msstate.edu">Chris Goodin</maintainer>
+  <maintainer email="dsi@aarhusrobotics.com">Dario Sirangelo</maintainer>
+
+  <author email="evanderm@mtu.edu">Evan Vandermate</author>
+
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>avt_341_msgs</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rviz_common</depend>
+  <depend>rviz_rendering</depend>
+  <depend>std_msgs</depend>
+  <depend>qtbase5-dev</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <rviz_common plugin="${prefix}/rviz_plugins.xml"/>
+  </export>
+</package>
