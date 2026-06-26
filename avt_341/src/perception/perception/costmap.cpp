@@ -73,27 +73,34 @@ void Costmap::Visualize() const
 	}
 }
 
+std::vector<std::shared_ptr<CostmapLayer>> Costmap::GetTargetLayers(const std::string& target_layer, bool is_segmentation) const {
+
+    std::vector<std::shared_ptr<CostmapLayer>> layers;
+    if (target_layer.empty()){
+        layers = layers_;
+    }else{
+        for (const auto & layer : layers_){
+            if (layer->GetLabel() == target_layer){
+                layers.push_back(layer);
+                break;
+            }
+        }
+    }
+
+    layers.erase(std::remove_if(layers.begin(), layers.end(),
+    [is_segmentation](const std::shared_ptr<CostmapLayer>& layer) {
+        return is_segmentation ? !layer->ContributeSegmentation() : !layer->ContributeOccupancy();
+    }), layers.end());
+
+    return layers;
+}
+
 void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation, std::string target_layer) const {
 
 	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
 
-	std::vector<std::shared_ptr<CostmapLayer>> layers;
-	if (target_layer.empty()){
-		layers = layers_;
-	}else{
-		for (const auto & layer : layers_){
-			if (layer->GetLabel() == target_layer){
-				layers.push_back(layer);
-				break;
-			}
-		}
-	}
-
-	layers.erase(std::remove_if(layers.begin(), layers.end(),
-		[is_segmentation](const std::shared_ptr<CostmapLayer>& layer) {
-			return is_segmentation ? !layer->ContributeSegmentation() : !layer->ContributeOccupancy();
-		}), layers.end());
+	const auto layers = GetTargetLayers(target_layer, is_segmentation);
 
 	const int unknown_value = thresholds_.output_unknown_cells
 		? -1
@@ -119,7 +126,7 @@ msg::OccupancyGridUpdate Costmap::GetGridUpdate(
 	grid_update_msg.header.frame_id = "map";
 
 	core::GridRegion update_region;
-	for (const auto & layer : layers_) {
+	for (const auto & layer : GetTargetLayers(target_layer, is_segmentation)) {
 		update_region.UpdateBounds(layer->GetUpdateRegion());
 	}
 	if (!update_region.HasData()) {

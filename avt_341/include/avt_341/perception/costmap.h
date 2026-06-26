@@ -60,6 +60,8 @@ public:
 
 private:
 
+    std::vector<std::shared_ptr<CostmapLayer>> GetTargetLayers(const std::string& target_layer, bool is_segmentation) const;
+
 	void OdometryCallback(msg::OdometryPtr rcv_odom);
 
 	msg::Odometry current_odom_;

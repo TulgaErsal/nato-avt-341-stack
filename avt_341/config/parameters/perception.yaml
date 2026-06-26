@@ -16,7 +16,7 @@ warmup_time: 5.0                          # Time before lidar processing starts
 time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
 perception_rate: 20.0                     # Publish rate for perception node
 grid_pub_method: 'full'                   # Method of publishing the grid. 'full' | 'window' | 'updates' . full: Always publish entire grid. window: Published limited sized grid windowed around vehicle pose. updates: Publish incremental updates (on _updates topic) corresponding to regions updated by most recent point clouds.
-grid_pub_force_full_every: 10.0           # Force full grid publish every x seconds. Only active when grid_pub_method='updates'.
+grid_pub_force_full_every: 10.0           # Force full grid publish every x seconds. Only active when grid_pub_method='updates'. Set -1 to disable.
 rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians for calculating slope and RMS values
 rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
 rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
