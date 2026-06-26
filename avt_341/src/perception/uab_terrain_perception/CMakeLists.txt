@@ -7,7 +7,7 @@ function(DownloadWindowsDll)
     # Download the Windows DLL
     message("Downloading Windows DLL for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/5qonis63wjqlxfe4wzza9/lib_uab_perception_wrapper.dll?rlkey=b61advoh669vxgp96kjvzo8c0&st=ilkpve9y&dl=1"
+    "https://www.dropbox.com/scl/fi/5qonis63wjqlxfe4wzza9/lib_uab_perception_wrapper.dll?rlkey=b61advoh669vxgp96kjvzo8c0&st=7tpsauq6&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
     EXPECTED_HASH SHA256=2061e9823b1372e3a1741731ca249603b70ad45a86bcba427d60186ad5b90d6b
     SHOW_PROGRESS)
@@ -17,11 +17,12 @@ function(DownloadLinuxSharedLibrary)
     # Download the Linux shared library
     message("Downloading Linux shared library for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/3wypl4ru1f3fgqd6vshil/lib_uab_perception_wrapper.so?rlkey=g33m7iqe1jd2zy9w1heob7cj2&st=tchyaeqg&dl=1"
+    "https://www.dropbox.com/scl/fi/3wypl4ru1f3fgqd6vshil/lib_uab_perception_wrapper.so?rlkey=g33m7iqe1jd2zy9w1heob7cj2&st=yphem7z6&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=1e92a8ba9120e1945e0cefe8e28a951eeec1e55f80dc9a36000ab081f8d692ba
+    EXPECTED_HASH SHA256=ce1f3ed3869ca506fcf365610c212ee15dc028efac55c26b88aa06b0c72f4e65
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
+
 
 # Manually set MATLAB paths (optional, only needed if "find_package(Matlab)" fails)
 # These should point to the installation location of MATLAB Runtime 2025b
