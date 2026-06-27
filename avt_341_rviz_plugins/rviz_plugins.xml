@@ -1,9 +1,16 @@
 <library path="avt_341_rviz_plugins">
-  <class name="mrzr_tools/MissionCommand"
-         type="avt_341::ui::MissionCommandPanel"
+  <class name="avt_341_rviz_plugins/MissionCommand"
+         type="avt_341::rviz_plugins::MissionCommandPanel"
          base_class_type="rviz_common::Panel">
     <description>
       Simple UI panel plugin for RViz for sending commands to UGVs.
+    </description>
+  </class>
+  <class name="avt_341_rviz_plugins/AVT-341 Autonomy Stack"
+         type="avt_341::rviz_plugins::AutonomyPanel"
+         base_class_type="rviz_common::Panel">
+    <description>
+      UI panel plugin for RViz for the AVT-341 autonomy stack.
     </description>
   </class>
 </library>

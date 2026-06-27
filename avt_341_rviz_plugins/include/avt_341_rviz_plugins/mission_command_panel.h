@@ -37,7 +37,7 @@
 class QLineEdit;
 
 namespace avt_341 {
-namespace ui {
+namespace rviz_plugins {
 
 class MissionCommandPanel: public rviz_common::Panel
 {
@@ -87,7 +87,7 @@ protected:
 
 };
 
-} // end namespace ui
+} // end namespace rviz_plugins
 } // end namespace avt_341
 
 #endif // MISSION_CMD_PANEL_Hs

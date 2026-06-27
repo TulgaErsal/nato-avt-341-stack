@@ -25,8 +25,25 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-set(SRC_FILES src/mission_command_panel.cpp)
-set(HEADER_FILES include/${PROJECT_NAME}/mission_command_panel.h)
+set(SRC_FILES
+    src/mission_command_panel.cpp
+    src/autonomy_panel.cpp
+    src/components/setup_component.cpp
+    src/components/nav_state_component.cpp
+    src/components/mission_component.cpp
+    src/components/tracker_component.cpp
+    src/components/compute_component.cpp
+    src/components/entity_list_component.cpp
+    src/primitives/icon_header.cpp
+    src/primitives/icon_button.cpp
+    src/primitives/message_label.cpp)
+
+# Headers are not compiled; they are listed only for IDE visibility and so
+# CMAKE_AUTOMOC runs moc on the Q_OBJECT classes. Glob recursively so new
+# headers under include/ are picked up without editing this list.
+# CONFIGURE_DEPENDS re-evaluates the glob at build time.
+file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/*.h)
 
 # Create the plugin library target
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES} ${HEADER_FILES})
@@ -60,6 +77,19 @@ install(DIRECTORY include/
 )
 
 install(FILES rviz_plugins.xml
+  DESTINATION "share/${PROJECT_NAME}")
+
+# RViz resolves a panel's icon by convention at
+#   package://<package>/icons/classes/<display name>.{svg,png}
+# where <display name> is the segment after the last '/' in the class "name"
+# attribute in rviz_plugins.xml.
+install(FILES resources/logo/logo_icon.png
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "AVT-341 Autonomy Stack.png")
+
+# Install image assets so they resolve at runtime via rviz_common::loadPixmap
+# package:// URLs (e.g. the logo shown in the Setup tab header).
+install(DIRECTORY resources
   DESTINATION "share/${PROJECT_NAME}")
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
