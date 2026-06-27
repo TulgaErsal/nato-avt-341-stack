@@ -32,8 +32,11 @@ endfunction(DownloadLinuxSharedLibrary)
 # set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
 #
 # ex: Windows Full Installation
-# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\R2025b\\extern\\include")
+set(Matlab_WIN_FULL_EXTERN_DIR "C:/Program Files/MATLAB/R2025b/extern")
+if(WIN32 AND EXISTS "${Matlab_WIN_FULL_EXTERN_DIR}")
+    set(Matlab_MCLMCRRT_LIB "${Matlab_WIN_FULL_EXTERN_DIR}/lib/win64/microsoft/mclmcrrt.lib")
+    set(Matlab_INCLUDE_DIRS "${Matlab_WIN_FULL_EXTERN_DIR}/include")
+endif()
 #
 # ex. Linux Runtime
 # set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2025b/runtime/glnxa64/libmwmclmcrrt.so)
@@ -44,7 +47,7 @@ find_package(cv_bridge REQUIRED)
 if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
 
     if(NOT Matlab_MCLMCRRT_LIB)
-        if(WIN32 OR WIN64)
+        if(WIN32)
              set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
              set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
         else()

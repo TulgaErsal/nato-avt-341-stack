@@ -66,7 +66,7 @@ jobs:
           export Torch_DIR="$(pwd)/libtorch"
           source /opt/ros/humble/setup.bash
           cd ros_ws
-          colcon build --packages-select avt_341_msgs avt_341
+          colcon build --packages-select avt_341_msgs avt_341_rviz_plugins avt_341
           echo "BUILD_DONE=true" >> $GITHUB_ENV
           colcon test --packages-select avt_341 --ctest-args --output-junit test_results/test_results.xml
           colcon test-result --all --verbose | tee test_result_output.txt

@@ -36,10 +36,6 @@
   <depend>image_geometry</depend>
   <depend>message_filters</depend>
 
-  <!-- RViz panel plugins (incl. MissionCommand used by the bundled rviz config)
-       now live in their own package. -->
-  <exec_depend>avt_341_rviz_plugins</exec_depend>
-
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>ament_cmake_gtest</test_depend>
