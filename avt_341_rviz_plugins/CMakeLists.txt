@@ -15,9 +15,33 @@ find_package(ament_cmake REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(rviz_rendering REQUIRED)
+find_package(rviz_default_plugins REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(avt_341_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+
+# The binary rviz_default_plugins distribution bakes its build machine's absolute
+# Qt include path into the imported target's INTERFACE_INCLUDE_DIRECTORIES. That
+# path does not exist here, which trips CMake's generate-time existence check.
+# Drop any non-existent entries; the real Qt headers come from the locally found
+# Qt5::Widgets target we link below.
+if(TARGET rviz_default_plugins::rviz_default_plugins)
+  get_target_property(_rdp_includes rviz_default_plugins::rviz_default_plugins INTERFACE_INCLUDE_DIRECTORIES)
+
+  if(_rdp_includes)
+    # Remove non-existing entries from the list of include directories.
+    set(_rdp_includes_existing "")
+    foreach(_dir IN LISTS _rdp_includes)
+      if(EXISTS "${_dir}")
+        list(APPEND _rdp_includes_existing "${_dir}")
+      endif()
+    endforeach()
+    set_target_properties(rviz_default_plugins::rviz_default_plugins PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_rdp_includes_existing}")
+  endif()
+
+endif()
 
 # Use Qt5 to match rviz_common installation
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
@@ -26,17 +50,34 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 set(SRC_FILES
-    src/mission_command_panel.cpp
-    src/autonomy_panel.cpp
+    src/panel_plugins/mission_command_panel.cpp
+    src/panel_plugins/autonomy_panel.cpp
+    src/panel_plugins/map_markers_panel.cpp
     src/components/setup_component.cpp
     src/components/nav_state_component.cpp
     src/components/mission_component.cpp
     src/components/tracker_component.cpp
     src/components/compute_component.cpp
     src/components/entity_list_component.cpp
+    src/components/topic_config_component.cpp
+    src/components/vehicle_table_component.cpp
+    src/display_plugins/nav_goal_display.cpp
+    src/display_plugins/nav_goal_sequence_display.cpp
+    src/display_plugins/nav_goal_properties.cpp
+    src/display_plugins/map_marker_display.cpp
+    src/display_plugins/map_marker_list_display.cpp
+    src/display_plugins/map_marker_properties.cpp
+    src/tool_plugins/set_nav_goal_tool.cpp
+    src/tool_plugins/set_formation_tool.cpp
+    src/primitives/accordion_group.cpp
     src/primitives/icon_header.cpp
     src/primitives/icon_button.cpp
-    src/primitives/message_label.cpp)
+    src/primitives/message_label.cpp
+    src/primitives/nav_goal_visual.cpp
+    src/primitives/map_marker_visual.cpp
+    src/primitives/flat_text.cpp
+    src/primitives/vector_field.cpp
+    src/primitives/matrix_field.cpp)
 
 # Headers are not compiled; they are listed only for IDE visibility and so
 # CMAKE_AUTOMOC runs moc on the Q_OBJECT classes. Glob recursively so new
@@ -60,8 +101,11 @@ ament_target_dependencies(${PROJECT_NAME}
   pluginlib
   rviz_common
   rviz_rendering
+  rviz_default_plugins
   rclcpp
   avt_341_msgs
+  geometry_msgs
+  nav_msgs
   std_msgs
 )
 
@@ -79,13 +123,41 @@ install(DIRECTORY include/
 install(FILES rviz_plugins.xml
   DESTINATION "share/${PROJECT_NAME}")
 
-# RViz resolves a panel's icon by convention at
-#   package://<package>/icons/classes/<display name>.{svg,png}
-# where <display name> is the segment after the last '/' in the class "name"
-# attribute in rviz_plugins.xml.
-install(FILES resources/logo/logo_icon.png
+# Tool plugin icons
+# ============================================================
+install(FILES resources/plugin_icons/nav_goal.svg
+        DESTINATION "share/${PROJECT_NAME}/icons/classes"
+        RENAME "Set Nav Goal.svg")
+install(FILES resources/plugin_icons/set_formation.svg
   DESTINATION "share/${PROJECT_NAME}/icons/classes"
-  RENAME "AVT-341 Autonomy Stack.png")
+  RENAME "Set Formation.svg")
+
+# Panel plugin icons
+# ============================================================
+install(FILES resources/logo/logo_icon.png
+        DESTINATION "share/${PROJECT_NAME}/icons/classes"
+        RENAME "AVT-341 Autonomy Stack.png")
+install(FILES resources/plugin_icons/map_markers.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "Map Markers.svg")
+install(FILES resources/plugin_icons/mission_command.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "Mission Command.svg")
+
+# Display plugin icons
+# ============================================================
+install(FILES resources/plugin_icons/nav_goal.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "NavGoal.svg")
+install(FILES resources/plugin_icons/nav_goal_sequence.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "NavGoalSequence.svg")
+install(FILES resources/plugin_icons/map_marker.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "MapMarker.svg")
+install(FILES resources/plugin_icons/map_markers.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "MapMarkerList.svg")
 
 # Install image assets so they resolve at runtime via rviz_common::loadPixmap
 # package:// URLs (e.g. the logo shown in the Setup tab header).
@@ -98,8 +170,11 @@ ament_export_dependencies(
   pluginlib
   rviz_common
   rviz_rendering
+  rviz_default_plugins
   rclcpp
   avt_341_msgs
+  geometry_msgs
+  nav_msgs
   std_msgs
 )
 

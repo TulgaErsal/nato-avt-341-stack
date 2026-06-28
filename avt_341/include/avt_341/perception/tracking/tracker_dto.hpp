@@ -19,19 +19,30 @@ namespace avt_341::perception
     /**
          * @brief State of the tracker.
          *
-         * - UNININITIALIZED: The tracker is launching and not yet ready to
-                              track.
-         * - INACTIVE: The tracker has yet to receive an initial valid camera
-                       detection to initialize the tracking.
-         * - NO_DETECTION: No camera or LiDAR detection available: the
-                           estimation filter is publishing a predicted target
-                           odometry.
-         * - LIDAR_ONLY_TRACKING: No camera detection is available: the target
-                                  is being tracked on the LiDAR region of
-                                  interest through state estimation.
-         * - FULL_TRACKING: Both camera and LiDAR detections are available: the
-                            target is being tracked in the region of interest
-                            defined by the camera.
+         * - UNINITIALIZED:         The tracker is launching and not yet ready to
+                                    track.
+
+         * - INACTIVE:              The tracker has yet to receive an initial valid camera
+                                    detection to initialize the tracking.
+
+         * - NO_DETECTION:          No camera or LiDAR detection available: the
+                                    estimation filter is publishing a predicted target
+                                    odometry.
+
+         * - LIDAR_ONLY_TRACKING:   No camera detection is available: the target
+                                    is being tracked on the LiDAR region of
+                                    interest through state estimation.
+
+         * - FULL_TRACKING:         Both camera and LiDAR detections are available: the
+                                    target is being tracked in the region of interest
+                                    defined by the camera.
+
+        * - CAMERA_ONLY_TRACKING:   Only camera detections are available.
+                                    Estimates depth based on bounding box relative size.
+
+        * - LOST:                   Tracker is lost. Determined either by no sensory inputs,
+                                    high uncertainty, or error in stationary velocity estimate
+                                    confirmed by vehicle-to-vehicle communication.
          */
     enum TrackerState {
         UNINITIALIZED = 0,
@@ -39,7 +50,8 @@ namespace avt_341::perception
         NO_DETECTION = 2,
         LIDAR_ONLY_TRACKING = 3,
         FULL_TRACKING = 4,
-        CAMERA_ONLY_TRACKING = 5
+        CAMERA_ONLY_TRACKING = 5,
+        LOST = 6
     };
 
     inline bool IsActiveTrackerState(const TrackerState state) {

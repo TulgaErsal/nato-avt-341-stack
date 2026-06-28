@@ -7,12 +7,16 @@
 
 #include <QStringList>
 #include <QTabWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <rviz_common/panel.hpp>
+#include <rviz_common/config.hpp>
+
+#include <avt_341_rviz_plugins/components/topic_config.h>
 #endif
 
 namespace avt_341 {
@@ -29,10 +33,19 @@ public:
 
     virtual void onInitialize() override;
 
+    // Persist / restore the vehicle list, topic configuration and the compute
+    // components' shared monitored-topic configuration across RViz sessions.
+    void save( rviz_common::Config config ) const override;
+    void load( const rviz_common::Config& config ) override;
+
 protected Q_SLOTS:
     // Rebuilds the per-vehicle group boxes in every tab when the Setup tab's
     // vehicle list changes.
     void onVehiclesChanged( const QStringList& vehicles );
+
+    // Re-creates the components in the affected tab when a configurable topic
+    // changes, so they re-subscribe using the new topic name.
+    void onTopicConfigChanged( avt_341::rviz_plugins::TopicGroup group );
 
 protected:
     // Builds a scrollable tab and returns it; the layout used to hold the
@@ -44,6 +57,12 @@ protected:
     void rebuildVehicleTab( QVBoxLayout* content_layout, const QStringList& vehicles,
                             const std::function<QWidget*( const QString& )>& make_component );
 
+    // Per-vehicle component factories, each reading the live topic config.
+    QWidget* makeNavStateComponent( const QString& vehicle_id );
+    QWidget* makeMissionComponent( const QString& vehicle_id );
+    QWidget* makeTrackerComponent( const QString& vehicle_id );
+    QWidget* makeComputeComponent( const QString& vehicle_id );
+
     // QT Widgets
     QTabWidget* tab_widget_;
     SetupComponent* setup_component_;
@@ -52,8 +71,15 @@ protected:
     QVBoxLayout* tracker_layout_;
     QVBoxLayout* compute_layout_;
 
-    // The ROS node.
+    // The current vehicle list, kept so a single tab can be rebuilt when a topic
+    // changes without waiting for the next vehicle-list change.
+    QStringList current_vehicles_;
+
+    // The ROS node, pumped from the Qt event loop by spin_timer_ so subscription
+    // callbacks (e.g. in the per-vehicle compute components) are delivered.
     rclcpp::Node::SharedPtr node_;
+    rclcpp::executors::SingleThreadedExecutor executor_;
+    QTimer* spin_timer_ = nullptr;
 
 };
 

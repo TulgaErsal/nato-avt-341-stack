@@ -27,6 +27,8 @@ set(MESSAGE_DEFINITIONS
     "NavGoal"
     "NavGoalSequence"
     "NavState"
+    "MapMarker"
+    "MapMarkerList"
 )
 
 set(SERVICE_DEFINITIONS

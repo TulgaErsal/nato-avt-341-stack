@@ -4,20 +4,36 @@
 
 
 # Tracker state enumeration type.
-# - UNINITIALIZED: The tracker is launching and not yet ready to track.
-# - NO_DETECTION: No camera or LiDAR detection available: the estimation filter
-#                 is publishing a predicted target odometry.
-# - LIDAR_ONLY_TRACKING: No camera detection is available: the target is being
-#                        tracked on the LiDAR region of interest through state
-#                        estimation.
-# - FULL_TRACKING: Both camera and LiDAR detections are available: the target is
-#                  being tracked in the region of interest defined by the
-#                  camera.
+# - UNINITIALIZED:          The tracker is launching and not yet ready to track.
+#
+# - INACTIVE:               The tracker has yet to receive an initial valid camera
+#                           detection to initialize the tracking.
+#
+# - NO_DETECTION:           No camera or LiDAR detection available: the estimation filter
+#                           is publishing a predicted target odometry.
+#
+# - LIDAR_ONLY_TRACKING:    No camera detection is available: the target is being
+#                           tracked on the LiDAR region of interest through state
+#                           estimation.
+#
+# - FULL_TRACKING:          Both camera and LiDAR detections are available: the target is
+#                           being tracked in the region of interest defined by the
+#                           camera.
+#
+# - CAMERA_ONLY_TRACKING:   Only camera detections are available.
+#                           Estimates depth based on bounding box relative size.
+#
+# - LOST:                   Tracker is lost. Determined either by no sensory inputs,
+#                           high uncertainty or error in stationary velocity estimate
+#                           confirmed by vehicle-to-vehicle communication.
+
 uint8 STATE_UNINITIALIZED = 0
 uint8 STATE_INACTIVE = 1
 uint8 STATE_NO_DETECTION = 2
 uint8 STATE_LIDAR_ONLY_TRACKING = 3
 uint8 STATE_FULL_TRACKING = 4
+uint8 STATE_CAMERA_ONLY_TRACKING = 5
+uint8 STATE_LOST = 6
 
 # Message header stamped on tracker info publishing callback.
 std_msgs/Header header

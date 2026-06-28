@@ -1,20 +1,223 @@
 #include <avt_341_rviz_plugins/components/nav_state_component.h>
 
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <utility>
+
+#include <QColor>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QString>
 #include <QVBoxLayout>
+
+#include <avt_341_msgs/msg/nav_state.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <std_msgs/msg/float64.hpp>
+
+#include <avt_341_rviz_plugins/primitives/vector_field.h>
+
+namespace
+{
+
+// Run-state row colors.
+const QColor kStartupColor( 230, 126, 34 );  // orange (run_state == 0)
+const QColor kActiveColor( 40, 167, 69 );     // green  (run_state == 1)
+const QColor kIdleColor( 108, 117, 125 );     // gray   (otherwise)
+
+// Yaw (rotation about +Z) extracted from a quaternion.
+double yawOf( const geometry_msgs::msg::Quaternion& q )
+{
+    return std::atan2( 2.0 * ( q.w * q.z + q.x * q.y ),
+                       1.0 - 2.0 * ( q.y * q.y + q.z * q.z ) );
+}
+
+// Stylesheet for the run-state value label given a background color.
+QString statusStyleSheet( const QColor& color )
+{
+    return QString( "background-color: %1; color: white; padding: 2px 8px; "
+                    "border-radius: 2px;" ).arg( color.name() );
+}
+
+}  // namespace
 
 namespace avt_341::rviz_plugins
 {
 
-NavStateComponent::NavStateComponent( const QString& vehicle_id, QWidget* parent )
-    : QWidget( parent ), vehicle_id_( vehicle_id )
+NavStateComponent::NavStateComponent( const QString& vehicle_id,
+                                      rclcpp::Node::SharedPtr node,
+                                      const TopicConfig& topics, QWidget* parent )
+    : QWidget( parent ), vehicle_id_( vehicle_id ), node_( std::move( node ) ),
+      topics_( topics )
 {
-    // Create widgets
-    placeholder_label_ = new QLabel( vehicle_id_ + " Nav State" );
+    buildUi();
+    subscribe();
+}
 
-    // Layout widgets
+void NavStateComponent::buildUi()
+{
+    // Special axis symbols.
+    const QString theta = QString( QChar( 0x03B8 ) );          // theta
+    const QString x_hat = QString( "x" ) + QChar( 0x0302 );    // x with combining hat
+
+    // The number-label boxes use VectorField's default light-gray background;
+    // no per-axis color overrides are specified.
+    // Pose: x, y, theta from odometry.
+    pose_field_ = new VectorField(
+        "Pose", 3, { "x", "y", theta },
+        { "position x", "position y", "yaw (heading)" } );
+
+    // Velocity: linear x/y (odometry) + x-hat desired speed.
+    velocity_field_ = new VectorField(
+        "Vel", 3, { "x", "y", x_hat },
+        { "linear velocity x", "linear velocity y", "desired speed" } );
+
+    // Command: t/s/b -> throttle, steering, brake.
+    command_field_ = new VectorField(
+        "Cmd", 3, { "t", "s", "b" },
+        { "throttle", "steering", "brake" } );
+
+    // Goal: x, y, yaw (theta) from the nav state's goal pose.
+    goal_field_ = new VectorField(
+        "Goal", 3, { "x", "y", theta },
+        { "goal position x", "goal position y", "goal yaw (heading)" } );
+
+    // Nav State row: "<Label>:" + colored status text.
+    nav_state_label_ = new QLabel( "State:" );
+    nav_state_value_ = new QLabel( "None" );
+    nav_state_value_->setAlignment( Qt::AlignCenter );
+    nav_state_value_->setStyleSheet( statusStyleSheet( kIdleColor ) );
+
+    QHBoxLayout* nav_state_row = new QHBoxLayout;
+    nav_state_row->setContentsMargins( 0, 0, 0, 0 );
+    nav_state_row->addWidget( nav_state_label_ );
+    // Value stretches to fill the remaining width; its text stays centered.
+    nav_state_row->addWidget( nav_state_value_, 1 );
+
+    // Duration row: "<Label>:" + numeric value.
+    duration_label_ = new QLabel( "Time:" );
+    duration_value_ = new QLabel( "0.00 s" );
+
+    QHBoxLayout* duration_row = new QHBoxLayout;
+    duration_row->setContentsMargins( 0, 0, 0, 0 );
+    duration_row->addWidget( duration_label_ );
+    duration_row->addWidget( duration_value_ );
+    duration_row->addStretch();
+
+    // Align every row's label to one shared width so the values line up.
+    const int label_width = std::max(
+        { pose_field_->labelWidthHint(), velocity_field_->labelWidthHint(),
+          command_field_->labelWidthHint(), goal_field_->labelWidthHint(),
+          nav_state_label_->sizeHint().width(),
+          duration_label_->sizeHint().width() } );
+    pose_field_->setLabelWidth( label_width );
+    velocity_field_->setLabelWidth( label_width );
+    command_field_->setLabelWidth( label_width );
+    goal_field_->setLabelWidth( label_width );
+    nav_state_label_->setFixedWidth( label_width );
+    duration_label_->setFixedWidth( label_width );
+
     QVBoxLayout* layout = new QVBoxLayout;
-    layout->addWidget( placeholder_label_, 0, Qt::AlignCenter );
+    layout->setContentsMargins( 0, 0, 0, 0 );
+    layout->addWidget( pose_field_ );
+    layout->addWidget( velocity_field_ );
+    layout->addWidget( command_field_ );
+    // Separate the nav-state section from the basic vehicle state above.
+    layout->addSpacing( 12 );
+    layout->addLayout( nav_state_row );
+    layout->addWidget( goal_field_ );
+    layout->addLayout( duration_row );
+    layout->addStretch();
     setLayout( layout );
+}
+
+void NavStateComponent::subscribe()
+{
+    // Built before the panel's node exists: render statically, no live values.
+    if ( !node_ )
+    {
+        return;
+    }
+
+    const std::string ns = "/" + vehicle_id_.toStdString() + "/";
+
+    // Odometry: best-effort sensor QoS (compatible with reliable or best-effort
+    // publishers) for the high-rate pose/twist stream.
+    odometry_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+        ns + topics_.odometry.toStdString(), rclcpp::SensorDataQoS(),
+        [this]( nav_msgs::msg::Odometry::ConstSharedPtr msg )
+        {
+            pose_field_->setValues( { msg->pose.pose.position.x,
+                                      msg->pose.pose.position.y,
+                                      yawOf( msg->pose.pose.orientation ) } );
+            linear_velocity_x_ = msg->twist.twist.linear.x;
+            linear_velocity_y_ = msg->twist.twist.linear.y;
+            updateVelocityField();
+        } );
+
+    nav_state_sub_ = node_->create_subscription<avt_341_msgs::msg::NavState>(
+        ns + topics_.nav_state.toStdString(), rclcpp::QoS( 10 ),
+        [this]( avt_341_msgs::msg::NavState::ConstSharedPtr msg )
+        {
+            setNavStateStatus( msg->run_state );
+            goal_field_->setValues( { msg->goal.pose.position.x,
+                                      msg->goal.pose.position.y,
+                                      yawOf( msg->goal.pose.orientation ) } );
+            duration_value_->setText(
+                QString::number( msg->goal_duration, 'f', 2 ) + " s" );
+        } );
+
+    cmd_vel_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
+        ns + topics_.cmd_vel.toStdString(), rclcpp::QoS( 10 ),
+        [this]( geometry_msgs::msg::Twist::ConstSharedPtr msg )
+        {
+            // Labels t, s, b -> throttle (linear.x), steering (angular.z),
+            // brake (linear.y).
+            command_field_->setValues(
+                { msg->linear.x, msg->angular.z, msg->linear.y } );
+        } );
+
+    desired_speed_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+        ns + topics_.desired_speed.toStdString(), rclcpp::QoS( 10 ),
+        [this]( std_msgs::msg::Float64::ConstSharedPtr msg )
+        {
+            desired_speed_ = msg->data;
+            updateVelocityField();
+        } );
+}
+
+void NavStateComponent::updateVelocityField()
+{
+    velocity_field_->setValues(
+        { linear_velocity_x_, linear_velocity_y_, desired_speed_ } );
+}
+
+void NavStateComponent::setNavStateStatus( int run_state )
+{
+    QString text;
+    QColor color;
+    if ( run_state == 0 )
+    {
+        text = "Startup";
+        color = kStartupColor;
+    }
+    else if ( run_state == 1 )
+    {
+        text = "Active";
+        color = kActiveColor;
+    }
+    else
+    {
+        text = "Idle";
+        color = kIdleColor;
+    }
+    nav_state_value_->setText( text );
+    nav_state_value_->setStyleSheet( statusStyleSheet( color ) );
+
+    // Mirror the run state to the Setup tab's status table.
+    Q_EMIT navStateChanged( text, color );
 }
 
 }

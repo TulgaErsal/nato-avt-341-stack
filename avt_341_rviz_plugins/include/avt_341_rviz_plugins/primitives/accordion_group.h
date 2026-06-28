@@ -1,0 +1,67 @@
+#ifndef ACCORDION_GROUP_H
+#define ACCORDION_GROUP_H
+
+#ifndef Q_MOC_RUN
+#include <QPixmap>
+#include <QString>
+#include <QWidget>
+#endif
+
+class QLabel;
+class QVBoxLayout;
+
+namespace avt_341 {
+namespace rviz_plugins {
+
+/// A lightweight collapsible container ("accordion"). The header is a left-
+/// aligned, slightly enlarged title with a caret indicating the expanded /
+/// collapsed state, an underline beneath it, and the content below.
+///
+/// Unlike a QGroupBox it draws no surrounding box and adds no left/right padding,
+/// so embedded controls sit flush with the header. Clicking anywhere on the
+/// header row toggles the group.
+class AccordionGroup: public QWidget
+{
+
+Q_OBJECT
+public:
+    explicit AccordionGroup( const QString& title, QWidget* parent = nullptr );
+
+    // Places `content` in the collapsible area, replacing (and deleting) any
+    // previously set content. The accordion reparents and owns `content`.
+    void setContentWidget( QWidget* content );
+
+    void setExpanded( bool expanded );
+    bool isExpanded() const { return expanded_; }
+
+public Q_SLOTS:
+    void toggle();
+
+protected:
+    // Toggles the group when the header row is clicked.
+    bool eventFilter( QObject* watched, QEvent* event ) override;
+
+private:
+    // Refreshes the caret glyph for the current expanded / collapsed state.
+    void updateCaret();
+
+    // QT Widgets
+    QWidget* header_;
+    QLabel* title_label_;
+    QLabel* caret_label_;
+    QWidget* content_container_;
+    QVBoxLayout* content_layout_;
+    QWidget* content_widget_ = nullptr;
+
+    // Pre-scaled caret pixmaps, loaded once for each state.
+    QPixmap caret_expanded_pixmap_;
+    QPixmap caret_collapsed_pixmap_;
+
+    bool expanded_ = true;
+
+};
+
+} // end namespace rviz_plugins
+} // end namespace avt_341
+
+#endif // ACCORDION_GROUP_H

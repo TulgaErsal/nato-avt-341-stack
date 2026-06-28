@@ -2,26 +2,53 @@
 #define MISSION_COMPONENT_H
 
 #ifndef Q_MOC_RUN
-#include <QLabel>
+#include <memory>
+
 #include <QString>
 #include <QWidget>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <avt_341_msgs/msg/mission_task_status.hpp>
+
+#include <avt_341_rviz_plugins/components/topic_config.h>
 #endif
+
+class QLabel;
 
 namespace avt_341 {
 namespace rviz_plugins {
 
+/// Per-vehicle "Mission" tab content: subscribes to that vehicle's
+/// MissionTaskStatus topic and shows the task fields as a column of
+/// "<Label>: <Value>" rows. The pose field is intentionally not shown.
+///
+/// Like ComputeComponent this subscribes itself using the panel's node; the
+/// panel spins that node on the UI thread, so the callback updates the labels
+/// directly.
 class MissionComponent: public QWidget
 {
 
 Q_OBJECT
 public:
-    MissionComponent( const QString& vehicle_id, QWidget* parent = nullptr );
+    MissionComponent( const QString& vehicle_id, rclcpp::Node::SharedPtr node,
+                      const TopicConfig& topics, QWidget* parent = nullptr );
 
 protected:
-    QString vehicle_id_;
+    // Refreshes the value labels from a newly received status message.
+    void updateFromMessage( const avt_341_msgs::msg::MissionTaskStatus& msg );
 
-    // QT Widgets
-    QLabel* placeholder_label_;
+    QString vehicle_id_;
+    rclcpp::Node::SharedPtr node_;
+    TopicConfig topics_;
+    rclcpp::Subscription<avt_341_msgs::msg::MissionTaskStatus>::SharedPtr subscription_;
+
+    // QT Widgets — the value side of each "<Label>: <Value>" row.
+    QLabel* task_id_value_;
+    QLabel* task_description_value_;
+    QLabel* tracked_vehicle_value_;
+    QLabel* formation_type_value_;
+    QLabel* formation_vehicles_value_;
 
 };
 

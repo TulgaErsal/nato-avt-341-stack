@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Ordered sequence of nav goals: waypoints along a dashed path to a final
+       goal arrow (green/blue palette mirrors the NavGoal icon) -->
+  <polyline points="13,51 31,38 44,22" fill="none" stroke="#00aaff" stroke-width="2.5"
+            stroke-dasharray="4 4" stroke-linecap="round"/>
+  <g fill="#19b300" stroke="#0d6b00" stroke-width="1.5" stroke-linejoin="round">
+    <circle cx="13" cy="51" r="5"/>
+    <circle cx="31" cy="38" r="5"/>
+    <polygon points="44,14 56,22 44,30"/>
+  </g>
+</svg>

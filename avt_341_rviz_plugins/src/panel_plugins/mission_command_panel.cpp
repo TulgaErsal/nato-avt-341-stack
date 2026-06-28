@@ -1,4 +1,4 @@
-#include <avt_341_rviz_plugins/mission_command_panel.h>
+#include <avt_341_rviz_plugins/panel_plugins/mission_command_panel.h>
 
 namespace avt_341::rviz_plugins
 {

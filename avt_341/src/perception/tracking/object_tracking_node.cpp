@@ -163,7 +163,7 @@ void ObjectTrackingNode::CreatePublishers() {
     }
 
     info_publisher_ =
-        create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
+        create_publisher<avt_341_msgs::msg::TrackerInfo>("avt_341/tracker/state", 1);
 
     reset_ack_publisher_ =
         create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);

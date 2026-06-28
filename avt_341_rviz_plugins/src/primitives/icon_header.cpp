@@ -22,9 +22,11 @@ IconHeader::IconHeader( const QPixmap& icon, const QString& title,
     title_font.setBold( true );
     title_label_->setFont( title_font );
 
-    // Icon and title on a single, left-aligned line
+    // Icon and title on a single line, jointly centered in the available width
+    // (equal stretches on both sides).
     QHBoxLayout* layout = new QHBoxLayout;
     layout->setContentsMargins( 0, 0, 0, 0 );
+    layout->addStretch();
     layout->addWidget( icon_label_ );
     layout->addWidget( title_label_ );
     layout->addStretch();
