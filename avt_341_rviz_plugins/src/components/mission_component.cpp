@@ -59,8 +59,7 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     // (e.g. built before the panel is initialized) the rows simply stay empty.
     if ( node_ )
     {
-        const std::string topic =
-            ( "/" + vehicle_id_ + "/" + topics_.task_status ).toStdString();
+        const std::string topic = makeTopicPath( vehicle_id_, topics_.task_status );
         subscription_ = node_->create_subscription<avt_341_msgs::msg::MissionTaskStatus>(
             topic, rclcpp::QoS( 10 ),
             [this]( avt_341_msgs::msg::MissionTaskStatus::ConstSharedPtr msg )

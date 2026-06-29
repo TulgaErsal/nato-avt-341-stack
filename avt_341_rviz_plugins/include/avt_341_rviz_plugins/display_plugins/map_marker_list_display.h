@@ -2,28 +2,25 @@
 #define MAP_MARKER_LIST_DISPLAY_H
 
 #ifndef Q_MOC_RUN
-#include <memory>
 #include <vector>
 
+#include <avt_341_msgs/msg/map_marker.hpp>
 #include <avt_341_msgs/msg/map_marker_list.hpp>
-#include <rviz_common/message_filter_display.hpp>
 
 #include <avt_341_rviz_plugins/display_plugins/map_marker_properties.h>
+#include <avt_341_rviz_plugins/display_plugins/visual_display_base.h>
+#include <avt_341_rviz_plugins/primitives/map_marker_visual.h>
 #endif
 
 namespace avt_341 {
 namespace rviz_plugins {
 
-class MapMarkerVisual;
-
-/// RViz display for an avt_341_msgs/MapMarkerList.
-///
-/// A MapMarkerList is just a list of MapMarkers, so this reuses the same
-/// rendering (MapMarkerVisual) and property tree (MapMarkerProperties) as
-/// MapMarkerDisplay, drawing one visual per marker. Each marker carries its own
-/// header and is transformed independently.
+/// RViz display for an avt_341_msgs/MapMarkerList: one MapMarkerVisual per
+/// marker. The shared per-item flow lives in VisualArrayDisplay; the rendering
+/// and property tree are shared with MapMarkerDisplay.
 class MapMarkerListDisplay
-    : public rviz_common::MessageFilterDisplay<avt_341_msgs::msg::MapMarkerList>
+    : public VisualArrayDisplay<avt_341_msgs::msg::MapMarkerList,
+                                avt_341_msgs::msg::MapMarker, MapMarkerVisual>
 {
     Q_OBJECT
 
@@ -31,18 +28,20 @@ public:
     MapMarkerListDisplay();
     ~MapMarkerListDisplay() override;
 
-protected:
-    void onInitialize() override;
-    void reset() override;
-
 private Q_SLOTS:
     /// Re-apply the (possibly edited) style to every visual.
     void updateStyle();
 
-private:
-    void processMessage( avt_341_msgs::msg::MapMarkerList::ConstSharedPtr msg ) override;
+protected:
+    const std::vector<avt_341_msgs::msg::MapMarker>& items(
+        const avt_341_msgs::msg::MapMarkerList& msg ) const override;
+    bool validate( const avt_341_msgs::msg::MapMarker& item ) const override;
+    void setDomainFields( MapMarkerVisual& visual,
+                          const avt_341_msgs::msg::MapMarker& item ) override;
+    void applyStyle( MapMarkerVisual& visual ) override;
+    const char* invalidText() const override;
 
-    std::vector<std::unique_ptr<MapMarkerVisual>> visuals_;
+private:
     MapMarkerProperties properties_;
 };
 

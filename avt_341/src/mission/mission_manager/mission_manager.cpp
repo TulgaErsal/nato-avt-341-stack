@@ -38,6 +38,7 @@ MissionManager::MissionManager(
     leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
     task_status_pub = node_proxy_->create_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_change");
+    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("avt_341/map_markers_changed");
 }
 
 MissionManager::~MissionManager() {
@@ -109,6 +110,34 @@ void MissionManager::setMissionPoints(const std::vector<MissionPoint> & mission_
     node_proxy_->log_info("%s updated mission point definitions (%d points, %d overwatch).",
                           my_name.c_str(), static_cast<int>(mission_data.size()),
                           static_cast<int>(overwatch_positions.size()));
+    publishMapMarkers();
+}
+
+void MissionManager::publishMapMarkers() {
+    // Publish the current mission points as a MapMarkerList on the latched topic
+    // so late-joining subscribers (e.g. the RViz panel) get the current set.
+    avt_341::msg::MapMarkerList marker_list;
+    marker_list.header.stamp = node_proxy_->get_stamp();
+    marker_list.header.frame_id = "map";
+
+    marker_list.markers.reserve(mission_data.size());
+    for(const auto & mp : mission_data) {
+        avt_341::msg::MapMarker marker;
+        marker.header = marker_list.header;
+        marker.marker_id = mp.name;
+        marker.label = mp.name;
+        marker.type = avt_341::msg::MapMarker::MISSION_POINT;
+        marker.pose.position.x = mp.pos_x;
+        marker.pose.position.y = mp.pos_y;
+        marker.pose.position.z = mp.pos_z;
+        marker.pose.orientation.x = mp.rot_x;
+        marker.pose.orientation.y = mp.rot_y;
+        marker.pose.orientation.z = mp.rot_z;
+        marker.pose.orientation.w = mp.rot_w;
+        marker_list.markers.push_back(marker);
+    }
+
+    map_markers_pub->publish(marker_list);
 }
 
 bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string name) {

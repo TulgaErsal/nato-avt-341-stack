@@ -35,7 +35,8 @@ from geometry_msgs.msg import Pose, Point, Quaternion, Twist, Vector3
 from nav_msgs.msg import Odometry
 
 from avt_341_msgs.msg import (MapMarker, MapMarkerList, MissionTaskStatus,
-                              NavGoal, NavGoalSequence, NavState, TrackerInfo)
+                              NavGoal, NavGoalSequence, NavState, TrackerStatus,
+                              TrackerModuleStatus)
 
 # Vehicles to publish for. Every topic is published once per vehicle, namespaced
 # as ``/<vehicle_id>/<topic>``.
@@ -123,6 +124,13 @@ class MockUiDataPublisher(Node):
             for vehicle_id in VEHICLE_IDS
         }
 
+        # A stable set of tracked-target ids per vehicle, chosen once so the
+        # tracker sub-groups in the UI stay put and only their values update.
+        self._tracker_targets: Dict[str, List[str]] = {
+            vehicle_id: self._build_tracker_targets(vehicle_id)
+            for vehicle_id in VEHICLE_IDS
+        }
+
         self._timer = self.create_timer(1.0 / TICK_RATE_HZ, self._on_tick)
 
         self.get_logger().info(
@@ -144,8 +152,8 @@ class MockUiDataPublisher(Node):
                       MockUiDataPublisher._make_task_status),
             TopicSpec("avt_341/state", NavState, 10.0,
                       MockUiDataPublisher._make_nav_state),
-            TopicSpec("avt_341/tracker/state", TrackerInfo, 10.0,
-                      MockUiDataPublisher._make_tracker_info),
+            TopicSpec("avt_341/tracker/state", TrackerModuleStatus, 10.0,
+                      MockUiDataPublisher._make_tracker_module_status),
             TopicSpec("avt_341/current_goal", NavGoal, 10.0,
                       MockUiDataPublisher._make_current_goal),
             TopicSpec("avt_341/waypoints", NavGoalSequence, 10.0,
@@ -154,7 +162,7 @@ class MockUiDataPublisher(Node):
             # receives the most recent sample.
             TopicSpec("avt_341/map_marker", MapMarker, 0.1,
                       MockUiDataPublisher._make_map_marker, qos=LATCHED_QOS),
-            TopicSpec("avt_341/map_markers", MapMarkerList, 0.1,
+            TopicSpec("avt_341/map_markers_changed", MapMarkerList, 0.1,
                       MockUiDataPublisher._make_map_marker_list, qos=LATCHED_QOS),
         ]
 
@@ -258,11 +266,35 @@ class MockUiDataPublisher(Node):
         ]
         return msg
 
-    def _make_tracker_info(self, vehicle_id: str) -> TrackerInfo:
-        msg = TrackerInfo()
+    def _build_tracker_targets(self, vehicle_id: str) -> List[str]:
+        """A stable set of 0-2 distinct tracked-target ids for this vehicle,
+        chosen once at startup."""
+        others = [v for v in VEHICLE_IDS if v != vehicle_id]
+        pool = others + ["target_1", "target_2"]
+        return random.sample(pool, random.randint(0, 2))
+
+    def _make_tracker_module_status(self, vehicle_id: str) -> TrackerModuleStatus:
+        """Aggregate tracker-module status: a coarse module state plus a list of
+        per-target TrackerStatus, one per stable tracked target (so the module is
+        uninitialized when the vehicle happens to have no targets)."""
+        msg = TrackerModuleStatus()
         msg.header = self._header(f"{vehicle_id}/base_link")
-        msg.state = random.randint(TrackerInfo.STATE_UNINITIALIZED,
-                                   TrackerInfo.STATE_FULL_TRACKING)
+        targets = self._tracker_targets[vehicle_id]
+        if not targets:
+            msg.module_state = TrackerModuleStatus.MODULE_STATE_UNINITIALIZED
+        else:
+            msg.module_state = TrackerModuleStatus.MODULE_STATE_ACTIVE
+            msg.trackers = [self._make_tracker_status(vehicle_id, object_id)
+                            for object_id in targets]
+        return msg
+
+    def _make_tracker_status(self, vehicle_id: str, object_id: str) -> TrackerStatus:
+        msg = TrackerStatus()
+        msg.header = self._header(f"{vehicle_id}/base_link")
+        msg.state = random.randint(TrackerStatus.STATE_UNINITIALIZED,
+                                   TrackerStatus.STATE_FULL_TRACKING)
+        msg.tracked_object_id = object_id
+        msg.odom_estimate = self._make_tracker_odometry(vehicle_id)
         msg.tracked_cloud_size = random.randint(0, 5000)
         msg.clustering_success = random.random() < 0.8
         msg.clusters_found = random.randint(0, 20)
@@ -270,6 +302,28 @@ class MockUiDataPublisher(Node):
         msg.time_since_valid_detection = random.uniform(0.0, 5000.0)
         msg.execution_time = random.uniform(0.0, 100.0)
         return msg
+
+    def _make_tracker_odometry(self, vehicle_id: str) -> Odometry:
+        """Tracked-target odometry with pose + a populated x/y/yaw covariance
+        block. pose.covariance is a 6x6 row-major [x, y, z, roll, pitch, yaw]
+        array; the tracker_component shows the x/y/yaw sub-matrix, so fill those
+        six unique (symmetric) entries."""
+        odom = self._fill_odometry(Odometry(), vehicle_id)
+        cov = list(odom.pose.covariance)
+        # Diagonal variances for x, y, yaw (span the matrix_field thresholds so
+        # the cells show a mix of green / orange / red).
+        cov[0 * 6 + 0] = random.uniform(0.0, 15.0)   # var(x)
+        cov[1 * 6 + 1] = random.uniform(0.0, 15.0)   # var(y)
+        cov[5 * 6 + 5] = random.uniform(0.0, 15.0)   # var(yaw)
+        # Symmetric off-diagonal covariances.
+        cov_xy = random.uniform(-3.0, 3.0)
+        cov_xyaw = random.uniform(-3.0, 3.0)
+        cov_yyaw = random.uniform(-3.0, 3.0)
+        cov[0 * 6 + 1] = cov[1 * 6 + 0] = cov_xy     # cov(x, y)
+        cov[0 * 6 + 5] = cov[5 * 6 + 0] = cov_xyaw   # cov(x, yaw)
+        cov[1 * 6 + 5] = cov[5 * 6 + 1] = cov_yyaw   # cov(y, yaw)
+        odom.pose.covariance = cov
+        return odom
 
     def _make_map_marker(self, vehicle_id: str) -> MapMarker:
         """A single mission-point marker at a random 10 m position and yaw."""

@@ -25,6 +25,9 @@
 #include <rclcpp/generic_subscription.hpp>
 #include <rclcpp/serialized_message.hpp>
 
+#include <avt_341_rviz_plugins/components/topic_config.h>
+#include <avt_341_rviz_plugins/primitives/status_style.h>
+
 namespace
 {
 
@@ -44,8 +47,8 @@ enum Column
 // Shown in the "Rate" column before a topic has a publisher to measure.
 constexpr const char* kUnknownRate = "-";
 
-// Colors used to flag a topic running below threshold.
-const QColor kAlertBackground( 220, 53, 69 );
+// Foreground used to flag a topic running below threshold; the background comes
+// from the shared status palette (status_colors::kRed).
 const QColor kAlertForeground( Qt::white );
 
 QString formatHz( double hz )
@@ -151,7 +154,7 @@ void ComputeComponent::applyConfig()
     {
         auto topic = std::make_unique<MonitoredTopic>();
         topic->label = spec.suffix;
-        topic->topic = ( "/" + vehicle_id_ + "/" + spec.suffix ).toStdString();
+        topic->topic = makeTopicPath( vehicle_id_, spec.suffix );
         topic->expected_hz = spec.expected_hz;
         topics_.push_back( std::move( topic ) );
     }
@@ -380,7 +383,7 @@ void ComputeComponent::setRowAlert( int row, bool alert )
 {
     // Paint (or clear) every cell in the row so the whole row reads as healthy
     // or alerting. Default-constructed brushes restore the theme's colors.
-    const QBrush background = alert ? QBrush( kAlertBackground ) : QBrush();
+    const QBrush background = alert ? QBrush( status_colors::kRed ) : QBrush();
     const QBrush foreground = alert ? QBrush( kAlertForeground ) : QBrush();
 
     for ( int column = 0; column < kColumnCount; ++column )

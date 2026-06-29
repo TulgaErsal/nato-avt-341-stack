@@ -17,28 +17,17 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_msgs/msg/float64.hpp>
 
+#include <avt_341_rviz_plugins/primitives/status_style.h>
 #include <avt_341_rviz_plugins/primitives/vector_field.h>
 
 namespace
 {
-
-// Run-state row colors.
-const QColor kStartupColor( 230, 126, 34 );  // orange (run_state == 0)
-const QColor kActiveColor( 40, 167, 69 );     // green  (run_state == 1)
-const QColor kIdleColor( 108, 117, 125 );     // gray   (otherwise)
 
 // Yaw (rotation about +Z) extracted from a quaternion.
 double yawOf( const geometry_msgs::msg::Quaternion& q )
 {
     return std::atan2( 2.0 * ( q.w * q.z + q.x * q.y ),
                        1.0 - 2.0 * ( q.y * q.y + q.z * q.z ) );
-}
-
-// Stylesheet for the run-state value label given a background color.
-QString statusStyleSheet( const QColor& color )
-{
-    return QString( "background-color: %1; color: white; padding: 2px 8px; "
-                    "border-radius: 2px;" ).arg( color.name() );
 }
 
 }  // namespace
@@ -88,7 +77,7 @@ void NavStateComponent::buildUi()
     nav_state_label_ = new QLabel( "State:" );
     nav_state_value_ = new QLabel( "None" );
     nav_state_value_->setAlignment( Qt::AlignCenter );
-    nav_state_value_->setStyleSheet( statusStyleSheet( kIdleColor ) );
+    nav_state_value_->setStyleSheet( statusBadgeStyleSheet( status_colors::kGray ) );
 
     QHBoxLayout* nav_state_row = new QHBoxLayout;
     nav_state_row->setContentsMargins( 0, 0, 0, 0 );
@@ -141,12 +130,10 @@ void NavStateComponent::subscribe()
         return;
     }
 
-    const std::string ns = "/" + vehicle_id_.toStdString() + "/";
-
     // Odometry: best-effort sensor QoS (compatible with reliable or best-effort
     // publishers) for the high-rate pose/twist stream.
     odometry_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        ns + topics_.odometry.toStdString(), rclcpp::SensorDataQoS(),
+        makeTopicPath( vehicle_id_, topics_.odometry ), rclcpp::SensorDataQoS(),
         [this]( nav_msgs::msg::Odometry::ConstSharedPtr msg )
         {
             pose_field_->setValues( { msg->pose.pose.position.x,
@@ -158,7 +145,7 @@ void NavStateComponent::subscribe()
         } );
 
     nav_state_sub_ = node_->create_subscription<avt_341_msgs::msg::NavState>(
-        ns + topics_.nav_state.toStdString(), rclcpp::QoS( 10 ),
+        makeTopicPath( vehicle_id_, topics_.nav_state ), rclcpp::QoS( 10 ),
         [this]( avt_341_msgs::msg::NavState::ConstSharedPtr msg )
         {
             setNavStateStatus( msg->run_state );
@@ -170,7 +157,7 @@ void NavStateComponent::subscribe()
         } );
 
     cmd_vel_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
-        ns + topics_.cmd_vel.toStdString(), rclcpp::QoS( 10 ),
+        makeTopicPath( vehicle_id_, topics_.cmd_vel ), rclcpp::QoS( 10 ),
         [this]( geometry_msgs::msg::Twist::ConstSharedPtr msg )
         {
             // Labels t, s, b -> throttle (linear.x), steering (angular.z),
@@ -180,7 +167,7 @@ void NavStateComponent::subscribe()
         } );
 
     desired_speed_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
-        ns + topics_.desired_speed.toStdString(), rclcpp::QoS( 10 ),
+        makeTopicPath( vehicle_id_, topics_.desired_speed ), rclcpp::QoS( 10 ),
         [this]( std_msgs::msg::Float64::ConstSharedPtr msg )
         {
             desired_speed_ = msg->data;
@@ -201,20 +188,20 @@ void NavStateComponent::setNavStateStatus( int run_state )
     if ( run_state == 0 )
     {
         text = "Startup";
-        color = kStartupColor;
+        color = status_colors::kOrange;
     }
     else if ( run_state == 1 )
     {
         text = "Active";
-        color = kActiveColor;
+        color = status_colors::kGreen;
     }
     else
     {
         text = "Idle";
-        color = kIdleColor;
+        color = status_colors::kGray;
     }
     nav_state_value_->setText( text );
-    nav_state_value_->setStyleSheet( statusStyleSheet( color ) );
+    nav_state_value_->setStyleSheet( statusBadgeStyleSheet( color ) );
 
     // Mirror the run state to the Setup tab's status table.
     Q_EMIT navStateChanged( text, color );

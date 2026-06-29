@@ -163,7 +163,7 @@ void ObjectTrackingNode::CreatePublishers() {
     }
 
     info_publisher_ =
-        create_publisher<avt_341_msgs::msg::TrackerInfo>("avt_341/tracker/state", 1);
+        create_publisher<avt_341_msgs::msg::TrackerModuleStatus>("avt_341/tracker/state", 1);
 
     reset_ack_publisher_ =
         create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
@@ -237,23 +237,27 @@ ObjectTracker& ObjectTrackingNode::AddOrResetTracker(
 }
 
 void ObjectTrackingNode::TrackerInfoCallback() {
+    // Publish a single module status aggregating every child tracker's status.
+    // The module is UNINITIALIZED while no target is selected (and the message
+    // still publishes to preserve topic liveness for consumers), ACTIVE once at
+    // least one tracker exists.
+    avt_341_msgs::msg::TrackerModuleStatus module_status;
+    module_status.header.stamp = get_clock()->now();
+    module_status.header.frame_id = settings_.frames.world_frame;
+
     if (trackers_.empty()) {
-        // Preserve topic liveness for consumers while no target is selected.
-        avt_341_msgs::msg::TrackerInfo info_message;
-        info_message.header.stamp = get_clock()->now();
-        info_message.header.frame_id = "none";
-        info_message.state = TrackerState::UNINITIALIZED;
-        info_publisher_->publish(info_message);
-        return;
+        module_status.module_state =
+            avt_341_msgs::msg::TrackerModuleStatus::MODULE_STATE_UNINITIALIZED;
+    } else {
+        module_status.module_state =
+            avt_341_msgs::msg::TrackerModuleStatus::MODULE_STATE_ACTIVE;
+        module_status.trackers.reserve(trackers_.size());
+        for (const auto& [target_class, tracker] : trackers_) {
+            module_status.trackers.push_back(tracker->GetTrackerStatus());
+        }
     }
 
-    for (const auto& [target_class, tracker] : trackers_) {
-        avt_341_msgs::msg::TrackerInfo info_message;
-        info_message.header.stamp = get_clock()->now();
-        info_message.header.frame_id = target_class;
-        info_message.state = tracker->GetTrackerState();
-        info_publisher_->publish(info_message);
-    }
+    info_publisher_->publish(module_status);
 }
 
 void ObjectTrackingNode::TrackingTimerCallback() {

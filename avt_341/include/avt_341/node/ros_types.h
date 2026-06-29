@@ -54,6 +54,8 @@
 #include "avt_341_msgs/NavState.h"
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/MissionTaskStatus.h"
+#include "avt_341_msgs/MapMarker.h"
+#include "avt_341_msgs/MapMarkerList.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
 #include "avt_341_msgs/Obstacles.h"
@@ -201,6 +203,12 @@ namespace avt_341 {
         using MissionTaskStatus = avt_341_msgs::MissionTaskStatus;
         using MissionTaskStatusPtr = const avt_341_msgs::MissionTaskStatus::ConstPtr &;
 
+        using MapMarker = avt_341_msgs::MapMarker;
+        using MapMarkerPtr = const avt_341_msgs::MapMarker::ConstPtr &;
+
+        using MapMarkerList = avt_341_msgs::MapMarkerList;
+        using MapMarkerListPtr = const avt_341_msgs::MapMarkerList::ConstPtr &;
+
         using OccupiedCell = avt_341_msgs::OccupiedCell;
         using OccupiedCellPtr = const avt_341_msgs::OccupiedCell::ConstPtr &;
 
@@ -289,6 +297,8 @@ namespace avt_341 {
 #include "avt_341_msgs/msg/nav_state.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/mission_task_status.hpp"
+#include "avt_341_msgs/msg/map_marker.hpp"
+#include "avt_341_msgs/msg/map_marker_list.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
@@ -409,6 +419,12 @@ namespace avt_341 {
 
     using MissionTaskStatus = avt_341_msgs::msg::MissionTaskStatus;
     using MissionTaskStatusPtr = avt_341_msgs::msg::MissionTaskStatus::SharedPtr;
+
+    using MapMarker = avt_341_msgs::msg::MapMarker;
+    using MapMarkerPtr = avt_341_msgs::msg::MapMarker::SharedPtr;
+
+    using MapMarkerList = avt_341_msgs::msg::MapMarkerList;
+    using MapMarkerListPtr = avt_341_msgs::msg::MapMarkerList::SharedPtr;
 
     using OccupiedCell = avt_341_msgs::msg::OccupiedCell;
     using OccupiedCellPtr = avt_341_msgs::msg::OccupiedCell::SharedPtr;

@@ -99,7 +99,7 @@
 #include <avt_341/perception/tracking/object_tracker.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
 #include <avt_341_msgs/msg/mission_task_status.hpp>
-#include <avt_341_msgs/msg/tracker_info.hpp>
+#include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
 
 namespace avt_341 {
@@ -302,11 +302,12 @@ class ObjectTrackingNode : public rclcpp::Node {
     // Tracker information
     // -------------------------------------------------------------------------
 
-    rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
+    rclcpp::Publisher<avt_341_msgs::msg::TrackerModuleStatus>::SharedPtr
         info_publisher_;
 
-    /** @brief Publishes one TrackerInfo message per tracker on the shared
-     *         info topic, identified by header.frame_id = target class. */
+    /** @brief Publishes a single TrackerModuleStatus aggregating every child
+     *         tracker's TrackerStatus, with a coarse module state (UNINITIALIZED
+     *         when there are no trackers, ACTIVE otherwise). */
     void TrackerInfoCallback();
 
     /** @brief The timer for the tracker information publishing callback. */

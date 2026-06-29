@@ -2,28 +2,25 @@
 #define NAV_GOAL_SEQUENCE_DISPLAY_H
 
 #ifndef Q_MOC_RUN
-#include <memory>
 #include <vector>
 
+#include <avt_341_msgs/msg/nav_goal.hpp>
 #include <avt_341_msgs/msg/nav_goal_sequence.hpp>
-#include <rviz_common/message_filter_display.hpp>
 
 #include <avt_341_rviz_plugins/display_plugins/nav_goal_properties.h>
+#include <avt_341_rviz_plugins/display_plugins/visual_display_base.h>
+#include <avt_341_rviz_plugins/primitives/nav_goal_visual.h>
 #endif
 
 namespace avt_341 {
 namespace rviz_plugins {
 
-class NavGoalVisual;
-
-/// RViz display for an avt_341_msgs/NavGoalSequence.
-///
-/// A NavGoalSequence is just an ordered list of NavGoals, so this reuses the
-/// exact same rendering (NavGoalVisual) and property tree (NavGoalProperties) as
-/// NavGoalDisplay, drawing one visual per goal. Each goal carries its own header
-/// and is transformed independently.
+/// RViz display for an avt_341_msgs/NavGoalSequence: one NavGoalVisual per goal.
+/// The shared per-item flow lives in VisualArrayDisplay; the rendering and
+/// property tree are shared with NavGoalDisplay.
 class NavGoalSequenceDisplay
-    : public rviz_common::MessageFilterDisplay<avt_341_msgs::msg::NavGoalSequence>
+    : public VisualArrayDisplay<avt_341_msgs::msg::NavGoalSequence,
+                                avt_341_msgs::msg::NavGoal, NavGoalVisual>
 {
     Q_OBJECT
 
@@ -31,18 +28,20 @@ public:
     NavGoalSequenceDisplay();
     ~NavGoalSequenceDisplay() override;
 
-protected:
-    void onInitialize() override;
-    void reset() override;
-
 private Q_SLOTS:
     /// Re-apply the (possibly edited) style to every visual.
     void updateStyle();
 
-private:
-    void processMessage( avt_341_msgs::msg::NavGoalSequence::ConstSharedPtr msg ) override;
+protected:
+    const std::vector<avt_341_msgs::msg::NavGoal>& items(
+        const avt_341_msgs::msg::NavGoalSequence& msg ) const override;
+    bool validate( const avt_341_msgs::msg::NavGoal& item ) const override;
+    void setDomainFields( NavGoalVisual& visual,
+                          const avt_341_msgs::msg::NavGoal& item ) override;
+    void applyStyle( NavGoalVisual& visual ) override;
+    const char* invalidText() const override;
 
-    std::vector<std::unique_ptr<NavGoalVisual>> visuals_;
+private:
     NavGoalProperties properties_;
 };
 

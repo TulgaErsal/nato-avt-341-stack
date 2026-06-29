@@ -5,17 +5,14 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 
+#include <avt_341_rviz_plugins/primitives/status_style.h>
+
 namespace
 {
 
 // The matrix is fixed at 3x3.
 constexpr int kMatrixDimension = 3;
 constexpr int kCellCount = kMatrixDimension * kMatrixDimension;
-
-// Threshold colors (white text reads on all three).
-const QColor kHighColor( 220, 53, 69 );    // red    (> high_threshold)
-const QColor kMediumColor( 230, 126, 34 ); // orange (> medium_threshold)
-const QColor kLowColor( 40, 167, 69 );     // green  (otherwise)
 
 }  // namespace
 
@@ -79,23 +76,20 @@ QColor MatrixField::colorForValue( double value ) const
 {
     if ( value > high_threshold_ )
     {
-        return kHighColor;
+        return status_colors::kRed;
     }
     if ( value > medium_threshold_ )
     {
-        return kMediumColor;
+        return status_colors::kOrange;
     }
-    return kLowColor;
+    return status_colors::kGreen;
 }
 
 void MatrixField::setCell( int index, double value )
 {
     QLabel* cell = cells_[index];
     cell->setText( QString::number( value ) );
-    cell->setStyleSheet(
-        QString( "background-color: %1; color: white; padding: 2px 6px; "
-                 "border-radius: 2px;" )
-            .arg( colorForValue( value ).name() ) );
+    cell->setStyleSheet( statusBadgeStyleSheet( colorForValue( value ), 6 ) );
 }
 
 }

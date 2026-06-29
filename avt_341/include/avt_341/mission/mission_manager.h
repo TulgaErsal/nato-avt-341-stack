@@ -146,6 +146,7 @@ class MissionManager{
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> leader_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionTaskStatus>> task_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionTaskStatus>> task_change_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MapMarkerList>> map_markers_pub = nullptr;
 
     // Methods
     bool hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
@@ -158,6 +159,10 @@ class MissionManager{
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();
+
+    // Publishes the current mission points as a latched MapMarkerList. Called
+    // whenever the mission point list changes (CSV load or service call).
+    void publishMapMarkers();
 
 }; // class mission manager
 

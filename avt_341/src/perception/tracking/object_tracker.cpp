@@ -750,8 +750,23 @@ void ObjectTracker::PublishOdometry() {
     TrackedCovariance(4, 4) = 9.0;       // no information on pitch
     TrackedCovariance(5, 5) = filter_->GetFusedYawVariance();
     tracked_target_message.pose.covariance = core::ToCovarianceMsg(TrackedCovariance);
+
+    // Cache the latest estimate so GetTrackerStatus() can report it (pose +
+    // covariance) without recomputing.
+    last_tracked_odometry_ = tracked_target_message;
+
     tracked_target_odometry_publisher_->publish(tracked_target_message);
     leader_odom_publisher_->publish(tracked_target_message);
+}
+
+avt_341_msgs::msg::TrackerStatus ObjectTracker::GetTrackerStatus() const {
+    avt_341_msgs::msg::TrackerStatus status;
+    status.header.stamp = node_->get_clock()->now();
+    status.header.frame_id = target_class_;
+    status.state = static_cast<uint8_t>(state_);
+    status.tracked_object_id = target_class_;
+    status.odom_estimate = last_tracked_odometry_;
+    return status;
 }
 
 void ObjectTracker::PublishDetection3D() {

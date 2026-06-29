@@ -1,6 +1,7 @@
 #ifndef TOPIC_CONFIG_H
 #define TOPIC_CONFIG_H
 
+#include <string>
 #include <vector>
 
 #include <QString>
@@ -29,6 +30,12 @@ struct TopicConfig
     QString task_status   = "avt_341/task_status";
     QString tracker_state = "avt_341/tracker/state";
 };
+
+/// Builds the fully-qualified per-vehicle topic name "/<vehicle_id>/<suffix>".
+inline std::string makeTopicPath( const QString& vehicle_id, const QString& suffix )
+{
+    return ( "/" + vehicle_id + "/" + suffix ).toStdString();
+}
 
 /// Describes one editable topic: the tab that consumes it, the label shown in
 /// the Setup table, and the TopicConfig member it reads / writes.

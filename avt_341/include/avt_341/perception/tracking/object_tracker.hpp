@@ -23,6 +23,8 @@
 #include <vision_msgs/msg/detection3_d.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <avt_341_msgs/msg/tracker_status.hpp>
+
 #include <avt_341/core/coord_transform.hpp>
 #include <avt_341/perception/filtering/imm_filter.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
@@ -110,6 +112,14 @@ class ObjectTracker {
     TrackerState GetTrackerState() const { return state_; }
 
     const std::string& GetTargetClass() const { return target_class_; }
+
+    /**
+     * @brief Snapshot this tracker's status as an avt_341_msgs/TrackerStatus,
+     * including the tracked object id (target class) and the last estimated
+     * target odometry (pose + covariance). Aggregated by the owning node into a
+     * TrackerModuleStatus.
+     */
+    avt_341_msgs::msg::TrackerStatus GetTrackerStatus() const;
 
    private:
     void CreatePerTargetPublishers();
@@ -276,6 +286,10 @@ class ObjectTracker {
     Eigen::Vector3d bounding_box_centroid_global_ = Eigen::Vector3d::Zero();
 
     Eigen::Vector3d bounding_box_centroid_filtered_ = Eigen::Vector3d::Zero();
+
+    /** @brief Last estimated tracked-target odometry (pose + covariance),
+     *         cached in PublishOdometry() and exposed via GetTrackerStatus(). */
+    nav_msgs::msg::Odometry last_tracked_odometry_;
 
     Eigen::Vector3d bounding_box_size_ = Eigen::Vector3d::Zero();
 

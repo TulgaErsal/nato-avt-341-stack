@@ -2,25 +2,22 @@
 #define NAV_GOAL_DISPLAY_H
 
 #ifndef Q_MOC_RUN
-#include <memory>
-
 #include <avt_341_msgs/msg/nav_goal.hpp>
-#include <rviz_common/message_filter_display.hpp>
 
 #include <avt_341_rviz_plugins/display_plugins/nav_goal_properties.h>
+#include <avt_341_rviz_plugins/display_plugins/visual_display_base.h>
+#include <avt_341_rviz_plugins/primitives/nav_goal_visual.h>
 #endif
 
 namespace avt_341 {
 namespace rviz_plugins {
 
-class NavGoalVisual;
-
-/// RViz display for a single avt_341_msgs/NavGoal.
-///
-/// Draws the goal pose as a PoseStamped-style arrow and, around it, the
-/// distance/yaw threshold region (see NavGoalVisual). The visual rendering and
-/// the property tree are both shared with NavGoalSequenceDisplay.
-class NavGoalDisplay : public rviz_common::MessageFilterDisplay<avt_341_msgs::msg::NavGoal>
+/// RViz display for a single avt_341_msgs/NavGoal: a PoseStamped-style arrow plus
+/// the distance/yaw threshold region (see NavGoalVisual). The shared display flow
+/// lives in SingleVisualDisplay; the rendering and property tree are shared with
+/// NavGoalSequenceDisplay.
+class NavGoalDisplay
+    : public SingleVisualDisplay<avt_341_msgs::msg::NavGoal, NavGoalVisual>
 {
     Q_OBJECT
 
@@ -28,18 +25,18 @@ public:
     NavGoalDisplay();
     ~NavGoalDisplay() override;
 
-protected:
-    void onInitialize() override;
-    void reset() override;
-
 private Q_SLOTS:
     /// Re-apply the (possibly edited) style to the current visual.
     void updateStyle();
 
-private:
-    void processMessage( avt_341_msgs::msg::NavGoal::ConstSharedPtr msg ) override;
+protected:
+    bool validate( const avt_341_msgs::msg::NavGoal& msg ) const override;
+    void setDomainFields( NavGoalVisual& visual,
+                          const avt_341_msgs::msg::NavGoal& msg ) override;
+    void applyStyle( NavGoalVisual& visual ) override;
+    const char* invalidText() const override;
 
-    std::unique_ptr<NavGoalVisual> visual_;
+private:
     NavGoalProperties properties_;
 };
 

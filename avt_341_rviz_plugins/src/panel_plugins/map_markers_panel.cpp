@@ -18,7 +18,7 @@ namespace
 {
 
 // Default topic; matches the mock publisher (publish_mock_ui_data.py).
-constexpr const char* kDefaultTopic = "/avt_341/map_markers";
+constexpr const char* kDefaultTopic = "/avt_341/map_markers_changed";
 
 // Key under which the configured topic is saved in the RViz config.
 constexpr const char* kTopicConfigKey = "Topic";

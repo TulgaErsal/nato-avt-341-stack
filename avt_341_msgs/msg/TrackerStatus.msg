@@ -41,6 +41,12 @@ std_msgs/Header header
 # Current state of the tracker (see enumeration type STATE_).
 uint8 state
 
+# Object id being tracked
+string tracked_object_id
+
+# Last tracked object odom estimation
+nav_msgs/Odometry odom_estimate
+
 # Number of points in the tracked object point cloud.
 uint32 tracked_cloud_size
 
