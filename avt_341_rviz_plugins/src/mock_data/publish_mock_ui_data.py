@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import math
 import random
+import string
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List
 
 import rclpy
 from rclpy.node import Node
@@ -39,6 +40,9 @@ from avt_341_msgs.msg import (MapMarker, MapMarkerList, MissionTaskStatus,
 # Vehicles to publish for. Every topic is published once per vehicle, namespaced
 # as ``/<vehicle_id>/<topic>``.
 VEHICLE_IDS: List[str] = ["mrzr2", "mrzr4", "fed"]
+
+# Shared world frame for map-aligned data (goals, markers, mission state).
+MAP_FRAME_ID: str = "map"
 
 # Master timer frequency. No topic can publish faster than this.
 TICK_RATE_HZ: float = 30.0
@@ -107,7 +111,17 @@ class MockUiDataPublisher(Node):
         self._specs = self._build_topic_specs()
         self._jobs = self._create_jobs()
         self._tick = 0
-        self._marker_seq = 0
+
+        # NavGoals are randomized once here and then republished unchanged, so
+        # goals stay put in RViz instead of teleporting on every tick.
+        self._current_goals: Dict[str, NavGoal] = {
+            vehicle_id: self._make_nav_goal(MAP_FRAME_ID)
+            for vehicle_id in VEHICLE_IDS
+        }
+        self._goal_sequences: Dict[str, NavGoalSequence] = {
+            vehicle_id: self._build_goal_sequence()
+            for vehicle_id in VEHICLE_IDS
+        }
 
         self._timer = self.create_timer(1.0 / TICK_RATE_HZ, self._on_tick)
 
@@ -198,7 +212,7 @@ class MockUiDataPublisher(Node):
 
     def _make_task_status(self, vehicle_id: str) -> MissionTaskStatus:
         msg = MissionTaskStatus()
-        msg.header = self._header(f"{vehicle_id}/map")
+        msg.header = self._header(MAP_FRAME_ID)
         # -1 sentinel (no task) about a third of the time, else a real id.
         msg.task_id = random.choice([-1, random.randint(0, 50)])
         msg.task_description = random.choice([
@@ -218,8 +232,8 @@ class MockUiDataPublisher(Node):
 
     def _make_nav_state(self, vehicle_id: str) -> NavState:
         msg = NavState()
-        msg.header = self._header(f"{vehicle_id}/map")
-        msg.goal = self._make_nav_goal(f"{vehicle_id}/map")
+        msg.header = self._header(MAP_FRAME_ID)
+        msg.goal = self._current_goals[vehicle_id]
         msg.run_state = random.choice([-1, 0, 1, 2, 3])
         msg.goal_duration = random.uniform(0.0, 300.0)
         msg.goal_distance = random.uniform(0.0, 100.0)
@@ -227,16 +241,20 @@ class MockUiDataPublisher(Node):
         return msg
 
     def _make_current_goal(self, vehicle_id: str) -> NavGoal:
-        """A single navigation goal within GOAL_RADIUS_M of the origin."""
-        return self._make_nav_goal(f"{vehicle_id}/map")
+        """The vehicle's current navigation goal, randomized once at startup."""
+        return self._current_goals[vehicle_id]
 
     def _make_goal_sequence(self, vehicle_id: str) -> NavGoalSequence:
-        """An ordered run of GOALS_PER_SEQUENCE goals, each near the origin."""
+        """The vehicle's ordered run of goals, randomized once at startup."""
+        return self._goal_sequences[vehicle_id]
+
+    def _build_goal_sequence(self) -> NavGoalSequence:
+        """Build an ordered run of GOALS_PER_SEQUENCE goals, each near the
+        origin. Called once per vehicle at startup."""
         msg = NavGoalSequence()
-        frame_id = f"{vehicle_id}/map"
-        msg.header = self._header(frame_id)
+        msg.header = self._header(MAP_FRAME_ID)
         msg.goals = [
-            self._make_nav_goal(frame_id) for _ in range(GOALS_PER_SEQUENCE)
+            self._make_nav_goal(MAP_FRAME_ID) for _ in range(GOALS_PER_SEQUENCE)
         ]
         return msg
 
@@ -261,7 +279,7 @@ class MockUiDataPublisher(Node):
         """Three markers (two mission points, one target of interest), each at a
         random 10 m position with a random yaw."""
         msg = MapMarkerList()
-        msg.header = self._header(f"{vehicle_id}/map")
+        msg.header = self._header(MAP_FRAME_ID)
         msg.markers = [
             self._make_marker(vehicle_id, MapMarker.MISSION_POINT),
             self._make_marker(vehicle_id, MapMarker.MISSION_POINT),
@@ -272,9 +290,10 @@ class MockUiDataPublisher(Node):
     def _make_marker(self, vehicle_id: str, marker_type: int) -> MapMarker:
         """A MapMarker of the given type at a random 10 m position and yaw."""
         marker = MapMarker()
-        marker.header = self._header(f"{vehicle_id}/map")
-        self._marker_seq += 1
-        marker.marker_id = f"marker_{self._marker_seq}"
+        marker.header = self._header(MAP_FRAME_ID)
+        # Mission-point id: "MP_<letter>" with a random uppercase letter, which
+        # the map-marker visual renders as "MP" stacked over the letter.
+        marker.marker_id = f"MP_{random.choice(string.ascii_uppercase)}"
         marker.label = ("Mission Point"
                         if marker_type == MapMarker.MISSION_POINT
                         else "Target of Interest")
@@ -322,7 +341,8 @@ class MockUiDataPublisher(Node):
         return pose
 
     def _random_goal_pose(self) -> Pose:
-        """A pose drawn uniformly from the disk of radius GOAL_RADIUS_M.
+        """A ground-level pose (z = 0) drawn uniformly from the disk of radius
+        GOAL_RADIUS_M, oriented to a random yaw about +Z (no roll or pitch).
 
         ``sqrt`` of a uniform sample gives a radius that is uniform over area,
         so goals do not bunch up near the origin.
@@ -333,7 +353,8 @@ class MockUiDataPublisher(Node):
         pose.position = Point(x=radius * math.cos(angle),
                               y=radius * math.sin(angle),
                               z=0.0)
-        pose.orientation = self._random_quaternion()
+        pose.orientation = self._yaw_quaternion(
+            random.uniform(-math.pi, math.pi))
         return pose
 
     @staticmethod

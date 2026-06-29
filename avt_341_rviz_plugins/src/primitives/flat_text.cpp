@@ -150,7 +150,14 @@ void FlatText::setLines( const std::vector<FlatTextLine>& lines, const Ogre::Col
     const float line_gap = kLineGapRatio * max_height;
     block_height += line_gap * static_cast<float>( visible_lines - 1 );
 
-    object_->begin( material_->getName(), Ogre::RenderOperation::OT_TRIANGLE_LIST );
+    // Look the cloned material up in its own resource group, not the default
+    // "General" group. ManualObject::begin() defaults the lookup group to
+    // "General", but the clone lives in the font material's group (so it can
+    // still resolve the glyph-atlas texture). The mismatch is what produced
+    // "Can't assign material ... because this Material does not exist in group
+    // General" when the display loaded.
+    object_->begin( material_->getName(), Ogre::RenderOperation::OT_TRIANGLE_LIST,
+                    material_->getGroup() );
     float y_top = 0.5f * block_height;   // top edge of the block (text-space +Y up)
     for ( std::size_t i = 0; i < lines.size(); ++i )
     {

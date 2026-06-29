@@ -62,9 +62,24 @@ QStringList SetupComponent::vehicles() const
     return vehicles_->items();
 }
 
+QColor SetupComponent::vehicleColor( const QString& vehicle_id ) const
+{
+    return vehicles_->vehicleColor( vehicle_id );
+}
+
+QMap<QString, int> SetupComponent::vehicleColorIndices() const
+{
+    return vehicles_->colorIndices();
+}
+
 void SetupComponent::setVehicles( const QStringList& vehicles )
 {
     vehicles_->setItems( vehicles );
+}
+
+void SetupComponent::setVehicleColorIndices( const QMap<QString, int>& indices )
+{
+    vehicles_->setColorIndices( indices );
 }
 
 void SetupComponent::setTopicConfig( const TopicConfig& config )

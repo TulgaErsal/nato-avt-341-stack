@@ -4,27 +4,11 @@
 
 #include <QFormLayout>
 #include <QHBoxLayout>
-#include <QIcon>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QPushButton>
 
-#include <rviz_common/load_resource.hpp>
-
 #include <avt_341_rviz_plugins/primitives/icon_button.h>
-
-namespace
-{
-
-// Loads an icon from this package's resources/icons folder via an rviz resource
-// URL (resolved from the installed share directory at runtime).
-QIcon loadIcon( const QString& file_name )
-{
-    return QIcon( rviz_common::loadPixmap(
-        "package://avt_341_rviz_plugins/resources/icons/" + file_name ) );
-}
-
-}  // namespace
 
 namespace avt_341::rviz_plugins
 {
@@ -53,7 +37,7 @@ TopicConfigComponent::TopicConfigComponent( QWidget* parent )
         value->setReadOnly( true );
         value->setCursorPosition( 0 );
 
-        IconButton* edit = new IconButton( loadIcon( "edit.svg" ), "Edit topic" );
+        IconButton* edit = new IconButton( "edit.svg", "Edit topic" );
 
         QWidget* field = new QWidget;
         QHBoxLayout* field_layout = new QHBoxLayout( field );

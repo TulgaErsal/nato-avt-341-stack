@@ -2,23 +2,28 @@
 
 #include <QAbstractItemView>
 #include <QBrush>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
-#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPixmap>
+#include <QSize>
 #include <QStackedLayout>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-#include <rviz_common/load_resource.hpp>
+#include <avt_341_rviz_plugins/primitives/icon_utils.h>
 
 #include <avt_341_rviz_plugins/primitives/icon_button.h>
 #include <avt_341_rviz_plugins/primitives/message_label.h>
+#include <avt_341_rviz_plugins/primitives/vehicle_palette.h>
 
 namespace
 {
@@ -32,21 +37,67 @@ enum Column
     kColumnCount = 3
 };
 
-// Loads an icon from this package's resources/icons folder via an rviz resource
-// URL (resolved from the installed share directory at runtime).
-QIcon loadIcon( const QString& file_name )
-{
-    return QIcon( rviz_common::loadPixmap(
-        "package://avt_341_rviz_plugins/resources/icons/" + file_name ) );
-}
-
-// The Compute-cell icon: a success or error glyph, scaled to a small cell size.
+// The Compute-cell icon: a success or error glyph, rendered at a small cell
+// size scaled to the display's DPI.
 QPixmap computePixmap( bool healthy )
 {
     const QString file = healthy ? "msg_success.svg" : "msg_error.svg";
-    return rviz_common::loadPixmap(
-               "package://avt_341_rviz_plugins/resources/icons/" + file )
-        .scaled( 18, 18, Qt::KeepAspectRatio, Qt::SmoothTransformation );
+    return avt_341::rviz_plugins::renderSvg( file, 18 );
+}
+
+// Side length of the color square shown beside a vehicle id.
+constexpr int kSwatchSize = 12;
+
+// Modal dialog to enter a vehicle name and pick a label color from the palette.
+// Returns true if accepted, writing the entered name and the chosen palette
+// index. `initial_color_index` pre-selects a palette color (wrapped into range).
+bool promptVehicle( QWidget* parent, const QString& title, const QString& initial_name,
+                    int initial_color_index, QString* out_name, int* out_color_index )
+{
+    using namespace avt_341::rviz_plugins;
+
+    QDialog dialog( parent );
+    dialog.setWindowTitle( title );
+
+    QLineEdit* name_edit = new QLineEdit( initial_name, &dialog );
+    name_edit->setPlaceholderText( "Vehicle name" );
+
+    // Color picker: one entry per palette color, each a swatch icon + its name.
+    QComboBox* color_combo = new QComboBox( &dialog );
+    const int swatch_size = scaledSize( kSwatchSize, parent );
+    color_combo->setIconSize( QSize( swatch_size, swatch_size ) );
+    const QVector<VehicleColor>& palette = vehiclePalette();
+    for ( const VehicleColor& entry : palette )
+    {
+        color_combo->addItem( QIcon( makeColorSwatch( entry.color, swatch_size ) ), entry.name );
+    }
+    const int n = palette.size();
+    color_combo->setCurrentIndex( ( ( initial_color_index % n ) + n ) % n );
+
+    QFormLayout* form = new QFormLayout;
+    form->addRow( "Name:", name_edit );
+    form->addRow( "Color:", color_combo );
+
+    QDialogButtonBox* buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog );
+    QObject::connect( buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept );
+    QObject::connect( buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject );
+
+    QVBoxLayout* layout = new QVBoxLayout( &dialog );
+    layout->addLayout( form );
+    layout->addWidget( buttons );
+
+    name_edit->setFocus();
+    name_edit->selectAll();
+
+    if ( dialog.exec() != QDialog::Accepted )
+    {
+        return false;
+    }
+
+    *out_name = name_edit->text();
+    *out_color_index = color_combo->currentIndex();
+    return true;
 }
 
 }  // namespace
@@ -58,11 +109,11 @@ VehicleTableComponent::VehicleTableComponent( QWidget* parent )
     : QWidget( parent )
 {
     // Icon-only controls, stacked in a vertical strip (mirrors the old list).
-    add_button_ = new IconButton( loadIcon( "add.svg" ), "Add" );
-    delete_button_ = new IconButton( loadIcon( "delete.svg" ), "Delete" );
-    edit_button_ = new IconButton( loadIcon( "edit.svg" ), "Edit" );
-    up_button_ = new IconButton( loadIcon( "arrow_up.svg" ), "Move Up" );
-    down_button_ = new IconButton( loadIcon( "arrow_down.svg" ), "Move Down" );
+    add_button_ = new IconButton( "add.svg", "Add" );
+    delete_button_ = new IconButton( "delete.svg", "Delete" );
+    edit_button_ = new IconButton( "edit.svg", "Edit" );
+    up_button_ = new IconButton( "arrow_up.svg", "Move Up" );
+    down_button_ = new IconButton( "arrow_down.svg", "Move Down" );
 
     QVBoxLayout* button_layout = new QVBoxLayout;
     button_layout->setContentsMargins( 0, 0, 0, 0 );
@@ -82,6 +133,10 @@ VehicleTableComponent::VehicleTableComponent( QWidget* parent )
     // have a target.
     table_->setSelectionMode( QAbstractItemView::NoSelection );
     table_->setFocusPolicy( Qt::NoFocus );
+    // Size the cell icons to the vehicle-id color swatch (scaled to the display
+    // DPI) so it renders crisply.
+    const int swatch_size = scaledSize( kSwatchSize, table_ );
+    table_->setIconSize( QSize( swatch_size, swatch_size ) );
     table_->verticalHeader()->setVisible( false );
     // Don't bold the header of the current row's column (Qt's current-section
     // highlight); keep the headers a normal weight like the Compute table.
@@ -195,7 +250,10 @@ void VehicleTableComponent::writeRow( int row, const QString& vehicle_id )
 {
     const VehicleStatus status = status_.value( vehicle_id );
 
-    table_->setItem( row, kVehicleIdColumn, new QTableWidgetItem( vehicle_id ) );
+    // Vehicle Id: a color square (the vehicle's label color) beside the id text.
+    QTableWidgetItem* id_item = new QTableWidgetItem( vehicle_id );
+    id_item->setIcon( QIcon( makeColorSwatch( colorForRow( row ), scaledSize( kSwatchSize, table_ ) ) ) );
+    table_->setItem( row, kVehicleIdColumn, id_item );
 
     // Nav State: colored cell carrying the run-state text.
     QTableWidgetItem* nav_item = new QTableWidgetItem( status.nav_text );
@@ -213,9 +271,47 @@ void VehicleTableComponent::writeRow( int row, const QString& vehicle_id )
     table_->setCellWidget( row, kComputeColumn, icon );
 }
 
+QColor VehicleTableComponent::colorForRow( int row ) const
+{
+    const int stored = status_.value( vehicle_ids_.at( row ) ).color_index;
+    // -1 means "auto": fall back to the row position so the default color tracks
+    // the modulo lookup; an explicit selection overrides it.
+    return vehicleColorForIndex( stored >= 0 ? stored : row );
+}
+
 int VehicleTableComponent::rowOf( const QString& vehicle_id ) const
 {
     return vehicle_ids_.indexOf( vehicle_id );
+}
+
+QColor VehicleTableComponent::vehicleColor( const QString& vehicle_id ) const
+{
+    const int row = rowOf( vehicle_id );
+    return row < 0 ? vehicleColorForIndex( 0 ) : colorForRow( row );
+}
+
+QMap<QString, int> VehicleTableComponent::colorIndices() const
+{
+    // Resolve every vehicle to a concrete palette index so colors survive a
+    // reload and a later reorder keeps each vehicle's color.
+    QMap<QString, int> indices;
+    const int n = vehiclePalette().size();
+    for ( int row = 0; row < vehicle_ids_.size(); ++row )
+    {
+        const int stored = status_.value( vehicle_ids_.at( row ) ).color_index;
+        const int resolved = stored >= 0 ? stored : row;
+        indices.insert( vehicle_ids_.at( row ), ( ( resolved % n ) + n ) % n );
+    }
+    return indices;
+}
+
+void VehicleTableComponent::setColorIndices( const QMap<QString, int>& indices )
+{
+    for ( auto it = indices.constBegin(); it != indices.constEnd(); ++it )
+    {
+        status_[it.key()].color_index = it.value();
+    }
+    renderTable();
 }
 
 bool VehicleTableComponent::isDuplicate( const QString& vehicle_id, int ignore_row ) const
@@ -233,10 +329,11 @@ bool VehicleTableComponent::isDuplicate( const QString& vehicle_id, int ignore_r
 
 void VehicleTableComponent::onAdd()
 {
-    bool ok = false;
-    const QString name = QInputDialog::getText(
-        this, "Add Vehicle", "Vehicle name:", QLineEdit::Normal, QString(), &ok );
-    if ( !ok )
+    // Default the color to the new vehicle's position so a fresh list walks the
+    // palette (red, blue, green, ...); the picker lets the user override it.
+    QString name;
+    int color_index = vehicle_ids_.size();
+    if ( !promptVehicle( this, "Add Vehicle", QString(), color_index, &name, &color_index ) )
     {
         return;
     }
@@ -254,8 +351,10 @@ void VehicleTableComponent::onAdd()
         return;
     }
 
+    VehicleStatus status;
+    status.color_index = color_index;
     vehicle_ids_.append( trimmed );
-    status_.insert( trimmed, VehicleStatus() );
+    status_.insert( trimmed, status );
     renderTable();
     table_->setCurrentCell( vehicle_ids_.size() - 1, kVehicleIdColumn );
     Q_EMIT itemsChanged( vehicle_ids_ );
@@ -285,20 +384,26 @@ void VehicleTableComponent::onEdit()
     }
 
     const QString old_id = vehicle_ids_.at( row );
-    bool ok = false;
-    const QString name = QInputDialog::getText(
-        this, "Edit Vehicle", "Vehicle name:", QLineEdit::Normal, old_id, &ok );
-    if ( !ok )
+    // Pre-select the picker with the vehicle's currently displayed color (its
+    // explicit selection, or the position-based default when on "auto").
+    const int stored_index = status_.value( old_id ).color_index;
+    const int current_index = stored_index >= 0 ? stored_index : row;
+
+    QString name;
+    int color_index = current_index;
+    if ( !promptVehicle( this, "Edit Vehicle", old_id, current_index, &name, &color_index ) )
     {
         return;
     }
 
     const QString trimmed = name.trimmed();
-    if ( trimmed.isEmpty() || trimmed == old_id )
+    if ( trimmed.isEmpty() )
     {
         return;
     }
-    if ( isDuplicate( trimmed, row ) )
+
+    const bool name_changed = ( trimmed != old_id );
+    if ( name_changed && isDuplicate( trimmed, row ) )
     {
         QMessageBox::warning(
             this, "Duplicate Vehicle",
@@ -306,11 +411,22 @@ void VehicleTableComponent::onEdit()
         return;
     }
 
-    // Carry the cached status across the rename.
-    vehicle_ids_[row] = trimmed;
-    const VehicleStatus status = status_.value( old_id );
-    status_.remove( old_id );
-    status_.insert( trimmed, status );
+    // Carry the cached status across the (possible) rename and apply the picked
+    // color. Bail out early only if nothing actually changed.
+    const bool color_changed = ( color_index != current_index );
+    if ( !name_changed && !color_changed )
+    {
+        return;
+    }
+
+    VehicleStatus status = status_.value( old_id );
+    status.color_index = color_index;
+    if ( name_changed )
+    {
+        status_.remove( old_id );
+        vehicle_ids_[row] = trimmed;
+    }
+    status_.insert( vehicle_ids_.at( row ), status );
     renderTable();
     table_->setCurrentCell( row, kVehicleIdColumn );
     Q_EMIT itemsChanged( vehicle_ids_ );

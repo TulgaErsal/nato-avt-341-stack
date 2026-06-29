@@ -2,6 +2,7 @@
 #define ACCORDION_GROUP_H
 
 #ifndef Q_MOC_RUN
+#include <QColor>
 #include <QPixmap>
 #include <QString>
 #include <QWidget>
@@ -34,6 +35,11 @@ public:
     void setExpanded( bool expanded );
     bool isExpanded() const { return expanded_; }
 
+    // Shows a small filled color square to the left of the title (e.g. to tag a
+    // group with its vehicle's label color). Passing an invalid QColor hides the
+    // square; it is hidden by default.
+    void setSwatchColor( const QColor& color );
+
 public Q_SLOTS:
     void toggle();
 
@@ -47,6 +53,7 @@ private:
 
     // QT Widgets
     QWidget* header_;
+    QLabel* swatch_label_;
     QLabel* title_label_;
     QLabel* caret_label_;
     QWidget* content_container_;

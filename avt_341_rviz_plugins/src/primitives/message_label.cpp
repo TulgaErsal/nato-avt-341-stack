@@ -1,9 +1,8 @@
 #include <avt_341_rviz_plugins/primitives/message_label.h>
 
 #include <QGridLayout>
-#include <QPixmap>
 
-#include <rviz_common/load_resource.hpp>
+#include <avt_341_rviz_plugins/primitives/icon_utils.h>
 
 namespace
 {
@@ -35,13 +34,12 @@ MessageLabel::MessageLabel( MessageType type, const QString& text, QWidget* pare
     : QWidget( parent )
 {
     // Icon column: the icon for the message type, pinned to a fixed, tight size
-    // so column 0 never reserves more width than the icon itself.
-    const QPixmap icon = rviz_common::loadPixmap(
-        "package://avt_341_rviz_plugins/resources/icons/" + iconFileForType( type ) );
+    // (scaled to the display's DPI) so column 0 never reserves more width than
+    // the icon itself.
+    const int icon_size = scaledSize( 16, this );
     icon_label_ = new QLabel();
-    icon_label_->setPixmap(
-        icon.scaled( 16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation ) );
-    icon_label_->setFixedSize( 16, 16 );
+    icon_label_->setPixmap( renderSvg( iconFileForType( type ), 16, this ) );
+    icon_label_->setFixedSize( icon_size, icon_size );
 
     // Text column: a single line sized to its content. A word-wrapping label
     // reports a narrow heuristic size hint, which makes a centered (content-

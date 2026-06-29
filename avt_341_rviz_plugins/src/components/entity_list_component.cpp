@@ -3,7 +3,6 @@
 #include <QAbstractItemView>
 #include <QGroupBox>
 #include <QHBoxLayout>
-#include <QIcon>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QListView>
@@ -13,23 +12,8 @@
 #include <QStringListModel>
 #include <QVBoxLayout>
 
-#include <rviz_common/load_resource.hpp>
-
 #include <avt_341_rviz_plugins/primitives/icon_button.h>
 #include <avt_341_rviz_plugins/primitives/message_label.h>
-
-namespace
-{
-
-// Loads an icon from this package's resources/icons folder via an rviz
-// resource URL (resolved from the installed share directory at runtime).
-QIcon loadIcon( const QString& file_name )
-{
-    return QIcon( rviz_common::loadPixmap(
-        "package://avt_341_rviz_plugins/resources/icons/" + file_name ) );
-}
-
-}  // namespace
 
 namespace avt_341::rviz_plugins
 {
@@ -39,11 +23,11 @@ EntityListComponent::EntityListComponent( const QString& title, const QString& i
     : QWidget( parent ), item_noun_( item_noun )
 {
     // Icon-only controls, stacked in a vertical strip
-    add_button_ = new IconButton( loadIcon( "add.svg" ), "Add" );
-    delete_button_ = new IconButton( loadIcon( "delete.svg" ), "Delete" );
-    edit_button_ = new IconButton( loadIcon( "edit.svg" ), "Edit" );
-    up_button_ = new IconButton( loadIcon( "arrow_up.svg" ), "Move Up" );
-    down_button_ = new IconButton( loadIcon( "arrow_down.svg" ), "Move Down" );
+    add_button_ = new IconButton( "add.svg", "Add" );
+    delete_button_ = new IconButton( "delete.svg", "Delete" );
+    edit_button_ = new IconButton( "edit.svg", "Edit" );
+    up_button_ = new IconButton( "arrow_up.svg", "Move Up" );
+    down_button_ = new IconButton( "arrow_down.svg", "Move Down" );
 
     QVBoxLayout* button_layout = new QVBoxLayout;
     button_layout->setContentsMargins( 0, 0, 0, 0 );

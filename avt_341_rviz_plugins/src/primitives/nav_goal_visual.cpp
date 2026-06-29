@@ -114,12 +114,15 @@ void NavGoalVisual::rebuild()
     arrow_->setPosition( Ogre::Vector3::ZERO );
     arrow_->setOrientation( Ogre::Quaternion( Ogre::Degree( -90.0f ), Ogre::Vector3::UNIT_Y ) );
 
-    // Resolve the thresholds against the configured fallbacks. A negative value
-    // requests the "stack default"; a yaw above pi disables the yaw check, making
-    // the whole circle viable.
-    const double radius = dist_threshold_ >= 0.0 ? dist_threshold_ : style_.default_dist_threshold;
+    // Resolve the thresholds against built-in fallbacks for messages that leave
+    // them unspecified (value < 0): a 1 m circle, and a yaw above pi so the yaw
+    // check is "disabled" and the whole circle reads as viable (filled green).
+    constexpr double kDefaultDistThreshold = 1.0;             // meters
+    const double kDefaultYawThreshold = 2.0 * Ogre::Math::PI; // radians, > pi
 
-    double yaw = yaw_threshold_ >= 0.0 ? yaw_threshold_ : style_.default_yaw_threshold;
+    const double radius = dist_threshold_ >= 0.0 ? dist_threshold_ : kDefaultDistThreshold;
+
+    double yaw = yaw_threshold_ >= 0.0 ? yaw_threshold_ : kDefaultYawThreshold;
     const double half_angle = yaw >= Ogre::Math::PI ? Ogre::Math::PI : std::max( 0.0, yaw );
 
     rebuildCircle( radius );

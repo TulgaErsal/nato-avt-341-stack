@@ -85,6 +85,16 @@ void AutonomyPanel::save( rviz_common::Config config ) const
         vehicles.listAppendNew().setValue( vehicle );
     }
 
+    // 1b) Per-vehicle label colors (palette index keyed by id).
+    rviz_common::Config vehicle_colors = config.mapMakeChild( "vehicle_colors" );
+    const QMap<QString, int> color_indices = setup_component_->vehicleColorIndices();
+    for ( auto it = color_indices.constBegin(); it != color_indices.constEnd(); ++it )
+    {
+        rviz_common::Config entry = vehicle_colors.listAppendNew();
+        entry.mapSetValue( "id", it.key() );
+        entry.mapSetValue( "color", it.value() );
+    }
+
     // 2) Topic-name configuration.
     rviz_common::Config topics = config.mapMakeChild( "topic_config" );
     const TopicConfig& topic_config = setup_component_->topicConfig();
@@ -146,6 +156,27 @@ void AutonomyPanel::load( const rviz_common::Config& config )
         float threshold = static_cast<float>( ComputeComponent::thresholdFraction() );
         config.mapGetFloat( "compute_threshold", &threshold );
         ComputeComponent::applyGlobalConfig( specs, static_cast<double>( threshold ) );
+    }
+
+    // 1b) Per-vehicle label colors. Applied before the vehicle list so the tab
+    // rebuild triggered by setVehicles() tags each accordion with its color.
+    const rviz_common::Config vehicle_colors = config.mapGetChild( "vehicle_colors" );
+    if ( vehicle_colors.getType() == rviz_common::Config::List )
+    {
+        QMap<QString, int> color_indices;
+        for ( int i = 0; i < vehicle_colors.listLength(); ++i )
+        {
+            const rviz_common::Config entry = vehicle_colors.listChildAt( i );
+            QString id;
+            int color = 0;
+            entry.mapGetString( "id", &id );
+            entry.mapGetInt( "color", &color );
+            if ( !id.trimmed().isEmpty() )
+            {
+                color_indices.insert( id.trimmed(), color );
+            }
+        }
+        setup_component_->setVehicleColorIndices( color_indices );
     }
 
     // 1) Vehicle list — restoring this rebuilds the per-vehicle tabs (via
@@ -210,6 +241,9 @@ void AutonomyPanel::rebuildVehicleTab(
     for ( const QString& vehicle_id : vehicles )
     {
         AccordionGroup* group = new AccordionGroup( vehicle_id );
+        // Tag the group header with the vehicle's label color so it matches the
+        // swatch shown for the same vehicle in the Setup table.
+        group->setSwatchColor( setup_component_->vehicleColor( vehicle_id ) );
         group->setContentWidget( make_component( vehicle_id ) );
         content_layout->addWidget( group );
     }

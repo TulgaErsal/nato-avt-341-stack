@@ -24,7 +24,7 @@ NavGoalProperties::NavGoalProperties( Property* parent, QObject* receiver,
         "Pose Arrow", QVariant(), "Appearance of the goal-pose arrow.", parent );
 
     arrow_color_ = new ColorProperty(
-        "Color", QColor( 255, 25, 0 ), "Color of the pose arrow.",
+        "Color", QColor( 255, 255, 255 ), "Color of the pose arrow.",
         arrow_group, changed_slot, receiver );
     arrow_alpha_ = new FloatProperty(
         "Alpha", 1.0f, "Opacity of the pose arrow.",
@@ -35,13 +35,13 @@ NavGoalProperties::NavGoalProperties( Property* parent, QObject* receiver,
         "Shaft Length", 1.0f, "Length of the arrow shaft.",
         arrow_group, changed_slot, receiver );
     shaft_radius_ = new FloatProperty(
-        "Shaft Radius", 0.05f, "Radius of the arrow shaft.",
+        "Shaft Radius", 0.5f, "Radius of the arrow shaft.",
         arrow_group, changed_slot, receiver );
     head_length_ = new FloatProperty(
-        "Head Length", 0.3f, "Length of the arrow head.",
+        "Head Length", 0.5f, "Length of the arrow head.",
         arrow_group, changed_slot, receiver );
     head_radius_ = new FloatProperty(
-        "Head Radius", 0.1f, "Radius of the arrow head.",
+        "Head Radius", 1.0f, "Radius of the arrow head.",
         arrow_group, changed_slot, receiver );
 
     // --- Threshold region ---------------------------------------------------
@@ -52,11 +52,11 @@ NavGoalProperties::NavGoalProperties( Property* parent, QObject* receiver,
         parent );
 
     circle_color_ = new ColorProperty(
-        "Circle Color", QColor( 0, 170, 255 ),
+        "Circle Color", QColor( 255, 255, 255 ),
         "Color of the distance-threshold circle outline.",
         region_group, changed_slot, receiver );
     circle_thickness_ = new FloatProperty(
-        "Circle Thickness", 0.05f, "Line width of the circle outline (m).",
+        "Circle Thickness", 0.1f, "Line width of the circle outline (m).",
         region_group, changed_slot, receiver );
     circle_thickness_->setMin( 0.0f );
 
@@ -64,23 +64,10 @@ NavGoalProperties::NavGoalProperties( Property* parent, QObject* receiver,
         "Fill Color", QColor( 0, 204, 0 ), "Color of the filled viable region.",
         region_group, changed_slot, receiver );
     fill_alpha_ = new FloatProperty(
-        "Fill Alpha", 0.3f, "Opacity of the filled viable region.",
+        "Fill Alpha", 0.1f, "Opacity of the filled viable region.",
         region_group, changed_slot, receiver );
     fill_alpha_->setMin( 0.0f );
     fill_alpha_->setMax( 1.0f );
-
-    default_dist_threshold_ = new FloatProperty(
-        "Default Distance Threshold", 1.0f,
-        "Circle radius (m) drawn when a goal's dist_threshold is negative "
-        "(i.e. requests the stack default).",
-        region_group, changed_slot, receiver );
-    default_dist_threshold_->setMin( 0.0f );
-    default_yaw_threshold_ = new FloatProperty(
-        "Default Yaw Threshold", 0.5f,
-        "Half-wedge angle (rad) drawn when a goal's yaw_threshold is negative "
-        "(i.e. requests the stack default).",
-        region_group, changed_slot, receiver );
-    default_yaw_threshold_->setMin( 0.0f );
 
     segments_ = new IntProperty(
         "Circle Segments", 64,
@@ -107,8 +94,6 @@ NavGoalStyle NavGoalProperties::toStyle() const
     style.fill_color = fill_color_->getOgreColor();
     style.fill_color.a = fill_alpha_->getFloat();
 
-    style.default_dist_threshold = default_dist_threshold_->getFloat();
-    style.default_yaw_threshold = default_yaw_threshold_->getFloat();
     style.segments = segments_->getInt();
 
     return style;

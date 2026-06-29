@@ -9,7 +9,8 @@
 #include <QPixmap>
 #include <QVBoxLayout>
 
-#include <rviz_common/load_resource.hpp>
+#include <avt_341_rviz_plugins/primitives/icon_utils.h>
+#include <avt_341_rviz_plugins/primitives/vehicle_palette.h>
 
 namespace
 {
@@ -49,19 +50,26 @@ AccordionGroup::AccordionGroup( const QString& title, QWidget* parent )
     header_font.setBold( true );
     title_label_->setFont( header_font );
 
+    // Optional color square shown to the left of the title; hidden until a valid
+    // color is supplied via setSwatchColor().
+    swatch_label_ = new QLabel;
+    const int swatch_size = scaledSize( 12, this );
+    swatch_label_->setFixedSize( swatch_size, swatch_size );
+    swatch_label_->setVisible( false );
+
     caret_label_ = new QLabel;
 
-    // Load the caret icons once and cache them, pre-scaled, for each state.
-    const QString icon_url = "package://avt_341_rviz_plugins/resources/icons/";
-    const int caret_size = 16;
-    caret_expanded_pixmap_ = rviz_common::loadPixmap( icon_url + "caret_expanded.svg" )
-        .scaled( caret_size, caret_size, Qt::KeepAspectRatio, Qt::SmoothTransformation );
-    caret_collapsed_pixmap_ = rviz_common::loadPixmap( icon_url + "caret_collapsed.svg" )
-        .scaled( caret_size, caret_size, Qt::KeepAspectRatio, Qt::SmoothTransformation );
+    // Render the caret icons once and cache them, sized to the display's DPI,
+    // for each state.
+    const int caret_base = 16;
+    caret_expanded_pixmap_ = renderSvg( "caret_expanded.svg", caret_base, this );
+    caret_collapsed_pixmap_ = renderSvg( "caret_collapsed.svg", caret_base, this );
+    const int caret_size = scaledSize( caret_base, this );
     caret_label_->setFixedSize( caret_size, caret_size );
 
     // The labels are transparent to mouse events so a click anywhere on the
     // header row reaches header_ (and its event filter) rather than a child.
+    swatch_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
     title_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
     caret_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
 
@@ -69,6 +77,8 @@ AccordionGroup::AccordionGroup( const QString& title, QWidget* parent )
     // horizontal margins so the title aligns flush with the content below.
     QHBoxLayout* header_layout = new QHBoxLayout;
     header_layout->setContentsMargins( 0, 4, 0, 4 );
+    header_layout->setSpacing( 6 );
+    header_layout->addWidget( swatch_label_ );
     header_layout->addWidget( title_label_ );
     header_layout->addStretch();
     header_layout->addWidget( caret_label_ );
@@ -108,6 +118,20 @@ void AccordionGroup::setContentWidget( QWidget* content )
     if ( content_widget_ != nullptr )
     {
         content_layout_->addWidget( content_widget_ );
+    }
+}
+
+void AccordionGroup::setSwatchColor( const QColor& color )
+{
+    if ( color.isValid() )
+    {
+        swatch_label_->setPixmap( makeColorSwatch( color, swatch_label_->width() ) );
+        swatch_label_->setVisible( true );
+    }
+    else
+    {
+        swatch_label_->clear();
+        swatch_label_->setVisible( false );
     }
 }
 

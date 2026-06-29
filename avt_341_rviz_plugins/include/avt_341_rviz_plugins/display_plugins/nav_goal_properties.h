@@ -55,9 +55,6 @@ private:
     rviz_common::properties::ColorProperty* fill_color_;
     rviz_common::properties::FloatProperty* fill_alpha_;
 
-    rviz_common::properties::FloatProperty* default_dist_threshold_;
-    rviz_common::properties::FloatProperty* default_yaw_threshold_;
-
     rviz_common::properties::IntProperty* segments_;
 };
 

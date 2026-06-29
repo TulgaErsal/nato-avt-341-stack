@@ -34,22 +34,18 @@ namespace rviz_plugins {
 struct NavGoalStyle
 {
     // Pose arrow — mirrors the geometry_msgs/PoseStamped "Arrow" display.
-    Ogre::ColourValue arrow_color { 1.0f, 0.1f, 0.0f, 1.0f };
+    Ogre::ColourValue arrow_color { 1.0f, 1.0f, 1.0f, 1.0f };
     float shaft_length = 1.0f;
-    float shaft_radius = 0.05f;
-    float head_length  = 0.3f;
-    float head_radius  = 0.1f;
+    float shaft_radius = 0.5f;
+    float head_length  = 0.5f;
+    float head_radius  = 1.0f;
 
     // Outline of the distance-threshold circle.
-    Ogre::ColourValue circle_color { 0.0f, 0.667f, 1.0f, 1.0f };
-    float circle_thickness = 0.05f;
+    Ogre::ColourValue circle_color { 1.0f, 1.0f, 1.0f, 1.0f };
+    float circle_thickness = 0.1f;
 
     // Filled "viable" region — the yaw-threshold wedge. Alpha lives in the colour.
-    Ogre::ColourValue fill_color { 0.0f, 0.8f, 0.0f, 0.3f };
-
-    // Fallbacks used when a message asks for the "stack default" (value < 0).
-    float default_dist_threshold = 1.0f;   // meters
-    float default_yaw_threshold  = 0.5f;   // radians (half-wedge angle)
+    Ogre::ColourValue fill_color { 0.0f, 0.8f, 0.0f, 0.1f };
 
     // Tessellation of the circle / wedge.
     int segments = 64;
@@ -78,7 +74,7 @@ public:
     void setPose( const Ogre::Vector3& position, const Ogre::Quaternion& orientation );
 
     /// Raw thresholds straight from the message: a negative value means "use the
-    /// configured default" and a yaw above pi means "disabled". Stored only; the
+    /// built-in default" and a yaw above pi means "disabled". Stored only; the
     /// geometry is (re)built by setStyle().
     void setThresholds( double dist_threshold, double yaw_threshold );
 

@@ -17,6 +17,7 @@ find_package(rviz_common REQUIRED)
 find_package(rviz_rendering REQUIRED)
 find_package(rviz_default_plugins REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(avt_341_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
@@ -43,8 +44,9 @@ if(TARGET rviz_default_plugins::rviz_default_plugins)
 
 endif()
 
-# Use Qt5 to match rviz_common installation
-find_package(Qt5 REQUIRED COMPONENTS Widgets)
+# Use Qt5 to match rviz_common installation. Svg renders the package's SVG icons
+# crisply at the display's DPI (see primitives/icon_utils).
+find_package(Qt5 REQUIRED COMPONENTS Widgets Svg)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
@@ -70,8 +72,10 @@ set(SRC_FILES
     src/tool_plugins/set_nav_goal_tool.cpp
     src/tool_plugins/set_formation_tool.cpp
     src/primitives/accordion_group.cpp
+    src/primitives/vehicle_palette.cpp
     src/primitives/icon_header.cpp
     src/primitives/icon_button.cpp
+    src/primitives/icon_utils.cpp
     src/primitives/message_label.cpp
     src/primitives/nav_goal_visual.cpp
     src/primitives/map_marker_visual.cpp
@@ -94,7 +98,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 # Link Qt5
-target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Svg)
 
 # Link ROS dependencies
 ament_target_dependencies(${PROJECT_NAME}
@@ -103,6 +107,7 @@ ament_target_dependencies(${PROJECT_NAME}
   rviz_rendering
   rviz_default_plugins
   rclcpp
+  ament_index_cpp
   avt_341_msgs
   geometry_msgs
   nav_msgs
@@ -172,6 +177,7 @@ ament_export_dependencies(
   rviz_rendering
   rviz_default_plugins
   rclcpp
+  ament_index_cpp
   avt_341_msgs
   geometry_msgs
   nav_msgs

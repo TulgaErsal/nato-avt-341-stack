@@ -4,6 +4,7 @@
 #ifndef Q_MOC_RUN
 #include <QColor>
 #include <QHash>
+#include <QMap>
 #include <QString>
 #include <QStringList>
 #include <QWidget>
@@ -52,6 +53,18 @@ public:
     /// icon when any monitored topic is below threshold. No-op if not present.
     void setVehicleComputeHealth( const QString& vehicle_id, bool healthy );
 
+    /// The resolved label color for a vehicle (its picked palette color, or the
+    /// position-based default). Returns the first palette color if not present.
+    QColor vehicleColor( const QString& vehicle_id ) const;
+
+    /// The resolved palette color index for every vehicle, keyed by id. Used to
+    /// persist the per-vehicle color selection across save / load.
+    QMap<QString, int> colorIndices() const;
+
+    /// Restore per-vehicle palette color indices (e.g. from saved state). Entries
+    /// for unknown ids are kept and take effect if that vehicle is added later.
+    void setColorIndices( const QMap<QString, int>& indices );
+
 Q_SIGNALS:
     /// Emitted whenever the vehicle list changes (add, delete, rename, reorder).
     void itemsChanged( const QStringList& vehicles );
@@ -71,6 +84,9 @@ private:
         QString nav_text = "None";
         QColor nav_color { 108, 117, 125 };   // gray, matches the idle/none default
         bool compute_healthy = true;
+        // Index into the vehicle color palette, or -1 for "auto" (use the row's
+        // position so the default color follows the modulo lookup).
+        int color_index = -1;
     };
 
     // Rebuilds every table row from vehicle_ids_ + status_ and toggles the
@@ -79,6 +95,10 @@ private:
 
     // Writes one row's three cells from the id and its cached status.
     void writeRow( int row, const QString& vehicle_id );
+
+    // Resolved label color for the vehicle at `row`: its picked palette color, or
+    // the position-based default when the vehicle has no explicit selection.
+    QColor colorForRow( int row ) const;
 
     // Row index of a vehicle id, or -1 if absent.
     int rowOf( const QString& vehicle_id ) const;

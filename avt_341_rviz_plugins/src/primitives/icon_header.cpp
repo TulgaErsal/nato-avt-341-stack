@@ -3,6 +3,8 @@
 #include <QFont>
 #include <QHBoxLayout>
 
+#include <avt_341_rviz_plugins/primitives/icon_utils.h>
+
 namespace avt_341::rviz_plugins
 {
 
@@ -10,10 +12,9 @@ IconHeader::IconHeader( const QPixmap& icon, const QString& title,
                         int icon_size, QWidget* parent )
     : QWidget( parent )
 {
-    // Icon, scaled to a square while preserving aspect ratio
+    // Icon, scaled to a square (preserving aspect ratio) at the display's DPI.
     icon_label_ = new QLabel();
-    icon_label_->setPixmap(
-        icon.scaled( icon_size, icon_size, Qt::KeepAspectRatio, Qt::SmoothTransformation ) );
+    icon_label_->setPixmap( scalePixmap( icon, icon_size, this ) );
 
     // Title text, emphasized relative to the default font
     title_label_ = new QLabel( title );

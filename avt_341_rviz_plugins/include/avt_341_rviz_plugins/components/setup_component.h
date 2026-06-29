@@ -3,6 +3,7 @@
 
 #ifndef Q_MOC_RUN
 #include <QColor>
+#include <QMap>
 #include <QString>
 #include <QStringList>
 #include <QWidget>
@@ -30,8 +31,16 @@ public:
     // The current vehicle ids, in display order.
     QStringList vehicles() const;
 
+    // The resolved label color associated with a vehicle id.
+    QColor vehicleColor( const QString& vehicle_id ) const;
+
+    // The per-vehicle label color selection (palette index keyed by id), for
+    // persisting / restoring across save and load.
+    QMap<QString, int> vehicleColorIndices() const;
+
     // Restore the vehicle list / topic configuration (e.g. from saved state).
     void setVehicles( const QStringList& vehicles );
+    void setVehicleColorIndices( const QMap<QString, int>& indices );
     void setTopicConfig( const TopicConfig& config );
 
     // Mirror a vehicle's live Nav State / Compute status into the vehicle table.
