@@ -56,7 +56,7 @@ jobs:
 
       - name: Install ROS Dependencies
         run: |
-          sudo apt install -y ros-humble-pcl-ros ros-humble-ackermann-msgs ros-humble-vision-msgs unzip
+          sudo apt install -y ros-humble-pcl-ros ros-humble-ackermann-msgs ros-humble-vision-msgs libqt5svg5-dev unzip
           wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
           unzip libtorch-shared-with-deps-latest.zip
 
