@@ -57,6 +57,16 @@
     </description>
     <message_type>avt_341_msgs/msg/MapMarkerList</message_type>
   </class>
+  <class name="avt_341_rviz_plugins/StaticMapImage"
+         type="avt_341::rviz_plugins::StaticMapImageDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Renders a static map image (.png/.pgm) read directly from a file path as a flat
+      ground-plane map, visually identical to the built-in Map display. Resolution,
+      origin and frame are set in the display properties (no topic required); width and
+      height are taken from the image.
+    </description>
+  </class>
   <class name="avt_341_rviz_plugins/Set Nav Goal"
          type="avt_341::rviz_plugins::SetNavGoalTool"
          base_class_type="rviz_common::Tool">

@@ -45,8 +45,9 @@ if(TARGET rviz_default_plugins::rviz_default_plugins)
 endif()
 
 # Use Qt5 to match rviz_common installation. Svg renders the package's SVG icons
-# crisply at the display's DPI (see primitives/icon_utils).
-find_package(Qt5 REQUIRED COMPONENTS Widgets Svg)
+# crisply at the display's DPI (see primitives/icon_utils). Gui provides QImage,
+# used by the StaticMap display to decode map image files.
+find_package(Qt5 REQUIRED COMPONENTS Widgets Svg Gui)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
@@ -69,6 +70,7 @@ set(SRC_FILES
     src/display_plugins/map_marker_display.cpp
     src/display_plugins/map_marker_list_display.cpp
     src/display_plugins/map_marker_properties.cpp
+    src/display_plugins/static_map_image_display.cpp
     src/tool_plugins/set_nav_goal_tool.cpp
     src/tool_plugins/set_formation_tool.cpp
     src/primitives/accordion_group.cpp
@@ -80,6 +82,7 @@ set(SRC_FILES
     src/primitives/nav_goal_visual.cpp
     src/primitives/map_marker_visual.cpp
     src/primitives/flat_text.cpp
+    src/primitives/map_image.cpp
     src/primitives/vector_field.cpp
     src/primitives/matrix_field.cpp)
 
@@ -98,7 +101,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 # Link Qt5
-target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Svg)
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Svg Qt5::Gui)
 
 # Link ROS dependencies
 ament_target_dependencies(${PROJECT_NAME}
@@ -163,6 +166,9 @@ install(FILES resources/plugin_icons/map_marker.svg
 install(FILES resources/plugin_icons/map_markers.svg
   DESTINATION "share/${PROJECT_NAME}/icons/classes"
   RENAME "MapMarkerList.svg")
+install(FILES resources/plugin_icons/static_map_image.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "StaticMapImage.svg")
 
 # Install image assets so they resolve at runtime via rviz_common::loadPixmap
 # package:// URLs (e.g. the logo shown in the Setup tab header).
