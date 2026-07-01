@@ -38,7 +38,7 @@ MissionManager::MissionManager(
     leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
     task_status_pub = node_proxy_->create_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_change");
-    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("avt_341/map_markers_changed");
+    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("/avt_341/map_markers_changed");
 }
 
 MissionManager::~MissionManager() {

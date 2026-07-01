@@ -185,12 +185,12 @@ void NavStateComponent::setNavStateStatus( int run_state )
 {
     QString text;
     QColor color;
-    if ( run_state == 0 )
+    if ( run_state < 0 )
     {
         text = "Startup";
         color = status_colors::kOrange;
     }
-    else if ( run_state == 1 )
+    else if ( run_state == 0 )
     {
         text = "Active";
         color = status_colors::kGreen;

@@ -10,15 +10,19 @@ import os
 import sys
 from typing import Any, Dict, List
 
+import ros_param_dump
 import yaml
 import signal
 import subprocess
 import time
 from datetime import datetime
 import re
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 
 from ament_index_python.packages import get_package_share_directory
+
+
+ROS_PARAM_DUMP_FILE = "ros_params.yaml"
 
 
 class BagConfigKeys:
@@ -198,6 +202,19 @@ def save_config(config_yaml: Dict[str, Any], save_path: str, config_file_out: st
         yaml.dump(config_yaml, outfile, sort_keys=False)
     return config_file_out_path
 
+def str2bool(value: str) -> bool:
+    """argparse type for boolean flags (portable across Python 3.8+, unlike
+    argparse.BooleanOptionalAction which is 3.9+)."""
+    if isinstance(value, bool):
+        return value
+    normalized = value.strip().lower()
+    if normalized in ('true', 't', 'yes', 'y', '1'):
+        return True
+    if normalized in ('false', 'f', 'no', 'n', '0'):
+        return False
+    raise ArgumentTypeError(f"Expected a boolean value, got '{value}'")
+
+
 def parse_args() -> Namespace:
 
     default_base_bag_config = f"{os.path.join(get_package_share_directory('avt_341'), 'parameters/bag_config/base_bag_config.yaml')}"
@@ -215,7 +232,15 @@ def parse_args() -> Namespace:
     parser.add_argument('--config_file_out', type=str, default="logging_config.yaml", help="Name to use for copied bag configuration file that will appear in output bag directory.")
     parser.add_argument('--vehicles_override', type=str, default="", help="Comma separated list of vehicles to use in symbols of bag log config. Leave blank for no override.")
     parser.add_argument('--debug_generate_output_config', action='store_true', help="Skip rosbag recording; only parse and merge the configs and write the merged output config file. Useful for testing the parsing and merging logic.")
-    _args = parser.parse_args()
+    parser.add_argument('--ros_param_dump', type=str2bool, nargs='?', const=True, default=True,
+                        help="Dump every running node's ROS parameters to a yaml file in the bag output directory. "
+                             "Defaults to true; pass '--ros_param_dump false' to disable. Tune the sub-module with "
+                             "--param_dump_* flags (e.g. --param_dump_discovery_wait).")
+
+    # parse_known_args so the --param_dump_* flags (defined by ros_param_dump's
+    # own parser, see dump_ros_params_from_argv) pass through untouched.
+    _args, _args_param_dump_argv = parser.parse_known_args()
+    _args.param_dump_argv = _args_param_dump_argv
 
     if _args.bag_format and _args.bag_format not in ['sqlite3', 'mcap']:
         sys.exit(f"Invalid bag format [{_args.bag_format}]. Use no argument to select default type or explicitly select sqlite3 | mcap")
@@ -267,6 +292,18 @@ if __name__ == "__main__":
             time.sleep(0.1) # Wait for save path to be created
 
         save_config(merged_config, args.save_path, args.config_file_out)
+
+        if args.ros_param_dump:
+            try:
+                param_dump_out = os.path.join(args.save_path, ROS_PARAM_DUMP_FILE)
+                ros_param_dump.dump_ros_params_from_argv(
+                    out_file=param_dump_out,
+                    argv=args.param_dump_argv,
+                )
+            except KeyboardInterrupt:
+                raise
+            except BaseException as e:
+                print(f"[vehicle_logging] ROS parameter dump failed: {e}", file=sys.stderr)
 
         # Wait for logging to complete
         process.wait()

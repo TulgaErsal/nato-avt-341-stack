@@ -175,7 +175,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
     DESTINATION "lib/${PROJECT_NAME}")
   
   install(
-    PROGRAMS "launch/vehicle_logging.py" "launch/tf_to_odometry.py"
+    PROGRAMS "launch/vehicle_logging.py" "launch/ros_param_dump.py" "launch/tf_to_odometry.py"
               "test/global_path_test_driver.py"
               "test/mpc_terminal_heading_test_driver.py"
               "test/formation_distance_test_driver.py"

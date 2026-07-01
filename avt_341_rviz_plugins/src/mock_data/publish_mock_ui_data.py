@@ -162,7 +162,7 @@ class MockUiDataPublisher(Node):
             # receives the most recent sample.
             TopicSpec("avt_341/map_marker", MapMarker, 0.1,
                       MockUiDataPublisher._make_map_marker, qos=LATCHED_QOS),
-            TopicSpec("avt_341/map_markers_changed", MapMarkerList, 0.1,
+            TopicSpec("/avt_341/map_markers_changed", MapMarkerList, 0.1,
                       MockUiDataPublisher._make_map_marker_list, qos=LATCHED_QOS),
         ]
 
@@ -172,7 +172,7 @@ class MockUiDataPublisher(Node):
         jobs: List[PublishJob] = []
         for vehicle_id in VEHICLE_IDS:
             for spec in self._specs:
-                topic = f"/{vehicle_id}/{spec.topic}"
+                topic = spec.topic if spec.topic.startswith('/') else f"/{vehicle_id}/{spec.topic}"
                 publisher = self.create_publisher(spec.msg_type, topic, spec.qos)
                 jobs.append(
                     PublishJob(publisher=publisher,
