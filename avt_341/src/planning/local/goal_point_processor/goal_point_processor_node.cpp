@@ -5,6 +5,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/core/dto_conversion.h"
+#include <algorithm>
 #include <memory>
 // Globals
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_steering_angle;
@@ -43,6 +44,23 @@ float max_speed, la, predictionTimeHorizon, frontAngleGoal;
 float goal_lookahead_padding;
 float ax_max;
 bool use_goal_lookahead_maxspeed;
+bool use_adaptive_prediction_horizon;
+float min_prediction_horizon_distance;
+float prediction_horizon_time_max;
+
+// Mirrors effectivePredictionHorizon() in mpc_commands.jl: when
+// use_adaptive_prediction_horizon is on, stretches the horizon used for the
+// lookahead-distance calculation so it stays consistent with the MPC planner's
+// own (possibly stretched) prediction horizon at low speed. Off, this is just
+// predictionTimeHorizon (unchanged behavior).
+double EffectivePredictionHorizon(float speed_for_horizon) {
+    if (!use_adaptive_prediction_horizon) {
+        return static_cast<double>(predictionTimeHorizon);
+    }
+    const double speed = std::max(static_cast<double>(speed_for_horizon), 0.1);
+    const double floor_t = static_cast<double>(min_prediction_horizon_distance) / speed;
+    return std::clamp(floor_t, static_cast<double>(predictionTimeHorizon), static_cast<double>(prediction_horizon_time_max));
+}
 
 void callback_global_path(avt_341::msg::PathPtr global_path) {
     global_path_input = *global_path;
@@ -140,7 +158,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 	avt_341::utils::vec2 vehiclePosition(x_veh, y_veh);
 	avt_341::utils::vec2 globalPoint(0.0, 0.0);
 
-    const double T = static_cast<double>(predictionTimeHorizon + goal_lookahead_padding);
+    const double T = EffectivePredictionHorizon(speedSetpoint) + static_cast<double>(goal_lookahead_padding);
     double lookahead_dist;
     if (use_goal_lookahead_maxspeed) {
         lookahead_dist = speedSetpoint * T;
@@ -311,6 +329,9 @@ int main(int argc, char* argv[]) {
     n->get_parameter("~max_speed", max_speed, 5.0f);
     n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
     n->get_parameter("~prediction_time_horizon", predictionTimeHorizon, 2.0f);
+    n->get_parameter("~use_adaptive_prediction_horizon", use_adaptive_prediction_horizon, false);
+    n->get_parameter("~min_prediction_horizon_distance", min_prediction_horizon_distance, 8.0f);
+    n->get_parameter("~prediction_horizon_time_max", prediction_horizon_time_max, 10.0f);
     n->get_parameter("~front_angle_goal", frontAngleGoal, 1.571f);
     n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
 	n->get_parameter("~goal_lookahead_time_padding", goal_lookahead_padding, 0.1f);
