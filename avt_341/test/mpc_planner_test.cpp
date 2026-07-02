@@ -119,7 +119,11 @@ void SetDefaultMPCParameters(jl_module_t* mpc_module) {
     set_float("SetSteeringAngleMax", 0.5);
     set_float("SetSteeringRateMin", -0.5);
     set_float("SetSteeringRateMax", 0.5);
-    
+    set_int("SetUseAdaptivePredictionHorizon", 0);
+    set_float("SetMinPredictionHorizonDistance", 8.0);
+    set_float("SetPredictionHorizonTimeMax", 10.0);
+    set_float("SetWPredictionHorizonAnchor", 5.0);
+
     HasJuliaException();
 }
 

@@ -411,6 +411,10 @@ void DeclareParameters()
     node->get_parameter("~tire_model", tire_model, std::string("L"));
     node->get_parameter("~num_col_points", num_col_points, 10);
     node->get_parameter("~prediction_time_horizon", prediction_time_horizon, 2.0);
+    node->get_parameter("~use_adaptive_prediction_horizon", use_adaptive_prediction_horizon, false);
+    node->get_parameter("~min_prediction_horizon_distance", min_prediction_horizon_distance, 8.0);
+    node->get_parameter("~prediction_horizon_time_max", prediction_horizon_time_max, 10.0);
+    node->get_parameter("~w_prediction_horizon_anchor", w_prediction_horizon_anchor, 5.0);
     node->get_parameter("~max_num_obs", max_num_obs, 500);
     node->get_parameter("~max_num_seg", max_num_seg, 500);
     node->get_parameter("~min_speed", min_speed, 0.5);
@@ -608,6 +612,10 @@ void InitialiseJuliaAPI()
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
     j_set_prediction_time_horizon = jl_get_function(mpc_module, "SetPredictionTimeHorizon");
+    j_set_use_adaptive_prediction_horizon = jl_get_function(mpc_module, "SetUseAdaptivePredictionHorizon");
+    j_set_min_prediction_horizon_distance = jl_get_function(mpc_module, "SetMinPredictionHorizonDistance");
+    j_set_prediction_horizon_time_max = jl_get_function(mpc_module, "SetPredictionHorizonTimeMax");
+    j_set_w_prediction_horizon_anchor = jl_get_function(mpc_module, "SetWPredictionHorizonAnchor");
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
     j_set_max_num_seg = jl_get_function(mpc_module, "SetMaxNumSeg");
     j_set_sigma = jl_get_function(mpc_module, "SetSigma");
@@ -642,6 +650,10 @@ void InitialiseJuliaAPI()
     jl_value_t *j_tire_model = jl_cstr_to_string(tire_model.c_str());
     jl_value_t *j_num_col_points = jl_box_int32(num_col_points);
     jl_value_t *j_prediction_time_horizon = jl_box_float64(prediction_time_horizon);
+    jl_value_t *j_use_adaptive_prediction_horizon = jl_box_int32(use_adaptive_prediction_horizon);
+    jl_value_t *j_min_prediction_horizon_distance = jl_box_float64(min_prediction_horizon_distance);
+    jl_value_t *j_prediction_horizon_time_max = jl_box_float64(prediction_horizon_time_max);
+    jl_value_t *j_w_prediction_horizon_anchor = jl_box_float64(w_prediction_horizon_anchor);
     jl_value_t *j_max_num_obs = jl_box_int32(max_num_obs);
     jl_value_t *j_max_num_seg = jl_box_int32(max_num_seg);
     jl_value_t *j_sigma = jl_box_float64(1.414214*grid_resolution);
@@ -677,6 +689,10 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_tire_model, j_tire_model);
     jl_call1(j_set_num_col_points, j_num_col_points);
     jl_call1(j_set_prediction_time_horizon, j_prediction_time_horizon);
+    jl_call1(j_set_use_adaptive_prediction_horizon, j_use_adaptive_prediction_horizon);
+    jl_call1(j_set_min_prediction_horizon_distance, j_min_prediction_horizon_distance);
+    jl_call1(j_set_prediction_horizon_time_max, j_prediction_horizon_time_max);
+    jl_call1(j_set_w_prediction_horizon_anchor, j_w_prediction_horizon_anchor);
     jl_call1(j_set_max_num_obs, j_max_num_obs);
     jl_call1(j_set_max_num_seg, j_max_num_seg);
     jl_call1(j_set_sigma, j_sigma);
@@ -815,6 +831,11 @@ int main(int argc, char *argv[])
     node->log_info("Number of collocation points: %d.", num_col_points);
 
     node->log_info("Prediction time horizon: %.1f.", prediction_time_horizon);
+
+    if (use_adaptive_prediction_horizon) {
+        node->log_info("Adaptive prediction horizon enabled: min distance %.1fm, tf capped at %.1fs.",
+            min_prediction_horizon_distance, prediction_horizon_time_max);
+    }
 
     node->params()->add_parameter_callback(std::vector<std::string> {
         "w_distance_to_obstacles",

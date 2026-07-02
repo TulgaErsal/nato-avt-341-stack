@@ -39,6 +39,14 @@ global new_sinkage_available = false
 global linearSolverId = "ma27"
 global goalPointIsEndOfGlobalPath = false
 
+# Adaptive prediction horizon: when enabled, the MPC final time (tf) is a free
+# design variable (bounded below at runtime by minPredictionHorizonDistance /
+# speedSetpoint) instead of the fixed predictionTimeHorizon. Off by default.
+global useAdaptivePredictionHorizon = false
+global minPredictionHorizonDistance = 8.0
+global predictionHorizonTimeMax = 10.0
+global wPredictionHorizonAnchor = 5.0
+
 global n=0
 global XL=0
 global XU=0
@@ -125,6 +133,22 @@ end
 
 function SetPredictionTimeHorizon(t_horizon::Float64)
 	global predictionTimeHorizon = t_horizon
+end
+
+function SetUseAdaptivePredictionHorizon(use_adaptive_horizon::Int32)
+	global useAdaptivePredictionHorizon = Bool(use_adaptive_horizon)
+end
+
+function SetMinPredictionHorizonDistance(min_dist::Float64)
+	global minPredictionHorizonDistance = min_dist
+end
+
+function SetPredictionHorizonTimeMax(tf_max::Float64)
+	global predictionHorizonTimeMax = tf_max
+end
+
+function SetWPredictionHorizonAnchor(w::Float64)
+	global wPredictionHorizonAnchor = w
 end
 
 function SetMaxNumObs(num_obs::Int32)
@@ -367,6 +391,18 @@ function GetObjectiveValue()
 	return n.r.ocp.objVal
 end
 
+# When useAdaptivePredictionHorizon is on, stretches the prediction horizon so it
+# covers at least minPredictionHorizonDistance meters at the given speed, never
+# below predictionTimeHorizon and never above predictionHorizonTimeMax. Off, this
+# is just predictionTimeHorizon (unchanged fixed-horizon behavior).
+function effectivePredictionHorizon(speed_for_horizon::Float64)
+	if useAdaptivePredictionHorizon
+		return clamp(minPredictionHorizonDistance / max(speed_for_horizon, 0.1), predictionTimeHorizon, predictionHorizonTimeMax)
+	else
+		return predictionTimeHorizon
+	end
+end
+
 function Setup()
 	global safetyMargin
 	global useSegmentation
@@ -441,7 +477,15 @@ function Setup()
 	end
 
 	dynamics!(n,dx);
-	configure!(n,N=numColPoints;(:integrationScheme=>:bkwEuler),(:tf=>predictionTimeHorizon));
+	if useAdaptivePredictionHorizon
+		# tf becomes a free design variable, bounded in [predictionTimeHorizon, predictionHorizonTimeMax].
+		# The lower bound is raised per-cycle in Plan() to enforce the minimum look-ahead distance.
+		n.s.ocp.tfMin = predictionTimeHorizon
+		n.s.ocp.tfMax = predictionHorizonTimeMax
+		configure!(n,N=numColPoints;(:integrationScheme=>:bkwEuler),(:finalTimeDV=>true));
+	else
+		configure!(n,N=numColPoints;(:integrationScheme=>:bkwEuler),(:tf=>predictionTimeHorizon));
+	end
 
 	x = n.r.ocp.x[:,1];y = n.r.ocp.x[:,2];sa = n.r.ocp.x[:,6];ux = n.r.ocp.x[:,7];psi = n.r.ocp.x[:,5];sr = n.r.ocp.u[:,2];jx = n.r.ocp.u[:,1]# pointers to JuMP variables
 	timeSeq = n.ocp.tV[:,1];
@@ -503,11 +547,21 @@ function Setup()
 	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
 
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
+	# When tf is a free design variable, anchor it to predictionTimeHorizon so the solver
+	# only stretches it when the per-cycle lower bound (set in Plan()) forces it to.
 	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
+		if useAdaptivePredictionHorizon
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + wPredictionHorizonAnchor*(n.ocp.tf - predictionTimeHorizon)^2)
+		else
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
+		end
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+		if useAdaptivePredictionHorizon
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + wPredictionHorizonAnchor*(n.ocp.tf - predictionTimeHorizon)^2)
+		else
+			@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+		end
 	end
 	n.s.ocp.save = false
 
@@ -616,7 +670,7 @@ function Plan()
 		if follower_status
 			# Follower mode: all formulation parameters set here; none leak out.
 			# Predict formation target at t+T using a constant yaw-rate arc.
-			T = predictionTimeHorizon
+			T = effectivePredictionHorizon(speedSetpoint)
 			if abs(leaderYawRate) > 0.001
 				pred_yaw = leaderYaw + leaderYawRate * T
 				R = cmdLeaderSpeed / leaderYawRate
@@ -678,7 +732,7 @@ function Plan()
 			end
 			# Terminal heading: activate when goal is at path end and within horizon
 			goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
-			horizon_dist = speedSetpoint * predictionTimeHorizon
+			horizon_dist = speedSetpoint * effectivePredictionHorizon(speedSetpoint)
 			terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
 			if terminal_heading_active
 				JuMP.setValue(final_heading_w_param, w_finalHeading)
@@ -701,6 +755,13 @@ function Plan()
 		end
 		for st in 1:n.ocp.state.num
 			JuMP.setRHS(n.r.ocp.x0Con[st],n.ocp.X0[st])
+		end
+
+		if useAdaptivePredictionHorizon
+			# Raise tf's lower bound so the horizon covers at least minPredictionHorizonDistance
+			# at the current speedSetpoint; the anchor cost in the objective pulls it back down
+			# to predictionTimeHorizon whenever this floor doesn't force it higher.
+			JuMP.setlowerbound(n.ocp.tf, effectivePredictionHorizon(speedSetpoint))
 		end
 
 		optimize!(n)
