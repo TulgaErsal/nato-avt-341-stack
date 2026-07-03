@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <vector>
 #include <avt_341/node/occupancy_grid_subscriber.h>
 
@@ -10,6 +11,12 @@ std::shared_ptr<avt_341::node::NodeProxy> node;
 double max_speed;
 
 double prediction_time_horizon;
+
+bool use_adaptive_prediction_horizon;
+
+double min_prediction_horizon_distance;
+
+double prediction_horizon_time_max;
 
 double axle_distance_front;
 
@@ -46,6 +53,20 @@ void callback_speed(avt_341::msg::Float64Ptr speed) {
     max_speed = speed->data;
 }
 
+// Mirrors effectivePredictionHorizon() in mpc_commands.jl: when
+// use_adaptive_prediction_horizon is on, stretches the horizon used to size the
+// segmentation-cell inclusion radius so it stays consistent with the MPC
+// planner's own (possibly stretched) prediction horizon at low speed. Off, this
+// is just prediction_time_horizon (unchanged behavior).
+double EffectivePredictionHorizon(double speed_for_horizon) {
+    if (!use_adaptive_prediction_horizon) {
+        return prediction_time_horizon;
+    }
+    const double speed = std::max(speed_for_horizon, 0.1);
+    const double floor_t = min_prediction_horizon_distance / speed;
+    return std::clamp(floor_t, prediction_time_horizon, prediction_horizon_time_max);
+}
+
 bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341::msg::Odometry& vehicle_odom) {
     if (vehicle_odom_input_stamp == last_vehicle_odom_stamp || grid.header.stamp == init_time
         || vehicle_odom_input_stamp == init_time) {
@@ -72,6 +93,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     auto right_boundary_vector = rotation_matrix * right_vector;
 
     cell_size_meters = grid.info.resolution;
+    const double prediction_horizon = (EffectivePredictionHorizon(max_speed) + 0.1) * max_speed;
     cells.clear();
     cell_markers.clear();
     int cell_number = 0;
@@ -84,7 +106,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                 avt_341::msg_tf::Vector3 cell_vector = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
 
                 // Add obstacle if it is within range of prediction time horizon driving distance or within observation region
-                if (cell_vector.length() > (prediction_time_horizon + 0.1) * max_speed
+                if (cell_vector.length() > prediction_horizon
                     || cell_vector[0] * left_boundary_vector[1] - left_boundary_vector[0] * cell_vector[1] < 0
                     ||  // Only comparing last element of cross product vector,
                         cell_vector[0] * right_boundary_vector[1] - right_boundary_vector[0] * cell_vector[1]
@@ -143,6 +165,9 @@ int main(int argc, char* argv[]) {
     // Load parameters
     node->get_parameter("~max_speed", max_speed, 10.0);
     node->get_parameter("~prediction_time_horizon", prediction_time_horizon, 2.0);
+    node->get_parameter("~use_adaptive_prediction_horizon", use_adaptive_prediction_horizon, false);
+    node->get_parameter("~min_prediction_horizon_distance", min_prediction_horizon_distance, 8.0);
+    node->get_parameter("~prediction_horizon_time_max", prediction_horizon_time_max, 10.0);
     node->get_parameter("~vehicle_axle_distance_front", axle_distance_front, 1.5521);
     node->get_parameter("~front_angle_segmentation", segmentation_angle, 0.707107);
     node->get_parameter("~obstacles_vizualize", viz, false);
