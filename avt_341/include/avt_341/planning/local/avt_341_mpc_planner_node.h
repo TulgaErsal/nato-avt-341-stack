@@ -182,6 +182,15 @@ jl_function_t* j_get_steering = NULL;
 /** @brief Pointer to the Julia function to get slope limiting flag */
 jl_function_t* j_get_slope_limited = NULL;
 
+/** @brief Pointer to the Julia function to get the last solve's status code (1 = optimal, 0 = not optimal) */
+jl_function_t* j_get_solve_status_code = NULL;
+
+/** @brief Pointer to the Julia function to get the last solve's wall-clock time [ms] */
+jl_function_t* j_get_solve_time_ms = NULL;
+
+/** @brief Pointer to the Julia function to get the tf (prediction horizon) actually used in the last solve [s] */
+jl_function_t* j_get_effective_tf = NULL;
+
 /** PARAMETER SETTERS */
 jl_function_t* j_set_tire_model = NULL;
 jl_function_t* j_set_num_col_points = NULL;

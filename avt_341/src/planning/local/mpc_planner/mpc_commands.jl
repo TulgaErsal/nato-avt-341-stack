@@ -391,6 +391,22 @@ function GetObjectiveValue()
 	return n.r.ocp.objVal
 end
 
+function GetSolveStatusCode()
+	return Int32(n.r.ocp.status == :Optimal ? 1 : 0)
+end
+
+function GetSolveTimeMs()
+	return 1000.0 * n.r.ocp.tSolve
+end
+
+function GetEffectiveTf()
+	if n.s.ocp.finalTimeDV
+		return getvalue(n.ocp.tf)
+	else
+		return convert(Float64, n.ocp.tf)
+	end
+end
+
 # When useAdaptivePredictionHorizon is on, stretches the prediction horizon so it
 # covers at least minPredictionHorizonDistance meters at the given speed, never
 # below predictionTimeHorizon and never above predictionHorizonTimeMax. Off, this
