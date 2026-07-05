@@ -30,7 +30,7 @@ class VectorField;
 /// Per-vehicle "Tracker" tab content. Subscribes to the vehicle's
 /// TrackerModuleStatus topic and shows one collapsible "Tracked <id>" sub-group
 /// per active child tracker, each with that target's state, the x/y/yaw
-/// covariance matrix and the target range/bearing. A placeholder message is
+/// covariance matrix and the target x/y/yaw pose. A placeholder message is
 /// shown while the module has no active trackers.
 ///
 /// Like the other components it subscribes using the panel's node, which the

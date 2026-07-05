@@ -22,6 +22,8 @@ find_package(avt_341_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # The binary rviz_default_plugins distribution bakes its build machine's absolute
 # Qt include path into the imported target's INTERFACE_INCLUDE_DIRECTORIES. That
@@ -115,6 +117,8 @@ ament_target_dependencies(${PROJECT_NAME}
   geometry_msgs
   nav_msgs
   std_msgs
+  tf2
+  tf2_geometry_msgs
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -188,6 +192,8 @@ ament_export_dependencies(
   geometry_msgs
   nav_msgs
   std_msgs
+  tf2
+  tf2_geometry_msgs
 )
 
 # Export RViz Plugin

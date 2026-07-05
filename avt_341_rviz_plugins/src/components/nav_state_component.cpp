@@ -1,7 +1,6 @@
 #include <avt_341_rviz_plugins/components/nav_state_component.h>
 
 #include <algorithm>
-#include <cmath>
 #include <string>
 #include <utility>
 
@@ -12,25 +11,13 @@
 #include <QVBoxLayout>
 
 #include <avt_341_msgs/msg/nav_state.hpp>
-#include <geometry_msgs/msg/quaternion.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_msgs/msg/float64.hpp>
 
 #include <avt_341_rviz_plugins/primitives/status_style.h>
 #include <avt_341_rviz_plugins/primitives/vector_field.h>
-
-namespace
-{
-
-// Yaw (rotation about +Z) extracted from a quaternion.
-double yawOf( const geometry_msgs::msg::Quaternion& q )
-{
-    return std::atan2( 2.0 * ( q.w * q.z + q.x * q.y ),
-                       1.0 - 2.0 * ( q.y * q.y + q.z * q.z ) );
-}
-
-}  // namespace
+#include <avt_341_rviz_plugins/tf_utils.h>
 
 namespace avt_341::rviz_plugins
 {

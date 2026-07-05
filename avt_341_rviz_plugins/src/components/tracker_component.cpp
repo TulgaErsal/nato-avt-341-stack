@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -23,6 +22,7 @@
 #include <avt_341_rviz_plugins/primitives/matrix_field.h>
 #include <avt_341_rviz_plugins/primitives/status_style.h>
 #include <avt_341_rviz_plugins/primitives/vector_field.h>
+#include <avt_341_rviz_plugins/tf_utils.h>
 
 namespace avt_341::rviz_plugins
 {
@@ -176,11 +176,11 @@ void TrackerComponent::updateFromMessage( const TrackerModuleStatus& msg )
         view.covariance_field->setValues(
             extractXYYawCovariance( tracker.odom_estimate.pose.covariance ) );
 
-        // Target range/bearing derived from the estimated position.
-        const auto& position = tracker.odom_estimate.pose.pose.position;
-        const double range = std::hypot( position.x, position.y );
-        const double bearing = std::atan2( position.y, position.x );
-        view.target_field->setValues( { range, bearing } );
+        // Target x/y position + yaw from the estimated pose. The yaw is read from
+        // the pose orientation quaternion, not derived from the x/y position.
+        const auto& pose = tracker.odom_estimate.pose.pose;
+        view.target_field->setValues(
+            { pose.position.x, pose.position.y, yawOf( pose.orientation ) } );
     }
 }
 
@@ -215,9 +215,10 @@ void TrackerComponent::rebuildTargets( const QStringList& ids )
         // Covariance: the x/y/yaw 3x3 sub-matrix of the estimate's pose covariance.
         view.covariance_field = new MatrixField( "Covariance", 1.0, 10.0 );
 
-        // Target: range (d) + bearing (theta).
+        // Target: x/y position + yaw (theta) of the estimated pose.
         view.target_field = new VectorField(
-            "Target", 2, { "d", theta }, { "distance", "bearing (theta)" } );
+            "Target", 3, { "x", "y", theta },
+            { "position x", "position y", "yaw (theta)" } );
 
         // Shared label width so the three rows line up (as in NavStateComponent).
         const int label_width = std::max(

@@ -2,11 +2,15 @@
 
 #include <string>
 
+#include <avt_341_msgs/msg/nav_goal.hpp>
+
 #include <rviz_common/display_context.hpp>
 #include <rviz_common/properties/float_property.hpp>
 #include <rviz_common/properties/qos_profile_property.hpp>
 #include <rviz_common/properties/string_property.hpp>
 #include <rviz_common/ros_integration/ros_node_abstraction_iface.hpp>
+
+#include <avt_341_rviz_plugins/components/topic_config.h>
 
 namespace avt_341::rviz_plugins
 {
@@ -21,8 +25,18 @@ SetNavGoalTool::SetNavGoalTool()
     // Activation shortcut ('g' is already claimed by the 2D Goal Pose tool).
     shortcut_key_ = 'n';
 
+    // The goal is published on "/<Vehicle ID>/<Topic>"; both parts are editable
+    // so a single tool can target any vehicle's waypoint endpoint.
+    vehicle_id_property_ = new StringProperty(
+        "Vehicle ID", "mrzr2",
+        "Vehicle namespace the goal is published under (the leading segment of "
+        "the topic path).",
+        getPropertyContainer(), SLOT( updateTopic() ), this );
+
     topic_property_ = new StringProperty(
-        "Topic", "nav_goal", "The topic on which to publish the NavGoal.",
+        "Topic", "avt_341/new_waypoints",
+        "Topic suffix, under the vehicle namespace, on which to publish the "
+        "NavGoalSequence.",
         getPropertyContainer(), SLOT( updateTopic() ), this );
 
     qos_profile_property_ = new QosProfileProperty( topic_property_, qos_profile_ );
@@ -57,8 +71,10 @@ void SetNavGoalTool::updateTopic()
 {
     rclcpp::Node::SharedPtr raw_node =
         context_->getRosNodeAbstraction().lock()->get_raw_node();
-    publisher_ = raw_node->create_publisher<avt_341_msgs::msg::NavGoal>(
-        topic_property_->getStdString(), qos_profile_ );
+    const std::string topic = makeTopicPath( vehicle_id_property_->getString(),
+                                             topic_property_->getString() );
+    publisher_ = raw_node->create_publisher<avt_341_msgs::msg::NavGoalSequence>(
+        topic, qos_profile_ );
     clock_ = raw_node->get_clock();
 }
 
@@ -78,7 +94,13 @@ void SetNavGoalTool::onPoseSet( double x, double y, double theta )
     logPose( "nav goal", goal.pose.position, goal.pose.orientation, theta,
              fixed_frame );
 
-    publisher_->publish( goal );
+    // Send the single placed goal as a one-element NavGoalSequence, which is what
+    // the "new_waypoints" endpoint expects.
+    avt_341_msgs::msg::NavGoalSequence sequence;
+    sequence.header = goal.header;
+    sequence.goals.push_back( goal );
+
+    publisher_->publish( sequence );
 }
 
 }
