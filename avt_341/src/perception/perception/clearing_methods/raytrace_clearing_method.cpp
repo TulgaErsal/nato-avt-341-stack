@@ -146,6 +146,10 @@ void RaytraceClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) 
 
 void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
 
+    if (x < 0 || x >= Nx_ || y < 0 || y >= Ny_) {
+        return;
+    }
+
     const float& vx_h_res = rt_config_.voxel_height_res;
     const float& vx_h_min = rt_config_.voxel_height_min;
 
