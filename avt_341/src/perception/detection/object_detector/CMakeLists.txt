@@ -1,5 +1,8 @@
 message(STATUS "Building object detector node ...")
 
+set(Torch_DIR $ENV{Torch_DIR} CACHE PATH "Path to libtorch (CPU) install")
+set(Torch_CUDA_DIR $ENV{Torch_CUDA_DIR} CACHE PATH "Path to libtorch (CUDA) install")
+
 if(GET_AVT341_DETECTION_MODELS)
   # Download the TorchScript traced models YOLOv8n CPU 640x640
   message(STATUS "Downloading YOLOv8n TorchScript CPU model ...")
