@@ -481,6 +481,11 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
     contact.is_new = false;
     contact.investigating = true;
 
+    Task* task = currentTask();
+    FormationDefinition* formation_def = task ? task->getFormationDef() : nullptr;
+
+    // Trigger investigation for ego-vehicle: approach and encircle
+    // ------------------------------------------------------------------------------------------
     node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
     auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
     investigateTask->setGoalByContact(contact);
@@ -493,6 +498,8 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
     encircleTask->is_preemptable = false;
     addTask(encircleTask, PriorityType::PREEMPT);
 
+    // Command overwatch of other vehicle in formation
+    // ------------------------------------------------------------------------------------------
     double min_dist = std::numeric_limits<double>::max();
     std::string overwatch_veh;
     for(const auto& veh_pose: veh_poses) {
@@ -506,8 +513,16 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
         }
     }
 
+    if(overwatch_veh.empty() && formation_def != nullptr) {
+        node_proxy_->log_warning("Could not find closest overwatch vehicle in pose list. Reverting to first available vehicle in formation.");
+        const auto ordered_vehicles = formation_def->orderedVehicles();
+        const auto it = std::find_if(ordered_vehicles.begin(), ordered_vehicles.end(),
+                                     [this](const std::string & veh){ return veh != my_name; });
+        overwatch_veh = (it != ordered_vehicles.end()) ? *it : std::string{};
+    }
+
     if(overwatch_veh.empty()){
-        node_proxy_->log_info("Could not find overwatch vehicle");
+        node_proxy_->log_info("No overwatch vehicle available");
     }else{
         communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
     }

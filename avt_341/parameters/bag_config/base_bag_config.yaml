@@ -79,6 +79,7 @@ gis:
   local_origin_y: 264132.3708496094
 vehicles:
   - 'mrzr'
+environment: krc
 segment_goals: [ ]
 segment_id: ''
 
