@@ -387,13 +387,6 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/segmentation_grid', 'avt_341/rms_perception/segmentation_grid'),
             ]
         ),
-        Node(
-            package='avt_341',
-            executable='avt_341_lidar_normal_estimation_node',
-            name='lidar_normal_estimation_node',
-            output='screen',
-            parameters=[{k: LaunchConfiguration(f'normal_estimation_{k}') for k in params['normal_estimation'].keys()}]
-        ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(
                 package='avt_341',
@@ -421,14 +414,6 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res')
             ]
         ),
-
-        # Static Grid
-        #Node(
-        #    package='avt_341',
-        #    executable='avt_341_geotiff_map_publisher_node',
-        #    name='static_grid_publisher_node',
-        #    parameters=[{k: LaunchConfiguration(f'static_grid_{k}') for k in params['static_grid'].keys()}]
-        #),
 
         # Speed Controller
         *evaluate_speed_controller(params, context=context, args=args, kwargs=kwargs),
