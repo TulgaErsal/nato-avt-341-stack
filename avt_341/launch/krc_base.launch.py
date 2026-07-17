@@ -8,7 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetLaunchConfiguration, ExecuteProcess
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
-from launch_ros.actions import Node, PushRosNamespace
+from launch_ros.actions import Node, PushRosNamespace, SetParameter
 from launch.actions import OpaqueFunction
 
 from launch.substitution import Substitution
@@ -332,6 +332,10 @@ def launch_setup(context, *args, **kwargs):
     # Load waypoints
     arg_list.extend(evaluate_waypoint_parameters(context=context, args=args, kwargs=kwargs))
     
+    param_overrides = ([
+        SetParameter(name="use_sim_time", value=use_sim_time)
+    ])
+
     vehicle_node_list = ([
         # Define robot namespace
         PushRosNamespace(
@@ -614,7 +618,7 @@ def launch_setup(context, *args, **kwargs):
 
     ])
     
-    return [*arg_list, *vehicle_node_list]
+    return [*arg_list, *param_overrides, *vehicle_node_list]
 
 def generate_launch_description():
     launch_arg_defaults = {
