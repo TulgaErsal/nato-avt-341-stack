@@ -24,9 +24,9 @@ PointCloudLayer::PointCloudLayer(
 	node_ref_->get_parameter("~pc_seg_channel", pc_seg_channel_, std::string("segmentation"));
 
 	pc_section_id_ = label + "/pc_callback";
-	core::SectionConfig section_config;
+	core::RunningStatsConfig section_config;
 	section_config.window_num_samples = 40;
-	section_config.warning_threshold = pc_callback_warn_dur;
+	section_config.threshold_check = pc_callback_warn_dur;
 	compute_time_recorder_->Configure(pc_section_id_, section_config);
 
     SetupGridClearingMethod();

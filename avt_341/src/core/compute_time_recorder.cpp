@@ -36,74 +36,6 @@ struct SummaryEntry {
 
 }
 
-// SectionTimeStats
-// ---------------------------------------------------------------------------------------------------------------
-
-SectionTimeStats::SectionTimeStats(const SectionConfig& config) : config_(config) {
-}
-
-void SectionTimeStats::AddSample(const double value_seconds, const double now_seconds) {
-    if (!IsWindowed()) {
-        count_++;
-        const double delta = value_seconds - mean_;
-        mean_ += delta / static_cast<double>(count_);
-        m2_ += delta * (value_seconds - mean_);
-        return;
-    }
-
-    samples_.emplace_back(now_seconds, value_seconds);
-    sum_ += value_seconds;
-    sum_sq_ += value_seconds * value_seconds;
-    Evict(now_seconds);
-}
-
-void SectionTimeStats::Evict(const double now_seconds) {
-    const auto pop_front = [this]() {
-        sum_ -= samples_.front().second;
-        sum_sq_ -= samples_.front().second * samples_.front().second;
-        samples_.pop_front();
-    };
-
-    if (config_.window_num_samples > 0) {
-        while (samples_.size() > static_cast<std::size_t>(config_.window_num_samples)) {
-            pop_front();
-        }
-    } else if (config_.window_time > 0.0) {
-        while (!samples_.empty() && now_seconds - samples_.front().first > config_.window_time) {
-            pop_front();
-        }
-    }
-}
-
-SectionStatsSnapshot SectionTimeStats::GetStats(const double now_seconds) {
-    SectionStatsSnapshot snapshot;
-
-    if (!IsWindowed()) {
-        snapshot.count = count_;
-        snapshot.mean = mean_;
-        snapshot.std_dev = count_ > 0 ? std::sqrt(m2_ / static_cast<double>(count_)) : 0.0;
-        return snapshot;
-    }
-
-    Evict(now_seconds);
-    snapshot.count = samples_.size();
-    if (snapshot.count > 0) {
-        const auto n = static_cast<double>(snapshot.count);
-        snapshot.mean = sum_ / n;
-        // Clamp guards against small negative values from floating point rounding
-        snapshot.std_dev = std::sqrt(std::max(0.0, sum_sq_ / n - snapshot.mean * snapshot.mean));
-    }
-    return snapshot;
-}
-
-bool SectionTimeStats::ShouldLogWarning(const double now_seconds) {
-    if (now_seconds - last_warning_seconds_ < kWarningLogPeriod) {
-        return false;
-    }
-    last_warning_seconds_ = now_seconds;
-    return true;
-}
-
 // ScopedRecording
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -134,9 +66,9 @@ ComputeTimeRecorder::ComputeTimeRecorder(const std::shared_ptr<node::NodeProxy>&
     pub_ = node_->create_publisher<msg::ComputeTimeArray>(COMPUTE_TIMES_TOPIC, 10);
 }
 
-void ComputeTimeRecorder::Configure(const std::string& section_id, const SectionConfig& config) {
+void ComputeTimeRecorder::Configure(const std::string& section_id, const RunningStatsConfig& config) {
     std::lock_guard<std::mutex> lock(mutex_);
-    sections_.insert_or_assign(section_id, SectionTimeStats(config));
+    sections_.insert_or_assign(section_id, RunningStats(config));
 }
 
 ScopedRecording ComputeTimeRecorder::RecordScope(const std::string& section_id) {
@@ -169,22 +101,23 @@ void ComputeTimeRecorder::Stop(const std::string& section_id) {
 void ComputeTimeRecorder::AddSample(const std::string& section_id, const double duration_seconds) {
     std::lock_guard<std::mutex> lock(mutex_);
     const double now_seconds = NowSeconds();
-    SectionTimeStats& stats = sections_.try_emplace(section_id).first->second;
+    RunningStats& stats = sections_.try_emplace(section_id).first->second;
     stats.AddSample(duration_seconds, now_seconds);
 
-    const double warning_threshold = stats.GetConfig().warning_threshold;
-    if (warning_threshold <= 0.0) {
+    const RunningStatsConfig& config = stats.GetConfig();
+    if (config.threshold_check <= 0.0) {
         return;
     }
 
-    const SectionStatsSnapshot snapshot = stats.GetStats(now_seconds);
-    if (snapshot.mean > warning_threshold && stats.ShouldLogWarning(now_seconds)) {
-        node_->log_warning("%s took %.2f ms (> %.2f ms warning threshold).",
-            section_id.c_str(), snapshot.mean * 1e3, warning_threshold * 1e3);
+    const StatsSnapshot snapshot = stats.GetStats(now_seconds);
+    if (config.IsThresholdMet(snapshot.mean) && stats.ShouldLogWarning(now_seconds)) {
+        node_->log_warning("%s took %.2f ms (%s %.2f ms warning threshold).",
+            section_id.c_str(), snapshot.mean * 1e3,
+            config.threshold_greater_than ? ">" : "<", config.threshold_check * 1e3);
     }
 }
 
-std::optional<SectionStatsSnapshot> ComputeTimeRecorder::GetStats(const std::string& section_id) {
+std::optional<StatsSnapshot> ComputeTimeRecorder::GetStats(const std::string& section_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     const auto it = sections_.find(section_id);
     if (it == sections_.end()) {
@@ -206,7 +139,7 @@ void ComputeTimeRecorder::PublishSummary() {
         // Sections with direct samples
         std::map<std::string, SummaryEntry> entries;
         for (auto& [section_id, stats] : sections_) {
-            const SectionStatsSnapshot snapshot = stats.GetStats(now_seconds);
+            const StatsSnapshot snapshot = stats.GetStats(now_seconds);
             if (snapshot.count == 0) {
                 continue;
             }
@@ -215,7 +148,7 @@ void ComputeTimeRecorder::PublishSummary() {
             entry.variance = snapshot.std_dev * snapshot.std_dev;
             entry.window_num_samples = stats.GetConfig().window_num_samples;
             entry.window_time = stats.GetConfig().window_time;
-            entry.warning_threshold = stats.GetConfig().warning_threshold;
+            entry.warning_threshold = stats.GetConfig().threshold_check;
             entries.emplace(section_id, entry);
         }
 
