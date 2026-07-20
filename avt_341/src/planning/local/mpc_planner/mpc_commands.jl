@@ -186,6 +186,10 @@ function SetSafetyMargin(marigin::Float64)
 	global safetyMargin = marigin
 end
 
+function SetObstacleCostSpeedFloor(floor::Float64)
+	global obstacleCostSpeedFloor = floor
+end
+
 function SetGridResolution(res::Float64)
 	global grid_resolution = res
 end
@@ -385,6 +389,7 @@ end
 
 function Setup()
 	global safetyMargin
+	global obstacleCostSpeedFloor
 	global useSegmentation
 	global maxNumSeg
 	global maxNumObs
@@ -497,8 +502,7 @@ function Setup()
 		-sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts)
 	)
 	
-	obstacleCostSpeedFloor = 1.5 # m/s
-	speedFloorEps = 0.05         # m/s
+	speedFloorEps = 0.05 # m/s
 	@NLexpression(n.ocp.mdl, obsBumpSum[j=2:n.ocp.state.pts],
 		sum(exp(-((x[j] - Xobs_0[i])^2 + (y[j] - Yobs_0[i])^2) / (obs_r[i] + safetyMargin)^2) for i=1:maxNumObs))
 	distanceToObstacles = @NLexpression(n.ocp.mdl,

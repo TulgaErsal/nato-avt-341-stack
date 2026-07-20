@@ -440,6 +440,7 @@ void DeclareParameters()
     node->get_parameter("~w_traversability_cost", w_traversability_cost, 0.1);
     node->get_parameter("~w_final_speed", w_final_speed, 200.0);
     node->get_parameter("~safety_margin", safety_margin, 0.0);
+    node->get_parameter("~obstacle_cost_speed_floor", obstacle_cost_speed_floor, 1.5);
     node->get_parameter("~grid_resolution", grid_resolution, 0.25);
     node->get_parameter("~front_angle_goal", front_angle_goal, 1.571);
     node->get_parameter("~front_angle_obstacle", front_angle_obstacle, 1.571);
@@ -639,6 +640,7 @@ void InitialiseJuliaAPI()
     j_set_w_yaw_accel = jl_get_function(mpc_module, "SetWYawAccel");
     j_set_w_traversability_cost = jl_get_function(mpc_module, "SetWTraversabilityCost");
     j_set_safety_margin = jl_get_function(mpc_module, "SetSafetyMargin");
+    j_set_obstacle_cost_speed_floor = jl_get_function(mpc_module, "SetObstacleCostSpeedFloor");
     j_set_grid_resolution = jl_get_function(mpc_module, "SetGridResolution");
     j_set_front_angle_goal = jl_get_function(mpc_module, "SetFrontAngleGoal");
     j_set_front_angle_obstacle = jl_get_function(mpc_module, "SetFrontAngleObstacle");
@@ -673,6 +675,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_w_yaw_accel = jl_box_float64(w_yaw_accel);
     jl_value_t *j_w_traversability_cost = jl_box_float64(w_traversability_cost);
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
+    jl_value_t *j_obstacle_cost_speed_floor = jl_box_float64(obstacle_cost_speed_floor);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
     jl_value_t *j_w_final_speed = jl_box_float64(w_final_speed);
     jl_value_t *j_w_final_heading = jl_box_float64(w_final_heading);
@@ -708,6 +711,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_yaw_accel, j_w_yaw_accel);
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
+    jl_call1(j_set_obstacle_cost_speed_floor, j_obstacle_cost_speed_floor);
     jl_call1(j_set_w_final_speed, j_w_final_speed);
     jl_call1(j_set_w_final_heading, j_w_final_heading);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
