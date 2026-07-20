@@ -19,7 +19,7 @@ use_segmentation: False
 segmentation_resolution: 1.0
 linear_solver: "ma27" # See https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_linear_solver for list of linear solvers. Recommended: 'ma27'. Default: 'mumps'
 
-w_distance_to_obstacles: 50. # weight on distanceToObstacles in the objective function
+w_distance_to_obstacles: 100. # weight on distanceToObstacles in the objective function
 w_distance_to_goal: 150. # weight on distanceToGoal in the objective function
 w_deviation_in_yaw: 1. # weight on deviationInYaw in the objective function
 w_yaw_accel: 0.8 #  weight on yawAccel in the objective function
@@ -27,7 +27,7 @@ w_traversability_cost: 0.1  #weight on traversability cost in the objective func
 w_final_speed: 200. # weight on deviationFromDesiredFinalSpeed in the objective function
 w_final_heading: 100. # weight on the terminal heading cost; active only near the end of the global path
 
-safety_margin: 0.0 # safety margin [m] around obstacles
+safety_margin: 0.6 # safety margin [m] around obstacles
 grid_resolution: 0.25 # resolution of the occupancy grid [m]
 
 always_publish_goal: False # always publish goal (overrides front_angle_goal)

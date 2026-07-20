@@ -367,6 +367,22 @@ function GetObjectiveValue()
 	return n.r.ocp.objVal
 end
 
+function GetSolveStatusCode()
+	return Int32(n.r.ocp.status == :Optimal ? 1 : 0)
+end
+
+function GetSolveTimeMs()
+	return 1000.0 * n.r.ocp.tSolve
+end
+
+function GetEffectiveTf()
+	if n.s.ocp.finalTimeDV
+		return getvalue(n.ocp.tf)
+	else
+		return convert(Float64, n.ocp.tf)
+	end
+end
+
 function Setup()
 	global safetyMargin
 	global useSegmentation
@@ -481,7 +497,25 @@ function Setup()
 		-sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts)
 	)
 	
-	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((ux[j] / maxSpeed) * (exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2))) for i=1:maxNumObs for j=2:n.ocp.state.pts))
+	obstacleCostSpeedFloor = 1.5 # m/s
+	speedFloorEps = 0.05         # m/s
+	sideAvoidanceCoeff = 0.1     # flat weight for the "beside" (non-ahead) share
+	alignPower = 2.0   # sharpness of the ahead/beside cutoff
+	distEps = 0.25     # m^2, keeps the alignment ratio well-defined as dist->0
+	@NLexpression(n.ocp.mdl, obsBumpSum[j=2:n.ocp.state.pts],
+		sum(exp(-((x[j] - Xobs_0[i])^2 + (y[j] - Yobs_0[i])^2) / (obs_r[i] + safetyMargin)^2) for i=1:maxNumObs))
+	@NLexpression(n.ocp.mdl, obsBumpSumAhead[j=2:n.ocp.state.pts],
+		sum(exp(-((x[j] - Xobs_0[i])^2 + (y[j] - Yobs_0[i])^2) / (obs_r[i] + safetyMargin)^2)
+			* (((1.0 + ((Xobs_0[i]-x[j])*cos(psi[j]) + (Yobs_0[i]-y[j])*sin(psi[j])) /
+				 sqrt((Xobs_0[i]-x[j])^2 + (Yobs_0[i]-y[j])^2 + distEps)) / 2.0)^alignPower)
+			for i=1:maxNumObs))
+	@NLexpression(n.ocp.mdl, obsBumpSumBeside[j=2:n.ocp.state.pts], obsBumpSum[j] - obsBumpSumAhead[j])
+	aheadPenalty = @NLexpression(n.ocp.mdl,
+		sum((obstacleCostSpeedFloor + ((ux[j] - obstacleCostSpeedFloor) + sqrt((ux[j] - obstacleCostSpeedFloor)^2 + speedFloorEps^2)) / 2.0) / maxSpeed
+			* (1.0 - exp(-obsBumpSumAhead[j])) for j=2:n.ocp.state.pts))
+	sidePenalty = @NLexpression(n.ocp.mdl,
+		sum(sideAvoidanceCoeff * (1.0 - exp(-obsBumpSumBeside[j])) for j=2:n.ocp.state.pts))
+	distanceToObstacles = @NLexpression(n.ocp.mdl, aheadPenalty + sidePenalty)
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))

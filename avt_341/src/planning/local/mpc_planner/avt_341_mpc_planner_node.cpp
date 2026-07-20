@@ -393,6 +393,21 @@ avt_341::msg::Bool GetSlopeLimited()
     return slope_limited_msg;
 }
 
+avt_341::msg::Float64MultiArray GetMPCSolveDiagnostics()
+{
+    int32_t status_code = jl_unbox_int32(jl_call0(j_get_solve_status_code));
+    double solve_time_ms = jl_unbox_float64(jl_call0(j_get_solve_time_ms));
+    double effective_tf = jl_unbox_float64(jl_call0(j_get_effective_tf));
+    CATCH_JULIA_EXCEPTION;
+
+    avt_341::msg::Float64MultiArray diag_msg;
+    diag_msg.data.resize(3);
+    diag_msg.data[0] = static_cast<double>(status_code);
+    diag_msg.data[1] = solve_time_ms;
+    diag_msg.data[2] = effective_tf;
+    return diag_msg;
+}
+
 bool NewInputAvailable() {
     return recv_veh_input;
 }
@@ -595,6 +610,9 @@ void InitialiseJuliaAPI()
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
     j_get_heading = jl_get_function(mpc_module, "GetHeading");
     j_get_slope_limited = jl_get_function(mpc_module, "GetSlopeLimited");
+    j_get_solve_status_code = jl_get_function(mpc_module, "GetSolveStatusCode");
+    j_get_solve_time_ms = jl_get_function(mpc_module, "GetSolveTimeMs");
+    j_get_effective_tf = jl_get_function(mpc_module, "GetEffectiveTf");
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
@@ -804,6 +822,7 @@ int main(int argc, char *argv[])
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
     auto slope_limited_pub = node->create_publisher<avt_341::msg::Bool>("avt_341/mpc_slope_limited", 1);
+    auto solve_diagnostics_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_solve_diagnostics", 1);
     if (visualize_culled_obstacles) {
         culled_obs_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/culled_obstacle_markers", 1);
     }
@@ -852,6 +871,7 @@ int main(int argc, char *argv[])
             drive_pub->publish(GetMPCDrive());
 	        heading_pub->publish(GetMPCHeading());
             slope_limited_pub->publish(GetSlopeLimited());
+            solve_diagnostics_pub->publish(GetMPCSolveDiagnostics());
         }
 
         if(reset_called && is_initialized) {
