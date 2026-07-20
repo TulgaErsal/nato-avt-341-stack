@@ -34,9 +34,9 @@ from std_msgs.msg import Header, Float64
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist, Vector3
 from nav_msgs.msg import Odometry
 
-from avt_341_msgs.msg import (MapMarker, MapMarkerList, MissionTaskStatus,
-                              NavGoal, NavGoalSequence, NavState, TrackerStatus,
-                              TrackerModuleStatus)
+from avt_341_msgs.msg import (MapMarker, MapMarkerList, MissionModuleStatus,
+                              MissionTaskStatus, NavGoal, NavGoalSequence,
+                              NavState, TrackerStatus, TrackerModuleStatus)
 
 # Vehicles to publish for. Every topic is published once per vehicle, namespaced
 # as ``/<vehicle_id>/<topic>``.
@@ -150,6 +150,11 @@ class MockUiDataPublisher(Node):
                       MockUiDataPublisher._make_desired_speed),
             TopicSpec("avt_341/task_status", MissionTaskStatus, 0.2,
                       MockUiDataPublisher._make_task_status),
+            # Task changes are latched (transient-local) so a late-joining panel
+            # still receives the current active/queued task set.
+            TopicSpec("avt_341/task_change", MissionModuleStatus, 0.1,
+                      MockUiDataPublisher._make_mission_module_status,
+                      qos=LATCHED_QOS),
             TopicSpec("avt_341/state", NavState, 10.0,
                       MockUiDataPublisher._make_nav_state),
             TopicSpec("avt_341/tracker/state", TrackerModuleStatus, 10.0,
@@ -162,7 +167,7 @@ class MockUiDataPublisher(Node):
             # receives the most recent sample.
             TopicSpec("avt_341/map_marker", MapMarker, 0.1,
                       MockUiDataPublisher._make_map_marker, qos=LATCHED_QOS),
-            TopicSpec("/avt_341/map_markers_changed", MapMarkerList, 0.1,
+            TopicSpec("/avt_341/map_markers_change", MapMarkerList, 0.1,
                       MockUiDataPublisher._make_map_marker_list, qos=LATCHED_QOS),
         ]
 
@@ -236,6 +241,16 @@ class MockUiDataPublisher(Node):
         # A random subset of the other vehicles participate in the formation.
         msg.formation_vehicles = random.sample(others,
                                                random.randint(0, len(others)))
+        return msg
+
+    def _make_mission_module_status(self, vehicle_id: str) -> MissionModuleStatus:
+        """Module status: the active task plus 0-4 queued task descriptions."""
+        msg = MissionModuleStatus()
+        msg.active_task = self._make_task_status(vehicle_id)
+        msg.header = msg.active_task.header
+        queue_pool = ["Move to goal", "Form wedge", "Encircle target",
+                      "Follow leader", "Overwatch", "Wait for completion"]
+        msg.queued_tasks = random.sample(queue_pool, random.randint(0, 4))
         return msg
 
     def _make_nav_state(self, vehicle_id: str) -> NavState:

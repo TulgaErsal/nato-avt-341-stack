@@ -95,7 +95,6 @@ class MissionManager{
 
     // Task management
     void updateTasks();
-    void postUpdateTasks();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(const avt_341::msg::Path& path);
     void publishGoal(const msg::NavGoal & goal_in);
@@ -119,6 +118,8 @@ class MissionManager{
     double getSpeedSetpoint();
 
   private:
+
+    void publishTaskChange();
 
     const FormationParameters & formation_params;
     const ToiParameters & toi_params_;
@@ -145,7 +146,7 @@ class MissionManager{
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> leader_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionTaskStatus>> task_status_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionTaskStatus>> task_change_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionModuleStatus>> task_change_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MapMarkerList>> map_markers_pub = nullptr;
 
     // Methods

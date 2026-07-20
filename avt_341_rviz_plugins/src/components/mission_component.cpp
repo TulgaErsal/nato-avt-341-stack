@@ -3,9 +3,13 @@
 #include <string>
 #include <utility>
 
+#include <QAbstractScrollArea>
 #include <QFormLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QStringList>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 
 namespace
 {
@@ -41,6 +45,24 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     task_description_value_->setWordWrap( true );
     formation_vehicles_value_->setWordWrap( true );
 
+    // Queued tasks go in a read-only single-column table (same style as the
+    // ComputeComponent status grid): descriptions can be long, so cells give
+    // word wrap, per-row heights and scrolling for free. The vertical header
+    // stays visible as the 1-based queue position; the column header is hidden
+    // because the "Queued Tasks:" label above the table already titles it.
+    queued_tasks_table_ = new QTableWidget( 0, 1 );
+    queued_tasks_table_->horizontalHeader()->setVisible( false );
+    queued_tasks_table_->setEditTriggers( QAbstractItemView::NoEditTriggers );
+    queued_tasks_table_->setSelectionMode( QAbstractItemView::NoSelection );
+    queued_tasks_table_->setFocusPolicy( Qt::NoFocus );
+    queued_tasks_table_->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::Stretch );
+    // Row heights track their (word-wrapped) content.
+    queued_tasks_table_->setWordWrap( true );
+    queued_tasks_table_->verticalHeader()->setSectionResizeMode( QHeaderView::ResizeToContents );
+
+    // Keep the table tight to its rows; it already sits inside a scroll area.
+    queued_tasks_table_->setSizeAdjustPolicy( QAbstractScrollArea::AdjustToContents );
+
     // QFormLayout renders each row as "<Label>: <Value>" with the labels in a
     // shared, right-aligned column so the values line up. No extra margins so the
     // rows are not double-indented inside the surrounding group box.
@@ -52,6 +74,13 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     layout->addRow( "Tracked Vehicle:", tracked_vehicle_value_ );
     layout->addRow( "Formation Type:", formation_type_value_ );
     layout->addRow( "Formation Vehicles:", formation_vehicles_value_ );
+    // The queued-tasks label and table each span the full width (no field
+    // indent): long descriptions need the label column's width too. The label
+    // sits left-aligned on its own row above the table.
+    QLabel* queued_tasks_label = new QLabel( "Queued Tasks:" );
+    queued_tasks_label->setAlignment( Qt::AlignLeft );
+    layout->addRow( queued_tasks_label );
+    layout->addRow( queued_tasks_table_ );
     setLayout( layout );
 
     // Subscribe to this vehicle's task status. The panel spins the node on the UI
@@ -66,6 +95,21 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
             {
                 updateFromMessage( *msg );
             } );
+
+        // The module status is only published on task changes, so use a latched
+        // (transient-local) QoS matching the publisher: a queue published before
+        // this component was created is still delivered on join.
+        const rclcpp::QoS latched_qos =
+            rclcpp::QoS( rclcpp::KeepLast( 1 ) ).reliable().transient_local();
+        const std::string task_change_topic =
+            makeTopicPath( vehicle_id_, topics_.task_change );
+        task_change_subscription_ =
+            node_->create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
+                task_change_topic, latched_qos,
+                [this]( avt_341_msgs::msg::MissionModuleStatus::ConstSharedPtr msg )
+                {
+                    updateQueuedTasks( *msg );
+                } );
     }
 }
 
@@ -87,6 +131,17 @@ void MissionComponent::updateFromMessage( const avt_341_msgs::msg::MissionTaskSt
         vehicles << QString::fromStdString( vehicle );
     }
     formation_vehicles_value_->setText( valueOrDash( vehicles.join( ", " ) ) );
+}
+
+void MissionComponent::updateQueuedTasks( const avt_341_msgs::msg::MissionModuleStatus& msg )
+{
+    queued_tasks_table_->setRowCount( static_cast<int>( msg.queued_tasks.size() ) );
+    for ( int row = 0; row < static_cast<int>( msg.queued_tasks.size() ); ++row )
+    {
+        queued_tasks_table_->setItem(
+            row, 0,
+            new QTableWidgetItem( QString::fromStdString( msg.queued_tasks[row] ) ) );
+    }
 }
 
 }

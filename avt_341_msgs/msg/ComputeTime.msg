@@ -16,9 +16,9 @@ int32 window_num_samples -1
 # If value > 0, only use samples over last window_time seconds when calculating compute time statistics
 float32 window_time -1
 
+# If value > 0, prints warning if compute time exceeds this threshold
+float32 warning_threshold -1
+
 # If true, parent node stats are automatically calculated from child node stats.
 # window_num_samples and window_time ignored in this case and uses smallest positive value of child elements.
 bool auto_parent_stats true
-
-# Compute time children of this node.
-ComputeTime[] children

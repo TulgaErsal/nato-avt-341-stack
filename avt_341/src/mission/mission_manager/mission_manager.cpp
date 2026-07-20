@@ -37,8 +37,8 @@ MissionManager::MissionManager(
     follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
     leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
     task_status_pub = node_proxy_->create_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_status", 10);
-    task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_change");
-    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("/avt_341/map_markers_changed");
+    task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionModuleStatus>("avt_341/task_change");
+    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("/avt_341/map_markers_change");
 }
 
 MissionManager::~MissionManager() {
@@ -345,6 +345,23 @@ void MissionManager::publishTaskCompletion(const std::string & sender_name, int 
   communication_pub->publish(TaskCompleteMsg(sender_name, -1, sender_name, msg_id).toROSMsg());
 }
 
+void MissionManager::publishTaskChange() {
+    avt_341_msgs::msg::MissionModuleStatus status_msg;
+    const Task* active_task = currentTask();
+    status_msg.active_task = createTaskStatusMsg(active_task);
+    status_msg.header = status_msg.active_task.header;
+
+    if (!task_list.empty()) {
+        status_msg.queued_tasks.reserve(task_list.size() - 1);
+        for (auto it = std::next(task_list.begin()); it != task_list.end(); ++it) {
+            status_msg.queued_tasks.push_back((*it)->description());
+        }
+    }
+
+    task_change_pub->publish(status_msg);
+}
+
+
 void MissionManager::updateTasks() {
     Task* active_task = currentTask();
     if(active_task != nullptr) {
@@ -354,7 +371,7 @@ void MissionManager::updateTasks() {
           active_task->init();
           goal_filter_->Reset();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
-          task_change_pub->publish(createTaskStatusMsg(active_task));
+          publishTaskChange();
         }
 
         active_task->run();
@@ -364,15 +381,13 @@ void MissionManager::updateTasks() {
           publishTaskCompletion(active_task);
           task_list.pop_front();
           delete active_task;
+          publishTaskChange();
         }
     }
 }
 
 Task* MissionManager::currentTask(){
   return task_list.empty() ? nullptr : task_list.front();
-}
-
-void MissionManager::postUpdateTasks() {
 }
 
 // Contact Management

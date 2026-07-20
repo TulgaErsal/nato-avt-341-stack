@@ -28,6 +28,7 @@ struct TopicConfig
     QString cmd_vel       = "avt_341/cmd_vel";
     QString desired_speed = "avt_341/desired_speed";
     QString task_status   = "avt_341/task_status";
+    QString task_change   = "avt_341/task_change";
     QString tracker_state = "avt_341/tracker/state";
 };
 
@@ -56,6 +57,7 @@ inline const std::vector<TopicDescriptor>& topicDescriptors()
         { TopicGroup::NavState, "Command Velocity", &TopicConfig::cmd_vel },
         { TopicGroup::NavState, "Desired Speed",    &TopicConfig::desired_speed },
         { TopicGroup::Mission,  "Task Status",      &TopicConfig::task_status },
+        { TopicGroup::Mission,  "Task Change",      &TopicConfig::task_change },
         { TopicGroup::Tracker,  "Tracker State",    &TopicConfig::tracker_state },
     };
     return descriptors;

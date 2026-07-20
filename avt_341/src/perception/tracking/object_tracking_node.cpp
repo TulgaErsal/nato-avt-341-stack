@@ -113,9 +113,9 @@ void ObjectTrackingNode::CreateSubscriptions() {
 
     if (settings_.target_selection.use_mission_manager) {
         task_status_subscription_ =
-            create_subscription<avt_341_msgs::msg::MissionTaskStatus>(
+            create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
                 "task", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-                std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
+                std::bind(&ObjectTrackingNode::TaskChangedCallback, this,
                         std::placeholders::_1));
     }
 
@@ -584,9 +584,9 @@ void ObjectTrackingNode::PublishImage() {
     image_publisher_->publish(*cv_image.toImageMsg());
 }
 
-void ObjectTrackingNode::TaskStatusCallback(
-    avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message) {
-    const std::string& target_class = task_status_message->tracked_vehicle;
+void ObjectTrackingNode::TaskChangedCallback(
+    avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_status_message) {
+    const std::string& target_class = task_status_message->active_task.tracked_vehicle;
 
     if (target_class.empty()) {
         // No follow target assigned (e.g. the ego-vehicle is the formation

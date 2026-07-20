@@ -63,7 +63,7 @@ SetFormationTool::SetFormationTool()
         markers_group, SLOT( updateMarkerSubscriptions() ), this );
 
     marker_list_topic_property_ = new StringProperty(
-        "MapMarkerList Topic", "/avt_341/map_markers_changed",
+        "MapMarkerList Topic", "/avt_341/map_markers_change",
         "Topic of avt_341_msgs/MapMarkerList messages to match clicks against.",
         markers_group, SLOT( updateMarkerSubscriptions() ), this );
 

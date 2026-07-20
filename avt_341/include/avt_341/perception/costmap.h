@@ -11,6 +11,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap_dtos.h"
+#include "avt_341/core/compute_time_recorder.hpp"
 #include "avt_341/core/grid_components.h"
 #include "layers/costmap_layer.h"
 #include <deque>
@@ -38,6 +39,7 @@ public:
 	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation, std::string target_layer = "") const;
 	void Reset() const;
 	void Visualize() const;
+	void PublishComputeTimes() const;
 
 	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
@@ -67,6 +69,8 @@ private:
 	msg::Odometry current_odom_;
 
 	std::shared_ptr<node::NodeProxy> node_ref_;
+
+	std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
 
 	node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
 

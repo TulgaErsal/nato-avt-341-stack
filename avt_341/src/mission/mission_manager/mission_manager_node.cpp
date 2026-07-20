@@ -401,9 +401,6 @@ int main(int argc, char **argv) {
         // update tasks
         mgr->updateTasks();
 
-        // post-update tasks
-        mgr->postUpdateTasks();
-
         // Publish mission task status
         mgr->publishTaskStatus();
         // TODO: Can remove lead status and follower status messages. Use single MissionTaskStatus message.

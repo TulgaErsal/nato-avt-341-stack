@@ -8,4 +8,4 @@ std_msgs/Header header
 string tag
 
 # Compute times payload
-ComputeTime[] compute_times
+avt_341_msgs/ComputeTime[] compute_times

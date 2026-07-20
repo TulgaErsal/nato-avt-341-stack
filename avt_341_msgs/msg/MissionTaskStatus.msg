@@ -1,3 +1,5 @@
+# Status information for currently running mission task
+
 # Stamped header for the message.
 std_msgs/Header header
 

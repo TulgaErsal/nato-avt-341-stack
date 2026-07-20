@@ -145,6 +145,10 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
 	n->get_parameter("~layer_combination_method", layer_combination_method, std::string("last"));
 
+	// Period for publishing layer compute time summaries, <= 0 disables
+	double compute_time_publish_period;
+	n->get_parameter("~compute_time_publish_period", compute_time_publish_period, 1.0);
+
 	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
 	n->get_parameter("~publish_layers", publish_layers_param, std::string());
 	std::vector<std::string> publish_layers = avt_341::utils::SplitByDelimiter(publish_layers_param, ',');
@@ -213,10 +217,16 @@ int main(int argc, char* argv[]) {
 	start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(perception_rate);
 	int nloops = 0;
+	double last_compute_time_pub = 0.0;
 
 	while (avt_341::node::ok()) {
 
 		const double now_seconds = n->get_now_seconds();
+
+		if (compute_time_publish_period > 0.0 && now_seconds - last_compute_time_pub >= compute_time_publish_period) {
+			last_compute_time_pub = now_seconds;
+			grid.PublishComputeTimes();
+		}
 
 		if (grid.HasOdomData() && (now_seconds - start_time) > warmup_time) {
 

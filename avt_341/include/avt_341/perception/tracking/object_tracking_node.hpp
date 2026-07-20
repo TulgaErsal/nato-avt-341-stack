@@ -98,7 +98,7 @@
 #include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
 #include <avt_341/perception/tracking/object_tracker.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
-#include <avt_341_msgs/msg/mission_task_status.hpp>
+#include <avt_341_msgs/msg/mission_module_status.hpp>
 #include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
 
@@ -271,17 +271,17 @@ class ObjectTrackingNode : public rclcpp::Node {
     // -------------------------------------------------------------------------
 
     /** @brief Mission tasks status subscription. */
-    rclcpp::Subscription<avt_341_msgs::msg::MissionTaskStatus>::SharedPtr
+    rclcpp::Subscription<avt_341_msgs::msg::MissionModuleStatus>::SharedPtr
         task_status_subscription_;
 
     /**
      * @brief Mission task status subscription callback. A non-empty tracked
      * vehicle adds or re-targets a tracker without disturbing the others.
      *
-     * @param task_status_message ROS avt_341_msgs/MissionTaskStatus message.
+     * @param task_status_message ROS avt_341_msgs/MissionModuleStatus message.
      */
-    void TaskStatusCallback(
-        avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message);
+    void TaskChangedCallback(
+        avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_status_message);
 
     // Reset handling
     // -------------------------------------------------------------------------

@@ -247,7 +247,7 @@ log_topics:
   - name: '{vehicles}_task_id'
     topic: '/{vehicles}/avt_341/task_change'
     field: 'task_id'
-    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    type: 'avt_341_msgs/msg/MissionModuleStatus'
     units: ''
 
   # Communication Messages

@@ -121,7 +121,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
           "src/node/params_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
           "src/core/grid_components.cpp"
-          "src/core/monitoring.cpp"
+          "src/core/compute_time_recorder.cpp"
           "src/core/coord_transform.cpp"
   )
 

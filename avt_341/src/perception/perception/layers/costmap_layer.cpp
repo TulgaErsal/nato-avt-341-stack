@@ -7,9 +7,11 @@ namespace avt_341::perception
 CostmapLayer::CostmapLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
     const CostmapSettings& cm_settings,
-    const std::string& label
+    const std::string& label,
+    const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
     )
-    : node_ref_(node_ref), size_info_(cm_settings.size_info), thresholds_(cm_settings.thresholds), dilation_(cm_settings.dilation), label_(label)
+    : node_ref_(node_ref), compute_time_recorder_(compute_time_recorder), size_info_(cm_settings.size_info),
+    thresholds_(cm_settings.thresholds), dilation_(cm_settings.dilation), label_(label)
 {
     node_ref_->get_parameter("~" + label_ + "_contribute_occupancy", contribute_occupancy_, true);
     node_ref_->get_parameter("~" + label_ + "_contribute_segmentation", contribute_segmentation_, true);

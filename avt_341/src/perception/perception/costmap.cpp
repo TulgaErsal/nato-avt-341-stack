@@ -12,15 +12,17 @@ Costmap::Costmap(
 	const CostmapSettings& settings,
 	const std::string& layer_cmb_method
 	)
-	: node_ref_(node_ref), size_info_(settings.size_info), thresholds_(settings.thresholds),
+	: node_ref_(node_ref),
+	compute_time_recorder_(std::make_shared<core::ComputeTimeRecorder>(node_ref, core::ComputeTimeRecorder::MakeNodeTag(node_ref))),
+	size_info_(settings.size_info), thresholds_(settings.thresholds),
 	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms), layer_cmb_method_(layer_cmb_method)
 {
 	// TODO: Should create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
-		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
-		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
-		std::make_shared<CameraLayer>(node_ref, settings, "camera_layer"),
-		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer"),
+		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer", compute_time_recorder_),
+		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer", compute_time_recorder_),
+		std::make_shared<CameraLayer>(node_ref, settings, "camera_layer", compute_time_recorder_),
+		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer", compute_time_recorder_),
 	};
 
 	layers_.clear();
@@ -71,6 +73,11 @@ void Costmap::Visualize() const
 	for (const auto & layer : layers_) {
 		layer->Visualize();
 	}
+}
+
+void Costmap::PublishComputeTimes() const
+{
+	compute_time_recorder_->PublishSummary();
 }
 
 std::vector<std::shared_ptr<CostmapLayer>> Costmap::GetTargetLayers(const std::string& target_layer, bool is_segmentation) const {
