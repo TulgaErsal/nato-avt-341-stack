@@ -13,13 +13,17 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QFont>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QTabWidget>
 #include <QTimer>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
 #include <QVBoxLayout>
 
 #include <rclcpp/generic_subscription.hpp>
@@ -36,12 +40,23 @@ namespace
 constexpr int kMeasurementWindowMs = 1000;
 
 // Status table column layout.
-enum Column
+enum TopicColumn
 {
     kTopicColumn = 0,
     kRateColumn = 1,
     kExpectedColumn = 2,
     kColumnCount = 3
+};
+
+// Code-section tree column layout.
+enum CodeSectionColumn
+{
+    kSectionColumn = 0,
+    kMeanColumn = 1,
+    kStdDevColumn = 2,
+    kWindowColumn = 3,
+    kWarningColumn = 4,
+    kCodeSectionColumnCount = 5
 };
 
 // Shown in the "Rate" column before a topic has a publisher to measure.
@@ -54,6 +69,74 @@ const QColor kAlertForeground( Qt::white );
 QString formatHz( double hz )
 {
     return QString::number( hz, 'f', 1 ) + " Hz";
+}
+
+QString compactNumber( double value )
+{
+    QString text = QString::number( value, 'f', 2 );
+    while ( text.endsWith( '0' ) )
+    {
+        text.chop( 1 );
+    }
+    if ( text.endsWith( '.' ) )
+    {
+        text.chop( 1 );
+    }
+    return text;
+}
+
+QString formatDuration( double seconds )
+{
+    if ( seconds < 0.0001 )
+    {
+        return "< 0.1 ms";
+    }
+    if ( seconds < 1.0 )
+    {
+        return compactNumber( seconds * 1000.0 ) + " ms";
+    }
+    return compactNumber( seconds ) + " s";
+}
+
+QString formatWindow( std::int32_t window_num_samples, float window_time )
+{
+    if ( window_num_samples > 0 )
+    {
+        return QString::number( window_num_samples ) + " samples";
+    }
+    if ( window_time > 0.0f )
+    {
+        return QString::number( window_time, 'f', 2 ) + " s";
+    }
+    return "All samples";
+}
+
+std::string normalizeSectionId( const std::string& section_id )
+{
+    std::string normalized;
+    std::size_t start = 0;
+    while ( start < section_id.size() )
+    {
+        const std::size_t slash = section_id.find( '/', start );
+        const std::size_t length =
+            slash == std::string::npos ? std::string::npos : slash - start;
+        const std::string segment = section_id.substr( start, length );
+        if ( !segment.empty() )
+        {
+            if ( !normalized.empty() )
+            {
+                normalized += '/';
+            }
+            normalized += segment;
+        }
+
+        if ( slash == std::string::npos )
+        {
+            break;
+        }
+        start = slash + 1;
+    }
+    return normalized;
 }
 
 }  // namespace
@@ -86,6 +169,22 @@ ComputeComponent::ComputeComponent( const QString& vehicle_id,
     measurement_timer_ = new QTimer( this );
     connect( measurement_timer_, SIGNAL( timeout() ), this, SLOT( updateRates() ) );
     measurement_timer_->start( kMeasurementWindowMs );
+
+    // Every node for this vehicle publishes timing summaries to the same topic.
+    // The callback merges each message into the tree instead of treating it as
+    // a complete snapshot of the topic.
+    if ( node_ )
+    {
+        const std::string topic =
+            makeTopicPath( vehicle_id_, "avt_341/compute_times" );
+        compute_times_subscription_ =
+            node_->create_subscription<avt_341_msgs::msg::ComputeTimeArray>(
+                topic, rclcpp::QoS( 10 ),
+                [this]( avt_341_msgs::msg::ComputeTimeArray::ConstSharedPtr msg )
+                {
+                    updateCodeSections( *msg );
+                } );
+    }
 }
 
 ComputeComponent::~ComputeComponent()
@@ -97,51 +196,93 @@ ComputeComponent::~ComputeComponent()
 
 void ComputeComponent::buildUi()
 {
-    table_ = new QTableWidget( 0, kColumnCount );
-    table_->setHorizontalHeaderLabels( { "Topic", "Rate", "Expected" } );
+    topics_table_ = new QTableWidget( 0, kColumnCount );
+    topics_table_->setHorizontalHeaderLabels( { "Topic", "Rate", "Expected" } );
 
     // A read-only status grid: no editing, selection, focus or row numbers, and
     // a header that stretches the topic column to fill the remaining width.
-    table_->setEditTriggers( QAbstractItemView::NoEditTriggers );
-    table_->setSelectionMode( QAbstractItemView::NoSelection );
-    table_->setFocusPolicy( Qt::NoFocus );
-    table_->verticalHeader()->setVisible( false );
-    table_->horizontalHeader()->setSectionResizeMode( kTopicColumn, QHeaderView::Stretch );
-    table_->horizontalHeader()->setSectionResizeMode( kRateColumn, QHeaderView::ResizeToContents );
-    table_->horizontalHeader()->setSectionResizeMode( kExpectedColumn, QHeaderView::ResizeToContents );
+    topics_table_->setEditTriggers( QAbstractItemView::NoEditTriggers );
+    topics_table_->setSelectionMode( QAbstractItemView::NoSelection );
+    topics_table_->setFocusPolicy( Qt::NoFocus );
+    topics_table_->verticalHeader()->setVisible( false );
+    topics_table_->horizontalHeader()->setSectionResizeMode(
+        kTopicColumn, QHeaderView::Stretch );
+    topics_table_->horizontalHeader()->setSectionResizeMode(
+        kRateColumn, QHeaderView::ResizeToContents );
+    topics_table_->horizontalHeader()->setSectionResizeMode(
+        kExpectedColumn, QHeaderView::ResizeToContents );
 
     // Keep the table tight to its rows; it already sits inside a scroll area.
-    table_->setSizeAdjustPolicy( QAbstractScrollArea::AdjustToContents );
+    topics_table_->setSizeAdjustPolicy( QAbstractScrollArea::AdjustToContents );
 
     // Bottom-of-control button that opens the shared-config popup.
     configure_button_ = new QPushButton( "Configure Monitored Topics" );
     connect( configure_button_, SIGNAL( clicked() ), this, SLOT( onConfigureTopics() ) );
 
+    QWidget* topics_page = new QWidget;
+    QVBoxLayout* topics_layout = new QVBoxLayout( topics_page );
+    topics_layout->setContentsMargins( 0, 0, 0, 0 );
+    topics_layout->addWidget( topics_table_ );
+    topics_layout->addWidget( configure_button_ );
+
+    // A QTreeWidget gives the code-section view the same tabular presentation
+    // as the topic-rate table while reconstructing section_id paths as an
+    // expandable hierarchy.
+    code_sections_tree_ = new QTreeWidget;
+    code_sections_tree_->setColumnCount( kCodeSectionColumnCount );
+    code_sections_tree_->setHeaderLabels(
+        { "Section", "Mean", "Std Dev", "Window", "Warning" } );
+    code_sections_tree_->setEditTriggers( QAbstractItemView::NoEditTriggers );
+    code_sections_tree_->setSelectionMode( QAbstractItemView::NoSelection );
+    code_sections_tree_->setFocusPolicy( Qt::NoFocus );
+    code_sections_tree_->setRootIsDecorated( true );
+    code_sections_tree_->setUniformRowHeights( true );
+    code_sections_tree_->setSortingEnabled( true );
+    code_sections_tree_->header()->setSectionResizeMode(
+        kSectionColumn, QHeaderView::Stretch );
+    for ( int column = kMeanColumn; column < kCodeSectionColumnCount; ++column )
+    {
+        code_sections_tree_->header()->setSectionResizeMode(
+            column, QHeaderView::ResizeToContents );
+    }
+    code_sections_tree_->setSizeAdjustPolicy(
+        QAbstractScrollArea::AdjustToContents );
+
+    QWidget* code_sections_page = new QWidget;
+    QVBoxLayout* code_sections_layout = new QVBoxLayout( code_sections_page );
+    code_sections_layout->setContentsMargins( 0, 0, 0, 0 );
+    code_sections_layout->addWidget( code_sections_tree_ );
+
+    sub_tabs_ = new QTabWidget;
+    sub_tabs_->setTabPosition( QTabWidget::North );
+    sub_tabs_->addTab( topics_page, "Topics" );
+    sub_tabs_->addTab( code_sections_page, "Sections" );
+
     QVBoxLayout* layout = new QVBoxLayout;
     layout->setContentsMargins( 0, 0, 0, 0 );
-    layout->addWidget( table_ );
-    layout->addWidget( configure_button_ );
+    layout->addWidget( sub_tabs_ );
     setLayout( layout );
 }
 
 void ComputeComponent::populateTable()
 {
-    table_->setRowCount( static_cast<int>( topics_.size() ) );
+    topics_table_->setRowCount( static_cast<int>( topics_.size() ) );
 
     for ( int row = 0; row < static_cast<int>( topics_.size() ); ++row )
     {
         const MonitoredTopic& topic = *topics_[row];
 
-        table_->setItem( row, kTopicColumn, new QTableWidgetItem( topic.label ) );
+        topics_table_->setItem(
+            row, kTopicColumn, new QTableWidgetItem( topic.label ) );
 
         // Rate is unknown until the topic has a publisher and a window elapses.
         QTableWidgetItem* rate_item = new QTableWidgetItem( kUnknownRate );
         rate_item->setTextAlignment( Qt::AlignCenter );
-        table_->setItem( row, kRateColumn, rate_item );
+        topics_table_->setItem( row, kRateColumn, rate_item );
 
         QTableWidgetItem* expected_item = new QTableWidgetItem( formatHz( topic.expected_hz ) );
         expected_item->setTextAlignment( Qt::AlignCenter );
-        table_->setItem( row, kExpectedColumn, expected_item );
+        topics_table_->setItem( row, kExpectedColumn, expected_item );
     }
 }
 
@@ -347,8 +488,8 @@ void ComputeComponent::updateRates()
         if ( !topic.subscription )
         {
             // No publisher discovered yet: show unknown, leave the row uncolored.
-            table_->item( row, kRateColumn )->setText( kUnknownRate );
-            setRowAlert( row, false );
+            topics_table_->item( row, kRateColumn )->setText( kUnknownRate );
+            setTopicRowAlert( row, false );
             continue;
         }
 
@@ -358,20 +499,13 @@ void ComputeComponent::updateRates()
         const double hz = count * 1000.0 / kMeasurementWindowMs;
 
         const bool alert = hz < topic.expected_hz * s_threshold_fraction_;
-        table_->item( row, kRateColumn )->setText( formatHz( hz ) );
-        setRowAlert( row, alert );
+        topics_table_->item( row, kRateColumn )->setText( formatHz( hz ) );
+        setTopicRowAlert( row, alert );
         any_alert = any_alert || alert;
     }
 
-    // Report overall health (healthy unless some topic is below threshold) to the
-    // Setup table, but only on a real transition.
-    const bool healthy = !any_alert;
-    if ( !health_known_ || healthy != healthy_ )
-    {
-        healthy_ = healthy;
-        health_known_ = true;
-        Q_EMIT healthChanged( healthy );
-    }
+    topic_alert_ = any_alert;
+    updateOverallHealth();
 
     // Pick up topics whose publisher has appeared since the last tick. Done after
     // measuring so a just-created subscription is first measured next window,
@@ -379,7 +513,7 @@ void ComputeComponent::updateRates()
     discoverAndSubscribe();
 }
 
-void ComputeComponent::setRowAlert( int row, bool alert )
+void ComputeComponent::setTopicRowAlert( int row, bool alert )
 {
     // Paint (or clear) every cell in the row so the whole row reads as healthy
     // or alerting. Default-constructed brushes restore the theme's colors.
@@ -388,9 +522,178 @@ void ComputeComponent::setRowAlert( int row, bool alert )
 
     for ( int column = 0; column < kColumnCount; ++column )
     {
-        QTableWidgetItem* item = table_->item( row, column );
+        QTableWidgetItem* item = topics_table_->item( row, column );
         item->setBackground( background );
         item->setForeground( foreground );
+    }
+}
+
+void ComputeComponent::updateCodeSections(
+    const avt_341_msgs::msg::ComputeTimeArray& msg )
+{
+    // The tag identifies the publishing node. Keep an explicit bucket for an
+    // empty optional tag so its section ids remain separate and visible too.
+    const std::string source = msg.tag.empty() ? "<untagged>" : msg.tag;
+
+    for ( const avt_341_msgs::msg::ComputeTime& timing : msg.compute_times )
+    {
+        const std::string section_id = normalizeSectionId( timing.section_id );
+        if ( section_id.empty() )
+        {
+            continue;
+        }
+
+        CodeSection section;
+        section.time = timing.time;
+        section.time_std = timing.time_std;
+        section.window_num_samples = timing.window_num_samples;
+        section.window_time = timing.window_time;
+        section.warning_threshold = timing.warning_threshold;
+        section.auto_parent_stats = timing.auto_parent_stats;
+
+        // insert_or_assign is the dictionary replacement: only ids present in
+        // this message change; every previously seen id remains in the map.
+        code_sections_[source].insert_or_assign( section_id, section );
+        updateCodeSectionItem(
+            ensureCodeSectionItem( source, section_id ), section );
+    }
+
+    code_section_alert_ = false;
+    for ( const auto& [source_name, sections] : code_sections_ )
+    {
+        (void)source_name;
+        for ( const auto& [section_id, section] : sections )
+        {
+            (void)section_id;
+            if ( section.warning_threshold > 0.0f &&
+                 section.time > section.warning_threshold )
+            {
+                code_section_alert_ = true;
+                break;
+            }
+        }
+        if ( code_section_alert_ )
+        {
+            break;
+        }
+    }
+    updateOverallHealth();
+}
+
+QTreeWidgetItem* ComputeComponent::ensureCodeSectionItem(
+    const std::string& source, const std::string& section_id )
+{
+    QTreeWidgetItem* source_item = nullptr;
+    const auto source_it = code_source_items_.find( source );
+    if ( source_it == code_source_items_.end() )
+    {
+        source_item = new QTreeWidgetItem( code_sections_tree_ );
+        source_item->setText( kSectionColumn, QString::fromStdString( source ) );
+        source_item->setFirstColumnSpanned( true );
+        source_item->setExpanded( true );
+        QFont source_font = source_item->font( kSectionColumn );
+        source_font.setBold( true );
+        source_item->setFont( kSectionColumn, source_font );
+        code_source_items_.emplace( source, source_item );
+    }
+    else
+    {
+        source_item = source_it->second;
+    }
+
+    QTreeWidgetItem* parent = source_item;
+    std::string path;
+    std::size_t start = 0;
+    while ( start < section_id.size() )
+    {
+        const std::size_t slash = section_id.find( '/', start );
+        const std::size_t length =
+            slash == std::string::npos ? std::string::npos : slash - start;
+        const std::string segment = section_id.substr( start, length );
+        if ( !segment.empty() )
+        {
+            if ( !path.empty() )
+            {
+                path += '/';
+            }
+            path += segment;
+
+            const auto key = std::make_pair( source, path );
+            const auto item_it = code_section_items_.find( key );
+            if ( item_it == code_section_items_.end() )
+            {
+                QTreeWidgetItem* item = new QTreeWidgetItem( parent );
+                item->setText( kSectionColumn,
+                               QString::fromStdString( segment ) );
+                for ( int column = kMeanColumn;
+                      column < kCodeSectionColumnCount; ++column )
+                {
+                    item->setText( column, kUnknownRate );
+                    item->setTextAlignment( column, Qt::AlignCenter );
+                }
+                item->setExpanded( true );
+                code_section_items_.emplace( key, item );
+                parent = item;
+            }
+            else
+            {
+                parent = item_it->second;
+            }
+        }
+
+        if ( slash == std::string::npos )
+        {
+            break;
+        }
+        start = slash + 1;
+    }
+
+    return parent;
+}
+
+void ComputeComponent::updateCodeSectionItem(
+    QTreeWidgetItem* item, const CodeSection& section )
+{
+    item->setText( kMeanColumn, formatDuration( section.time ) );
+    item->setText( kStdDevColumn, formatDuration( section.time_std ) );
+    item->setText( kWindowColumn,
+                   formatWindow( section.window_num_samples,
+                                 section.window_time ) );
+    item->setText(
+        kWarningColumn,
+        section.warning_threshold > 0.0f
+            ? formatDuration( section.warning_threshold )
+            : QString( kUnknownRate ) );
+
+    QString tooltip;
+    if ( section.auto_parent_stats )
+    {
+        tooltip = "Statistics automatically calculated from child sections.";
+    }
+    for ( int column = 0; column < kCodeSectionColumnCount; ++column )
+    {
+        item->setToolTip( column, tooltip );
+    }
+
+    const bool alert = section.warning_threshold > 0.0f &&
+                       section.time > section.warning_threshold;
+    const QBrush background = alert ? QBrush( status_colors::kRed ) : QBrush();
+    const QBrush foreground = alert ? QBrush( kAlertForeground ) : QBrush();
+    for ( int column = 0; column < kCodeSectionColumnCount; ++column )
+    {
+        item->setBackground( column, background );
+        item->setForeground( column, foreground );
+    }
+}
+
+void ComputeComponent::updateOverallHealth()
+{
+    const bool healthy = !topic_alert_ && !code_section_alert_;
+    if ( !health_known_ || healthy != healthy_ )
+    {
+        healthy_ = healthy;
+        health_known_ = true;
+        Q_EMIT healthChanged( healthy );
     }
 }
 

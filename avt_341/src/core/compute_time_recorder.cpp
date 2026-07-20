@@ -10,7 +10,7 @@ namespace avt_341::core {
 
 namespace {
 
-const char* COMPUTE_TIMES_TOPIC = "/avt_341/compute_times";
+const char* COMPUTE_TIMES_TOPIC = "avt_341/compute_times";
 
 std::string ParentId(const std::string& section_id) {
     const auto pos = section_id.find_last_of('/');

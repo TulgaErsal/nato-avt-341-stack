@@ -34,7 +34,8 @@ from std_msgs.msg import Header, Float64
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist, Vector3
 from nav_msgs.msg import Odometry
 
-from avt_341_msgs.msg import (MapMarker, MapMarkerList, MissionModuleStatus,
+from avt_341_msgs.msg import (ComputeTime, ComputeTimeArray, MapMarker,
+                              MapMarkerList, MissionModuleStatus,
                               MissionTaskStatus, NavGoal, NavGoalSequence,
                               NavState, TrackerStatus, TrackerModuleStatus)
 
@@ -159,6 +160,14 @@ class MockUiDataPublisher(Node):
                       MockUiDataPublisher._make_nav_state),
             TopicSpec("avt_341/tracker/state", TrackerModuleStatus, 10.0,
                       MockUiDataPublisher._make_tracker_module_status),
+            # Two independent publishers intentionally share the compute-times
+            # endpoint. Their different tags and partially-changing flat
+            # section lists exercise the panel's persistent merge and hierarchy
+            # reconstruction behavior.
+            TopicSpec("avt_341/compute_times", ComputeTimeArray, 1.0,
+                      MockUiDataPublisher._make_perception_compute_times),
+            TopicSpec("avt_341/compute_times", ComputeTimeArray, 1.0,
+                      MockUiDataPublisher._make_planning_compute_times),
             TopicSpec("avt_341/current_goal", NavGoal, 10.0,
                       MockUiDataPublisher._make_current_goal),
             TopicSpec("avt_341/waypoints", NavGoalSequence, 10.0,
@@ -339,6 +348,66 @@ class MockUiDataPublisher(Node):
         cov[1 * 6 + 5] = cov[5 * 6 + 1] = cov_yyaw   # cov(y, yaw)
         odom.pose.covariance = cov
         return odom
+
+    def _make_perception_compute_times(
+            self, vehicle_id: str) -> ComputeTimeArray:
+        """A flat, alternating subset of a hierarchical perception tree.
+
+        Alternating leaves makes the receiver retain sections omitted from the
+        latest message instead of replacing this publisher's whole table.
+        """
+        msg = ComputeTimeArray()
+        msg.header = self._header("")
+        msg.tag = f"/{vehicle_id}/perception_node"
+
+        publish_index = self._tick // self._decimation(1.0)
+        if publish_index % 2 == 0:
+            msg.compute_times = [self._make_compute_time(
+                "perception/costmap/point_cloud", 18.0, 25.0,
+                window_num_samples=30)]
+        else:
+            msg.compute_times = [self._make_compute_time(
+                "perception/costmap/inflation", 9.0, 8.0,
+                window_num_samples=30)]
+        return msg
+
+    def _make_planning_compute_times(
+            self, vehicle_id: str) -> ComputeTimeArray:
+        """A second publisher on the same topic with a separate hierarchy."""
+        msg = ComputeTimeArray()
+        msg.header = self._header("")
+        msg.tag = f"/{vehicle_id}/planning_node"
+
+        path_search_ms = random.uniform(8.0, 16.0)
+        scoring_ms = random.uniform(3.0, 9.0)
+        msg.compute_times = [
+            self._make_compute_time(
+                "planning", path_search_ms + scoring_ms, 24.0,
+                window_time=2.0, auto_parent_stats=True),
+            self._make_compute_time(
+                "planning/path_search", path_search_ms, 15.0,
+                window_time=2.0),
+            self._make_compute_time(
+                "planning/trajectory/scoring", scoring_ms, 7.0,
+                window_time=2.0),
+        ]
+        return msg
+
+    @staticmethod
+    def _make_compute_time(
+            section_id: str, mean_ms: float, warning_ms: float,
+            window_num_samples: int = -1, window_time: float = -1.0,
+            auto_parent_stats: bool = False) -> ComputeTime:
+        """Build one timing entry, converting human-friendly ms to seconds."""
+        timing = ComputeTime()
+        timing.section_id = section_id
+        timing.time = mean_ms / 1000.0
+        timing.time_std = random.uniform(0.05, 0.15) * timing.time
+        timing.window_num_samples = window_num_samples
+        timing.window_time = window_time
+        timing.warning_threshold = warning_ms / 1000.0
+        timing.auto_parent_stats = auto_parent_stats
+        return timing
 
     def _make_map_marker(self, vehicle_id: str) -> MapMarker:
         """A single mission-point marker at a random 10 m position and yaw."""
