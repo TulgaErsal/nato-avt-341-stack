@@ -156,51 +156,38 @@ struct TargetSelectionSettings {
 
 /** @brief Recovery-behavior trigger settings ("recovery_*" parameters). */
 struct RecoverySettings {
-    /** @brief Master switch for the no-movement lost check
+    /** @brief Enable the no-movement lost check
      *         ("recovery_no_movement_enable"). */
     bool no_movement_enabled = true;
-    /** @brief Velocity threshold [m/s] under which the no-movement flag is
-     *         set and a recovery action may be triggered
+    /** @brief Windowed-mean speed [m/s] under which no movement is suspected
      *         ("recovery_no_movement_threshold"). */
     double no_movement_threshold;
-    /** @brief Time window [s] over which the running-average velocity is
-     *         checked against the no-movement threshold
-     *         ("recovery_no_movement_window_time"). */
+    /** @brief Averaging window [s] ("recovery_no_movement_window_time"). */
     double no_movement_window_time;
-    /** @brief Tracker states in which the no-movement check is performed
-     *         ("recovery_no_movement_check_in_states", read as state names
-     *         and mapped to TrackerState values at parse time, e.g.
-     *         "lidar_only" -> LIDAR_ONLY_TRACKING). */
+    /** @brief States in which the no-movement check runs; parsed from state
+     *         names ("recovery_no_movement_check_in_states"). */
     std::vector<TrackerState> no_movement_check_in_states;
-    /** @brief Time [s] to wait before re-triggering the no-movement check
+    /** @brief Wait [s] between no-movement confirmations
      *         ("recovery_no_movement_backoff_time"). */
     double no_movement_backoff_time;
-    /** @brief Master switch for the measurement-timeout lost check: an
-     *         actively tracking tracker whose measurements starve (e.g. the
-     *         target left the sensor field of view) goes LOST instead of
-     *         silently decaying to INACTIVE ("recovery_timeout_enable"). */
+    /** @brief Enable the measurement-timeout lost check: measurements
+     *         starved after active tracking ("recovery_timeout_enable"). */
     bool timeout_enabled = true;
-    /** @brief If true the measurement-timeout check also fires when the
-     *         target was never acquired at all. Useful when vehicles are
-     *         commanded to track each other from far away, where no initial
-     *         measurement is ever expected
+    /** @brief Also fire the timeout check when the target was never acquired
+     *         at all, e.g. vehicles tracking each other from far away
      *         ("recovery_timeout_allow_never_tracked"). */
     bool timeout_allow_never_tracked = false;
-    /** @brief Maximum consecutive timeout-triggered recoveries without a
-     *         sustained re-acquisition before giving up and letting the
-     *         tracker deactivate ("recovery_timeout_max_attempts"). */
+    /** @brief Timeout-triggered recoveries without re-acquisition before
+     *         giving up ("recovery_timeout_max_attempts"). */
     int timeout_max_attempts = 3;
-    /** @brief Master switch for the uncertainty lost check
+    /** @brief Enable the uncertainty lost check
      *         ("recovery_uncertainty_enable"). */
     bool uncertainty_enabled = true;
-    /** @brief Threshold [m] above which the estimate-uncertainty flag is
-     *         set. Compared against the standard deviation along the axis of
-     *         largest variance of the x/y position covariance
+    /** @brief Windowed-mean std dev [m] along the axis of largest x/y
+     *         variance above which the tracker is lost
      *         ("recovery_uncertainty_threshold"). */
     double uncertainty_threshold;
-    /** @brief Time window [s] over which the running-average uncertainty is
-     *         checked against the threshold
-     *         ("recovery_uncertainty_window_time"). */
+    /** @brief Averaging window [s] ("recovery_uncertainty_window_time"). */
     double uncertainty_window_time;
 };
 

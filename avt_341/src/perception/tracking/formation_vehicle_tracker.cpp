@@ -26,10 +26,8 @@ FormationVehicleTracker::FormationVehicleTracker(
 
 void FormationVehicleTracker::EstimatorTick() {
     if (RecoveryMonitorTick()) {
-        // While LOST the sensor-driven estimation is suspended, but the
-        // last estimate — re-seeded from ground truth once a recovery
-        // completes — keeps publishing so consumers can still plan a path
-        // to the target.
+        // While LOST the last (ground-truth-recovered) estimate keeps
+        // publishing so consumers can still plan a path to the target.
         if (filter_initialized_) {
             if (settings_.publish.odometry) {
                 PublishOdometry();
@@ -67,7 +65,7 @@ bool FormationVehicleTracker::RecoveryMonitorTick() {
         (node_->get_clock()->now() - last_valid_target_time_).seconds();
     input.target_timeout = settings_.tracking.target_timeout;
 
-    const TrackerRecoveryMonitor::TickResult result =
+    const TrackerRecoveryMonitor::UpdateResult result =
         recovery_monitor_->Update(input);
 
     if (result.recovery_odom) {
@@ -84,8 +82,6 @@ bool FormationVehicleTracker::RecoveryMonitorTick() {
         has_detection_ = false;
         has_new_measurement_ = false;
     }
-    // While LOST the normal estimation is suspended (a predicted odometry
-    // from a lost filter would be wrong).
     return state_ == TrackerState::LOST;
 }
 
@@ -104,11 +100,8 @@ void FormationVehicleTracker::ApplyRecoveryOdometry(const nav_msgs::msg::Odometr
     filter_->SetInitialVelocity(vel);
     filter_initialized_ = true;
 
-    // The tracker deliberately STAYS in LOST: the estimate is now
-    // ground-truth-sourced, not sensor-tracked, and the state should say so
-    // (and keep the estimator's detection-based decay suspended). The LOST
-    // guard in TrackingTick resumes normal tracking on the next fresh
-    // camera detection.
+    // Deliberately stays LOST (estimate is ground-truth-sourced, not
+    // sensor-tracked); a fresh detection in TrackingTick ends LOST.
     ResetTrackingState(pos, TrackerState::LOST);
 
     RCLCPP_INFO(logger_,

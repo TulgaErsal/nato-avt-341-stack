@@ -126,14 +126,14 @@ protected:
 
     // Tick the monitor (~every 10 ms, spinning service traffic in between)
     // until condition(result) is true or the timeout elapses. Returns the
-    // last TickResult.
-    TrackerRecoveryMonitor::TickResult TickUntil(
+    // last UpdateResult.
+    TrackerRecoveryMonitor::UpdateResult TickUntil(
         TrackerRecoveryMonitor& monitor,
         const TrackerRecoveryMonitor::TickInput& input,
-        std::function<bool(const TrackerRecoveryMonitor::TickResult&)>
+        std::function<bool(const TrackerRecoveryMonitor::UpdateResult&)>
             condition,
         std::chrono::milliseconds timeout) {
-        TrackerRecoveryMonitor::TickResult result;
+        TrackerRecoveryMonitor::UpdateResult result;
         const auto deadline = std::chrono::steady_clock::now() + timeout;
         while (std::chrono::steady_clock::now() < deadline) {
             result = monitor.Update(input);
@@ -152,7 +152,7 @@ protected:
                  std::chrono::milliseconds duration) {
         TickUntil(
             monitor, input,
-            [](const TrackerRecoveryMonitor::TickResult&) { return false; },
+            [](const TrackerRecoveryMonitor::UpdateResult&) { return false; },
             duration);
     }
 
@@ -179,7 +179,7 @@ TEST_F(TrackerRecoveryMonitorTest, UncertaintyAboveThresholdMarksLost) {
 
     const auto result = TickUntil(
         *monitor, TrackingInput(5.0, 400.0),
-        [](const TrackerRecoveryMonitor::TickResult& r) { return r.mark_lost; },
+        [](const TrackerRecoveryMonitor::UpdateResult& r) { return r.mark_lost; },
         2000ms);
 
     EXPECT_TRUE(result.mark_lost);
@@ -194,7 +194,7 @@ TEST_F(TrackerRecoveryMonitorTest, NoMovementConfirmedMovingMarksLost) {
 
     const auto result = TickUntil(
         *monitor, TrackingInput(0.0, 1.0),
-        [](const TrackerRecoveryMonitor::TickResult& r) { return r.mark_lost; },
+        [](const TrackerRecoveryMonitor::UpdateResult& r) { return r.mark_lost; },
         3000ms);
 
     EXPECT_TRUE(result.mark_lost);
@@ -212,7 +212,7 @@ TEST_F(TrackerRecoveryMonitorTest, NoMovementConfirmedStationaryBacksOff) {
 
     TickUntil(
         *monitor, input,
-        [this](const TrackerRecoveryMonitor::TickResult&) {
+        [this](const TrackerRecoveryMonitor::UpdateResult&) {
             return check_speed_count_ >= 1;
         },
         3000ms);
@@ -221,7 +221,7 @@ TEST_F(TrackerRecoveryMonitorTest, NoMovementConfirmedStationaryBacksOff) {
 
     const auto result = TickUntil(
         *monitor, input,
-        [this](const TrackerRecoveryMonitor::TickResult& r) {
+        [this](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.mark_lost || check_speed_count_ >= 2;
         },
         3000ms);
@@ -242,7 +242,7 @@ TEST_F(TrackerRecoveryMonitorTest, LostTriggersGroundTruthRecovery) {
 
     const auto result = TickUntil(
         *monitor, LostInput(),
-        [](const TrackerRecoveryMonitor::TickResult& r) {
+        [](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value();
         },
         3000ms);
@@ -260,13 +260,13 @@ TEST_F(TrackerRecoveryMonitorTest, UnavailableServicesAreTolerated) {
 
     auto result = TickUntil(
         *monitor, TrackingInput(0.0, 1.0),
-        [](const TrackerRecoveryMonitor::TickResult& r) { return r.mark_lost; },
+        [](const TrackerRecoveryMonitor::UpdateResult& r) { return r.mark_lost; },
         500ms);
     EXPECT_FALSE(result.mark_lost);
 
     result = TickUntil(
         *monitor, LostInput(),
-        [](const TrackerRecoveryMonitor::TickResult& r) {
+        [](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value();
         },
         500ms);
@@ -296,7 +296,7 @@ TEST_F(TrackerRecoveryMonitorTest, LeavingCheckStatesResetsSpeedWindow) {
     // A full window after the reset finally confirms.
     TickUntil(
         *monitor, stationary,
-        [this](const TrackerRecoveryMonitor::TickResult&) {
+        [this](const TrackerRecoveryMonitor::UpdateResult&) {
             return check_speed_count_ >= 1;
         },
         2000ms);
@@ -311,7 +311,7 @@ TEST_F(TrackerRecoveryMonitorTest, EmptyRecoveryOdomRejectedAndRetried) {
 
     auto result = TickUntil(
         *monitor, LostInput(),
-        [this](const TrackerRecoveryMonitor::TickResult& r) {
+        [this](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value() || get_odometry_count_ >= 1;
         },
         2000ms);
@@ -322,7 +322,7 @@ TEST_F(TrackerRecoveryMonitorTest, EmptyRecoveryOdomRejectedAndRetried) {
     mock_odom_ = ValidOdom(1.0, 2.0);
     result = TickUntil(
         *monitor, LostInput(),
-        [](const TrackerRecoveryMonitor::TickResult& r) {
+        [](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value();
         },
         3000ms);
@@ -339,7 +339,7 @@ TEST_F(TrackerRecoveryMonitorTest, RecoveryRefreshIsPacedWhileLost) {
 
     auto result = TickUntil(
         *monitor, LostInput(),
-        [](const TrackerRecoveryMonitor::TickResult& r) {
+        [](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value();
         },
         3000ms);
@@ -349,7 +349,7 @@ TEST_F(TrackerRecoveryMonitorTest, RecoveryRefreshIsPacedWhileLost) {
 
     result = TickUntil(
         *monitor, LostInput(),
-        [](const TrackerRecoveryMonitor::TickResult& r) {
+        [](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value();
         },
         3000ms);
@@ -374,7 +374,7 @@ TEST_F(TrackerRecoveryMonitorTest, DisabledNoMovementCheckIsInert) {
 
     const auto result = TickUntil(
         monitor, TrackingInput(0.0, 1.0),
-        [](const TrackerRecoveryMonitor::TickResult& r) { return r.mark_lost; },
+        [](const TrackerRecoveryMonitor::UpdateResult& r) { return r.mark_lost; },
         400ms);
 
     EXPECT_FALSE(result.mark_lost);
@@ -391,7 +391,7 @@ TEST_F(TrackerRecoveryMonitorTest, DisabledUncertaintyCheckIsInert) {
 
     const auto result = TickUntil(
         monitor, TrackingInput(5.0, 400.0),
-        [](const TrackerRecoveryMonitor::TickResult& r) { return r.mark_lost; },
+        [](const TrackerRecoveryMonitor::UpdateResult& r) { return r.mark_lost; },
         400ms);
 
     EXPECT_FALSE(result.mark_lost);
@@ -455,7 +455,7 @@ TEST_F(TrackerRecoveryMonitorTest, MeasurementTimeoutGivesUpAfterMaxAttempts) {
     mock_odom_ = ValidOdom(1.0, 2.0);
     const auto recovery = TickUntil(
         monitor, LostInput(),
-        [](const TrackerRecoveryMonitor::TickResult& r) {
+        [](const TrackerRecoveryMonitor::UpdateResult& r) {
             return r.recovery_odom.has_value();
         },
         3000ms);

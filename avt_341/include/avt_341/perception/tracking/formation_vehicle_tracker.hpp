@@ -1,10 +1,8 @@
 /**
 * @file      formation_vehicle_tracker.hpp
-* @brief     ObjectTracker specialization for formation vehicles: targets
-             whose id is one of the "formation_vehicle_ids". Adds
-             lost-detection (no-movement and uncertainty checks) and
-             ground-truth recovery via the tracked vehicle's mission manager
-             services, on top of the base tracking behavior.
+* @brief     ObjectTracker specialization for formation vehicles: adds
+             lost-detection and ground-truth recovery via the tracked
+             vehicle's mission manager services.
 */
 
 #ifndef AVT_341_FORMATION_VEHICLE_TRACKER_H
@@ -23,12 +21,10 @@ namespace avt_341 {
 namespace perception {
 
 /**
- * @brief Tracker for a vehicle in our own formation. The owning node creates
- * this type (instead of the Generic base) when the target id is in
- * "formation_vehicle_ids". Only this tracker type owns a
- * TrackerRecoveryMonitor: formation vehicles host the check_speed /
- * get_odometry services the monitor relies on. Formation vehicles never
- * publish target contacts.
+ * @brief Tracker for a vehicle in our own formation (target id in
+ * "formation_vehicle_ids"). The only tracker type with a
+ * TrackerRecoveryMonitor: formation vehicles host the services it relies
+ * on. Never publishes target contacts.
  */
 class FormationVehicleTracker : public ObjectTracker {
    public:
@@ -42,10 +38,9 @@ class FormationVehicleTracker : public ObjectTracker {
         return ObjectTrackerType::FormationVehicle;
     }
 
-    /** @brief Base estimator tick preceded by one lost-detection/recovery
-     *         monitoring tick. While LOST the base estimation is suspended,
-     *         but the last (ground-truth-recovered) estimate keeps
-     *         publishing; a fresh camera detection ends LOST. */
+    /** @brief Base estimator tick preceded by a recovery monitoring tick.
+     *         While LOST the base estimation is suspended but the recovered
+     *         estimate keeps publishing. */
     void EstimatorTick() override;
 
     void Reset() override;
@@ -53,20 +48,12 @@ class FormationVehicleTracker : public ObjectTracker {
     void UpdateSettings(const ObjectTrackerSettings& settings) override;
 
    private:
-    /**
-     * @brief Run one lost-detection/recovery monitoring tick.
-     *
-     * Feeds the recovery monitor and applies its verdict: transitions to
-     * LOST when the monitor reports the tracker lost, and re-seeds the
-     * filter from ground-truth odometry once a recovery completes.
-     *
-     * @return True when this estimator tick is consumed by LOST handling
-     *         (the normal estimation must be skipped).
-     */
+    /** @brief Feed the recovery monitor and apply its verdict (mark LOST /
+     *         re-seed from ground truth). Returns true when this tick is
+     *         consumed by LOST handling. */
     bool RecoveryMonitorTick();
 
-    /** @brief Re-seed the filter from ground-truth target odometry and
-     *         re-bootstrap the tracking state machine. */
+    /** @brief Re-seed the filter from ground-truth target odometry. */
     void ApplyRecoveryOdometry(const nav_msgs::msg::Odometry& odom);
 
     /** @brief Lost-detection/recovery monitor. */

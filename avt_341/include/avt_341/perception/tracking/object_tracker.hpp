@@ -139,12 +139,9 @@ class ObjectTracker {
     void CheckTargetTimeout();
 
     /**
-     * @brief Clear the target association/measurement state and seed the
-     * position outputs and the LiDAR re-acquisition anchor at @p position.
-     * Also refreshes the measurement/detection timestamps so the timeout
-     * logic restarts from now. Shared by Reset() (zero position, INACTIVE)
-     * and the ground-truth recovery re-seed (recovered position, LOST
-     * retained). Leaves the filter, filter_initialized_ and
+     * @brief Clear the association/measurement state, seed the position
+     * outputs and LiDAR re-acquisition anchor at @p position, and restart
+     * the timeout clocks. Leaves the filter, filter_initialized_ and
      * has_first_detection_ untouched — callers handle those.
      */
     void ResetTrackingState(const Eigen::Vector3d& position,

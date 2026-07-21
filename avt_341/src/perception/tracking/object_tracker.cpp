@@ -74,10 +74,8 @@ void ObjectTracker::CreatePerTargetPublishers() {
 void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     camera_info_ = context.camera_info;
 
-    // LOST is sticky against the state machine below, which would otherwise
-    // overwrite it. Only a fresh camera detection of the target ends it:
-    // detections keep being ingested while LOST, so re-acquisition resumes
-    // the normal state machine against the (recovery-seeded) filter.
+    // LOST is sticky against the state machine below; only a fresh camera
+    // detection of the target ends it and resumes normal tracking.
     if (state_ == TrackerState::LOST) {
         if (!has_detection_) {
             return;
@@ -639,8 +637,7 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
                                        const TrackerState state) {
     bounding_box_centroid_global_ = position;
     bounding_box_centroid_filtered_ = position;
-    // Seed the re-acquisition anchor so the LiDAR can re-associate the
-    // target by proximity.
+    // Re-acquisition anchor for LiDAR proximity matching.
     last_lidar_world_pos_ = position;
 
     state_ = state;
@@ -653,8 +650,6 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
     const rclcpp::Time now = node_->get_clock()->now();
     last_valid_target_time_ = now;
     last_lidar_seen_time_ = now;
-    // The detection stamps also restart so the estimator's detection-based
-    // timeout cannot immediately re-fire against a pre-reset stamp.
     last_valid_detection_time_ = now;
     last_valid_detection_callback_time_ = now;
 }

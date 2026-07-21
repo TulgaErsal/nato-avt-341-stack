@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include <avt_341/core/math_utils.hpp>
+
 namespace avt_341 {
 namespace perception {
 
@@ -19,11 +21,8 @@ TrackerRecoveryMonitor::TrackerRecoveryMonitor(
       logger_(logger),
       target_class_(target_class),
       settings_(settings) {
-    // Both services live on the tracked vehicle's own mission manager (the
-    // check_speed service reports the serving node's own ego speed, and
-    // get_odometry with an empty vehicle_id returns the serving node's own
-    // ground-truth odometry), so they are addressed absolutely under the
-    // target's namespace.
+    // Both services live on the tracked vehicle's own mission manager, so
+    // they are addressed absolutely under the target's namespace.
     check_speed_client_ = node_->create_client<avt_341_msgs::srv::CheckSpeed>(
         "/" + target_class_ + "/avt_341/check_speed");
     get_odometry_client_ = node_->create_client<avt_341_msgs::srv::GetOdometry>(
@@ -33,20 +32,19 @@ TrackerRecoveryMonitor::TrackerRecoveryMonitor(
     uncertainty_stats_ = MakeUncertaintyStats();
 }
 
-TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
+TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
     const TickInput& input) {
-    TickResult result;
+    UpdateResult result;
     const double now = node_->get_clock()->now().seconds();
 
-    // Consume async results latched by service response callbacks since the
-    // last tick.
+    // Consume async results latched since the last tick.
     if (latch_->recovery_odom) {
         const nav_msgs::msg::Odometry odom = *latch_->recovery_odom;
         latch_->recovery_odom.reset();
         recovery_state_ = RequestState::IDLE;
 
-        // The mission manager returns a default-constructed odometry when it
-        // has not received any odometry itself yet.
+        // A default-constructed odometry means the mission manager has not
+        // received any odometry itself yet.
         const bool is_valid = !odom.header.frame_id.empty() ||
                               odom.header.stamp.sec != 0 ||
                               odom.header.stamp.nanosec != 0u;
@@ -60,9 +58,7 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
 
         ResetWindows();
         confirm_backoff_until_ = now + settings_.no_movement_backoff_time;
-        // The tracker stays LOST until a fresh detection re-acquires the
-        // target, so the ground truth is re-fetched at this pace to keep
-        // the published estimate current while lost.
+        // Refresh pace of the ground truth while the tracker stays LOST.
         recovery_retry_after_ = now + settings_.no_movement_backoff_time;
         result.recovery_odom = odom;
         return result;
@@ -72,8 +68,7 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
         latch_->has_check_speed_result = false;
         confirm_state_ = RequestState::IDLE;
         if (latch_->target_actually_moving) {
-            // The tracker believes the target is stationary but the target
-            // itself reports that it is moving: the tracker is lost.
+            // The target refutes the tracker's no-movement belief: lost.
             RCLCPP_WARN(logger_,
                         "\"%s\" reports it is moving while the tracker sees "
                         "no movement: tracker is lost.",
@@ -82,9 +77,8 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
             result.mark_lost = true;
             return result;
         }
-        // The target confirmed it is stationary: the tracker is correct.
-        // The speed window is intentionally kept so the still-low mean can
-        // re-confirm right after the backoff expires.
+        // Genuinely stationary: keep the speed window so the still-low mean
+        // can re-confirm right after the backoff.
         RCLCPP_INFO(logger_,
                     "\"%s\" confirmed stationary; tracker is correct. Next "
                     "no-movement confirmation in %.1f s.",
@@ -98,10 +92,8 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
         return result;
     }
 
-    // Re-acquisition bookkeeping for the measurement-timeout check: only
-    // sustained genuine tracking arms the check and clears its give-up
-    // counter, so the brief post-recovery association attempts against
-    // stale detections do not count as a re-acquisition.
+    // Only sustained tracking arms the timeout check and clears its give-up
+    // counter (see kSustainedTrackingTime).
     if (input.filter_initialized && input.has_tracked_target &&
         IsActiveTrackerState(input.state)) {
         if (active_streak_start_ < 0.0) {
@@ -115,16 +107,9 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
         active_streak_start_ = -1.0;
     }
 
-    // Measurement timeout: the tracker was actively tracking but no sensor
-    // has produced a valid measurement for longer than the tracker timeout
-    // (e.g. the target left the sensor field of view). Without this check
-    // the tracker silently decays to INACTIVE and no recovery ever runs:
-    // the no-movement check cannot fire (the last speed estimate is
-    // non-zero) and the uncertainty check cannot fire (the estimator
-    // freezes the filter, so the covariance never grows).
-    // With allow_never_tracked the check also fires when the target was
-    // never acquired at all (vehicles commanded to track each other from
-    // far away, where no initial measurement is ever expected).
+    // Measurement timeout: measurements starved after active tracking (the
+    // other two checks cannot catch a target leaving the sensor view).
+    // allow_never_tracked extends it to targets never acquired at all.
     if (settings_.timeout_enabled &&
         (has_been_active_ || settings_.timeout_allow_never_tracked) &&
         input.target_timeout > 0.0 &&
@@ -156,10 +141,8 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
     }
 
     // No-movement window: samples accumulate only in the configured states;
-    // transitioning out of them resets the window (and invalidates a pending
-    // confirmation, whose verdict would apply to a stale window). When the
-    // pathway is disabled the window never fills, so the check and its
-    // confirmation service calls never fire.
+    // leaving them resets the window and any pending confirmation. A
+    // disabled pathway never fills its window, so its check never fires.
     if (settings_.no_movement_enabled && input.filter_initialized &&
         IsInNoMovementCheckState(input.state)) {
         if (speed_window_start_ < 0.0) {
@@ -170,23 +153,20 @@ TrackerRecoveryMonitor::TickResult TrackerRecoveryMonitor::Update(
         ResetSpeedWindow();
     }
 
-    // Uncertainty window: samples accumulate only while actively tracking,
-    // since a covariance reset seeds a large covariance that would poison
-    // the windowed mean in the non-tracking states. When the pathway is
-    // disabled the window never fills, so the check never fires.
+    // Uncertainty window: samples accumulate only while actively tracking
+    // (a covariance reset seeds large values that would poison the mean).
     if (settings_.uncertainty_enabled && input.filter_initialized &&
         IsActiveTrackerState(input.state)) {
         if (uncertainty_window_start_ < 0.0) {
             uncertainty_window_start_ = now;
         }
-        uncertainty_stats_.AddSample(MajorAxisStdDev2x2(input.xy_covariance),
-                                     now);
+        uncertainty_stats_.AddSample(
+            core::MajorAxisStdDev2x2(input.xy_covariance), now);
     } else {
         ResetUncertaintyWindow();
     }
 
-    // Uncertainty above the threshold over a full window: lost, no
-    // vehicle-to-vehicle confirmation required.
+    // Uncertainty above the threshold over a full window: lost.
     if (uncertainty_window_start_ >= 0.0 &&
         now - uncertainty_window_start_ >= settings_.uncertainty_window_time) {
         const core::StatsSnapshot stats = uncertainty_stats_.GetStats(now);
@@ -282,7 +262,7 @@ void TrackerRecoveryMonitor::SendCheckSpeedRequest(const double now) {
             rclcpp::Client<avt_341_msgs::srv::CheckSpeed>::SharedFuture
                 future) {
             if (generation != latch->check_speed_generation) {
-                return;  // Request was aborted/timed out; drop the response.
+                return;  // Aborted request; drop the response.
             }
             latch->target_actually_moving = future.get()->is_true;
             latch->has_check_speed_result = true;
@@ -307,7 +287,7 @@ void TrackerRecoveryMonitor::SendGetOdometryRequest(const double now) {
             rclcpp::Client<avt_341_msgs::srv::GetOdometry>::SharedFuture
                 future) {
             if (generation != latch->get_odometry_generation) {
-                return;  // Request was aborted/timed out; drop the response.
+                return;  // Aborted request; drop the response.
             }
             latch->recovery_odom = future.get()->odom;
         });
@@ -391,19 +371,6 @@ bool TrackerRecoveryMonitor::IsInNoMovementCheckState(
     const TrackerState state) const {
     const auto& states = settings_.no_movement_check_in_states;
     return std::find(states.begin(), states.end(), state) != states.end();
-}
-
-double TrackerRecoveryMonitor::MajorAxisStdDev2x2(const Eigen::Matrix2d& p) {
-    // Solve det(A - lambda*I) for positive root. The largest
-    // eigenvalue is the variance along the major axis of the uncertainty
-    // ellipse — a direction-independent worst-case spread. Its square root
-    // is the standard deviation [m] along that axis.
-    const double a = p(0, 0);
-    const double c = p(1, 1);
-    const double b = 0.5 * (p(0, 1) + p(1, 0));
-    const double largest_eigenvalue =
-        0.5 * (a + c) + std::sqrt(0.25 * (a - c) * (a - c) + b * b);
-    return std::sqrt(std::max(0.0, largest_eigenvalue));
 }
 
 }  // namespace perception
