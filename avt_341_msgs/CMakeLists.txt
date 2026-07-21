@@ -13,23 +13,36 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Define the messages to be built.
 set(MESSAGE_DEFINITIONS
     "Communication"
+    "ComputeTime"
+    "ComputeTimeArray"
     "DwaInfo"
     "DwaObjective"
     "DwaTrajectory"
     "FollowerStatus"
     "LiorfCloudInfo"
     "MissionTaskStatus"
+    "MissionModuleStatus"
     "Obstacles"
     "OccupiedCell"
     "OccupiedCells"
     "Sinkage"
-    "TrackerInfo"
+    "TrackerStatus"
+    "TrackerModuleStatus"
     "NavGoal"
     "NavGoalSequence"
     "NavState"
+    "MapMarker"
+    "MapMarkerList"
 )
 
-set(SERVICE_DEFINITIONS "LiorfSaveMap" "SetTarget")
+set(SERVICE_DEFINITIONS
+    "LiorfSaveMap"
+    "SetTarget"
+    "ComputeGlobalPath"
+    "SetNavPointDefinitions"
+    "CheckSpeed"
+    "GetOdometry"
+)
 
 # Append the ".msg" extension for both builds and preprend the "msg/" prefix to
 # message definitions for the ament build.

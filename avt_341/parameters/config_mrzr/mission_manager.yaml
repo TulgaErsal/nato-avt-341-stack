@@ -26,16 +26,15 @@ oof:
 
 # Mission Manager - Target of interest
 toi:
-  approach_dist: 15.0                                                                   # Approach distance to target of interest before encircling
+  approach_dist: 20.0                                                                   # Approach distance to target of interest before encircling
   encircle_radius: 10.0                                                                 # Encircle radius around target of interest
   encircle_degrees: 180.0                                                               # Encircle degrees around target of interest
   encircle_cw: True                                                                     # If encircle should be in clock-wise (cw) direction around target of interest
   goal_threshold: "$ref{goal_dist}"                                                     # How close vehicle should approach target of interest
+  contact_trigger_delay: 1.0                                                            # Seconds a contact must persist before MoveTo+Encircle tasks are created (0 = trigger immediately)
 
 # Mission Manager - Object Tracking
-ot:
-  tracking_veh: ""                                                                      # Vehicle doing the tracking. Disabled if empty
-  tracked_veh: ""                                                                       # Vehicle to track. Disabled if empty
+use_avt_tracker: true                                                                   # Set true to subscribe to avt_341/odometry/estimated/<veh_ns> per vehicle instead of cross-namespace ground truth
 
 # Goal Filtering
 # ======================================================================================================================
@@ -55,3 +54,4 @@ fgf_obs_avoid:
 # Formation Control
 # ======================================================================================================================
 use_leader_breadcrumbs: false                                                            # If true, follower vehicles will use leader breadcrumbs as global path (disables follower vehicles global planner). If false, followers will use global planner to current formation location.
+use_tangent_heading: false                                                              # If true, leader heading is estimated from position history tangent rather than the orientation in the leader odometry message

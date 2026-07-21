@@ -6,7 +6,12 @@
 #include <queue>
 #include <avt_341/core/dto_conversion.h>
 #include <optional>
+#include <set>
+#include <cmath>
 
+#include <avt_341_msgs/srv/set_nav_point_definitions.hpp>
+#include <avt_341_msgs/srv/check_speed.hpp>
+#include <avt_341_msgs/srv/get_odometry.hpp>
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
@@ -25,7 +30,7 @@ float sodist_threshold;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
 std::shared_ptr<avt_341::mission::MissionManager> mgr;
 
-std::map<std::string, avt_341::msg::Odometry> formation_poses;
+std::map<std::string, avt_341::msg::Odometry> formation_odoms;
 std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 
 // Receive updates from comms
@@ -53,7 +58,7 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
 
     child_frame_id = toUpper(child_frame_id);
     std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
-    formation_poses[veh_name] = *msg;
+    formation_odoms[veh_name] = *msg;
 
     if(current_task == nullptr || !current_task->hasFormation()){
       return;
@@ -92,7 +97,7 @@ bool current_goal_rcvd = false;
 avt_341::msg::PoseStamped gp_goal_rcvd;
 void NavStateCallback(avt_341::msg::NavStatePtr msg) {
     nav_run_state = msg->run_state;
-    if (msg->run_state == avt_341::utils::NavStackState::Active)
+    if (avt_341::core::HasActiveGoal(msg))
     {
         gp_goal_rcvd = avt_341::core::ToPoseStamped(msg->goal);
         current_goal_rcvd = true;
@@ -110,15 +115,101 @@ void GoalReachedCallback(avt_341::msg::NavStatePtr msg){
   reached_goals.push(avt_341::core::ToPoseStamped(msg->goal));
 }
 
-auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, const std::string & my_name, int target_idx,
-                      const std::string & tracking_veh, const std::string & tracked_veh){
-
-  bool target_veh_present = target_idx < veh_namespaces.size();
-  std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
-  std::string sub_postfix = my_name == tracking_veh && !tracked_veh.empty() && toUpper(target_veh_ns) == tracked_veh ? "/tracked" : "";
+auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int target_idx,
+                      bool use_avt_tracker, const std::string & my_name) {
+  bool target_veh_present = target_idx < static_cast<int>(veh_namespaces.size());
+  const std::string target_veh_ns = target_veh_present ? veh_namespaces[target_idx] : "";
+  bool use_estimated = use_avt_tracker && (toUpper(target_veh_ns) != my_name);
+  const std::string topic = use_estimated
+    ? "avt_341/odometry/estimated/" + target_veh_ns
+    : "/" + target_veh_ns + "/avt_341/odometry";
   return target_veh_present
-    ? nh->create_subscription<avt_341::msg::Odometry>("/" + target_veh_ns + "/avt_341/odometry" + sub_postfix, 10, VehicleOdometryCallback)
+    ? nh->create_subscription<avt_341::msg::Odometry>(topic, 10, VehicleOdometryCallback)
     : nullptr;
+}
+
+void CheckSpeedServiceImpl(
+    const std::shared_ptr<avt_341_msgs::srv::CheckSpeed::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::CheckSpeed::Response> response) {
+
+    const double ego_speed = std::abs(odom.twist.twist.linear.x);
+    const std::string & op = request->operation;
+
+    if (op == "eq") {
+        response->is_true = std::abs(ego_speed - request->speed) <= request->threshold;
+    } else if (op == "ne") {
+        response->is_true = std::abs(ego_speed - request->speed) > request->threshold;
+    } else if (op == "lt") {
+        response->is_true = ego_speed < request->speed + request->threshold;
+    } else if (op == "gt") {
+        response->is_true = ego_speed > request->speed - request->threshold;
+    } else {
+        nh->log_warning("CheckSpeed: unknown operation \"%s\" (expected eq, ne, lt or gt).", op.c_str());
+        response->is_true = false;
+    }
+}
+
+void GetOdometryServiceImpl(
+    const std::shared_ptr<avt_341_msgs::srv::GetOdometry::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::GetOdometry::Response> response) {
+
+    if (request->vehicle_id.empty()) {
+        response->odom = odom;
+        return;
+    }
+
+    const auto it = formation_odoms.find(toUpper(request->vehicle_id));
+    if (it == formation_odoms.end()) {
+        nh->log_warning("GetOdometry: no odometry received for vehicle \"%s\".", request->vehicle_id.c_str());
+        return;
+    }
+    response->odom = it->second;
+}
+
+void SetNavPointDefinitionsServiceImpl(
+    const std::shared_ptr<avt_341_msgs::srv::SetNavPointDefinitions::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::SetNavPointDefinitions::Response> response)
+{
+    auto fail = [&](const std::string & reason) {
+        response->success = false;
+        response->message = reason;
+        nh->log_warning("SetNavPointDefinitions rejected: %s", reason.c_str());
+    };
+    if (request->labels.size() != request->poses.size()) {
+        fail("labels size (" + std::to_string(request->labels.size()) + ") does not match poses size ("
+             + std::to_string(request->poses.size()) + ").");
+        return;
+    }
+
+    std::vector<avt_341::mission::MissionPoint> mission_points;
+    mission_points.reserve(request->labels.size());
+    std::set<std::string> seen_labels;
+
+    for (size_t i = 0; i < request->labels.size(); i++) {
+        const std::string & label = request->labels[i];
+        const auto & pose = request->poses[i];
+
+        if (label.empty())
+        {
+            fail("label at position " + std::to_string(i) + " is empty.");
+            return;
+        }
+
+        avt_341::mission::MissionPoint mission_point;
+        mission_point.name = label;
+        mission_point.pos_x = pose.position.x;
+        mission_point.pos_y = pose.position.y;
+        mission_point.pos_z = pose.position.z;
+        mission_point.rot_x = pose.orientation.x;
+        mission_point.rot_y = pose.orientation.y;
+        mission_point.rot_z = pose.orientation.z;
+        mission_point.rot_w = pose.orientation.w;
+        mission_points.push_back(mission_point);
+    }
+
+    mgr->setMissionPoints(mission_points);
+    response->success = true;
+    response->message = "Set " + std::to_string(mission_points.size()) + " nav point definitions.";
 }
 
 int main(int argc, char **argv) {
@@ -132,7 +223,8 @@ int main(int argc, char **argv) {
     avt_341::mission::FormationSpeedControlParams fsc_params{};
     avt_341::mission::FormationParameters formation_params;
     avt_341::mission::ToiParameters toi_params;
-    std::string fsc_type, tracked_veh, tracking_veh;
+    std::string fsc_type;
+    bool use_avt_tracker;
     std::vector<std::string> veh_namespaces;
 
     nh->get_parameter("~name", formation_params.my_name, std::string("AGV1"));
@@ -145,6 +237,7 @@ int main(int argc, char **argv) {
     nh->get_parameter("~use_leader_breadcrumbs", formation_params.use_breadcrumbs, true);
     nh->get_parameter("~x_offset_on_path", formation_params.x_offset_on_path, false);
     nh->get_parameter("~formation_prune_gp", formation_params.prune_global_path, false);
+    nh->get_parameter("~use_tangent_heading", formation_params.use_tangent_heading, false);
     nh->get_parameter("~follow_goal_threshold", formation_params.follow_goal_threshold, 10.0f);
     nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
     nh->get_parameter("~max_speed", formation_params.default_max_speed, 5.0);
@@ -168,16 +261,13 @@ int main(int argc, char **argv) {
     nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
     nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
     nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
+    nh->get_parameter("~toi_contact_trigger_delay", toi_params.contact_trigger_delay_s, 0.0f);
 
-    nh->get_parameter("~ot_tracking_veh", tracking_veh, std::string(""));
-    nh->get_parameter("~ot_tracked_veh", tracked_veh, std::string(""));
+    nh->get_parameter("~use_avt_tracker", use_avt_tracker, true);
 
     std::string goal_filter_method;
     nh->get_parameter("~formation_goal_filter", goal_filter_method, std::string("none"));
     std::shared_ptr<avt_341::mission::GoalFilter> goal_filter = avt_341::mission::create_goal_filter(formation_params.my_name, goal_filter_method, nh);
-
-    tracking_veh = toUpper(tracking_veh);
-    tracked_veh = toUpper(tracked_veh);
 
     mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, goal_filter);
     mgr->sodist_threshold = sodist_threshold;
@@ -196,10 +286,10 @@ int main(int argc, char **argv) {
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
-    auto veh1_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 0, tracking_veh, tracked_veh);
-    auto veh2_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 1, tracking_veh, tracked_veh);
-    auto veh3_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 2, tracking_veh, tracked_veh);
-    auto veh4_sub =  get_veh_odom_sub(veh_namespaces, formation_params.my_name, 3, tracking_veh, tracked_veh);
+    auto veh1_sub = get_veh_odom_sub(veh_namespaces, 0, use_avt_tracker, formation_params.my_name);
+    auto veh2_sub = get_veh_odom_sub(veh_namespaces, 1, use_avt_tracker, formation_params.my_name);
+    auto veh3_sub = get_veh_odom_sub(veh_namespaces, 2, use_avt_tracker, formation_params.my_name);
+    auto veh4_sub = get_veh_odom_sub(veh_namespaces, 3, use_avt_tracker, formation_params.my_name);
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);
@@ -208,6 +298,19 @@ int main(int argc, char **argv) {
     auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
     leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
 
+    // Services
+    auto set_nav_point_definitions_srv =
+        nh->get_raw_node()->create_service<avt_341_msgs::srv::SetNavPointDefinitions>(
+            "avt_341/set_nav_point_definitions", &SetNavPointDefinitionsServiceImpl);
+
+    auto check_speed_srv =
+        nh->get_raw_node()->create_service<avt_341_msgs::srv::CheckSpeed>(
+            "avt_341/check_speed", &CheckSpeedServiceImpl);
+
+    auto get_odometry_srv =
+        nh->get_raw_node()->create_service<avt_341_msgs::srv::GetOdometry>(
+            "avt_341/get_odometry", &GetOdometryServiceImpl);
+
     // start the loop
     while(avt_341::node::ok()){
     // Handle external notifications
@@ -215,6 +318,10 @@ int main(int argc, char **argv) {
         if(reset_called){
           nh->log_info("Resetting node");
           mgr->reset();
+          current_goal_rcvd = false;
+          mgr->rcvd_leader_odom = false;
+          while(!reached_goals.empty()) reached_goals.pop();
+          while(!contacts.empty()) contacts.pop();
           avt_341::msg::String reset_ack_msg;
           reset_ack_msg.data = avt_341::node::NodeType::Mission;
           reset_ack_pub->publish(reset_ack_msg);
@@ -275,7 +382,7 @@ int main(int argc, char **argv) {
         while(!contacts.empty()){
           auto rcvd_msg = contacts.front();
           contacts.pop();
-          mgr->handleContacts(rcvd_msg, formation_poses);
+          mgr->handleContacts(rcvd_msg, formation_odoms);
         }
 
         // Incoming internal notifications
@@ -294,16 +401,15 @@ int main(int argc, char **argv) {
         // update tasks
         mgr->updateTasks();
 
-        // post-update tasks
-        mgr->postUpdateTasks();
-
-        // Publish leader status
+        // Publish mission task status
+        mgr->publishTaskStatus();
+        // TODO: Can remove lead status and follower status messages. Use single MissionTaskStatus message.
         mgr->publishLeaderStatus();
 
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
             avt_341::msg::Float64 speed_msg;
-            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_poses, mgr->getSpeedSetpoint());
+            speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_odoms, mgr->getSpeedSetpoint());
             speed_factor_pub->publish(speed_msg);
         }else{
           speedController->clearVisualization();

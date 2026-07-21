@@ -11,6 +11,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap_dtos.h"
+#include "avt_341/core/compute_time_recorder.hpp"
 #include "avt_341/core/grid_components.h"
 #include "layers/costmap_layer.h"
 #include <deque>
@@ -38,6 +39,7 @@ public:
 	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation, std::string target_layer = "") const;
 	void Reset() const;
 	void Visualize() const;
+	void PublishComputeTimes() const;
 
 	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
@@ -60,11 +62,15 @@ public:
 
 private:
 
+    std::vector<std::shared_ptr<CostmapLayer>> GetTargetLayers(const std::string& target_layer, bool is_segmentation) const;
+
 	void OdometryCallback(msg::OdometryPtr rcv_odom);
 
 	msg::Odometry current_odom_;
 
 	std::shared_ptr<node::NodeProxy> node_ref_;
+
+	std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
 
 	node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
 
@@ -96,10 +102,10 @@ private:
 	}
 
 	template<typename T>
-	inline T CombineLayerValues(std::vector<T> layer_values) const
+	inline T CombineLayerValues(std::vector<T> layer_values, T unknown_value = T{0}) const
 	{
 		if (layer_values.empty()){
-			return T{0};
+			return unknown_value;
 		}
 
 		return layer_cmb_last_ ? layer_values.back()
@@ -110,13 +116,14 @@ private:
 	template<typename T>
 	inline T GetCombinedLayerValue(
 		const std::vector<std::shared_ptr<CostmapLayer>> & layers,
-		std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter
+		std::function<T(const std::shared_ptr<CostmapLayer>&)> value_getter,
+		T unknown_value = T{0}
 		) const
 	{
 		std::vector<T> layer_values;
 		layer_values.reserve(layers.size());
 		CollectLayerValues(layers, layer_values, value_getter);
-		return CombineLayerValues(layer_values);
+		return CombineLayerValues(layer_values, unknown_value);
 	}
 
 	std::deque<double> rms_buffer_;

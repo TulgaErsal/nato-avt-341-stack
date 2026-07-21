@@ -85,10 +85,109 @@ target_link_libraries(static_grid_layer_test
   ${PROJECT_NAME}_proxy
 )
 
+message(STATUS "Adding utils unit tests")
+ament_add_gtest(utils_test
+        core/utils_test.cpp
+)
+
+target_include_directories(utils_test
+        PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(utils_test
+        ${PROJECT_NAME}_proxy
+)
+
 ament_target_dependencies(static_grid_layer_test
   rclcpp
   nav_msgs
   std_msgs
   geometry_msgs
+)
+
+# Object Tracking Reset Tests
+# ---------------------------
+find_package(avt_341_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(pcl_ros REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
+find_package(vision_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+
+message(STATUS "Adding object tracking reset unit tests")
+ament_add_gtest(object_tracking_reset_test
+  perception/tracking/object_tracking_reset_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracking_node.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/toi_tracker.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/formation_vehicle_tracker.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
+)
+
+target_include_directories(object_tracking_reset_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+    ${PCL_INCLUDE_DIRS}
+)
+
+target_link_libraries(object_tracking_reset_test
+  ${PROJECT_NAME}_proxy
+  ${PCL_LIBRARIES}
+)
+
+ament_target_dependencies(object_tracking_reset_test
+  avt_341_msgs
+  cv_bridge
+  Eigen3
+  nav_msgs
+  OpenCV
+  pcl_conversions
+  pcl_ros
+  rclcpp
+  sensor_msgs
+  std_msgs
+  tf2
+  tf2_eigen
+  tf2_geometry_msgs
+  tf2_ros
+  tf2_sensor_msgs
+  vision_msgs
+  visualization_msgs
+)
+
+# Tracker Recovery Monitor Tests
+# ------------------------------
+message(STATUS "Adding tracker recovery monitor unit tests")
+ament_add_gtest(tracker_recovery_monitor_test
+  perception/tracking/tracker_recovery_monitor_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
+)
+
+target_include_directories(tracker_recovery_monitor_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(tracker_recovery_monitor_test
+  ${PROJECT_NAME}_proxy
+)
+
+ament_target_dependencies(tracker_recovery_monitor_test
+  avt_341_msgs
+  Eigen3
+  nav_msgs
+  rclcpp
+  sensor_msgs
+  visualization_msgs
 )
 

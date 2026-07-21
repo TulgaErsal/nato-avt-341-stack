@@ -58,7 +58,7 @@ def parse_arguments() -> argparse.Namespace:
                         help='Origin y component offset in CRS. Default corresponds to Traxara simulated KRC environment origin.')
     parser.add_argument('--label_field',
                         type=str,
-                        default="",
+                        default="Name",
                         help='Optional field in shape file to use as zone label. If not specified, index will be used as label.')
     parser.add_argument('--occ_value',
                         type=float,

@@ -12,15 +12,17 @@ Costmap::Costmap(
 	const CostmapSettings& settings,
 	const std::string& layer_cmb_method
 	)
-	: node_ref_(node_ref), size_info_(settings.size_info), thresholds_(settings.thresholds),
+	: node_ref_(node_ref),
+	compute_time_recorder_(std::make_shared<core::ComputeTimeRecorder>(node_ref, core::ComputeTimeRecorder::MakeNodeTag(node_ref))),
+	size_info_(settings.size_info), thresholds_(settings.thresholds),
 	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms), layer_cmb_method_(layer_cmb_method)
 {
 	// TODO: Should create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
-		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer"),
-		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer"),
-		std::make_shared<CameraLayer>(node_ref, settings, "camera_layer"),
-		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer"),
+		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer", compute_time_recorder_),
+		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer", compute_time_recorder_),
+		std::make_shared<CameraLayer>(node_ref, settings, "camera_layer", compute_time_recorder_),
+		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer", compute_time_recorder_),
 	};
 
 	layers_.clear();
@@ -73,34 +75,51 @@ void Costmap::Visualize() const
 	}
 }
 
+void Costmap::PublishComputeTimes() const
+{
+	compute_time_recorder_->PublishSummary();
+}
+
+std::vector<std::shared_ptr<CostmapLayer>> Costmap::GetTargetLayers(const std::string& target_layer, bool is_segmentation) const {
+
+    std::vector<std::shared_ptr<CostmapLayer>> layers;
+    if (target_layer.empty()){
+        layers = layers_;
+    }else{
+        for (const auto & layer : layers_){
+            if (layer->GetLabel() == target_layer){
+                layers.push_back(layer);
+                break;
+            }
+        }
+    }
+
+    layers.erase(std::remove_if(layers.begin(), layers.end(),
+    [is_segmentation](const std::shared_ptr<CostmapLayer>& layer) {
+        return is_segmentation ? !layer->ContributeSegmentation() : !layer->ContributeOccupancy();
+    }), layers.end());
+
+    return layers;
+}
+
 void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation, std::string target_layer) const {
 
 	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
 
-	std::vector<std::shared_ptr<CostmapLayer>> layers;
-	if (target_layer.empty()){
-		layers = layers_;
-	}else{
-		for (const auto & layer : layers_){
-			if (layer->GetLabel() == target_layer){
-				layers.push_back(layer);
-				break;
-			}
-		}
-	}
+	const auto layers = GetTargetLayers(target_layer, is_segmentation);
 
-	layers.erase(std::remove_if(layers.begin(), layers.end(),
-		[is_segmentation](const std::shared_ptr<CostmapLayer>& layer) {
-			return is_segmentation ? !layer->ContributeSegmentation() : !layer->ContributeOccupancy();
-		}), layers.end());
+	const int unknown_value = thresholds_.output_unknown_cells
+		? -1
+		: (is_segmentation ? thresholds_.replace_seg_unknown_with
+		                   : thresholds_.replace_occ_unknown_with);
 
 	int c = 0;
 	for (int i = region.y_min; i < region.y_max; i++) {
 		for (int j = region.x_min; j < region.x_max; j++) {
 			const int layer_val = GetCombinedLayerValue<int>(layers, [i, j, is_segmentation](const std::shared_ptr<CostmapLayer>& layer){
 				return is_segmentation ? layer->GetSegValue(i, j) : layer->GetOccValue(i, j);
-			});
+			}, unknown_value);
 			data[c++] = static_cast<int8_t>(layer_val);
 		}
 	}
@@ -114,7 +133,7 @@ msg::OccupancyGridUpdate Costmap::GetGridUpdate(
 	grid_update_msg.header.frame_id = "map";
 
 	core::GridRegion update_region;
-	for (const auto & layer : layers_) {
+	for (const auto & layer : GetTargetLayers(target_layer, is_segmentation)) {
 		update_region.UpdateBounds(layer->GetUpdateRegion());
 	}
 	if (!update_region.HasData()) {

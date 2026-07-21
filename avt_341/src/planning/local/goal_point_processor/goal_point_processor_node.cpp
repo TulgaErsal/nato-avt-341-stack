@@ -4,6 +4,7 @@
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/core/dto_conversion.h"
 #include <memory>
 // Globals
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_steering_angle;
@@ -15,6 +16,7 @@ std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_segment_end;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointStamped>> pub_goalPoint;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_desiredHeading;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_goalPointIsEnd;
+std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_finalHeading;
 std::shared_ptr<avt_341::node::NodeProxy> n;
 avt_341::msg::Path global_path_input;
 avt_341::msg::Float64MultiArray veh_input;
@@ -25,9 +27,13 @@ double last_steer_angle = 0.0;
 avt_341::msg::Time last_steer_time;
 bool steer_initialized = false;
 
-float speedSetpoint, desiredHeading;
+float speedSetpoint, desiredHeading, finalHeading;
+float autoFinalHeading;
+bool finalHeadingSet;
+bool autoFinalHeadingSet;
 bool priorUseLeader, turningAround, goal_set;
 bool alwaysPubGoal;
+bool useAutoFinalHeading;
 int priorIndex, priorPathLength;
 avt_341::utils::vec2 goal;
 bool goal_is_end = false;
@@ -35,10 +41,19 @@ bool goal_is_end = false;
 // Params
 float max_speed, la, predictionTimeHorizon, frontAngleGoal;
 float goal_lookahead_padding;
+float ax_max;
 bool use_goal_lookahead_maxspeed;
 
 void callback_global_path(avt_341::msg::PathPtr global_path) {
     global_path_input = *global_path;
+
+    // Auto-compute final heading from the direction of the last two waypoints.
+    if (global_path->poses.size() >= 2) {
+        const auto& p1 = global_path->poses[global_path->poses.size() - 2].pose.position;
+        const auto& p2 = global_path->poses[global_path->poses.size() - 1].pose.position;
+        autoFinalHeading = static_cast<float>(std::atan2(p2.y - p1.y, p2.x - p1.x));
+        autoFinalHeadingSet = true;
+    }
 
     avt_341::msg::String scenario_msg;
     scenario_msg.data = "path_update";
@@ -64,6 +79,15 @@ void callback_speedSetpoint(avt_341::msg::Float64Ptr ss) {
 
 void callback_follower_status(avt_341::msg::FollowerStatusPtr follower_status) {
     follower_status_input = *follower_status;
+}
+
+void callback_gp_state(avt_341::msg::NavStatePtr msg) {
+
+	if (!avt_341::core::HasActiveGoal(msg)) {
+		return;
+	}
+	finalHeading = avt_341::utils::GetHeadingFromOrientation(msg->goal.pose.orientation);
+    finalHeadingSet = avt_341::utils::UseGoalOrientation(msg->goal);
 }
 
 void publishSteeringRate(double current_angle) {
@@ -115,8 +139,29 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
 	avt_341::utils::vec2 vehiclePosition(x_veh, y_veh);
 	avt_341::utils::vec2 globalPoint(0.0, 0.0);
-    const double lookahead_speed = use_goal_lookahead_maxspeed ? speedSetpoint : longvel;
 
+    const double T = static_cast<double>(predictionTimeHorizon + goal_lookahead_padding);
+    double lookahead_dist;
+    if (use_goal_lookahead_maxspeed) {
+        lookahead_dist = speedSetpoint * T;
+    } else {
+        const double v0 = longvel;
+        const double v_sp = static_cast<double>(speedSetpoint);
+        if (v0 >= v_sp) {
+            lookahead_dist = v_sp * T;
+        } else {
+            const double t_accel = (v_sp - v0) / ax_max;
+            if (t_accel >= T) {
+                lookahead_dist = v0 * T + 0.5 * ax_max * T * T;
+            } else {
+                const double d_accel = v0 * t_accel + 0.5 * ax_max * t_accel * t_accel;
+                const double d_cruise = v_sp * (T - t_accel);
+                lookahead_dist = d_accel + d_cruise;
+            }
+        }
+    }
+
+    int pathStartIndex = 0;
     if (follower_status_input.use_leader) { //asked to follow a leader
 		if (!priorUseLeader){
             priorUseLeader = true;
@@ -145,7 +190,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
                 pathLength += (globalPoint - prevPoint).mag();
             }
             lastIndexConsidered = gp;
-            if (pathLength > (predictionTimeHorizon + goal_lookahead_padding) * lookahead_speed) {
+            if (pathLength > lookahead_dist) {
                 break;
             }
         }
@@ -162,18 +207,30 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 			priorIndex = 0;
 			priorPathLength = 0;
         }
+        // Find nearest index on global path to vehicle position
+        float distanceToGlobalPoint = -1;
+        int closestIndex = 0;
+        for (int gp = 0; gp < (int)global_path.poses.size(); gp++) {
+            globalPoint.x = global_path.poses[gp].pose.position.x;
+            globalPoint.y = global_path.poses[gp].pose.position.y;
+            float currentDistance = (globalPoint - vehiclePosition).mag();
+            if (distanceToGlobalPoint < 0 || currentDistance < distanceToGlobalPoint) {
+                distanceToGlobalPoint = currentDistance;
+                closestIndex = gp;
+            }
+        }
+        pathStartIndex = closestIndex;
 		float pathLength = 0.0f;
-		int lastIndexConsidered = 0;
-		for (int gp=0;gp<global_path.poses.size();gp++) {
+		int lastIndexConsidered = closestIndex;
+		for (int gp = closestIndex; gp < (int)global_path.poses.size(); gp++) {
 			globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
-			if (gp > 0) {
+			if (gp > closestIndex) {
                 avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
 			lastIndexConsidered = gp;
-			// Check prediction horizon
-			if (pathLength > (predictionTimeHorizon+goal_lookahead_padding) * lookahead_speed){
+			if (pathLength > lookahead_dist){
 				break;
             }
 		}
@@ -216,9 +273,9 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
 	goal = globalPoint;
     avt_341::utils::vec2 heading;
-	if (global_path.poses.size() > 1 && !priorUseLeader) {
-		heading.x = global_path.poses[1].pose.position.x-global_path.poses[0].pose.position.x;
-        heading.y = global_path.poses[1].pose.position.y-global_path.poses[0].pose.position.y;
+	if (global_path.poses.size() > 1 && !priorUseLeader && pathStartIndex + 1 < (int)global_path.poses.size()) {
+		heading.x = global_path.poses[pathStartIndex+1].pose.position.x - global_path.poses[pathStartIndex].pose.position.x;
+        heading.y = global_path.poses[pathStartIndex+1].pose.position.y - global_path.poses[pathStartIndex].pose.position.y;
     }
     else {
 		heading = goal - vehiclePosition;
@@ -238,6 +295,7 @@ int main(int argc, char* argv[]) {
     auto sub_veh = n->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
     auto sub_speed = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
     auto sub_follow = n->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
+    auto sub_goal_pose = n->create_subscription<avt_341::msg::NavState>("avt_341/state",1,callback_gp_state);
 
     pub_time_gap = n->create_publisher<avt_341::msg::Float64>("time_gap",10);
     pub_steering_angle = n->create_publisher<avt_341::msg::Float64>("steering_angle",10);
@@ -248,6 +306,7 @@ int main(int argc, char* argv[]) {
     pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1);
     pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1);
     pub_goalPointIsEnd = n->create_publisher<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
+    pub_finalHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_final_heading",1);
  
     n->get_parameter("~max_speed", max_speed, 5.0f);
     n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
@@ -256,6 +315,8 @@ int main(int argc, char* argv[]) {
     n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
 	n->get_parameter("~goal_lookahead_time_padding", goal_lookahead_padding, 0.1f);
 	n->get_parameter("~use_goal_lookahead_maxspeed", use_goal_lookahead_maxspeed, false);
+    n->get_parameter("~ax_max", ax_max, 10.0f);
+    n->get_parameter("~use_auto_final_heading", useAutoFinalHeading, true);
 
     // Initialize variables
     init_time = n->get_stamp();
@@ -268,6 +329,10 @@ int main(int argc, char* argv[]) {
     goal_set = false;
     turningAround = false;
     desiredHeading = 0.0f;
+    finalHeading = 0.0f;
+    finalHeadingSet = false;
+    autoFinalHeading = 0.0f;
+    autoFinalHeadingSet = false;
 
     avt_341::node::Rate rosrate(20.0f);
     while (avt_341::node::ok()) {
@@ -284,6 +349,22 @@ int main(int argc, char* argv[]) {
             avt_341::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
             pub_desiredHeading->publish(ros_desiredHeading);
+            if (goal_is_end) {
+                float headingToPublish = 0.0f;
+                bool shouldPublish = false;
+                if (finalHeadingSet) {
+                    headingToPublish = finalHeading;
+                    shouldPublish = true;
+                } else if (useAutoFinalHeading && autoFinalHeadingSet) {
+                    headingToPublish = autoFinalHeading;
+                    shouldPublish = true;
+                }
+                if (shouldPublish) {
+                    avt_341::msg::Float64 ros_finalHeading;
+                    ros_finalHeading.data = headingToPublish;
+                    pub_finalHeading->publish(ros_finalHeading);
+                }
+            }
         }
         rosrate.sleep();
         n->spin_some();

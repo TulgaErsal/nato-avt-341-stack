@@ -7,8 +7,10 @@ namespace avt_341 {
 namespace mission {
 
 FormationPathGenerator::FormationPathGenerator(const avt_341::mission::FormationParameters & params)
-: params_(params){
+: params_(params), prev_leader_x_(0.0), prev_leader_y_(0.0), tangent_heading_valid_(false){
   gpp2_ = params_.global_path_points_dist*params_.global_path_points_dist;
+  tangent_vx_[0] = 0.0f; tangent_vx_[1] = 0.0f;
+  tangent_vy_[0] = 0.0f; tangent_vy_[1] = 0.0f;
 }
 
 /**
@@ -110,7 +112,28 @@ void FormationPathGenerator::Update(avt_341::msg::Odometry leader_odom, avt_341:
 
 	Vec2d leaderVx, leaderVy;
 
-  PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
+  if (params_.use_tangent_heading) {
+    double dx = leader_odom.pose.pose.position.x - prev_leader_x_;
+    double dy = leader_odom.pose.pose.position.y - prev_leader_y_;
+    if (dx*dx + dy*dy > gpp2_) {
+      double dist = sqrt(dx*dx + dy*dy);
+      tangent_vx_[0] = static_cast<float>(dx / dist);
+      tangent_vx_[1] = static_cast<float>(dy / dist);
+      tangent_vy_[0] =  tangent_vx_[1];
+      tangent_vy_[1] = -tangent_vx_[0];
+      prev_leader_x_ = leader_odom.pose.pose.position.x;
+      prev_leader_y_ = leader_odom.pose.pose.position.y;
+      tangent_heading_valid_ = true;
+    }
+    if (tangent_heading_valid_) {
+      leaderVx[0] = tangent_vx_[0]; leaderVx[1] = tangent_vx_[1];
+      leaderVy[0] = tangent_vy_[0]; leaderVy[1] = tangent_vy_[1];
+    } else {
+      PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
+    }
+  } else {
+    PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
+  }
 
   GenerateLeaderPath(leader_odom, odom, status, leaderVx, leaderVy);
 }
@@ -118,6 +141,7 @@ void FormationPathGenerator::Update(avt_341::msg::Odometry leader_odom, avt_341:
 void FormationPathGenerator::Reset(){
   desired_global_path_.poses.clear();
   leader_path_history_.poses.clear();
+  tangent_heading_valid_ = false;
 }
 
 } // namespace mission

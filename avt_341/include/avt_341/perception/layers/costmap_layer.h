@@ -1,6 +1,7 @@
 
 #ifndef AVT_341_COSTMAP_LAYER_H
 #define AVT_341_COSTMAP_LAYER_H
+#include "avt_341/core/compute_time_recorder.hpp"
 #include "avt_341/core/grid_components.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/perception/costmap_dtos.h"
@@ -14,7 +15,8 @@ namespace avt_341::perception
 		CostmapLayer(
 			const std::shared_ptr<node::NodeProxy>& node_ref,
 			const CostmapSettings& cm_settings,
-			const std::string& label
+			const std::string& label,
+			const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
 		);
 
 		virtual ~CostmapLayer() = default;
@@ -71,6 +73,7 @@ namespace avt_341::perception
 		bool contribute_segmentation_ = true;
 
 		std::shared_ptr<node::NodeProxy> node_ref_;
+		std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
 		CostmapSizeInfo size_info_;
 		ThresholdSettings thresholds_;
 		DilationSettings dilation_;

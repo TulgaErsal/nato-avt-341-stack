@@ -55,13 +55,108 @@ void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
     recv_veh_input = true;
 }
 
+// Returns the squared distance from point (px, py) to the segment (ax,ay)-(bx,by).
+static double SegmentDistSq(double px, double py,
+                             double ax, double ay,
+                             double bx, double by)
+{
+    double dx = bx - ax, dy = by - ay;
+    double len_sq = dx * dx + dy * dy;
+    if (len_sq < 1e-12) {
+        double ex = px - ax, ey = py - ay;
+        return ex * ex + ey * ey;
+    }
+    double t = ((px - ax) * dx + (py - ay) * dy) / len_sq;
+    if (t < 0.0) t = 0.0;
+    if (t > 1.0) t = 1.0;
+    double cx = ax + t * dx - px;
+    double cy = ay + t * dy - py;
+    return cx * cx + cy * cy;
+}
+
+// Returns the subset of obstacles (x, y, size triples) whose center lies
+// within half_width of any segment of the path polyline.
+static std::vector<double> CullObstaclesToCorridor(
+    const std::vector<double>& obs,
+    const std::vector<std::pair<double, double>>& path,
+    double half_width)
+{
+    const double threshold_sq = half_width * half_width;
+    const int num_obs = static_cast<int>(obs.size()) / 3;
+    std::vector<double> culled;
+    culled.reserve(obs.size());
+
+    for (int i = 0; i < num_obs; i++) {
+        const double ox = obs[3 * i];
+        const double oy = obs[3 * i + 1];
+
+        bool in_corridor = false;
+        for (size_t j = 0; j + 1 < path.size(); j++) {
+            if (SegmentDistSq(ox, oy,
+                              path[j].first,     path[j].second,
+                              path[j+1].first,   path[j+1].second) <= threshold_sq) {
+                in_corridor = true;
+                break;
+            }
+        }
+
+        if (in_corridor) {
+            culled.push_back(ox);
+            culled.push_back(oy);
+            culled.push_back(obs[3 * i + 2]);
+        }
+    }
+    return culled;
+}
+
 void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
 {
     if (!is_initialized) return;
-    
+
+    const std::vector<double>* obs_to_use = &obs_msg->data;
+    std::vector<double> culled;
+
+    if (use_corridor_culling && mpc_path_cache.size() >= 2) {
+        culled = CullObstaclesToCorridor(obs_msg->data, mpc_path_cache, corridor_half_width);
+        obs_to_use = &culled;
+    }
+
+    if (visualize_culled_obstacles && culled_obs_marker_pub) {
+        avt_341::msg::MarkerArray marker_array;
+        // Delete all previous markers.
+        avt_341::msg::Marker clear_marker;
+        clear_marker.header.frame_id = "map";
+        clear_marker.header.stamp = node->get_stamp();
+        clear_marker.id = 0;
+        clear_marker.action = avt_341::msg::Marker::DELETEALL;
+        marker_array.markers.push_back(clear_marker);
+        // Add one cube per obstacle cluster in the culled set.
+        const int num_obs = static_cast<int>(obs_to_use->size()) / 3;
+        for (int i = 0; i < num_obs; i++) {
+            avt_341::msg::Marker m;
+            m.header.frame_id = "map";
+            m.header.stamp = node->get_stamp();
+            m.id = i + 1; // 0 is reserved for the DELETEALL marker
+            m.type = avt_341::msg::Marker::CUBE;
+            m.action = avt_341::msg::Marker::ADD;
+            m.pose.position.x = (*obs_to_use)[3 * i];
+            m.pose.position.y = (*obs_to_use)[3 * i + 1];
+            m.pose.position.z = 0.0;
+            m.scale.x = (*obs_to_use)[3 * i + 2];
+            m.scale.y = (*obs_to_use)[3 * i + 2];
+            m.scale.z = (*obs_to_use)[3 * i + 2];
+            m.color.r = 1.0f;
+            m.color.g = 0.0f;
+            m.color.b = 0.0f;
+            m.color.a = 1.0f;
+            marker_array.markers.push_back(m);
+        }
+        culled_obs_marker_pub->publish(marker_array);
+    }
+
     jl_value_t* obs_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    double* obs_arr = const_cast<double*>(&obs_msg->data[0]);
-    jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_msg->data.size(), 0);
+    double* obs_arr = const_cast<double*>(obs_to_use->data());
+    jl_array_t *obs_arg = jl_ptr_to_array_1d(obs_type, obs_arr, obs_to_use->size(), 0);
 
     jl_call1(j_set_obstacles, (jl_value_t*)obs_arg);
     CATCH_JULIA_EXCEPTION;
@@ -95,6 +190,16 @@ void HeadingCallback(avt_341::msg::Float64Ptr heading_msg)
     jl_value_t *j_psi = jl_box_float64(psi);
 
     jl_call1(j_set_heading, j_psi);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void FinalHeadingCallback(avt_341::msg::Float64Ptr heading_msg)
+{
+    double theta = heading_msg->data;
+
+    jl_value_t *j_theta = jl_box_float64(theta);
+
+    jl_call1(j_set_final_heading, j_theta);
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -158,6 +263,29 @@ void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
     double speed = msg->twist.twist.linear.x;
     jl_value_t *j_speed = jl_box_float64(speed);
     jl_call1(j_set_leader_speed, j_speed);
+    CATCH_JULIA_EXCEPTION;
+
+    double lx = msg->pose.pose.position.x;
+    double ly = msg->pose.pose.position.y;
+    double qw = msg->pose.pose.orientation.w;
+    double qxi = msg->pose.pose.orientation.x;
+    double qyi = msg->pose.pose.orientation.y;
+    double qzi = msg->pose.pose.orientation.z;
+    double lyaw = std::atan2(2.0*(qw*qzi + qxi*qyi), 1.0 - 2.0*(qyi*qyi + qzi*qzi));
+    double lyaw_rate = msg->twist.twist.angular.z;
+    jl_value_t *pose_args[4] = {
+        jl_box_float64(lx), jl_box_float64(ly),
+        jl_box_float64(lyaw), jl_box_float64(lyaw_rate)
+    };
+    jl_call(j_set_leader_pose, pose_args, 4);
+    CATCH_JULIA_EXCEPTION;
+}
+
+void FollowerStatusCallback(avt_341::msg::FollowerStatusPtr msg)
+{
+    jl_value_t *j_xo = jl_box_float64(msg->x_offset);
+    jl_value_t *j_yo = jl_box_float64(msg->y_offset);
+    jl_call2(j_set_formation_offset, j_xo, j_yo);
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -304,6 +432,7 @@ void DeclareParameters()
     node->get_parameter("~adaptive", adaptive, false);
     node->get_parameter("~vehicle_axle_distance_front", vehicle_axle_distance_front, 1.38599 );
     node->get_parameter("~linear_solver", linear_solver, std::string("ma27"));
+    node->get_parameter("~w_final_heading", w_final_heading, 10.0);
     node->get_parameter("~publish_steering_commands", publish_steering_commands, true);
     node->get_parameter("~slope_threshold", slope_threshold, 0.2);
     node->get_parameter("~rms_threshold", rms_threshold, 0.05);
@@ -312,6 +441,10 @@ void DeclareParameters()
     node->get_parameter("~sa_max", sa_max, 0.485);
     node->get_parameter("~sr_min", sr_min, -0.523);
     node->get_parameter("~sr_max", sr_max, 0.523);
+    node->get_parameter("~ax_max", ax_max, 10.0);
+    node->get_parameter("~use_corridor_culling", use_corridor_culling, true);
+    node->get_parameter("~corridor_half_width", corridor_half_width, 20.0);
+    node->get_parameter("~visualize_culled_obstacles", visualize_culled_obstacles, false);
 
 }
 
@@ -465,7 +598,11 @@ void InitialiseJuliaAPI()
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
+    j_set_final_heading = jl_get_function(mpc_module, "SetFinalHeading");
+    j_set_w_final_heading = jl_get_function(mpc_module, "SetWFinalHeading");
     j_set_goal_point_is_end_of_global_path = jl_get_function(mpc_module, "SetGoalPointIsEndOfGlobalPath");
+    j_set_leader_pose = jl_get_function(mpc_module, "SetLeaderPose");
+    j_set_formation_offset = jl_get_function(mpc_module, "SetFormationOffset");
 
     // [PARAM SETTERS]
     j_set_tire_model = jl_get_function(mpc_module, "SetTireModel");
@@ -498,6 +635,7 @@ void InitialiseJuliaAPI()
     j_set_sa_max = jl_get_function(mpc_module, "SetSteeringAngleMax");
     j_set_sr_min = jl_get_function(mpc_module, "SetSteeringRateMin");
     j_set_sr_max = jl_get_function(mpc_module, "SetSteeringRateMax");
+    j_set_ax_max = jl_get_function(mpc_module, "SetAxMax");
     // -------------------------------
 
     // Convert params to Julia types
@@ -519,6 +657,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_safety_margin = jl_box_float64(safety_margin);
     jl_value_t *j_grid_resolution = jl_box_float64(grid_resolution);
     jl_value_t *j_w_final_speed = jl_box_float64(w_final_speed);
+    jl_value_t *j_w_final_heading = jl_box_float64(w_final_heading);
     jl_value_t *j_front_angle_goal = jl_box_float64(front_angle_goal);
     jl_value_t *j_front_angle_obstacle = jl_box_float64(front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(adaptive);
@@ -532,6 +671,7 @@ void InitialiseJuliaAPI()
     jl_value_t *j_sa_max = jl_box_float64(sa_max);
     jl_value_t *j_sr_min = jl_box_float64(sr_min);
     jl_value_t *j_sr_max = jl_box_float64(sr_max);
+    jl_value_t *j_ax_max = jl_box_float64(ax_max);
 
     // Set Julia parameters
     jl_call1(j_set_tire_model, j_tire_model);
@@ -551,6 +691,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
     jl_call1(j_set_w_final_speed, j_w_final_speed);
+    jl_call1(j_set_w_final_heading, j_w_final_heading);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
@@ -565,6 +706,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_sa_max, j_sa_max);
     jl_call1(j_set_sr_min, j_sr_min);
     jl_call1(j_set_sr_max, j_sr_max);
+    jl_call1(j_set_ax_max, j_ax_max);
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -614,6 +756,11 @@ void UpdateCostFnWeights(const avt_341::node::RosParameterEvent & p) {
         jl_call1(j_set_w_final_speed, jl_box_float64(param_val.value()));
     }
 
+    if (auto param_val = p.get_value<double>("w_final_heading")) {
+        node->log_info("Setting w_final_heading = %.2f", param_val.value());
+        jl_call1(j_set_w_final_heading, jl_box_float64(param_val.value()));
+    }
+
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -634,6 +781,7 @@ int main(int argc, char *argv[])
     auto goal_pt_sub = node->create_subscription<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
     auto goal_end_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
     auto head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
+    auto final_head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
     auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
     auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
@@ -642,6 +790,7 @@ int main(int argc, char *argv[])
     auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
     auto leader_odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
     auto leader_status_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
+    auto follower_status_sub = node->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
 
     // Register publishers
     // -------------------.
@@ -655,6 +804,9 @@ int main(int argc, char *argv[])
     auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
     auto slope_limited_pub = node->create_publisher<avt_341::msg::Bool>("avt_341/mpc_slope_limited", 1);
+    if (visualize_culled_obstacles) {
+        culled_obs_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/culled_obstacle_markers", 1);
+    }
 
     node->log_info("Julia API initialized. Running main loop.");
 
@@ -670,7 +822,8 @@ int main(int argc, char *argv[])
         "w_deviation_in_yaw",
         "w_yaw_accel",
         "w_traversability_cost",
-        "w_final_speed"
+        "w_final_speed",
+        "w_final_heading"
     }, UpdateCostFnWeights);
 
     avt_341::node::Rate node_rate(rate);
@@ -685,8 +838,13 @@ int main(int argc, char *argv[])
             jl_call0(j_plan);
             CATCH_JULIA_EXCEPTION;
 
-            // Publish MPC outputs
-            path_pub->publish(GetMPCPath());
+            // Publish MPC outputs and cache path for obstacle corridor culling
+            auto mpc_path_msg = GetMPCPath();
+            mpc_path_cache.clear();
+            for (const auto& pose : mpc_path_msg.poses) {
+                mpc_path_cache.emplace_back(pose.pose.position.x, pose.pose.position.y);
+            }
+            path_pub->publish(mpc_path_msg);
             speed_pub->publish(GetMPCSpeed());
             if (publish_steering_commands) {
                 steer_pub->publish(GetMPCSteering());

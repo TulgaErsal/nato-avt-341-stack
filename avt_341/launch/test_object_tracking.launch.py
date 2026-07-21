@@ -10,7 +10,7 @@ def launch_setup(context, *args, **kwargs):
     # Retrieve and expand the bag file path
     bag_file = LaunchConfiguration('bag_file').perform(context)
     bag_file = os.path.expanduser(bag_file)
-    
+
     # Retrieve parameter paths
     avt_341_dir = get_package_share_directory('avt_341')
     tracking_params_path = LaunchConfiguration('tracking_params').perform(context)
@@ -18,41 +18,26 @@ def launch_setup(context, *args, **kwargs):
     record = LaunchConfiguration('record').perform(context).lower() == 'true'
     output_bag = LaunchConfiguration('output_bag').perform(context)
 
-    # Load YAML parameters manually to avoid ROS 2's strict YAML format requirement
-    # (The provided YAML files are simple key-value pairs, which ROS 2's direct parameter file loading doesn't like)
+    # Load tracking parameters
     try:
         with open(tracking_params_path, 'r') as f:
             tracking_params = yaml.safe_load(f)
             if tracking_params is None:
                 tracking_params = {}
-            
+
             # Apply requested parameter configuration
             tracking_params.update({
                 'tracking_rate': 10.0,
                 'camera_frame': 'mrzr2/front_camera',
-                'publish_clouds_cluster': True,
-                'publish_clouds_cropbox': True,
-                'publish_clouds_roi': True,
-                'publish_clouds_ground': True,
-                'publish_clouds_fov': True,
+                'world_frame': 'map',
                 'publish_detection': True,
                 'publish_odometry': True,
-                'publish_pose': True,
-                'filters_pose': True,
-                'filters_odometry': True,
                 'tracker_use_mission_manager': False,
-                'filters_use_pca_centroid': True,
-                'tracker_target_class': '0',
-                'filters_use_manual_roi': True,
-                'filters_downsampling_leaf_size': 0.25,
-                'filters_ground_threshold': 0.2,
-                'filters_clustering_size_minimum': 30,
-                'filters_clustering_size_maximum': 500,
-                'filters_manual_roi_size': [5.0, 5.0, 5.0],
+                'tracker_target_classes': ['0'],
                 'filters_kalman_process': 0.01,
                 'filters_kalman_measurement': 0.1,
                 # Camera-based range estimation parameters
-                'camera_target_height': 5.0,
+                'camera_target_height': 1.9,
                 'camera_bbox_pixel_sigma': 4.0,
                 # IMM model probabilities and Markov transition probability
                 # CV model is preferred for straight-line driving; CTR kicks
@@ -60,24 +45,25 @@ def launch_setup(context, *args, **kwargs):
                 'filters_imm_cv_init_prob': 0.33,
                 'filters_imm_ctr_init_prob': 0.33,
                 'filters_imm_nm_init_prob': 0.33,
-                'filters_imm_transition_prob': 0.9,
-                'world_frame': 'map',
+                'filters_imm_persistence_prob': 0.9,
                 'sync_enable': False,
                 'sync_detection': 0.1,
-                'sync_use_callback': True
+                'sync_use_callback': True,
+                # Obstacle detector integration (now embedded in tracking node)
+                'od_robot_base_link': 'mrzr2/base_link',
+                'obstacle_association_max_dist': 5.0,
             })
     except Exception as e:
         print(f"Error loading tracking parameters: {e}")
         tracking_params = {}
 
     # Define Nodes and Processes
-    
+
     # 1. Play the rosbag
     bag_play = ExecuteProcess(
         cmd=['ros2', 'bag', 'play', bag_file, '--clock', '1000'],
         output='screen'
     )
-
 
     # 2. Object Tracking Node
     tracking_node = Node(
@@ -90,12 +76,7 @@ def launch_setup(context, *args, **kwargs):
             ('camera_info', '/mrzr2/front_camera/camera_info'),
             ('image', '/mrzr2/front_camera/image'),
             ('detection_2d', '/mrzr2/front_camera/detections_2d'),
-            ('points/input', '/mrzr2/avt_341/points'),
-            ('points/fov', 'object_tracking/points/fov'),
-            ('points/roi', 'object_tracking/points/roi'),
-            ('points/ground', 'object_tracking/points/ground'),
-            ('points/cluster', 'object_tracking/points/cluster'),
-            ('points/cropbox', 'object_tracking/points/cropbox')
+            ('points/input', '/mrzr2/avt_341/points')
         ]
     )
 
@@ -109,15 +90,15 @@ def launch_setup(context, *args, **kwargs):
         output='screen'
     )
 
-    # 4. Mission Task Status Publisher
+    # 5. Mission Task Status Publisher
     # Publishes the task status once to set the target vehicle ID
     task_status_pub = ExecuteProcess(
-        cmd=['ros2', 'topic', 'pub', '-t', '1', '/task', 'avt_341_msgs/msg/MissionTaskStatus', 
+        cmd=['ros2', 'topic', 'pub', '-t', '1', '/task', 'avt_341_msgs/msg/MissionTaskStatus',
              '{tracked_vehicle: "0"}'],
         output='screen'
     )
 
-    # 5. Record Bag (Optional)
+    # 6. Record Bag (Optional)
     actions = [
         bag_play,
         tracking_node,
@@ -136,10 +117,10 @@ def launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     avt_341_dir = get_package_share_directory('avt_341')
-    
+
     return LaunchDescription([
         DeclareLaunchArgument('bag_file', description='Path to the rosbag directory or file'),
-        DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'avt_341_ros2.rviz')),
+        DeclareLaunchArgument('rviz_config', default_value=os.path.join(avt_341_dir, 'rviz', 'test_object_tracking.rviz')),
         DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'config', 'parameters', 'object_tracking.yaml')),
         DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
         DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),

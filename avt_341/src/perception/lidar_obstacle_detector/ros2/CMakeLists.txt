@@ -36,7 +36,8 @@ if(USING_AMENT)
            $<INSTALL_INTERFACE:include>)
 
   ament_target_dependencies(${PROJECT_NAME}_lidar_obstacle_detector_node
-                            pcl_conversions)
+                            pcl_conversions
+                            visualization_msgs)
 
   install(
       TARGETS ${PROJECT_NAME}_lidar_obstacle_detector_node

@@ -90,7 +90,7 @@ std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
         
         float occ = (float)grid->data[i];
-        float seg = 100.0f - (float)GetGridValue(segmentation_grid, x_grid, y_grid);
+        float seg = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
         
         map_[ix][iy] = occ;
         base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
@@ -239,9 +239,14 @@ bool FastMarching::Solve() {
     const int dx[] = {-1, 1, 0, 0, -1, 1, -1, 1};
     const int dy[] = {0, 0, -1, 1, -1, -1, 1, 1};
 
+    int iter = 0;
     while (!pq.empty()) {
         AStarCell top = pq.top();
         pq.pop();
+
+        if (++iter % 10000 == 0 && cancel_.load(std::memory_order_relaxed)) {
+            return false;
+        }
 
         int idx = top.idx;
         if (top.g > costs_flat_[idx]) continue;

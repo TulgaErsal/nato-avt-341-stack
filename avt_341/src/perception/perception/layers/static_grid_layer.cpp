@@ -11,9 +11,10 @@ namespace avt_341::perception
     StaticGridLayer::StaticGridLayer(
         const std::shared_ptr<node::NodeProxy>& node_ref,
         const CostmapSettings& cm_settings,
-        const std::string& label
+        const std::string& label,
+        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
         )
-        : CostmapLayer(node_ref, cm_settings, label)
+        : CostmapLayer(node_ref, cm_settings, label, compute_time_recorder)
     {
         ReadLayerParams();
         LoadFileData();

@@ -6,7 +6,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     avt_341_dir = get_package_share_directory('avt_341')
-    rviz_config = os.path.join(avt_341_dir, 'rviz', 'avt_341_ros2.rviz')
+    rviz_config = os.path.join(avt_341_dir, 'rviz', 'test_global_planner.rviz')
     
     # Load global planner parameters from YAML file
     global_planner_params = os.path.join(

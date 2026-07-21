@@ -40,7 +40,8 @@ struct Contact {
     std::string name;
     bool investigated;
     bool investigating;
-    bool is_new;
+    bool is_new;       // true until MoveTo+Encircle tasks are created
+    double first_seen_sec;
 };
     
 /// Class for formation control
@@ -59,6 +60,8 @@ class MissionManager{
     int loadMissionDefinition(std::string filename);
 
     bool getMissionPoint(MissionPoint& mission_point, std::string posename);
+
+    void setMissionPoints(const std::vector<MissionPoint> & mission_points);
 
     bool loadMissionPaths(std::string filename);
 
@@ -92,7 +95,6 @@ class MissionManager{
 
     // Task management
     void updateTasks();
-    void postUpdateTasks();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(const avt_341::msg::Path& path);
     void publishGoal(const msg::NavGoal & goal_in);
@@ -102,8 +104,8 @@ class MissionManager{
     void publishArrival(const std::string & sender_name, const std::string & objective);
     void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
     void publishLeaderStatus();
-    void publishCurrentTaskInfo();
-    void publishTaskInfo(const Task* task);
+    void publishTaskStatus();
+    msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
     void reset();
     void resetTaskList(bool send_completion_msg);
     void cancelTask(int task_id,bool send_completion_msg);
@@ -116,6 +118,8 @@ class MissionManager{
     double getSpeedSetpoint();
 
   private:
+
+    void publishTaskChange();
 
     const FormationParameters & formation_params;
     const ToiParameters & toi_params_;
@@ -142,15 +146,24 @@ class MissionManager{
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> leader_status_pub = nullptr;
     std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionTaskStatus>> task_status_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionModuleStatus>> task_change_pub = nullptr;
+    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MapMarkerList>> map_markers_pub = nullptr;
 
     // Methods
     bool hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
     auto getClosestNewContact();
     MissionPoint getClosestOverwatch();
     void addContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
+    void updateExistingContact(std::vector<Contact>::iterator it, const avt_341::msg::PoseStamped & pose);
+    void createToiTasks(Contact & contact, const std::map<std::string, avt_341::msg::Odometry> & veh_poses);
+    void updateOverwatchPositions();
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();
+
+    // Publishes the current mission points as a latched MapMarkerList. Called
+    // whenever the mission point list changes (CSV load or service call).
+    void publishMapMarkers();
 
 }; // class mission manager
 

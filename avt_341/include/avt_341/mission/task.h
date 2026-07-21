@@ -66,8 +66,9 @@ public:
     static const std::string CONTACT;
     static const std::string ACTOR;
 
+    // TODO: Too many parameters, can place most goal parameters in NavGoal structure
     MoveTo(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def = nullptr,
-           double x_offset = 0.0, double y_offset = 0.0, double goal_threshold=-1.0, double desired_speed=-1.0);
+           double x_offset = 0.0, double y_offset = 0.0, double goal_threshold=-1.0, double yaw_threshold=-1.0, double desired_speed=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -93,6 +94,7 @@ private:
     double x_offset_;
     double y_offset_;
     double goal_threshold_;
+    double yaw_threshold_;
 }; // class MoveTo
 
 class WaitUntilComplete : public Task {
@@ -121,9 +123,14 @@ public:
     std::string description() const override;
     avt_341::msg::PoseStamped terminalPose() const override;
 
+    void updateTarget(const avt_341::msg::PoseStamped & target) { target_ = target; }
+    void setContactName(const std::string & name) { contact_name_ = name; }
+    const std::string & contactName() const { return contact_name_; }
+
 private:
   bool arrived;
   avt_341::msg::PoseStamped target_;
+  std::string contact_name_;
   double radius_;
   double angular_range_degrees_;
   bool is_cw_;
@@ -133,7 +140,8 @@ private:
 
 class Follow : public Task {
 public:
-    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def, double desired_speed = -1.0, double goal_threshold=-1.0);
+    Follow(MissionManager* manager, std::string sender, int msg_id, FormationDefinition* formation_def,
+        double desired_speed = -1.0, double goal_threshold=-1.0, double yaw_threshold=-1.0);
     void init_() override;
     void run() override;
     bool is_done() override;
@@ -147,6 +155,7 @@ private:
   bool terminate_on_all_arrived_;
   avt_341::mission::FormationPathGenerator path_generator_;
   double goal_threshold_;
+  double yaw_threshold_;
 }; // class Follow
 
 class PathFollow : public Task {

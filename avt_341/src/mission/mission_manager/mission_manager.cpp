@@ -36,7 +36,9 @@ MissionManager::MissionManager(
     speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
     follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
     leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
-    task_status_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionTaskStatus>("avt_341/mission_task_state");
+    task_status_pub = node_proxy_->create_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_status", 10);
+    task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionModuleStatus>("avt_341/task_change");
+    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("/avt_341/map_markers_change");
 }
 
 MissionManager::~MissionManager() {
@@ -61,11 +63,11 @@ int MissionManager::loadMissionDefinition(std::string filename) {
     std::string line;
     std::vector<std::string> contents;
     MissionPoint missionPt;
+    std::vector<MissionPoint> mission_points;
 
     // Load the mission from file
     std::ifstream infile(filename);
     if(infile.is_open()) {
-        mission_data.clear();
         while(std::getline(infile, line))
         {
             std::istringstream iss(line);
@@ -80,14 +82,19 @@ int MissionManager::loadMissionDefinition(std::string filename) {
                 missionPt.rot_y = std::strtod(contents[5].c_str(), NULL);
                 missionPt.rot_z = std::strtod(contents[6].c_str(), NULL);
                 missionPt.rot_w = std::strtod(contents[7].c_str(), NULL);
-                mission_data.push_back(missionPt);
+                mission_points.push_back(missionPt);
                 //std::cout << "Pose: " << position.name << " " << position.pos_x << " " << position.rot_w << std::endl;
             }
-        }    
+        }
+        setMissionPoints(mission_points);
     } else {
         node_proxy_->log_info("Error reading mission definition %s", filename.c_str());
     }
 
+    return 0;
+}
+
+void MissionManager::updateOverwatchPositions() {
     // Find overwatch positions, assume starting with SP_
     overwatch_positions.clear();
     for(const auto & mp : mission_data){
@@ -95,8 +102,42 @@ int MissionManager::loadMissionDefinition(std::string filename) {
         overwatch_positions.push_back(mp);
       }
     }
+}
 
-    return 0;
+void MissionManager::setMissionPoints(const std::vector<MissionPoint> & mission_points) {
+    mission_data = mission_points;
+    updateOverwatchPositions();
+    node_proxy_->log_info("%s updated mission point definitions (%d points, %d overwatch).",
+                          my_name.c_str(), static_cast<int>(mission_data.size()),
+                          static_cast<int>(overwatch_positions.size()));
+    publishMapMarkers();
+}
+
+void MissionManager::publishMapMarkers() {
+    // Publish the current mission points as a MapMarkerList on the latched topic
+    // so late-joining subscribers (e.g. the RViz panel) get the current set.
+    avt_341::msg::MapMarkerList marker_list;
+    marker_list.header.stamp = node_proxy_->get_stamp();
+    marker_list.header.frame_id = "map";
+
+    marker_list.markers.reserve(mission_data.size());
+    for(const auto & mp : mission_data) {
+        avt_341::msg::MapMarker marker;
+        marker.header = marker_list.header;
+        marker.marker_id = mp.name;
+        marker.label = mp.name;
+        marker.type = avt_341::msg::MapMarker::MISSION_POINT;
+        marker.pose.position.x = mp.pos_x;
+        marker.pose.position.y = mp.pos_y;
+        marker.pose.position.z = mp.pos_z;
+        marker.pose.orientation.x = mp.rot_x;
+        marker.pose.orientation.y = mp.rot_y;
+        marker.pose.orientation.z = mp.rot_z;
+        marker.pose.orientation.w = mp.rot_w;
+        marker_list.markers.push_back(marker);
+    }
+
+    map_markers_pub->publish(marker_list);
 }
 
 bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string name) {
@@ -172,9 +213,9 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
       if(preempted_task == nullptr || preempted_task->is_preemptable){
         task_list.push_front(task);
       }else{
-        // Insert at front before first preemptable task
+        // Insert before the first preemptable task (or at the end if none exist).
         auto it = std::find_if(task_list.begin(), task_list.end(), [&](Task* t){return t->is_preemptable;});
-        preempted_task = *it;
+        preempted_task = (it != task_list.end()) ? *it : nullptr;
         task_list.insert(it, task);
       }
 
@@ -264,21 +305,29 @@ void MissionManager::publishLeaderStatus(){
   leader_status_pub->publish(status_msg);
 }
 
-void MissionManager::publishCurrentTaskInfo() {
-    publishTaskInfo(currentTask());
-}
-
-void MissionManager::publishTaskInfo(const Task* task){
-
-    if(task == nullptr) {
+void MissionManager::publishTaskStatus() {
+    const auto task = currentTask();
+    if (task == nullptr) {
         return;
     }
+    const msg::MissionTaskStatus task_status = createTaskStatusMsg(task);
+    task_status_pub->publish(task_status);
+}
 
+msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const Task* task) const
+{
     msg::MissionTaskStatus status_msg;
     status_msg.header.stamp = node_proxy_->get_stamp();
     status_msg.header.frame_id = "map";
+
+    if(task == nullptr) {
+        status_msg.task_id = -1;
+        return status_msg;
+    }
+
     status_msg.task_id = task->msg_id;
     status_msg.task_description = task->description();
+    status_msg.target_pose = task->terminalPose().pose;
 
     if (const FormationDefinition * formation_def =  task->getFormationDef()) {
         status_msg.formation_type = formation_def->getFormationType();
@@ -289,12 +338,29 @@ void MissionManager::publishTaskInfo(const Task* task){
             [](unsigned char c){ return std::tolower(c); });
     }
 
-    task_status_pub->publish(status_msg);
+    return status_msg;
 }
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
   communication_pub->publish(TaskCompleteMsg(sender_name, -1, sender_name, msg_id).toROSMsg());
 }
+
+void MissionManager::publishTaskChange() {
+    avt_341_msgs::msg::MissionModuleStatus status_msg;
+    const Task* active_task = currentTask();
+    status_msg.active_task = createTaskStatusMsg(active_task);
+    status_msg.header = status_msg.active_task.header;
+
+    if (!task_list.empty()) {
+        status_msg.queued_tasks.reserve(task_list.size() - 1);
+        for (auto it = std::next(task_list.begin()); it != task_list.end(); ++it) {
+            status_msg.queued_tasks.push_back((*it)->description());
+        }
+    }
+
+    task_change_pub->publish(status_msg);
+}
+
 
 void MissionManager::updateTasks() {
     Task* active_task = currentTask();
@@ -305,7 +371,7 @@ void MissionManager::updateTasks() {
           active_task->init();
           goal_filter_->Reset();
           node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
-          publishTaskInfo(active_task);
+          publishTaskChange();
         }
 
         active_task->run();
@@ -315,15 +381,13 @@ void MissionManager::updateTasks() {
           publishTaskCompletion(active_task);
           task_list.pop_front();
           delete active_task;
+          publishTaskChange();
         }
     }
 }
 
 Task* MissionManager::currentTask(){
   return task_list.empty() ? nullptr : task_list.front();
-}
-
-void MissionManager::postUpdateTasks() {
 }
 
 // Contact Management
@@ -358,7 +422,36 @@ void MissionManager::addContact(const std::string & name, const avt_341::msg::Po
   new_contact.investigating = false;
   new_contact.investigated = false;
   new_contact.is_new = true;
+  new_contact.first_seen_sec = node_proxy_->get_now_seconds();
   mission_contacts.push_back(new_contact);
+}
+
+void MissionManager::updateExistingContact(
+    std::vector<Contact>::iterator it,
+    const avt_341::msg::PoseStamped & pose)
+{
+    it->pose = pose;
+    const std::string & name = it->name;
+    node_proxy_->log_info("Updated contact \"%s\" position to (%.2f, %.2f).",
+                          name.c_str(), pose.pose.position.x, pose.pose.position.y);
+
+    for (Task* task : task_list) {
+        if (auto* moveto = dynamic_cast<MoveTo*>(task)) {
+            if (moveto->goal_type == MoveTo::CONTACT && moveto->name == name) {
+                // Update the target so the vehicle steers toward the refined position.
+                // goal is used by init_() if the task hasn't started; target_pose is
+                // used by run() when the task is already executing.
+                moveto->goal = pose;
+                moveto->target_pose = pose;
+            }
+        } else if (auto* encircle = dynamic_cast<Encircle*>(task)) {
+            // Only update while the task is still queued (init_done=false).
+            // Once init_() has run the circle path is already computed.
+            if (!encircle->init_done && encircle->contactName() == name) {
+                encircle->updateTarget(pose);
+            }
+        }
+    }
 }
 
 void MissionManager::resetTaskList(bool send_completion_msg) {
@@ -399,44 +492,89 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
   }
 }
 
+void MissionManager::createToiTasks(Contact & contact, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
+    contact.is_new = false;
+    contact.investigating = true;
+
+    Task* task = currentTask();
+    FormationDefinition* formation_def = task ? task->getFormationDef() : nullptr;
+
+    // Trigger investigation for ego-vehicle: approach and encircle
+    // ------------------------------------------------------------------------------------------
+    node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
+    auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
+    investigateTask->setGoalByContact(contact);
+    investigateTask->is_preemptable = false;
+    addTask(investigateTask, PriorityType::PREEMPT);
+
+    const int encircle_task_id = obj_detection_cnt--;
+    auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
+    encircleTask->setContactName(contact.name);
+    encircleTask->is_preemptable = false;
+    addTask(encircleTask, PriorityType::PREEMPT);
+
+    // Command overwatch of other vehicle in formation
+    // ------------------------------------------------------------------------------------------
+    double min_dist = std::numeric_limits<double>::max();
+    std::string overwatch_veh;
+    for(const auto& veh_pose: veh_poses) {
+        if(veh_pose.first == my_name){
+            continue;
+        }
+        double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
+        if(dist < min_dist) {
+            min_dist = dist;
+            overwatch_veh = veh_pose.first;
+        }
+    }
+
+    if(overwatch_veh.empty() && formation_def != nullptr) {
+        node_proxy_->log_warning("Could not find closest overwatch vehicle in pose list. Reverting to first available vehicle in formation.");
+        const auto ordered_vehicles = formation_def->orderedVehicles();
+        const auto it = std::find_if(ordered_vehicles.begin(), ordered_vehicles.end(),
+                                     [this](const std::string & veh){ return veh != my_name; });
+        overwatch_veh = (it != ordered_vehicles.end()) ? *it : std::string{};
+    }
+
+    if(overwatch_veh.empty()){
+        node_proxy_->log_info("No overwatch vehicle available");
+    }else{
+        communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
+    }
+}
+
 // Message Handlers
 void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
+    const double now = node_proxy_->get_now_seconds();
 
     for(const auto& pose: contacts.poses) {
-        if(!hasContact(pose.header.frame_id, pose)) {
-            addContact(pose.header.frame_id, pose);
-            Contact & contact = mission_contacts.back();
+        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+            [&](const Contact& c) { return c.name == pose.header.frame_id; });
 
-            node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
-            auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
-            investigateTask->setGoalByContact(contact);
-            investigateTask->is_preemptable = false;
-            addTask(investigateTask, PriorityType::PREEMPT);
-
-            const int encircle_task_id = obj_detection_cnt--;
-            auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
-            encircleTask->is_preemptable = false;
-            addTask(encircleTask, PriorityType::PREEMPT);
-
-            // Get closest vehicle from vehh_poses
-            double min_dist = std::numeric_limits<double>::max();
-            std::string overwatch_veh;
-            for(const auto& veh_pose: veh_poses) {
-                if(veh_pose.first == my_name){
-                    continue;
+        if (existing != mission_contacts.end()) {
+            if (existing->is_new) {
+                // Tasks not yet created: keep updating the position and wait for the delay.
+                existing->pose = pose;
+                if (now - existing->first_seen_sec >= toi_params_.contact_trigger_delay_s) {
+                    node_proxy_->log_info("Contact \"%s\" confirmed after %.1f s; creating tasks.",
+                                         existing->name.c_str(), toi_params_.contact_trigger_delay_s);
+                    createToiTasks(*existing, veh_poses);
                 }
-                double dist = PosePlanarDistanceSq(veh_pose.second.pose.pose.position, contact.pose.pose.position);
-                if(dist < min_dist) {
-                    min_dist = dist;
-                    overwatch_veh = veh_pose.first;
-                }
+            } else {
+                // Tasks already created: propagate refined position to queued tasks.
+                updateExistingContact(existing, pose);
             }
+            continue;
+        }
 
-            if(overwatch_veh.empty()){
-                node_proxy_->log_info("Could not find overwatch vehicle");
-            }else{
-                communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
-            }
+        addContact(pose.header.frame_id, pose);
+        Contact & contact = mission_contacts.back();
+
+        if (toi_params_.contact_trigger_delay_s <= 0.0) {
+            createToiTasks(contact, veh_poses);
+        } else {
+            node_proxy_->log_info("Contact \"%s\" first seen; waiting %.1f s before creating tasks.",
+                                  contact.name.c_str(), toi_params_.contact_trigger_delay_s);
         }
     }
 }
@@ -504,7 +642,8 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
         handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
     } else if(formation_def->isFollowing()) {
-        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def, msg.desired_speed);
+        Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def,
+            msg.desired_speed, msg.dist_threshold, msg.yaw_threshold);
         addTask(followTask, msg.priority_type);
     }
 
@@ -537,7 +676,8 @@ void MissionManager::handleTaskComplete(const TaskCompleteMsg & msg) {
 void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def, double desired_speed) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
-        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset, y_offset + msg.goal_y_offset, msg.approach_distance, desired_speed);
+        MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset,
+            y_offset + msg.goal_y_offset, msg.dist_threshold, msg.yaw_threshold, desired_speed);
         moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {

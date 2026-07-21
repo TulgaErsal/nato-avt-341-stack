@@ -1,0 +1,5 @@
+# Requests estimate of vehicle's own or estimate of another formation vehicle's odometry reading
+# If vehicle_id is empty, defaults to ego-vehicle
+string vehicle_id
+---
+nav_msgs/Odometry odom

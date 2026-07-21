@@ -23,15 +23,20 @@ namespace utils {
 enum NavStackState : int {
   NotInit = -1,
   Active = 0,
-  Stopped = 1,
-  Shutdown = 2,
-  HardShutdown = 3
+  InactiveCoast = 1,
+  InactiveGradualStop = 2,
+  InactiveHardStop = 3
 };
 
 enum NavStateCmd : int {
   GoInactive = 0,
   GoActive = 1
 };
+
+inline bool IsValidShutdownBehavior(const int shutdown_behavior)
+{
+	return shutdown_behavior >= static_cast<int>(InactiveCoast) && shutdown_behavior <= static_cast<int>(InactiveHardStop);
+}
 
 // TODO: Just use Eigen? If not, rename in future, should also be pascal case.
 struct vec2{
@@ -180,16 +185,16 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 	return d0;
 }
 
-inline float GetHeadingFromOrientation(avt_341::msg::Quaternion orientation){
+inline float GetHeadingFromOrientation(const avt_341::msg::Quaternion& orientation){
     avt_341::msg_tf::Quaternion q(
         orientation.x,
         orientation.y,
         orientation.z,
         orientation.w);
-    avt_341::msg_tf::Matrix3x3 m(q);
+    const avt_341::msg_tf::Matrix3x3 m(q);
 	double roll, pitch, yaw;
 	m.getRPY(roll, pitch, yaw);
-    return (float)yaw;
+    return static_cast<float>(yaw);
 }
 
 /// Convert any type to a string with zero padding
@@ -251,6 +256,51 @@ inline std::vector<std::string> SplitByDelimiter(
 	std::string token;
 	while(std::getline(stream, token, delimiter)) { tokens.push_back(trim_whitespace ? Trim(token) : token); }
 	return tokens;
+}
+
+inline double DiffAngle(const double a, const double b) {
+	constexpr double two_pi = 2.0 * M_PI;
+	double diff = a - b;
+	diff -= two_pi * floor((diff + M_PI) / two_pi);
+	return diff;
+}
+
+inline double DiffDeg(const double a, const double b) {
+	constexpr double s = M_PI / 180.0;
+	return DiffAngle(a * s, b * s) / s;
+}
+
+inline bool UseGoalOrientation(const msg::NavGoal& msg)
+{
+	return msg.yaw_threshold < M_PI;
+}
+
+inline void GetGoalError(const msg::Pose& pose, const msg::NavGoal& goal, double& dist_error, double& yaw_error)
+{
+	if (UseGoalOrientation(goal))
+	{
+		const double pose_yaw = GetHeadingFromOrientation(pose.orientation);
+		const double goal_yaw = GetHeadingFromOrientation(goal.pose.orientation);
+		yaw_error = std::abs(DiffAngle(pose_yaw, goal_yaw));
+	}
+	else
+	{
+		yaw_error = 0.0;
+	}
+
+	dist_error = GetDistance(pose.position, goal.pose.position);
+}
+
+inline bool IsGoalReached(const msg::Pose& pose, const msg::NavGoal& goal)
+{
+	double dist_diff, yaw_diff;
+	GetGoalError(pose, goal, dist_diff, yaw_diff);
+	return yaw_diff < goal.yaw_threshold && dist_diff < goal.dist_threshold;
+}
+
+inline bool IsGoalReached(const msg::NavState& state, const msg::NavGoal& goal)
+{
+	return state.goal_distance < goal.dist_threshold && state.goal_yaw_difference < goal.yaw_threshold;
 }
 
 } //namespace utils

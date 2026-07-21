@@ -1,29 +1,67 @@
 camera_frame: "flir_optical"
+frame_prefix: ""
+world_frame: "map"
 odometry_child_frame: "feda/odom"
-filters_downsampling_leaf_size: 0.3
-filters_passthrough_min: 3.0
-filters_passthrough_max: 30.0
-filters_clustering_tolerance: 0.6
-filters_clustering_size_minimum: 50
-filters_clustering_size_maximum: 500
-filters_ground_max_iterations: 50
-filters_ground_threshold: 0.2
-filters_ground_angle: 3.0
+tracking_rate: 10.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
-filters_kalman_measurement: 0.01
-tracker_target_class: 0
+filters_kalman_measurement: 1.1
+camera_target_height: 1.9       # known height of the tracked vehicle [m]
+camera_bbox_pixel_sigma: 4.0    # bounding-box measurement uncertainty [px]
+filters_use_manual_roi: true
+filters_manual_roi_size: [5.0, 5.0, 5.0]
+tracker_autostart: true
+tracker_use_mission_manager: true
+tracker_target_classes: ["FED Alpha"]
+tracker_use_multi_tracking: false
 tracker_timeout: 5.0
+
+# Obstacle detector integration (embedded in tracking node)
+# ======================================================================================================================
+od_robot_base_link: 'mrzr/base_link'                           # base link of the ego vehicle (used for TF and body exclusion box)
+od_use_pca_box: true                                           # use PCA bounding box to align clusters
+od_use_tracking: true                                          # use tracking to assign bbox IDs
+od_voxel_grid_size: 0.2                                        # voxel grid leaf size [m]
+od_roi_max_x: 40.0                                             # ROI maximum x [m]
+od_roi_max_y: 30.0                                             # ROI maximum y [m]
+od_roi_max_z: 3.0                                              # ROI maximum z [m]
+od_roi_min_x: -10.0                                            # ROI minimum x [m]
+od_roi_min_y: -30.0                                            # ROI minimum y [m]
+od_roi_min_z: -2.5                                             # ROI minimum z [m]
+od_body_max_x: 1.3                                             # ego-body exclusion box maximum x [m]
+od_body_max_y: 1.0                                             # ego-body exclusion box maximum y [m]
+od_body_max_z: 2.0                                             # ego-body exclusion box maximum z [m]
+od_body_min_x: -2.2                                            # ego-body exclusion box minimum x [m]
+od_body_min_y: -1.0                                            # ego-body exclusion box minimum y [m]
+od_body_min_z: -0.3                                            # ego-body exclusion box minimum z [m]
+od_ground_normal_x: 0.0                                        # ground plane normal x component
+od_ground_normal_y: 0.0                                        # ground plane normal y component
+od_ground_normal_z: 1.0                                        # ground plane normal z component
+od_ground_normal_threshold: 0.4                                # threshold for ground point segmentation
+od_obstacle_scale: 1.0                                         # neighbor search scale [m]
+od_obstacle_min_neighbors: 10                                  # minimum neighboring obstacle points
+od_cluster_threshold: 0.5                                      # Euclidean cluster separation distance [m]
+od_cluster_min_size: 50                                        # minimum cluster size [points]
+od_cluster_max_size: 1000                                      # maximum cluster size [points]
+od_displacement_threshold: 1.0                                 # max displacement between frames for tracking [m]
+od_iou_threshold: 1.0                                          # IoU threshold for tracking
+od_publish_cluster_cloud: true                                 # publish obstacle cluster point cloud
+od_publish_ground_cloud: false                                 # publish ground point cloud
+
+obstacle_association_max_dist: 5.0                             # max distance [m] to associate a marker with the camera detection
+lidar_reacquire_max_time: 0.5                                  # max elapsed time [s] to re-acquire a briefly lost obstacle by proximity
+lidar_reacquire_max_dist: 3.0                                  # max world-frame distance [m] for re-acquisition of a re-labeled obstacle
 sync_enable: true
 sync_use_callback: false
 sync_detection: 0.1
-publish_clouds_fov: true
-publish_clouds_roi: true
-publish_clouds_ground: true
-publish_clouds_cluster: true
-publish_pose: true
-filters_pose: false
 publish_odometry: true
-filters_odometry: false
 publish_detection: true
 publish_image: true
+
+# IMM model probabilities and Markov transition probability.
+# CV model is preferred for straight-line driving; CTR kicks
+# in when the likelihood of turning becomes higher.
+filters_imm_cv_init_prob: 0.33
+filters_imm_ctr_init_prob: 0.33
+filters_imm_nm_init_prob: 0.33
+filters_imm_persistence_prob: 0.9

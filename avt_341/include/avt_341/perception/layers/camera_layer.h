@@ -23,7 +23,8 @@ namespace avt_341::perception
         CameraLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
             const CostmapSettings& cm_settings,
-            const std::string & label
+            const std::string & label,
+            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
             );
 
         std::string ToString() const override;

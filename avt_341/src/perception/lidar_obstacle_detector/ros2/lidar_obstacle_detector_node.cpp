@@ -13,6 +13,8 @@
 #include "avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp"
 
 #include <pcl_conversions/pcl_conversions.h>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 
 size_t obstacle_id_;
@@ -45,6 +47,7 @@ std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
 // Publishers
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> pub_cloud_ground;
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> pub_cloud_clusters;
+std::shared_ptr<avt_341::node::Publisher<visualization_msgs::msg::MarkerArray>> pub_bboxes;
 
 void publishJointCloud(
     const std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> &segmented_clouds,
@@ -106,10 +109,10 @@ void publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& c
   for (auto& cluster : cloud_clusters)
   {
     // Create Bounding Boxes
-    Box box = use_pca_box? 
-      obstacle_detector->pcaBoundingBox(cluster, obstacle_id_) : 
+    Box box = use_pca_box?
+      obstacle_detector->pcaBoundingBox(cluster, obstacle_id_) :
       obstacle_detector->axisAlignedBoundingBox(cluster, obstacle_id_);
-    
+
     obstacle_id_ = (obstacle_id_ < SIZE_MAX)? ++obstacle_id_ : 0;
     curr_boxes_.emplace_back(box);
   }
@@ -118,9 +121,57 @@ void publishDetectedObjects(std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>&& c
   if (use_tracking)
     obstacle_detector->obstacleTracking(prev_boxes_, curr_boxes_, displacement_threshold, iou_threshold);
 
+  // Publish bounding boxes as a MarkerArray (CUBE_LIST wireframes)
+  visualization_msgs::msg::MarkerArray marker_array;
+  // Delete all previous markers first to avoid stale boxes persisting
+  // when the cluster count decreases between frames.
+  visualization_msgs::msg::Marker delete_marker;
+  delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+  delete_marker.header.stamp = header.stamp;
+  delete_marker.header.frame_id = bbox_source_frame_;
+  marker_array.markers.push_back(delete_marker);
+  for (const auto& box : curr_boxes_)
+  {
+    visualization_msgs::msg::Marker marker;
+    marker.header.stamp = header.stamp;
+    marker.header.frame_id = bbox_source_frame_;
+    marker.ns = "lidar_bboxes";
+    marker.id = box.id;
+    marker.type = visualization_msgs::msg::Marker::CUBE;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.pose.position.x = box.position.x();
+    marker.pose.position.y = box.position.y();
+    marker.pose.position.z = box.position.z();
+    marker.pose.orientation.w = box.quaternion.w();
+    marker.pose.orientation.x = box.quaternion.x();
+    marker.pose.orientation.y = box.quaternion.y();
+    marker.pose.orientation.z = box.quaternion.z();
+    marker.scale.x = box.dimension.x();
+    marker.scale.y = box.dimension.y();
+    marker.scale.z = box.dimension.z();
+    marker.color.r = 1.0f;
+    marker.color.g = 0.5f;
+    marker.color.b = 0.0f;
+    marker.color.a = 0.3f;
+    marker.lifetime = rclcpp::Duration::from_seconds(0.5);
+    marker_array.markers.push_back(marker);
+  }
+  pub_bboxes->publish(marker_array);
+
   // Update previous bounding boxes
   prev_boxes_.swap(curr_boxes_);
   curr_boxes_.clear();
+}
+
+void publishDeleteAll(const avt_341::msg::Header& header)
+{
+  visualization_msgs::msg::MarkerArray marker_array;
+  visualization_msgs::msg::Marker delete_marker;
+  delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
+  delete_marker.header.stamp = header.stamp;
+  delete_marker.header.frame_id = bbox_source_frame_;
+  marker_array.markers.push_back(delete_marker);
+  pub_bboxes->publish(marker_array);
 }
 
 void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
@@ -131,6 +182,7 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   {
     if (!nh->transform_cloud(*lidar_points, lidar_points_transformed, robot_base_link_)) {
       nh->log_warning("Unable to transform pointcloud from %s -> %s",lidar_points->header.frame_id.c_str(),robot_base_link_.c_str());
+      publishDeleteAll(lidar_points->header);
       return;
     }
   }
@@ -148,17 +200,34 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   // Downsampling, ROI, and removing the car roof
   auto filtered_cloud = obstacle_detector->filterCloud(raw_cloud, voxel_grid_size, roi_min_point, roi_max_point, body_min_point, body_max_point);
 
-  if(filtered_cloud->size() < 10) return;
+  if(filtered_cloud->size() < 10) {
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
 
   // Transform pointcloud to fixed frame (rotation only)
   pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   avt_341::msg::TransformStamped fixed_tf = nh->lookup_transform(fixed_frame_, robot_base_link_);
   Eigen::Quaternionf q(fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x, fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
+  // Guard against a degenerate quaternion (all zeros) returned when TF is
+  // not yet available. A zero quaternion produces a NaN rotation matrix and
+  // an empty fixed_cloud after the transform, which crashes the KdTree
+  // inside pclFilterNorms.
+  if (q.norm() < 1e-6f) {
+    nh->log_warning("Fixed-frame TF not yet available, skipping this scan.");
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
   Eigen::Matrix4f mat4 = Eigen::Matrix4f::Identity();
   mat4.block<3,3>(0,0) = q.normalized().toRotationMatrix();
   Eigen::Affine3f transform_fixed;
   transform_fixed.matrix() = mat4;
   pcl::transformPointCloud(*filtered_cloud, *fixed_cloud, transform_fixed);
+
+  if(fixed_cloud->size() < 10) {
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
 
   // Segment ground and obstacle points using normal filtering
   pcl::PointCloud<pcl::PointXYZ>::Ptr norm_filtered(new pcl::PointCloud<pcl::PointXYZ>);
@@ -179,7 +248,10 @@ void lidarPointsCallback(avt_341::msg::PointCloud2Ptr lidar_points)
   }
 
 
-  if(segmented_clouds.first->size()<= 0) return;
+  if(segmented_clouds.first->size() <= 0) {
+    publishDeleteAll(pointcloud_header);
+    return;
+  }
 
   // Cluster objects
   auto cloud_clusters = obstacle_detector->clustering(segmented_clouds.first, cluster_threshold, cluster_min_size, cluster_max_size);
@@ -197,6 +269,7 @@ int main(int argc, char** argv)
   std::string lidar_points_topic;
   std::string cloud_ground_topic;
   std::string cloud_clusters_topic;
+  std::string bboxes_topic;
 
   float roi_max_x, roi_max_y, roi_max_z, roi_min_x, roi_min_y, roi_min_z;
   float body_max_x, body_max_y, body_max_z, body_min_x, body_min_y, body_min_z;
@@ -204,6 +277,7 @@ int main(int argc, char** argv)
   nh->get_parameter("~lidar_points_topic", lidar_points_topic, std::string("/ouster/points"));
   nh->get_parameter("~cloud_ground_topic", cloud_ground_topic, std::string("/avt_341/lidar_detector/cloud_ground"));
   nh->get_parameter("~cloud_clusters_topic", cloud_clusters_topic, std::string("/avt_341/lidar_detector/cloud_clusters"));
+  nh->get_parameter("~bboxes_topic", bboxes_topic, std::string("/avt_341/lidar_detector/bboxes"));
   nh->get_parameter("~bbox_target_frame", bbox_target_frame_, std::string("base_link"));
   nh->get_parameter("~robot_base_link", robot_base_link_, std::string("mrzr/base_link"));
   nh->get_parameter("~fixed_frame", fixed_frame_, std::string("map"));
@@ -246,6 +320,7 @@ int main(int argc, char** argv)
   auto sub_lidar_points = nh->create_subscription<avt_341::msg::PointCloud2>(lidar_points_topic, 1, lidarPointsCallback);
   pub_cloud_ground = nh->create_publisher<avt_341::msg::PointCloud2>(cloud_ground_topic, 1);
   pub_cloud_clusters = nh->create_publisher<avt_341::msg::PointCloud2>(cloud_clusters_topic, 1);
+  pub_bboxes = nh->create_publisher<visualization_msgs::msg::MarkerArray>(bboxes_topic, 1);
 
   // Create point processor
   obstacle_detector = std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();

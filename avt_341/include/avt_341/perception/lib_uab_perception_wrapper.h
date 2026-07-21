@@ -1,6 +1,37 @@
 //
-// MATLAB Compiler: 8.6 (R2023a)
-// Date: Mon Mar  2 16:52:30 2026
+// MATLAB Compiler: 25.2 (R2025b)
+// Date: Fri Jun 26 12:47:19 2026
+// Arguments:
+// "-B""macro_default""-W""cpplib:lib_uab_perception_wrapper,legacy,version=1.0.
+// 0.0""-T""link:lib""-d""/home/matlab/lib_uab_perception_wrapper_out""-a""C:\Us
+// ers\stefan\Documents\MATLAB\uab-terrain-segmentation\calibration_images""-a""
+// C:\Users\stefan\Documents\MATLAB\uab-terrain-segmentation\main.m""-a""C:\User
+// s\stefan\Documents\MATLAB\uab-terrain-segmentation\percep2occ.m""-a""C:\Users
+// \stefan\Documents\MATLAB\uab-terrain-segmentation\perception.m""-a""C:\Users\
+// stefan\Documents\MATLAB\uab-terrain-segmentation\models\sae_net_5class_RUGD_G
+// OD_544_688_package.mat""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-segm
+// entation\models\CAE.m""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-segme
+// ntation\models\ILidarProcessingAlgorithm.m""-a""C:\Users\stefan\Documents\MAT
+// LAB\uab-terrain-segmentation\models\ISegmentationAlgorithm.m""-a""C:\Users\st
+// efan\Documents\MATLAB\uab-terrain-segmentation\models\KNN.m""-a""C:\Users\ste
+// fan\Documents\MATLAB\uab-terrain-segmentation\models\KNN_weighted.mat""-a""C:
+// \Users\stefan\Documents\MATLAB\uab-terrain-segmentation\models\LESN.m""-a""C:
+// \Users\stefan\Documents\MATLAB\uab-terrain-segmentation\models\LESN_32R_Z_4k.
+// mat""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-segmentation\models\Sen
+// sorInfo.m""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-segmentation\func
+// tions\data_split.m""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-segmenta
+// tion\functions\GetCameraIntrinsics.m""-a""C:\Users\stefan\Documents\MATLAB\ua
+// b-terrain-segmentation\functions\GetSensorTform.m""-a""C:\Users\stefan\Docume
+// nts\MATLAB\uab-terrain-segmentation\functions\globalParams.m""-a""C:\Users\st
+// efan\Documents\MATLAB\uab-terrain-segmentation\functions\GridBuilder.m""-a""C
+// :\Users\stefan\Documents\MATLAB\uab-terrain-segmentation\functions\ParseRosOd
+// ometry.m""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-segmentation\funct
+// ions\reservoir_update.m""-a""C:\Users\stefan\Documents\MATLAB\uab-terrain-seg
+// mentation\functions\reservoir_update_cesn.m""-a""C:\Users\stefan\Documents\MA
+// TLAB\uab-terrain-segmentation\functions\standalone_CESN_v2.m""-Z""autodetect"
+// "C:\Users\stefan\Documents\MATLAB\uab-terrain-segmentation\perception_wrapper
+// .m"
+//
 
 #ifndef lib_uab_perception_wrapper_h
 #define lib_uab_perception_wrapper_h 1
@@ -78,7 +109,7 @@ bool MW_CALL_CONV mlxPerception_wrapper(int nlhs, mxArray *plhs[], int nrhs, mxA
 
 #endif
 
-extern LIB_lib_uab_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& terrainSubGrid, mwArray& terrainSubgridSize, mwArray& terrainModifiedCellIdxs, mwArray& obstacleSubGrid, mwArray& obstacleSubgridSize, mwArray& obstacleModifiedCellIdxs, const mwArray& img, const mwArray& pc, const mwArray& odom, const mwArray& cameraInfo, const mwArray& cameraToLidarTform, const mwArray& lidarToVboxTform, const mwArray& invertLidarZRot, const mwArray& grid_width, const mwArray& grid_height, const mwArray& cell_size, const mwArray& grid_llx, const mwArray& grid_lly);
+extern LIB_lib_uab_perception_wrapper_CPP_API void MW_CALL_CONV perception_wrapper(int nargout, mwArray& terrainSubGrid, mwArray& terrainSubgridSize, mwArray& terrainModifiedCellIdxs, mwArray& obstacleSubGrid, mwArray& obstacleSubgridSize, mwArray& obstacleModifiedCellIdxs, mwArray& debugSegmentationMask, const mwArray& img, const mwArray& xyz, const mwArray& odom, const mwArray& cameraInfo, const mwArray& lidarToCameraTform, const mwArray& lidarToBaseLinkTform, const mwArray& brightnessOffset, const mwArray& grid_width, const mwArray& grid_height, const mwArray& cell_size, const mwArray& grid_llx, const mwArray& grid_lly, const mwArray& debugVisSegmentation);
 
 /* C++ INTERFACE -- WRAPPERS FOR USER-DEFINED MATLAB FUNCTIONS -- END */
 #endif

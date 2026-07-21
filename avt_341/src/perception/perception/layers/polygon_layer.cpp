@@ -7,9 +7,10 @@ namespace avt_341::perception
     PolygonLayer::PolygonLayer(
         const std::shared_ptr<node::NodeProxy>& node_ref,
         const CostmapSettings& cm_settings,
-        const std::string& label
+        const std::string& label,
+        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
         )
-        : CostmapLayer(node_ref, cm_settings, label)
+        : CostmapLayer(node_ref, cm_settings, label, compute_time_recorder)
     {
         node_ref_->get_parameter("~polygon_layer_data_file", input_file_, std::string(""));
         node_ref_->get_parameter("~polygon_layer_visualize", visualize_, false);

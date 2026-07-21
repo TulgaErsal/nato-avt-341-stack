@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Distance/yaw threshold region this tool adds on top of a plain goal pose -->
+  <circle cx="32" cy="32" r="22" fill="#00cc00" fill-opacity="0.15"
+          stroke="#00aaff" stroke-width="2.5" stroke-dasharray="4 4"/>
+  <!-- Goal-pose arrow (mirrors the stock 2D Goal Pose green arrow) -->
+  <g fill="#19b300" stroke="#0d6b00" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="13" y="28.5" width="26" height="7" rx="1.5"/>
+    <polygon points="36,22 52,32 36,42"/>
+  </g>
+</svg>

@@ -69,8 +69,7 @@ set(AVT341_SOURCE_FILES
     "planning/local/vehicle_converter"
     "planning/local/mpc_planner"
     "planning/global/global_path"
-    "planning/global/pf_global_path"
-    "ui/mission_command_panel")
+    "planning/global/pf_global_path")
 
 # Append src/ subdirectory to the path of each target.
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
@@ -92,6 +91,8 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
   find_package(rclpy REQUIRED)
   find_package(tf2_sensor_msgs REQUIRED)
   find_package(tf2_geometry_msgs REQUIRED)
+  find_package(tf2_ros REQUIRED)
+  find_package(tf2_eigen REQUIRED)
   find_package(Eigen3 3.4 REQUIRED)
 
   if(WIN32 OR WIN64)
@@ -120,7 +121,9 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
           "src/node/params_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
           "src/core/grid_components.cpp"
-          "src/core/monitoring.cpp"
+          "src/core/running_stats.cpp"
+          "src/core/compute_time_recorder.cpp"
+          "src/core/coord_transform.cpp"
   )
 
   target_include_directories(
@@ -130,7 +133,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
 
   ament_target_dependencies(
     ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
-    visualization_msgs map_msgs)
+    tf2_ros tf2_eigen Eigen3 visualization_msgs map_msgs)
 
   foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
     add_subdirectory(${SOURCE_FILE})
@@ -173,21 +176,20 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
     DESTINATION "lib/${PROJECT_NAME}")
   
   install(
-    PROGRAMS "launch/vehicle_logging.py" "test/global_path_test_driver.py"
+    PROGRAMS "launch/vehicle_logging.py" "launch/ros_param_dump.py" "launch/tf_to_odometry.py"
+              "test/global_path_test_driver.py"
+              "test/mpc_terminal_heading_test_driver.py"
+              "test/formation_distance_test_driver.py"
+              "test/formation_distance_two_follower_test_driver.py"
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
-  install(FILES rviz_plugins.xml DESTINATION "share/${PROJECT_NAME}")
 
   # Automated Tests
   # ===============
   if(BUILD_TESTING)
     add_subdirectory(test)
   endif()
-
-  # Export RViz Plugin
-  find_package(pluginlib REQUIRED)
-  pluginlib_export_plugin_description_file(rviz_common rviz_plugins.xml)
 
   ament_package()
 

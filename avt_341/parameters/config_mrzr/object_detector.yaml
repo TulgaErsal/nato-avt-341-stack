@@ -2,9 +2,9 @@ rate: 10.0
 
 model:
   external: ''
-  name: 'statictargetsv8m-cuda-608x608'
+  name: 'yolov8m-cuda-640x640'
   warmup: 30
-  classes: ['LandTamer','HH','Bobcat','HMMWV','JLTV']
+  classes: ['car']
 
 thresholds:
   score: 0.5

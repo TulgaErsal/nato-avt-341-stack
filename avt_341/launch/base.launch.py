@@ -228,6 +228,7 @@ def generate_launch_description():
                     executable='robot_state_publisher',
                     name='robot_state_publisher',
                     output='screen',
+                    condition=IfCondition(LaunchConfiguration('publish_urdf_to_tf')),
                     parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
                                  'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                      TextSubstitution(text=''),
@@ -272,12 +273,15 @@ def generate_launch_description():
                         executable='uab_perception_node',
                         name='uab_perception_node',
                         parameters=[
-                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()}
+                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()},
+                            {'frame_prefix': TernarySubstitution(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx),
+                                                                 TextSubstitution(text=''),
+                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
                         ],
                         remappings=[
                             ('avt_341/odom','avt_341/odometry'),
                             ('avt_341/camera/image_raw','front_camera/image'),
-                            ('avt_341/camera/camera_info','front_camera/camera_info'),
+                            ('avt_341/camera/camera_info','front_camera/info'),
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_uab_perception')),
@@ -320,14 +324,15 @@ def generate_launch_description():
                             {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
                             {'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
                                                                  TextSubstitution(text=''),
-                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
+                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))},
+                            {'formation_vehicle_ids': LaunchConfiguration('vehicle_namespaces')}
                         ],
                         remappings=[
                             ('camera_info','front_camera/info'),
                             ('image','front_camera/image'),
                             ('detection_2d', 'front_camera/detection_2d'),
                             ('points/input','avt_341/points'),
-                            ('task','avt_341/mission_task_state')
+                            ('task','avt_341/task_change')
                         ],
                         output='screen',
                         condition=IfCondition(LaunchConfiguration('use_object_tracker')),

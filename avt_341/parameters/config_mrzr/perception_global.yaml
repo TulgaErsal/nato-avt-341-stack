@@ -5,8 +5,8 @@ slope_threshold: 0.5                      # Minimum slope of cells to appear on 
 slope_threshold_max: 2.5                  # Maximum slope of cells after which they are assigned the maximum grid value
 grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
 grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
-grid_res: 1.0                             # Grid resolution in meters.
-grid_dilate: True                         # Whether or not to apply dilation.
+grid_res: 0.5                             # Grid resolution in meters.
+grid_dilate: False                        # Whether or not to apply dilation.
 grid_dilate_x: 0.5                        # Amount of dilation in x.
 grid_dilate_y: 0.5                        # Amount of dilation in y.
 grid_dilate_proportion: 0.8               # Proportion of original grid cell to dilate with.
@@ -21,6 +21,9 @@ rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians 
 rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
 rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
 pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
+output_unknown_cells: False               # If true, unknown cells are kept in the occupancy grid message with a value of -1. If false, unknown cells are set to the specified default value.
+replace_occ_unknown_with: 0               # Value to replace unknown cells in occupancy grid message with.
+replace_seg_unknown_with: 0               # Value to replace unknown cells in segmentation grid message with.
 
 # Point Cloud Culling
 # ======================================================================================================================
