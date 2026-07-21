@@ -128,7 +128,10 @@ ament_add_gtest(object_tracking_reset_test
   perception/tracking/object_tracking_reset_test.cpp
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracking_node.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/toi_tracker.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/formation_vehicle_tracker.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
 )
 
 target_include_directories(object_tracking_reset_test
@@ -159,6 +162,32 @@ ament_target_dependencies(object_tracking_reset_test
   tf2_ros
   tf2_sensor_msgs
   vision_msgs
+  visualization_msgs
+)
+
+# Tracker Recovery Monitor Tests
+# ------------------------------
+message(STATUS "Adding tracker recovery monitor unit tests")
+ament_add_gtest(tracker_recovery_monitor_test
+  perception/tracking/tracker_recovery_monitor_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
+)
+
+target_include_directories(tracker_recovery_monitor_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(tracker_recovery_monitor_test
+  ${PROJECT_NAME}_proxy
+)
+
+ament_target_dependencies(tracker_recovery_monitor_test
+  avt_341_msgs
+  Eigen3
+  nav_msgs
+  rclcpp
+  sensor_msgs
   visualization_msgs
 )
 

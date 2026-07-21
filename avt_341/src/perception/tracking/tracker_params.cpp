@@ -97,6 +97,14 @@ ObjectTrackerSettings ObjectTrackerSettings::Load(rclcpp::Node& node) {
     s.target_selection.use_multi_tracking =
         node.get_parameter("tracker_use_multi_tracking").as_bool();
 
+    node.declare_parameter("tracker_toi_regex", std::string("^TI_"));
+    s.target_selection.toi_regex =
+        node.get_parameter("tracker_toi_regex").as_string();
+
+    node.declare_parameter("tracker_allow_generic", true);
+    s.target_selection.allow_generic =
+        node.get_parameter("tracker_allow_generic").as_bool();
+
     node.declare_parameter("sync_enable", true);
     s.sync.enabled = node.get_parameter("sync_enable").as_bool();
 
@@ -241,6 +249,56 @@ ObjectTrackerSettings ObjectTrackerSettings::Load(rclcpp::Node& node) {
         node.get_parameter("filters_manual_roi_size").as_double_array()[1],
         node.get_parameter("filters_manual_roi_size").as_double_array()[2]);
 
+    node.declare_parameter("recovery_no_movement_enable", true);
+    s.recovery.no_movement_enabled =
+        node.get_parameter("recovery_no_movement_enable").as_bool();
+
+    node.declare_parameter("recovery_no_movement_threshold", 0.2);
+    s.recovery.no_movement_threshold =
+        node.get_parameter("recovery_no_movement_threshold").as_double();
+
+    node.declare_parameter("recovery_no_movement_window_time", 5.0);
+    s.recovery.no_movement_window_time =
+        node.get_parameter("recovery_no_movement_window_time").as_double();
+
+    node.declare_parameter(
+        "recovery_no_movement_check_in_states",
+        std::vector<std::string>{"lidar_only", "camera_only", "full"});
+    for (const auto& state_name :
+         node.get_parameter("recovery_no_movement_check_in_states")
+             .as_string_array()) {
+        s.recovery.no_movement_check_in_states.push_back(
+            ToTrackerState(state_name));
+    }
+
+    node.declare_parameter("recovery_no_movement_backoff_time", 5.0);
+    s.recovery.no_movement_backoff_time =
+        node.get_parameter("recovery_no_movement_backoff_time").as_double();
+
+    node.declare_parameter("recovery_timeout_enable", true);
+    s.recovery.timeout_enabled =
+        node.get_parameter("recovery_timeout_enable").as_bool();
+
+    node.declare_parameter("recovery_timeout_allow_never_tracked", false);
+    s.recovery.timeout_allow_never_tracked =
+        node.get_parameter("recovery_timeout_allow_never_tracked").as_bool();
+
+    node.declare_parameter("recovery_timeout_max_attempts", 3);
+    s.recovery.timeout_max_attempts = static_cast<int>(
+        node.get_parameter("recovery_timeout_max_attempts").as_int());
+
+    node.declare_parameter("recovery_uncertainty_enable", true);
+    s.recovery.uncertainty_enabled =
+        node.get_parameter("recovery_uncertainty_enable").as_bool();
+
+    node.declare_parameter("recovery_uncertainty_threshold", 10.0);
+    s.recovery.uncertainty_threshold =
+        node.get_parameter("recovery_uncertainty_threshold").as_double();
+
+    node.declare_parameter("recovery_uncertainty_window_time", 5.0);
+    s.recovery.uncertainty_window_time =
+        node.get_parameter("recovery_uncertainty_window_time").as_double();
+
     return s;
 }
 
@@ -278,6 +336,8 @@ bool ObjectTrackerSettings::UpdateFromParameters(
             tracking.heading_resume_speed = parameter.as_double();
         } else if (parameter.get_name() == "filters_use_manual_roi") {
             filter.use_manual_roi = parameter.as_bool();
+        } else if (parameter.get_name() == "tracker_toi_regex") {
+            target_selection.toi_regex = parameter.as_string();
         } else {
             continue;
         }

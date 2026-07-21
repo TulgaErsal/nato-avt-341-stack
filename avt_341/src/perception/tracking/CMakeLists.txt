@@ -34,7 +34,10 @@ if(USING_AMENT)
 
   add_executable(${PROJECT_NAME}_object_tracking_node
           "tracker_params.cpp"
+          "tracker_recovery_monitor.cpp"
           "object_tracker.cpp"
+          "toi_tracker.cpp"
+          "formation_vehicle_tracker.cpp"
           "object_tracking_node.cpp"
           "object_tracking_node_executor.cpp")
 

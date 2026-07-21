@@ -30,8 +30,9 @@ class VectorField;
 /// Per-vehicle "Tracker" tab content. Subscribes to the vehicle's
 /// TrackerModuleStatus topic and shows one collapsible "Tracked <id>" sub-group
 /// per active child tracker, each with that target's state, the x/y/yaw
-/// covariance matrix and the target x/y/yaw pose. A placeholder message is
-/// shown while the module has no active trackers.
+/// covariance matrix, the estimated x/y/yaw pose and the estimated linear
+/// velocity. A placeholder message is shown while the module has no active
+/// trackers.
 ///
 /// Like the other components it subscribes using the panel's node, which the
 /// panel spins on the UI thread, so the callback updates the widgets directly.
@@ -61,7 +62,8 @@ protected:
         AccordionGroup* group = nullptr;
         QLabel* state_value = nullptr;
         MatrixField* covariance_field = nullptr;
-        VectorField* target_field = nullptr;
+        VectorField* pose_field = nullptr;
+        VectorField* velocity_field = nullptr;
     };
 
     // Tears down and recreates the sub-groups so there is exactly one per id in

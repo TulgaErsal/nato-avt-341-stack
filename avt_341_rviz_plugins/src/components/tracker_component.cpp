@@ -176,11 +176,14 @@ void TrackerComponent::updateFromMessage( const TrackerModuleStatus& msg )
         view.covariance_field->setValues(
             extractXYYawCovariance( tracker.odom_estimate.pose.covariance ) );
 
-        // Target x/y position + yaw from the estimated pose. The yaw is read from
-        // the pose orientation quaternion, not derived from the x/y position.
+        // Estimated x/y position + yaw. The yaw is read from the pose
+        // orientation quaternion, not derived from the x/y position.
         const auto& pose = tracker.odom_estimate.pose.pose;
-        view.target_field->setValues(
+        view.pose_field->setValues(
             { pose.position.x, pose.position.y, yawOf( pose.orientation ) } );
+
+        const auto& linear = tracker.odom_estimate.twist.twist.linear;
+        view.velocity_field->setValues( { linear.x, linear.y, linear.z } );
     }
 }
 
@@ -215,25 +218,32 @@ void TrackerComponent::rebuildTargets( const QStringList& ids )
         // Covariance: the x/y/yaw 3x3 sub-matrix of the estimate's pose covariance.
         view.covariance_field = new MatrixField( "Covariance", 1.0, 10.0 );
 
-        // Target: x/y position + yaw (theta) of the estimated pose.
-        view.target_field = new VectorField(
-            "Target", 3, { "x", "y", theta },
+        // Pose: x/y position + yaw (theta) of the estimated pose.
+        view.pose_field = new VectorField(
+            "Pose", 3, { "x", "y", theta },
             { "position x", "position y", "yaw (theta)" } );
 
-        // Shared label width so the three rows line up (as in NavStateComponent).
+        // Vel: linear velocity of the estimated odometry.
+        view.velocity_field = new VectorField(
+            "Vel", 3, { "x", "y", "z" },
+            { "linear velocity x", "linear velocity y", "linear velocity z" } );
+
+        // Shared label width so the rows line up (as in NavStateComponent).
         const int label_width = std::max(
             { state_label->sizeHint().width(), view.covariance_field->labelWidthHint(),
-              view.target_field->labelWidthHint() } );
+              view.pose_field->labelWidthHint(), view.velocity_field->labelWidthHint() } );
         state_label->setFixedWidth( label_width );
         view.covariance_field->setLabelWidth( label_width );
-        view.target_field->setLabelWidth( label_width );
+        view.pose_field->setLabelWidth( label_width );
+        view.velocity_field->setLabelWidth( label_width );
 
         QWidget* content = new QWidget;
         QVBoxLayout* content_layout = new QVBoxLayout( content );
         content_layout->setContentsMargins( 0, 0, 0, 0 );
         content_layout->addLayout( state_row );
         content_layout->addWidget( view.covariance_field );
-        content_layout->addWidget( view.target_field );
+        content_layout->addWidget( view.pose_field );
+        content_layout->addWidget( view.velocity_field );
 
         // Sub-group header "Tracked <id>"; no color swatch on target sub-groups
         // (AccordionGroup hides the swatch unless setSwatchColor() is called).

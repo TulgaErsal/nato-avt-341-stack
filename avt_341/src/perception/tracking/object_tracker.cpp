@@ -2,7 +2,9 @@
 * @file      object_tracker.cpp
 * @brief     Per-target core of the camera/LiDAR sensor fusion object
              tracker. Logic extracted from object_tracking_node.cpp so that
-             one instance can be replicated per tracked target class.
+             one instance can be replicated per tracked target class. This is
+             the "Generic" tracker type; role-specific behavior lives in the
+             derived ToiTracker and FormationVehicleTracker classes.
 */
 
 #include <avt_341/perception/tracking/object_tracker.hpp>
@@ -23,7 +25,6 @@ ObjectTracker::ObjectTracker(
     rclcpp::Node* node, const std::string& target_class,
     const ObjectTrackerSettings& settings,
     const core::CoordTransformer& coord_transformer,
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
     )
     : node_(node),
@@ -33,7 +34,6 @@ ObjectTracker::ObjectTracker(
       odometry_child_frame_(core::SanitizeIdentifier(target_class) + "/odom"),
       settings_(settings),
       coord_transformer_(coord_transformer),
-      target_contacts_publisher_(std::move(target_contacts_publisher)),
       leader_odom_publisher_(std::move(leader_odom_publisher))
     {
     // Initialize the IMM filter (CV + CTR + NM).
@@ -73,6 +73,20 @@ void ObjectTracker::CreatePerTargetPublishers() {
 
 void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     camera_info_ = context.camera_info;
+
+    // LOST is sticky against the state machine below, which would otherwise
+    // overwrite it. Only a fresh camera detection of the target ends it:
+    // detections keep being ingested while LOST, so re-acquisition resumes
+    // the normal state machine against the (recovery-seeded) filter.
+    if (state_ == TrackerState::LOST) {
+        if (!has_detection_) {
+            return;
+        }
+        RCLCPP_INFO(logger_,
+                    "Fresh detection of \"%s\" while lost; resuming "
+                    "tracking.",
+                    target_class_.c_str());
+    }
 
     if (!camera_info_) {
         state_ = TrackerState::INACTIVE;
@@ -178,7 +192,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                 marker_pos);
             found = true;
 
-            RCLCPP_INFO(logger_,
+            RCLCPP_DEBUG(logger_,
                         "LIDAR_ONLY: tracking obstacle ID %d at "
                         "(%.2f, %.2f, %.2f) camera-frame.",
                         tracked_obstacle_id_,
@@ -403,7 +417,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             settings_.frames.camera_frame, settings_.frames.world_frame,
             best_pos_cam);
 
-        RCLCPP_INFO(logger_,
+        RCLCPP_DEBUG(logger_,
                     "FULL_TRACKING: associated obstacle ID %d "
                     "(projected %.0f px from detection center).",
                     tracked_obstacle_id_, best_pixel_dist);
@@ -618,14 +632,31 @@ void ObjectTracker::Reset() {
     filter_->ResetCovariance();
     filter_initialized_ = false;
     has_first_detection_ = false;
+    ResetTrackingState(Eigen::Vector3d::Zero(), TrackerState::INACTIVE);
+}
+
+void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
+                                       const TrackerState state) {
+    bounding_box_centroid_global_ = position;
+    bounding_box_centroid_filtered_ = position;
+    // Seed the re-acquisition anchor so the LiDAR can re-associate the
+    // target by proximity.
+    last_lidar_world_pos_ = position;
+
+    state_ = state;
+    has_tracked_target_ = false;
     has_detection_ = false;
-    state_ = TrackerState::INACTIVE;
+    has_new_measurement_ = false;
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
-    bounding_box_centroid_filtered_ = Eigen::Vector3d::Zero();
-    bounding_box_centroid_global_ = Eigen::Vector3d::Zero();
-    encircle_triggered_ = false;
-    contact_update_counter_ = 0;
+
+    const rclcpp::Time now = node_->get_clock()->now();
+    last_valid_target_time_ = now;
+    last_lidar_seen_time_ = now;
+    // The detection stamps also restart so the estimator's detection-based
+    // timeout cannot immediately re-fire against a pre-reset stamp.
+    last_valid_detection_time_ = now;
+    last_valid_detection_callback_time_ = now;
 }
 
 void ObjectTracker::UpdateSettings(const ObjectTrackerSettings& settings) {
@@ -737,7 +768,10 @@ void ObjectTracker::PublishOdometry() {
     tracked_target_message.child_frame_id = odometry_child_frame_;
     tracked_target_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
     tracked_target_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
-    tracked_target_message.twist.twist.linear = core::ToVector3Msg(filter_->GetVelocity3D());
+
+    // Linear velocity in child frame as per convention of ROS odometry message
+    const Eigen::Quaterniond world_to_target = core::ToEigen(tracked_target_message.pose.pose.orientation).inverse();
+    tracked_target_message.twist.twist.linear = core::ToVector3Msg(world_to_target * filter_->GetVelocity3D());
 
     Eigen::Matrix<double, 6, 6> TrackedCovariance = Eigen::Matrix<double, 6, 6>::Zero();
     Eigen::Matrix<double, 5, 5> Pt = filter_->GetCTRCovariance();
@@ -787,50 +821,6 @@ void ObjectTracker::PublishDetection3D() {
     detection_message.bbox.center.orientation = core::ToQuaternionMsg(bounding_box_orientation_);
 
     detection_publisher_->publish(detection_message);
-}
-
-void ObjectTracker::PublishTargetContact() {
-    geometry_msgs::msg::PoseStamped contact_pose;
-    contact_pose.header.stamp = node_->get_clock()->now();
-    contact_pose.header.frame_id = target_class_;
-    contact_pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
-    contact_pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
-
-    nav_msgs::msg::Path contact_msg;
-    contact_msg.header.stamp = node_->get_clock()->now();
-    contact_msg.header.frame_id = "map";
-    contact_msg.poses.push_back(contact_pose);
-
-    target_contacts_publisher_->publish(contact_msg);
-    RCLCPP_INFO(logger_,
-                "Published target contact \"%s\" at (%.2f, %.2f, %.2f).",
-                target_class_.c_str(),
-                bounding_box_centroid_filtered_.x(),
-                bounding_box_centroid_filtered_.y(),
-                bounding_box_centroid_filtered_.z());
-}
-
-void ObjectTracker::MaybePublishContactUpdate() {
-    const bool is_actively_tracking = filter_initialized_ && IsActiveTrackerState(state_);
-
-    if (!is_actively_tracking) return;
-
-    // Skip publishing contacts for known vehicles in our formation
-    const auto& formation_ids =
-        settings_.target_selection.formation_vehicle_ids;
-    if (std::find(formation_ids.begin(), formation_ids.end(),
-                  target_class_) != formation_ids.end()) {
-        return;
-    }
-
-    if (!encircle_triggered_) {
-        PublishTargetContact();
-        encircle_triggered_ = true;
-        contact_update_counter_ = 0;
-    } else if (++contact_update_counter_ >= contact_update_interval_ticks_) {
-        PublishTargetContact();
-        contact_update_counter_ = 0;
-    }
 }
 
 }  // namespace perception

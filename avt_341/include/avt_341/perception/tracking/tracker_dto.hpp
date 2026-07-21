@@ -54,10 +54,58 @@ namespace avt_341::perception
         LOST = 6
     };
 
+    /**
+     * @brief Concrete type of an ObjectTracker instance.
+     *
+     * - Generic:          Plain ObjectTracker base class.
+     * - Toi:              ToiTracker; target id matches "tracker_toi_regex"
+     *                     and target contacts are published.
+     * - FormationVehicle: FormationVehicleTracker; target id is one of the
+     *                     "formation_vehicle_ids" and lost-detection/recovery
+     *                     is active.
+     */
+    enum class ObjectTrackerType {
+        Generic = 0,
+        Toi = 1,
+        FormationVehicle = 2
+    };
+
+    inline std::string ToString(const ObjectTrackerType type) {
+        if (type == ObjectTrackerType::Generic) {
+            return "Generic";
+        } else if (type == ObjectTrackerType::Toi) {
+            return "Toi";
+        } else if (type == ObjectTrackerType::FormationVehicle) {
+            return "FormationVehicle";
+        }
+        throw std::invalid_argument("Unknown object tracker type.");
+    }
+
     inline bool IsActiveTrackerState(const TrackerState state) {
         return state == TrackerState::FULL_TRACKING ||
                 state == TrackerState::LIDAR_ONLY_TRACKING ||
                 state == TrackerState::CAMERA_ONLY_TRACKING;
+    }
+
+    /** @brief Inverse of ToString: parse a tracker state name (e.g.
+     *         "lidar_only" -> LIDAR_ONLY_TRACKING). Throws on unknown names. */
+    inline TrackerState ToTrackerState(const std::string& state) {
+        if (state == "uninitialized") {
+            return TrackerState::UNINITIALIZED;
+        } else if (state == "inactive") {
+            return TrackerState::INACTIVE;
+        } else if (state == "no_detection") {
+            return TrackerState::NO_DETECTION;
+        } else if (state == "lidar_only") {
+            return TrackerState::LIDAR_ONLY_TRACKING;
+        } else if (state == "full") {
+            return TrackerState::FULL_TRACKING;
+        } else if (state == "camera_only") {
+            return TrackerState::CAMERA_ONLY_TRACKING;
+        } else if (state == "lost") {
+            return TrackerState::LOST;
+        }
+        throw std::invalid_argument("Unknown tracker state \"" + state + "\".");
     }
 
     inline std::string ToString(const TrackerState state) {
@@ -73,6 +121,8 @@ namespace avt_341::perception
             return "full";
         } else if (state == TrackerState::CAMERA_ONLY_TRACKING) {
             return "camera_only";
+        } else if (state == TrackerState::LOST) {
+            return "lost";
         }
         throw std::invalid_argument("Unknown tracker state.");
     }

@@ -16,7 +16,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <nav_msgs/msg/odometry.hpp>
-#include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <vision_msgs/msg/detection2_d.hpp>
@@ -37,6 +36,12 @@ namespace perception {
  * @brief Per-target tracking core: camera/LiDAR association state machine,
  * IMM filter, timeout/re-acquisition logic, and the per-target publishers.
  *
+ * This base class is the "Generic" tracker type. Target-role-specific
+ * behavior lives in the derived classes: ToiTracker (targets of interest,
+ * contact publishing) and FormationVehicleTracker (formation vehicles,
+ * lost-detection/recovery). The owning node instantiates the concrete type
+ * per target and manages every tracker through this base interface.
+ *
  * The target class is immutable for the lifetime of an instance; re-targeting
  * an existing class is expressed as Reset() on the existing instance. Not
  * thread safe: instances must only be touched from the owning node's
@@ -48,9 +53,10 @@ class ObjectTracker {
                   const std::string& target_class,
                   const ObjectTrackerSettings& settings,
                   const core::CoordTransformer& coord_transformer,
-                  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
                   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
                   );
+
+    virtual ~ObjectTracker() = default;
 
     // Per-tick entry points (called from the owning node's timers)
     // -------------------------------------------------------------------------
@@ -68,7 +74,7 @@ class ObjectTracker {
      * @brief Run one estimator tick: IMM filter predict/update with chi2
      * gating, and publish the odometry/detection outputs.
      */
-    void EstimatorTick();
+    virtual void EstimatorTick();
 
     // Detection ingestion (called from the owning node's detections callback)
     // -------------------------------------------------------------------------
@@ -101,13 +107,19 @@ class ObjectTracker {
      * state set to INACTIVE. Publishers are not recreated (the target class
      * is immutable, so the topic names cannot change).
      */
-    void Reset();
+    virtual void Reset();
 
     /** @brief Replace the shared settings (dynamic parameter propagation). */
-    void UpdateSettings(const ObjectTrackerSettings& settings);
+    virtual void UpdateSettings(const ObjectTrackerSettings& settings);
 
     // Accessors
     // -------------------------------------------------------------------------
+
+    /** @brief Concrete tracker type of this instance ("Generic" for the base
+     *         class; overridden by the derived trackers). */
+    virtual ObjectTrackerType GetTrackerType() const {
+        return ObjectTrackerType::Generic;
+    }
 
     TrackerState GetTrackerState() const { return state_; }
 
@@ -121,10 +133,29 @@ class ObjectTracker {
      */
     avt_341_msgs::msg::TrackerStatus GetTrackerStatus() const;
 
-   private:
+   protected:
     void CreatePerTargetPublishers();
 
     void CheckTargetTimeout();
+
+    /**
+     * @brief Clear the target association/measurement state and seed the
+     * position outputs and the LiDAR re-acquisition anchor at @p position.
+     * Also refreshes the measurement/detection timestamps so the timeout
+     * logic restarts from now. Shared by Reset() (zero position, INACTIVE)
+     * and the ground-truth recovery re-seed (recovered position, LOST
+     * retained). Leaves the filter, filter_initialized_ and
+     * has_first_detection_ untouched — callers handle those.
+     */
+    void ResetTrackingState(const Eigen::Vector3d& position,
+                            TrackerState state);
+
+    /**
+     * @brief Hook invoked at the end of every non-early-returning tracking
+     * tick. No-op for the base ("Generic") tracker; ToiTracker overrides it
+     * to publish target contacts.
+     */
+    virtual void MaybePublishContactUpdate() {}
 
     // JN addition
     /** @brief Get coordinates from camera bounding box when the LiDAR
@@ -145,10 +176,6 @@ class ObjectTracker {
 
     void PublishDetection3D();
 
-    void PublishTargetContact();
-
-    void MaybePublishContactUpdate();
-
     // Wiring (non-owning except the publishers)
     // -------------------------------------------------------------------------
 
@@ -168,10 +195,6 @@ class ObjectTracker {
 
     /** @brief Shared coordinate transformer owned by the node. */
     const core::CoordTransformer& coord_transformer_;
-
-    // TODO: Move to node
-    /** @brief Shared target contacts publisher owned by the node. */
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
 
     // TODO: Move to node
     /** Single common odometry topic for tracked lead vehicle */
@@ -263,15 +286,6 @@ class ObjectTracker {
     double last_reliable_yaw_ = 0.0;
 
     bool heading_held_ = false;
-
-    // Target contacts (encircle trigger)
-    // -------------------------------------------------------------------------
-
-    bool encircle_triggered_ = false;
-
-    int contact_update_counter_ = 0;
-
-    static constexpr int contact_update_interval_ticks_ = 10;
 
     // Measurement state
     // -------------------------------------------------------------------------
