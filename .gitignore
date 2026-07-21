@@ -58,3 +58,5 @@ config/KRC_CP*.csv
 build
 install
 log
+
+avt_341_param_lib_example
