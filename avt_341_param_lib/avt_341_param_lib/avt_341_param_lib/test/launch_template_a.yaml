@@ -1,6 +1,5 @@
 class_name: Params
 code_namespace: alpha_demo
-param_namespace: alpha
 ros__parameters:
   cruise_speed:
     type: double

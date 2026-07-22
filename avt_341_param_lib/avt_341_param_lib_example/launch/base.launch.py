@@ -1,10 +1,17 @@
 """Base launch file demonstrating hierarchical parameter overriding.
 
+Command line parameter overrides use the same node-selector syntax as the
+runtime parameter yaml files. Examples:
+
+  **/cruise_speed:=9.0                     all nodes of all agents
+  planner/cruise_speed:=8.0                planner node of all agents
+  veh1/planner/cruise_speed:=7.0           planner node of one agent
+  veh1:='{cruise_speed: 3.3}'              all nodes of one agent (mapping form)
+  /veh1/planner:='{planner_mode: graph}'   absolute selector, mapping form
+
 Per-node override priority (later wins, per parameter):
-  1. runtime yaml files given via ``params_files``, in list order (agent-specific
-     sections are expressed inside the files with namespace wildcards)
-  2. explicitly provided global launch arguments (``nav/...``, ``sensor/...``)
-  3. agent-specific command line overrides (``<vehicle_id>_overrides:='{...}'``)
+  1. runtime yaml files given via ``params_files``, in list order
+  2. command line overrides, in command line order
 """
 
 import os
@@ -17,50 +24,47 @@ from launch_ros.actions import Node, PushRosNamespace
 from avt_341_param_lib.launch_params import (
     ParameterCollection,
     perform_yaml,
-    vehicle_overrides,
+    relevant_params_files,
 )
 
 SHARE_DIR = get_package_share_directory('avt_341_param_lib_example').replace('\\', '/')
+PARAMS_DIR = os.path.join(SHARE_DIR, 'parameters')
 
-pargs = ParameterCollection.from_template_folder(os.path.join(SHARE_DIR, 'parameters'))
+# node name -> (executable, parameter template); the templates double as the
+# source of the documented override launch arguments (ros2 launch ... -s)
+NODES = {
+    'planner': ('planner_node', os.path.join(PARAMS_DIR, 'nav.yaml')),
+    'controller': ('controller_node', os.path.join(PARAMS_DIR, 'nav.yaml')),
+    'sensor': ('sensor_node', os.path.join(PARAMS_DIR, 'sensor.yaml')),
+}
 
-
-def _node(executable, name, parameter_layers):
-    return Node(
-        package='avt_341_param_lib_example',
-        executable=executable,
-        name=name,
-        output='screen',
-        parameters=parameter_layers,
-    )
+pargs = ParameterCollection.from_node_templates(
+    {name: template for name, (_, template) in NODES.items()})
 
 
 def _spawn_vehicles(context, *args, **kwargs):
-    pargs.validate_explicit(context)
-
-    vehicles = perform_yaml(context, 'vehicle_namespaces')
+    vehicles = perform_yaml(context, 'vehicle_ids')
     params_files = perform_yaml(context, 'params_files')
-    nav_cli = pargs.explicit_overrides(context, 'nav')
-    sensor_cli = pargs.explicit_overrides(context, 'sensor')
+    overrides = pargs.resolve_overrides(context, vehicles)
 
     actions = []
     for vid in vehicles:
-        veh_cli = vehicle_overrides(context, vid)
-
-        def layers(partition_cli):
-            result = [*params_files]
-            if partition_cli:
-                result.append(dict(partition_cli))
-            if veh_cli:
-                result.append(dict(veh_cli))
-            return result
-
-        actions.append(GroupAction([
-            PushRosNamespace(vid),
-            _node('planner_node', 'planner', layers(nav_cli)),
-            _node('controller_node', 'controller', layers(nav_cli)),
-            _node('sensor_node', 'sensor', layers(sensor_cli)),
-        ]))
+        nodes = []
+        for name, (executable, _) in NODES.items():
+            fqn = f"/{str(vid).strip('/')}/{name}"
+            # only hand each node the inputs that can actually apply to it
+            layers = list(relevant_params_files(params_files, fqn))
+            cli_params = overrides.for_node(fqn)
+            if cli_params:
+                layers.append(cli_params)
+            nodes.append(Node(
+                package='avt_341_param_lib_example',
+                executable=executable,
+                name=name,
+                output='screen',
+                parameters=layers,
+            ))
+        actions.append(GroupAction([PushRosNamespace(vid), *nodes]))
     return actions
 
 
@@ -71,8 +75,10 @@ def generate_launch_description():
     )
     return LaunchDescription([
         DeclareLaunchArgument(
-            'vehicle_namespaces', default_value='[veh1, veh2]',
-            description='List of agent namespaces; the node set is replicated per agent'),
+            'vehicle_ids',
+            description='List of agent ids used as namespaces; the node set is '
+                        'replicated per agent. No default: the including launch '
+                        'file (e.g. client.launch.py) supplies the list.'),
         DeclareLaunchArgument(
             'params_files', default_value=default_params_files,
             description='Ordered list of runtime parameter yaml files (later files override earlier ones)'),

@@ -1,35 +1,55 @@
 """Reusable launch-file helpers for hierarchical parameter overriding.
 
-The intended layering per node, encoded as the order of the ``parameters=[...]``
-list handed to a ``launch_ros`` Node action (later entries override earlier
-ones parameter-by-parameter):
+Command line parameter overrides use the same node-selector convention as ROS 2
+parameter override yaml files: a selector addresses nodes by namespace and node
+name with ``/`` delimiters, where ``**`` matches any number of tokens and ``*``
+exactly one, and parameter names use ``.`` for nesting. Two argument forms are
+supported:
 
-1. runtime parameter yaml files, in the order given (agent-specific sections
-   are expressed inside the files with wildcard node keys, e.g. ``/veh2/**:``)
-2. globally declared launch arguments that were explicitly provided
-3. agent-specific command line overrides (``<vehicle_id>_overrides`` dicts)
+* scalar form -- ``<selector>/<param.name>:=<value>``, e.g.
+  ``**/cruise_speed:=9.0`` or ``veh1/planner/cruise_speed:=3.3``
+* mapping form -- ``<selector>:=<yaml mapping>``, e.g.
+  ``/veh1/planner:='{cruise_speed: 3.3}'``; the mapping is the selector
+  section's ``ros__parameters`` body (nested mappings express parameter groups)
+
+ROS 2 parameters can never hold mappings, so a mapping value always means
+"section body" and a scalar/list value always means "single parameter"; the two
+forms are unambiguous.
+
+Relative selectors (no leading ``/`` or ``**``) are resolved against the
+vehicle id list: a first segment naming a vehicle scopes the override to that
+vehicle (``veh1/planner/... -> /veh1/planner/...``); any other first segment
+applies across all vehicles by prefixing a single-token wildcard for the
+vehicle id (``planner/... -> /*/planner/...``). Vehicle ids are assumed to be
+single namespace tokens; deeper relative paths address nested node namespaces
+below the vehicle (``nav/planner/... -> /*/nav/planner/...``). A selector
+ending at a bare vehicle namespace targets all of that vehicle's nodes
+(``veh1 -> /veh1/**``).
+
+Per-node override priority (later wins, per parameter):
+
+1. runtime parameter yaml files, in the order given
+2. command line overrides, in command line order
 
 Explicitness of launch arguments is detected with a snapshot of the launch
 context's configuration store taken *before* the arguments are declared: at
 that point the store only contains values that were provided externally (via
 the command line or a parent launch file), so membership in the snapshot is an
 exact provenance record and never requires comparing values against defaults.
+The declared arguments themselves exist for documentation (``ros2 launch -s``);
+each declared name doubles as valid override syntax (``planner/cruise_speed``).
 """
 
-import glob
-import os
-from typing import Any, Dict, List
+import functools
+from collections import OrderedDict
+from typing import Any, Dict, Iterable, List, Tuple
 
 import yaml
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 
-from avt_341_param_lib.parse_yaml import (
-    PARAM_NAMESPACE_ROOT_KEY,
-    PARAMETERS_ROOT_KEY,
-)
+from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY
 
-_SCALAR_TYPES = ('bool', 'int', 'double', 'string')
 _ARRAY_SUFFIX = '_array'
 _MAP_PREFIX = '__map_'
 
@@ -64,12 +84,11 @@ def _flatten_parameters(node: dict, prefix: str, out: Dict[str, ParameterSpec]):
             _flatten_parameters(value, prefix + key + '.', out)
 
 
-def load_template_metadata(path: str):
+def load_template_metadata(path: str) -> Dict[str, ParameterSpec]:
     """Read a parameter template yaml file into launch-layer metadata.
 
-    Returns a tuple (partition, specs) where partition is the template's
-    param_namespace (or the file stem when unspecified) and specs maps the
-    flattened parameter name to its :class:`ParameterSpec`.
+    Returns a mapping of the flattened (dot-nested) parameter name to its
+    :class:`ParameterSpec`.
     """
     with open(path) as f:
         doc = yaml.safe_load(f)
@@ -78,10 +97,9 @@ def load_template_metadata(path: str):
             f"'{path}' is not a parameter template yaml file: missing a "
             f'{PARAMETERS_ROOT_KEY} root element'
         )
-    partition = doc.get(PARAM_NAMESPACE_ROOT_KEY) or os.path.splitext(os.path.basename(path))[0]
     specs: Dict[str, ParameterSpec] = {}
     _flatten_parameters(doc[PARAMETERS_ROOT_KEY], '', specs)
-    return partition, specs
+    return specs
 
 
 def _convert_scalar(value: Any, base_type: str, arg_name: str):
@@ -94,7 +112,20 @@ def _convert_scalar(value: Any, base_type: str, arg_name: str):
     if base_type == 'string':
         return str(value)
     raise ValueError(
-        f"Value '{value}' of launch argument '{arg_name}' is not a valid {base_type}")
+        f"Value '{value}' of parameter override '{arg_name}' is not a valid {base_type}")
+
+
+def convert_typed_value(value: Any, param_type: str, arg_name: str):
+    """Convert an already yaml-typed override value to the template's declared type."""
+    if param_type.endswith(_ARRAY_SUFFIX):
+        base_type = param_type[: -len(_ARRAY_SUFFIX)]
+        if not isinstance(value, list):
+            raise ValueError(
+                f"Value '{value}' of parameter override '{arg_name}' is not a "
+                f'valid {param_type}; expected e.g. "[a, b, c]"'
+            )
+        return [_convert_scalar(item, base_type, arg_name) for item in value]
+    return _convert_scalar(value, param_type, arg_name)
 
 
 def convert_cli_value(raw_text: str, param_type: str, arg_name: str):
@@ -103,61 +134,167 @@ def convert_cli_value(raw_text: str, param_type: str, arg_name: str):
         # the declared type is known, so string parameters take the text
         # verbatim - no quoting needed for values that look numeric
         return raw_text
-    parsed = yaml.safe_load(raw_text)
-    if param_type.endswith(_ARRAY_SUFFIX):
-        base_type = param_type[: -len(_ARRAY_SUFFIX)]
-        if not isinstance(parsed, list):
-            raise ValueError(
-                f"Value '{raw_text}' of launch argument '{arg_name}' is not a "
-                f'valid {param_type}; expected e.g. "[a, b, c]"'
+    return convert_typed_value(yaml.safe_load(raw_text), param_type, arg_name)
+
+
+def selector_matches(selector: str, fqn: str) -> bool:
+    """Return whether a node selector matches a fully qualified node name.
+
+    A selector is a slash-delimited path where the token ``**`` matches any
+    number of tokens (including none), ``*`` matches exactly one token and any
+    other token matches literally - the section-key convention of ROS 2
+    parameter yaml files.
+    """
+    return _tokens_match(
+        [token for token in selector.split('/') if token],
+        [token for token in fqn.split('/') if token],
+    )
+
+
+def _tokens_match(pattern: List[str], tokens: List[str]) -> bool:
+    if not pattern:
+        return not tokens
+    if pattern[0] == '**':
+        return _tokens_match(pattern[1:], tokens) or (
+            bool(tokens) and _tokens_match(pattern, tokens[1:]))
+    return bool(tokens) and pattern[0] in ('*', tokens[0]) and _tokens_match(
+        pattern[1:], tokens[1:])
+
+
+@functools.lru_cache(maxsize=None)
+def _load_params_file(path: str) -> dict:
+    with open(path) as f:
+        doc = yaml.safe_load(f)
+    if not isinstance(doc, dict):
+        raise ValueError(
+            f"'{path}' is not a parameter yaml file: expected a mapping of node sections")
+    return doc
+
+
+def _iter_section_selectors(doc: dict, prefix: str = ''):
+    """Yield the node selectors of a parameter override yaml document.
+
+    Supports both flat section keys (``/veh2/**:``) and nested namespace
+    mappings (``veh2: {planner: {ros__parameters: ...}}``).
+    """
+    for key, value in doc.items():
+        if not isinstance(value, dict):
+            continue
+        selector = f"{prefix}/{str(key).strip('/')}"
+        if PARAMETERS_ROOT_KEY in value:
+            yield selector
+        else:
+            yield from _iter_section_selectors(value, selector)
+
+
+def relevant_params_files(paths: Iterable[str], fqn: str) -> List[str]:
+    """Filter parameter yaml files to those with a section that can apply to the node.
+
+    Order is preserved. The check is conservative: sections whose keys do not
+    start with ``/`` are also tried with an implicit leading ``/**`` so that
+    relative section keys are never filtered out incorrectly; rcl still
+    performs the exact matching when the file is loaded by the node.
+    """
+    result = []
+    for path in paths:
+        selectors = _iter_section_selectors(_load_params_file(path))
+        if any(
+            selector_matches(selector, fqn) or selector_matches('/**' + selector, fqn)
+            for selector in selectors
+        ):
+            result.append(path)
+    return result
+
+
+def _normalize_selector(selector: str, vehicles: List[str]) -> str:
+    """Expand a possibly relative node selector to an absolute one.
+
+    Relative selectors starting with a vehicle id become vehicle-scoped; any
+    other relative selector applies across all vehicles via a single-token
+    wildcard for the vehicle id (vehicle ids are single namespace tokens, so
+    intermediate tokens of a relative selector always address nested node
+    namespaces, never a vehicle). A selector that ends at a bare vehicle
+    namespace targets all of that vehicle's nodes.
+    """
+    text = selector.strip().rstrip('/')
+    if not text or text.startswith('//'):
+        raise RuntimeError(f"Invalid node selector '{selector}' in parameter override")
+    if text.startswith('**'):
+        text = '/' + text
+    elif not text.startswith('/'):
+        first_segment = text.split('/', 1)[0]
+        text = f'/{text}' if first_segment in vehicles else f'/*/{text}'
+    for token in text.split('/'):
+        if '*' in token and token not in ('', '*', '**'):
+            raise RuntimeError(
+                f"Unsupported wildcard token '{token}' in node selector '{selector}'; "
+                "only whole-token '*' and '**' wildcards are supported"
             )
-        return [_convert_scalar(item, base_type, arg_name) for item in parsed]
-    return _convert_scalar(parsed, param_type, arg_name)
+    if text.strip('/') in vehicles:
+        text += '/**'
+    return text
+
+
+def _flatten_value_mapping(mapping: dict, arg_name: str, prefix: str = '') -> Dict[str, Any]:
+    """Flatten a mapping-form override value into dot-nested parameter names."""
+    params: Dict[str, Any] = {}
+    for key, value in mapping.items():
+        if not isinstance(key, str):
+            raise RuntimeError(
+                f"Parameter override '{arg_name}' holds a non-string parameter name '{key}'")
+        if isinstance(value, dict):
+            params.update(_flatten_value_mapping(value, arg_name, prefix + key + '.'))
+        else:
+            params[prefix + key] = value
+    if not params and not prefix:
+        raise RuntimeError(f"Parameter override '{arg_name}' holds an empty mapping")
+    return params
+
+
+
+
+class ResolvedOverrides:
+    """Per-node parameter overrides resolved from explicit launch arguments."""
+
+    def __init__(self, params_by_fqn: Dict[str, Dict[str, Any]]):
+        self._params_by_fqn = params_by_fqn
+
+    def for_node(self, fqn: str) -> Dict[str, Any]:
+        """Merged override parameters applying to the node; empty when none match."""
+        return dict(self._params_by_fqn.get(fqn, {}))
 
 
 class ParameterCollection:
-    """Declares launch override arguments for template parameter files and
-    resolves which of them were explicitly provided."""
+    """Declares launch override arguments for the nodes of a launch file and
+    resolves explicitly provided overrides into per-node parameter dicts.
 
-    def __init__(self, partitions: Dict[str, Dict[str, ParameterSpec]]):
-        self._partitions = partitions
+    Construct with a mapping of node name to template yaml file; several node
+    names may share one template.
+    """
+
+    def __init__(self, node_specs: Dict[str, Dict[str, ParameterSpec]]):
+        self._node_specs = node_specs
         self._explicit = set()
 
     @classmethod
-    def from_template_files(cls, paths: List[str]) -> 'ParameterCollection':
-        partitions: Dict[str, Dict[str, ParameterSpec]] = {}
-        for path in paths:
-            partition, specs = load_template_metadata(path)
-            if partition in partitions:
-                raise ValueError(
-                    f"Duplicate parameter partition '{partition}' while loading '{path}'. "
-                    f'Set a unique {PARAM_NAMESPACE_ROOT_KEY} in the template files.'
-                )
-            partitions[partition] = specs
-        return cls(partitions)
-
-    @classmethod
-    def from_template_folder(cls, folder: str, recursive: bool = False) -> 'ParameterCollection':
-        """Load every parameter template yaml file under the given folder."""
-        if not os.path.isdir(folder):
-            raise ValueError(f"'{folder}' is not a directory")
-        pattern = os.path.join(folder, '**/*' if recursive else '*')
-        paths = sorted(
-            path for path in glob.glob(pattern, recursive=recursive)
-            if os.path.isfile(path) and os.path.splitext(path)[1] in ('.yaml', '.yml')
-        )
-        if not paths:
-            raise ValueError(f"No parameter template yaml files found under '{folder}'")
-        return cls.from_template_files(paths)
+    def from_node_templates(cls, node_templates: Dict[str, str]) -> 'ParameterCollection':
+        """Build a collection from a node-name -> template-yaml-path mapping."""
+        specs_by_path: Dict[str, Dict[str, ParameterSpec]] = {}
+        node_specs: Dict[str, Dict[str, ParameterSpec]] = {}
+        for node_name, path in node_templates.items():
+            if path not in specs_by_path:
+                specs_by_path[path] = load_template_metadata(path)
+            node_specs[node_name] = specs_by_path[path]
+        return cls(node_specs)
 
     @property
-    def partitions(self) -> List[str]:
-        return list(self._partitions.keys())
+    def node_names(self) -> List[str]:
+        return list(self._node_specs.keys())
 
     def argument_names(self) -> List[str]:
         return [
-            self._argument_name(partition, name)
-            for partition, specs in self._partitions.items()
+            f'{node_name}/{name}'
+            for node_name, specs in self._node_specs.items()
             for name in specs
         ]
 
@@ -180,42 +317,104 @@ class ParameterCollection:
             OpaqueFunction(function=self._scrub),
         ]
 
-    def explicit_overrides(self, context, partition: str) -> Dict[str, Any]:
-        """Typed values of this partition's explicitly provided arguments."""
-        overrides: Dict[str, Any] = {}
-        for name, spec in self._partitions[partition].items():
-            arg_name = self._argument_name(partition, name)
-            if arg_name in self._explicit:
-                raw = LaunchConfiguration(arg_name).perform(context)
-                overrides[name] = convert_cli_value(raw, spec.param_type, arg_name)
-        return overrides
+    def resolve_overrides(self, context, vehicle_ids: List[str]) -> ResolvedOverrides:
+        """Resolve the explicitly provided override arguments for the given vehicles.
 
-    def validate_explicit(self, context):
-        """Raise on provided arguments that look like partitioned override
-        arguments of this instance but do not match any declared parameter."""
-        declared = set(self.argument_names())
-        prefixes = tuple(f'{partition}/' for partition in self._partitions)
-        stray = sorted(
-            key for key in context.launch_configurations
-            if key.startswith(prefixes) and key not in declared
+        Scans the pre-declaration snapshot for override-shaped arguments (any
+        name containing ``/``, starting with ``**``, or equal to a vehicle id
+        or node name), expands them against the vehicle id list and validates
+        them against the node templates. Raises RuntimeError for overrides
+        that match no launched node or name no parameter declared by any
+        matched node.
+        """
+        vehicles = [str(vid).strip('/') for vid in vehicle_ids]
+        cli_args = OrderedDict(
+            (key, value) for key, value in context.launch_configurations.items()
+            if key in self._explicit and self._is_override_key(key, vehicles)
         )
-        if stray:
-            raise RuntimeError(
-                f'Unknown parameter override argument(s): {stray}. '
-                f'Declared arguments are: {sorted(declared)}'
-            )
+        return self.resolve(cli_args, vehicle_ids)
 
-    def _argument_name(self, partition: str, name: str) -> str:
-        return f'{partition}/{name}'
+    def _is_override_key(self, key: str, vehicles: List[str]) -> bool:
+        return (
+            '/' in key or key.startswith('**')
+            or key.strip('/') in vehicles or key in self._node_specs
+        )
+
+    def resolve(self, cli_args: 'OrderedDict[str, str]', vehicle_ids: List[str]) -> ResolvedOverrides:
+        """Pure resolution core of :meth:`resolve_overrides` (testable without a context)."""
+        vehicles = [str(vid).strip('/') for vid in vehicle_ids]
+        node_by_fqn = {
+            f'/{vid}/{node_name}': node_name
+            for vid in vehicles
+            for node_name in self._node_specs
+        }
+        params_by_fqn: Dict[str, Dict[str, Any]] = {}
+        problems = []
+        for key, raw_value in cli_args.items():
+            try:
+                selector, params, values_are_text = self._parse_override(key, raw_value, vehicles)
+            except RuntimeError as error:
+                problems.append(str(error))
+                continue
+            matched = [fqn for fqn in node_by_fqn if selector_matches(selector, fqn)]
+            if not matched:
+                problems.append(
+                    f"'{key}' (node selector '{selector}') matches none of the launched nodes")
+                continue
+            for name, value in params.items():
+                applied = False
+                for fqn in matched:
+                    spec = self._node_specs[node_by_fqn[fqn]].get(name)
+                    if spec is None:
+                        # entries a matched node does not declare stay dormant,
+                        # mirroring yaml parameter file semantics
+                        continue
+                    convert = convert_cli_value if values_are_text else convert_typed_value
+                    params_by_fqn.setdefault(fqn, {})[name] = convert(
+                        value, spec.param_type, key)
+                    applied = True
+                if not applied:
+                    problems.append(
+                        f"'{key}': parameter '{name}' is not declared by any matched node")
+        if problems:
+            raise RuntimeError(
+                'Invalid parameter override argument(s): ' + '; '.join(problems)
+                + f'. Declared override arguments are: {sorted(self.argument_names())}'
+            )
+        return ResolvedOverrides(params_by_fqn)
+
+    def _parse_override(
+        self, key: str, raw_value: str, vehicles: List[str]
+    ) -> Tuple[str, Dict[str, Any], bool]:
+        """Split one override argument into (selector, params, values_are_text)."""
+        try:
+            value = yaml.safe_load(raw_value)
+        except yaml.YAMLError:
+            value = None  # not yaml: can only be a verbatim string parameter value
+        if isinstance(value, dict):
+            # mapping form: the whole key is the node selector
+            if set(value) == {PARAMETERS_ROOT_KEY}:
+                value = value[PARAMETERS_ROOT_KEY]
+            selector = _normalize_selector(key, vehicles)
+            return selector, _flatten_value_mapping(value, key), False
+        # scalar form: the last slash segment is the (possibly dotted) parameter name
+        selector_text, sep, param_name = key.rpartition('/')
+        if not sep or not selector_text or not param_name or '*' in param_name:
+            raise RuntimeError(
+                f"Malformed parameter override '{key}:={raw_value}': expected "
+                "'<node-selector>/<param.name>:=<value>' or '<node-selector>:=<yaml mapping>'"
+            )
+        selector = _normalize_selector(selector_text, vehicles)
+        return selector, {param_name: raw_value}, True
 
     def _declare_arguments(self) -> list:
         return [
             DeclareLaunchArgument(
-                self._argument_name(partition, spec.name),
+                f'{node_name}/{spec.name}',
                 default_value='' if spec.default_value is None else str(spec.default_value),
                 description=spec.description or spec.name,
             )
-            for partition, specs in self._partitions.items()
+            for node_name, specs in self._node_specs.items()
             for spec in specs.values()
         ]
 
@@ -233,20 +432,3 @@ class ParameterCollection:
 def perform_yaml(context, arg_name: str):
     """Perform a launch configuration and parse its value as yaml."""
     return yaml.safe_load(LaunchConfiguration(arg_name).perform(context))
-
-
-def vehicle_overrides(context, vehicle_id: str) -> Dict[str, Any]:
-    """Parse the dynamically named ``<vehicle_id>_overrides`` launch argument.
-
-    The argument does not need to be declared; it defaults to an empty mapping.
-    """
-    raw = LaunchConfiguration(f'{vehicle_id}_overrides', default='{}').perform(context)
-    value = yaml.safe_load(raw)
-    if value is None:
-        return {}
-    if not isinstance(value, dict):
-        raise ValueError(
-            f"Launch argument '{vehicle_id}_overrides' must hold a yaml mapping "
-            f"of parameter names to values, got '{raw}'"
-        )
-    return value

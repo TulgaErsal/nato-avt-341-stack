@@ -72,12 +72,10 @@ def compile_error(msg: str):
 # Extend this tuple when new root elements are added to the template format.
 CLASS_NAME_ROOT_KEY = 'class_name'
 CODE_NAMESPACE_ROOT_KEY = 'code_namespace'
-PARAM_NAMESPACE_ROOT_KEY = 'param_namespace'
 PARAMETERS_ROOT_KEY = 'ros__parameters'
 KNOWN_ROOT_KEYS = (
     CLASS_NAME_ROOT_KEY,
     CODE_NAMESPACE_ROOT_KEY,
-    PARAM_NAMESPACE_ROOT_KEY,
     PARAMETERS_ROOT_KEY,
 )
 
@@ -733,7 +731,6 @@ class GenerateCode:
         self.language = language
         self.namespace = ''
         self.namespace_tokens = []
-        self.param_namespace = ''
         self.class_name = DEFAULT_CLASS_NAME
         self.struct_tree = DeclareStruct('Params', [])
         self.stack_struct_tree = DeclareStruct('StackParams', [])
@@ -788,17 +785,6 @@ class GenerateCode:
                     'valid class identifier, e.g. "Params"'
                 )
             self.class_name = class_name
-            # param_namespace is launch-layer metadata (the prefix of the
-            # generated launch override arguments); it is validated here but has
-            # no effect on the generated code
-            param_namespace = doc.get(PARAM_NAMESPACE_ROOT_KEY, '')
-            if param_namespace:
-                if not isinstance(param_namespace, str):
-                    raise compile_error(
-                        f'The {PARAM_NAMESPACE_ROOT_KEY} root element must hold a string'
-                    )
-                parse_code_namespace_tokens(param_namespace, PARAM_NAMESPACE_ROOT_KEY)
-            self.param_namespace = param_namespace
             self.namespace = doc[CODE_NAMESPACE_ROOT_KEY]
             self.namespace_tokens = parse_code_namespace_tokens(self.namespace)
             self.user_validation_file = validate_header

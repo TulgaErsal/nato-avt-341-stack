@@ -1,6 +1,5 @@
 class_name: Params
 code_namespace: nav_demo
-param_namespace: nav
 ros__parameters:
   cruise_speed:
     type: double

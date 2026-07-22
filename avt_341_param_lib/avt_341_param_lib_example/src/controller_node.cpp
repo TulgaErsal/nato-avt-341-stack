@@ -6,7 +6,7 @@
 
 namespace nav_demo {
 
-// Second node sharing the nav_params.yaml template with the planner node
+// Second node sharing the nav.yaml template with the planner node
 class ControllerNode : public rclcpp::Node {
  public:
   explicit ControllerNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions())

@@ -9,8 +9,12 @@ find_package(ament_cmake REQUIRED)
 find_package(avt_341_param_lib REQUIRED)
 find_package(rclcpp REQUIRED)
 
-avt_341_generate_cpp_parameter_file(nav_parameters parameters/nav_params.yaml)
-avt_341_generate_cpp_parameter_file(sensor_parameters parameters/sensor.yaml)
+# Generates one parameter library per yaml file under parameters/, named
+# <stem>_parameters: nav.yaml -> nav_parameters, sensor.yaml -> sensor_parameters
+avt_341_generate_cpp_parameters(parameters)
+# Equivalent explicit per-file form:
+# avt_341_generate_cpp_parameter_file(nav_parameters parameters/nav.yaml)
+# avt_341_generate_cpp_parameter_file(sensor_parameters parameters/sensor.yaml)
 
 add_executable(planner_node src/planner_node.cpp)
 target_link_libraries(planner_node PUBLIC nav_parameters rclcpp::rclcpp)
