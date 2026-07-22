@@ -42,6 +42,7 @@ from typing import Any, List, Union
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
 import os
+import re
 import yaml
 
 from avt_341_param_lib.cpp_conversions import CPPConversions
@@ -65,6 +66,29 @@ class YAMLSyntaxError(Exception):
 @typechecked
 def compile_error(msg: str):
     return YAMLSyntaxError('\nERROR: ' + msg)
+
+
+# Root elements currently understood in the parameter template yaml file.
+# Extend this tuple when new root elements are added to the template format.
+CLASS_NAME_ROOT_KEY = 'class_name'
+CODE_NAMESPACE_ROOT_KEY = 'code_namespace'
+PARAMETERS_ROOT_KEY = 'ros__parameters'
+KNOWN_ROOT_KEYS = (CLASS_NAME_ROOT_KEY, CODE_NAMESPACE_ROOT_KEY, PARAMETERS_ROOT_KEY)
+
+DEFAULT_CLASS_NAME = 'Params'
+
+
+@typechecked
+def parse_code_namespace_tokens(code_namespace: str) -> List[str]:
+    """Split a slash-separated code_namespace into validated identifier tokens."""
+    tokens = code_namespace.split('/')
+    identifier = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+    if not all(identifier.match(token) for token in tokens):
+        raise compile_error(
+            f"Invalid {CODE_NAMESPACE_ROOT_KEY} '{code_namespace}'. Expected "
+            'slash-separated identifiers, e.g. "my_controller" or "my_controller/variant_a"'
+        )
+    return tokens
 
 
 @typechecked
@@ -702,6 +726,8 @@ class GenerateCode:
         GenerateCode.templates = get_all_templates(language)
         self.language = language
         self.namespace = ''
+        self.namespace_tokens = []
+        self.class_name = DEFAULT_CLASS_NAME
         self.struct_tree = DeclareStruct('Params', [])
         self.stack_struct_tree = DeclareStruct('StackParams', [])
         self.update_parameters = []
@@ -724,13 +750,41 @@ class GenerateCode:
             except ScannerError as e:
                 raise compile_error(str(e))
 
-            if len(doc) != 1:
+            if not isinstance(doc, dict):
                 raise compile_error(
-                    'The yaml definition must only have one root element'
+                    'The yaml definition must be a mapping of root elements. '
+                    f'Supported root elements are: {list(KNOWN_ROOT_KEYS)}'
                 )
-            self.namespace = list(doc.keys())[0]
+            unknown_keys = [key for key in doc if key not in KNOWN_ROOT_KEYS]
+            if unknown_keys:
+                raise compile_error(
+                    f'Unknown root element(s) {unknown_keys}. '
+                    f'Supported root elements are: {list(KNOWN_ROOT_KEYS)}'
+                )
+            if not isinstance(doc.get(CODE_NAMESPACE_ROOT_KEY), str):
+                raise compile_error(
+                    f'The yaml definition must have a {CODE_NAMESPACE_ROOT_KEY} '
+                    'root element holding a string'
+                )
+            parameters = doc.get(PARAMETERS_ROOT_KEY)
+            if not isinstance(parameters, dict) or not parameters:
+                raise compile_error(
+                    f'The yaml definition must have a {PARAMETERS_ROOT_KEY} root '
+                    'element holding a non-empty mapping of parameter definitions'
+                )
+            class_name = doc.get(CLASS_NAME_ROOT_KEY, DEFAULT_CLASS_NAME)
+            if not isinstance(class_name, str) or not re.match(
+                r'^[A-Za-z_][A-Za-z0-9_]*$', class_name
+            ):
+                raise compile_error(
+                    f"Invalid {CLASS_NAME_ROOT_KEY} '{class_name}'. Expected a "
+                    'valid class identifier, e.g. "Params"'
+                )
+            self.class_name = class_name
+            self.namespace = doc[CODE_NAMESPACE_ROOT_KEY]
+            self.namespace_tokens = parse_code_namespace_tokens(self.namespace)
             self.user_validation_file = validate_header
-            self.parse_dict(self.namespace, doc[self.namespace], [])
+            self.parse_dict(PARAMETERS_ROOT_KEY, parameters, [])
 
     def parse_params(self, name, value, nested_name_list):
         (
@@ -843,10 +897,23 @@ class GenerateCode:
             self.parse_params(name, root_map, nested_name)
 
     def __str__(self):
+        if self.language == 'cpp':
+            # slash-separated tokens become nested C++ namespaces
+            namespace = '::'.join(self.namespace_tokens)
+        elif self.language == 'python':
+            # python has no namespaces; tokens are joined into one class name
+            namespace = '_'.join(self.namespace_tokens)
+        else:
+            namespace = self.namespace
+
         data = {
             'user_validation_file': self.user_validation_file,
             'comments': self.comments,
-            'namespace': self.namespace,
+            'namespace': namespace,
+            'logger_name': '.'.join(self.namespace_tokens),
+            'class_name': self.class_name,
+            'stack_class_name': 'Stack' + self.class_name,
+            'listener_class_name': self.class_name + 'Listener',
             'field_content': self.struct_tree.sub_structs[0].field_content(),
             'sub_struct_content': self.struct_tree.sub_structs[0].sub_struct_content(),
             'stack_field_content': self.stack_struct_tree.sub_structs[

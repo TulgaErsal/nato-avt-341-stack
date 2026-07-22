@@ -20,7 +20,7 @@ import {{user_validation_file}} as custom_validators
 class {{namespace}}:
 {%- filter indent(width=4) %}
 
-class Params:
+class {{class_name}}:
 {%- filter indent(width=4) %}
 # for detecting if the parameter struct has been updated
 stamp_ = Time()
@@ -31,12 +31,12 @@ stamp_ = Time()
 {%- endfilter %}
 
 
-    class ParamListener:
+    class {{listener_class_name}}:
         def __init__(self, node, prefix=""):
             self.prefix_ = prefix
-            self.params_ = {{namespace}}.Params()
+            self.params_ = {{namespace}}.{{class_name}}()
             self.node_ = node
-            self.logger_ = rclpy.logging.get_logger("{{namespace}}." + prefix)
+            self.logger_ = rclpy.logging.get_logger("{{logger_name}}." + prefix)
 
             self.declare_params()
 

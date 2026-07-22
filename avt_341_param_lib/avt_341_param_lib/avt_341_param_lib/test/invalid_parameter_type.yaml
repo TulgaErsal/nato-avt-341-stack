@@ -1,3 +1,4 @@
-namespace:
+code_namespace: test_node
+ros__parameters:
   param_name:
     type: string_non-type

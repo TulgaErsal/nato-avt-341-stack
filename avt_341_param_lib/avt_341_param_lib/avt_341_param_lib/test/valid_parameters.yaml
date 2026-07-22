@@ -1,4 +1,5 @@
-admittance_controller:
+code_namespace: admittance_controller
+ros__parameters:
   scientific_notation_num:
     type: double
     default_value: 0.00000000001
@@ -34,17 +35,6 @@ admittance_controller:
         type: double
         default_value: 1.0
         description: "derivative gain term"
-  fixed_string:
-    type: string_fixed_25
-    default_value: "string_value"
-    description: "test code generation for fixed sized string"
-  fixed_array:
-    type: double_array_fixed_10
-    default_value: [1.0, 2.3, 4.0 ,5.4, 3.3]
-    description: "test code generation for fixed sized array"
-  fixed_string_no_default:
-    type: string_fixed_25
-    description: "test code generation for fixed sized string with no default"
   command_interfaces:
       type: string_array
       description: "specifies which command interfaces to claim"

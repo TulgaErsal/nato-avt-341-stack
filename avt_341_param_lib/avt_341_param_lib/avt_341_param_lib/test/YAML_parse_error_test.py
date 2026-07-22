@@ -16,20 +16,23 @@ import pytest
 from unittest.mock import patch
 import sys
 import os
+import tempfile
 
-from ament_index_python.packages import get_package_share_path
 from avt_341_param_lib.generate_cpp_header import run as run_cpp
 from avt_341_param_lib.generate_python_module import run as run_python
 from avt_341_param_lib.generate_markdown import run as run_md
 from avt_341_param_lib.parse_yaml import YAMLSyntaxError
 from avt_341_param_lib.generate_cpp_header import parse_args
 
+# Test yaml files live next to this file, both in the source tree and when
+# installed into site-packages
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def set_up(yaml_test_file):
-    full_file_path = os.path.join(
-        get_package_share_path('avt_341_param_lib'), 'test', yaml_test_file
-    )
-    testargs = [sys.argv[0], '/tmp/' + yaml_test_file + '.h', full_file_path]
+    full_file_path = os.path.join(TEST_DIR, yaml_test_file)
+    output_dir = tempfile.mkdtemp()
+    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.h'), full_file_path]
 
     with patch.object(sys, 'argv', testargs):
         args = parse_args()
@@ -38,7 +41,7 @@ def set_up(yaml_test_file):
         validate_header = args.validate_header
         run_cpp(output_file, yaml_file, validate_header)
 
-    testargs = [sys.argv[0], '/tmp/' + yaml_test_file + '.py', full_file_path]
+    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.py'), full_file_path]
 
     with patch.object(sys, 'argv', testargs):
         args = parse_args()
@@ -47,7 +50,7 @@ def set_up(yaml_test_file):
         validate_header = args.validate_header
         run_python(output_file, yaml_file, validate_header)
 
-    testargs = [sys.argv[0], '/tmp/' + yaml_test_file + '.md', full_file_path]
+    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.md'), full_file_path]
 
     with patch.object(sys, 'argv', testargs):
         args = parse_args()
@@ -55,7 +58,7 @@ def set_up(yaml_test_file):
         yaml_file = args.input_yaml_file
         run_md(yaml_file, output_file, 'markdown')
 
-    testargs = [sys.argv[0], '/tmp/' + yaml_test_file + '.rst', full_file_path]
+    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.rst'), full_file_path]
 
     with patch.object(sys, 'argv', testargs):
         args = parse_args()

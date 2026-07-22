@@ -240,7 +240,7 @@ class AutoDocumentation:
         ]
 
     def __str__(self):
-        words = self.gen_param_struct.namespace.split('_')
+        words = self.gen_param_struct.namespace.replace('/', '_').split('_')
         title = ' '.join(word.capitalize() for word in words)
 
         data = {

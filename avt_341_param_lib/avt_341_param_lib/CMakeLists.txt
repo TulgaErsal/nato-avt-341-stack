@@ -27,6 +27,14 @@ install(TARGETS ${PROJECT_NAME}
 )
 install(DIRECTORY include/ DESTINATION include)
 
+# --- Windows: install fmt.dll alongside the binaries so it is found at runtime ---
+if(WIN32)
+  get_target_property(fmt_target_type fmt::fmt TYPE)
+  if(fmt_target_type STREQUAL "SHARED_LIBRARY")
+    install(FILES $<TARGET_FILE:fmt::fmt> DESTINATION bin)
+  endif()
+endif()
+
 # --- Python package installation
 ament_python_install_package(${PROJECT_NAME})
 
@@ -35,6 +43,12 @@ install(
   DIRECTORY cmake
   DESTINATION share/${PROJECT_NAME}
 )
+
+# --- Tests ---
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(yaml_parse_error_test ${PROJECT_NAME}/test/YAML_parse_error_test.py)
+endif()
 
 # --- Export ---
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)

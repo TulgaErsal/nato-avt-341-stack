@@ -21,6 +21,7 @@
   <depend>rclpy</depend>
   <depend>rclcpp_lifecycle</depend>
 
+  <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>

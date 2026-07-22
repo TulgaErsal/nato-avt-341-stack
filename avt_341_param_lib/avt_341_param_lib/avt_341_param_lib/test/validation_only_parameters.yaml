@@ -1,4 +1,5 @@
-admittance_controller:
+code_namespace: admittance_controller
+ros__parameters:
   stiffness:
     type: double_array
     description: "specifies stiffness values for x, y, z, rx, ry, and rz used in the admittance calculation"
@@ -56,12 +57,6 @@ admittance_controller:
     description: "should be a number greater than 15"
     validation:
       gt<>: [ 15 ]
-  # This shouldn't populate any description range constraints
-  fixed_array:
-    type: double_array_fixed_10
-    default_value: [1.0, 2.3, 4.0 ,5.4, 3.3]
-    description: "test code generation for fixed sized array"
-
     # general settings
   enable_parameter_update_without_reactivation:
     type: bool

@@ -1,4 +1,5 @@
-some_controller:
+code_namespace: some_controller
+ros__parameters:
   some_parameter:
     type: string
     default_value: "default"

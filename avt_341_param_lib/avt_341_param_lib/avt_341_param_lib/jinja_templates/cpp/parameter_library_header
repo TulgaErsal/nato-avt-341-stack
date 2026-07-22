@@ -54,7 +54,7 @@ template <typename T>
 }
 
 {%- filter indent(width=4) %}
-struct Params {
+struct {{class_name}} {
 {%- filter indent(width=4) %}
 {{field_content-}}
 {{sub_struct_content-}}
@@ -65,7 +65,7 @@ rclcpp::Time __stamp;
 {%- endfilter %}
 
 {%- filter indent(width=4) %}
-struct StackParams {
+struct {{stack_class_name}} {
 {%- filter indent(width=4) %}
 {{stack_field_content-}}
 {{stack_sub_struct_content-}}
@@ -73,20 +73,20 @@ struct StackParams {
 };
 {%- endfilter %}
 
-  class ParamListener{
+  class {{listener_class_name}}{
   public:
     // throws rclcpp::exceptions::InvalidParameterValueException on initialization if invalid parameter are loaded
     template <typename NodeT>
-    ParamListener(NodeT node, std::string const& prefix = "")
-    : ParamListener(node->get_node_parameters_interface(), node->get_logger(), prefix) {}
+    {{listener_class_name}}(NodeT node, std::string const& prefix = "")
+    : {{listener_class_name}}(node->get_node_parameters_interface(), node->get_logger(), prefix) {}
 
-    ParamListener(const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface>& parameters_interface,
+    {{listener_class_name}}(const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface>& parameters_interface,
                   std::string const& prefix = "")
-    : ParamListener(parameters_interface, rclcpp::get_logger("{{namespace}}"), prefix) {
+    : {{listener_class_name}}(parameters_interface, rclcpp::get_logger("{{logger_name}}"), prefix) {
       RCLCPP_DEBUG(logger_, "ParameterListener: Not using node logger, recommend using other constructors to use a node logger");
     }
 
-    ParamListener(const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface>& parameters_interface,
+    {{listener_class_name}}(const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface>& parameters_interface,
                   rclcpp::Logger logger, std::string const& prefix = "")
     : prefix_{prefix},
       logger_{std::move(logger)} {
@@ -101,18 +101,18 @@ struct StackParams {
       clock_ = rclcpp::Clock();
     }
 
-    Params get_params() const{
+    {{class_name}} get_params() const{
       std::lock_guard<std::mutex> lock(mutex_);
       return params_;
     }
 
     /**
-     * @brief Tries to update the parsed Params object
-     * @param params_in The Params object to update
-     * @return true if the Params object was updated, false if it was already up to date or the mutex could not be locked
+     * @brief Tries to update the parsed {{class_name}} object
+     * @param params_in The {{class_name}} object to update
+     * @return true if the {{class_name}} object was updated, false if it was already up to date or the mutex could not be locked
      * @note This function tries to lock the mutex without blocking, so it can be used in a RT loop
      */
-    bool try_update_params(Params & params_in) const {
+    bool try_update_params({{class_name}} & params_in) const {
       std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
       if (lock.owns_lock()) {
         if (const bool is_old = params_in.__stamp != params_.__stamp; is_old) {
@@ -124,13 +124,13 @@ struct StackParams {
     }
 
     /**
-     * @brief Tries to get the current Params object
-     * @param params_in The Params object to fill with the current parameters
+     * @brief Tries to get the current {{class_name}} object
+     * @param params_in The {{class_name}} object to fill with the current parameters
      * @return true if mutex can be locked, false if mutex could not be locked
      * @note The parameters are only filled, when the mutex can be locked and the params timestamp is different
      * @note This function tries to lock the mutex without blocking, so it can be used in a RT loop
      */
-    bool try_get_params(Params & params_in) const {
+    bool try_get_params({{class_name}} & params_in) const {
       if (mutex_.try_lock()) {
         if (const bool is_old = params_in.__stamp != params_.__stamp; is_old) {
           params_in = params_;
@@ -141,14 +141,14 @@ struct StackParams {
       return false;
     }
 
-    bool is_old(Params const& other) const {
+    bool is_old({{class_name}} const& other) const {
       std::lock_guard<std::mutex> lock(mutex_);
       return params_.__stamp != other.__stamp;
     }
 
-    StackParams get_stack_params() {
-      Params params = get_params();
-      StackParams output;
+    {{stack_class_name}} get_stack_params() {
+      {{class_name}} params = get_params();
+      {{stack_class_name}} output;
 
 {%- filter indent(width=6) %}
 {{set_stack_params}}
@@ -217,7 +217,7 @@ struct StackParams {
       update_internal_params(updated_params);
     }
 
-    using userParameterUpdateCB = std::function<void(const Params&)>;
+    using userParameterUpdateCB = std::function<void(const {{class_name}}&)>;
     void setUserCallback(const userParameterUpdateCB& callback){
       user_callback_ = callback;
     }
@@ -227,13 +227,13 @@ struct StackParams {
     }
 
     private:
-      void update_internal_params(Params updated_params) {
+      void update_internal_params({{class_name}} updated_params) {
         std::lock_guard<std::mutex> lock(mutex_);
         params_ = std::move(updated_params);
       }
 
       std::string prefix_;
-      Params params_;
+      {{class_name}} params_;
       rclcpp::Clock clock_;
       std::shared_ptr<rclcpp::node_interfaces::OnSetParametersCallbackHandle> handle_;
       std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> parameters_interface_;
