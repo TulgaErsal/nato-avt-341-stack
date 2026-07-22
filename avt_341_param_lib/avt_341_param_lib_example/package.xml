@@ -1,31 +1,23 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>avt_341_param_lib</name>
+  <name>avt_341_param_lib_example</name>
   <version>0.7.0</version>
-  <description>Parameter library for ROS2 AVT-341/408.</description>
+  <description>Example usage of avt_341_param_lib.</description>
   <maintainer email="stefan.wapnick@nrc-cnrc.gc.ca">Stefan Wapnick</maintainer>
   <license>BSD-3-Clause</license>
   <author email="stefan.wapnick@nrc-cnrc.gc.ca">Stefan Wapnick</author>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
-
-  <depend>python3</depend>
-  <depend>python3-jinja2</depend>
-  <depend>python3-typeguard</depend>
-  <depend>python3-yaml</depend>
-
-  <depend>fmt</depend>
+  <depend>avt_341_param_lib</depend>
   <depend>rclcpp</depend>
-  <depend>rclpy</depend>
-  <depend>rclcpp_lifecycle</depend>
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
 
-  <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <buildtool_export_depend>ament_cmake_core</buildtool_export_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

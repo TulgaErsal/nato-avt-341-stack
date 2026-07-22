@@ -1,0 +1,25 @@
+class_name: Params
+code_namespace: alpha_demo
+param_namespace: alpha
+ros__parameters:
+  cruise_speed:
+    type: double
+    default_value: 1.5
+    description: "test double parameter"
+  planner:
+    mode:
+      type: string
+      default_value: "grid"
+      description: "test nested string parameter"
+  ids:
+    type: int_array
+    default_value: [1, 2]
+    description: "test array parameter"
+  unused_external:
+    type: none
+    description: "must not appear in launch metadata"
+  __map_ids:
+    weight:
+      type: double
+      default_value: 1.0
+      description: "map parameters must be skipped"

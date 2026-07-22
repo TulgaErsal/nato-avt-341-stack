@@ -1,0 +1,14 @@
+class_name: Params
+code_namespace: nav_demo
+param_namespace: nav
+ros__parameters:
+  cruise_speed:
+    type: double
+    default_value: 1.0
+    description: "Cruising speed of the vehicle in m/s"
+  planner_mode:
+    type: string
+    default_value: "grid"
+    description: "Planning algorithm selection"
+    validation:
+      one_of<>: [ [ "grid", "graph" ] ]

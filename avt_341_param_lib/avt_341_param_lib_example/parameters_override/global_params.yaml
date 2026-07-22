@@ -1,0 +1,17 @@
+# Global runtime parameters: the wildcard section applies to every node of
+# every agent. Entries a given node does not declare stay dormant.
+#
+# Precedence is document order (last matching section wins) and then file
+# order; there is no specificity-based precedence in ROS 2. More specific
+# sections therefore go BELOW the broader ones.
+/**:
+  ros__parameters:
+    cruise_speed: 2.5
+    planner_mode: graph
+    rate: 20.0
+
+# Single node across all agents: applies to the controller node of every
+# agent namespace
+/**/controller:
+  ros__parameters:
+    cruise_speed: 1.8
