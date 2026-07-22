@@ -178,18 +178,18 @@ class FakeContext:
         self.launch_configurations = configs
 
 
-def test_resolve_overrides_uses_snapshot_only():
+def test_resolve_cli_overrides_uses_snapshot_only():
     pargs = make_collection()
     # user-provided arguments arrive before declaration: snapshot them
     context = FakeContext(OrderedDict([('**/cruise_speed', '9.0')]))
     pargs._snapshot_cmd_args(context)
     # declaration then injects defaults, which must not be treated as explicit
     context.launch_configurations['planner/cruise_speed'] = '1.5'
-    overrides = pargs.resolve_overrides(context, VEHICLES)
+    overrides = pargs.resolve_cli_overrides(context, VEHICLES)
     assert overrides.for_node('/veh1/planner') == {'cruise_speed': 9.0}
 
 
-def test_resolve_overrides_accepts_bare_vehicle_and_node_keys():
+def test_resolve_cli_overrides_accepts_bare_vehicle_and_node_keys():
     pargs = make_collection()
     context = FakeContext(OrderedDict([
         ('vehicle_ids', '[veh1, veh2]'),  # ordinary argument: ignored
@@ -197,7 +197,7 @@ def test_resolve_overrides_accepts_bare_vehicle_and_node_keys():
         ('planner', '{planner: {mode: graph}}'),
     ]))
     pargs._snapshot_cmd_args(context)
-    overrides = pargs.resolve_overrides(context, VEHICLES)
+    overrides = pargs.resolve_cli_overrides(context, VEHICLES)
     assert overrides.for_node('/veh1/controller') == {'cruise_speed': 3.25}
     assert overrides.for_node('/veh1/planner') == {
         'cruise_speed': 3.25, 'planner.mode': 'graph'}

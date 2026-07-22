@@ -45,7 +45,7 @@ pargs = ParameterCollection.from_node_templates(
 def _spawn_vehicles(context, *args, **kwargs):
     vehicles = perform_yaml(context, 'vehicle_ids')
     params_files = perform_yaml(context, 'params_files')
-    overrides = pargs.resolve_overrides(context, vehicles)
+    overrides = pargs.resolve_cli_overrides(context, vehicles)
 
     actions = []
     for vid in vehicles:
@@ -82,6 +82,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'params_files', default_value=default_params_files,
             description='Ordered list of runtime parameter yaml files (later files override earlier ones)'),
-        *pargs.declare_parameters(),
+        *pargs.declare_arguments(),
         OpaqueFunction(function=_spawn_vehicles),
     ])

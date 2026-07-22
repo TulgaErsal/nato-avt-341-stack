@@ -12,7 +12,7 @@ touches this instance's argument names; arguments of any other included launch
 files keep the default launch behavior.
 
 A client that does not care about re-declaring can simply drop the
-client_declare_actions() line: command line arguments pass through a bare
+client_declare_arguments() line: command line arguments pass through a bare
 include untouched, and `ros2 launch ... -s` lists the base file's arguments via
 recursion anyway.
 """
@@ -44,7 +44,7 @@ def generate_launch_description():
             'vehicle_ids', default_value='[veh1, veh2]',
             description='List of agent ids used as namespaces; the node set is '
                         'replicated per agent'),
-        *pargs.client_declare_actions(),
+        *pargs.client_declare_arguments(),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(SHARE_DIR, 'launch', 'base.launch.py')),
             launch_arguments=[('vehicle_ids', LaunchConfiguration('vehicle_ids'))]),

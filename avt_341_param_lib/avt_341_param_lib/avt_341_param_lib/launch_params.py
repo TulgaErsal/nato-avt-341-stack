@@ -298,11 +298,11 @@ class ParameterCollection:
             for name in specs
         ]
 
-    def declare_parameters(self) -> list:
+    def declare_arguments(self) -> list:
         """Snapshot + declaration actions for the launch file owning the arguments."""
         return [OpaqueFunction(function=self._snapshot_cmd_args), *self._declare_arguments()]
 
-    def client_declare_actions(self) -> list:
+    def client_declare_arguments(self) -> list:
         """Snapshot + declaration + scrub actions for a client launch file that
         re-declares the arguments before including the owning launch file.
 
@@ -317,7 +317,7 @@ class ParameterCollection:
             OpaqueFunction(function=self._scrub),
         ]
 
-    def resolve_overrides(self, context, vehicle_ids: List[str]) -> ResolvedOverrides:
+    def resolve_cli_overrides(self, context, vehicle_ids: List[str]) -> ResolvedOverrides:
         """Resolve the explicitly provided override arguments for the given vehicles.
 
         Scans the pre-declaration snapshot for override-shaped arguments (any
@@ -341,7 +341,7 @@ class ParameterCollection:
         )
 
     def resolve(self, cli_args: 'OrderedDict[str, str]', vehicle_ids: List[str]) -> ResolvedOverrides:
-        """Pure resolution core of :meth:`resolve_overrides` (testable without a context)."""
+        """Pure resolution core of :meth:`resolve_cli_overrides` (testable without a context)."""
         vehicles = [str(vid).strip('/') for vid in vehicle_ids]
         node_by_fqn = {
             f'/{vid}/{node_name}': node_name
