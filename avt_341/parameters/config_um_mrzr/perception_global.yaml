@@ -1,0 +1,97 @@
+# Occupancy grid
+# ======================================================================================================================
+use_elevation: False                      # To use elevation or slope value when making occupancy grid based on heightmap.
+slope_threshold: 0.5                      # Minimum slope of cells to appear on occupancy grid
+slope_threshold_max: 2.5                  # Maximum slope of cells after which they are assigned the maximum grid value
+grid_llx: 0.0                             # X coordinate grid bottom left anchor point.
+grid_lly: 0.0                             # Y coordinate grid bottom left anchor point.
+grid_res: 1.0                             # Grid resolution in meters.
+grid_dilate: True                         # Whether or not to apply dilation.
+grid_dilate_x: 0.5                        # Amount of dilation in x.
+grid_dilate_y: 0.5                        # Amount of dilation in y.
+grid_dilate_proportion: 0.8               # Proportion of original grid cell to dilate with.
+warmup_time: 5.0                          # Time before lidar processing starts
+time_register_window: 0.05                # Maximum window of time between odom and point cloud time stamps
+perception_rate: 20.0                    # Publish rate for perception node
+max_grid_width: 800.0                     # Maximum grid width [m] (for grid_pub_method = 'window')
+max_grid_height: 800.0                    # Maximum grid height [m] (for grid_pub_method = 'window')
+grid_pub_method: 'window'                 # Method of publishing the grid. 'full' | 'window' | 'updates' . full: Always publish entire grid. window: Published limited sized grid windowed around vehicle pose. updates: Publish incremental updates (on _updates topic) corresponding to regions updated by most recent point clouds.
+grid_pub_force_full_every: 10.0           # Force full grid publish every x seconds. Only active when grid_pub_method='updates'.
+rms_calc_horizontal_fov_radians: 1.5708   # Horizontal field of view in radians for calculating slope and RMS values
+rms_calc_range_meters: 0.0 # Disabled     # Range in meters for calculating slope and RMS values
+rms_calc_time_average_window: 1.0         # Time window for averaging RMS and slope values
+pc_callback_warn_time: 0.1                # Logs warning message if point cloud processing callback takes longer than this time in seconds.
+output_unknown_cells: False               # If true, unknown cells are kept in the occupancy grid message with a value of -1. If false, unknown cells are set to the specified default value.
+replace_occ_unknown_with: 0               # Value to replace unknown cells in occupancy grid message with.
+replace_seg_unknown_with: 0               # Value to replace unknown cells in segmentation grid message with.
+
+# Point Cloud Culling
+# ======================================================================================================================
+cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
+cull_lidar_dist: 100.0                     # Lidar points beyond this distance are ignored. Set to -1.0 to disable.
+cull_lidar_dist_min: 1.5                  # Lidar points before this distance are ignored. Set to -1.0 to disable.
+cull_lidar_hfov_min: -180.0               # Minimum horizontal field of view angle used to cull lidar points.
+cull_lidar_hfov_max: 180.0                # Maximum horizontal field of view angle used to cull lidar points.
+overhead_clearance: 5.0                   # Overhead clearance from vehicle after which lidar points ignored. Set to -1.0 to disable.
+
+# Clearing method
+# ======================================================================================================================
+clear_method:
+  type: 'raytrace'                        # Costmap clearing method. none | time | raytrace | raytrace_obs_filter | no_obs_time | channel_threshold
+  visualize: False                        # If true, visualizes costmap clearing method.
+  visualize_range: 40.0                   # Visualization range for clear method debugging. If < 0 range limit is ignored and all cells are displayed.
+
+  raytrace_range: 50.0                    # Maximum range for raytrace clearing.
+  use_voxels: True                        # Whether to use voxel representation for raytrace clearing method. Otherwise, the min and max height values associated with a cell are adjusted to the point at which the ray intersects the cell without having memory of other intermediate height values which would normally be tracked by the voxels.
+  voxel_height_min: -5.0                  # Voxel grid height min used in raytrace_voxel clearing method. Voxels will extend from voxel_height_min at increments of voxel_height_res for 1024 cells.
+  voxel_height_res: 1.0                   # Voxel grid height resolution used in raytrace_voxel clearing method. Voxels will extend from voxel_height_min at increments of voxel_height_res for 1024 cells.
+  immediate_clear_dilation: True          # If true, dilation will be immediately cleared with cleared cells. If False, dilation will only be removed when dilated cell scanned and re-adjusts its height values.
+  clr_on_scan_below_only: False           # If true, only clears cells where the raytrace passes strictly below the discrete voxel height of the marked cell. Otherwise adjusts cells less than or equal to the impacted discrete voxel height.
+
+  obs_filter_range: 0.5                   # Minimum distance from obstacles for clearing to occur. Only used with raytrace_obs_filter option.
+
+  max_point_age: 0.5                      # Lifetime of a point before it is cleared when clear_method_type = time or no_obs_time set.
+  sampled_threshold: 5                    # Minimum samples before cell cleared when clear_method_type=no_obs_time set.
+  no_obs_dist_threshold: 0.25             # Minimum distance ego-vehicle must move for scans to count towards sampled_threshold parameter.
+
+  channel_to_clear: 'gnd_seg'             # Channel to use the values of for grid clearing when clear_method_type = 'channel_threshold' is set.
+  channel_threshold: 0.5                  # Threshold value of channel_to_clear under which cells are cleared when clear_method_type = 'channel_threshold' is set.
+
+  # Additional Point Cloud Filtering for clearing methods
+
+  cull_lidar: False                         # Cull lidar points flag based on distance from odometry.
+  cull_lidar_dist: 80.0                     # Lidar points beyond this distance are ignored. Set to -1.0 to disable.
+  cull_lidar_dist_min: 0.0                  # Lidar points before this distance are ignored. Set to -1.0 to disable.
+  cull_lidar_hfov_min: -180.0               # Minimum horizontal field of view angle used to cull lidar points.
+  cull_lidar_hfov_max: 180.0                # Maximum horizontal field of view angle used to cull lidar points.
+  overhead_clearance: -1.0                   # Overhead clearance from vehicle after which lidar points ignored. Set to -1.0 to disable.
+
+
+# Segmentation
+# ======================================================================================================================
+global_grid_csv_path: '$(find avt_341)/config/20230816_KRC_CP06_Scaled_FlippedVertical.csv'      # Path to CSV containing KRC global segmentation grid.
+
+# Costmap Layers
+# ======================================================================================================================
+layer_combination_method: 'last'            # Method for combining layers. 'last' | 'max' | 'mean'. 'last' = last layer in list with valid dat data in cell, 'max' = max value among layers, 'mean' = mean value among layers.
+publish_layers: ''                          # Comma separated list of layers to publish individual costmaps for. Note that aggregate costmap of all layers always published regardless.
+
+polygon_layer:
+  data_file: ''                             # Path to json file containing polygon zones definition.
+  visualize: True                           # Debug visualize zones using ROS markers for polygon perimeters and labels.
+
+point_cloud_layer:
+  topic: '/avt_341/lidar_detector/cloud_clusters'   # Primary point cloud input topic. Points received will go through grid addition and clearing methods.
+  clear_topic: '/avt_341/lidar_detector/cloud_ground'     # Optional point cloud input topic. Points received will only invoke clearing methods on selected cells. Empty string disables.
+
+camera_layer:
+  depth_topic: ''                           # Depth image topic
+  segmentation_topic: ''                    # Segmentation image topic
+  info_topic: ''                            # Camera info topic
+  contribute_occupancy: True                # Disable to only contribute segmentation values through camera stream.
+
+static_grid_layer:
+  data_file: ''                             # Path to csv file containing static grid layer data. Assumed to be in the format map_x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv.
+  height_field: 'height'                    # Field in csv file containing height values.
+  segmentation_field: 'segmentation'        # Field in csv file containing segmentation values.
+  input_y_dir_negative: False               # If cells in the input data file are ordered with y-axis pointing downwards with respect to the lower-left corner origin

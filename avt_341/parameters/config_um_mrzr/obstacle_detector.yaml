@@ -1,0 +1,55 @@
+# Obstacle Detection
+# ======================================================================================================================
+use_pca_box: true                                              # Use PCA Bounding box to align clusters
+use_tracking: true                                              # Use tracking to assign bbox ids
+
+voxel_grid_size: 0.2                                            # Grid size for voxel grid filtering [m]
+
+roi_max_x: 70.0                                                 # Maximum x for obstacle detection [m]
+roi_max_y: 30.0                                                 # Maximum y for obstacle detection [m]
+roi_max_z: 3.0                                                  # Maximum z for obstacle detection [m]
+
+roi_min_x: -5.0                                                 # Minimum x for obstacle detection [m]
+roi_min_y: -30.0                                                # Minimum y for obstacle detection [m]
+roi_min_z: -2.5                                                 # Minimum z for obstacle detection [m]
+
+body_max_x: 1.3                                                 # Maximum x for vehicle body bounding box, to exclude from obstacle detection [m]
+body_max_y: 1.0                                                 # Maximum y for vehicle body bounding box, to exclude from obstacle detection [m]
+body_max_z: 2.0                                                 # Maximum z for vehicle body bounding box, to exclude from obstacle detection [m]
+
+body_min_x: -2.2                                                # Minimum x for vehicle body bounding box, to exclude from obstacle detection [m]
+body_min_y: -1.0                                                # Minimum y for vehicle body bounding box, to exclude from obstacle detection [m]
+body_min_z: -0.3                                                # Minimum z for vehicle body bounding box, to exclude from obstacle detection [m]
+
+ground_threshold: 0.3                                           # [UNUSED]
+
+cluster_threshold: 0.5                                          # Threshold distance for separation distance between clusters [m]
+cluster_max_size: 1000                                          # Maximum size of a cluster [points]
+cluster_min_size: 50                                            # Minimum size of a cluster [points]
+
+displacement_threshold: 1.0                                     # Maximum displacement between frames for object tracking [m]
+iou_threshold: 1.0                                              # Intersection over union threshold for object tracking [m]
+
+ground_normal_x: 0.0                                            # Normal vector for ground points segmentation - x component
+ground_normal_y: 0.0                                            # Normal vector for ground points segmentation - y component
+ground_normal_z: 1.0                                            # Normal vector for ground points segmentation - z component
+ground_normal_threshold: 0.4                                    # Threshold for ground point segmentation
+
+obstacle_scale: 1.0                                             # Scale to search for neighnor obstacle points [m]
+obstacle_min_neighbors: 10                                       # Minimum neighboring obstacle points [points]
+
+# Frames
+# ======================================================================================================================
+bbox_target_frame: 'cg_link'                                  # Target frame for bounding boxes
+robot_base_link: 'cg_link'                               # Base link of the robot
+fixed_frame: 'map'                                              # World-fixed frame used for normal filtering
+
+# Pointcloud Topics
+# ======================================================================================================================
+lidar_points_topic: '/ouster/points'                            # Input sensor point cloud topic
+cloud_ground_topic: '/avt_341/lidar_detector/cloud_ground'      # Output ground points topic
+cloud_clusters_topic: '/avt_341/lidar_detector/cloud_clusters'  # Output obstacle points topic
+bboxes_topic: '/avt_341/lidar_detector/bboxes'                  # Output cluster bounding boxes
+
+publish_seg_as_one: False                                       # If true publishes ground plane segmented pointcloud in single message with mask put in additional an channel
+publish_seg_as_one_field: 'gnd_seg'                           # Channel name to use if publish_seg_as_one is true

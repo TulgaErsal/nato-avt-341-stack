@@ -1,0 +1,14 @@
+# Common parameters
+# ======================================================================================================================
+use_sim_time: False
+auto_launch_rviz: True                                                          # Automatically launch rviz display window
+display_type: 'rviz'                                                            # Type of display method to use. Values = [rviz, image]
+waypoints_file: "$Python:os.path.join(get_package_share_directory('avt_341'), 'config', 'no_waypoints.yaml')"       # Path to waypoint file to use
+robot_description: ''                                                           # URDF robot description contents
+robot_description_veh2: ''                                                      # URDF robot description contents for vehicle 2
+robot_description_veh3: ''                                                      # URDF robot description contents for vehicle 3
+robot_description_veh4: ''                                                      # URDF robot description contents for vehicle 4
+num_vehicles: 1                                                                 # Number of vehicles controlled by navigation stack
+namespace_single_vehicle: False                                                 # If true, will use vehicle namespace even when only a single vehicle is used (num_vehicles=1)
+vehicle_namespaces: ['agv1', 'agv2', 'cgv1', 'cgv2']                            # Vehicle namespaces
+manual_control_vehicles: ['']                                                   # List of manually controlled vehicles. Most stack components disabled for these vehicles to improvement performance.

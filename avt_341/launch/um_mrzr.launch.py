@@ -27,7 +27,7 @@ global_params = {
     '/grid_width': 2955.0 #759.0 #2955.0                        # Grid width.
 }
 vehicle_namespaces = ['mrzr2','mrzr','feda']
-vehicle_config_folders = [f'{avt_341_dir}/parameters/config_mrzr']
+vehicle_config_folders = [f'{avt_341_dir}/parameters/config_um_mrzr']
 
 class ArrayIndexSubstitution(Substitution):
 
