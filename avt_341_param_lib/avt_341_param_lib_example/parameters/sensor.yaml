@@ -1,0 +1,10 @@
+code_namespace: sensor_demo
+ros__parameters:
+  rate:
+    type: double
+    default_value: 10.0
+    description: "Sensor sampling rate in Hz"
+  enabled:
+    type: bool
+    default_value: true
+    description: "Enables sensor output"
