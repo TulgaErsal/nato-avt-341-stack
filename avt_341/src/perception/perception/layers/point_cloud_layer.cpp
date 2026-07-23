@@ -146,13 +146,12 @@ void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
     auto recording = compute_time_recorder_->RecordScope(pc_section_id_);
 
     std::shared_ptr<msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
+    const std::string veh_frame = current_odom_.child_frame_id;
 
-    if (pc == nullptr) {
+    if (veh_frame.empty() || pc == nullptr) {
         recording.Cancel();
         return;
     }
-
-    const std::string veh_frame = current_odom_.child_frame_id;
 
     if (clr_only_pc_ != nullptr) {
         msg::PoseStamped origin_pose = node_ref_->lookup_pose("map", veh_frame, clr_only_pc_->header.stamp);
