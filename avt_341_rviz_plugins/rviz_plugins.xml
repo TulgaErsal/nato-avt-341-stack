@@ -1,0 +1,87 @@
+<library path="avt_341_rviz_plugins">
+  <class name="avt_341_rviz_plugins/Mission Command"
+         type="avt_341::rviz_plugins::MissionCommandPanel"
+         base_class_type="rviz_common::Panel">
+    <description>
+      Simple UI panel plugin for RViz for sending commands to UGVs.
+    </description>
+  </class>
+  <class name="avt_341_rviz_plugins/AVT-341 Autonomy Stack"
+         type="avt_341::rviz_plugins::AutonomyPanel"
+         base_class_type="rviz_common::Panel">
+    <description>
+      UI panel plugin for RViz for the AVT-341 autonomy stack.
+    </description>
+  </class>
+  <class name="avt_341_rviz_plugins/Map Markers"
+         type="avt_341::rviz_plugins::MapMarkersPanel"
+         base_class_type="rviz_common::Panel">
+    <description>
+      Subscribes (latched) to an avt_341_msgs/MapMarkerList topic and lists each
+      marker's id, x/y position and yaw in a table.
+    </description>
+  </class>
+  <class name="avt_341_rviz_plugins/NavGoal"
+         type="avt_341::rviz_plugins::NavGoalDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Displays an avt_341_msgs/NavGoal as a pose arrow with the distance/yaw
+      threshold region (the area in which the goal counts as reached).
+    </description>
+    <message_type>avt_341_msgs/msg/NavGoal</message_type>
+  </class>
+  <class name="avt_341_rviz_plugins/NavGoalSequence"
+         type="avt_341::rviz_plugins::NavGoalSequenceDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Displays an avt_341_msgs/NavGoalSequence as an ordered set of NavGoal
+      visuals (pose arrow plus distance/yaw threshold region per goal).
+    </description>
+    <message_type>avt_341_msgs/msg/NavGoalSequence</message_type>
+  </class>
+  <class name="avt_341_rviz_plugins/MapMarker"
+         type="avt_341::rviz_plugins::MapMarkerDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Displays an avt_341_msgs/MapMarker as a flat ground decal: a thick ring
+      with a heading arrow and the marker id in the centre.
+    </description>
+    <message_type>avt_341_msgs/msg/MapMarker</message_type>
+  </class>
+  <class name="avt_341_rviz_plugins/MapMarkerList"
+         type="avt_341::rviz_plugins::MapMarkerListDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Displays an avt_341_msgs/MapMarkerList as a set of MapMarker decals (thick
+      ring, heading arrow and centred id per marker).
+    </description>
+    <message_type>avt_341_msgs/msg/MapMarkerList</message_type>
+  </class>
+  <class name="avt_341_rviz_plugins/StaticMapImage"
+         type="avt_341::rviz_plugins::StaticMapImageDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Renders a static map image (.png/.pgm) read directly from a file path as a flat
+      ground-plane map, visually identical to the built-in Map display. Resolution,
+      origin and frame are set in the display properties (no topic required); width and
+      height are taken from the image.
+    </description>
+  </class>
+  <class name="avt_341_rviz_plugins/Set Nav Goal"
+         type="avt_341::rviz_plugins::SetNavGoalTool"
+         base_class_type="rviz_common::Tool">
+    <description>
+      Tool for setting an avt_341_msgs/NavGoal pose (like the built-in 2D Goal
+      Pose tool) with editable distance and yaw thresholds.
+    </description>
+  </class>
+  <class name="avt_341_rviz_plugins/Set Formation"
+         type="avt_341::rviz_plugins::SetFormationTool"
+         base_class_type="rviz_common::Tool">
+    <description>
+      Tool that publishes an avt_341_msgs/Communication FORM message, using the
+      MapMarker clicked on the map as the formation objective. All other
+      message fields are editable as tool properties.
+    </description>
+  </class>
+</library>

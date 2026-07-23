@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A static map image: a framed picture with an occupancy-grid pattern -->
+  <g stroke="#005c99" stroke-width="2" stroke-linejoin="round">
+    <rect x="8" y="12" width="48" height="40" rx="3" fill="#eaf6ff"/>
+    <rect x="16" y="20" width="10" height="10" fill="#00aaff"/>
+    <rect x="38" y="20" width="10" height="10" fill="#00aaff"/>
+    <rect x="27" y="34" width="10" height="10" fill="#00aaff"/>
+  </g>
+</svg>

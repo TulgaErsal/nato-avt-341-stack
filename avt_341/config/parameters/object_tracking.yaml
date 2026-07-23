@@ -6,19 +6,21 @@ tracking_rate: 10.0
 filters_kalman_rate: 20.0
 filters_kalman_process: 0.01
 filters_kalman_measurement: 1.1
-camera_target_height: 1.9       # known height of the tracked vehicle [m]
-camera_bbox_pixel_sigma: 4.0    # bounding-box measurement uncertainty [px]
+camera_target_height: 1.9                                       # known height of the tracked vehicle [m]
+camera_bbox_pixel_sigma: 4.0                                    # bounding-box measurement uncertainty [px]
 filters_use_manual_roi: true
 filters_manual_roi_size: [5.0, 5.0, 5.0]
 tracker_autostart: true
 tracker_use_mission_manager: true
 tracker_target_classes: ['mrzr4']
+tracker_toi_regex: '^TI_'                                       # Object ids matching this regex are considered TOI objects which may trigger an investigation task when encountered.
+tracker_allow_generic: false                                    # If true, will track generic targets not part of formation vehicles or toi objects.
 tracker_use_multi_tracking: false
 tracker_timeout: 5.0
 
 # Obstacle detector integration (embedded in tracking node)
 # ======================================================================================================================
-od_robot_base_link: 'base_link'                         # base link of the ego vehicle (used for TF and body exclusion box)
+od_robot_base_link: 'base_link'                                # base link of the ego vehicle (used for TF and body exclusion box)
 od_use_pca_box: true                                           # use PCA bounding box to align clusters
 od_use_tracking: true                                          # use tracking to assign bbox IDs
 od_voxel_grid_size: 0.2                                        # voxel grid leaf size [m]
@@ -67,3 +69,20 @@ filters_imm_cv_init_prob: 0.33
 filters_imm_ctr_init_prob: 0.33
 filters_imm_nm_init_prob: 0.33
 filters_imm_persistence_prob: 0.9
+
+recovery_no_movement:
+  enable: true                                                # Enable recovery triggered by erroneous no-movement detection.
+  threshold: 0.2                                              # Velocity threshold under which no-movement flag is set. Will then check if target vehicle is actually moving. If belief disagrees, triggers recovery.
+  window_time: 5.0                                            # Time window over which to check if velocity threshold met against running average.
+  check_in_states: ['lidar_only', 'camera_only', 'full']      # List of states where no-movement check is performed.
+  backoff_time: 5.0                                           # Time to wait before re-triggering no movement check. No-movement check involves making a service call to confirm no movement with target vehicle.
+
+recovery_timeout:
+  enable: true                                                # Lost is triggered when no valid measurement arrives for tracker_timeout seconds after sustained active tracking (e.g. target left the sensor field of view), instead of the tracker silently decaying to inactive.
+  allow_never_tracked: false                                  # Also trigger when the target was never acquired at all. Useful when vehicles are commanded to track each other from far away, where no initial measurement is ever expected.
+  max_attempts: 3                                             # Consecutive timeout-triggered recoveries without sustained re-acquisition before giving up (tracker then decays to inactive as before).
+
+recovery_uncertainty:
+  enable: true                                                # Enable recovery triggered by high uncertainty.
+  threshold: 5.0                                              # Threshold (in meters) above which uncertainty flag is set. Standard deviation along the axis of largest variance of the x/y position covariance.
+  window_time: 5.0                                            # Time window over which to check if uncertainty threshold met against running average.

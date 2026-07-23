@@ -11,3 +11,4 @@ odom_frame_id: "base_link"
 camera_frame_id: "front_camera"
 brightness_offset: 75.0
 publish_window: False
+debug_vis_segmentation: False

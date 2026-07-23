@@ -1,11 +1,12 @@
 grid_llx: 0.0
 grid_lly: 0.0
-max_width: 200.0
-max_height: 200.0
-grid_res: 0.5
+max_width: 800.0
+max_height: 800.0
+grid_res: 1.0
 publish_uab_occupancy_grid: False
 lidar_frame_id: "os_sensor"
 odom_frame_id: "mrzr/base_link"
 camera_frame_id: "flir_camera"
 brightness_offset: 75.0
 publish_window: True
+debug_vis_segmentation: False

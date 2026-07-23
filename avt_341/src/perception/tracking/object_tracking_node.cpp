@@ -51,7 +51,12 @@
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
 #include <avt_341/node/node_proxy.h>
 
+#include <algorithm>
+#include <regex>
+
 #include <avt_341/core/eigen_dto_conversion.hpp>
+#include <avt_341/perception/tracking/formation_vehicle_tracker.hpp>
+#include <avt_341/perception/tracking/toi_tracker.hpp>
 
 namespace avt_341 {
 namespace perception {
@@ -113,9 +118,9 @@ void ObjectTrackingNode::CreateSubscriptions() {
 
     if (settings_.target_selection.use_mission_manager) {
         task_status_subscription_ =
-            create_subscription<avt_341_msgs::msg::MissionTaskStatus>(
+            create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
                 "task", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-                std::bind(&ObjectTrackingNode::TaskStatusCallback, this,
+                std::bind(&ObjectTrackingNode::TaskChangedCallback, this,
                         std::placeholders::_1));
     }
 
@@ -163,7 +168,7 @@ void ObjectTrackingNode::CreatePublishers() {
     }
 
     info_publisher_ =
-        create_publisher<avt_341_msgs::msg::TrackerInfo>("info", 1);
+        create_publisher<avt_341_msgs::msg::TrackerModuleStatus>("avt_341/tracker/state", 1);
 
     reset_ack_publisher_ =
         create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
@@ -202,7 +207,20 @@ void ObjectTrackingNode::SpawnAutostartTrackers() {
         if (target_class.empty()) {
             continue;
         }
-        AddOrResetTracker(target_class);
+        // The autostart list may contain the ego vehicle itself; it cannot
+        // track itself. Other AddOrResetTracker callers are trusted to never
+        // pass the ego vehicle id.
+        if (IsEgoVehicle(target_class)) {
+            RCLCPP_WARN(get_logger(),
+                        "Skipping autostart target \"%s\": the ego vehicle "
+                        "cannot track itself.",
+                        target_class.c_str());
+            continue;
+        }
+        if (AddOrResetTracker(target_class) == nullptr) {
+            // Rejected (e.g. generic tracking disabled): try the next class.
+            continue;
+        }
         if (!settings_.target_selection.use_multi_tracking) {
             RCLCPP_INFO(get_logger(),
                         "Single-tracking mode: autostarting only target "
@@ -213,12 +231,20 @@ void ObjectTrackingNode::SpawnAutostartTrackers() {
     }
 }
 
-ObjectTracker& ObjectTrackingNode::AddOrResetTracker(
+ObjectTracker* ObjectTrackingNode::AddOrResetTracker(
     const std::string& target_class) {
     auto existing = trackers_.find(target_class);
     if (existing != trackers_.end()) {
         existing->second->Reset();
-        return *existing->second;
+        return existing->second.get();
+    }
+
+    std::unique_ptr<ObjectTracker> tracker = CreateTracker(target_class);
+    if (!tracker) {
+        // Rejected target (CreateTracker already logged why). Checked before
+        // the single-tracking clear so a rejected target cannot destroy the
+        // currently tracked one.
+        return nullptr;
     }
 
     if (!settings_.target_selection.use_multi_tracking && !trackers_.empty()) {
@@ -226,34 +252,151 @@ ObjectTracker& ObjectTrackingNode::AddOrResetTracker(
         trackers_.clear();
     }
 
-    auto tracker = std::make_unique<ObjectTracker>(
-        this, target_class, settings_, *coord_transformer_,
-        target_contacts_publisher_, leader_odom_publisher_);
-    ObjectTracker& tracker_ref = *tracker;
+    ObjectTracker* tracker_ptr = tracker.get();
     trackers_.emplace(target_class, std::move(tracker));
-    RCLCPP_INFO(get_logger(), "Created tracker for target class \"%s\".",
+    RCLCPP_INFO(get_logger(),
+                "Created %s tracker for target class \"%s\".",
+                ToString(tracker_ptr->GetTrackerType()).c_str(),
                 target_class.c_str());
-    return tracker_ref;
+    return tracker_ptr;
 }
 
-void ObjectTrackingNode::TrackerInfoCallback() {
-    if (trackers_.empty()) {
-        // Preserve topic liveness for consumers while no target is selected.
-        avt_341_msgs::msg::TrackerInfo info_message;
-        info_message.header.stamp = get_clock()->now();
-        info_message.header.frame_id = "none";
-        info_message.state = TrackerState::UNINITIALIZED;
-        info_publisher_->publish(info_message);
+std::unique_ptr<ObjectTracker> ObjectTrackingNode::CreateTracker(
+    const std::string& target_class) {
+
+    // Formation vehicle tracker
+    // ------------------------------------------------------------------------------------------
+    const auto& formation_ids = settings_.target_selection.formation_vehicle_ids;
+    if (std::find(formation_ids.begin(), formation_ids.end(), target_class) !=
+        formation_ids.end()) {
+        return std::make_unique<FormationVehicleTracker>(
+            this, target_class, settings_, *coord_transformer_,
+            leader_odom_publisher_);
+    }
+
+    // Toi tracker
+    // ------------------------------------------------------------------------------------------
+    if (MatchesToiRegex(target_class)) {
+        return std::make_unique<ToiTracker>(
+            this, target_class, settings_, *coord_transformer_,
+            leader_odom_publisher_, target_contacts_publisher_);
+    }
+
+    // Generic tracker
+    // ------------------------------------------------------------------------------------------
+    if (!settings_.target_selection.allow_generic) {
+        RCLCPP_INFO(get_logger(),
+                    "Ignoring target \"%s\": not a formation vehicle or TOI "
+                    "match, and generic tracking is disabled "
+                    "(tracker_allow_generic=false).",
+                    target_class.c_str());
+        return nullptr;
+    }
+    return std::make_unique<ObjectTracker>(
+        this, target_class, settings_, *coord_transformer_,
+        leader_odom_publisher_);
+}
+
+bool ObjectTrackingNode::IsEgoVehicle(const std::string& target_class) const {
+    // The node runs under the ego vehicle's namespace (e.g. "/agv1") and
+    // target ids are the bare vehicle namespaces (e.g. "agv1"): compare the
+    // top-level namespace token against the target id.
+    std::string ego = get_namespace();
+    if (!ego.empty() && ego.front() == '/') {
+        ego.erase(0, 1);
+    }
+    const std::size_t slash = ego.find('/');
+    if (slash != std::string::npos) {
+        ego = ego.substr(0, slash);
+    }
+    return !ego.empty() && ego == target_class;
+}
+
+bool ObjectTrackingNode::MatchesToiRegex(
+    const std::string& target_class) const {
+    const std::string& toi_regex = settings_.target_selection.toi_regex;
+    if (toi_regex.empty()) {
+        return false;
+    }
+    try {
+        return std::regex_search(target_class, std::regex(toi_regex));
+    } catch (const std::regex_error& e) {
+        RCLCPP_ERROR(get_logger(), "Invalid tracker_toi_regex \"%s\": %s",
+                     toi_regex.c_str(), e.what());
+        return false;
+    }
+}
+
+void ObjectTrackingNode::MaybeSpawnToiTrackers(
+    const vision_msgs::msg::Detection2DArray& detections_message) {
+
+    const bool single_tracking = !settings_.target_selection.use_multi_tracking;
+
+    // In single-tracking mode never displace a tracked formation vehicle for TOI sighting
+    if (single_tracking && HasTrackerOfType(ObjectTrackerType::FormationVehicle)) {
         return;
     }
 
-    for (const auto& [target_class, tracker] : trackers_) {
-        avt_341_msgs::msg::TrackerInfo info_message;
-        info_message.header.stamp = get_clock()->now();
-        info_message.header.frame_id = target_class;
-        info_message.state = tracker->GetTrackerState();
-        info_publisher_->publish(info_message);
+    for (const auto& detection : detections_message.detections) {
+        if (detection.results.empty()) {
+            continue;
+        }
+        const std::string& target_class = detection.results[0].hypothesis.class_id;
+        if (trackers_.count(target_class) > 0 || !MatchesToiRegex(target_class)) {
+            continue;
+        }
+        AddOrResetTracker(target_class);
+        if (single_tracking) {
+            break;  // Only one tracker slot.
+        }
     }
+}
+
+bool ObjectTrackingNode::HasTrackerOfType(const ObjectTrackerType type) const {
+    return std::any_of(trackers_.begin(), trackers_.end(),
+                       [type](const auto& entry) {
+                           return entry.second->GetTrackerType() == type;
+                       });
+}
+
+void ObjectTrackingNode::RemoveStaleToiTrackers() {
+    for (auto it = trackers_.begin(); it != trackers_.end();) {
+        if (it->second->GetTrackerType() == ObjectTrackerType::Toi &&
+            !MatchesToiRegex(it->first)) {
+            RCLCPP_INFO(get_logger(),
+                        "Removing TOI tracker \"%s\": target no longer "
+                        "matches tracker_toi_regex \"%s\".",
+                        it->first.c_str(),
+                        settings_.target_selection.toi_regex.c_str());
+            it = trackers_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void ObjectTrackingNode::TrackerInfoCallback() {
+    // Publish a single module status aggregating every child tracker's status.
+    // The module is UNINITIALIZED while no target is selected (and the message
+    // still publishes to preserve topic liveness for consumers), ACTIVE once at
+    // least one tracker exists.
+    avt_341_msgs::msg::TrackerModuleStatus module_status;
+    module_status.header.stamp = get_clock()->now();
+    module_status.header.frame_id = settings_.frames.world_frame;
+
+    if (trackers_.empty()) {
+        module_status.module_state =
+            avt_341_msgs::msg::TrackerModuleStatus::MODULE_STATE_UNINITIALIZED;
+    } else {
+        module_status.module_state =
+            avt_341_msgs::msg::TrackerModuleStatus::MODULE_STATE_ACTIVE;
+        module_status.trackers.reserve(trackers_.size());
+        for (const auto& [target_class, tracker] : trackers_) {
+            module_status.trackers.push_back(tracker->GetTrackerStatus());
+        }
+    }
+
+    info_publisher_->publish(module_status);
 }
 
 void ObjectTrackingNode::TrackingTimerCallback() {
@@ -519,18 +662,22 @@ void ObjectTrackingNode::DetectionsCallback(
     const vision_msgs::msg::Detection2DArray::SharedPtr detections_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Detections callback triggered!");
 
-    if (trackers_.empty()) {
-        RCLCPP_INFO(get_logger(),
-                    "No target selected, ignoring detections ...");
-        return;
-    }
-
     if (detections_message->detections.empty()) {
         RCLCPP_DEBUG(get_logger(),
                      "No detections in the current frame, skipping ...");
         for (auto& [target_class, tracker] : trackers_) {
             tracker->MarkDetectionMiss();
         }
+        return;
+    }
+
+    // Newly detected TOI classes spawn their own tracker on sight; it then
+    // ingests its detection in the matching loop below.
+    MaybeSpawnToiTrackers(*detections_message);
+
+    if (trackers_.empty()) {
+        RCLCPP_INFO(get_logger(),
+                    "No target selected, ignoring detections ...");
         return;
     }
 
@@ -580,9 +727,9 @@ void ObjectTrackingNode::PublishImage() {
     image_publisher_->publish(*cv_image.toImageMsg());
 }
 
-void ObjectTrackingNode::TaskStatusCallback(
-    avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message) {
-    const std::string& target_class = task_status_message->tracked_vehicle;
+void ObjectTrackingNode::TaskChangedCallback(
+    avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_status_message) {
+    const std::string& target_class = task_status_message->active_task.tracked_vehicle;
 
     if (target_class.empty()) {
         // No follow target assigned (e.g. the ego-vehicle is the formation
@@ -592,7 +739,9 @@ void ObjectTrackingNode::TaskStatusCallback(
         return;
     }
 
-    AddOrResetTracker(target_class);
+    if (AddOrResetTracker(target_class) == nullptr) {
+        return;
+    }
 
     RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".",
                 target_class.c_str());
@@ -606,7 +755,11 @@ void ObjectTrackingNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {
 rcl_interfaces::msg::SetParametersResult
 ObjectTrackingNode::SetParametersCallback(
     const std::vector<rclcpp::Parameter>& parameters) {
+    const std::string old_toi_regex = settings_.target_selection.toi_regex;
     if (settings_.UpdateFromParameters(parameters)) {
+        if (settings_.target_selection.toi_regex != old_toi_regex) {
+            RemoveStaleToiTrackers();
+        }
         for (auto& [target_class, tracker] : trackers_) {
             tracker->UpdateSettings(settings_);
         }
@@ -627,7 +780,12 @@ void ObjectTrackingNode::SetTargetServiceCallback(
     }
 
     const bool existed = trackers_.find(request->id) != trackers_.end();
-    AddOrResetTracker(request->id);
+    if (AddOrResetTracker(request->id) == nullptr) {
+        response->success = false;
+        response->message = "Target \"" + request->id +
+                            "\" rejected: generic tracking is disabled.";
+        return;
+    }
 
     const std::string message =
         "Target \"" + request->id +

@@ -71,12 +71,6 @@ set(AVT341_SOURCE_FILES
     "planning/global/global_path"
     "planning/global/pf_global_path")
 
-if(NOT AVT341_DISABLE_UI)
-  list(APPEND AVT341_SOURCE_FILES "ui/mission_command_panel")
-else()
-  message(STATUS "UI build disabled.")
-endif()
-
 # Append src/ subdirectory to the path of each target.
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
                      "${AVT341_SOURCE_FILES}")
@@ -127,7 +121,8 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
           "src/node/params_proxy.cpp"
           "src/node/occupancy_grid_subscriber.cpp"
           "src/core/grid_components.cpp"
-          "src/core/monitoring.cpp"
+          "src/core/running_stats.cpp"
+          "src/core/compute_time_recorder.cpp"
           "src/core/coord_transform.cpp"
   )
 
@@ -181,7 +176,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
     DESTINATION "lib/${PROJECT_NAME}")
   
   install(
-    PROGRAMS "launch/vehicle_logging.py" "launch/tf_to_odometry.py"
+    PROGRAMS "launch/vehicle_logging.py" "launch/ros_param_dump.py" "launch/tf_to_odometry.py"
               "test/global_path_test_driver.py"
               "test/mpc_terminal_heading_test_driver.py"
               "test/formation_distance_test_driver.py"
@@ -189,17 +184,12 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
     DESTINATION lib/${PROJECT_NAME})
   
   install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
-  install(FILES rviz_plugins.xml DESTINATION "share/${PROJECT_NAME}")
 
   # Automated Tests
   # ===============
   if(BUILD_TESTING)
     add_subdirectory(test)
   endif()
-
-  # Export RViz Plugin
-  find_package(pluginlib REQUIRED)
-  pluginlib_export_plugin_description_file(rviz_common rviz_plugins.xml)
 
   ament_package()
 

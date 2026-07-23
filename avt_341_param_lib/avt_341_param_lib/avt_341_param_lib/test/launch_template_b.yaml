@@ -1,0 +1,6 @@
+code_namespace: beta_demo
+ros__parameters:
+  enabled:
+    type: bool
+    default_value: true
+    description: "test bool parameter"

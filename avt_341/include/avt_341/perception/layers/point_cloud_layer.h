@@ -2,7 +2,6 @@
 #ifndef AVT_341_POINT_CLOUD_LAYER_H
 #define AVT_341_POINT_CLOUD_LAYER_H
 #include "costmap_layer.h"
-#include "avt_341/core/monitoring.hpp"
 #include "avt_341/perception/point_cloud_filter.hpp"
 #include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
 
@@ -17,7 +16,8 @@ namespace avt_341::perception
         PointCloudLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
             const CostmapSettings& cm_settings,
-            const std::string & label
+            const std::string & label,
+            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
             );
 
         void SetupPointCloudFilter();
@@ -54,14 +54,13 @@ namespace avt_341::perception
         void PointCloudCallback(msg::PointCloud2Ptr rcv_cloud);
 
     private:
-        double pc_callback_warn_dur_ = 0.0; // in seconds
         void ClearOnlyPointsCallback(msg::PointCloud2Ptr rcv_cloud);
         std::shared_ptr<msg::PointCloud> RegisterPc2Msg(const msg::PointCloud2Ptr & rcv_cloud);
 
         PointCloudFilter pc_filter;						// Filter for input point clouds
         PointCloudFilter pc_cm_filter;					// Additional filter for clearing methods applied after regular filter
 	    std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
-        core::WindowedMean pc_callback_time_;
+        std::string pc_section_id_;
         std::shared_ptr<msg::PointCloud> clr_only_pc_ = nullptr;
         std::string pc_topic_id_;
 

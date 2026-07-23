@@ -1,0 +1,4 @@
+code_namespace: test_node
+ros__parameters:
+  param_name:
+    description: "Test scientific notation"

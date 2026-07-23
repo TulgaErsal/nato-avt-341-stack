@@ -98,8 +98,8 @@
 #include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
 #include <avt_341/perception/tracking/object_tracker.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
-#include <avt_341_msgs/msg/mission_task_status.hpp>
-#include <avt_341_msgs/msg/tracker_info.hpp>
+#include <avt_341_msgs/msg/mission_module_status.hpp>
+#include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
 
 namespace avt_341 {
@@ -172,8 +172,49 @@ class ObjectTrackingNode : public rclcpp::Node {
      * its per-target publishers). With multi-tracking enabled existing
      * trackers are never destroyed; in single-tracking mode every existing
      * tracker is removed before the new one is created.
+     *
+     * @return The tracker, or nullptr when the target is rejected by
+     *         CreateTracker (generic tracking disabled).
      */
-    ObjectTracker& AddOrResetTracker(const std::string& target_class);
+    ObjectTracker* AddOrResetTracker(const std::string& target_class);
+
+    /**
+     * @brief Factory for the concrete tracker type of @p target_class:
+     * FormationVehicleTracker when the id is in "formation_vehicle_ids",
+     * ToiTracker when it matches "tracker_toi_regex", plain (Generic)
+     * ObjectTracker otherwise. Returns nullptr (target not tracked) when the
+     * target would be Generic but "tracker_allow_generic" is false.
+     */
+    std::unique_ptr<ObjectTracker> CreateTracker(const std::string& target_class);
+
+    /** @brief Whether @p target_class matches the current "tracker_toi_regex"
+     *         setting. An empty or invalid regex matches nothing (invalid
+     *         patterns are logged). */
+    bool MatchesToiRegex(const std::string& target_class) const;
+
+    /** @brief Whether @p target_class names the ego vehicle itself, derived
+     *         from this node's namespace prefix (the node runs under the ego
+     *         vehicle's namespace, e.g. "/agv1"). Always false when the node
+     *         runs without a namespace. */
+    bool IsEgoVehicle(const std::string& target_class) const;
+
+    /**
+     * @brief Create trackers for detected TOI classes that have no tracker
+     * yet, so TOI targets are tracked on sight without an explicit target
+     * selection. In single-tracking mode a spawn would displace the current
+     * tracker, so it is skipped while a formation vehicle (or another TOI
+     * target) is being tracked, and at most one tracker is spawned.
+     */
+    void MaybeSpawnToiTrackers(
+        const vision_msgs::msg::Detection2DArray& detections_message);
+
+    /** @brief Whether any current tracker is of @p type. */
+    bool HasTrackerOfType(ObjectTrackerType type) const;
+
+    /** @brief Remove every tracker of type Toi whose target id no longer
+     *         matches the current "tracker_toi_regex" setting. Called when
+     *         the regex parameter changes at runtime. */
+    void RemoveStaleToiTrackers();
 
     /** @brief Create one tracker per autostart target class (only the first
      *         class in single-tracking mode). */
@@ -271,17 +312,17 @@ class ObjectTrackingNode : public rclcpp::Node {
     // -------------------------------------------------------------------------
 
     /** @brief Mission tasks status subscription. */
-    rclcpp::Subscription<avt_341_msgs::msg::MissionTaskStatus>::SharedPtr
+    rclcpp::Subscription<avt_341_msgs::msg::MissionModuleStatus>::SharedPtr
         task_status_subscription_;
 
     /**
      * @brief Mission task status subscription callback. A non-empty tracked
      * vehicle adds or re-targets a tracker without disturbing the others.
      *
-     * @param task_status_message ROS avt_341_msgs/MissionTaskStatus message.
+     * @param task_status_message ROS avt_341_msgs/MissionModuleStatus message.
      */
-    void TaskStatusCallback(
-        avt_341_msgs::msg::MissionTaskStatus::SharedPtr task_status_message);
+    void TaskChangedCallback(
+        avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_status_message);
 
     // Reset handling
     // -------------------------------------------------------------------------
@@ -302,11 +343,12 @@ class ObjectTrackingNode : public rclcpp::Node {
     // Tracker information
     // -------------------------------------------------------------------------
 
-    rclcpp::Publisher<avt_341_msgs::msg::TrackerInfo>::SharedPtr
+    rclcpp::Publisher<avt_341_msgs::msg::TrackerModuleStatus>::SharedPtr
         info_publisher_;
 
-    /** @brief Publishes one TrackerInfo message per tracker on the shared
-     *         info topic, identified by header.frame_id = target class. */
+    /** @brief Publishes a single TrackerModuleStatus aggregating every child
+     *         tracker's TrackerStatus, with a coarse module state (UNINITIALIZED
+     *         when there are no trackers, ACTIVE otherwise). */
     void TrackerInfoCallback();
 
     /** @brief The timer for the tracker information publishing callback. */

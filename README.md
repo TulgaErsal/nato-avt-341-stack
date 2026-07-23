@@ -1,12 +1,12 @@
 # NATO AVT-341 Autonomy Stack
 
-![Build ROS2 Workflow Badge](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/build_ros2_humble.yml/badge.svg)
+![Build ROS2 Workflow Badge](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/build_ros2_humble.yml/badge.svg) [(Workflow Link)](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/build_ros2_humble.yml)
 
 This repository contains autonomous algorithms for multi-vehicle formation navigation in the context of NATO AVT-341 and AVT-408 projects. It supports the ROS2 interface.
 
 ## Documentation and Reports
 
-![Create Documentation Workflow Badge](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/create_html_pdf_documentation.yml/badge.svg)
+![Create Documentation Workflow Badge](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/create_html_pdf_documentation.yml/badge.svg) [(Workflow Link)](https://github.com/TulgaErsal/nato-avt-341-stack/actions/workflows/create_html_pdf_documentation.yml)
 
 __Access Credentials:__    
 username: `user`  

@@ -54,6 +54,8 @@
 #include "avt_341_msgs/NavState.h"
 #include "avt_341_msgs/FollowerStatus.h"
 #include "avt_341_msgs/MissionTaskStatus.h"
+#include "avt_341_msgs/MapMarker.h"
+#include "avt_341_msgs/MapMarkerList.h"
 #include "avt_341_msgs/OccupiedCell.h"
 #include "avt_341_msgs/OccupiedCells.h"
 #include "avt_341_msgs/Obstacles.h"
@@ -201,6 +203,12 @@ namespace avt_341 {
         using MissionTaskStatus = avt_341_msgs::MissionTaskStatus;
         using MissionTaskStatusPtr = const avt_341_msgs::MissionTaskStatus::ConstPtr &;
 
+        using MapMarker = avt_341_msgs::MapMarker;
+        using MapMarkerPtr = const avt_341_msgs::MapMarker::ConstPtr &;
+
+        using MapMarkerList = avt_341_msgs::MapMarkerList;
+        using MapMarkerListPtr = const avt_341_msgs::MapMarkerList::ConstPtr &;
+
         using OccupiedCell = avt_341_msgs::OccupiedCell;
         using OccupiedCellPtr = const avt_341_msgs::OccupiedCell::ConstPtr &;
 
@@ -284,11 +292,16 @@ namespace avt_341 {
 #include "std_msgs/msg/bool.hpp"
 
 #include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/compute_time.hpp"
+#include "avt_341_msgs/msg/compute_time_array.hpp"
 #include "avt_341_msgs/msg/nav_goal.hpp"
 #include "avt_341_msgs/msg/nav_goal_sequence.hpp"
 #include "avt_341_msgs/msg/nav_state.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/mission_task_status.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
+#include "avt_341_msgs/msg/map_marker.hpp"
+#include "avt_341_msgs/msg/map_marker_list.hpp"
 #include "avt_341_msgs/msg/occupied_cell.hpp"
 #include "avt_341_msgs/msg/occupied_cells.hpp"
 #include "avt_341_msgs/msg/obstacles.hpp"
@@ -398,6 +411,12 @@ namespace avt_341 {
     using Communication = avt_341_msgs::msg::Communication;
     using CommunicationPtr = avt_341_msgs::msg::Communication::SharedPtr;
 
+    using ComputeTime = avt_341_msgs::msg::ComputeTime;
+    using ComputeTimePtr = avt_341_msgs::msg::ComputeTime::SharedPtr;
+
+    using ComputeTimeArray = avt_341_msgs::msg::ComputeTimeArray;
+    using ComputeTimeArrayPtr = avt_341_msgs::msg::ComputeTimeArray::SharedPtr;
+
     using NavGoal = avt_341_msgs::msg::NavGoal;
     using NavGoalPtr = avt_341_msgs::msg::NavGoal::SharedPtr;
 
@@ -409,6 +428,15 @@ namespace avt_341 {
 
     using MissionTaskStatus = avt_341_msgs::msg::MissionTaskStatus;
     using MissionTaskStatusPtr = avt_341_msgs::msg::MissionTaskStatus::SharedPtr;
+
+    using MissionModuleStatus = avt_341_msgs::msg::MissionModuleStatus;
+    using MissionModuleStatusPtr = avt_341_msgs::msg::MissionModuleStatus::SharedPtr;
+
+    using MapMarker = avt_341_msgs::msg::MapMarker;
+    using MapMarkerPtr = avt_341_msgs::msg::MapMarker::SharedPtr;
+
+    using MapMarkerList = avt_341_msgs::msg::MapMarkerList;
+    using MapMarkerListPtr = avt_341_msgs::msg::MapMarkerList::SharedPtr;
 
     using OccupiedCell = avt_341_msgs::msg::OccupiedCell;
     using OccupiedCellPtr = avt_341_msgs::msg::OccupiedCell::SharedPtr;

@@ -37,12 +37,6 @@ void PublishGrid(
 
 	avt_341::msg::OccupancyGrid grid_msg;
 
-	std::map<std::string, double> & last_full_grid_update = is_segmentation ? seg_last_full_grid_update : occ_last_full_grid_update;
-
-	if (last_full_grid_update.find(target_layer) == last_full_grid_update.end()) {
-		last_full_grid_update[target_layer] = 0.0;
-	}
-
 	if (grid_pub_method == avt_341::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
 			max_grid_width,
@@ -50,8 +44,24 @@ void PublishGrid(
 			is_segmentation
 			);
 	}else {
-		bool is_full_update = (grid_pub_method == avt_341::perception::GridPubMethod::Full)
-			|| (now_seconds - last_full_grid_update[target_layer] > grid_pub_force_full_every_x_sec);
+
+	    std::map<std::string, double> & last_full_grid_update = is_segmentation ? seg_last_full_grid_update : occ_last_full_grid_update;
+	    bool is_full_update;
+
+	    // In incremental update mode, grid_pub_force_full_every_x_sec <= 0.0 disables
+	    // periodic full grid updates, except for initial publication
+	    if (last_full_grid_update.find(target_layer) == last_full_grid_update.end()) {
+	        last_full_grid_update[target_layer] = 0.0;
+	        is_full_update = true;
+	    }
+	    else
+	    {
+	        is_full_update = (grid_pub_method == avt_341::perception::GridPubMethod::Full)
+                        || (grid_pub_force_full_every_x_sec > 0.0 &&
+                            (now_seconds - last_full_grid_update[target_layer] > grid_pub_force_full_every_x_sec)
+                            );
+	    }
+
 		if (is_full_update) {
 			last_full_grid_update[target_layer] = now_seconds;
 			grid_msg = grid.GetGrid(is_segmentation, target_layer);
@@ -135,6 +145,10 @@ int main(int argc, char* argv[]) {
 	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
 	n->get_parameter("~layer_combination_method", layer_combination_method, std::string("last"));
 
+	// Period for publishing layer compute time summaries, <= 0 disables
+	double compute_time_publish_period;
+	n->get_parameter("~compute_time_publish_period", compute_time_publish_period, 1.0);
+
 	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
 	n->get_parameter("~publish_layers", publish_layers_param, std::string());
 	std::vector<std::string> publish_layers = avt_341::utils::SplitByDelimiter(publish_layers_param, ',');
@@ -181,12 +195,18 @@ int main(int argc, char* argv[]) {
 	for (const auto& layer_id : publish_layers){
 		const std::string occ_pub_name = layer_id.empty() ? "avt_341/occupancy_grid" : "avt_341/occ_" + layer_id;
 		const std::string seg_pub_name = layer_id.empty() ? "avt_341/segmentation_grid" : "avt_341/seg_" + layer_id;
-		occ_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(occ_pub_name, 1);
-		seg_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(seg_pub_name, 1);
+
 		if (use_inc_updates)
 		{
+		    occ_publisher[layer_id] = n->create_latching_publisher<avt_341::msg::OccupancyGrid>(occ_pub_name);
+		    seg_publisher[layer_id] = n->create_latching_publisher<avt_341::msg::OccupancyGrid>(seg_pub_name);
 			occ_updates_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGridUpdate>(occ_pub_name + "_updates", 1);
 			seg_updates_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGridUpdate>(seg_pub_name + "_updates", 1);
+		}
+	    else
+		{
+		    occ_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(occ_pub_name, 1);
+		    seg_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(seg_pub_name, 1);
 		}
 	}
 
@@ -197,10 +217,16 @@ int main(int argc, char* argv[]) {
 	start_time = n->get_now_seconds();
 	avt_341::node::Rate rate(perception_rate);
 	int nloops = 0;
+	double last_compute_time_pub = 0.0;
 
 	while (avt_341::node::ok()) {
 
 		const double now_seconds = n->get_now_seconds();
+
+		if (compute_time_publish_period > 0.0 && now_seconds - last_compute_time_pub >= compute_time_publish_period) {
+			last_compute_time_pub = now_seconds;
+			grid.PublishComputeTimes();
+		}
 
 		if (grid.HasOdomData() && (now_seconds - start_time) > warmup_time) {
 

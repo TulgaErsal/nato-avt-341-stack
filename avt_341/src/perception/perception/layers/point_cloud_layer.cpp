@@ -14,12 +14,20 @@ namespace avt_341::perception
 PointCloudLayer::PointCloudLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
     const CostmapSettings& cm_settings,
-    const std::string & label
+    const std::string & label,
+    const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
     )
-        : CostmapLayer(node_ref, cm_settings, label), pc_callback_time_(40)
+        : CostmapLayer(node_ref, cm_settings, label, compute_time_recorder)
 {
-	node_ref_->get_parameter("~pc_callback_warn_time", pc_callback_warn_dur_, 0.1);
+	double pc_callback_warn_dur;
+	node_ref_->get_parameter("~pc_callback_warn_time", pc_callback_warn_dur, 0.1);
 	node_ref_->get_parameter("~pc_seg_channel", pc_seg_channel_, std::string("segmentation"));
+
+	pc_section_id_ = label + "/pc_callback";
+	core::RunningStatsConfig section_config;
+	section_config.window_num_samples = 40;
+	section_config.threshold_check = pc_callback_warn_dur;
+	compute_time_recorder_->Configure(pc_section_id_, section_config);
 
     SetupGridClearingMethod();
     SetupPointCloudFilter();
@@ -135,11 +143,12 @@ std::shared_ptr<msg::PointCloud> PointCloudLayer::RegisterPc2Msg(const msg::Poin
 
 void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
 
-    const double callback_start_time = node_ref_->get_now_seconds();
+    auto recording = compute_time_recorder_->RecordScope(pc_section_id_);
 
     std::shared_ptr<msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
 
     if (pc == nullptr) {
+        recording.Cancel();
         return;
     }
 
@@ -157,14 +166,6 @@ void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
 
     msg::PoseStamped origin_pose = node_ref_->lookup_pose("map", veh_frame, rcv_cloud->header.stamp);
     ProcessPoints(pc, origin_pose.pose);
-
-    pc_callback_time_.AddSample(node_ref_->get_now_seconds() - callback_start_time);
-    if (pc_callback_time_.GetMean() > pc_callback_warn_dur_) {
-        node_ref_->log_warning_throttle(1.0, "PointCloudCallback took %.2f ms (> %.2f ms warning threshold).",
-            pc_callback_time_.GetMean()*1e3,
-            pc_callback_warn_dur_*1e3
-            );
-    }
 }
 
 void PointCloudLayer::ClearOnlyPointsCallback(msg::PointCloud2Ptr rcv_cloud) {

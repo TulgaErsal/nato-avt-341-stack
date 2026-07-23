@@ -1,0 +1,14 @@
+# Agent-specific runtime parameters: the namespace wildcard limits the section
+# to the nodes of one agent. This file is passed after global_params.yaml, so
+# its values win for that agent (precedence is file order, then document order;
+# there is no specificity-based precedence in ROS 2).
+/veh2/**:
+  ros__parameters:
+    cruise_speed: 0.5
+    enabled: false
+
+# Single node of a single agent: applies only to veh2's planner node. Placed
+# after the /veh2/** section so it wins for that node.
+/veh2/planner:
+  ros__parameters:
+    cruise_speed: 0.75

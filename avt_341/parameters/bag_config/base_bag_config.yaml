@@ -1,3 +1,39 @@
+# ==========================================================================================================
+# ROS bag configuration (BASE)
+#
+# Base template inherited by the concrete configs (rw_bag_config.yaml, sim_bag_config.yaml) and expanded by
+# launch/vehicle_logging.py. On merge, a derived config overrides scalar/dict keys wholesale, while
+# 'log_topics' is unioned by the unique 'name' field (derived wins per name). Major keys:
+#
+#   symbols          Template variables expanded into concrete 'log_topics' entries. A '{key}' reference in
+#                    any log_topics field is substituted with each value, producing one output entry per
+#                    value (cartesian product when an entry uses multiple symbols). Three forms:
+#                      - flat list (position_keys, wheels):            '{position_keys}'      -> x, y, z
+#                      - list of dicts, reference a property by name:  '{direction_items.name}',
+#                                                                      '{twist_tbs_items.field}'
+#                      - slice operator:                              '{position_keys[:2]}'  -> x, y only
+#                    'vehicles' is also a usable symbol; CLI --vehicles_override takes precedence over it.
+#
+#   gis              Geo-reference metadata carried into the output config for downstream tooling.
+#                      crs                  EPSG code of the source coordinate system
+#                      local_origin_x/_y    local-frame origin, in CRS units
+#
+#   vehicles         Vehicle namespaces to log; doubles as the '{vehicles}' symbol. Override with
+#                    --vehicles_override.
+#
+#   segment_goals /  Optional run/segment metadata, passed through to the saved output config.
+#   segment_id
+#
+#   log_topics       Topics to record. Each entry (after template expansion) has:
+#                      name             unique output channel name
+#                      topic            ROS topic to record
+#                      field            dotted message field path to extract
+#                      units            physical units (metadata only)
+#                      type             (optional) explicit ROS message type
+#                      channel_mapper   (optional) named value transform, e.g. quaternion_to_yaw,
+#                                       vehicle_id_to_idx
+# ==========================================================================================================
+
 symbols:
   position_keys:
     - 'x'
@@ -43,6 +79,7 @@ gis:
   local_origin_y: 264132.3708496094
 vehicles:
   - 'mrzr'
+environment: krc
 segment_goals: [ ]
 segment_id: ''
 
@@ -210,7 +247,14 @@ log_topics:
   - name: '{vehicles}_task_id'
     topic: '/{vehicles}/avt_341/task_change'
     field: 'task_id'
-    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    type: 'avt_341_msgs/msg/MissionModuleStatus'
+    units: ''
+
+  # Communication Messages
+  - name: '{vehicles}_comm_msg_id'
+    topic: '/{vehicles}/avt_341/comm_messages'
+    field: 'msg_id'
+    type: 'avt_341_msgs/msg/Communication'
     units: ''
 
   # Task Status - Formation Target
@@ -219,6 +263,13 @@ log_topics:
     field: 'target_pose.position.{position_keys[:2]}'
     type: 'avt_341_msgs/msg/MissionTaskStatus'
     units: 'm'
+
+  - name: '{vehicles}_formation_target_yaw'
+    topic: '/{vehicles}/avt_341/task_status'
+    field: 'target_pose.orientation'
+    type: 'avt_341_msgs/msg/MissionTaskStatus'
+    channel_mapper: 'quaternion_to_yaw'
+    units: 'rad'
 
   # Perceived Chassis CG X, Y, Z of Lead Vehicle
   - name: '{vehicles}_perceived_leader_{position_keys}'
@@ -252,4 +303,13 @@ log_topics:
   - name: '{vehicles}_perceived_toi_id'
     topic: '/{vehicles}/avt_341/target_contacts'
     field: 'poses.header.frame_id'
+    units: ''
+
+  # ==========================================================================================================
+  # COMPUTE TIMES
+  # ==========================================================================================================
+
+  - name: '{vehicles}_compute_times'
+    topic: '/{vehicles}/avt_341/compute_times'
+    field: ''
     units: ''

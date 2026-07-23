@@ -15,6 +15,8 @@
 #include <Eigen/Dense>
 #include <rclcpp/rclcpp.hpp>
 
+#include <avt_341/perception/tracking/tracker_dto.hpp>
+
 namespace avt_341 {
 namespace perception {
 
@@ -141,6 +143,52 @@ struct TargetSelectionSettings {
     /** @brief Whether to enable tracking of multiple vehicles or only support
      *         tracking a single vehicle at once ("tracker_use_multi_tracking") */
     bool use_multi_tracking = false;
+
+    /** @brief Target ids matching this regex are targets of interest (TOI);
+     *         only their trackers publish target contacts
+     *         ("tracker_toi_regex"). */
+    std::string toi_regex;
+
+    /** @brief If true, will track generic targets not part of formation
+     *         vehicles or toi objects ("tracker_allow_generic"). */
+    bool allow_generic = true;
+};
+
+/** @brief Recovery-behavior trigger settings ("recovery_*" parameters). */
+struct RecoverySettings {
+    /** @brief Enable the no-movement lost check
+     *         ("recovery_no_movement_enable"). */
+    bool no_movement_enabled = true;
+    /** @brief Windowed-mean speed [m/s] under which no movement is suspected
+     *         ("recovery_no_movement_threshold"). */
+    double no_movement_threshold;
+    /** @brief Averaging window [s] ("recovery_no_movement_window_time"). */
+    double no_movement_window_time;
+    /** @brief States in which the no-movement check runs; parsed from state
+     *         names ("recovery_no_movement_check_in_states"). */
+    std::vector<TrackerState> no_movement_check_in_states;
+    /** @brief Wait [s] between no-movement confirmations
+     *         ("recovery_no_movement_backoff_time"). */
+    double no_movement_backoff_time;
+    /** @brief Enable the measurement-timeout lost check: measurements
+     *         starved after active tracking ("recovery_timeout_enable"). */
+    bool timeout_enabled = true;
+    /** @brief Also fire the timeout check when the target was never acquired
+     *         at all, e.g. vehicles tracking each other from far away
+     *         ("recovery_timeout_allow_never_tracked"). */
+    bool timeout_allow_never_tracked = false;
+    /** @brief Timeout-triggered recoveries without re-acquisition before
+     *         giving up ("recovery_timeout_max_attempts"). */
+    int timeout_max_attempts = 3;
+    /** @brief Enable the uncertainty lost check
+     *         ("recovery_uncertainty_enable"). */
+    bool uncertainty_enabled = true;
+    /** @brief Windowed-mean std dev [m] along the axis of largest x/y
+     *         variance above which the tracker is lost
+     *         ("recovery_uncertainty_threshold"). */
+    double uncertainty_threshold;
+    /** @brief Averaging window [s] ("recovery_uncertainty_window_time"). */
+    double uncertainty_window_time;
 };
 
 /** @brief Integrated LiDAR obstacle detector settings (node-owned pipeline,
@@ -205,6 +253,7 @@ struct ObjectTrackerSettings {
     TrackingSettings tracking;
     TargetSelectionSettings target_selection;
     ObstacleDetectorSettings obstacle_detector;
+    RecoverySettings recovery;
 
     /**
      * @brief Declare every tracker parameter on @p node (with its default)

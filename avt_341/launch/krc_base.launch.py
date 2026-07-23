@@ -8,7 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetLaunchConfiguration, ExecuteProcess
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
-from launch_ros.actions import Node, PushRosNamespace
+from launch_ros.actions import Node, PushRosNamespace, SetParameter
 from launch.actions import OpaqueFunction
 
 from launch.substitution import Substitution
@@ -332,6 +332,10 @@ def launch_setup(context, *args, **kwargs):
     # Load waypoints
     arg_list.extend(evaluate_waypoint_parameters(context=context, args=args, kwargs=kwargs))
     
+    param_overrides = ([
+        SetParameter(name="use_sim_time", value=use_sim_time)
+    ])
+
     vehicle_node_list = ([
         # Define robot namespace
         PushRosNamespace(
@@ -387,13 +391,6 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/segmentation_grid', 'avt_341/rms_perception/segmentation_grid'),
             ]
         ),
-        Node(
-            package='avt_341',
-            executable='avt_341_lidar_normal_estimation_node',
-            name='lidar_normal_estimation_node',
-            output='screen',
-            parameters=[{k: LaunchConfiguration(f'normal_estimation_{k}') for k in params['normal_estimation'].keys()}]
-        ),
         GroupAction(condition=IfCondition(use_lidar_obstacle_detector), actions=[
             Node(
                 package='avt_341',
@@ -421,14 +418,6 @@ def launch_setup(context, *args, **kwargs):
                 ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res')
             ]
         ),
-
-        # Static Grid
-        #Node(
-        #    package='avt_341',
-        #    executable='avt_341_geotiff_map_publisher_node',
-        #    name='static_grid_publisher_node',
-        #    parameters=[{k: LaunchConfiguration(f'static_grid_{k}') for k in params['static_grid'].keys()}]
-        #),
 
         # Speed Controller
         *evaluate_speed_controller(params, context=context, args=args, kwargs=kwargs),
@@ -515,7 +504,7 @@ def launch_setup(context, *args, **kwargs):
             ],
             remappings=[
                 ('avt_341/points','/ouster/points'),
-                ('avt_341/camera/image_raw','/flir_camera/image_raw'),
+                ('avt_341/camera/image_raw','/flir_camera/image_rect_color'),
                 ('avt_341/camera/camera_info','/flir_camera/camera_info'),
                 ('avt_341/odom','avt_341/odometry'),
                 ('avt_341/occupancy_grid','avt_341/terrain_seg/occupancy_grid'),
@@ -543,7 +532,7 @@ def launch_setup(context, *args, **kwargs):
                 {k: LaunchConfiguration(f'object_detector_{k}') for k in params['object_detector'].keys()}
             ],
             remappings=[
-                ('image','/flir_camera/image_raw'),
+                ('image','/flir_camera/image_rect_color'),
             ],
             output='screen'
         ),
@@ -561,7 +550,7 @@ def launch_setup(context, *args, **kwargs):
             remappings=[
                 # Subscribers
                 ('camera_info','/flir_camera/camera_info'),
-                ('image','/flir_camera/image_raw'),
+                ('image','/flir_camera/image_rect_color'),
                 ('points/input','/ouster/points'),
                 ('detection_2d', 'detections/vision'),
                 ('avt_341/reset', '/mrzr/avt_341/reset'),
@@ -585,7 +574,7 @@ def launch_setup(context, *args, **kwargs):
                         {k: LaunchConfiguration(f'feda_detector_{k}') for k in params['feda_detector'].keys()}
                     ],
                     remappings=[
-                        ('image','/flir_camera/image_raw'),
+                        ('image','/flir_camera/image_rect_color'),
                     ],
                     output='screen'
                 ),
@@ -600,7 +589,7 @@ def launch_setup(context, *args, **kwargs):
                     remappings=[
                         # Subscribers
                         ('camera_info','/flir_camera/camera_info'),
-                        ('image','/flir_camera/image_raw'),
+                        ('image','/flir_camera/image_rect_color'),
                         ('points/input','/ouster/points'),
                         ('detection_2d', 'detections/vision'),
                         ('avt_341/reset', '/mrzr/avt_341/reset'),
@@ -629,7 +618,7 @@ def launch_setup(context, *args, **kwargs):
 
     ])
     
-    return [*arg_list, *vehicle_node_list]
+    return [*arg_list, *param_overrides, *vehicle_node_list]
 
 def generate_launch_description():
     launch_arg_defaults = {
