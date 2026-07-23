@@ -1,6 +1,10 @@
 message(STATUS "Building Unit Tests")
 
 find_package(ament_cmake_gtest REQUIRED)
+find_package(ament_cmake_pytest REQUIRED)
+
+ament_add_pytest_test(metadata_test metadata_test.py)
+
 ament_add_gtest(null_test null_test.cpp)
 
 # MPC Planner Tests
@@ -83,6 +87,7 @@ target_include_directories(static_grid_layer_test
 
 target_link_libraries(static_grid_layer_test
   ${PROJECT_NAME}_proxy
+  perception_params_dto
 )
 
 message(STATUS "Adding utils unit tests")
@@ -104,6 +109,26 @@ ament_target_dependencies(static_grid_layer_test
   nav_msgs
   std_msgs
   geometry_msgs
+)
+
+message(STATUS "Adding perception settings unit tests")
+ament_add_gtest(perception_settings_test
+  perception/perception_settings_test.cpp
+)
+
+target_include_directories(perception_settings_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(perception_settings_test
+  ${PROJECT_NAME}_proxy
+  perception_params_dto
+)
+
+ament_target_dependencies(perception_settings_test
+  nav_msgs
+  rclcpp
 )
 
 # Object Tracking Reset Tests
@@ -143,6 +168,7 @@ target_include_directories(object_tracking_reset_test
 target_link_libraries(object_tracking_reset_test
   ${PROJECT_NAME}_proxy
   ${PCL_LIBRARIES}
+  object_tracking_params_service
 )
 
 ament_target_dependencies(object_tracking_reset_test
@@ -170,6 +196,7 @@ ament_target_dependencies(object_tracking_reset_test
 message(STATUS "Adding tracker recovery monitor unit tests")
 ament_add_gtest(tracker_recovery_monitor_test
   perception/tracking/tracker_recovery_monitor_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
 )
 
@@ -180,6 +207,7 @@ target_include_directories(tracker_recovery_monitor_test
 
 target_link_libraries(tracker_recovery_monitor_test
   ${PROJECT_NAME}_proxy
+  object_tracking_params_dto
 )
 
 ament_target_dependencies(tracker_recovery_monitor_test
@@ -187,6 +215,27 @@ ament_target_dependencies(tracker_recovery_monitor_test
   Eigen3
   nav_msgs
   rclcpp
+  sensor_msgs
+  visualization_msgs
+)
+
+message(STATUS "Adding tracker parameter adapter unit tests")
+ament_add_gtest(tracker_params_test
+  perception/tracking/tracker_params_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
+)
+
+target_include_directories(tracker_params_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(tracker_params_test
+  object_tracking_params_dto
+)
+
+ament_target_dependencies(tracker_params_test
+  Eigen3
   sensor_msgs
   visualization_msgs
 )

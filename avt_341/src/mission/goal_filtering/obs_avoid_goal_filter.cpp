@@ -11,29 +11,31 @@ namespace avt_341::mission {
 #define UNFILTERED_GOAL_TOPIC_NAME "avt_341/unfiltered_follower_pose"
 #define WORLD_TF_FRAME "map"
 
-ObsAvoidGoalFilter::ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id)
+ObsAvoidGoalFilter::ObsAvoidGoalFilter(
+    std::shared_ptr<node::NodeProxy> node,
+    const std::string& vehicle_id,
+    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params)
     : node_(node),
     params_(vehicle_id),
     last_point_(avt_341::optional<Eigen::Vector2d>()),
     row_idx_(-1),
     deadlock_(false) {
 
-    const std::string param_prefix = "~fgf_obs_avoid_";
-    node->get_parameter(param_prefix + "occ_threshold", params_.occ_threshold, 0);
-    node->get_parameter(param_prefix + "padding", params_.padding, 1.0);
-    node->get_parameter(param_prefix + "pub_unfiltered_goal", params_.pub_unfiltered_goal, false);
-    node->get_parameter(param_prefix + "patch_pad_width", params_.patch_pad_width, 20.0);
-    node->get_parameter(param_prefix + "min_obstacle_width", params_.min_obstacle_width, 5.0);
-    node->get_parameter(param_prefix + "follower_divergence_threshold", params_.follower_divergence_threshold, 30.0);
-    node->get_parameter(param_prefix + "reset_side_on_free_space", params_.reset_side_on_free_space, true);
-    node->get_parameter(param_prefix + "persist_state", params_.persist_state, true);
-    node->get_parameter(param_prefix + "ignore_deadlock", params_.ignore_deadlock, false);
+    params_.occ_threshold = static_cast<int>(filter_params.occ_threshold);
+    params_.padding = filter_params.padding;
+    params_.pub_unfiltered_goal = filter_params.pub_unfiltered_goal;
+    params_.patch_pad_width = filter_params.patch_pad_width;
+    params_.min_obstacle_width = filter_params.min_obstacle_width;
+    params_.follower_divergence_threshold = filter_params.follower_divergence_threshold;
+    params_.reset_side_on_free_space = filter_params.reset_side_on_free_space;
+    params_.persist_state = filter_params.persist_state;
+    params_.ignore_deadlock = filter_params.ignore_deadlock;
 
     node_->log_info("Formation goal filter parameters:"
                     "\n vehicle_id: %s"
                     "\n method: obs_avoid"
                     "\n occ_threshold: %d"
-                    "\n padding: %d"
+                    "\n padding: %.2f"
                     "\n pub_unfiltered_goal: %d"
                     "\n patch_pad_width: %.2f"
                     "\n min_obstacle_width: %.2f"

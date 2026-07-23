@@ -7,6 +7,7 @@
 #include "goal_filter.hpp"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/node/occupancy_grid_subscriber.h"
+#include <avt_341/mission_manager_params_dto.hpp>
 
 namespace avt_341::mission {
 
@@ -31,7 +32,11 @@ struct ObsAvoidGoalFilterParams {
 class ObsAvoidGoalFilter : public GoalFilter {
 
 public:
-    explicit ObsAvoidGoalFilter(std::shared_ptr<node::NodeProxy> node, const std::string& vehicle_id);
+    explicit ObsAvoidGoalFilter(
+        std::shared_ptr<node::NodeProxy> node,
+        const std::string& vehicle_id,
+        const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params =
+            avt_341::params::mission_manager::Params::FgfObsAvoid{});
 
     msg::Pose Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) override;
 

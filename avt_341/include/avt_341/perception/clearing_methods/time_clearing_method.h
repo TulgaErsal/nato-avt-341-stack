@@ -27,24 +27,7 @@ struct TimedNoObsData {
     }
 };
 
-struct TimedNoObsClearingSettings {
-    float time_threshold;
-    int sample_threshold;
-    float distance_threshold;
-
-    TimedNoObsClearingSettings() = default;
-
-    TimedNoObsClearingSettings(
-        float time_threshold,
-        int sample_threshold,
-        float distance_threshold
-        )
-    :
-    time_threshold(time_threshold),
-    sample_threshold(sample_threshold),
-    distance_threshold(distance_threshold) {}
-
-};
+using TimedNoObsClearingSettings = ClearMethodSettings;
 
 class TimedClearingMethod: public OccupancyClearingMethod {
 
@@ -53,7 +36,7 @@ public:
     TimedClearingMethod(
         float max_point_age,
         std::vector< std::vector<Cell>> & cells,
-        const BaseClearingSettings & config,
+        const PerceptionSettings & settings,
         CellObstacleCalculator* obs_calculator
         );
 
@@ -73,7 +56,7 @@ public:
 
     TimedNoObsClearingMethod(
         std::vector< std::vector<Cell>> & cells,
-        const BaseClearingSettings & base_config,
+        const PerceptionSettings & settings,
         const TimedNoObsClearingSettings & time_config,
         CellObstacleCalculator* obs_calculator
         );

@@ -14,6 +14,7 @@
 #include <avt_341_msgs/srv/get_odometry.hpp>
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
+#include <avt_341/mission_manager_params_service.hpp>
 
 std::queue<avt_341::msg::Communication> comm_msgs;
 std::queue<avt_341::msg::PoseStamped> reached_goals;
@@ -23,9 +24,6 @@ avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
 
 std::optional<int> nav_run_state;
-
-std::string mission_definition_filename, mission_paths_file;
-float sodist_threshold;
 
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
 std::shared_ptr<avt_341::mission::MissionManager> mgr;
@@ -217,79 +215,52 @@ int main(int argc, char **argv) {
     // initialize the node
     nh = avt_341::node::init_node(argc, argv, "mission_manager");
     nh->initialize_tf_listener();
+    avt_341::params::mission_manager::ParamsListener param_listener(nh->get_raw_node());
+    const auto params = param_listener.get_params();
     avt_341::node::Rate loop_rate(10);
 
-    // load the parameters
-    avt_341::mission::FormationSpeedControlParams fsc_params{};
-    avt_341::mission::FormationParameters formation_params;
-    avt_341::mission::ToiParameters toi_params;
-    std::string fsc_type;
-    bool use_avt_tracker;
-    std::vector<std::string> veh_namespaces;
+    const std::string my_name = toUpper(params.name);
 
-    nh->get_parameter("~name", formation_params.my_name, std::string("AGV1"));
-    formation_params.my_name = toUpper(formation_params.my_name);
-    nh->get_parameter("~mission_definition_file", mission_definition_filename, std::string("mission.csv"));
-    nh->get_parameter("~mission_paths_file", mission_paths_file, std::string("mission_paths.csv"));
-    nh->get_parameter("~follow_scale_x", formation_params.follow_scale_x, 1.0f);
-    nh->get_parameter("~follow_scale_y", formation_params.follow_scale_y, 1.0f);
-    nh->get_parameter("~global_path_point_dist", formation_params.global_path_points_dist, 1.0f);
-    nh->get_parameter("~use_leader_breadcrumbs", formation_params.use_breadcrumbs, true);
-    nh->get_parameter("~x_offset_on_path", formation_params.x_offset_on_path, false);
-    nh->get_parameter("~formation_prune_gp", formation_params.prune_global_path, false);
-    nh->get_parameter("~use_tangent_heading", formation_params.use_tangent_heading, false);
-    nh->get_parameter("~follow_goal_threshold", formation_params.follow_goal_threshold, 10.0f);
-    nh->get_parameter("~same_object_distance_threshold", sodist_threshold, 1.0f);
-    nh->get_parameter("~max_speed", formation_params.default_max_speed, 5.0);
+    std::shared_ptr<avt_341::mission::GoalFilter> goal_filter =
+        avt_341::mission::create_goal_filter(
+            my_name, params.formation_goal_filter, nh,
+            params.fgf_obs_avoid);
 
-    nh->get_parameter("~oof_threshold", fsc_params.oof_threshold, 15.0);
-    nh->get_parameter("~fsc_max_speed_factor", fsc_params.max_speed_factor, 2.0);
-    nh->get_parameter("~fsc_follower_obt_stop", fsc_params.follower_obt_stop, false);
-    nh->get_parameter("~oof_const_term", fsc_params.oof_const_term, 0.3);
-    nh->get_parameter("~oof_lin_slope", fsc_params.oof_lin_slope, 0.03);
-    nh->get_parameter("~oof_mult", fsc_params.oof_mult, 1.5);
-    nh->get_parameter("~formation_debug_visualize", fsc_params.debug_visualize, false);
-    nh->get_parameter("~offsets_from_leader", formation_params.offsets_from_leader, true);
-    nh->get_parameter("~follower_dist_break", fsc_params.follower_dist_break, 10.0);
-    nh->get_parameter("~follower_dot_threshold", fsc_params.follower_dot_threshold, 0.0);
-    nh->get_parameter("~follower_dot_range", fsc_params.follower_dot_range, 30.0);
-    nh->get_parameter("~fsc_type", fsc_type, FormationSpeedControlType::SPEED_UP_FOLLOWER);
-    nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
+    mgr = std::make_shared<avt_341::mission::MissionManager>(
+        params, my_name, nh, goal_filter);
 
-    nh->get_parameter("~toi_approach_dist", toi_params.approach_dist, 15.0f);
-    nh->get_parameter("~toi_encircle_radius",  toi_params.encircle_radius, 10.0f);
-    nh->get_parameter("~toi_encircle_degrees", toi_params.encircle_degrees, 180.0f);
-    nh->get_parameter("~toi_encircle_cw", toi_params.encircle_cw, true);
-    nh->get_parameter("~toi_goal_threshold", toi_params.goal_threshold, 5.0f);
-    nh->get_parameter("~toi_contact_trigger_delay", toi_params.contact_trigger_delay_s, 0.0f);
+    std::shared_ptr<avt_341::mission::FormationSpeedController>
+        speedController = avt_341::mission::createFormationSpeedController(
+            my_name, params.fsc, nh);
 
-    nh->get_parameter("~use_avt_tracker", use_avt_tracker, true);
-
-    std::string goal_filter_method;
-    nh->get_parameter("~formation_goal_filter", goal_filter_method, std::string("none"));
-    std::shared_ptr<avt_341::mission::GoalFilter> goal_filter = avt_341::mission::create_goal_filter(formation_params.my_name, goal_filter_method, nh);
-
-    mgr = std::make_shared<avt_341::mission::MissionManager>(formation_params, toi_params, nh, goal_filter);
-    mgr->sodist_threshold = sodist_threshold;
-
-    std::shared_ptr<avt_341::mission::FormationSpeedController> speedController = avt_341::mission::createFormationSpeedController(fsc_type, formation_params.my_name, fsc_params, nh);
-
-    nh->log_info("Mission Manager Settings:\n  fsc_type=%s\n  use_leader_breadcrumbs=%d\n  x_offset_on_path=%d\n  formation_prune_gp=%d",
-                fsc_type.c_str(), formation_params.use_breadcrumbs, formation_params.x_offset_on_path, formation_params.prune_global_path);
-    nh->log_info("%s loading definition file %s", mgr->my_name.c_str(), mission_definition_filename.c_str());
-    mgr->loadMissionDefinition(mission_definition_filename);
-    nh->log_info("%s loading paths file %s", mgr->my_name.c_str(), mission_paths_file.c_str());
-    mgr->loadMissionPaths(mission_paths_file);
+    nh->log_info("Mission Manager Settings:\n  fsc.type=%s\n  formation.use_breadcrumbs=%d\n  formation.x_offset_on_path=%d\n  formation.prune_global_path=%d",
+                params.fsc.type.c_str(), params.formation.use_breadcrumbs,
+                params.formation.x_offset_on_path,
+                params.formation.prune_global_path);
+    nh->log_info("%s loading definition file %s", mgr->my_name.c_str(),
+                 params.mission_definition_file.c_str());
+    mgr->loadMissionDefinition(params.mission_definition_file);
+    nh->log_info("%s loading paths file %s", mgr->my_name.c_str(),
+                 params.mission_paths_file.c_str());
+    mgr->loadMissionPaths(params.mission_paths_file);
 
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
     auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
-    auto veh1_sub = get_veh_odom_sub(veh_namespaces, 0, use_avt_tracker, formation_params.my_name);
-    auto veh2_sub = get_veh_odom_sub(veh_namespaces, 1, use_avt_tracker, formation_params.my_name);
-    auto veh3_sub = get_veh_odom_sub(veh_namespaces, 2, use_avt_tracker, formation_params.my_name);
-    auto veh4_sub = get_veh_odom_sub(veh_namespaces, 3, use_avt_tracker, formation_params.my_name);
+    auto veh1_sub = get_veh_odom_sub(
+        params.vehicle_namespaces, 0, params.use_avt_tracker,
+        my_name);
+    auto veh2_sub = get_veh_odom_sub(
+        params.vehicle_namespaces, 1, params.use_avt_tracker,
+        my_name);
+    auto veh3_sub = get_veh_odom_sub(
+        params.vehicle_namespaces, 2, params.use_avt_tracker,
+        my_name);
+    auto veh4_sub = get_veh_odom_sub(
+        params.vehicle_namespaces, 3, params.use_avt_tracker,
+        my_name);
 
     auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);

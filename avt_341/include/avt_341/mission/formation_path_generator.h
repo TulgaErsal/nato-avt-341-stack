@@ -31,7 +31,7 @@ class FormationPathGenerator{
 													avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
 	// control parameters
-	float gpp2_; // square of global_path_points_dist_
+	double gpp2_; // square of global_path_points_dist_
 
 	// outputs / messages published
 	avt_341::msg::Path desired_global_path_;

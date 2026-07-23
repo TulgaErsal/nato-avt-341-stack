@@ -2,6 +2,7 @@
 #define AVT_341_POLYGON_LAYER_H
 
 #include "costmap_layer.h"
+#include <avt_341/perception_params_dto.hpp>
 
 namespace avt_341::perception
 {
@@ -10,9 +11,10 @@ namespace avt_341::perception
     public:
         PolygonLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
-            const CostmapSettings& cm_settings,
+            const PerceptionSettings& settings,
             const std::string& label,
-            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+            const avt_341::params::perception::Params::PolygonLayer& params
             );
 
         void PublishMarkers() const;

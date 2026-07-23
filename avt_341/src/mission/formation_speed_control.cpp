@@ -71,7 +71,7 @@ namespace avt_341 {
       vec[1] = targetLeaderPose.pose.position.y - odom.pose.pose.position.y;
 
       const float dist = sqrt(vec[0]*vec[0] + vec[1]*vec[1]);
-      const bool is_out_of_formation = dist > fsc_params_.oof_threshold;
+      const bool is_out_of_formation = dist > fsc_params_.oof.threshold;
 
       if (fsc_params_.follower_obt_stop && !is_out_of_formation)
       {
@@ -86,7 +86,7 @@ namespace avt_341 {
 
       double speed_factor = 1.0;
       if(is_out_of_formation){
-        speed_factor = dist * fsc_params_.oof_mult;
+        speed_factor = dist * fsc_params_.oof.mult;
       }
       return std::min(std::max(speed_factor, 0.0), fsc_params_.max_speed_factor);
     }
@@ -153,7 +153,7 @@ namespace avt_341 {
 
           double delta_pos = PosePlanarDistance(target_pose.pose.position,
                                                 formation_poses[veh_name].pose.pose.position);
-          bool is_out_of_formation = delta_pos > fsc_params_.oof_threshold;
+          bool is_out_of_formation = delta_pos > fsc_params_.oof.threshold;
           if (is_out_of_formation && first_oof_idx < 0) {
             first_oof_idx = veh_index;
           }
@@ -189,22 +189,32 @@ namespace avt_341 {
           double distance_to_self = PosePlanarDistance(formation_poses[first_oof].pose.pose.position,
                                                        formation_poses[my_name_].pose.pose.position);
           // speed control IF: In formation or own vehicle close to first out of formation vehicle
-          if (!self_out_of_formation || distance_to_self < fsc_params_.oof_threshold) {
+          if (!self_out_of_formation ||
+              distance_to_self < fsc_params_.oof.threshold) {
 
-            auto delta_past_threshold = delta_pos_map[first_oof] - fsc_params_.oof_threshold;
+            auto delta_past_threshold =
+                delta_pos_map[first_oof] - fsc_params_.oof.threshold;
             if (delta_past_threshold > 0.0) {
               // linear range
-              double mult = self_out_of_formation ? 1.0 / fsc_params_.oof_mult : 1.0;
+              double mult =
+                  self_out_of_formation ? 1.0 / fsc_params_.oof.mult : 1.0;
               speed_factor = std::max(
-                  1.0 - mult * fsc_params_.oof_lin_slope * delta_past_threshold - fsc_params_.oof_const_term, 0.0);
+                  1.0 - mult * fsc_params_.oof.lin_slope *
+                            delta_past_threshold -
+                            fsc_params_.oof.const_term,
+                  0.0);
             }
           }
         } else {
-          auto delta_past_threshold = delta_pos_map[first_oof] - fsc_params_.oof_threshold;
+          auto delta_past_threshold =
+              delta_pos_map[first_oof] - fsc_params_.oof.threshold;
           if ((is_leader || (is_column && my_index < first_oof_idx)) && delta_past_threshold > 0.0) {
             // linear range
-            speed_factor = std::max(1.0 - fsc_params_.oof_lin_slope * delta_past_threshold - fsc_params_.oof_const_term,
-                                    0.0);
+            speed_factor =
+                std::max(1.0 - fsc_params_.oof.lin_slope *
+                                   delta_past_threshold -
+                                   fsc_params_.oof.const_term,
+                         0.0);
           }
         }
       }
@@ -313,19 +323,20 @@ namespace avt_341 {
     }
 
     std::shared_ptr<FormationSpeedController>
-    createFormationSpeedController(const std::string &fsc_type, const std::string &veh_name,
+    createFormationSpeedController(const std::string &veh_name,
                                    const FormationSpeedControlParams &params,
                                    std::shared_ptr<avt_341::node::NodeProxy> node_proxy) {
-      if (fsc_type == FormationSpeedControlType::SLOW_DOWN_LEADER) {
+      if (params.type == FormationSpeedControlType::SLOW_DOWN_LEADER) {
         return std::make_shared<SlowLeaderFormationSpeedController>(veh_name, params, node_proxy);
       }
-      if (fsc_type == FormationSpeedControlType::SPEED_UP_FOLLOWER) {
+      if (params.type == FormationSpeedControlType::SPEED_UP_FOLLOWER) {
         return std::make_shared<SpeedUpFollowerFormationSpeedController>(veh_name, params);
       }
-      if (fsc_type == FormationSpeedControlType::NONE) {
+      if (params.type == FormationSpeedControlType::NONE) {
         return std::make_shared<NullFormationSpeedController>(veh_name, params);
       }
-      node_proxy->log_error("Unknown formation speed control type: %s", fsc_type.c_str());
+      node_proxy->log_error(
+          "Unknown formation speed control type: %s", params.type.c_str());
       return nullptr;
     }
 

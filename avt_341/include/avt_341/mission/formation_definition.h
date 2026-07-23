@@ -3,6 +3,7 @@
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/mission/mission_manager_dto.h"
+#include <avt_341/mission_manager_params_dto.hpp>
 #include <map>
 #include <vector>
 
@@ -25,42 +26,26 @@ struct MissionPath {
   std::vector<MissionPoint> poses;
 };
 
-struct FormationParameters{
-  std::string my_name;
-  float follow_scale_x;
-  float follow_scale_y;
-  bool offsets_from_leader;
-  float follow_goal_threshold;
-  float global_path_points_dist;
-  bool use_breadcrumbs;
-  bool x_offset_on_path;
-  bool prune_global_path;
-  bool use_tangent_heading;
-  double default_max_speed;
-};
-
-struct ToiParameters{
-  float approach_dist;
-  float encircle_radius;
-  float encircle_degrees;
-  bool encircle_cw;
-  float goal_threshold;
-  float contact_trigger_delay_s;
-};
+using MissionManagerParams = avt_341::params::mission_manager::Params;
+using FormationParameters = MissionManagerParams::Formation;
+using ToiParameters = MissionManagerParams::Toi;
 
 class FormationDefinition {
 
 public:
 
-  FormationDefinition(const FormationParameters & params_in);
-  FormationDefinition(FormationMsg &comm_msg, const MissionPoint & mp, const FormationParameters &params_in);
+  FormationDefinition(const FormationParameters & params_in,
+                      const std::string & my_name);
+  FormationDefinition(FormationMsg &comm_msg, const MissionPoint & mp,
+                      const FormationParameters &params_in,
+                      const std::string & my_name);
 
   avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
   avt_341::msg::FollowerStatus commToFollowerStatus(const FormationMsg & comm_msg, const std::string &veh_name, int &out_idx) const;
   bool update(FormationMsg &comm_msg, const MissionPoint & mp);
   FormationOffsets getOffsets(const std::string &formation) const;
 
-  inline bool isLeader() const { return leaderName() == params.my_name; }
+  inline bool isLeader() const { return leaderName() == my_name_; }
   inline bool isFollowing() const { return formation_status.use_leader && !formationAtGoal(); }
   inline bool formationAtGoal() const { return formation_at_goal_; }
   inline bool has_formation() const { return !current_formation_msg_.formation.empty(); }
@@ -82,6 +67,7 @@ private:
 
   std::vector<std::string> formation_vehicle_names_;
   FormationMsg current_formation_msg_;
+  std::string my_name_;
   std::string followed_vehicle_;
   int my_index_;
   bool formation_at_goal_;

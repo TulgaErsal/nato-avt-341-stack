@@ -4,10 +4,11 @@ namespace avt_341::perception {
 
 ChannelThresholdClearingMethod::ChannelThresholdClearingMethod(
     std::vector<std::vector<Cell>> &cells,
-    const BaseClearingSettings &base_config,
+    const PerceptionSettings &settings,
     const ChannelClearingSettings &ch_config,
     CellObstacleCalculator *obs_calculator)
-        : OccupancyClearingMethod(cells, base_config, obs_calculator), ch_config_(ch_config) {
+        : OccupancyClearingMethod(cells, settings, obs_calculator),
+          ch_config_(ch_config) {
 }
 
 void ChannelThresholdClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
@@ -30,11 +31,15 @@ void ChannelThresholdClearingMethod::ClearOccupancy(const msg::PointCloud &point
     for (size_t i = 0; i < point_cloud.points.size(); i++) {
         const float channel_val = point_cloud.channels[channel_idx].values[i];
 
-        if (channel_val < ch_config_.threshold) {
+        if (channel_val < ch_config_.channel_threshold) {
 
             const auto &pt = point_cloud.points[i];
-            int xi = static_cast<int>((pt.x - config_.llx) / config_.res);
-            int yi = static_cast<int>((pt.y - config_.lly) / config_.res);
+            int xi = static_cast<int>(
+                (pt.x - settings_.size_info().llx) /
+                settings_.size_info().res);
+            int yi = static_cast<int>(
+                (pt.y - settings_.size_info().lly) /
+                settings_.size_info().res);
 
             if (xi >= 0 && xi < Nx_ && yi >= 0 && yi < Ny_) {
                 cells_[yi][xi].ResetHeight();
@@ -49,7 +54,7 @@ void ChannelThresholdClearingMethod::ClearOccupancy(const msg::PointCloud &point
 
 std::string ChannelThresholdClearingMethod::GetDescription() const {
     return "ChannelThresholdClearingMethod: channel=" + ch_config_.channel_to_clear +
-           ", threshold=" + std::to_string(ch_config_.threshold) + "m";
+           ", threshold=" + std::to_string(ch_config_.channel_threshold) + "m";
 }
 
 }

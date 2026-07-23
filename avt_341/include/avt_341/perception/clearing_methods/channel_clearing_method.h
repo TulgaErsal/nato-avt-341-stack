@@ -5,21 +5,13 @@
 
 namespace avt_341::perception {
 
-struct ChannelClearingSettings {
-    std::string channel_to_clear;
-    float threshold;
-
-    ChannelClearingSettings() = default;
-
-    ChannelClearingSettings(const std::string &ch_to_clear, const float thresh)
-        : channel_to_clear(ch_to_clear), threshold(thresh) {}
-};
+using ChannelClearingSettings = ClearMethodSettings;
 
 class ChannelThresholdClearingMethod : public OccupancyClearingMethod {
 public:
     ChannelThresholdClearingMethod(
         std::vector<std::vector<Cell>> &cells,
-        const BaseClearingSettings &base_config,
+        const PerceptionSettings &settings,
         const ChannelClearingSettings &ch_config,
         CellObstacleCalculator *obs_calculator
         );

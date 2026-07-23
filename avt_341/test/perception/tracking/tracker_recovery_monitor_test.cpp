@@ -68,8 +68,7 @@ protected:
         settings.no_movement_threshold = 0.2;
         settings.no_movement_window_time = 0.1;
         settings.no_movement_check_in_states = {
-            TrackerState::LIDAR_ONLY_TRACKING,
-            TrackerState::CAMERA_ONLY_TRACKING, TrackerState::FULL_TRACKING};
+            "lidar_only", "camera_only", "full"};
         settings.no_movement_backoff_time = 0.5;
         settings.uncertainty_threshold = 10.0;
         settings.uncertainty_window_time = 0.1;

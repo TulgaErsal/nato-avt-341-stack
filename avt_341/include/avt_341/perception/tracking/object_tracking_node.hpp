@@ -98,6 +98,7 @@
 #include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
 #include <avt_341/perception/tracking/object_tracker.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
+#include <avt_341/object_tracking_params_service.hpp>
 #include <avt_341_msgs/msg/mission_module_status.hpp>
 #include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
@@ -143,22 +144,15 @@ class ObjectTrackingNode : public rclcpp::Node {
     // Settings and runtime dynamic parameter reconfiguration
     // -------------------------------------------------------------------------
 
-    /** @brief Settings shared by the node and every tracker instance. */
-    ObjectTrackerSettings settings_;
+    /** @brief Generated parameters shared by the node and tracker instances. */
+    ObjectTrackerSettings params_;
 
-    /** @brief Callback handle for runtime dynamic parameter reconfiguration. */
-    OnSetParametersCallbackHandle::SharedPtr on_set_parameters_callback_handle_;
+    /** @brief Generated parameter declaration and validation listener. */
+    std::shared_ptr<avt_341::params::object_tracking::ParamsListener>
+        param_listener_;
 
-    /**
-     * @brief Callback for the runtime dynamic parameter reconfiguration.
-     * Updated settings are propagated to every live tracker instance.
-     *
-     * @param parameters A vector of modified parameters.
-     * @return rcl_interfaces::msg::SetParametersResult The outcome of the
-     * runtime dynamic parameter reconfiguration operation.
-     */
-    rcl_interfaces::msg::SetParametersResult SetParametersCallback(
-        const std::vector<rclcpp::Parameter>& parameters);
+    /** Apply a validated listener snapshot to the supported runtime subset. */
+    void ApplyUpdatedParameters(const ObjectTrackerSettings& updated_params);
 
     // Per-target trackers
     // -------------------------------------------------------------------------
@@ -180,14 +174,16 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     /**
      * @brief Factory for the concrete tracker type of @p target_class:
-     * FormationVehicleTracker when the id is in "formation_vehicle_ids",
-     * ToiTracker when it matches "tracker_toi_regex", plain (Generic)
+     * FormationVehicleTracker when the id is in
+     * "target_selection.formation_vehicle_ids",
+     * ToiTracker when it matches "target_selection.toi_regex", plain (Generic)
      * ObjectTracker otherwise. Returns nullptr (target not tracked) when the
-     * target would be Generic but "tracker_allow_generic" is false.
+     * target would be Generic but "target_selection.allow_generic" is false.
      */
     std::unique_ptr<ObjectTracker> CreateTracker(const std::string& target_class);
 
-    /** @brief Whether @p target_class matches the current "tracker_toi_regex"
+    /** @brief Whether @p target_class matches the current
+     *         "target_selection.toi_regex"
      *         setting. An empty or invalid regex matches nothing (invalid
      *         patterns are logged). */
     bool MatchesToiRegex(const std::string& target_class) const;
@@ -212,7 +208,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     bool HasTrackerOfType(ObjectTrackerType type) const;
 
     /** @brief Remove every tracker of type Toi whose target id no longer
-     *         matches the current "tracker_toi_regex" setting. Called when
+     *         matches the current "target_selection.toi_regex" setting. Called when
      *         the regex parameter changes at runtime. */
     void RemoveStaleToiTrackers();
 

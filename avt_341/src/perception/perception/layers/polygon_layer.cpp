@@ -6,19 +6,22 @@ namespace avt_341::perception
 {
     PolygonLayer::PolygonLayer(
         const std::shared_ptr<node::NodeProxy>& node_ref,
-        const CostmapSettings& cm_settings,
+        const PerceptionSettings& settings,
         const std::string& label,
-        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+        const avt_341::params::perception::Params::PolygonLayer& params
         )
-        : CostmapLayer(node_ref, cm_settings, label, compute_time_recorder)
+        : CostmapLayer(
+            node_ref, settings, label, compute_time_recorder,
+            params.contribute_occupancy, params.contribute_segmentation)
     {
-        node_ref_->get_parameter("~polygon_layer_data_file", input_file_, std::string(""));
-        node_ref_->get_parameter("~polygon_layer_visualize", visualize_, false);
+        input_file_ = params.data_file;
+        visualize_ = params.visualize;
         marker_pub_ = node_ref_->create_publisher<msg::MarkerArray>("avt_341/" + label + "/markers", 1);
 
         LoadZones();
         RebuildCellCache(false);
-        thresholds_.use_elevation = true; // For polygon layer, only use simple height value > threshold check
+        settings_.costmap.thresholds.use_elevation = true;
     }
 
     void PolygonLayer::LoadZones()
@@ -72,14 +75,14 @@ namespace avt_341::perception
             return;
         }
 
-        const int    w   = size_info_.nx();
-        const int    h   = size_info_.ny();
+        const int    w   = settings_.nx();
+        const int    h   = settings_.ny();
         int marked_cells = 0;
         has_segmentation_ = std::any_of(zones_.begin(), zones_.end(), [](const auto& zone) { return zone.seg_value >= 0; });
 
         for (int i = 0; i < h; ++i) {
             for (int j = 0; j < w; ++j) {
-                const utils::vec2 p = size_info_.ToPosWorld(j, i);
+                const utils::vec2 p = settings_.to_world(j, i);
                 for (const auto& zone : zones_) {
                     if (IsInsidePolygon(zone.vertices, p.x, p.y)) {
                         cells_[i][j].high.val = zone.occ_value;

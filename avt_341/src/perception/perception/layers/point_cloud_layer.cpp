@@ -13,15 +13,22 @@ namespace avt_341::perception
 {
 PointCloudLayer::PointCloudLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
-    const CostmapSettings& cm_settings,
+    const PerceptionSettings& settings,
     const std::string & label,
-    const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+    const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+    const std::string& point_cloud_topic,
+    const std::string& clear_only_points_topic,
+    const bool contribute_occupancy,
+    const bool contribute_segmentation,
+    const bool setup_point_cloud_subscriptions
     )
-        : CostmapLayer(node_ref, cm_settings, label, compute_time_recorder)
+        : CostmapLayer(
+            node_ref, settings, label, compute_time_recorder,
+            contribute_occupancy, contribute_segmentation)
 {
-	double pc_callback_warn_dur;
-	node_ref_->get_parameter("~pc_callback_warn_time", pc_callback_warn_dur, 0.1);
-	node_ref_->get_parameter("~pc_seg_channel", pc_seg_channel_, std::string("segmentation"));
+	const double pc_callback_warn_dur =
+        settings.point_cloud_layer.callback_warn_time;
+	pc_seg_channel_ = settings.point_cloud_layer.segmentation_channel;
 
 	pc_section_id_ = label + "/pc_callback";
 	core::RunningStatsConfig section_config;
@@ -29,26 +36,20 @@ PointCloudLayer::PointCloudLayer(
 	section_config.threshold_check = pc_callback_warn_dur;
 	compute_time_recorder_->Configure(pc_section_id_, section_config);
 
-    SetupGridClearingMethod();
-    SetupPointCloudFilter();
-    SetupPcSubscriptions();
-
-    node_ref_->params()->add_parameter_callback(std::vector<std::string>{"slope_threshold", "slope_threshold_max"},
-    [&](const node::RosParameterEvent & p) {
-        thresholds_.Update(
-            p.get_value<float>("slope_threshold"),
-            p.get_value<float>("slope_threshold_max")
-            );
-        RecomputeGridDilation();
-    });
-
+    SetupGridClearingMethod(settings.clear_method);
+    SetupPointCloudFilter(
+        ParseFilterConfig(settings.point_cloud_layer.filter),
+        ParseFilterConfig(settings.clear_method.filter));
+    if (setup_point_cloud_subscriptions) {
+        SetupPcSubscriptions(point_cloud_topic, clear_only_points_topic);
+    }
 }
 
-void PointCloudLayer::SetupPcSubscriptions()
+void PointCloudLayer::SetupPcSubscriptions(
+    const std::string& point_cloud_topic,
+    const std::string& clear_only_points_topic)
 {
-    std::string clear_only_points_topic;
-    node_ref_->get_parameter("~" + label_ + "_topic", pc_topic_id_, std::string(""));
-    node_ref_->get_parameter("~" + label_ + "_clear_topic", clear_only_points_topic, std::string(""));
+    pc_topic_id_ = point_cloud_topic;
 
     if (pc_topic_id_.empty())
     {
@@ -71,50 +72,27 @@ void PointCloudLayer::SetupPcSubscriptions()
     }
 }
 
-ClearMethodRosParameters PointCloudLayer::ParseClearMethodsConfig() const {
-
-    // TODO: Remove after parameter refactor
-	ClearMethodRosParameters params;
-
-	// General settings
-	node_ref_->get_parameter("~clear_method_type", params.clear_methods_str, std::string("none"));
-	node_ref_->get_parameter("~clear_method_visualize", params.visualize, false);
-	node_ref_->get_parameter("~clear_method_visualize_range", params.visualization_range, 40.0f);
-
-	// Raytrace clearing
-	node_ref_->get_parameter("~clear_method_raytrace_range", params.raytrace_range, 50.0f);
-	node_ref_->get_parameter("~clear_method_use_voxels", params.use_voxels, true);
-	node_ref_->get_parameter("~clear_method_voxel_height_min", params.voxel_height_min, 0.0f);
-	node_ref_->get_parameter("~clear_method_voxel_height_res", params.voxel_height_res, 0.5f);
-	node_ref_->get_parameter("~clear_method_immediate_clear_dilation", params.immediate_clr_dilation, true);
-	node_ref_->get_parameter("~clear_method_clr_on_scan_below_only", params.clr_on_scan_below_only, false);
-	node_ref_->get_parameter("~clear_method_lidar_frame", params.lidar_frame, std::string("lidar"));
-
-	// Raytrace clearing + object filter
-	node_ref_->get_parameter("~clear_method_obs_filter_range", params.obj_range_filter, 1.0f);
-
-	// Time and timed no-obs clearing
-	node_ref_->get_parameter("~clear_method_sampled_threshold", params.sampled_threshold, 5);
-	node_ref_->get_parameter("~clear_method_max_point_age", params.max_point_age, 5.0f);
-	node_ref_->get_parameter("~clear_method_no_obs_dist_threshold", params.no_obs_dist_threshold, 0.25f);
-
-	// Channel-based clearing
-	node_ref_->get_parameter("~clear_method_channel_to_clear", params.channel_to_clear, std::string("gnd_seg"));
-	node_ref_->get_parameter("~clear_method_channel_threshold", params.channel_threshold, 0.5f);
-
-	return params;
+PointCloudFilterConfig PointCloudLayer::ParseFilterConfig(
+    const GeneratedPerceptionParams::PointCloudLayer::Filter& params) {
+	PointCloudFilterConfig config;
+    config.enable_dist_filter = params.enable_dist_filter;
+    config.max_dist = params.max_dist;
+    config.min_dist = params.min_dist;
+    config.min_hfov = params.min_hfov;
+    config.max_hfov = params.max_hfov;
+    config.max_height_clearance = params.max_height_clearance;
+	return config;
 }
 
-PointCloudFilterConfig PointCloudLayer::ParseFilterConfig(const std::string &param_prefix) const {
-
-    // TODO: Remove after parameter refactor
+PointCloudFilterConfig PointCloudLayer::ParseFilterConfig(
+    const GeneratedPerceptionParams::ClearMethod::Filter& params) {
 	PointCloudFilterConfig config;
-	node_ref_->get_parameter("~" + param_prefix + "cull_lidar", config.enable_dist_filter, false);
-	node_ref_->get_parameter("~" + param_prefix + "cull_lidar_dist", config.max_dist, -1.0);
-	node_ref_->get_parameter("~" + param_prefix + "cull_lidar_dist_min", config.min_dist, -1.0);
-	node_ref_->get_parameter("~" + param_prefix + "cull_lidar_hfov_min", config.min_hfov, -180.0);
-	node_ref_->get_parameter("~" + param_prefix + "cull_lidar_hfov_max", config.max_hfov, 180.0);
-	node_ref_->get_parameter("~" + param_prefix + "overhead_clearance", config.max_height_clearance, -1.0);
+    config.enable_dist_filter = params.enable_dist_filter;
+    config.max_dist = params.max_dist;
+    config.min_dist = params.min_dist;
+    config.min_hfov = params.min_hfov;
+    config.max_hfov = params.max_hfov;
+    config.max_height_clearance = params.max_height_clearance;
 	return config;
 }
 
@@ -169,13 +147,11 @@ void PointCloudLayer::ClearOnlyPointsCallback(msg::PointCloud2Ptr rcv_cloud) {
 }
 
 
-void PointCloudLayer::SetupPointCloudFilter() {
-
-    PointCloudFilterConfig filter_pc_config = ParseFilterConfig();
-    PointCloudFilterConfig filter_pc_cm_config = ParseFilterConfig("clear_method_");
-
-    pc_filter.SetConfig(filter_pc_config);
-    pc_cm_filter.SetConfig(filter_pc_cm_config);
+void PointCloudLayer::SetupPointCloudFilter(
+    const PointCloudFilterConfig& point_cloud_config,
+    const PointCloudFilterConfig& clearing_config) {
+    pc_filter.SetConfig(point_cloud_config);
+    pc_cm_filter.SetConfig(clearing_config);
 
     node_ref_->log_info(
         "Point cloud culling: %s",
@@ -208,7 +184,8 @@ void PointCloudLayer::ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_p
         return;
     }
 
-    AddOccupancy(*filtered_pc, cells_, dilation_.enabled);
+    AddOccupancy(
+        *filtered_pc, cells_, settings_.costmap.dilation.enabled);
     for (auto& cm : clear_methods_) {
         cm->OnOccupancyAdded(*filtered_cms_pc, vehicle_pose.position);
     }
@@ -220,11 +197,11 @@ void PointCloudLayer::AddOccupancy(const msg::PointCloud& point_cloud, std::vect
     bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == pc_seg_channel_;
     has_segmentation_ = has_segmentation_local || has_segmentation_;
 
-    const auto llx = size_info_.llx;
-    const auto lly = size_info_.lly;
-    const auto res = size_info_.res;
-    const auto nx = size_info_.nx();
-    const auto ny = size_info_.ny();
+    const auto llx = settings_.size_info().llx;
+    const auto lly = settings_.size_info().lly;
+    const auto res = settings_.size_info().res;
+    const auto nx = settings_.nx();
+    const auto ny = settings_.ny();
 
     // fill the cells with highest and lowest points
     for (int i = 0; i < point_cloud.points.size(); i++) {
@@ -289,22 +266,10 @@ void PointCloudLayer::Reset() {
     is_resetting_ = false;
 }
 
-void PointCloudLayer::SetupGridClearingMethod() {
-
-    ClearMethodRosParameters params = ParseClearMethodsConfig();
-
-    BaseClearingSettings base_config;
-    base_config.llx = size_info_.llx;
-    base_config.lly = size_info_.lly;
-    base_config.res = size_info_.res;
-    base_config.grid_dilate_x = dilation_.GetNx(size_info_.res);
-    base_config.grid_dilate_y = dilation_.GetNy(size_info_.res);
-    base_config.thresh = thresholds_.thresh;
-    base_config.immediate_clear_dilation = params.immediate_clr_dilation;
-    base_config.visualization_range = params.visualization_range;
-    base_config.visualize = params.visualize;
-
-    clear_methods_ = ClearingMethodFactory::CreateClearingMethods(node_ref_, cells_, params, base_config, this);
+void PointCloudLayer::SetupGridClearingMethod(
+    const ClearMethodSettings& params) {
+    clear_methods_ = ClearingMethodFactory::CreateClearingMethods(
+        node_ref_, cells_, params, settings_, this);
 }
 
 void PointCloudLayer::Visualize()

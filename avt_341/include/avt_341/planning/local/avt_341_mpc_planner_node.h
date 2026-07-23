@@ -21,6 +21,7 @@
 
 #include <avt_341/node/node_proxy.h>
 #include <avt_341/node/ros_types.h>
+#include <avt_341/mpc_local_planner_params_dto.hpp>
 
 // Julia header throws "No Target Architecture" error otherwise on Windows systems
 #ifdef _WIN64
@@ -54,54 +55,9 @@ bool has_error = false;
 std::shared_ptr<avt_341::node::NodeProxy> node;
 // -----------
 
-// ROS parameters
-// --------------
-
-std::string sysimage_path;
-std::string planner_module_path;
-std::string parameters_module_path;
-std::string models_module_path;
-double rate;
-std::string tire_model;
-std::string linear_solver;
-int num_col_points;
-double prediction_time_horizon;
-int max_num_obs;
-int max_num_seg;
-double min_speed;
-double max_speed;
-bool stop_on_max_solve_time;
-bool use_hard_constraints;
-bool use_segmentation;
-double segmentation_resolution;
-double w_distance_to_obstacles;
-double w_distance_to_goal;
-double w_deviation_in_yaw;
-double w_yaw_accel;
-double w_traversability_cost;
-double safety_margin;
-double grid_resolution;
-double front_angle_goal;
-double front_angle_obstacle;
-double front_angle_segmentation;
-double w_final_speed;
-double w_final_heading;
-bool adaptive;
-double vehicle_axle_distance_front;
-bool obstacles_vizualize;
-bool publish_steering_commands;
-double slope_threshold;
-double rms_threshold;
-double speed_around_large_slopes_and_rms;
-double sa_min;
-double sa_max;
-double sr_min;
-double sr_max;
-double ax_max;
-bool use_corridor_culling;
-double corridor_half_width;
-bool visualize_culled_obstacles;
-// --------------
+// Generated parameter snapshot shared by the existing callback/Julia FFI
+// structure.
+avt_341::params::mpc_local_planner::Params mpc_params;
 
 // Globals
 // --------------

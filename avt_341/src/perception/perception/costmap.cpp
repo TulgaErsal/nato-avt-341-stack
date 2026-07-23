@@ -9,20 +9,29 @@ namespace avt_341::perception {
 
 Costmap::Costmap(
 	const std::shared_ptr<node::NodeProxy>& node_ref,
-	const CostmapSettings& settings,
-	const std::string& layer_cmb_method
+	const PerceptionSettings& settings
 	)
 	: node_ref_(node_ref),
 	compute_time_recorder_(std::make_shared<core::ComputeTimeRecorder>(node_ref, core::ComputeTimeRecorder::MakeNodeTag(node_ref))),
-	size_info_(settings.size_info), thresholds_(settings.thresholds),
-	dilation_(settings.dilation), terrain_rms_config_(settings.terrain_rms), layer_cmb_method_(layer_cmb_method)
+	settings_(settings),
+	layer_cmb_method_(settings.costmap.layer_combination_method)
 {
-	// TODO: Should create those which exist in configuration file, needs parameter refactoring
 	std::vector<std::shared_ptr<CostmapLayer>> candidate_layers = {
-		std::make_shared<StaticGridLayer>(node_ref, settings, "static_grid_layer", compute_time_recorder_),
-		std::make_shared<PointCloudLayer>(node_ref, settings, "point_cloud_layer", compute_time_recorder_),
-		std::make_shared<CameraLayer>(node_ref, settings, "camera_layer", compute_time_recorder_),
-		std::make_shared<PolygonLayer>(node_ref, settings, "polygon_layer", compute_time_recorder_),
+		std::make_shared<StaticGridLayer>(
+			node_ref, settings, "static_grid_layer", compute_time_recorder_,
+			settings.static_grid_layer),
+		std::make_shared<PointCloudLayer>(
+			node_ref, settings, "point_cloud_layer", compute_time_recorder_,
+			settings.point_cloud_layer.topic,
+			settings.point_cloud_layer.clear_topic,
+			settings.point_cloud_layer.contribute_occupancy,
+			settings.point_cloud_layer.contribute_segmentation),
+		std::make_shared<CameraLayer>(
+			node_ref, settings, "camera_layer", compute_time_recorder_,
+			settings.camera_layer),
+		std::make_shared<PolygonLayer>(
+			node_ref, settings, "polygon_layer", compute_time_recorder_,
+			settings.polygon_layer),
 	};
 
 	layers_.clear();
@@ -38,6 +47,15 @@ Costmap::Costmap(
 		10,
 		std::bind(&Costmap::OdometryCallback, this, std::placeholders::_1));
 
+}
+
+void Costmap::UpdateThresholds(
+	const float slope_threshold, const float slope_threshold_max)
+{
+	settings_.update_thresholds(slope_threshold, slope_threshold_max);
+	for (const auto& layer : layers_) {
+		layer->UpdateThresholds(slope_threshold, slope_threshold_max);
+	}
 }
 
 void Costmap::OdometryCallback(msg::OdometryPtr rcv_odom) {
@@ -109,10 +127,12 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 
 	const auto layers = GetTargetLayers(target_layer, is_segmentation);
 
-	const int unknown_value = thresholds_.output_unknown_cells
+	const auto& thresholds = settings_.costmap.thresholds;
+	const int unknown_value = thresholds.output_unknown_cells
 		? -1
-		: (is_segmentation ? thresholds_.replace_seg_unknown_with
-		                   : thresholds_.replace_occ_unknown_with);
+		: static_cast<int>(
+		      is_segmentation ? thresholds.replace_seg_unknown_with
+		                      : thresholds.replace_occ_unknown_with);
 
 	int c = 0;
 	for (int i = region.y_min; i < region.y_max; i++) {
@@ -139,9 +159,10 @@ msg::OccupancyGridUpdate Costmap::GetGridUpdate(
 	if (!update_region.HasData()) {
 		return grid_update_msg;
 	}
-	int dilate_x = dilation_.GetNx(size_info_.res);
-	int dilate_y = dilation_.GetNy(size_info_.res);
-	core::GridRegion dilated_region = update_region.Dilate(dilate_x, dilate_y, size_info_.nx(), size_info_.ny());
+	const int dilate_x = settings_.dilation_x_cells();
+	const int dilate_y = settings_.dilation_y_cells();
+	core::GridRegion dilated_region = update_region.Dilate(
+		dilate_x, dilate_y, settings_.nx(), settings_.ny());
 	grid_update_msg.x = dilated_region.x_min;
 	grid_update_msg.y = dilated_region.y_min;
 	grid_update_msg.width = dilated_region.Width();
@@ -165,7 +186,7 @@ msg::OccupancyGrid Costmap::GetGrid(
 	) const {
 	msg::OccupancyGrid grid;
 	grid.header.frame_id = "map";
-	grid.info = size_info_.ToRosMetadata();
+	grid.info = settings_.to_ros_metadata();
 	grid.data.resize(grid.info.width  * grid.info.height);
 	const auto update_region = core::GridRegion(0, grid.info.width, 0, grid.info.height);
 
@@ -177,20 +198,20 @@ msg::OccupancyGrid Costmap::GetGrid(double width, double height, bool is_segment
 	double local_x_origin = current_odom_.pose.pose.position.x - width / 2.0;
 	double local_y_origin = current_odom_.pose.pose.position.y - height / 2.0;
 
-	int local_nx = static_cast<int>(width / size_info_.res);
-	int local_ny = static_cast<int>(height / size_info_.res);
-	int xi_min = std::max(0, size_info_.ToXIdx(local_x_origin));
-	int yi_min = std::max(0, size_info_.ToYIdx(local_y_origin));
-	int xi_max = std::min(size_info_.nx(), xi_min + local_nx);
-	int yi_max = std::min(size_info_.ny(), yi_min + local_ny);
+	int local_nx = static_cast<int>(width / settings_.size_info().res);
+	int local_ny = static_cast<int>(height / settings_.size_info().res);
+	int xi_min = std::max(0, settings_.to_x_index(local_x_origin));
+	int yi_min = std::max(0, settings_.to_y_index(local_y_origin));
+	int xi_max = std::min(settings_.nx(), xi_min + local_nx);
+	int yi_max = std::min(settings_.ny(), yi_min + local_ny);
 
 	msg::OccupancyGrid grid;
 	grid.header.frame_id = "map";
-	grid.info = size_info_.ToRosMetadata();
+	grid.info = settings_.to_ros_metadata();
 	grid.info.width = local_nx; //xi_max-xi_min;
 	grid.info.height =  local_ny; //yi_max-yi_min;
-	grid.info.origin.position.x =  size_info_.ToXWorld(xi_min);
-	grid.info.origin.position.y = size_info_.ToYWorld(yi_min);
+	grid.info.origin.position.x = settings_.to_x_world(xi_min);
+	grid.info.origin.position.y = settings_.to_y_world(yi_min);
 	grid.data.resize(local_nx * local_ny);
 
 	FillGridMsgCells(grid.data, core::GridRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation);
@@ -218,18 +239,24 @@ std::vector<utils::ivec2> Costmap::GetCellsInFov() const{
 	const float y = current_odom_.pose.pose.position.y;
 
 	utils::vec2 p(x, y);
-	float angle = 0.5f * terrain_rms_config_.hfov;
+	float angle = 0.5F * settings_.costmap.terrain_rms.hfov;
 	utils::vec2 v(cosf(heading), sinf(heading));
 	std::vector<utils::ivec2> cells_in_fov;
-	const auto range = terrain_rms_config_.range;
+	const auto range = settings_.costmap.terrain_rms.range;
 
-	int xi0 = std::max(0,static_cast<int>((x - range) / size_info_.res));
-	int xi1 = std::min(size_info_.nx(),static_cast<int>((x + range) / size_info_.res));
-	int yi0 = std::max(0,static_cast<int>((y - range) / size_info_.res));
-	int yi1 = std::min(size_info_.ny(),static_cast<int>((y + range) / size_info_.res));
+	int xi0 = std::max(
+		0, static_cast<int>((x - range) / settings_.size_info().res));
+	int xi1 = std::min(
+		settings_.nx(),
+		static_cast<int>((x + range) / settings_.size_info().res));
+	int yi0 = std::max(
+		0, static_cast<int>((y - range) / settings_.size_info().res));
+	int yi1 = std::min(
+		settings_.ny(),
+		static_cast<int>((y + range) / settings_.size_info().res));
 	for (int j = yi0; j < yi1; j++) {
 		for (int i = xi0; i < xi1; i++) {
-			utils::vec2 point = size_info_.ToPosWorld(i, j);
+			utils::vec2 point = settings_.to_world(i, j);
 			bool in_view = IsPointInCone(point, p, v, range, angle);
 			if (in_view) {
 				utils::ivec2 c(i, j);
@@ -265,7 +292,8 @@ void Costmap::UpdateRmsAndSlope() {
 
 	slope_buffer_.push_back(static_cast<double>(slope));
 	rms_buffer_.push_back(static_cast<double>(rms));
-	if (slope_buffer_.size() > terrain_rms_config_.n_window) {
+	if (slope_buffer_.size() >
+	    static_cast<std::size_t>(settings_.rms_window_samples())) {
 		slope_buffer_.pop_front();
 		rms_buffer_.pop_front();
 	}

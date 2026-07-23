@@ -1,0 +1,67 @@
+code_namespace: avt_341/params/object_detector
+ros__parameters:
+  rate:
+    type: double
+    default_value: 10.0
+    description: "Detection processing rate (Hz). If not greater than 0 the detection timer is never started."
+    validation:
+      gt_eq<>: [ 0.0 ]
+  model:
+    external:
+      type: string
+      default_value: ''
+      description: "External model directory path prepended to the model name. If empty, models are loaded from the package share detection models directory."
+    name:
+      type: string
+      default_value: 'yolov8m-cuda-640x640'
+      description: "Detection model name (without extension). Also used to locate the matching .names class file."
+    warmup:
+      type: int
+      default_value: 30
+      description: "Number of model warmup iterations performed at startup."
+      validation:
+        gt_eq<>: [ 0 ]
+    classes:
+      type: string_array
+      default_value: ['car']
+      description: "Class names considered valid detections. Detections of other classes are discarded."
+  thresholds:
+    score:
+      type: double
+      default_value: 0.5
+      description: "Minimum confidence score for a detection to be kept."
+    iou:
+      type: double
+      default_value: 0.5
+      description: "Intersection-over-union threshold used for non-maximum suppression."
+    count:
+      type: int
+      default_value: 300
+      description: "Maximum number of detections kept per frame."
+      validation:
+        gt_eq<>: [ 0 ]
+  visualizer:
+    enabled:
+      type: bool
+      default_value: true
+      description: "If true, publishes an annotated visualization image of the detections."
+    textbox:
+      type: bool
+      default_value: true
+      description: "If true, draws a labeled textbox above each detection bounding box."
+    seed:
+      type: int
+      default_value: 0
+      description: "Random seed for generating per-class visualization colors."
+      validation:
+        gt_eq<>: [ 0 ]
+    size_font:
+      type: double
+      default_value: 0.75
+      description: "Visualizer font scale. Using the key 'size_font' in order to keep size options sorted, despite this option affecting the font scale."
+    size_border:
+      type: int
+      default_value: 2
+      description: "Bounding box border thickness (px) drawn by the visualizer."
+      validation:
+        gt_eq<>: [ 0 ]

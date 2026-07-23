@@ -425,9 +425,6 @@ namespace avt_341 {
           return;
         }
 
-        if(is_empty_waypoints_ && (name_local == "/waypoints_x" || name_local == "/waypoints_y")){
-            return;
-        }
         if (!node_->has_parameter(name_local))
         {
           node_->declare_parameter(name_local, default_value);
@@ -537,7 +534,6 @@ namespace avt_341 {
       std::shared_ptr<rclcpp::Node> node_;
       std::shared_ptr<ParamsProxy> params_;
 
-      bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
       std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
       std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};

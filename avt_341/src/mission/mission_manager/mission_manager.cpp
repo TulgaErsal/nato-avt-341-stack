@@ -2,20 +2,22 @@
 #include "avt_341/mission/mission_manager.h"
 #include <fstream>
 #include <sstream>
+#include <utility>
 #include <avt_341/core/dto_conversion.h>
 
 namespace avt_341 {
 namespace mission {
 
 MissionManager::MissionManager(
-    const FormationParameters & formation_params,
-    const ToiParameters & toi_params,
+    MissionManagerParams params,
+    const std::string & manager_name,
     const std::shared_ptr<node::NodeProxy> & node_proxy,
     const std::shared_ptr<GoalFilter> & goal_filter
     )
-    : formation_params(formation_params), toi_params_(toi_params), node_proxy_(node_proxy), goal_filter_(goal_filter){
+    : params_(std::move(params)), node_proxy_(node_proxy),
+      goal_filter_(goal_filter) {
 
-    my_name = formation_params.my_name;
+    my_name = manager_name;
     nav_state = avt_341::utils::NavStackState::NotInit;
 
     arrival_announced = true;
@@ -24,8 +26,8 @@ MissionManager::MissionManager(
     task_list.clear();
     mission_contacts.clear();
 
-    node_proxy_->get_parameter("/map_origin_x", local_origin_x, 0.0);
-    node_proxy_->get_parameter("/map_origin_y", local_origin_y, 0.0);
+    local_origin_x = params_.map_origin_x;
+    local_origin_y = params_.map_origin_y;
 
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::NavGoalSequence>("avt_341/new_waypoints", 10);
     reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
@@ -294,7 +296,7 @@ void MissionManager::publishLeaderStatus(){
     if (formatiom_def) {
       const std::string leader_name = formatiom_def->followedVehicle();
       // Check if I am leader
-      if (!leader_name.empty() && formation_params.my_name != leader_name) {
+      if (!leader_name.empty() && my_name != leader_name) {
         is_leader = false;
       }
     }
@@ -393,7 +395,12 @@ Task* MissionManager::currentTask(){
 // Contact Management
 bool MissionManager::hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose) {
 	std::vector<Contact>::iterator it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
-	            [&](const Contact& e) {return (e.name == name && IsClose(e.pose.pose, pose.pose, sodist_threshold)); });
+	            [&](const Contact& e) {
+                  return e.name == name &&
+                         IsClose(
+                             e.pose.pose, pose.pose,
+                             params_.toi.same_object_distance_threshold);
+                });
   return it != mission_contacts.end();
 }
 
@@ -502,13 +509,16 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
     // Trigger investigation for ego-vehicle: approach and encircle
     // ------------------------------------------------------------------------------------------
     node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
-    auto investigateTask = new MoveTo(this, my_name, -1, nullptr, 0.0, 0.0, toi_params_.approach_dist);
+    auto investigateTask = new MoveTo(
+        this, my_name, -1, nullptr, 0.0, 0.0,
+        params_.toi.approach_dist);
     investigateTask->setGoalByContact(contact);
     investigateTask->is_preemptable = false;
     addTask(investigateTask, PriorityType::PREEMPT);
 
     const int encircle_task_id = obj_detection_cnt--;
-    auto encircleTask = new Encircle(this, my_name, encircle_task_id, contact.pose, toi_params_);
+    auto encircleTask =
+        new Encircle(this, my_name, encircle_task_id, contact.pose, params_.toi);
     encircleTask->setContactName(contact.name);
     encircleTask->is_preemptable = false;
     addTask(encircleTask, PriorityType::PREEMPT);
@@ -555,9 +565,11 @@ void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const s
             if (existing->is_new) {
                 // Tasks not yet created: keep updating the position and wait for the delay.
                 existing->pose = pose;
-                if (now - existing->first_seen_sec >= toi_params_.contact_trigger_delay_s) {
+                if (now - existing->first_seen_sec >=
+                    params_.toi.contact_trigger_delay) {
                     node_proxy_->log_info("Contact \"%s\" confirmed after %.1f s; creating tasks.",
-                                         existing->name.c_str(), toi_params_.contact_trigger_delay_s);
+                                         existing->name.c_str(),
+                                         params_.toi.contact_trigger_delay);
                     createToiTasks(*existing, veh_poses);
                 }
             } else {
@@ -570,11 +582,12 @@ void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const s
         addContact(pose.header.frame_id, pose);
         Contact & contact = mission_contacts.back();
 
-        if (toi_params_.contact_trigger_delay_s <= 0.0) {
+        if (params_.toi.contact_trigger_delay <= 0.0) {
             createToiTasks(contact, veh_poses);
         } else {
             node_proxy_->log_info("Contact \"%s\" first seen; waiting %.1f s before creating tasks.",
-                                  contact.name.c_str(), toi_params_.contact_trigger_delay_s);
+                                  contact.name.c_str(),
+                                  params_.toi.contact_trigger_delay);
         }
     }
 }
@@ -626,7 +639,8 @@ double MissionManager::getSpeedSetpoint() {
     return current_task->task_speed;
   }
 
-  return speed_setpoint_state > eps ? speed_setpoint_state : formation_params.default_max_speed;
+  return speed_setpoint_state > eps ? speed_setpoint_state
+                                    : params_.max_speed;
 }
 
 void MissionManager::handleFormationRequest(FormationMsg msg) {
@@ -637,7 +651,8 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
       return;
     }
     msg.receiver_name = my_name;
-    auto formation_def = new FormationDefinition(msg, mp, formation_params);
+    auto formation_def =
+        new FormationDefinition(msg, mp, params_.formation, my_name);
     if(formation_def->isLeader() || formation_def->formationAtGoal()){
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
         handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);

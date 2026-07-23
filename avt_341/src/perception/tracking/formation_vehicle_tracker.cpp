@@ -15,13 +15,13 @@ namespace perception {
 
 FormationVehicleTracker::FormationVehicleTracker(
     rclcpp::Node* node, const std::string& target_class,
-    const ObjectTrackerSettings& settings,
+    const ObjectTrackerSettings& params,
     const core::CoordTransformer& coord_transformer,
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher)
-    : ObjectTracker(node, target_class, settings, coord_transformer,
+    : ObjectTracker(node, target_class, params, coord_transformer,
                     std::move(leader_odom_publisher)) {
     recovery_monitor_ = std::make_unique<TrackerRecoveryMonitor>(
-        node_, target_class_, settings_.recovery, logger_);
+        node_, target_class_, params_.recovery, logger_);
 }
 
 void FormationVehicleTracker::EstimatorTick() {
@@ -29,10 +29,10 @@ void FormationVehicleTracker::EstimatorTick() {
         // While LOST the last (ground-truth-recovered) estimate keeps
         // publishing so consumers can still plan a path to the target.
         if (filter_initialized_) {
-            if (settings_.publish.odometry) {
+            if (params_.publish.odometry) {
                 PublishOdometry();
             }
-            if (settings_.publish.detection_3d) {
+            if (params_.publish.detection_3d) {
                 PublishDetection3D();
             }
         }
@@ -47,9 +47,9 @@ void FormationVehicleTracker::Reset() {
 }
 
 void FormationVehicleTracker::UpdateSettings(
-    const ObjectTrackerSettings& settings) {
-    ObjectTracker::UpdateSettings(settings);
-    recovery_monitor_->UpdateSettings(settings.recovery);
+    const ObjectTrackerSettings& params) {
+    ObjectTracker::UpdateSettings(params);
+    recovery_monitor_->UpdateSettings(params.recovery);
 }
 
 bool FormationVehicleTracker::RecoveryMonitorTick() {
@@ -63,7 +63,7 @@ bool FormationVehicleTracker::RecoveryMonitorTick() {
     input.xy_covariance << p(0, 0), p(0, 2), p(2, 0), p(2, 2);
     input.time_since_valid_target =
         (node_->get_clock()->now() - last_valid_target_time_).seconds();
-    input.target_timeout = settings_.tracking.target_timeout;
+    input.target_timeout = params_.tracking.target_timeout;
 
     const TrackerRecoveryMonitor::UpdateResult result =
         recovery_monitor_->Update(input);

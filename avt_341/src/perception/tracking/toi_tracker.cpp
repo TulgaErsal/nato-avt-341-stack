@@ -15,11 +15,11 @@ namespace perception {
 
 ToiTracker::ToiTracker(
     rclcpp::Node* node, const std::string& target_class,
-    const ObjectTrackerSettings& settings,
+    const ObjectTrackerSettings& params,
     const core::CoordTransformer& coord_transformer,
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher,
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher)
-    : ObjectTracker(node, target_class, settings, coord_transformer,
+    : ObjectTracker(node, target_class, params, coord_transformer,
                     std::move(leader_odom_publisher)),
       target_contacts_publisher_(std::move(target_contacts_publisher)) {
 }

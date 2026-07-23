@@ -11,6 +11,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap_dtos.h"
+#include "avt_341/perception/perception_settings.hpp"
 #include "avt_341/core/compute_time_recorder.hpp"
 #include "avt_341/core/grid_components.h"
 #include "layers/costmap_layer.h"
@@ -23,8 +24,7 @@ class Costmap {
 public:
 	Costmap(
 		const std::shared_ptr<node::NodeProxy>& node_ref,
-		const CostmapSettings & settings,
-		const std::string& layer_cmb_method
+		const PerceptionSettings& settings
 	);
 
 	bool HasSegmentation() const;
@@ -40,6 +40,7 @@ public:
 	void Reset() const;
 	void Visualize() const;
 	void PublishComputeTimes() const;
+	void UpdateThresholds(float slope_threshold, float slope_threshold_max);
 
 	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
@@ -74,10 +75,7 @@ private:
 
 	node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
 
-	CostmapSizeInfo size_info_;
-	ThresholdSettings thresholds_;
-	DilationSettings dilation_;
-	TerrainRmsSettings terrain_rms_config_;
+	PerceptionSettings settings_;
 
 	std::vector<std::shared_ptr<CostmapLayer>> layers_;
 

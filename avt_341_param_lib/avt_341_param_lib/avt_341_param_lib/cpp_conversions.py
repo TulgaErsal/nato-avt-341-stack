@@ -43,10 +43,12 @@ class CPPConversions:
             'none': lambda defined_type, templates: None,
             'bool': lambda defined_type, templates: 'bool',
             'double': lambda defined_type, templates: 'double',
+            'float': lambda defined_type, templates: 'float',
             'int': lambda defined_type, templates: 'int64_t',
             'string': lambda defined_type, templates: 'std::string',
             'bool_array': lambda defined_type, templates: 'std::vector<bool>',
             'double_array': lambda defined_type, templates: 'std::vector<double>',
+            'float_array': lambda defined_type, templates: 'std::vector<float>',
             'int_array': lambda defined_type, templates: 'std::vector<int64_t>',
             'string_array': lambda defined_type, templates: 'std::vector<std::string>',
         }
@@ -54,10 +56,12 @@ class CPPConversions:
             'none': None,
             'string_array': 'as_string_array()',
             'double_array': 'as_double_array()',
+            'float_array': 'as_double_array()',
             'int_array': 'as_integer_array()',
             'bool_array': 'as_bool_array()',
             'string': 'as_string()',
             'double': 'as_double()',
+            'float': 'as_double()',
             'int': 'as_int()',
             'bool': 'as_bool()',
         }
@@ -65,10 +69,12 @@ class CPPConversions:
             'none': self.no_code,
             'bool': self.bool_to_str,
             'double': self.float_to_str,
+            'float': self.float32_to_str,
             'int': self.int_to_str,
             'string': self.str_to_str,
             'bool_array': self.bool_array_to_str,
             'double_array': self.float_array_to_str,
+            'float_array': self.float32_array_to_str,
             'int_array': self.int_array_to_str,
             'string_array': self.str_array_to_str,
         }
@@ -93,6 +99,24 @@ class CPPConversions:
 
         self.open_bracket = '{'
         self.close_bracket = '}'
+
+    @staticmethod
+    def get_ros_type(defined_type: str) -> str:
+        return {
+            'float': 'double',
+            'float_array': 'double_array',
+        }.get(defined_type, defined_type)
+
+    def parameter_value_expression(self, defined_type: str, parameter: str) -> str:
+        accessor = f'{parameter}.{self.yaml_type_to_as_function[defined_type]}'
+        if defined_type == 'float':
+            return f'static_cast<float>({accessor})'
+        if defined_type == 'float_array':
+            return (
+                f'std::vector<float>({accessor}.begin(), '
+                f'{accessor}.end())'
+            )
+        return accessor
 
     @typechecked
     def get_func_signature(self, function_name: str, base_type: str) -> str:
@@ -151,6 +175,19 @@ class CPPConversions:
         return str_num
 
     @typechecked
+    def float32_to_str(self, num: Union[None, float]):
+        if num is None:
+            return ''
+        str_num = self.float_to_str(num)
+        if str_num == 'std::numeric_limits<double>::quiet_NaN()':
+            return 'std::numeric_limits<float>::quiet_NaN()'
+        if str_num == 'std::numeric_limits<double>::infinity()':
+            return 'std::numeric_limits<float>::infinity()'
+        if str_num == '-std::numeric_limits<double>::infinity()':
+            return '-std::numeric_limits<float>::infinity()'
+        return str_num + 'F'
+
+    @typechecked
     def int_to_str(self, num: Union[None, int]):
         if num is None:
             return ''
@@ -173,6 +210,12 @@ class CPPConversions:
         if values is None:
             return ''
         return '{' + ', '.join(self.float_to_str(x) for x in values) + '}'
+
+    @typechecked
+    def float32_array_to_str(self, values: Union[None, list]):
+        if values is None:
+            return ''
+        return '{' + ', '.join(self.float32_to_str(x) for x in values) + '}'
 
     @typechecked
     def int_array_to_str(self, values: Union[None, list]):

@@ -15,6 +15,7 @@
 #include <avt_341/node/node_proxy.h>
 #include <avt_341/node/occupancy_grid_subscriber.h>
 #include <avt_341/node/ros_types.h>
+#include <avt_341/dwa_local_planner_params_service.hpp>
 #include <avt_341/planning/local/dwa/planner.hpp>
 #include <avt_341/visualization/visualization_factory.h>
 
@@ -33,9 +34,6 @@ bool rcvd_grid_seg = false;
 bool rcvd_path = false;
 bool rcvd_waypoint = false;
 bool reset_called = false;
-
-bool use_current_waypoint = false;
-double global_path_lookahead = 15.0;
 
 double state_x = 0.0;
 double state_y = 0.0;
@@ -127,15 +125,17 @@ void UpdateState(avt_341::planning::dwa::Planner& planner) {
                      msg_odom.twist.twist.angular.z);
 }
 
-void UpdateGoal(avt_341::planning::dwa::Planner& planner) {
+void UpdateGoal(
+    avt_341::planning::dwa::Planner& planner,
+    const avt_341::params::dwa_local_planner::Params& params) {
     double goal_x, goal_y;
 
     if(planner.GetUseGlobalPath()) {
-        if(use_current_waypoint && rcvd_waypoint) {
+        if(params.use_current_waypoint && rcvd_waypoint) {
             goal_x = msg_waypoint_pose.position.x;
             goal_y = msg_waypoint_pose.position.y;
         } else {
-            double min_distance = global_path_lookahead;
+            double min_distance = params.global_path_lookahead;
             int optimal_pose_index = 0;
             for(int i = 0; i < int(msg_path.poses.size()); ++i) {
                 auto curr_distance =
@@ -163,7 +163,7 @@ void UpdateGoal(avt_341::planning::dwa::Planner& planner) {
 
         planner.SetGlobalPath(path);
     } else {
-        if(use_current_waypoint && rcvd_waypoint) {
+        if(params.use_current_waypoint && rcvd_waypoint) {
             goal_x = msg_waypoint_pose.position.x;
             goal_y = msg_waypoint_pose.position.y;
         } else {
@@ -288,6 +288,9 @@ int main(int argc, char* argv[]) {
     // Initialize ROS node.
     auto node =
         avt_341::node::init_node(argc, argv, "avt_341_dwa_planner_node");
+    avt_341::params::dwa_local_planner::ParamsListener param_listener(
+        node->get_raw_node());
+    const auto params = param_listener.get_params();
 
 #ifndef USE_OPENMP
     node->log_warning("DWA planner was not compiled with OpenMP enabled. "
@@ -301,7 +304,7 @@ int main(int argc, char* argv[]) {
                                                           1,
                                                           CallbackOdometry);
     avt_341::node::OccupancyGridSubscriber sub_grid_occ(node,
-        "avt_341/occupancy_grid",
+        params.map_topic,
         1,
         CallbackGridOccupancy);
     avt_341::node::OccupancyGridSubscriber sub_grid_seg(node,
@@ -346,52 +349,39 @@ int main(int argc, char* argv[]) {
         node->create_publisher<avt_341::msg::DwaInfo>("avt_341/dwa/info",
                                                           1);
 
-    // Declare and read node parameters from the ROS parameter server.
-    bool use_segmentation;
-    node->get_parameter("~dwa_use_segmentation", use_segmentation, false);
-
-
-    node->get_parameter("~dwa_use_current_waypoint",
-                        use_current_waypoint,
-                        false);
-
-    node->get_parameter("~dwa_global_path_lookahead",
-                        global_path_lookahead,
-                        15.0);
-
     // Initialise and configure the dynamic window approach (DWA) planner.
     avt_341::planning::dwa::Planner planner;
-    planner.SetHorizon(node->get_parameter("~dwa_horizon", std::string("adaptive")));
-    planner.SetWindowLinearSpeedMin(node->get_parameter("~dwa_speed_lin_min", 0.15));
-    planner.SetWindowLinearSpeedMax(node->get_parameter("~dwa_speed_lin_max", 4.0));
-    planner.SetWindowLinearSpeedSteps(node->get_parameter("~dwa_speed_lin_steps", 10));
-    planner.SetWindowAngularSpeedMin(node->get_parameter("~dwa_speed_ang_min", -0.58));
-    planner.SetWindowAngularSpeedMax(node->get_parameter("~dwa_speed_ang_max", 0.58));
-    planner.SetWindowAngularSpeedSteps(node->get_parameter("~dwa_speed_ang_steps", 40));
-    planner.SetWindowAccelerationMax(node->get_parameter("~dwa_accel_max", 3.0));
-    planner.SetWindowAngularAccelerationMax(node->get_parameter("~dwa_ang_accel_max", 4.0));
-    planner.SetLateralAccelerationMax(node->get_parameter("~dwa_lat_accel_max", 9.81));
-    planner.SetTimeStep(node->get_parameter("~dwa_time_step_min", 0.2));
-    planner.SetWindowTimeSpanMin(node->get_parameter("~dwa_time_span_min", 2.5));
-    planner.SetWindowTimeSpanMax(node->get_parameter("~dwa_time_span_max", 10.0));
-    planner.SetWindowTimeSpanVariable(node->get_parameter("~dwa_time_span_var", 4.5));
-    planner.SetWindowTimeSpanGain(node->get_parameter("~dwa_time_span_gain", 1.1));
-    planner.SetCostGoalWeight(node->get_parameter("~dwa_w_cost_goal", 1.0));
-    planner.SetCostHeadingWeight(node->get_parameter("~dwa_w_cost_head", 0.001));
-    planner.SetCostSpeedWeight(node->get_parameter("~dwa_w_cost_speed", 0.0));
-    planner.SetCostObstacleWeight(node->get_parameter("~dwa_w_cost_obs", 1.5));
-    planner.SetCostSegmentationWeight(node->get_parameter("~dwa_w_cost_seg", 0.0));
-    planner.SetCostGlobalPathWeight(node->get_parameter("~dwa_w_cost_path", 0.0));
-    planner.SetCostDeviationWeight(node->get_parameter("~dwa_w_cost_dev", 0.75));
-    planner.SetObstacleThreshold(node->get_parameter("~dwa_thresh_obs", 0));
-    planner.SetCollisionRadius(node->get_parameter("~dwa_collision_radius", 2.25));
-    planner.SetObstacleSearch(node->get_parameter("~dwa_obs_search", std::string("fixed")));
-    planner.SetObstacleSearchRadius(node->get_parameter("~dwa_search_radius", 10.0));
-    planner.SetVehicleWheelbase(node->get_parameter("~dwa_wheelbase", 2.72));
-    planner.SetUseSegmentation(use_segmentation);
-    planner.SetSegmentationThreshold(node->get_parameter("~dwa_thresh_seg", 100));
-    planner.SetUseGlobalPath(node->get_parameter("~dwa_use_global_path", false));
-    planner.SetPrintSummary(node->get_parameter("~dwa_print_summary", false));
+    planner.SetHorizon(params.horizon);
+    planner.SetWindowLinearSpeedMin(params.speed_lin_min);
+    planner.SetWindowLinearSpeedMax(params.speed_lin_max);
+    planner.SetWindowLinearSpeedSteps(static_cast<int>(params.speed_lin_steps));
+    planner.SetWindowAngularSpeedMin(params.speed_ang_min);
+    planner.SetWindowAngularSpeedMax(params.speed_ang_max);
+    planner.SetWindowAngularSpeedSteps(static_cast<int>(params.speed_ang_steps));
+    planner.SetWindowAccelerationMax(params.accel_max);
+    planner.SetWindowAngularAccelerationMax(params.ang_accel_max);
+    planner.SetLateralAccelerationMax(params.lat_accel_max);
+    planner.SetTimeStep(params.time_step_min);
+    planner.SetWindowTimeSpanMin(params.time_span_min);
+    planner.SetWindowTimeSpanMax(params.time_span_max);
+    planner.SetWindowTimeSpanVariable(params.time_span_var);
+    planner.SetWindowTimeSpanGain(params.time_span_gain);
+    planner.SetCostGoalWeight(params.w_cost_goal);
+    planner.SetCostHeadingWeight(params.w_cost_head);
+    planner.SetCostSpeedWeight(params.w_cost_speed);
+    planner.SetCostObstacleWeight(params.w_cost_obs);
+    planner.SetCostSegmentationWeight(params.w_cost_seg);
+    planner.SetCostGlobalPathWeight(params.w_cost_path);
+    planner.SetCostDeviationWeight(params.w_cost_dev);
+    planner.SetObstacleThreshold(static_cast<int>(params.thresh_obs));
+    planner.SetCollisionRadius(params.collision_radius);
+    planner.SetObstacleSearch(params.obs_search);
+    planner.SetObstacleSearchRadius(params.search_radius);
+    planner.SetVehicleWheelbase(params.wheelbase);
+    planner.SetUseSegmentation(params.use_segmentation);
+    planner.SetSegmentationThreshold(static_cast<int>(params.thresh_seg));
+    planner.SetUseGlobalPath(params.use_global_path);
+    planner.SetPrintSummary(params.print_summary);
 
     // Set the node spin rate to 50 Hz.
     avt_341::node::Rate rosrate(50.0f);
@@ -399,10 +389,10 @@ int main(int argc, char* argv[]) {
     while(avt_341::node::ok()) {
         if(msg_path.poses.size() > 0 && rcvd_odom &&
            msg_grid_occ.data.size() > 0) {
-            if(use_segmentation && !(msg_grid_seg.data.size() > 0)) break;
+            if(params.use_segmentation && !(msg_grid_seg.data.size() > 0)) break;
             // Update the planner with the latest information.
             UpdateState(planner);
-            UpdateGoal(planner);
+            UpdateGoal(planner, params);
             UpdateGrids(planner);
 
             // Run the planning step.

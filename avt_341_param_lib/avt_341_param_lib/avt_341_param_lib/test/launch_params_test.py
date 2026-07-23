@@ -1,8 +1,10 @@
 import os
 from collections import OrderedDict
+from pathlib import Path
 
 import pytest
 
+from avt_341_param_lib.generate_cpp_header import run as run_cpp
 from avt_341_param_lib.launch_params import (
     ParameterCollection,
     _normalize_selector,
@@ -18,6 +20,36 @@ TEMPLATE_A = os.path.join(TEST_DIR, 'launch_template_a.yaml')
 TEMPLATE_B = os.path.join(TEST_DIR, 'launch_template_b.yaml')
 
 VEHICLES = ['veh1', 'veh2']
+
+
+def find_object_tracking_template() -> str:
+    for parent in Path(__file__).resolve().parents:
+        candidate = (
+            parent / 'avt_341' / 'parameters' / 'templates' /
+            'object_tracking.yaml')
+        if candidate.is_file():
+            return str(candidate)
+    raise RuntimeError('Could not locate avt_341 object_tracking.yaml')
+
+
+def find_mission_manager_template() -> str:
+    for parent in Path(__file__).resolve().parents:
+        candidate = (
+            parent / 'avt_341' / 'parameters' / 'templates' /
+            'mission_manager.yaml')
+        if candidate.is_file():
+            return str(candidate)
+    raise RuntimeError('Could not locate avt_341 mission_manager.yaml')
+
+
+def find_perception_template() -> str:
+    for parent in Path(__file__).resolve().parents:
+        candidate = (
+            parent / 'avt_341' / 'parameters' / 'templates' /
+            'perception.yaml')
+        if candidate.is_file():
+            return str(candidate)
+    raise RuntimeError('Could not locate avt_341 perception.yaml')
 
 
 def make_collection() -> ParameterCollection:
@@ -42,6 +74,153 @@ def test_metadata():
     assert specs['planner.mode'].default_value == 'grid'
     assert specs['ids'].param_type == 'int_array'
     assert specs['ids'].default_value == [1, 2]
+
+
+def test_object_tracking_metadata_and_generated_nested_structs(tmp_path):
+    template = find_object_tracking_template()
+    specs = load_template_metadata(template)
+
+    assert specs['tracking.target_timeout'].param_type == 'double'
+    assert (
+        specs['target_selection.formation_vehicle_ids'].param_type ==
+        'string_array')
+    assert 'tracker_timeout' not in specs
+    assert 'formation_vehicle_ids' not in specs
+
+    dto_output = tmp_path / 'object_tracking_params_dto.hpp'
+    service_output = tmp_path / 'object_tracking_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), template)
+    dto = dto_output.read_text()
+    service = service_output.read_text()
+    assert 'struct Tracking' in dto
+    assert 'struct TargetSelection' in dto
+    assert '"tracking.target_timeout"' in service
+    assert '"target_selection.formation_vehicle_ids"' in service
+
+
+def test_object_tracking_launch_overrides_use_dotted_names():
+    collection = ParameterCollection.from_node_templates({
+        'object_tracking_node': find_object_tracking_template(),
+    })
+    overrides = collection.resolve(OrderedDict([
+        ('object_tracking_node/tracking.target_timeout', '2.5'),
+        ('object_tracking_node/target_selection.formation_vehicle_ids',
+         '[veh1, veh2]'),
+    ]), VEHICLES)
+
+    expected = {
+        'tracking.target_timeout': 2.5,
+        'target_selection.formation_vehicle_ids': VEHICLES,
+    }
+    assert overrides.for_node('/veh1/object_tracking_node') == expected
+    assert overrides.for_node('/veh2/object_tracking_node') == expected
+
+    with pytest.raises(RuntimeError, match='tracker_timeout'):
+        collection.resolve(OrderedDict([
+            ('object_tracking_node/tracker_timeout', '2.5'),
+        ]), VEHICLES)
+
+
+def test_mission_manager_metadata_and_generated_nested_structs(tmp_path):
+    template = find_mission_manager_template()
+    specs = load_template_metadata(template)
+
+    assert specs['formation.global_path_points_dist'].param_type == 'double'
+    assert specs['fsc.oof.threshold'].param_type == 'double'
+    assert specs['toi.same_object_distance_threshold'].param_type == 'double'
+    assert 'global_path_point_dist' not in specs
+    assert 'fsc_type' not in specs
+    assert 'same_object_distance_threshold' not in specs
+
+    dto_output = tmp_path / 'mission_manager_params_dto.hpp'
+    service_output = tmp_path / 'mission_manager_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), template)
+    dto = dto_output.read_text()
+    service = service_output.read_text()
+    assert 'struct Formation' in dto
+    assert 'struct Fsc' in dto
+    assert 'struct Oof' in dto
+    assert 'struct Toi' in dto
+    assert '"formation.global_path_points_dist"' in service
+    assert '"fsc.oof.threshold"' in service
+    assert '"toi.same_object_distance_threshold"' in service
+
+
+def test_mission_manager_launch_overrides_use_dotted_names():
+    collection = ParameterCollection.from_node_templates({
+        'mission_manager_node': find_mission_manager_template(),
+    })
+    overrides = collection.resolve(OrderedDict([
+        ('mission_manager_node/formation.use_breadcrumbs', 'true'),
+        ('mission_manager_node/fsc.type', 'none'),
+        ('mission_manager_node/toi.same_object_distance_threshold', '2.5'),
+    ]), VEHICLES)
+
+    expected = {
+        'formation.use_breadcrumbs': True,
+        'fsc.type': 'none',
+        'toi.same_object_distance_threshold': 2.5,
+    }
+    assert overrides.for_node('/veh1/mission_manager_node') == expected
+    assert overrides.for_node('/veh2/mission_manager_node') == expected
+
+    with pytest.raises(RuntimeError, match='fsc_type'):
+        collection.resolve(OrderedDict([
+            ('mission_manager_node/fsc_type', 'none'),
+        ]), VEHICLES)
+
+
+def test_perception_metadata_and_generated_nested_structs(tmp_path):
+    template = find_perception_template()
+    specs = load_template_metadata(template)
+
+    assert specs['costmap.size_info.res'].param_type == 'float'
+    assert specs['costmap.thresholds.thresh'].param_type == 'float'
+    assert specs['costmap.dilation.x'].param_type == 'float'
+    assert specs['costmap.terrain_rms.hfov'].param_type == 'float'
+    assert specs['clear_method.visualization_range'].param_type == 'float'
+    assert 'grid_res' not in specs
+    assert 'slope_threshold' not in specs
+    assert 'rms_calc_horizontal_fov_radians' not in specs
+
+    dto_output = tmp_path / 'perception_params_dto.hpp'
+    service_output = tmp_path / 'perception_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), template)
+    dto = dto_output.read_text()
+    service = service_output.read_text()
+
+    assert 'struct SizeInfo' in dto
+    assert 'struct Thresholds' in dto
+    assert 'struct Dilation' in dto
+    assert 'struct TerrainRms' in dto
+    assert 'float res = 0.25F;' in dto
+    assert '"costmap.size_info.res"' in service
+    assert '"costmap.thresholds.thresh"' in service
+    assert '"costmap.terrain_rms.hfov"' in service
+
+
+def test_perception_launch_overrides_use_dotted_names():
+    collection = ParameterCollection.from_node_templates({
+        'perception_node': find_perception_template(),
+    })
+    overrides = collection.resolve(OrderedDict([
+        ('perception_node/costmap.size_info.res', '0.5'),
+        ('perception_node/costmap.dilation.x', '1.0'),
+        ('perception_node/point_cloud_layer.topic', '/points'),
+    ]), VEHICLES)
+
+    expected = {
+        'costmap.size_info.res': 0.5,
+        'costmap.dilation.x': 1.0,
+        'point_cloud_layer.topic': '/points',
+    }
+    assert overrides.for_node('/veh1/perception_node') == expected
+    assert overrides.for_node('/veh2/perception_node') == expected
+
+    with pytest.raises(RuntimeError, match='grid_res'):
+        collection.resolve(OrderedDict([
+            ('perception_node/grid_res', '0.5'),
+        ]), VEHICLES)
 
 
 def test_metadata_rejects_non_template_file(tmp_path):
@@ -221,6 +400,8 @@ def test_relevant_params_files(tmp_path):
 def test_convert_scalars():
     assert convert_cli_value('9.0', 'double', 'a') == 9.0
     assert convert_cli_value('9', 'double', 'a') == 9.0
+    assert convert_cli_value('9.0', 'float', 'a') == 9.0
+    assert convert_cli_value('9', 'float', 'a') == 9.0
     assert convert_cli_value('5', 'int', 'a') == 5
     assert convert_cli_value('true', 'bool', 'a') is True
     # string parameters take the raw text verbatim, even numeric-looking ones
@@ -229,6 +410,7 @@ def test_convert_scalars():
 
 def test_convert_arrays():
     assert convert_cli_value('[1.0, 2]', 'double_array', 'a') == [1.0, 2.0]
+    assert convert_cli_value('[1.0, 2]', 'float_array', 'a') == [1.0, 2.0]
     assert convert_cli_value('[a, b]', 'string_array', 'a') == ['a', 'b']
 
 
@@ -239,10 +421,20 @@ def test_convert_type_mismatch():
         convert_cli_value('5', 'bool', 'a')
     with pytest.raises(ValueError):
         convert_cli_value('1.0', 'double_array', 'a')
+    with pytest.raises(ValueError):
+        convert_cli_value('true', 'float', 'a')
+    with pytest.raises(ValueError):
+        convert_cli_value('not_a_number', 'float', 'a')
+    with pytest.raises(ValueError):
+        convert_cli_value('[1.0, nope]', 'float_array', 'a')
+    with pytest.raises(ValueError):
+        convert_cli_value('1.0', 'float_array', 'a')
 
 
 def test_convert_typed_values():
     assert convert_typed_value(9, 'double', 'a') == 9.0
+    assert convert_typed_value(9, 'float', 'a') == 9.0
+    assert convert_typed_value([1, 2.5], 'float_array', 'a') == [1.0, 2.5]
     assert convert_typed_value([1, 2], 'int_array', 'a') == [1, 2]
     with pytest.raises(ValueError):
         convert_typed_value('nope', 'double', 'a')

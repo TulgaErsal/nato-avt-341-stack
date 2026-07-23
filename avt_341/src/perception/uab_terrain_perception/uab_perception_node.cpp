@@ -8,6 +8,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/perception/lib_uab_perception_wrapper.h"
+#include <avt_341/uab_perception_params_service.hpp>
 #include "mclcppclass.h"
 #include "mclmcrrt.h"
 #include <string>
@@ -546,13 +547,13 @@ int main(int argc, char *argv[])
     node = avt_341::node::init_node(argc, argv, "uab_perception_node");
     node->initialize_tf_listener();
 
-    //camera topic is read first so the debug segmentation topics can be derived from it
-    std::string camera_topic;
-    node->get_parameter("~camera_topic", camera_topic, std::string("avt_341/camera/image_raw"));
+    avt_341::params::uab_perception::ParamsListener param_listener(node->get_raw_node());
+    const auto params = param_listener.get_params();
 
     auto odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
     auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
-    auto img_sub = node->create_subscription<avt_341::msg::Image>(camera_topic, 10, ImageCallback);
+    auto img_sub = node->create_subscription<avt_341::msg::Image>(
+        params.camera_topic, 10, ImageCallback);
     auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
     auto camera_info_sub = node->create_subscription<avt_341::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
 
@@ -563,40 +564,27 @@ int main(int argc, char *argv[])
     tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_raw_node()->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
-    std::string frame_prefix;
     std::string lidar_frame_id, odom_frame_id, camera_frame_id;
-    float width, height, grid_llx, grid_lly, grid_res, max_width, max_height;
-    bool publish_occupancy_grid, publish_window, debug_vis_segmentation;
-    double brightness_offset;
-
-    node->get_parameter("~frame_prefix", frame_prefix, std::string(""));
-    node->get_parameter("/grid_width", width, 100.0f);
-    node->get_parameter("/grid_height", height, 100.0f);
-    node->get_parameter("~max_width", max_width, 100.0f);
-    node->get_parameter("~max_height", max_height, 100.0f);
-    node->get_parameter("~grid_llx", grid_llx, 0.0f);
-    node->get_parameter("~grid_lly", grid_lly, 0.0f);
-    node->get_parameter("~grid_res", grid_res, 1.0f);
-    node->get_parameter("~publish_uab_occupancy_grid", publish_occupancy_grid, false);
-    node->get_parameter("~publish_window", publish_window, false);
-    node->get_parameter("~lidar_frame_id", lidar_frame_id, std::string("lidar_link"));
-    node->get_parameter("~odom_frame_id", odom_frame_id, std::string("base_link"));
-    node->get_parameter("~camera_frame_id", camera_frame_id, std::string("camera_link"));
-    node->get_parameter("~brightness_offset", brightness_offset, 0.0);
-    node->get_parameter("~debug_vis_segmentation", debug_vis_segmentation, false);
+    lidar_frame_id = params.lidar_frame_id;
+    odom_frame_id = params.odom_frame_id;
+    camera_frame_id = params.camera_frame_id;
 
     for (auto f : {&lidar_frame_id, &odom_frame_id, &camera_frame_id})
     {
-        *f = frame_prefix.empty() ? *f : frame_prefix + "/" + *f;
+        *f = params.frame_prefix.empty()
+            ? *f
+            : params.frame_prefix + "/" + *f;
     }
 
     //debug segmentation visualization topics, derived from the camera topic by
     //replacing its final path segment (e.g. flir_camera/image_raw ->
     //flir_camera/segmentation and flir_camera/segmentation_overlay)
-    const std::string seg_topic = makeSiblingTopic(camera_topic, "segmentation");
-    const std::string seg_overlay_topic = makeSiblingTopic(camera_topic, "segmentation_overlay");
+    const std::string seg_topic =
+        makeSiblingTopic(params.camera_topic, "segmentation");
+    const std::string seg_overlay_topic =
+        makeSiblingTopic(params.camera_topic, "segmentation_overlay");
     decltype(node->create_publisher<avt_341::msg::Image>(seg_topic, 1)) seg_pub, seg_overlay_pub;
-    if (debug_vis_segmentation)
+    if (params.debug_vis_segmentation)
     {
         seg_pub = node->create_publisher<avt_341::msg::Image>(seg_topic, 1);
         seg_overlay_pub = node->create_publisher<avt_341::msg::Image>(seg_overlay_topic, 1);
@@ -618,16 +606,26 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    const int width_cells = static_cast<int>(width/grid_res);
-    const int height_cells = static_cast<int>(height/grid_res);
+    const int width_cells =
+        static_cast<int>(params.grid_width / params.grid_res);
+    const int height_cells =
+        static_cast<int>(params.grid_height / params.grid_res);
 
     //initialize terrain grid with default cell values
     avt_341::msg::OccupancyGrid terrain_grid;
-    BuildOccupancyGrid(terrain_grid, width_cells, height_cells, grid_llx, grid_lly, grid_res, TERRAIN_GRID_DEFAULT_VAL);
+    BuildOccupancyGrid(
+        terrain_grid, width_cells, height_cells,
+        static_cast<float>(params.grid_llx),
+        static_cast<float>(params.grid_lly),
+        static_cast<float>(params.grid_res), TERRAIN_GRID_DEFAULT_VAL);
 
     //initialize obstacle grid with default cell values
     avt_341::msg::OccupancyGrid obstacle_grid;
-    BuildOccupancyGrid(obstacle_grid, width_cells, height_cells, grid_llx, grid_lly, grid_res, OBSTACLE_GRID_DEFAULT_VAL);
+    BuildOccupancyGrid(
+        obstacle_grid, width_cells, height_cells,
+        static_cast<float>(params.grid_llx),
+        static_cast<float>(params.grid_lly),
+        static_cast<float>(params.grid_res), OBSTACLE_GRID_DEFAULT_VAL);
 
     avt_341::node::Rate rate(100.0);
     //number of seconds to wait for messages before exiting
@@ -671,10 +669,10 @@ int main(int argc, char *argv[])
             GetCostmapFromMatlab(
                 width_cells,
                 height_cells,
-                grid_res,
-                grid_llx,
-                grid_lly,
-                brightness_offset,
+                static_cast<float>(params.grid_res),
+                static_cast<float>(params.grid_llx),
+                static_cast<float>(params.grid_lly),
+                params.brightness_offset,
                 terrain_sub_grid,
                 terrain_sub_grid_idxs,
                 obstacle_sub_grid,
@@ -682,7 +680,7 @@ int main(int argc, char *argv[])
                 lidar_frame_id,
                 odom_frame_id,
                 camera_frame_id,
-                debug_vis_segmentation,
+                params.debug_vis_segmentation,
                 seg_img
                 );
 
@@ -695,7 +693,7 @@ int main(int argc, char *argv[])
             }
 
 
-            if (publish_occupancy_grid)
+            if (params.publish_uab_occupancy_grid)
             {
                 //update the obstacle grid with the new cell values
                 c = 0;
@@ -714,30 +712,35 @@ int main(int argc, char *argv[])
             }
 
             avt_341::msg::OccupancyGrid terrain_grid_window, obstacle_grid_window;
-            if (publish_window)
+            if (params.publish_window)
             {
                 //extract a local grid centered at the vehicle pose, clamped so it does
                 //not extend past the overall grid
                 terrain_grid_window = ExtractGridWindow(terrain_grid,
                                                         current_pose.pose.pose.position.x,
                                                         current_pose.pose.pose.position.y,
-                                                        max_width, max_height,
+                                                        params.max_width,
+                                                        params.max_height,
                                                         TERRAIN_GRID_DEFAULT_VAL);
                 obstacle_grid_window = ExtractGridWindow(obstacle_grid,
                                                          current_pose.pose.pose.position.x,
                                                          current_pose.pose.pose.position.y,
-                                                         max_width, max_height,
+                                                         params.max_width,
+                                                         params.max_height,
                                                          OBSTACLE_GRID_DEFAULT_VAL);
             }
 
-            seg_grid_pub->publish(publish_window ? terrain_grid_window : terrain_grid);
+            seg_grid_pub->publish(
+                params.publish_window ? terrain_grid_window : terrain_grid);
 
-            if (publish_occupancy_grid)
+            if (params.publish_uab_occupancy_grid)
             {
-                occ_grid_pub->publish(publish_window ? obstacle_grid_window : obstacle_grid);
+                occ_grid_pub->publish(
+                    params.publish_window ? obstacle_grid_window :
+                                            obstacle_grid);
             }
 
-            if (debug_vis_segmentation && !seg_img.empty())
+            if (params.debug_vis_segmentation && !seg_img.empty())
             {
                 try
                 {

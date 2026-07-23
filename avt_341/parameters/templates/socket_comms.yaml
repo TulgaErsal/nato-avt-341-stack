@@ -1,0 +1,33 @@
+code_namespace: avt_341/params/socket_comms
+ros__parameters:
+
+  # Communication node
+  # ====================================================================================================================
+  host:
+    type: string
+    default_value: 'localhost'
+    description: "Hostname of the communication server."
+  port:
+    type: int
+    default_value: 9000
+    description: "Port number for connecting to the communication server."
+    validation:
+      bounds<>: [ 1, 65535 ]
+  name:
+    type: string
+    description: "Name of this vehicle on the communication network. Supplied by the launch system as the vehicle id uppercased (e.g. 'AGV1')."
+    validation:
+      not_empty<>: null
+  broadcast_over_ros:
+    type: bool
+    default_value: false
+    description: "If true, comm node publishes to other vehicles on ros network instead of using tcp client."
+  verbose_comm_log:
+    type: bool
+    default_value: false
+    description: "If true, comm node includes verbose logging."
+  vehicle_namespaces:
+    type: string_array
+    description: "Namespaces of all vehicles on the network. Supplied by the launch system. Used to create per-vehicle publishers when broadcast_over_ros is true."
+    validation:
+      not_empty<>: null

@@ -43,10 +43,12 @@ class PythonConversions:
             'none': lambda defined_type, templates: None,
             'bool': lambda defined_type, templates: 'bool',
             'double': lambda defined_type, templates: 'float',
+            'float': lambda defined_type, templates: 'float',
             'int': lambda defined_type, templates: 'int',
             'string': lambda defined_type, templates: 'str',
             'bool_array': lambda defined_type, templates: '[bool]',
             'double_array': lambda defined_type, templates: '[float]',
+            'float_array': lambda defined_type, templates: '[float]',
             'int_array': lambda defined_type, templates: '[int]',
             'string_array': lambda defined_type, templates: '[str]',
         }
@@ -54,10 +56,12 @@ class PythonConversions:
             'none': None,
             'string_array': 'value',
             'double_array': 'value',
+            'float_array': 'value',
             'int_array': 'value',
             'bool_array': 'value',
             'string': 'value',
             'double': 'value',
+            'float': 'value',
             'int': 'value',
             'bool': 'value',
         }
@@ -65,10 +69,12 @@ class PythonConversions:
             'none': self.no_code,
             'bool': self.bool_to_str,
             'double': self.float_to_str,
+            'float': self.float_to_str,
             'int': self.int_to_str,
             'string': self.str_to_str,
             'bool_array': self.bool_array_to_str,
             'double_array': self.float_array_to_str,
+            'float_array': self.float_array_to_str,
             'int_array': self.int_array_to_str,
             'string_array': self.str_array_to_str,
         }
@@ -93,6 +99,16 @@ class PythonConversions:
 
         self.open_bracket = '['
         self.close_bracket = ']'
+
+    @staticmethod
+    def get_ros_type(defined_type: str) -> str:
+        return {
+            'float': 'double',
+            'float_array': 'double_array',
+        }.get(defined_type, defined_type)
+
+    def parameter_value_expression(self, defined_type: str, parameter: str) -> str:
+        return f'{parameter}.{self.yaml_type_to_as_function[defined_type]}'
 
     @typechecked
     def get_func_signature(self, function_name: str, base_type: str) -> str:

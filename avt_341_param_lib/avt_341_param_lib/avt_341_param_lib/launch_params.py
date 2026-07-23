@@ -48,6 +48,7 @@ import yaml
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 
+from avt_341_param_lib.node_selectors import selector_matches
 from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY
 
 _ARRAY_SUFFIX = '_array'
@@ -107,7 +108,9 @@ def _convert_scalar(value: Any, base_type: str, arg_name: str):
         return value
     if base_type == 'int' and isinstance(value, int) and not isinstance(value, bool):
         return value
-    if base_type == 'double' and isinstance(value, (int, float)) and not isinstance(value, bool):
+    if base_type in ('double', 'float') and isinstance(
+        value, (int, float)
+    ) and not isinstance(value, bool):
         return float(value)
     if base_type == 'string':
         return str(value)
@@ -135,30 +138,6 @@ def convert_cli_value(raw_text: str, param_type: str, arg_name: str):
         # verbatim - no quoting needed for values that look numeric
         return raw_text
     return convert_typed_value(yaml.safe_load(raw_text), param_type, arg_name)
-
-
-def selector_matches(selector: str, fqn: str) -> bool:
-    """Return whether a node selector matches a fully qualified node name.
-
-    A selector is a slash-delimited path where the token ``**`` matches any
-    number of tokens (including none), ``*`` matches exactly one token and any
-    other token matches literally - the section-key convention of ROS 2
-    parameter yaml files.
-    """
-    return _tokens_match(
-        [token for token in selector.split('/') if token],
-        [token for token in fqn.split('/') if token],
-    )
-
-
-def _tokens_match(pattern: List[str], tokens: List[str]) -> bool:
-    if not pattern:
-        return not tokens
-    if pattern[0] == '**':
-        return _tokens_match(pattern[1:], tokens) or (
-            bool(tokens) and _tokens_match(pattern, tokens[1:]))
-    return bool(tokens) and pattern[0] in ('*', tokens[0]) and _tokens_match(
-        pattern[1:], tokens[1:])
 
 
 @functools.lru_cache(maxsize=None)

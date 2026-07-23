@@ -212,6 +212,10 @@ class CodeGenVariableBase:
             raise compile_error('invalid yaml type: %s' % type(self.defined_type))
         return self.conversion.yaml_type_to_as_function[self.defined_type]
 
+    def parameter_value_expression(self, parameter: str):
+        return self.conversion.parameter_value_expression(
+            self.defined_type, parameter)
+
     def get_python_val_to_str_func(self, arg):
         return self.conversion.python_val_to_str_func[str(type(arg))]
 
@@ -233,7 +237,8 @@ class CodeGenVariable(CodeGenVariableBase):
         return defined_type, None
 
     def get_parameter_type(self):
-        return int_to_integer_str(self.defined_type).upper()
+        ros_type = self.conversion.get_ros_type(self.defined_type)
+        return int_to_integer_str(ros_type).upper()
 
 
 
@@ -379,6 +384,8 @@ class UpdateParameterBase:
     def __init__(self, parameter_name: str, code_gen_variable: CodeGenVariableBase):
         self.parameter_name = parameter_name
         self.parameter_as_function = code_gen_variable.parameter_as_function_str()
+        self.parameter_value_expression = (
+            code_gen_variable.parameter_value_expression('param'))
         self.parameter_validations = []
 
     @typechecked
@@ -394,6 +401,7 @@ class UpdateParameter(UpdateParameterBase):
             'parameter_name': self.parameter_name,
             'parameter_validations': str(parameter_validations_str),
             'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
         }
 
         j2_template = Template(GenerateCode.templates['update_parameter'])
@@ -417,6 +425,7 @@ class UpdateRuntimeParameter(UpdateParameterBase):
             'parameter_field': parameter_field,
             'parameter_validations': str(parameter_validations_str),
             'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
         }
 
         j2_template = Template(GenerateCode.templates['update_runtime_parameter'])
@@ -441,6 +450,8 @@ class SetParameterBase:
     def __init__(self, parameter_name: str, code_gen_variable: CodeGenVariableBase):
         self.parameter_name = parameter_name
         self.parameter_as_function = code_gen_variable.parameter_as_function_str()
+        self.parameter_value_expression = (
+            code_gen_variable.parameter_value_expression('param'))
         self.parameter_validations = []
 
     @typechecked
@@ -456,6 +467,7 @@ class SetParameter(SetParameterBase):
             'parameter_name': self.parameter_name,
             'parameter_validations': str(parameter_validations_str),
             'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
         }
 
         j2_template = Template(GenerateCode.templates['set_parameter'])
@@ -471,6 +483,7 @@ class SetRuntimeParameter(SetParameterBase):
             'parameter_field': parameter_field,
             'parameter_validations': str(parameter_validations_str),
             'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
         }
 
         j2_template = Template(GenerateCode.templates['set_runtime_parameter'])
@@ -900,7 +913,7 @@ class GenerateCode:
         else:
             self.parse_params(name, root_map, nested_name)
 
-    def __str__(self):
+    def _render_data(self):
         if self.language == 'cpp':
             # slash-separated tokens become nested C++ namespaces
             namespace = '::'.join(self.namespace_tokens)
@@ -910,12 +923,13 @@ class GenerateCode:
         else:
             namespace = self.namespace
 
-        data = {
+        return {
             'user_validation_file': self.user_validation_file,
             'comments': self.comments,
             'namespace': namespace,
             'logger_name': '.'.join(self.namespace_tokens),
             'class_name': self.class_name,
+            'stamp_class_name': self.class_name + 'Stamp',
             'stack_class_name': 'Stack' + self.class_name,
             'listener_class_name': self.class_name + 'Listener',
             'field_content': self.struct_tree.sub_structs[0].field_content(),
@@ -947,9 +961,37 @@ class GenerateCode:
             # ),
         }
 
+    @typechecked
+    def render_cpp_dto(self) -> str:
+        if self.language != 'cpp':
+            raise AssertionError('render_cpp_dto() requires the cpp generator')
+        j2_template = Template(
+            GenerateCode.templates['parameter_dto_header'],
+            keep_trailing_newline=True,
+        )
+        return j2_template.render(self._render_data(), trim_blocks=True)
+
+    @typechecked
+    def render_cpp_service(self, dto_header_include: str) -> str:
+        if self.language != 'cpp':
+            raise AssertionError('render_cpp_service() requires the cpp generator')
+        data = self._render_data()
+        data['dto_header_include'] = dto_header_include
+        j2_template = Template(
+            GenerateCode.templates['parameter_service_header'],
+            keep_trailing_newline=True,
+        )
+        return j2_template.render(data, trim_blocks=True)
+
+    def __str__(self):
+        if self.language == 'cpp':
+            raise AssertionError(
+                'C++ generation produces DTO and service headers; call '
+                'render_cpp_dto() and render_cpp_service()'
+            )
         j2_template = Template(
             GenerateCode.templates['parameter_library_header'],
             keep_trailing_newline=True,
         )
-        code = j2_template.render(data, trim_blocks=True)
+        code = j2_template.render(self._render_data(), trim_blocks=True)
         return code

@@ -6,17 +6,25 @@ namespace avt_341::perception
 
 CostmapLayer::CostmapLayer(
     const std::shared_ptr<node::NodeProxy>& node_ref,
-    const CostmapSettings& cm_settings,
+    const PerceptionSettings& settings,
     const std::string& label,
-    const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+    const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+    bool contribute_occupancy,
+    bool contribute_segmentation
     )
-    : node_ref_(node_ref), compute_time_recorder_(compute_time_recorder), size_info_(cm_settings.size_info),
-    thresholds_(cm_settings.thresholds), dilation_(cm_settings.dilation), label_(label)
+    : contribute_occupancy_(contribute_occupancy),
+    contribute_segmentation_(contribute_segmentation),
+    node_ref_(node_ref), compute_time_recorder_(compute_time_recorder),
+    settings_(settings), label_(label)
 {
-    node_ref_->get_parameter("~" + label_ + "_contribute_occupancy", contribute_occupancy_, true);
-    node_ref_->get_parameter("~" + label_ + "_contribute_segmentation", contribute_segmentation_, true);
-
     Resize();
+}
+
+void CostmapLayer::UpdateThresholds(
+    const float slope_threshold, const float slope_threshold_max)
+{
+    settings_.update_thresholds(slope_threshold, slope_threshold_max);
+    RecomputeGridDilation();
 }
 
 void CostmapLayer::UpdateOdometry(const msg::Odometry& odom_msg)
@@ -26,12 +34,12 @@ void CostmapLayer::UpdateOdometry(const msg::Odometry& odom_msg)
 
 float CostmapLayer::GetRmsAtCoordinate(float x, float y) const
 {
-	const utils::ivec2 idx = size_info_.ToIdx(x, y);
+	const utils::ivec2 idx = settings_.to_index(x, y);
 	return GetRmsAtCell(idx.x, idx.y);
 }
 
 float CostmapLayer::GetTerrainSlopeAtCoordinate(float x, float y) {
-	const utils::ivec2 idx = size_info_.ToIdx(x, y);
+	const utils::ivec2 idx = settings_.to_index(x, y);
 	return GetTerrainSlopeAtCell(idx.x, idx.y);
 }
 
@@ -39,9 +47,9 @@ float CostmapLayer::GetTerrainSlopeAtCoordinate(float x, float y) {
 // CTG, 5/8/25
 float CostmapLayer::GetTerrainSlopeAtCell(int xi, int yi) {
 	float slope = -1.0f;
-	const auto& res = size_info_.res;
-	const auto& nx = size_info_.nx();
-	const auto& ny = size_info_.ny();
+	const auto& res = settings_.size_info().res;
+	const auto nx = settings_.nx();
+	const auto ny = settings_.ny();
 
 	if (xi >= 0 && xi < nx && yi >= 0 && yi < ny) {
 		int xl = std::max(xi - 1, 0);
@@ -62,13 +70,13 @@ float CostmapLayer::GetTerrainSlopeAtCell(int xi, int yi) {
 void CostmapLayer::Resize() {
     cells_.clear();
     std::vector<Cell> row;
-    row.resize(size_info_.nx());
-    cells_.resize(size_info_.ny(), row);
+    row.resize(settings_.nx());
+    cells_.resize(settings_.ny(), row);
 }
 
 void CostmapLayer::Clear() {
-    const auto ny = size_info_.ny();
-    const auto nx = size_info_.nx();
+    const auto ny = settings_.ny();
+    const auto nx = settings_.nx();
     for (int i = 0; i < (ny); i++) {
         for (int j = 0; j < (nx); j++) {
             cells_[i][j] = Cell::Empty();
@@ -78,7 +86,7 @@ void CostmapLayer::Clear() {
 
 void CostmapLayer::RecomputeGridDilation() {
 
-	if (!dilation_.enabled) {
+	if (!settings_.costmap.dilation.enabled) {
 		return;
 	}
 
@@ -89,8 +97,8 @@ void CostmapLayer::RecomputeGridDilation() {
 		}
 	}
 
-	for (int xi = 0; xi < size_info_.nx(); xi++) {
-		for (int yi = 0; yi < size_info_.ny(); yi++) {
+	for (int xi = 0; xi < settings_.nx(); xi++) {
+		for (int yi = 0; yi < settings_.ny(); yi++) {
 			DilateCell(cells_, xi, yi);
 		}
 	}
@@ -108,12 +116,14 @@ void CostmapLayer::DilateCell(
 	if (PastSlopeThreshold(cell) && (!cell.has_dilated || Slope(cell) > original_slope)) {
 
 		cell.has_dilated = true;
-		auto dilated_val = static_cast<int>(dilation_.proportion * static_cast<float>(GetGridCellValue(cell)));
+		auto dilated_val = static_cast<int>(
+			settings_.costmap.dilation.proportion *
+			static_cast<float>(GetGridCellValue(cell)));
 
-		const auto nx = size_info_.nx();
-		const auto ny = size_info_.ny();
-		const int dsize_x = dilation_.GetNx(size_info_.res);
-		const int dsize_y = dilation_.GetNy(size_info_.res);
+		const auto nx = settings_.nx();
+		const auto ny = settings_.ny();
+		const int dsize_x = settings_.dilation_x_cells();
+		const int dsize_y = settings_.dilation_y_cells();
 		for (int xii = std::max(0, xi - dsize_x); xii <= std::min(xi + dsize_x, nx - 1); xii++) {
 			for (int yii = std::max(0, yi - dsize_y); yii <= std::min(yi + dsize_y, ny - 1); yii++) {
 				cells[yii][xii].dilated_val = std::max(dilated_val, cells[yii][xii].dilated_val);
@@ -128,11 +138,19 @@ int CostmapLayer::GetGridCellValue(const Cell& cell) const {
 		return -1;
 	}
 
-	if (thresholds_.use_elevation) {
-		return cell.high.val > thresholds_.thresh ? GRID_MAX_VALUE : 0;
+	const auto& thresholds = settings_.costmap.thresholds;
+	if (thresholds.use_elevation) {
+		return cell.high.val > thresholds.thresh ? GRID_MAX_VALUE : 0;
 	}
-	const auto slope = cell.height() / size_info_.res;
-	return slope > thresholds_.thresh ? std::min(std::max(0.0f, thresholds_.grid_slope_mult() * slope), static_cast<float>(GRID_MAX_VALUE)) : 0;
+	const auto slope = cell.height() / settings_.size_info().res;
+	return slope > thresholds.thresh
+		       ? static_cast<int>(
+		             std::min(
+		                 std::max(
+		                     0.0F,
+		                     settings_.grid_slope_multiplier() * slope),
+		                 static_cast<float>(GRID_MAX_VALUE)))
+		       : 0;
 
 }
 

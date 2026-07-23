@@ -3,21 +3,16 @@
 
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include <avt_341/mpc_local_planner_params_service.hpp>
 
 // Global variables
 std::shared_ptr<avt_341::node::NodeProxy> node;
 
 double max_speed;
 
-double prediction_time_horizon;
-
-double axle_distance_front;
-
 double cell_size_meters = 0.0;
 
-double segmentation_angle = 0.707107;
-
-bool viz = false;
+avt_341::params::mpc_local_planner::Params node_params;
 
 avt_341::msg::Time init_time;
 
@@ -56,8 +51,10 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
 
     auto q = vehicle_odom.pose.pose.orientation;
     double yaw = atan2(2.0 * (q.w * q.z + q.x * q.y), q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z);
-    double x_vehicle = vehicle_odom.pose.pose.position.x + axle_distance_front * cos(yaw);  // x position of front axle
-    double y_vehicle = vehicle_odom.pose.pose.position.y + axle_distance_front * sin(yaw);  // y position of front axle
+    double x_vehicle = vehicle_odom.pose.pose.position.x +
+        node_params.vehicle_axle_distance_front * cos(yaw);  // x position of front axle
+    double y_vehicle = vehicle_odom.pose.pose.position.y +
+        node_params.vehicle_axle_distance_front * sin(yaw);  // y position of front axle
 
     // Rotation matrix
     avt_341::msg_tf::Matrix3x3 rotation_matrix;
@@ -66,8 +63,12 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     rotation_matrix[2] = {0.0, 0.0, 1.0};
 
     // Observational region determined by right/left vectors
-    avt_341::msg_tf::Vector3 left_vector = {cos(segmentation_angle), sin(segmentation_angle), 0};  // 45deg to left
-    avt_341::msg_tf::Vector3 right_vector = {cos(segmentation_angle), -sin(segmentation_angle), 0}; // 45deg to right
+    avt_341::msg_tf::Vector3 left_vector = {
+        cos(node_params.front_angle_segmentation),
+        sin(node_params.front_angle_segmentation), 0};  // 45deg to left
+    avt_341::msg_tf::Vector3 right_vector = {
+        cos(node_params.front_angle_segmentation),
+        -sin(node_params.front_angle_segmentation), 0}; // 45deg to right
     auto left_boundary_vector = rotation_matrix * left_vector;
     auto right_boundary_vector = rotation_matrix * right_vector;
 
@@ -84,7 +85,8 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                 avt_341::msg_tf::Vector3 cell_vector = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
 
                 // Add obstacle if it is within range of prediction time horizon driving distance or within observation region
-                if (cell_vector.length() > (prediction_time_horizon + 0.1) * max_speed
+                if (cell_vector.length() >
+                        (node_params.prediction_time_horizon + 0.1) * max_speed
                     || cell_vector[0] * left_boundary_vector[1] - left_boundary_vector[0] * cell_vector[1] < 0
                     ||  // Only comparing last element of cross product vector,
                         cell_vector[0] * right_boundary_vector[1] - right_boundary_vector[0] * cell_vector[1]
@@ -96,7 +98,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
                     cells.push_back(point[0]);
                     cells.push_back(point[1]);
                     cells.push_back(cell_val);
-                    if (viz) {
+                    if (node_params.obstacles_vizualize) {
                         avt_341::msg::Marker cell_marker;
                         cell_marker.header.frame_id = "map";
                         cell_marker.header.stamp = node->get_stamp();
@@ -141,11 +143,9 @@ int main(int argc, char* argv[]) {
     auto cell_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/cell_markers", 1);
 
     // Load parameters
-    node->get_parameter("~max_speed", max_speed, 10.0);
-    node->get_parameter("~prediction_time_horizon", prediction_time_horizon, 2.0);
-    node->get_parameter("~vehicle_axle_distance_front", axle_distance_front, 1.5521);
-    node->get_parameter("~front_angle_segmentation", segmentation_angle, 0.707107);
-    node->get_parameter("~obstacles_vizualize", viz, false);
+    avt_341::params::mpc_local_planner::ParamsListener param_listener(node->get_raw_node());
+    node_params = param_listener.get_params();
+    max_speed = node_params.max_speed;
 
     while (avt_341::node::ok()) {
         if (new_input_available(segmentation_grid_input, vehicle_odom_input)) {
@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
             cells_msg.data = cells;
             cells_pub->publish(cells_msg);
 
-            if (viz) {
+            if (node_params.obstacles_vizualize) {
                 avt_341::msg::MarkerArray cell_marker_msg;
                 cell_marker_msg.markers = cell_markers;
                 cell_marker_pub->publish(cell_marker_msg);

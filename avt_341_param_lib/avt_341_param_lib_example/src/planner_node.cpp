@@ -2,7 +2,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <avt_341_param_lib_example/nav_parameters.hpp>
+#include <avt_341_param_lib_example/nav_params_service.hpp>
 
 namespace nav_demo {
 

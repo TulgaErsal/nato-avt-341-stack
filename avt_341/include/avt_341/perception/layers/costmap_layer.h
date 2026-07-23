@@ -5,6 +5,7 @@
 #include "avt_341/core/grid_components.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/perception/costmap_dtos.h"
+#include "avt_341/perception/perception_settings.hpp"
 
 namespace avt_341::perception
 {
@@ -14,9 +15,11 @@ namespace avt_341::perception
 
 		CostmapLayer(
 			const std::shared_ptr<node::NodeProxy>& node_ref,
-			const CostmapSettings& cm_settings,
+			const PerceptionSettings& settings,
 			const std::string& label,
-			const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+			const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+			bool contribute_occupancy,
+			bool contribute_segmentation
 		);
 
 		virtual ~CostmapLayer() = default;
@@ -40,9 +43,14 @@ namespace avt_341::perception
 		float GetTerrainSlopeAtCell(int xi, int yi);
 
 		virtual void RecomputeGridDilation();
+		void UpdateThresholds(float slope_threshold, float slope_threshold_max);
 
-		virtual bool PastSlopeThreshold(const Cell& cell) const { return cell.height() / size_info_.res > thresholds_.thresh; }
-		virtual float Slope(const Cell& cell) const { return cell.height() / size_info_.res; }
+		virtual bool PastSlopeThreshold(const Cell& cell) const {
+			return Slope(cell) > settings_.costmap.thresholds.thresh;
+		}
+		virtual float Slope(const Cell& cell) const {
+			return cell.height() / settings_.size_info().res;
+		}
 
 		virtual void Reset();
 		bool IsEnabled() const { return is_enabled_; }
@@ -74,9 +82,7 @@ namespace avt_341::perception
 
 		std::shared_ptr<node::NodeProxy> node_ref_;
 		std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
-		CostmapSizeInfo size_info_;
-		ThresholdSettings thresholds_;
-		DilationSettings dilation_;
+		PerceptionSettings settings_;
 		std::string label_;
 
 		msg::Odometry current_odom_;

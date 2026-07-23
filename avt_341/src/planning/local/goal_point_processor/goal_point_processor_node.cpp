@@ -5,6 +5,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/core/dto_conversion.h"
+#include <avt_341/mpc_local_planner_params_service.hpp>
 #include <memory>
 // Globals
 std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_steering_angle;
@@ -38,11 +39,7 @@ int priorIndex, priorPathLength;
 avt_341::utils::vec2 goal;
 bool goal_is_end = false;
 
-// Params
-float max_speed, la, predictionTimeHorizon, frontAngleGoal;
-float goal_lookahead_padding;
-float ax_max;
-bool use_goal_lookahead_maxspeed;
+avt_341::params::mpc_local_planner::Params params;
 
 void callback_global_path(avt_341::msg::PathPtr global_path) {
     global_path_input = *global_path;
@@ -118,7 +115,8 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
     }
 
     last_veh_stamp = veh_input_stamp;
-    
+
+    const double la = params.vehicle_axle_distance_front;
     double current_time = veh.data[0];
 	double yaw = veh.data[6];
 	double x_veh = veh.data[1] + la*cos(yaw); // x position of front axle
@@ -140,9 +138,10 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 	avt_341::utils::vec2 vehiclePosition(x_veh, y_veh);
 	avt_341::utils::vec2 globalPoint(0.0, 0.0);
 
-    const double T = static_cast<double>(predictionTimeHorizon + goal_lookahead_padding);
+    const double T =
+        params.prediction_time_horizon + params.goal_lookahead_time_padding;
     double lookahead_dist;
-    if (use_goal_lookahead_maxspeed) {
+    if (params.use_goal_lookahead_maxspeed) {
         lookahead_dist = speedSetpoint * T;
     } else {
         const double v0 = longvel;
@@ -150,11 +149,14 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
         if (v0 >= v_sp) {
             lookahead_dist = v_sp * T;
         } else {
-            const double t_accel = (v_sp - v0) / ax_max;
+            const double t_accel = (v_sp - v0) / params.ax_max;
             if (t_accel >= T) {
-                lookahead_dist = v0 * T + 0.5 * ax_max * T * T;
+                lookahead_dist =
+                    v0 * T + 0.5 * params.ax_max * T * T;
             } else {
-                const double d_accel = v0 * t_accel + 0.5 * ax_max * t_accel * t_accel;
+                const double d_accel =
+                    v0 * t_accel +
+                    0.5 * params.ax_max * t_accel * t_accel;
                 const double d_cruise = v_sp * (T - t_accel);
                 lookahead_dist = d_accel + d_cruise;
             }
@@ -242,18 +244,18 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 		}
     }
 
-	if (!goal_set || alwaysPubGoal) {
+	if (!goal_set || params.always_publish_goal) {
 		goal = globalPoint;
         goal_set = true;
         turningAround = false;
     }
 	else {
 		avt_341::utils::vec3 globalPointVector(globalPoint.x-x_veh, globalPoint.y-y_veh, 0);
-		avt_341::utils::vec3 leftBoundaryVector(cos(frontAngleGoal)*cos(yaw) + sin(frontAngleGoal)*-sin(yaw),
-                                                cos(frontAngleGoal)*sin(yaw) + sin(frontAngleGoal)*cos(yaw),
+		avt_341::utils::vec3 leftBoundaryVector(cos(params.front_angle_goal)*cos(yaw) + sin(params.front_angle_goal)*-sin(yaw),
+                                                cos(params.front_angle_goal)*sin(yaw) + sin(params.front_angle_goal)*cos(yaw),
                                                 1.0f);
-		avt_341::utils::vec3 rightBoundaryVector(cos(frontAngleGoal)*cos(yaw) - sin(frontAngleGoal)*-sin(yaw),
-                                                cos(frontAngleGoal)*sin(yaw) - sin(frontAngleGoal)*cos(yaw),
+		avt_341::utils::vec3 rightBoundaryVector(cos(params.front_angle_goal)*cos(yaw) - sin(params.front_angle_goal)*-sin(yaw),
+                                                cos(params.front_angle_goal)*sin(yaw) - sin(params.front_angle_goal)*cos(yaw),
                                                 1.0f);
 		if (cross(globalPointVector,leftBoundaryVector).z < 0 || cross(globalPointVector,rightBoundaryVector).z > 0) {
 			if (!turningAround) {
@@ -308,21 +310,14 @@ int main(int argc, char* argv[]) {
     pub_goalPointIsEnd = n->create_publisher<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
     pub_finalHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_final_heading",1);
  
-    n->get_parameter("~max_speed", max_speed, 5.0f);
-    n->get_parameter("~vehicle_axle_distance_front", la, 1.25f);
-    n->get_parameter("~prediction_time_horizon", predictionTimeHorizon, 2.0f);
-    n->get_parameter("~front_angle_goal", frontAngleGoal, 1.571f);
-    n->get_parameter("~always_publish_goal", alwaysPubGoal, false);
-	n->get_parameter("~goal_lookahead_time_padding", goal_lookahead_padding, 0.1f);
-	n->get_parameter("~use_goal_lookahead_maxspeed", use_goal_lookahead_maxspeed, false);
-    n->get_parameter("~ax_max", ax_max, 10.0f);
-    n->get_parameter("~use_auto_final_heading", useAutoFinalHeading, true);
+    avt_341::params::mpc_local_planner::ParamsListener param_listener(n->get_raw_node());
+    params = param_listener.get_params();
 
     // Initialize variables
     init_time = n->get_stamp();
     veh_input_stamp = init_time;
     last_veh_stamp = init_time;
-    speedSetpoint = max_speed;
+    speedSetpoint = static_cast<float>(params.max_speed);
     priorUseLeader = false;
     priorIndex = 0;
     priorPathLength = 0;
@@ -355,7 +350,8 @@ int main(int argc, char* argv[]) {
                 if (finalHeadingSet) {
                     headingToPublish = finalHeading;
                     shouldPublish = true;
-                } else if (useAutoFinalHeading && autoFinalHeadingSet) {
+                } else if (params.use_auto_final_heading &&
+                           autoFinalHeadingSet) {
                     headingToPublish = autoFinalHeading;
                     shouldPublish = true;
                 }

@@ -13,3 +13,9 @@ if(USING_AMENT)
       EXPORT export_${PROJECT_NAME}
       DESTINATION "lib/${PROJECT_NAME}")
 endif() # if(USING_AMENT)
+
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET data_acquisition_node)
+  target_link_libraries(
+    data_acquisition_node data_acquisition_params_service)
+endif()

@@ -10,30 +10,20 @@ namespace avt_341::perception
 {
     StaticGridLayer::StaticGridLayer(
         const std::shared_ptr<node::NodeProxy>& node_ref,
-        const CostmapSettings& cm_settings,
+        const PerceptionSettings& settings,
         const std::string& label,
-        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+        const avt_341::params::perception::Params::StaticGridLayer& params
         )
-        : CostmapLayer(node_ref, cm_settings, label, compute_time_recorder)
+        : CostmapLayer(
+            node_ref, settings, label, compute_time_recorder,
+            params.contribute_occupancy, params.contribute_segmentation),
+          input_file_(params.data_file),
+          csv_height_field_(params.height_field),
+          csv_segmentation_field_(params.segmentation_field),
+          input_y_dir_negative_(params.input_y_dir_negative)
     {
-        ReadLayerParams();
         LoadFileData();
-    }
-
-    void StaticGridLayer::ReadLayerParams()
-    {
-        // Format map_x_{x}_y_{y}_res_{res}_w_{w}_h_{h}.csv
-        // Where x,y = map lower-left corner, res = resolution, w,h = width,height survey range in meters
-        node_ref_->get_parameter("~static_grid_layer_data_file", input_file_, std::string(""));
-
-        // Field in csv file to look for height values
-        node_ref_->get_parameter("~static_grid_layer_height_field", csv_height_field_, std::string("height"));
-
-        // Field in csv file to look for segmentation values
-        node_ref_->get_parameter("~static_grid_layer_segmentation_field", csv_segmentation_field_, std::string("segmentation"));
-
-        // If cells in the input data file are ordered with y-axis pointing downwards with respect to the lower-left corner origin
-        node_ref_->get_parameter("~static_grid_layer_input_y_dir_negative", input_y_dir_negative_, false);
     }
 
     std::string StaticGridLayer::ToString() const
@@ -54,7 +44,11 @@ namespace avt_341::perception
         }
 
         CostmapSizeInfo info{};
+        info.width = 0.0F;
+        info.height = 0.0F;
         info.res = 1.0f;
+        info.llx = 0.0F;
+        info.lly = 0.0F;
         // Parse tokens separated by '_'
         // Format: x_{x}_y_{y}_res_{res}_w_{w}_h_{h}
         std::istringstream ss(fname);
@@ -73,8 +67,8 @@ namespace avt_341::perception
 
     void StaticGridLayer::ParseFileData(const CostmapSizeInfo& file_info, std::vector<float>& file_heights, std::vector<int>& file_segs)
     {
-        int file_nx = file_info.nx();
-        int file_ny = file_info.ny();
+        int file_nx = PerceptionSettings::nx(file_info);
+        int file_ny = PerceptionSettings::ny(file_info);
 
         // Read CSV data using header fields to locate height and segmentation columns
         file_heights.resize(file_nx * file_ny, 0.0f);
@@ -154,13 +148,13 @@ namespace avt_341::perception
 
     void StaticGridLayer::SetStaticData(const CostmapSizeInfo& size_info_in, const std::vector<float>& heights_in, const std::vector<int>& segs_in)
     {
-        const int file_nx = size_info_in.nx();
-        const int file_ny = size_info_in.ny();
+        const int file_nx = PerceptionSettings::nx(size_info_in);
+        const int file_ny = PerceptionSettings::ny(size_info_in);
 
         // Layer grid info
-        const float layer_res = size_info_.res;
-        const int   layer_nx  = size_info_.nx();
-        const int   layer_ny  = size_info_.ny();
+        const float layer_res = settings_.size_info().res;
+        const int   layer_nx  = settings_.nx();
+        const int   layer_ny  = settings_.ny();
 
         // Ratio: how many file cells per layer cell
         float ratio = layer_res / size_info_in.res;
@@ -172,8 +166,10 @@ namespace avt_341::perception
         for (int yi = 0; yi < layer_ny; yi++) {
             for (int xi = 0; xi < layer_nx; xi++) {
                 // Corresponding file cell indices (lower-left of sub-region)
-                float fx0f = size_info_in.ToXIdxFlt(size_info_.ToXWorldLlc(xi));
-                float fy0f = size_info_in.ToYIdxFlt(size_info_.ToYWorldLlc(yi));
+                float fx0f = PerceptionSettings::to_x_index(
+                    size_info_in, settings_.to_x_world(xi, 0.0F));
+                float fy0f = PerceptionSettings::to_y_index(
+                    size_info_in, settings_.to_y_world(yi, 0.0F));
 
                 int fx0 = static_cast<int>(std::floor(fx0f));
                 int fy0 = static_cast<int>(std::floor(fy0f));

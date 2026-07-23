@@ -13,16 +13,16 @@ public:
         const std::string& clear_method_type,
         const std::shared_ptr<node::NodeProxy>& node_ref,
         std::vector<std::vector<Cell>> & cells,
-        const ClearMethodRosParameters & params,
-        const BaseClearingSettings& base_config,
+        const ClearMethodSettings & params,
+        const PerceptionSettings& settings,
         CellObstacleCalculator *obs_calculator
     );
 
     static std::vector<std::shared_ptr<OccupancyClearingMethod>> CreateClearingMethods(
         const std::shared_ptr<node::NodeProxy>& node_ref,
         std::vector<std::vector<Cell>> & cells,
-        const ClearMethodRosParameters & params,
-        const BaseClearingSettings& base_config,
+        const ClearMethodSettings & params,
+        const PerceptionSettings& settings,
         CellObstacleCalculator *obs_calculator
     );
 

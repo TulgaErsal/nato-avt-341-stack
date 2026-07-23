@@ -6,6 +6,7 @@
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/avt_341_utils.h"
+#include <avt_341/speed_zones_params_service.hpp>
 
 
 std::shared_ptr<avt_341::node::NodeProxy> node;
@@ -122,18 +123,13 @@ bool TransformSpeedZone(SpeedZone& zone, std::string target_frame) {
 
 int main(int argc, char *argv[]){
     node = avt_341::node::init_node(argc,argv,"avt_341_speed_zones_node");
+    avt_341::params::speed_zones::ParamsListener param_listener(node->get_raw_node());
+    const auto params = param_listener.get_params();
     node->initialize_tf_listener();
 
-    // Get params
-    std::string zones_filepath, zones_frame, local_frame, vehicle_odom_topic;
-    std::vector<double> zone_speeds;
-    node->get_parameter("~zones_filepath", zones_filepath, std::string(""));
-    node->get_parameter("~zones_frame", zones_frame, std::string("nad83"));
-    node->get_parameter("~vehicle_odom_topic", vehicle_odom_topic, std::string("avt_341/odometry"));
-    node->get_parameter("~zone_speeds", zone_speeds, std::vector<double>());
-
     // Create subscribers/publishers
-    auto odom_sub = node->create_subscription<avt_341::msg::Odometry>(vehicle_odom_topic,1,OdometryCallback);
+    auto odom_sub = node->create_subscription<avt_341::msg::Odometry>(
+        params.vehicle_odom_topic, 1, OdometryCallback);
     auto comm_pub = node->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages",1);
 
     // Get vehicle name
@@ -142,17 +138,20 @@ int main(int argc, char *argv[]){
     my_name.erase(0, 1);    // Erase '/' in namespace
 
     // Parse speed zones
-    node->log_info("Attempting to read file %s", zones_filepath.c_str());
-    std::vector<SpeedZone> speed_zones = ReadSpeedZones(zones_filepath, zones_frame);
+    node->log_info("Attempting to read file %s", params.zones_filepath.c_str());
+    std::vector<SpeedZone> speed_zones =
+        ReadSpeedZones(params.zones_filepath, params.zones_frame);
 
     if (speed_zones.empty()) {
         node->log_warning("No speed zones defined. Node existing.");
         exit(EXIT_SUCCESS);
     }
 
-    if (zone_speeds.size() != speed_zones.size())
+    if (params.zone_speeds.size() != speed_zones.size())
     {
-        node->log_error("Size mismatch between zone speeds (%d) and zone geometry (%d).", zone_speeds.size(), speed_zones.size());
+        node->log_error(
+            "Size mismatch between zone speeds (%d) and zone geometry (%d).",
+            params.zone_speeds.size(), speed_zones.size());
         exit(EXIT_FAILURE);
     }
 
@@ -173,9 +172,10 @@ int main(int argc, char *argv[]){
             pose.pose = odom.pose.pose;
 
             // Transform pose
-            if (pose.header.frame_id != zones_frame) {
+            if (pose.header.frame_id != params.zones_frame) {
                 avt_341::msg::PoseStamped pose_fixed;
-                is_fixed = node->transform_pose(pose, pose_fixed, zones_frame, 0.2);
+                is_fixed = node->transform_pose(
+                    pose, pose_fixed, params.zones_frame, 0.2);
                 pose = pose_fixed;
             }
 
@@ -193,7 +193,8 @@ int main(int argc, char *argv[]){
 
         // Check if new zone has been entered
         if (current_zone != -1 && current_zone != last_zone) {
-            node->log_info("SETTING SPEED TO %.2lf [Zone #%d]",zone_speeds[current_zone],current_zone);
+            node->log_info("SETTING SPEED TO %.2lf [Zone #%d]",
+                           params.zone_speeds[current_zone], current_zone);
 
             // Send SET_SPEED msg
             avt_341::msg::Communication comm_msg;
@@ -201,7 +202,7 @@ int main(int argc, char *argv[]){
             comm_msg.msg_id = 0;
             comm_msg.type = "SET_SPEED";
             comm_msg.receiver_name = my_name;
-            comm_msg.desired_speed = zone_speeds[current_zone];
+            comm_msg.desired_speed = params.zone_speeds[current_zone];
             comm_msg.priority_type = "PREEMPT";
             comm_pub->publish(comm_msg);
 

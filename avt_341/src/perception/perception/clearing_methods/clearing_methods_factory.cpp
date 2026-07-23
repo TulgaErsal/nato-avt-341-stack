@@ -11,8 +11,8 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
         const std::string& clear_method_type,
         const std::shared_ptr<node::NodeProxy>& node_ref,
         std::vector<std::vector<Cell>> & cells,
-        const ClearMethodRosParameters & params,
-        const BaseClearingSettings& base_config,
+        const ClearMethodSettings & params,
+        const PerceptionSettings& settings,
         CellObstacleCalculator *obs_calculator
     ) {
 
@@ -22,53 +22,52 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
     // TIME-BASED CLEARING
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::Time) {
-        return std::make_shared<TimedClearingMethod>(params.max_point_age, cells, base_config, obs_calculator);
+        return std::make_shared<TimedClearingMethod>(
+            params.max_point_age, cells, settings, obs_calculator);
     }
 
     // TIME-BASED CLEARING CHECKING FOR NO REMARKED OBSTACLES
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::NoObsTime) {
 
-        TimedNoObsClearingSettings time_config(
-            params.max_point_age,
-            params.sampled_threshold,
-            params.no_obs_dist_threshold);
-
-        return std::make_shared<TimedNoObsClearingMethod>(cells, base_config, time_config, obs_calculator);
+        return std::make_shared<TimedNoObsClearingMethod>(
+            cells, settings, params, obs_calculator);
     }
 
     // RAYTRACE CLEARING
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::Raytrace) {
-        return std::make_shared<RaytraceClearingMethod>(node_ref, cells, base_config, RaytraceSettings(params), obs_calculator);
+        return std::make_shared<RaytraceClearingMethod>(
+            node_ref, cells, settings, params, obs_calculator);
     }
 
     // RAYTRACE CLEARING WITH OBS DISTANCE FILTER
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::RaytraceWithFiltering) {
 
-        if (base_config.grid_dilate_x <= 0 || base_config.grid_dilate_y <= 0) {
+        if (settings.dilation_x_cells() <= 0 ||
+            settings.dilation_y_cells() <= 0) {
             node_ref->log_warning("Raytrace Clearing: Dilation should be enabled to reduce intermittent obstacle.");
         }
 
-        return std::make_shared<RaytraceWithFilteringClearingMethod>(node_ref, cells, base_config, RaytraceSettings(params), obs_calculator);
+        return std::make_shared<RaytraceWithFilteringClearingMethod>(
+            node_ref, cells, settings, params, obs_calculator);
     }
 
     // CLEAR BY CHANNEL THRESHOLD
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::ChannelThreshold) {
 
-        ChannelClearingSettings ch_config(params.channel_to_clear, params.channel_threshold);
-
-        if (ch_config.channel_to_clear.empty()) {
+        if (params.channel_to_clear.empty()) {
             node_ref->log_error("Channel threshold clearing method channel name empty.");
         }
 
-        if (ch_config.threshold < 1e-3) {
+        if (params.channel_threshold < 1e-3) {
             node_ref->log_error("Channel threshold clearing method should have > 0 threshold configured.");
         }
 
-        return std::make_shared<ChannelThresholdClearingMethod>(cells, base_config, ch_config, obs_calculator);
+        return std::make_shared<ChannelThresholdClearingMethod>(
+            cells, settings, params, obs_calculator);
     }
 
     // NULL / NO CLEARING METHOD
@@ -80,7 +79,8 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
             );
     }
 
-    return std::make_shared<NullClearingMethod>(cells, base_config, obs_calculator);
+    return std::make_shared<NullClearingMethod>(
+        cells, settings, obs_calculator);
 }
 
 std::vector<std::string> ClearingMethodFactory::ParseClearMethodsString(std::string cm_methods_str) {
@@ -100,17 +100,18 @@ std::vector<std::string> ClearingMethodFactory::ParseClearMethodsString(std::str
 std::vector<std::shared_ptr<OccupancyClearingMethod>> ClearingMethodFactory::CreateClearingMethods(
         const std::shared_ptr<node::NodeProxy>& node_ref,
         std::vector<std::vector<Cell>> & cells,
-        const ClearMethodRosParameters & params,
-        const BaseClearingSettings& base_config,
+        const ClearMethodSettings & params,
+        const PerceptionSettings& settings,
         CellObstacleCalculator *obs_calculator
         ) {
 
     std::vector<std::shared_ptr<OccupancyClearingMethod>> cm_methods;
-    std::vector<std::string> cm_types = ParseClearMethodsString(params.clear_methods_str);
+    std::vector<std::string> cm_types = ParseClearMethodsString(params.type);
 
     // Create clearing methods
     for (const auto& cm_type: cm_types) {
-        cm_methods.push_back(CreateClearingMethod(cm_type, node_ref, cells, params, base_config, obs_calculator));
+        cm_methods.push_back(CreateClearingMethod(
+            cm_type, node_ref, cells, params, settings, obs_calculator));
     }
 
     // Set sibling clearing methods for each method
@@ -121,7 +122,9 @@ std::vector<std::shared_ptr<OccupancyClearingMethod>> ClearingMethodFactory::Cre
         cm->SetSiblingClearingMethods(sibling_cms);
     }
 
-	node_ref->log_info("Costmap clearing methods: %s (%d)", params.clear_methods_str.c_str(), cm_methods.size());
+	node_ref->log_info(
+        "Costmap clearing methods: %s (%d)",
+        params.type.c_str(), cm_methods.size());
     for (const auto & cm: cm_methods) {
         node_ref->log_info(" - %s", cm->GetDescription().c_str());
     }

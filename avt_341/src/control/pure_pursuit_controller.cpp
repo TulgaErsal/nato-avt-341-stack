@@ -8,26 +8,26 @@ PurePursuitController::PurePursuitController() {
 
 	//default wheelbase and steer angle
 	// set to MRZR values
-	wheelbase_ = 2.731f; // meters
-	max_steering_angle_ = 0.69f; //39.5 degrees
-	// max_stable_speed_ = 35.0f; //5.0;
+	wheelbase_ = 2.731; // meters
+	max_steering_angle_ = 0.69; //39.5 degrees
+	// max_stable_speed_ = 35.0; //5.0;
 
 	// tunable parameters
-	min_lookahead_ = 3.0f;
-	max_lookahead_ = 10.0f;
-	k_ = 1.2f;
-	throttle_coeff_ = 1.0f;
+	min_lookahead_ = 3.0;
+	max_lookahead_ = 10.0;
+	k_ = 1.2;
+	throttle_coeff_ = 1.0;
 
 	//vehicle state parameters
-	veh_x_ = 0.0f;
-	veh_y_ = 0.0f;
-	veh_speed_ = 0.0f;
-	vx_ = 0.0f;
-	vy_ = 0.0f;
+	veh_x_ = 0.0;
+	veh_y_ = 0.0;
+	veh_speed_ = 0.0;
+	vx_ = 0.0;
+	vy_ = 0.0;
 
-	k_theta_ = 1.0f;
-	kx_ = 1.0f;
-	ky_ = 1.0f;
+	k_theta_ = 1.0;
+	kx_ = 1.0;
+	ky_ = 1.0;
 
 	steer_cur_ = 0.0;
 	err_last_ = 0.0;
@@ -45,10 +45,10 @@ void PurePursuitController::SetVehicleState(avt_341::msg::Odometry state){
 	veh_heading_ = utils::GetHeadingFromOrientation(state.pose.pose.orientation);
 }
 
-void PurePursuitController::SetVehicleSpeed(float speed){
+void PurePursuitController::SetVehicleSpeed(double speed){
 	veh_speed_ = speed;
-	vx_ = cosf(veh_heading_)*veh_speed_;
-	vy_ = sinf(veh_heading_)*veh_speed_;
+	vx_ = std::cos(veh_heading_)*veh_speed_;
+	vy_ = std::sin(veh_heading_)*veh_speed_;
 }
 
 
@@ -72,25 +72,25 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 
 	//calculate the lookahead distance based on current speed
 	utils::vec2 currpos(veh_x_, veh_y_);
-	float path_length = utils::length(path[np - 1] - currpos);
-	float lookahead = k_ * veh_speed_;
+	double path_length = utils::length(path[np - 1] - currpos);
+	double lookahead = k_ * veh_speed_;
 
 	if (lookahead > max_lookahead_)lookahead = max_lookahead_;
 	if (lookahead < min_lookahead_)lookahead = min_lookahead_;
 	// if (lookahead > path_length)lookahead = path_length - 0.01;
 
 
-	utils::vec2 lookahead_pos(veh_x_ + lookahead*cosf(veh_heading_), veh_y_ + lookahead*sinf(veh_heading_));
+	utils::vec2 lookahead_pos(veh_x_ + lookahead*std::cos(veh_heading_), veh_y_ + lookahead*std::sin(veh_heading_));
 	utils::vec2 veh_pos(veh_x_, veh_y_);
 
 
-	float min_dist = 1.0E9f;
+	double min_dist = 1.0E9;
 	int min_idx = 0;
 
 	utils::vec2 diff_vec;
 	for (int i = 0; i < np - 2; i++) {
 		diff_vec = path[i] - lookahead_pos;
-		float d0 = sqrt(utils::dot(diff_vec, diff_vec));
+		double d0 = std::sqrt(utils::dot(diff_vec, diff_vec));
 		if (d0 < min_dist) {
 			min_dist = d0;
 			min_idx = i;
@@ -98,13 +98,13 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	}
 
 
-	float min_dist2 = 1.0E9f;
+	double min_dist2 = 1.0E9;
 	int min_idx2 = 0;
 
 	utils::vec2 diff_vec2;
 	for (int i = 1; i < np - 2; i++) {
 		diff_vec2 = path[i] - veh_pos;
-		float d0 = sqrt(utils::dot(diff_vec2, diff_vec2));
+		double d0 = std::sqrt(utils::dot(diff_vec2, diff_vec2));
 		if (d0 < min_dist2) {
 			min_dist2 = d0;
 			min_idx2 = i;
@@ -119,9 +119,12 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 
 	
 
- 	float dpsi = asin((dirc1.x * dirc2.y - dirc1.y*dirc2.x)/(sqrt(utils::dot(dirc1, dirc1))* sqrt(utils::dot(dirc2, dirc2))));//acos((utils::dot(dirc1, dirc2))/( utils::dot(dirc1, dirc1)* utils::dot(dirc2, dirc2) ));
-	float dlength = sqrt(utils::dot(dirc2, dirc2));
-	float desired_sa = atan(2.5*(dpsi/dlength));
+	double dpsi =
+	    std::asin((dirc1.x * dirc2.y - dirc1.y * dirc2.x) /
+	              (std::sqrt(utils::dot(dirc1, dirc1)) *
+	               std::sqrt(utils::dot(dirc2, dirc2))));
+	double dlength = std::sqrt(utils::dot(dirc2, dirc2));
+	double desired_sa = std::atan(2.5*(dpsi/dlength));
 
 
 	utils::vec2 p2l;
@@ -130,21 +133,21 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	p2l = lookahead_pos - path[min_idx];
 	p2p = path[min_idx+1] - path[min_idx];
 
-	float err = p2p.x * p2l.y - p2p.y*p2l.x; //p2p x p2l
+	double err = p2p.x * p2l.y - p2p.y*p2l.x; //p2p x p2l
 
 	goal = path[min_idx];
 
-	float target_speed = desired_speed_;
+	double target_speed = desired_speed_;
 
 	dc.linear.x = 0.0;
 	dc.angular.z = 0.0;
 	dc.linear.y = 0.0;
 
 	//determine the desired normalized steering angle
-	float sangle;
-	float delta_angle = 0.001;
-	float derr = err - err_last_;
-	float err_accum_ = err + err_accum_;
+	double sangle;
+	double delta_angle = 0.001;
+	double derr = err - err_last_;
+	err_accum_ += err;
 	sangle = pursuit_k_ * desired_sa - pursuit_kp_ * err - pursuit_kd_ * derr;
 	err_last_ = err;
 
@@ -154,22 +157,22 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 	steer_cur_ = sangle;
 
 	sangle = sangle / max_steering_angle_;
-	sangle = std::min(1.0f, sangle);
-	sangle = std::max(-1.0f, sangle);
+	sangle = std::min(1.0, sangle);
+	sangle = std::max(-1.0, sangle);
 	dc.angular.z = sangle;
 
 	//Use the speed controller to get throttle/braking
 	//adjust the target speed so you back off during hard turns
-	float adj_speed = target_speed * exp(-0.69*pow(fabs(dc.angular.z), 4.0f));
+	double adj_speed = target_speed * std::exp(-0.69*std::pow(std::fabs(dc.angular.z), 4.0));
 	speed_controller_.SetSetpoint(adj_speed);
-	float throttle = speed_controller_.GetControlVariable(veh_speed_, 0.01f);
-	if (throttle < 0.0f) { //braking
-		dc.linear.x = 0.0f;
-		dc.linear.y = std::max(-1.0f, throttle);
+	double throttle = speed_controller_.GetControlVariable(veh_speed_, 0.01);
+	if (throttle < 0.0) { //braking
+		dc.linear.x = 0.0;
+		dc.linear.y = std::max(-1.0, throttle);
 	}
 	else {
-		dc.linear.y = 0.0f;
-		dc.linear.x = std::min(1.0f, throttle);
+		dc.linear.y = 0.0;
+		dc.linear.x = std::min(1.0, throttle);
 	}
 
 	dc.linear.x = throttle_coeff_*dc.linear.x;
@@ -180,7 +183,7 @@ avt_341::msg::Twist PurePursuitController::GetDcFromTraj(avt_341::msg::Path traj
 
 
 
-avt_341::msg::Twist PurePursuitController::GetDcSkid(float dx, float dy, float dtheta){
+avt_341::msg::Twist PurePursuitController::GetDcSkid(double dx, double dy, double dtheta){
 	// The skid steer algorithm is taken from 
 	// A Stable Tracking Control Method for a Non-Holonomic Mobile Robot
 	// Yutaka Kanayam, 1991
@@ -196,14 +199,14 @@ avt_341::msg::Twist PurePursuitController::GetDcSkid(float dx, float dy, float d
 	dc.angular.y = 0.0;
 	dc.angular.z = 0.0;
 
-	float vr = desired_speed_;
-	float ct = cosf(veh_heading_);
-	float st = sinf(veh_heading_);
-	float xe = ct*dx + st*dy;
-	float ye = -st*dx + ct*dy;
+	double vr = desired_speed_;
+	double ct = std::cos(veh_heading_);
+	double st = std::sin(veh_heading_);
+	double xe = ct*dx + st*dy;
+	double ye = -st*dx + ct*dy;
 
-	float v = vr*cosf(dtheta) + kx_*xe;
-	float w = current_angular_velocity_ + vr*(ky_*ye + k_theta_*sinf(dtheta));
+	double v = vr*std::cos(dtheta) + kx_*xe;
+	double w = current_angular_velocity_ + vr*(ky_*ye + k_theta_*std::sin(dtheta));
 
 	dc.linear.x = v*ct;
 	dc.linear.y = v*st;
@@ -212,33 +215,33 @@ avt_341::msg::Twist PurePursuitController::GetDcSkid(float dx, float dy, float d
 	return dc;
 }
 
-avt_341::msg::Twist PurePursuitController::GetDcAckermann(float alpha, float lookahead, utils::vec2 curr_dir, float target_speed){
+avt_341::msg::Twist PurePursuitController::GetDcAckermann(double alpha, double lookahead, utils::vec2 curr_dir, double target_speed){
 	avt_341::msg::Twist dc;
 	dc.linear.x = 0.0;
 	dc.angular.z = 0.0;
 	dc.linear.y = 0.0;
 
 	//determine the desired normalized steering angle
-	float sangle = (float)atan2(2 * wheelbase_*sin(alpha), lookahead);
+	double sangle = std::atan2(2 * wheelbase_*std::sin(alpha), lookahead);
 	sangle = sangle / max_steering_angle_;
-	sangle = std::min(1.0f, sangle);
-	sangle = std::max(-1.0f, sangle);
+	sangle = std::min(1.0, sangle);
+	sangle = std::max(-1.0, sangle);
 	dc.angular.z = sangle;
 
 	//Use the speed controller to get throttle/braking
 	//addjust the target speed so you back off during hard turns
-	float adj_speed = target_speed * exp(-0.69*pow(fabs(dc.angular.z), 4.0f));
+	double adj_speed = target_speed * std::exp(-0.69*std::pow(std::fabs(dc.angular.z), 4.0));
 	speed_controller_.SetSetpoint(adj_speed);
-	float vdot = vx_*curr_dir.x + vy_*curr_dir.y;
-	float throttle = speed_controller_.GetControlVariable(veh_speed_, 0.01f);
-	//float throttle = speed_controller_.GetControlVariable(vdot, 0.01f);
-	if (throttle < 0.0f) { //braking
-		dc.linear.x = 0.0f;
-		dc.linear.y = 0.0; //std::max(-1.0f, throttle);
+	double vdot = vx_*curr_dir.x + vy_*curr_dir.y;
+	double throttle = speed_controller_.GetControlVariable(veh_speed_, 0.01);
+	// double throttle = speed_controller_.GetControlVariable(vdot, 0.01);
+	if (throttle < 0.0) { //braking
+		dc.linear.x = 0.0;
+		dc.linear.y = 0.0; // std::max(-1.0, throttle);
 	}
 	else {
-		dc.linear.y = 0.0f;
-		dc.linear.x = std::min(1.0f, throttle);
+		dc.linear.y = 0.0;
+		dc.linear.x = std::min(1.0, throttle);
 	}
 
 	dc.linear.x = throttle_coeff_*dc.linear.x;

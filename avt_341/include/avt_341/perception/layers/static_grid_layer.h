@@ -2,6 +2,7 @@
 #ifndef AVT_341_STATIC_GRID_LAYER_H
 #define AVT_341_STATIC_GRID_LAYER_H
 #include "costmap_layer.h"
+#include <avt_341/perception_params_dto.hpp>
 
 namespace avt_341::perception
 {
@@ -10,9 +11,10 @@ namespace avt_341::perception
     public:
         StaticGridLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
-            const CostmapSettings& cm_settings,
+            const PerceptionSettings& settings,
             const std::string& label,
-            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+            const avt_341::params::perception::Params::StaticGridLayer& params
             );
 
         std::string ToString() const override;
@@ -24,8 +26,6 @@ namespace avt_341::perception
 
     private:
         void ParseFileData(const CostmapSizeInfo& file_info, std::vector<float>& file_heights, std::vector<int>& file_segs);
-        void ReadLayerParams();
-
         std::string input_file_;
         std::string csv_height_field_;
         std::string csv_segmentation_field_;

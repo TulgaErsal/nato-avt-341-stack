@@ -58,10 +58,12 @@ namespace avt_341::perception
      * @brief Concrete type of an ObjectTracker instance.
      *
      * - Generic:          Plain ObjectTracker base class.
-     * - Toi:              ToiTracker; target id matches "tracker_toi_regex"
-     *                     and target contacts are published.
+     * - Toi:              ToiTracker; target id matches
+     *                     "target_selection.toi_regex" and target contacts
+     *                     are published.
      * - FormationVehicle: FormationVehicleTracker; target id is one of the
-     *                     "formation_vehicle_ids" and lost-detection/recovery
+     *                     "target_selection.formation_vehicle_ids" and
+     *                     lost-detection/recovery
      *                     is active.
      */
     enum class ObjectTrackerType {

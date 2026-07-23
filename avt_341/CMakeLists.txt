@@ -40,7 +40,6 @@ set(AVT341_SOURCE_FILES
     "control/speed_control_test"
     "control/speed_zones"
     "daq/data_acquisition"
-    "mission/formation_control"
     "mission/goal_filtering"
     "mission/mission_manager"
     "perception/detection/common"
@@ -81,6 +80,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
 
   find_package(ackermann_msgs)
   find_package(ament_cmake REQUIRED)
+  find_package(avt_341_param_lib REQUIRED)
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(nav_msgs REQUIRED)
@@ -113,6 +113,10 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
 
   # Build
   include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
+
+  # Generated parameter DTO and service libraries:
+  # <stem>_params_dto and <stem>_params_service.
+  avt_341_generate_cpp_parameters(parameters/templates)
 
   # Node proxy library
   # ------------------
@@ -162,16 +166,6 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
   target_link_libraries(test_target_detection_node ${PROJECT_NAME}_proxy)
   install(
     TARGETS test_target_detection_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-
-  # Formation control test node
-  add_executable(${PROJECT_NAME}_test_formation_control_node
-                 "src/mission/test_formation_control_node.cpp")
-  target_link_libraries(${PROJECT_NAME}_test_formation_control_node
-                        ${PROJECT_NAME}_proxy)
-  install(
-    TARGETS ${PROJECT_NAME}_test_formation_control_node
     EXPORT export_${PROJECT_NAME}
     DESTINATION "lib/${PROJECT_NAME}")
   

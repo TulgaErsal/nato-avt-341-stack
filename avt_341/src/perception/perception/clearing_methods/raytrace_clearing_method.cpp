@@ -6,7 +6,7 @@ constexpr int RaytraceClearingMethod::N_VOXELS_PER_CELL;
 
 RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeProxy> & node_ref,
                                                std::vector<std::vector<Cell>> & cells,
-                                               const BaseClearingSettings & base_config,
+                                               const PerceptionSettings & settings,
                                                const RaytraceSettings & rt_config,
                                                CellObstacleCalculator *obs_calculator,
                                                bool handle_dilation)
@@ -15,7 +15,7 @@ RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeP
         cells,
         static_cast<int>(cells.size()),
         static_cast<int>(cells[0].size()),
-        base_config,
+        settings,
         rt_config,
         obs_calculator,
         handle_dilation
@@ -26,19 +26,19 @@ RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeP
                                                std::vector<std::vector<Cell>> &cells,
                                                int Ny,
                                                int Nx,
-                                               const BaseClearingSettings & base_config,
+                                               const PerceptionSettings & settings,
                                                const RaytraceSettings & rt_config,
                                                CellObstacleCalculator *obs_calculator,
                                                bool handle_dilation)
     :
-    OccupancyClearingMethod(cells, Ny, Nx, base_config, obs_calculator),
+    OccupancyClearingMethod(cells, Ny, Nx, settings, obs_calculator),
     node_(node_ref),
     rt_config_(rt_config),
     handle_dilation_(handle_dilation){
 
     SetLidarFrame();
 
-    if (config_.visualize) {
+    if (settings_.clear_method.visualize) {
         minmax_vis_publisher_ = node_ref->create_publisher<msg::MarkerArray>("avt_341/occupancy_grid/voxels", 1);
     }
 
@@ -67,8 +67,8 @@ RaytraceClearingMethod::~RaytraceClearingMethod() {
 
 void RaytraceClearingMethod::CleanupUnattachedDilation(const msg::Point &origin, std::vector<std::vector<Cell> > &cells) {
 
-    const int& dy = config_.grid_dilate_y;
-    const int& dx = config_.grid_dilate_x;
+    const int dy = settings_.dilation_y_cells();
+    const int dx = settings_.dilation_x_cells();
 
     // Clean up unattached dilated cells
     int x_0, y_0, x_N, y_N;
@@ -85,7 +85,11 @@ void RaytraceClearingMethod::CleanupUnattachedDilation(const msg::Point &origin,
                     for (int j = std::max(0, x - dx); !found_obs && j <= std::min(Nx_ - 1, x + dx); j++) {
 
                         //if(cell_obstacle_calculator_->PastSlopeThreshold(cells[i][j]) || abs(cells[x][y].high.val - cells[i][j].high.val) > thresh_){
-                        if (cells[i][j].has_dilated || (cells[i][j].filled() && abs(cells[y][x].high.val - cells[i][j].high.val) > config_.thresh)) {
+                        if (cells[i][j].has_dilated ||
+                            (cells[i][j].filled() &&
+                             abs(cells[y][x].high.val -
+                                 cells[i][j].high.val) >
+                                 settings_.costmap.thresholds.thresh)) {
                             found_obs = true;
                         }
                     }
@@ -130,13 +134,14 @@ void RaytraceClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) 
         }
     }
 
-    if (handle_dilation_ && !config_.immediate_clear_dilation) {
+    if (handle_dilation_ &&
+        !settings_.clear_method.immediate_clear_dilation) {
         CleanupUnattachedDilation(origin, cells_);
     }
 
     for (const auto &point: point_cloud.points) {
-        int x = static_cast<int>((point.x - config_.llx) / config_.res);
-        int y = static_cast<int>((point.y - config_.lly) / config_.res);
+        int x = settings_.to_x_index(point.x);
+        int y = settings_.to_y_index(point.y);
         int z = static_cast<int>((point.z - rt_config_.voxel_height_min) / rt_config_.voxel_height_res);
         if (x >= 0 && x < Nx_ && y >= 0 && y < Ny_ && z >= 0 && z < N_VOXELS_PER_CELL) {
             voxel_grid[y * Nx_ + x].set(z);
@@ -192,11 +197,11 @@ void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
 
 void RaytraceClearingMethod::RaytraceLine(const msg::Point &start, const msg::Point32 &end) {
 
-    int x1 = static_cast<int>((start.x - config_.llx) / config_.res);
-    int y1 = static_cast<int>((start.y - config_.lly) / config_.res);
+    int x1 = settings_.to_x_index(start.x);
+    int y1 = settings_.to_y_index(start.y);
     int z1 = static_cast<int>((start.z - rt_config_.voxel_height_min) / rt_config_.voxel_height_res);
-    int x2 = static_cast<int>((end.x - config_.llx) / config_.res);
-    int y2 = static_cast<int>((end.y - config_.lly) / config_.res);
+    int x2 = settings_.to_x_index(end.x);
+    int y2 = settings_.to_y_index(end.y);
 
     if (x2 < 0 || x2 >= Nx_ || y2 < 0 || y2 >= Ny_) {
         return;
@@ -305,10 +310,16 @@ void RaytraceClearingMethod::GetGridBounds(
     int &y_N) const {
 
     if (range > 0.0) {
-        x_0 = static_cast<int>((origin.x - config_.llx - range) / config_.res);
-        y_0 = static_cast<int>((origin.y - config_.lly - range) / config_.res);
-        x_N = x_0 + 2 * static_cast<int>(range / config_.res);
-        y_N = y_0 + 2 * static_cast<int>(range / config_.res);
+        x_0 = static_cast<int>(
+            (origin.x - settings_.size_info().llx - range) /
+            settings_.size_info().res);
+        y_0 = static_cast<int>(
+            (origin.y - settings_.size_info().lly - range) /
+            settings_.size_info().res);
+        x_N =
+            x_0 + 2 * static_cast<int>(range / settings_.size_info().res);
+        y_N =
+            y_0 + 2 * static_cast<int>(range / settings_.size_info().res);
         x_0 = std::min(std::max(0, x_0), Nx_);
         y_0 = std::min(std::max(0, y_0), Ny_);
         x_N = std::min(std::max(0, x_N), Nx_);
@@ -323,7 +334,7 @@ void RaytraceClearingMethod::GetGridBounds(
 
 void RaytraceClearingMethod::Visualize() const {
 
-    if (!config_.visualize){
+    if (!settings_.clear_method.visualize){
         return;
     }
 
@@ -340,15 +351,17 @@ void RaytraceClearingMethod::Visualize() const {
     const float max_value = std::numeric_limits<float>::max() - 1e-5f;
     msg::Point origin = GetSensorOrigin();
     int x_0, y_0, x_N, y_N;
-    GetGridBounds(origin, config_.visualization_range, x_0, y_0, x_N, y_N);
+    GetGridBounds(
+        origin, settings_.clear_method.visualization_range,
+        x_0, y_0, x_N, y_N);
 
     for (int x = x_0; x < x_N; x++) {
         for (int y = y_0; y < y_N; y++) {
 
             bool has_value = cells_[y][x].low.val < max_value;
             if (has_value) {
-                float x_i = config_.llx + (static_cast<float>(x) + 0.5f) * config_.res;
-                float y_i = config_.lly + (static_cast<float>(y) + 0.5f) * config_.res;
+                float x_i = settings_.to_x_world(x);
+                float y_i = settings_.to_y_world(y);
 
                 msg::Point p1;
                 p1.x = x_i;
@@ -428,7 +441,7 @@ std::string RaytraceClearingMethod::GetDescription() const {
 RaytraceWithFilteringClearingMethod::RaytraceWithFilteringClearingMethod(
     const std::shared_ptr<node::NodeProxy> & node_ref,
     std::vector<std::vector<Cell>> & cells,
-    const BaseClearingSettings & base_config,
+    const PerceptionSettings & settings,
     const RaytraceSettings & rt_config,
     CellObstacleCalculator *obs_calculator
     )
@@ -436,7 +449,7 @@ RaytraceWithFilteringClearingMethod::RaytraceWithFilteringClearingMethod(
         cells_with_clearing_,
         cells.size(),
         cells[0].size(),
-        base_config,
+        settings,
         rt_config,
         obs_calculator,
         false
@@ -448,10 +461,11 @@ RaytraceWithFilteringClearingMethod::RaytraceWithFilteringClearingMethod(
     cells_with_clearing_.resize(Ny_, row);
 
     // occupancy_delta just used for visualization
-    const int N = 2 * static_cast<int>(rt_config.raytrace_range / config_.res);
+    const int N = 2 * static_cast<int>(
+        rt_config.raytrace_range / settings_.size_info().res);
     occupancy_delta_ = std::vector<std::vector<bool> >(N, std::vector<bool>(N, false));
 
-    if (config_.visualize) {
+    if (settings_.clear_method.visualize) {
         occupancy_delta_publisher_ = node_->create_publisher<msg::OccupancyGrid>("avt_341/occupancy_grid/clear_delta", 1);
     }
 }
@@ -466,7 +480,8 @@ void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const msg::PointCloud
     msg::Point origin = GetSensorOrigin();
     int x_0, y_0, x_N, y_N;
     GetGridBounds(origin, rt_config_.raytrace_range, x_0, y_0, x_N, y_N);
-    int search_range = static_cast<int>(rt_config_.obj_range_filter / config_.res);
+    int search_range = static_cast<int>(
+        rt_config_.obj_range_filter / settings_.size_info().res);
     last_position_.x = static_cast<float>(x_0);
     last_position_.y = static_cast<float>(y_0);
 
@@ -505,18 +520,19 @@ void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const msg::PointCloud
 
 void RaytraceWithFilteringClearingMethod::Visualize() const {
 
-    if (!config_.visualize){
+    if (!settings_.clear_method.visualize){
         return;
     }
 
     RaytraceClearingMethod::Visualize();
 
-    const int N_size = 2 * static_cast<int>(rt_config_.raytrace_range / config_.res);
+    const int N_size = 2 * static_cast<int>(
+        rt_config_.raytrace_range / settings_.size_info().res);
 
     msg::OccupancyGrid occupancy_grid;
     occupancy_grid.header.stamp = node_->get_stamp();
     occupancy_grid.header.frame_id = "map";
-    occupancy_grid.info.resolution = config_.res;
+    occupancy_grid.info.resolution = settings_.size_info().res;
     occupancy_grid.info.width = N_size;
     occupancy_grid.info.height = N_size;
     occupancy_grid.info.origin.position.x = last_position_.x - 2 * rt_config_.raytrace_range;

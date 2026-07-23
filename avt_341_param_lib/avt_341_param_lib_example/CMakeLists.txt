@@ -9,21 +9,31 @@ find_package(ament_cmake REQUIRED)
 find_package(avt_341_param_lib REQUIRED)
 find_package(rclcpp REQUIRED)
 
-# Generates one parameter library per yaml file under parameters/, named
-# <stem>_parameters: nav.yaml -> nav_parameters, sensor.yaml -> sensor_parameters
+# Generates DTO and service parameter libraries per yaml file:
+# nav.yaml -> nav_params_dto and nav_params_service.
 avt_341_generate_cpp_parameters(parameters)
 # Equivalent explicit per-file form:
-# avt_341_generate_cpp_parameter_file(nav_parameters parameters/nav.yaml)
-# avt_341_generate_cpp_parameter_file(sensor_parameters parameters/sensor.yaml)
+# avt_341_generate_cpp_parameter_file(nav parameters/nav.yaml)
+# avt_341_generate_cpp_parameter_file(sensor parameters/sensor.yaml)
 
 add_executable(planner_node src/planner_node.cpp)
-target_link_libraries(planner_node PUBLIC nav_parameters rclcpp::rclcpp)
+target_link_libraries(planner_node PUBLIC nav_params_service)
 
 add_executable(controller_node src/controller_node.cpp)
-target_link_libraries(controller_node PUBLIC nav_parameters rclcpp::rclcpp)
+target_link_libraries(controller_node PUBLIC nav_params_service)
 
 add_executable(sensor_node src/sensor_node.cpp)
-target_link_libraries(sensor_node PUBLIC sensor_parameters rclcpp::rclcpp)
+target_link_libraries(sensor_node PUBLIC sensor_params_service)
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(float_params_dto_test test/float_params_dto_test.cpp)
+  target_link_libraries(float_params_dto_test float_demo_params_dto)
+
+  ament_add_gtest(float_parameters_test test/float_parameters_test.cpp)
+  target_link_libraries(float_parameters_test float_demo_params_service)
+endif()
 
 install(TARGETS planner_node controller_node sensor_node
   DESTINATION lib/${PROJECT_NAME}

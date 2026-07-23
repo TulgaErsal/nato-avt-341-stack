@@ -10,18 +10,7 @@
 namespace avt_341 {
   namespace mission {
 
-    struct FormationSpeedControlParams {
-      double oof_threshold;
-      double oof_const_term;
-      double oof_lin_slope;
-      double oof_mult;
-      double max_speed_factor;
-      bool debug_visualize;
-      bool follower_obt_stop;
-      double follower_dist_break;
-      double follower_dot_threshold;
-      double follower_dot_range;
-    };
+    using FormationSpeedControlParams = MissionManagerParams::Fsc;
 
     class FormationSpeedController {
 
@@ -38,7 +27,7 @@ namespace avt_341 {
       clearVisualization();
 
     protected:
-      const FormationSpeedControlParams & fsc_params_;
+      FormationSpeedControlParams fsc_params_;
       std::string my_name_;
 
       avt_341::msg::PoseStamped
@@ -83,7 +72,7 @@ namespace avt_341 {
     };
 
     std::shared_ptr<FormationSpeedController>
-    createFormationSpeedController(const std::string &fsc_type, const std::string &veh_name,
+    createFormationSpeedController(const std::string &veh_name,
                                    const FormationSpeedControlParams &params,
                                    std::shared_ptr<avt_341::node::NodeProxy> node_proxy);
 

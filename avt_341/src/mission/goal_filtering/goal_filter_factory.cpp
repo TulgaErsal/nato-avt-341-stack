@@ -13,7 +13,8 @@ bool GoalFilterMethod::IsValid(const std::string & selected_method){
 std::shared_ptr<GoalFilter> create_goal_filter(
     const std::string & vehicle_id,
     const std::string & method_id,
-    const std::shared_ptr<node::NodeProxy> & node
+    const std::shared_ptr<node::NodeProxy> & node,
+    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params
     ) {
 
     std::string candidate_method = method_id;
@@ -27,7 +28,7 @@ std::shared_ptr<GoalFilter> create_goal_filter(
     node->log_info("Using goal filter method: %s", candidate_method.c_str());
 
     if (candidate_method == GoalFilterMethod::ObstacleAvoidance) {
-        return std::make_shared<ObsAvoidGoalFilter>(node, vehicle_id);
+        return std::make_shared<ObsAvoidGoalFilter>(node, vehicle_id, filter_params);
     }
     return std::make_shared<NullGoalFilter>();
 }
