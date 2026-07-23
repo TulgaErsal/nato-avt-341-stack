@@ -154,6 +154,11 @@ void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
 
     const std::string veh_frame = current_odom_.child_frame_id;
 
+    if (veh_frame.empty()) {
+        recording.Cancel();
+        return;
+    }
+
     if (clr_only_pc_ != nullptr) {
         msg::PoseStamped origin_pose = node_ref_->lookup_pose("map", veh_frame, clr_only_pc_->header.stamp);
         ClearPoints(clr_only_pc_, origin_pose.pose);
