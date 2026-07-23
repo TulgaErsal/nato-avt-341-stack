@@ -146,15 +146,9 @@ void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
     auto recording = compute_time_recorder_->RecordScope(pc_section_id_);
 
     std::shared_ptr<msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
-
-    if (pc == nullptr) {
-        recording.Cancel();
-        return;
-    }
-
     const std::string veh_frame = current_odom_.child_frame_id;
 
-    if (veh_frame.empty()) {
+    if (veh_frame.empty() || pc == nullptr) {
         recording.Cancel();
         return;
     }
