@@ -145,7 +145,25 @@ def recording_node(context):
         ])
     ]
 
+def resolve_uab_mcr_root():
+    # krc_node_config.yaml resolves MCR_ROOT via $env_var{MCR_ROOT:-default} for
+    # uab_perception_node's LD_LIBRARY_PATH, but that substitution only fills in a
+    # value -- it never checks the value is an install that actually exists. Fail
+    # fast here instead of silently proceeding with a stale/missing runtime path.
+    mcr_root = os.environ.get('MCR_ROOT', '/usr/local/MATLAB/MATLAB_Runtime/R2025b')
+    if not os.path.isdir(mcr_root):
+        raise RuntimeError(
+            f"uab_perception_node requires MATLAB Runtime R2025b, but the resolved "
+            f"MCR_ROOT '{mcr_root}' does not exist on this machine. If MCR_ROOT is set "
+            f"in the environment, verify it points at a MATLAB Runtime R2025b install; "
+            f"otherwise install MATLAB Runtime R2025b at the default path above."
+        )
+    return mcr_root
+
+
 def launch_setup(context, *args, **kwargs):
+    resolve_uab_mcr_root()
+
     simulation_mode = LaunchConfiguration('simulation_mode')
     max_speed = LaunchConfiguration('max_speed')
     record = LaunchConfiguration('record')

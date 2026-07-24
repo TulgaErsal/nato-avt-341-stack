@@ -293,10 +293,22 @@ static mwArray tfToMwArray(const geometry_msgs::msg::TransformStamped &tf)
 static cv::Mat segMaskToMat(mwArray &mw_mask)
 {
     mwArray dims = mw_mask.GetDimensions();
+    if (dims.NumberOfElements() != 3)
+    {
+        throw cv::Exception(0, "expected a 3-D HxWx3 segmentation mask",
+                             "segMaskToMat", __FILE__, __LINE__);
+    }
     mwArray height_arr = dims(1, 1);
     mwArray width_arr = dims(1, 2);
+    mwArray channels_arr = dims(1, 3);
     const int height = height_arr;
     const int width = width_arr;
+    const int num_channels = channels_arr;
+    if (num_channels != 3 || height <= 0 || width <= 0)
+    {
+        throw cv::Exception(0, "expected a 3-D HxWx3 segmentation mask",
+                             "segMaskToMat", __FILE__, __LINE__);
+    }
     const int num_pixels = height * width;
 
     std::vector<uint8_t> buf(static_cast<size_t>(num_pixels) * 3);
@@ -354,16 +366,44 @@ void GetCostmapFromMatlab(float width_cells,
                             bool debug_vis_segmentation,
                             cv::Mat &seg_img)
 {
+    auto isValidTransform = [](const geometry_msgs::msg::TransformStamped &tf) -> bool
+    {
+        const auto &t = tf.transform.translation;
+        const auto &q = tf.transform.rotation;
+        if (!std::isfinite(t.x) || !std::isfinite(t.y) || !std::isfinite(t.z) ||
+            !std::isfinite(q.x) || !std::isfinite(q.y) || !std::isfinite(q.z) || !std::isfinite(q.w))
+        {
+            return false;
+        }
+        const double norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+        //unit-norm quaternion expected; e.g. 0 from a default-constructed transform is invalid
+        return std::abs(norm - 1.0) < 0.05;
+    };
+
     bool received_tform = false;
     while (!received_tform)
     {
         try
         {
-            if (tf_buffer->canTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)))
+            if (tf_buffer->canTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)) &&
+                tf_buffer->canTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)))
             {
-                lidar_to_base_link_tf = tf_buffer->lookupTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero);
-                lidar_to_camera_tf = tf_buffer->lookupTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero);
-                received_tform = true;
+                geometry_msgs::msg::TransformStamped new_lidar_to_base_link_tf =
+                    tf_buffer->lookupTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero);
+                geometry_msgs::msg::TransformStamped new_lidar_to_camera_tf =
+                    tf_buffer->lookupTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero);
+
+                if (isValidTransform(new_lidar_to_base_link_tf) && isValidTransform(new_lidar_to_camera_tf))
+                {
+                    lidar_to_base_link_tf = new_lidar_to_base_link_tf;
+                    lidar_to_camera_tf = new_lidar_to_camera_tf;
+                    received_tform = true;
+                }
+                else
+                {
+                    std::cerr << "Rejected degenerate lidar_to_base_link/lidar_to_camera transform "
+                                  "(non-finite or non-unit-norm rotation); retrying." << std::endl;
+                }
             }
         }
         catch (const tf2::TransformException &ex)
@@ -468,6 +508,11 @@ void GetCostmapFromMatlab(float width_cells,
     catch(const mwException& e)
     {
         std::cerr << "Failed to execute Matlab perception_wrapper. " << e.what() << std::endl;
+    }
+    catch(const cv::Exception& e)
+    {
+        std::cerr << "Failed to decode debug segmentation mask. " << e.what() << std::endl;
+        seg_img = cv::Mat();
     }
 }
 
@@ -777,6 +822,10 @@ int main(int argc, char *argv[])
                 catch (const cv_bridge::Exception &e)
                 {
                     std::cerr << "cv_bridge failed to convert debug segmentation image: " << e.what() << std::endl;
+                }
+                catch (const cv::Exception &e)
+                {
+                    std::cerr << "OpenCV failed to build debug segmentation image: " << e.what() << std::endl;
                 }
             }
 
