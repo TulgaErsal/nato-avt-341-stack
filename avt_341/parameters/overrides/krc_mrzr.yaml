@@ -68,6 +68,11 @@
       voxel_height_res: 0.5
       max_point_age: 1.0
 
+/**/avt_341_global_path_node:
+  ros__parameters:
+    map_topic: 'avt_341/occupancy_grid_low_res'
+    seg_topic: 'avt_341/terrain_seg/segmentation_grid'
+
 # object_detector_node / object_tracking_node run on the template defaults
 
 #/**/object_detector_node:

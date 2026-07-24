@@ -97,11 +97,11 @@ ros__parameters:
     description: "Whether to use segmentation grid data or not"
   map_topic:
     type: string
-    default_value: "avt_341/occupancy_grid_low_res"
+    default_value: "avt_341/occupancy_grid"
     description: "Occupancy grid topic"
   seg_topic:
     type: string
-    default_value: "avt_341/terrain_seg/segmentation_grid"
+    default_value: "avt_341/segmentation_grid"
     description: "Segmentation grid topic"
   planning_method:
     type: string
