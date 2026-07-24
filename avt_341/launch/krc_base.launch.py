@@ -401,24 +401,6 @@ def launch_setup(context, *args, **kwargs):
             )
         ]),
 
-        # Grid Commpression
-        Node(
-            package='avt_341',
-            executable='avt_341_grid_compression_node',
-            name='grid_compression_local'
-        ),
-
-        # Grid Commpression (Global)
-        Node(
-            package='avt_341',
-            executable='avt_341_grid_compression_node',
-            name='grid_compression_global',
-            remappings=[
-                ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
-                ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res')
-            ]
-        ),
-
         # Speed Controller
         *evaluate_speed_controller(params, context=context, args=args, kwargs=kwargs),
 
