@@ -192,7 +192,11 @@ int main(int argc, char *argv[]){
         }
 
         // Check if new zone has been entered
-        if (current_zone != -1 && current_zone != last_zone) {
+        if (current_zone != last_zone && (current_zone < 0 || current_zone >= zone_speeds.size())) {
+            node->log_info("Speed not defined for zone #%d",current_zone);
+            last_zone = current_zone;
+        }
+        else if (current_zone != last_zone) {
             node->log_info("SETTING SPEED TO %.2lf [Zone #%d]",zone_speeds[current_zone],current_zone);
 
             // Send SET_SPEED msg
