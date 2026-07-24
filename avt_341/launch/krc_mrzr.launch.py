@@ -12,37 +12,14 @@ from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch.substitution import Substitution
 from launch.some_substitutions_type import SomeSubstitutionsType
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess, GroupAction
-from launch_ros.actions import Node, SetParameter
+from launch_ros.actions import Node
 
 
 # Global Constants
 avt_341_dir = get_package_share_directory('avt_341')
 mrzr_tools_dir = get_package_share_directory('mrzr_tools')
 
-# Global Params
-global_params = {
-    '/map_origin_x': 7885314.3400268555, #7885721.697, #7885314.3400268555,
-    '/map_origin_y': 264132.3708496094, #265528.894, #264132.3708496094
-    '/grid_height': 2290.0, #877.0 #2290.0                       # Grid height.
-    '/grid_width': 2955.0 #759.0 #2955.0                        # Grid width.
-}
 vehicle_namespaces = ['mrzr','mrzr2','feda']
-vehicle_config_folders = [f'{avt_341_dir}/parameters/config_mrzr',f'{avt_341_dir}/parameters/config_mrzr',f'{avt_341_dir}/parameters/config_mrzr']
-
-class ArrayIndexSubstitution(Substitution):
-
-    def __init__(self, sub_val: SomeSubstitutionsType, idx: int):
-        self.__sub_val = sub_val
-        self.__idx = idx
-
-    def describe(self):
-        return 'ArrayIndexSubstitution(%s %d)' % (self.__sub_val.describe(), self.__idx)
-
-    def perform(self, context: launch.LaunchContext):
-        array_val = self.__sub_val.perform(context)
-        # array_val is current a string, need to parse
-        array_val = array_val.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
-        return array_val[self.__idx]
 
 class TernarySubstitution(Substitution):
 
@@ -187,7 +164,6 @@ def recording_node(context):
 def launch_setup(context, *args, **kwargs):
     simulation_mode = LaunchConfiguration('simulation_mode')
     waypoint_mode = LaunchConfiguration('waypoint_mode')
-    use_global_path = LaunchConfiguration('use_global_path')
     max_speed = LaunchConfiguration('max_speed')
     record = LaunchConfiguration('record')
     record_select_topic = LaunchConfiguration('record_select_topic')
@@ -203,6 +179,15 @@ def launch_setup(context, *args, **kwargs):
 
     idx = int(veh_index.perform(context))
     vehicle_name = vehicle_namespaces[idx]
+
+    # URDF per vehicle (aligned with vehicle_ids); simulation always uses the
+    # UE urdf, matching the old krc_base behavior
+    if simulation_mode.perform(context).strip().lower() in ('true', '1'):
+        robot_description_files = [f'{avt_341_dir}/config/MRZR_UE.urdf'] * len(vehicle_namespaces)
+    else:
+        robot_description_files = [f'{avt_341_dir}/config/MRZR.urdf',
+                                   f'{avt_341_dir}/config/MRZR_UE.urdf',
+                                   '']
 
     mrzr_nodes = [
         # Transform servers
@@ -274,30 +259,21 @@ def launch_setup(context, *args, **kwargs):
 
         # NATO AVT-341 Stack
         launch.actions.IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(avt_341_dir, 'launch', 'krc_base.launch.py')),
+            PythonLaunchDescriptionSource(os.path.join(avt_341_dir, 'launch', 'base.launch.py')),
             launch_arguments={
-                "use_sim_time":	                use_sim_time.perform(context),
-                "auto_launch_rviz":	            auto_launch_rviz.perform(context),
-                "display_type":	                "rviz",
-                "waypoints_file":	            f"{avt_341_dir}/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml",
-                "robot_description_file":	    f"{avt_341_dir}/config/MRZR.urdf",
-                "robot_description_veh2_file":	f"{avt_341_dir}/config/MRZR_UE.urdf",  # For UE4 mrzr vehicle
-                "robot_description_veh3_file":	"",
-                "robot_description_veh4_file":	"",
-                "num_vehicles":	                "1",
-                "namespace_single_vehicle":	    "True",
-                "vehicle_namespaces":	        str(vehicle_namespaces),
-                "vehicle_config_folders":	    str(vehicle_config_folders),
-                "veh_index":	                f"{veh_index.perform(context)}",
-                "use_rqt_display":	            "False",
-                "rviz_config":	                f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
-                "rviz_mult_config":	            f"{avt_341_dir}/rviz/avt_341_multi_vehicle.rviz",
+                "use_sim_time":                 use_sim_time.perform(context),
+                "auto_launch_rviz":             auto_launch_rviz.perform(context),
+                "waypoints_file":               f"{avt_341_dir}/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml",
+                "robot_description_files":      str(robot_description_files),
+                "vehicle_ids":                  str(vehicle_namespaces),
+                "spawn_filter_vehicle_ids":     f"['{vehicle_name}']",
+                "ros_param_files":                 f"['{avt_341_dir}/parameters/overrides/krc_mrzr.yaml']",
+                "node_config_file":                f"{avt_341_dir}/parameters/metadata/krc_mrzr.yaml",
+                "rviz_config":                  f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
+                "rviz_mult_config":             f"{avt_341_dir}/rviz/avt_341_multi_vehicle.rviz",
                 "use_lidar_obstacle_detector":  "True",
-                "local_planner_method":	        "mpc",
-                "global_planner_method":        "a_star",
-                "waypoint_mode":	            waypoint_mode.perform(context),
-                "simulation_mode":	            simulation_mode.perform(context),
-                "use_global_path":	            use_global_path.perform(context),
+                "local_planner_method":         "mpc",
+                "waypoint_mode":                waypoint_mode.perform(context),
                 "enable_logging":               enable_logging.perform(context),
             }.items()
         )
@@ -312,7 +288,6 @@ def generate_launch_description():
     launch_arg_dict = {
         "simulation_mode":	        ["False",	                                    "Set to true if the vehicle is in Unreal Engine"],
         "waypoint_mode":	        ["False",	                                    "Set to true for waypoint following mode"],
-        "use_global_path":	        ["True",	                                    "Set to true to use global path, else local path follows points directly"],
         "max_speed":	            ["5.0",	                                        "Maximum speed limit for the vehicle"],
         "record":	                ["False",	                                    "Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"],
         "record_select_topic":	    ["False",	                                    "Record only topics defined in 'record_topics'"],
@@ -330,13 +305,7 @@ def generate_launch_description():
     for arg,[default,desc] in launch_arg_dict.items():
         launch_args.append(DeclareLaunchArgument(arg, default_value=default, description=desc))
 
-    # Set global parameters
-    global_param_setters = []
-    for param,val in global_params.items():
-        global_param_setters.append(SetParameter(name=param, value=val),)
-
     return LaunchDescription([
         *launch_args,
-        *global_param_setters,
         OpaqueFunction(function=launch_setup),
     ])

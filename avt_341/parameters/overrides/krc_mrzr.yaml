@@ -13,6 +13,10 @@
 /**:
   ros__parameters:
     max_speed: 4.0    # single source for the mpc planner family and the mission manager
+    map_origin_x: 7885314.3400268555
+    map_origin_y: 264132.3708496094
+    grid_width: 2955.0
+    grid_height: 2290.0
 
 /**/mission_manager_node:
   ros__parameters:

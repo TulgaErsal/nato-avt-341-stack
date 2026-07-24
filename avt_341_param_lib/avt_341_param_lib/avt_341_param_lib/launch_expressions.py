@@ -139,3 +139,16 @@ class AllCondition(Condition):
 
     def describe(self):
         return f"AllCondition({','.join([d.describe() for d in self.__conditions])})"
+
+class ListSize(Substitution):
+
+    def __init__(self, sub_val: SomeSubstitutionsType):
+        self.__sub_val = sub_val
+
+    def describe(self):
+        return 'ListSize %s' % (self.__sub_val.describe())
+
+    def perform(self, context: launch.LaunchContext):
+        array_val = self.__sub_val.perform(context)
+        array_val = array_val.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
+        return str(len(array_val))
