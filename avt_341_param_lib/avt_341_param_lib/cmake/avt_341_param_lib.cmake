@@ -27,14 +27,12 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 
-# avt_341_generate_cpp_parameter_file(<lib_name> <yaml_file> [<validate_header>] [INCLUDE_SUBFOLDER <sub/folders>])
+# avt_341_generate_cpp_parameter_file(<base_name> <yaml_file> [<validate_header>] [INCLUDE_SUBFOLDER <sub/folders>])
 #
-# Generates the parameter library header <lib_name>.hpp from the given template yaml
-# file and exposes it through the INTERFACE library target <lib_name>. The header is
-# placed under include/<project>/[<sub/folders>/]<lib_name>.hpp in both the build and
-# install trees; the optional INCLUDE_SUBFOLDER keyword inserts additional sub-folders
-# after the project name.
-macro(avt_341_generate_cpp_parameter_file LIB_NAME YAML_FILE)
+# Generates <base_name>_params_dto.hpp and <base_name>_params_service.hpp from
+# the given template yaml. The corresponding INTERFACE targets have the same
+# names without the .hpp extension.
+macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
   cmake_parse_arguments(avt341_gp "" "INCLUDE_SUBFOLDER" "" ${ARGN})
 
   # Sub-path of the generated header below the include root
@@ -74,46 +72,103 @@ macro(avt_341_generate_cpp_parameter_file LIB_NAME YAML_FILE)
   set(avt341_gp_yaml_file ${YAML_FILE})
   cmake_path(ABSOLUTE_PATH avt341_gp_yaml_file BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE YAML_FILE_PATH)
 
-  # Set the output parameter header file name
-  set(PARAM_HEADER_FILE ${LIB_INCLUDE_DIR}/${LIB_NAME}.hpp)
+  set(DTO_LIB_NAME "${BASE_NAME}_params_dto")
+  set(SERVICE_LIB_NAME "${BASE_NAME}_params_service")
+  set(DTO_HEADER_FILE ${LIB_INCLUDE_DIR}/${DTO_LIB_NAME}.hpp)
+  set(SERVICE_HEADER_FILE ${LIB_INCLUDE_DIR}/${SERVICE_LIB_NAME}.hpp)
 
-  # Generate the header for the library
+  # Templates may pull in mixin files (__include_mixins) from a sibling mixins/ folder; depend
+  # on all of them (conservative) so mixin edits regenerate the headers.
+  cmake_path(GET YAML_FILE_PATH PARENT_PATH avt341_gp_yaml_dir)
+  file(GLOB avt341_gp_mixin_files CONFIGURE_DEPENDS
+    "${avt341_gp_yaml_dir}/mixins/*.yaml" "${avt341_gp_yaml_dir}/mixins/*.yml")
+
+  # Parse the yaml once and generate both headers.
+  set(PARAM_GENERATION_STAMP
+    ${CMAKE_CURRENT_BINARY_DIR}/${BASE_NAME}_params_generation.stamp)
   add_custom_command(
-    OUTPUT ${PARAM_HEADER_FILE}
-    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_header ${PARAM_HEADER_FILE} ${YAML_FILE_PATH} ${VALIDATE_HEADER_FILENAME}
-    DEPENDS ${YAML_FILE_PATH} ${VALIDATE_HEADER}
-    COMMENT
-    "Running `${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_header ${PARAM_HEADER_FILE} ${YAML_FILE_PATH} ${VALIDATE_HEADER_FILENAME}`"
+    OUTPUT ${PARAM_GENERATION_STAMP}
+    BYPRODUCTS ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
+    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_header
+      ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE} ${YAML_FILE_PATH}
+      ${VALIDATE_HEADER_FILENAME}
+      --mixin-include-prefix ${LIB_INCLUDE_SUBDIR}
+    COMMAND ${CMAKE_COMMAND} -E touch ${PARAM_GENERATION_STAMP}
+    DEPENDS ${YAML_FILE_PATH} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
+    COMMENT "Generating ${DTO_LIB_NAME}.hpp and ${SERVICE_LIB_NAME}.hpp"
     VERBATIM
   )
-  # necessary so that #include <param_file.hpp> can be used in the local package (deprecated)
-  set(LOCAL_PARAM_HEADER_FILE ${CMAKE_CURRENT_BINARY_DIR}/include/${LIB_NAME}.hpp)
-  set(LOCAL_PARAM_HEADER_PRAGMA_WARNING_FILE ${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}_pragma_warning)
-  file(WRITE ${LOCAL_PARAM_HEADER_PRAGMA_WARNING_FILE}
-    "#pragma message(\"#include \\\"${LIB_NAME}.hpp\\\" is deprecated. Use #include <${LIB_INCLUDE_SUBDIR}/${LIB_NAME}.hpp> instead.\")\n")
-  add_custom_command(
-    OUTPUT ${LOCAL_PARAM_HEADER_FILE}
-    COMMAND ${CMAKE_COMMAND} -E cat ${LOCAL_PARAM_HEADER_PRAGMA_WARNING_FILE} ${PARAM_HEADER_FILE} > ${LOCAL_PARAM_HEADER_FILE}
-    DEPENDS ${PARAM_HEADER_FILE}
-    COMMENT
-    "Creating deprecated header file ${LOCAL_PARAM_HEADER_FILE}"
-    VERBATIM
-  )
+  add_custom_target(${BASE_NAME}_params_generation ALL
+    DEPENDS ${PARAM_GENERATION_STAMP})
 
-  # Create the library target
-  add_library(${LIB_NAME} INTERFACE ${PARAM_HEADER_FILE} ${VALIDATE_HEADER} ${LOCAL_PARAM_HEADER_FILE})
-  target_include_directories(${LIB_NAME} INTERFACE
+  # Preserve the build-local short include path for both new headers.
+  set(LOCAL_DTO_HEADER_FILE ${CMAKE_CURRENT_BINARY_DIR}/include/${DTO_LIB_NAME}.hpp)
+  set(LOCAL_SERVICE_HEADER_FILE
+    ${CMAKE_CURRENT_BINARY_DIR}/include/${SERVICE_LIB_NAME}.hpp)
+  foreach(avt341_gp_header_kind IN ITEMS DTO SERVICE)
+    set(avt341_gp_lib_name ${${avt341_gp_header_kind}_LIB_NAME})
+    set(avt341_gp_header_file ${${avt341_gp_header_kind}_HEADER_FILE})
+    set(avt341_gp_local_header_file
+      ${LOCAL_${avt341_gp_header_kind}_HEADER_FILE})
+    set(avt341_gp_pragma_file
+      ${CMAKE_CURRENT_BINARY_DIR}/${avt341_gp_lib_name}_pragma_warning)
+    file(WRITE ${avt341_gp_pragma_file}
+      "#pragma message(\"#include \\\"${avt341_gp_lib_name}.hpp\\\" is deprecated. Use #include <${LIB_INCLUDE_SUBDIR}/${avt341_gp_lib_name}.hpp> instead.\")\n")
+    add_custom_command(
+      OUTPUT ${avt341_gp_local_header_file}
+      COMMAND ${CMAKE_COMMAND} -E cat ${avt341_gp_pragma_file}
+        ${avt341_gp_header_file} > ${avt341_gp_local_header_file}
+      DEPENDS ${avt341_gp_header_file}
+      COMMENT "Creating deprecated header file ${avt341_gp_local_header_file}"
+      VERBATIM
+    )
+  endforeach()
+
+  # The DTO target supplies only generated standard-library data types.
+  add_library(${DTO_LIB_NAME} INTERFACE
+    ${DTO_HEADER_FILE}
+    ${LOCAL_DTO_HEADER_FILE}
+  )
+  target_include_directories(${DTO_LIB_NAME} INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
   )
-  set_target_properties(${LIB_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-  target_link_libraries(${LIB_NAME} INTERFACE
+  target_compile_features(${DTO_LIB_NAME} INTERFACE cxx_std_17)
+  add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+  # Shared mixin DTO headers referenced by the generated dto header
+  # (conservative: link all mixin DTO libraries; they are header-only)
+  if(AVT341_MIXIN_DTO_LIBS)
+    target_link_libraries(${DTO_LIB_NAME} INTERFACE ${AVT341_MIXIN_DTO_LIBS})
+  endif()
+
+  # The service target owns all ROS, validation, and formatting dependencies.
+  add_library(${SERVICE_LIB_NAME} INTERFACE
+    ${SERVICE_HEADER_FILE}
+    ${VALIDATE_HEADER}
+    ${LOCAL_SERVICE_HEADER_FILE}
+  )
+  target_include_directories(${SERVICE_LIB_NAME} INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  add_dependencies(${SERVICE_LIB_NAME} ${BASE_NAME}_params_generation)
+  target_link_libraries(${SERVICE_LIB_NAME} INTERFACE
+    ${DTO_LIB_NAME}
     fmt::fmt
     rclcpp::rclcpp
     rclcpp_lifecycle::rclcpp_lifecycle
     avt_341_param_lib::avt_341_param_lib
   )
-  install(DIRECTORY ${LIB_INCLUDE_DIR}/ DESTINATION include/${LIB_INCLUDE_SUBDIR})
+  install(
+    FILES ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
+    DESTINATION include/${LIB_INCLUDE_SUBDIR}
+  )
+  if(VALIDATE_HEADER)
+    install(
+      FILES ${VALIDATE_HEADER}
+      DESTINATION include/${LIB_INCLUDE_SUBDIR}
+    )
+  endif()
   ament_export_dependencies(
     fmt rclcpp rclcpp_lifecycle avt_341_param_lib
   )
@@ -125,14 +180,14 @@ endmacro()
 # matches to yaml parameter files (.yaml/.yml) and invokes <generator_command>
 # once per matched file as
 #   <generator_command>(<stem><suffix> <yaml_file> <remaining args...>)
-# where <suffix> defaults to "_parameters" (override with NAME_SUFFIX) and
-# RECURSE switches to recursive matching. All remaining arguments are forwarded
-# to <generator_command> untouched.
-macro(_avt_341_generate_parameters_glob GENERATOR_COMMAND GLOB_PATTERN)
+# where <suffix> uses <default_name_suffix> unless overridden with NAME_SUFFIX.
+# RECURSE switches to recursive matching. All remaining arguments are
+# forwarded to <generator_command> untouched.
+macro(_avt_341_generate_parameters_glob GENERATOR_COMMAND GLOB_PATTERN DEFAULT_NAME_SUFFIX)
   cmake_parse_arguments(avt341_gpm "RECURSE" "NAME_SUFFIX" "" ${ARGN})
 
   if(NOT DEFINED avt341_gpm_NAME_SUFFIX)
-    set(avt341_gpm_NAME_SUFFIX "_parameters")
+    set(avt341_gpm_NAME_SUFFIX "${DEFAULT_NAME_SUFFIX}")
   endif()
 
   set(avt341_gpm_pattern ${GLOB_PATTERN})
@@ -171,6 +226,47 @@ macro(_avt_341_generate_parameters_glob GENERATOR_COMMAND GLOB_PATTERN)
 endmacro()
 
 
+# avt_341_generate_cpp_mixin_file(<base_name> <yaml_file>)
+#
+# Generates the shared type-only DTO header and INTERFACE library for one
+# mixin template. Including templates reference the mixin's structs through
+# these headers instead of re-defining them inline.
+macro(avt_341_generate_cpp_mixin_file BASE_NAME YAML_FILE)
+  set(LIB_INCLUDE_SUBDIR ${PROJECT_NAME})
+  set(LIB_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include/${LIB_INCLUDE_SUBDIR})
+  file(MAKE_DIRECTORY ${LIB_INCLUDE_DIR})
+
+  set(avt341_gp_yaml_file ${YAML_FILE})
+  cmake_path(ABSOLUTE_PATH avt341_gp_yaml_file BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE YAML_FILE_PATH)
+
+  set(DTO_LIB_NAME "${BASE_NAME}_params_dto")
+  set(DTO_HEADER_FILE ${LIB_INCLUDE_DIR}/${DTO_LIB_NAME}.hpp)
+
+  add_custom_command(
+    OUTPUT ${DTO_HEADER_FILE}
+    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_mixin_header
+      ${DTO_HEADER_FILE} ${YAML_FILE_PATH}
+    DEPENDS ${YAML_FILE_PATH}
+    COMMENT "Generating mixin DTO ${DTO_LIB_NAME}.hpp"
+    VERBATIM
+  )
+  add_custom_target(${BASE_NAME}_params_generation ALL
+    DEPENDS ${DTO_HEADER_FILE})
+
+  add_library(${DTO_LIB_NAME} INTERFACE ${DTO_HEADER_FILE})
+  target_include_directories(${DTO_LIB_NAME} INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_compile_features(${DTO_LIB_NAME} INTERFACE cxx_std_17)
+  add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+  install(
+    FILES ${DTO_HEADER_FILE}
+    DESTINATION include/${LIB_INCLUDE_SUBDIR}
+  )
+endmacro()
+
+
 # avt_341_generate_cpp_parameters(<glob_pattern> [<validate_header>] [RECURSE]
 #                                 [INCLUDE_SUBFOLDER <sub/folders>] [NAME_SUFFIX <suffix>])
 #
@@ -180,11 +276,32 @@ endmacro()
 # (.yaml/.yml); a bare directory is treated as <directory>/*. RECURSE matches
 # the pattern recursively (file(GLOB_RECURSE) semantics). Each matched file
 # <name>.yaml produces the INTERFACE library target and header <name><suffix>,
-# where <suffix> defaults to "_parameters" and can be overridden with
-# NAME_SUFFIX. The remaining optional arguments are forwarded to
-# avt_341_generate_cpp_parameter_file().
+# where <suffix> defaults to empty and can be overridden with NAME_SUFFIX.
+# The fixed output suffixes are "_params_dto" and "_params_service".
+#
+# Mixin templates in a "mixins" subfolder of the pattern directory each
+# generate a shared type-only DTO header (see avt_341_generate_cpp_mixin_file)
+# before the node templates are processed; every node template DTO library
+# links the mixin DTO libraries.
 macro(avt_341_generate_cpp_parameters GLOB_PATTERN)
-  _avt_341_generate_parameters_glob(avt_341_generate_cpp_parameter_file "${GLOB_PATTERN}" ${ARGN})
+  # Generate shared mixin DTO fragments first so the template DTO libraries
+  # can link them.
+  set(avt341_gpm_mixin_dir ${GLOB_PATTERN})
+  cmake_path(ABSOLUTE_PATH avt341_gpm_mixin_dir BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  if(NOT IS_DIRECTORY ${avt341_gpm_mixin_dir})
+    cmake_path(GET avt341_gpm_mixin_dir PARENT_PATH avt341_gpm_mixin_dir)
+  endif()
+  set(AVT341_MIXIN_DTO_LIBS "")
+  file(GLOB avt341_gpm_mixin_yamls CONFIGURE_DEPENDS
+    "${avt341_gpm_mixin_dir}/mixins/*.yaml" "${avt341_gpm_mixin_dir}/mixins/*.yml")
+  foreach(avt341_gpm_mixin_yaml IN LISTS avt341_gpm_mixin_yamls)
+    cmake_path(GET avt341_gpm_mixin_yaml STEM avt341_gpm_mixin_stem)
+    avt_341_generate_cpp_mixin_file(${avt341_gpm_mixin_stem} ${avt341_gpm_mixin_yaml})
+    list(APPEND AVT341_MIXIN_DTO_LIBS ${avt341_gpm_mixin_stem}_params_dto)
+  endforeach()
+
+  _avt_341_generate_parameters_glob(
+    avt_341_generate_cpp_parameter_file "${GLOB_PATTERN}" "" ${ARGN})
 endmacro()
 
 
@@ -208,11 +325,17 @@ function(avt_341_generate_python_parameter_file LIB_NAME YAML_FILE)
   # Generate into the build tree, not into CMAKE_INSTALL_PREFIX
   set(PARAM_HEADER_FILE ${PY_BUILD_DIR}/${LIB_NAME}.py)
 
+  # Templates may pull in mixin files (__include_mixins) from a sibling mixins/ folder; depend
+  # on all of them (conservative) so mixin edits regenerate the module.
+  cmake_path(GET YAML_FILE PARENT_PATH avt341_gp_yaml_dir)
+  file(GLOB avt341_gp_mixin_files CONFIGURE_DEPENDS
+    "${avt341_gp_yaml_dir}/mixins/*.yaml" "${avt341_gp_yaml_dir}/mixins/*.yml")
+
   # Generate the module for Python
   add_custom_command(
           OUTPUT ${PARAM_HEADER_FILE}
           COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}
-          DEPENDS ${YAML_FILE} ${VALIDATE_HEADER}
+          DEPENDS ${YAML_FILE} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
           COMMENT
           "Running `${Python3_EXECUTABLE} -m avt_341_param_lib.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}`"
           VERBATIM
@@ -241,7 +364,8 @@ endfunction()
 # be overridden with NAME_SUFFIX. The remaining optional arguments are
 # forwarded to avt_341_generate_python_parameter_file().
 macro(avt_341_generate_python_parameters GLOB_PATTERN)
-  _avt_341_generate_parameters_glob(avt_341_generate_python_parameter_file "${GLOB_PATTERN}" ${ARGN})
+  _avt_341_generate_parameters_glob(
+    avt_341_generate_python_parameter_file "${GLOB_PATTERN}" "_parameters" ${ARGN})
 endmacro()
 
 # create custom test function to pass yaml file into test main

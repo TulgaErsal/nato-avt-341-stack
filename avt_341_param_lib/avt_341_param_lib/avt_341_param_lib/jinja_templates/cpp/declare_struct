@@ -12,5 +12,7 @@ struct {{struct_name}} {
 {% endif -%}
 {% if not struct_instance|length -%}
 };
+{% if map_name|length -%}
 std::map<std::string, {{map_value_type}}> {{map_name-}};
+{% endif -%}
 {% endif -%}

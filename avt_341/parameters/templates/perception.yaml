@@ -1,0 +1,303 @@
+code_namespace: avt_341/params/perception
+ros__parameters:
+
+  runtime:
+    warmup_time:
+      type: double
+      default_value: 5.0
+      description: "Time before perception output processing starts."
+    rate:
+      type: double
+      default_value: 100.0
+      description: "Publish rate for the perception node."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    compute_time_publish_period:
+      type: double
+      default_value: 1.0
+      description: "Period in seconds for publishing layer compute-time summaries; <= 0 disables."
+
+  costmap:
+
+    __include_mixins: costmap_geometry_mixin, costmap_publish_mixin
+
+    thresholds:
+      use_elevation:
+        type: bool
+        default_value: false
+        description: "Use elevation instead of slope when producing occupancy values."
+      thresh:
+        type: float
+        default_value: 0.5
+        description: "Minimum cell slope or elevation that is considered occupied."
+      thresh_max:
+        type: float
+        default_value: 2.5
+        description: "Slope after which a cell receives the maximum occupancy value."
+      output_unknown_cells:
+        type: bool
+        default_value: false
+        description: "Keep unknown cells at -1 instead of replacing them."
+      replace_occ_unknown_with:
+        type: int
+        default_value: 0
+        description: "Value used for unknown occupancy cells when replacement is enabled."
+        validation:
+          bounds<>: [ -1, 100 ]
+      replace_seg_unknown_with:
+        type: int
+        default_value: 0
+        description: "Value used for unknown segmentation cells when replacement is enabled."
+        validation:
+          bounds<>: [ -1, 100 ]
+
+    dilation:
+      enabled:
+        type: bool
+        default_value: false
+        description: "Enable costmap dilation."
+      x:
+        type: float
+        default_value: 0.75
+        description: "Dilation distance in x."
+      y:
+        type: float
+        default_value: 0.75
+        description: "Dilation distance in y."
+      proportion:
+        type: float
+        default_value: 0.8
+        description: "Proportion of the source cell value assigned to dilated cells."
+
+    terrain_rms:
+      hfov:
+        type: float
+        default_value: 1.5708
+        description: "Horizontal field of view in radians for slope and RMS calculation."
+      range:
+        type: float
+        default_value: 0.0
+        description: "Range in meters for slope and RMS calculation; 0 disables."
+      time_window:
+        type: float
+        default_value: 1.0
+        description: "Time window in seconds for averaging slope and RMS values."
+
+    layer_combination_method:
+      type: string
+      default_value: 'last'
+      description: "Layer combination method: 'last', 'max', or 'mean'."
+      validation:
+        one_of<>: [ [ 'last', 'max', 'mean' ] ]
+
+  point_cloud_layer:
+    topic:
+      type: string
+      default_value: '/avt_341/lidar_detector/cloud_clusters'
+      description: "Primary point-cloud input topic."
+    clear_topic:
+      type: string
+      default_value: '/avt_341/lidar_detector/cloud_ground'
+      description: "Optional point-cloud topic whose points only invoke clearing methods."
+    contribute_occupancy:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes occupancy values."
+    contribute_segmentation:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes segmentation values."
+    callback_warn_time:
+      type: double
+      default_value: 0.1
+      description: "Warn when point-cloud processing exceeds this duration in seconds."
+    segmentation_channel:
+      type: string
+      default_value: 'segmentation'
+      description: "Point-cloud channel containing segmentation values."
+    filter:
+      enable_dist_filter:
+        type: bool
+        default_value: false
+        description: "Enable filtering of point-cloud inputs."
+      min_dist:
+        type: double
+        default_value: 1.5
+        description: "Ignore points closer than this distance; -1 disables."
+      max_dist:
+        type: double
+        default_value: 100.0
+        description: "Ignore points farther than this distance; -1 disables."
+      min_hfov:
+        type: double
+        default_value: -180.0
+        description: "Minimum horizontal field-of-view angle."
+      max_hfov:
+        type: double
+        default_value: 180.0
+        description: "Maximum horizontal field-of-view angle."
+      max_height_clearance:
+        type: double
+        default_value: 5.0
+        description: "Ignore points above this vehicle-relative height; -1 disables."
+
+  clear_method:
+    type:
+      type: string
+      default_value: 'raytrace'
+      description: "Comma-separated costmap clearing methods."
+    visualize:
+      type: bool
+      default_value: false
+      description: "Visualize costmap clearing."
+    visualization_range:
+      type: float
+      default_value: 40.0
+      description: "Visualization range; a negative value displays all cells."
+    raytrace_range:
+      type: float
+      default_value: 50.0
+      description: "Maximum range for raytrace clearing."
+    use_voxels:
+      type: bool
+      default_value: true
+      description: "Use the voxel representation for raytrace clearing."
+    voxel_height_min:
+      type: float
+      default_value: -5.0
+      description: "Minimum voxel-grid height."
+    voxel_height_res:
+      type: float
+      default_value: 0.25
+      description: "Voxel-grid height resolution."
+      validation:
+        gt<>: [ 0.0 ]
+    immediate_clear_dilation:
+      type: bool
+      default_value: true
+      description: "Immediately remove dilation associated with cleared cells."
+    clr_on_scan_below_only:
+      type: bool
+      default_value: false
+      description: "Only clear cells when the ray passes strictly below the occupied voxel."
+    lidar_frame:
+      type: string
+      default_value: 'lidar'
+      description: "Lidar TF frame used by raytrace clearing."
+    obj_range_filter:
+      type: float
+      default_value: 1.0
+      description: "Minimum obstacle distance required by filtered raytrace clearing."
+    max_point_age:
+      type: float
+      default_value: 0.5
+      description: "Point lifetime used by time-based clearing."
+    sampled_threshold:
+      type: int
+      default_value: 5
+      description: "Minimum observations required by no-observation time clearing."
+      validation:
+        gt<>: [ 0 ]
+    no_obs_dist_threshold:
+      type: float
+      default_value: 0.25
+      description: "Minimum ego-motion distance for a new no-observation sample."
+    channel_to_clear:
+      type: string
+      default_value: 'gnd_seg'
+      description: "Point-cloud channel used by channel-threshold clearing."
+    channel_threshold:
+      type: float
+      default_value: 0.5
+      description: "Channel value below which a cell is cleared."
+    filter:
+      enable_dist_filter:
+        type: bool
+        default_value: false
+        description: "Enable additional filtering before clearing."
+      min_dist:
+        type: double
+        default_value: 0.0
+        description: "Ignore clearing points closer than this distance; -1 disables."
+      max_dist:
+        type: double
+        default_value: 80.0
+        description: "Ignore clearing points farther than this distance; -1 disables."
+      min_hfov:
+        type: double
+        default_value: -180.0
+        description: "Minimum horizontal field-of-view angle for clearing points."
+      max_hfov:
+        type: double
+        default_value: 180.0
+        description: "Maximum horizontal field-of-view angle for clearing points."
+      max_height_clearance:
+        type: double
+        default_value: -1.0
+        description: "Ignore clearing points above this vehicle-relative height; -1 disables."
+
+  camera_layer:
+    depth_topic:
+      type: string
+      default_value: ''
+      description: "Depth-image topic."
+    segmentation_topic:
+      type: string
+      default_value: ''
+      description: "Segmentation-image topic."
+    info_topic:
+      type: string
+      default_value: ''
+      description: "Camera-info topic."
+    contribute_occupancy:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes occupancy values."
+    contribute_segmentation:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes segmentation values."
+
+  polygon_layer:
+    data_file:
+      type: string
+      default_value: ''
+      description: "JSON file containing polygon-zone definitions."
+    visualize:
+      type: bool
+      default_value: true
+      description: "Visualize polygon perimeters and labels."
+    contribute_occupancy:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes occupancy values."
+    contribute_segmentation:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes segmentation values."
+
+  static_grid_layer:
+    data_file:
+      type: string
+      default_value: ''
+      description: "CSV file containing static grid-layer data."
+    height_field:
+      type: string
+      default_value: 'height'
+      description: "CSV field containing height values."
+    segmentation_field:
+      type: string
+      default_value: 'segmentation'
+      description: "CSV field containing segmentation values."
+    input_y_dir_negative:
+      type: bool
+      default_value: false
+      description: "Whether input cells are ordered with a downward-pointing y axis."
+    contribute_occupancy:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes occupancy values."
+    contribute_segmentation:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes segmentation values."

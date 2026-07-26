@@ -1,0 +1,17 @@
+class_name: Params
+code_namespace: float_demo
+ros__parameters:
+  default_scalar:
+    type: float
+    default_value: 1.25
+  default_array:
+    type: float_array
+    default_value: [1.5, -2.25]
+  required_scalar:
+    type: float
+    validation:
+      bounds<>: [0.0, 10.0]
+  required_array:
+    type: float_array
+    validation:
+      element_bounds<>: [-10.0, 10.0]

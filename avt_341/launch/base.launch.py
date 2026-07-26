@@ -1,524 +1,258 @@
 import os
 
-import launch.conditions
-from launch.conditions import IfCondition, LaunchConfigurationNotEquals, LaunchConfigurationEquals
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, SetLaunchConfiguration
-from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
-from launch_ros.actions import Node, PushRosNamespace
-from launch.actions import OpaqueFunction
-
-from launch.substitution import Substitution
-from launch.some_substitutions_type import SomeSubstitutionsType
-from launch.condition import Condition
-from launch.utilities import perform_substitutions, normalize_to_list_of_substitutions
-import yaml
-
-
-class TernarySubstitution(Substitution):
-
-    def __init__(self, true_val: SomeSubstitutionsType, false_val: SomeSubstitutionsType, condition: Condition):
-        self.__true_val = true_val
-        self.__false_val = false_val
-        self.__condition = condition
-
-    def describe(self):
-        return 'TernarySubstitution(%s %s %s)' % (self.__true_val.describe(), self.__false_val.describe(), self.__condition.describe())
-
-    def perform(self, context: launch.LaunchContext):
-        if self.__condition.evaluate(context):
-            return self.__true_val.perform(context)
-        else:
-            return self.__false_val.perform(context)
-
-
-class ToUpper(Substitution):
-
-    def __init__(self, sub_val: SomeSubstitutionsType):
-        self.__sub_val = sub_val
-
-    def describe(self):
-        return 'ToUpper(%s)' % (self.__sub_val.describe())
-
-    def perform(self, context: launch.LaunchContext):
-        return self.__sub_val.perform(context).upper()
-
-
-class Invert(Substitution):
-
-    def __init__(self, sub_val: SomeSubstitutionsType):
-        self.__sub_val = sub_val
-
-    def describe(self):
-        return 'Invert(%s)' % (self.__sub_val.describe())
-
-    def perform(self, context: launch.LaunchContext):
-        val = self.__sub_val.perform(context).lower()
-        is_true = val in ['true', '1']
-        return str(not is_true)
-
-
-class Concat(Substitution):
-
-        def __init__(self, sub_val: SomeSubstitutionsType, concat_val):
-            self.__sub_val = sub_val
-            self.__concat_val = concat_val
-
-        def describe(self):
-            return 'StringConcat(%s %s)' % (self.__sub_val.describe(), self.__concat_val)
-
-        def perform(self, context: launch.LaunchContext):
-            return self.__sub_val.perform(context) + self.__concat_val
-
-
-class ArrayIndexSubstitution(Substitution):
-
-    def __init__(self, sub_val: SomeSubstitutionsType, idx: int):
-        self.__sub_val = sub_val
-        self.__idx = idx
-
-    def describe(self):
-        return 'ArrayIndexSubstitution(%s %d)' % (self.__sub_val.describe(), self.__idx)
-
-    def perform(self, context: launch.LaunchContext):
-        array_val = self.__sub_val.perform(context)
-        # array_val is currently a string, need to parse
-        array_val = array_val.replace('[', '', 1)[::-1].replace(']', '', 1)[::-1].replace(' ', '').replace("'", "").split(',')
-        return array_val[self.__idx]
-
-
-class InListCondition(Condition):
-
-    def __init__(self, sub_val: SomeSubstitutionsType, expected_values):
-        self.__sub_val = sub_val
-        self.__expected_values = None
-        if expected_values is not None:
-            self.__expected_values = normalize_to_list_of_substitutions(expected_values)
-        super().__init__(predicate=self._predicate_func)
-
-    def _predicate_func(self, context):
-        value = self.__sub_val.perform(context)
-        expanded_expected_value = perform_substitutions(context, self.__expected_values)
-        return value in expanded_expected_value
-
-    def describe(self):
-        return self.__repr__()
-
-
-class NotInListCondition(InListCondition):
-
-    def __init__(self, sub_val: SomeSubstitutionsType, expected_values):
-        super().__init__(sub_val, expected_values)
-
-    def _predicate_func(self, context):
-        return not super()._predicate_func(context)
-
-
-class AnyCondition(Condition):
-
-    def __init__(self, conditions):
-        self.__conditions = conditions
-        super().__init__(predicate=self._predicate_func)
-
-    def _predicate_func(self, context):
-        return any([c._predicate_func(context) for c in self.__conditions])
-
-    def describe(self):
-        return f"AnyCondition({','.join([d.describe() for d in self.__conditions])})"
-
-
-class AllCondition(Condition):
-
-    def __init__(self, conditions):
-        self.__conditions = conditions
-        super().__init__(predicate=self._predicate_func)
-
-    def _predicate_func(self, context):
-        return all([c._predicate_func(context) for c in self.__conditions])
-
-    def describe(self):
-        return f"AnyCondition({','.join([d.describe() for d in self.__conditions])})"
-
-
-def evaluate_waypoint_parameters(context, *args, **kwargs):
-    waypoints_file_path = LaunchConfiguration('waypoints_file').perform(context)
-    waypoints_x = "[ ]"
-    waypoints_y = "[ ]"
-    is_empty_waypoints = not waypoints_file_path
-    with open(waypoints_file_path, 'r') as f:
-        for line in f.readlines():
-            if "waypoints_x" in line:
-                waypoints_x = line.split(":")[1]
-                is_empty_waypoints = is_empty_waypoints or waypoints_x.replace(' ', '') == '[]'
-            if "waypoints_y" in line:
-                waypoints_y = line.split(":")[1]
-                is_empty_waypoints = is_empty_waypoints or waypoints_y.replace(' ', '') == '[]'
-
-    if is_empty_waypoints:
-        waypoints_x = "[ 0.0 ]"
-        waypoints_y = "[ 0.0 ]"
-
-    return [
-        DeclareLaunchArgument('waypoints_x', description="List of waypoint x coordinates. Will override waypoints_file is specified.", default_value=waypoints_x),
-        DeclareLaunchArgument('waypoints_y', description="List of waypoint y coordinates. Will override waypoints_file is specified.", default_value=waypoints_y),
-        DeclareLaunchArgument('is_empty_waypoints',
-                              description="Parameter set internally to detect if waypoints file empty. ROS2 foxy workaround (https://answers.ros.org/question/396556/what-is-best-practice-for-parameters-which-are-empty-lists-in-ros2/). Do not set manually",
-                              default_value=str(is_empty_waypoints).capitalize()),
-    ]
-
-
-PYTHON_EVAL_STR = '$Python:'
-
-# TODO: Issue #123 Convert to new base.launch file
-def generate_launch_description():
-
-    MAX_VEHICLES = 4
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    auto_launch_rviz = LaunchConfiguration("auto_launch_rviz")
-    display_type = LaunchConfiguration('display_type')
-
-    rviz_config_single_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_ros2.rviz')
-    rviz_config_multi_vehicle = os.path.join(get_package_share_directory('avt_341'), 'rviz', 'avt_341_multi_vehicle_ros2.rviz')
-
-    robot_desc_list = [LaunchConfiguration('robot_description'), LaunchConfiguration('robot_description_veh2'),
-                       LaunchConfiguration('robot_description_veh3'), LaunchConfiguration('robot_description_veh4')]
-
-    param_dir = os.path.join(get_package_share_directory('avt_341'), 'config', 'parameters')
-    param_files = {f[:-len('.yaml')]: os.path.join(param_dir, f) for f in os.listdir(param_dir) if f.endswith('.yaml')}
-    params = {}
-    param_refs = {}
-    for k, v in param_files.items():
-        with open(v) as f:
-            params[k] = yaml.load(f, Loader=yaml.FullLoader)
-            param_refs[k] = {}
-        keys_list = list(params[k].keys())
-        # Flatten sub-dictionaries
-        for ki in keys_list:
-            vi = params[k][ki]
-            if type(vi) is dict:
-                for kii, vii in vi.items():
-                    params[k]['_'.join([ki, kii])] = vii
-                del params[k][ki]
-        for ki, vi in params[k].items():
-            if type(vi) is str and vi.startswith(PYTHON_EVAL_STR):
-                python_str = vi[len(PYTHON_EVAL_STR):]
-                params[k][ki] = eval(python_str)
-            if type(vi) is str and vi.startswith("$val{"):
-                key_sub = vi[5:-1].split(':')
-                params[k][ki] = params[key_sub[0]][key_sub[1]]
-            if type(vi) is str and vi.startswith("$ref{"):
-                param_refs[k][ki] = vi[5:-1]
-        for ki in param_refs[k].keys():
-            del params[k][ki]
-
-    new_format_params = ['veh_detector', 'uab_perception', 'object_tracking', 'obj_detector', 'obstacle_detector', 'speed_zones']
-    arg_list = [DeclareLaunchArgument(ki, default_value=str(vi)) for k, v in params.items() if k not in new_format_params for ki, vi in v.items()]
-    arg_list += [DeclareLaunchArgument(f"{k}_{ki}", default_value=str(vi)) for k, v in params.items() if k in new_format_params for ki, vi in v.items()]
-
-    vehicle_node_list = []
-    for idx in range(MAX_VEHICLES):
-        vehicle_node_list.append(
-            GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > %d' % idx])), actions=[
-                PushRosNamespace(
-                    condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])),
-                    namespace=ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                Node(
-                    package='robot_state_publisher',
-                    executable='robot_state_publisher',
-                    name='robot_state_publisher',
-                    output='screen',
-                    condition=IfCondition(LaunchConfiguration('publish_urdf_to_tf')),
-                    parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_list[idx],
-                                 'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
-                                                                     TextSubstitution(text=''),
-                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))
-                                 }]
-                ),
-                Node(
-                    package='avt_341',
-                    executable='avt_bot_state_publisher_node',
-                    name='state_publisher',
-                    condition=IfCondition(LaunchConfiguration('publish_odom_to_tf')),
-                    parameters=[{'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
-                                                                     TextSubstitution(text=''),
-                                                                     IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}]
-                ),
-                GroupAction(condition=NotInListCondition(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), LaunchConfiguration('manual_control_vehicles')), actions=[
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_perception_node',
-                        name='perception_node',
-                        output='screen',
-                        parameters=[
-                            {'display': display_type},
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['perception'].keys()}],
-                    ),
-
-                    # Speed Zones
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_speed_zones_node',
-                        name='speed_zones_node',
-                        output='screen',
-                        parameters=[
-                            {k: LaunchConfiguration(f'speed_zones_{k}') for k in params['speed_zones'].keys()}
-                        ],
-                        condition=IfCondition(LaunchConfiguration('use_speed_zones')),
-                    ),
-
-                    # UAB Terrain Segmentation
-                    Node(
-                        package='avt_341',
-                        executable='uab_perception_node',
-                        name='uab_perception_node',
-                        parameters=[
-                            {k: LaunchConfiguration(f'uab_perception_{k}') for k in params['uab_perception'].keys()},
-                            {'frame_prefix': TernarySubstitution(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx),
-                                                                 TextSubstitution(text=''),
-                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))}
-                        ],
-                        remappings=[
-                            ('avt_341/odom','avt_341/odometry'),
-                            ('avt_341/camera/image_raw','front_camera/image'),
-                            ('avt_341/camera/camera_info','front_camera/info'),
-                        ],
-                        output='screen',
-                        condition=IfCondition(LaunchConfiguration('use_uab_perception')),
-                    ),
-                    # Deep Learning 2D Object Detection for static scene objects
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_object_detector_node',
-                        name='object_detector_node',
-                        parameters=[
-                            {k: LaunchConfiguration(f'obj_detector_{k}') for k in params['obj_detector'].keys()}
-                        ],
-                        remappings=[
-                            ('image','front_camera/image'),
-                        ],
-                        output='screen',
-                        condition=IfCondition(LaunchConfiguration('use_obj_detector')),
-                    ),
-                    # Deep Learning 2D Object Detection for Formation Vehicles
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_object_detector_node',
-                        name='veh_detector_node',
-                        parameters=[
-                            {k: LaunchConfiguration(f'veh_detector_{k}') for k in params['veh_detector'].keys()}
-                        ],
-                        remappings=[
-                            ('image','front_camera/image'),
-                            ('detections/vision','front_camera/detections_2d'),
-                        ],
-                        output='screen',
-                        condition=IfCondition(LaunchConfiguration('use_veh_detector')),
-                    ),
-                    # Object Tracking
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_object_tracking_node',
-                        name='object_tracking_node',
-                        parameters=[
-                            {k: LaunchConfiguration(f'object_tracking_{k}') for k in params['object_tracking'].keys()},
-                            {'frame_prefix': TernarySubstitution(Concat(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx), '/'),
-                                                                 TextSubstitution(text=''),
-                                                                 IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))},
-                            {'formation_vehicle_ids': LaunchConfiguration('vehicle_namespaces')}
-                        ],
-                        remappings=[
-                            ('camera_info','front_camera/info'),
-                            ('image','front_camera/image'),
-                            ('detection_2d', 'front_camera/detection_2d'),
-                            ('points/input','avt_341/points'),
-                            ('task','avt_341/task_change')
-                        ],
-                        output='screen',
-                        condition=IfCondition(LaunchConfiguration('use_object_tracker')),
-                    ),
-                    # Lidar obstacle detector, ground segmentation
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_lidar_obstacle_detector_node',
-                        name='lidar_obstacle_detector_node',
-                        parameters=[{k: LaunchConfiguration(f'obstacle_detector_{k}') for k in params['obstacle_detector'].keys()}],
-                        output='screen',
-                        condition=IfCondition(LaunchConfiguration('use_lidar_obstacle_detector'))
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_control_node',
-                        name='vehicle_control_node',
-                        output='screen',
-                        condition=InListCondition(LaunchConfiguration('local_planner_method'), ['rcc', 'pf']),
-                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control'].keys()}],
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_speed_control_node',
-                        name='vehicle_control_node',
-                        output='screen',
-                        condition=InListCondition(LaunchConfiguration('local_planner_method'), ['dwa', 'mpc']),
-                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['control'].keys()}],
-                    ),
-
-                    GroupAction(condition=LaunchConfigurationEquals('local_planner_method', 'mpc'), actions=[
-                        Node(
-                            package='avt_341',
-                            executable='avt_341_mpc_planner_node',
-                            name='mpc_planner_node',
-                            output='screen',
-                            #prefix=['xterm -e gdb -ex run --args'],
-                            parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
-                        ),
-                        # Obstacle Processor
-                        Node(
-                            package='avt_341',
-                            executable='obstacle_processor_node',
-                            name='obstacle_processor_node',
-                            output='screen',
-                            remappings=[
-                                #('avt_341/occupancy_grid', 'avt_341/local_grid'),
-                            ],
-                            #prefix=['xterm -e gdb -ex run --args'],
-                            parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
-                        ),
-                        # Segmentation Grid Processor
-                        Node(
-                            package='avt_341',
-                            executable='segmentation_grid_processor_node',
-                            name='segmentation_grid_processor_node',
-                            output='screen',
-                            remappings=[
-                                ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
-                            ],
-                            parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
-                        ),
-                        # Vehicle Converter
-                        Node(
-                            package='avt_341',
-                            executable='veh_converter_node',
-                            name='avt_341_veh_converter_node',
-                            output='screen',
-                        )
-                    ]),
-
-                    # Goal Point Processor
-                    Node(
-                        package='avt_341',
-                        executable='goal_point_processor_node',
-                        name='goal_point_processor_node',
-                        output='screen',
-                        condition=LaunchConfigurationEquals('local_planner_method', 'mpc'),
-                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['mpc_local_planner'].keys()}],
-                    ),
-
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_global_path_node',
-                        name='avt_341_global_path_node',
-                        output='screen',
-                        parameters=[
-                            {
-                                'display': display_type,
-                                '/waypoints_x': launch.substitutions.LaunchConfiguration('waypoints_x'),
-                                '/waypoints_y': launch.substitutions.LaunchConfiguration('waypoints_y'),
-                                '/is_empty_waypoints': launch.substitutions.LaunchConfiguration('is_empty_waypoints'),
-                            },
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['global_planner'].keys()}],
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_local_planner_node',
-                        name='local_planner_node',
-                        output='screen',
-                        condition=LaunchConfigurationEquals('local_planner_method', 'rcc'),
-                        parameters=[
-                            {'display': display_type},
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner'].keys()}
-                        ],
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_dwa_planner_node',
-                        name='local_dwa_planner_node',
-                        output='screen',
-                        condition=LaunchConfigurationEquals('local_planner_method', 'dwa'),
-                        parameters=[{k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner'].keys()}],
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_pf_planner_node',
-                        name='local_pf_planner_node',
-                        output='screen',
-                        condition=LaunchConfigurationEquals('local_planner_method', 'pf'),
-                        parameters=[
-                            {'display': display_type},
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['local_planner'].keys()}
-                        ],
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_grid_compression_node',
-                        name='grid_compression'),
-                ]),     # End unless in manually controlled vehicle list
-                GroupAction(condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('use_mm_with_one_veh')])), actions=[
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_mission_manager_node',
-                        name='mission_manager_node',
-                        output='screen',
-                        parameters=[{
-                            'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                            'vehicle_namespaces': LaunchConfiguration('vehicle_namespaces'),
-                            "max_speed": LaunchConfiguration('max_speed'),
-                            },
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['mission_manager'].keys()},
-                            {k: launch.substitutions.LaunchConfiguration(v) for k, v in param_refs['mission_manager'].items()}
-                        ]
-                    ),
-                    Node(
-                        package='avt_341',
-                        executable='avt_341_comm_node',
-                        name='comm_node',
-                        output='screen',
-                        parameters=[{
-                            'name': ToUpper(ArrayIndexSubstitution(LaunchConfiguration('vehicle_namespaces'), idx)),
-                            'vehicle_namespaces': LaunchConfiguration('vehicle_namespaces'),
-                            },
-                            {k: launch.substitutions.LaunchConfiguration(k) for k in params['socket_comms'].keys()}
-                        ]
-                    )
-                ]) # End mission manager + comm node group
-            ])  # End vehicle namespace group action
-        )
-
-    launch_description = LaunchDescription([
-        *arg_list,
-        DeclareLaunchArgument("use_object_tracker", default_value="False", description="Set to enable object tracking node."),
-        DeclareLaunchArgument("use_obj_detector", default_value="False", description="Set to enable detection 2d bounding box detection of static objects using deep neural network inference."),
-        DeclareLaunchArgument("use_veh_detector", default_value="False", description="Set to enable detection 2d bounding box detection of vehicles for formation following using deep neural network inference."),
-        DeclareLaunchArgument("use_uab_perception", default_value="False", description="Set to enable use of UAB perception node."),
-        DeclareLaunchArgument("use_speed_zones", default_value="False", description="Set to enable speed zones."),
-        DeclareLaunchArgument("use_mm_with_one_veh", default_value="False", description="Set to run mission manager even when only one vehicle is used."),
-        OpaqueFunction(function=evaluate_waypoint_parameters),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='static_transform_publisher',
-            arguments=["0", "0", "0", "0", "0", "0", "map", "odom"]),
-        *vehicle_node_list,
-        DeclareLaunchArgument('rviz_config', default_value=TernarySubstitution(true_val=TextSubstitution(text=rviz_config_multi_vehicle),
-                                                                               false_val=TextSubstitution(text=rviz_config_single_vehicle),
-                                                                               condition=IfCondition(PythonExpression([LaunchConfiguration('num_vehicles'), ' > 1 or ', LaunchConfiguration('namespace_single_vehicle')])))),
-        Node(
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node, PushRosNamespace, SetParameter
+
+from avt_341_param_lib.launch_params import (
+    ParameterCollection,
+    perform_yaml,
+    relevant_params_files,
+)
+from avt_341_param_lib.launch_node_config import NodeConfigCollection
+from avt_341_param_lib.parse_runtime_yaml import resolve_params_files
+
+SHARE_DIR = get_package_share_directory('avt_341').replace('\\', '/')
+TEMPLATES_DIR = os.path.join(SHARE_DIR, 'parameters', 'templates')
+
+
+def _templates(*names):
+    """Paths of the given parameter templates (bare stems; .yaml is appended)."""
+    return [os.path.join(TEMPLATES_DIR, f'{name}.yaml') for name in names]
+
+
+def _is_true(text):
+    return str(text).strip().lower() in ('true', '1')
+
+
+def is_cfg(key, negate=False):
+    """Condition: launch configuration `key` is true (false when negate=True)."""
+    def condition(context):
+        value = _is_true(LaunchConfiguration(key).perform(context))
+        return not value if negate else value
+    return condition
+
+def is_not_cfg(key):
+    return is_cfg(key, negate=True)
+
+def is_local_planner(*methods):
+    """Condition: the local_planner_method launch configuration is one of `methods`."""
+    def condition(context):
+        return LaunchConfiguration('local_planner_method').perform(context) in methods
+    return condition
+
+
+class NodeSpec:
+    """Static launch specification for one node replicated per vehicle."""
+
+    def __init__(self, executable, template=None, condition=None, sub_ns=None,
+                 extra_params=None, output='screen', autonomy=True):
+        self.executable = executable
+        # one template path or a list of paths (a node whose executable links
+        # several generated parameter services); normalized to a list
+        self.templates = [template] if isinstance(template, str) else list(template or [])
+        self.condition = condition          # callable(context) -> bool; None = always
+        self.sub_ns = sub_ns                # sub-namespace below the vehicle namespace
+        self.extra_params = extra_params    # callable(vid, vehicles) -> dict of launch-computed params
+        self.output = output
+        self.autonomy = autonomy            # autonomy nodes are skipped for manual_control_vehicles
+
+
+NODES = {
+
+    # Mission management
+    'mission_manager_node':             NodeSpec('avt_341_mission_manager_node',         _templates('mission_manager'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'comm_node':                        NodeSpec('avt_341_comm_node',                    _templates('socket_comms'),                                                          extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'speed_zones_node':                 NodeSpec('avt_341_speed_zones_node',             _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
+
+    # Perception - Costmaps
+    'perception_local_node':            NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_global_node':           NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_node':                  NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
+    'perception_rms_node':              NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_perception_rms')),
+
+    # Perception - Terrain segmentation
+    'uab_perception_node':              NodeSpec('uab_perception_node',                  _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),             extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
+
+    # Perception - Object detection and tracking
+    'object_detector_node':             NodeSpec('avt_341_object_detector_node',         _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
+    'object_tracking_node':             NodeSpec('avt_341_object_tracking_node',         _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),             extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
+    'lidar_obstacle_detector_node':     NodeSpec('avt_341_lidar_obstacle_detector_node', _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
+
+    # Global planners
+    'avt_341_global_path_node':         NodeSpec('avt_341_global_path_node',             _templates('global_planner')),
+
+    # Local planners
+    'local_planner_node':               NodeSpec('avt_341_local_planner_node',           _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
+    'local_dwa_planner_node':           NodeSpec('avt_341_dwa_planner_node',             _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
+    'local_pf_planner_node':            NodeSpec('avt_341_pf_planner_node',              _templates('pf_local_planner'),  condition=is_local_planner('pf')),
+    'mpc_planner_node':                 NodeSpec('avt_341_mpc_planner_node',             _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+
+    # local planners - MPC supporting nodes
+    'obstacle_processor_node':          NodeSpec('obstacle_processor_node',              _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node',     _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'goal_point_processor_node':        NodeSpec('goal_point_processor_node',            _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'avt_341_veh_converter_node':       NodeSpec('veh_converter_node',                                                    condition=is_local_planner('mpc')),
+
+    # Controllers (selected by local planner method)
+    'speed_control_node':               NodeSpec('avt_341_speed_control_node',           _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
+    'control_node':                     NodeSpec('avt_341_control_node',                 _templates('control'),           condition=is_local_planner('rcc', 'pf')),
+
+    # State pre-processing
+    'data_acquisition_node':            NodeSpec('data_acquisition_node',                _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                                output='log', autonomy=False),
+}
+
+pargs = ParameterCollection.from_node_templates(
+    {name: spec.templates for name, spec in NODES.items() if spec.templates})
+
+def _make_node(name, spec, vid, vehicles, params_files, cli_overrides, node_config):
+    node_name = name.rsplit('/', 1)[-1]
+    namespace_parts = [str(vid).strip('/')]
+    if spec.sub_ns:
+        namespace_parts.extend(str(spec.sub_ns).strip('/').split('/'))
+    fqn = '/' + '/'.join([*namespace_parts, node_name])
+    layers = list(relevant_params_files(params_files, fqn))
+    if spec.extra_params is not None:
+        extra = spec.extra_params(vid, vehicles)
+        if extra:
+            layers.append(extra)
+    cli_params = cli_overrides.for_node(fqn)
+    if cli_params:
+        layers.append(cli_params)
+    node_remappings = node_config.get_remappings(fqn)
+    node_additional_env = node_config.get_additional_env(fqn)
+    node = Node(
+        package='avt_341',
+        executable=spec.executable,
+        name=node_name,
+        output=spec.output,
+        parameters=layers or None,
+        remappings=node_remappings or None,
+        additional_env=node_additional_env or None,
+    )
+    if spec.sub_ns:
+        return GroupAction([PushRosNamespace(spec.sub_ns), node])
+    return node
+
+
+def _robot_state_publisher(vid, vehicle_index, context, node_config):
+    description_files = perform_yaml(context, 'robot_description_files') or []
+    if not description_files:
+        return None
+    index = vehicle_index if vehicle_index < len(description_files) else 0
+    description_file = str(description_files[index])
+    if not description_file or not os.path.isfile(description_file):
+        return None
+    with open(description_file) as f:
+        robot_description = f.read()
+    return Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[{'robot_description': robot_description, 'frame_prefix': f'{vid}/'}],
+        remappings=node_config.get_remappings(f'/{vid}/robot_state_publisher') or None,
+        additional_env=node_config.get_additional_env(f'/{vid}/robot_state_publisher') or None,
+    )
+
+
+def _spawn_vehicles(context, *args, **kwargs):
+    vehicles = [str(vid).strip('/') for vid in perform_yaml(context, 'vehicle_ids')]
+    params_files = resolve_params_files(
+        perform_yaml(context, 'ros_param_files') or [], vehicles)
+    node_config = NodeConfigCollection(
+        LaunchConfiguration('node_config_file').perform(context))
+    cli_overrides = pargs.resolve_cli_overrides(context, vehicles)
+    spawn_filter = {
+        str(vid).strip('/')
+        for vid in perform_yaml(context, 'spawn_filter_vehicle_ids') or []}
+    manual_vehicles = {
+        str(vid).strip('/')
+        for vid in perform_yaml(context, 'manual_control_vehicles') or []}
+    publish_urdf_to_tf = _is_true(
+        LaunchConfiguration('publish_urdf_to_tf').perform(context))
+
+    actions = [SetParameter(name='use_sim_time', value=LaunchConfiguration('use_sim_time'))]
+    spawned_vehicles = [
+        vid for vid in vehicles if not spawn_filter or vid in spawn_filter]
+    for vehicle_index, vid in enumerate(vehicles):
+        if vid not in spawned_vehicles:
+            continue
+        group = [PushRosNamespace(vid)]
+        for name, spec in NODES.items():
+            if spec.autonomy and vid in manual_vehicles:
+                continue
+            if spec.condition is not None and not spec.condition(context):
+                continue
+            group.append(_make_node(
+                name, spec, vid, vehicles, params_files, cli_overrides, node_config))
+        if publish_urdf_to_tf:
+            state_publisher = _robot_state_publisher(
+                vid, vehicle_index, context, node_config)
+            if state_publisher is not None:
+                group.append(state_publisher)
+        actions.append(GroupAction(group))
+
+    # Visualization (single instance, multi-vehicle config when several vehicles)
+    if _is_true(LaunchConfiguration('auto_launch_rviz').perform(context)):
+        actions.append(Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
-            condition=IfCondition(auto_launch_rviz),
-            arguments=["-d", LaunchConfiguration('rviz_config')]
-        )
-    ])
+            arguments=['-d', LaunchConfiguration('rviz_config').perform(context)],
+            remappings=node_config.get_remappings('/rviz2') or None,
+            additional_env=node_config.get_additional_env('/rviz2') or None,
+        ))
 
-    return launch_description
+    # Standardized vehicle logging for V&V efforts
+    if _is_true(LaunchConfiguration('enable_logging').perform(context)):
+        actions.append(ExecuteProcess(
+            cmd=[
+                'ros2', 'run', 'avt_341', 'vehicle_logging.py',
+                f'{SHARE_DIR}/parameters/bag_config/rw_bag_config.yaml',
+                LaunchConfiguration('logging_path').perform(context),
+                '--bag_format', 'mcap',
+            ],
+            output='screen',
+        ))
+    return actions
+
+
+def generate_launch_description():
+    return LaunchDescription([
+
+        # Vehicle selection
+        DeclareLaunchArgument('vehicle_ids',                                                                                      description='List of all vehicle ids in formation.'),
+        DeclareLaunchArgument('spawn_filter_vehicle_ids',    default_value='[]',                                                  description='Subset of vehicle_ids to actually create nodes for. If empty, spawns all vehicles in vehicle_ids'),
+        DeclareLaunchArgument('manual_control_vehicles',     default_value='[]',                                                  description='List of vehicle ids under manual human control.'),
+        DeclareLaunchArgument('robot_description_files',     default_value=f"['{SHARE_DIR}/config/MRZR.urdf']",                   description='List of URDF files, one per vehicle (first entry reused when fewer files than vehicles are given)'),
+
+        # Parameter files
+        DeclareLaunchArgument('ros_param_files',             default_value='[]',                                                  description='Parameter files used to override default ROS arguments'),
+        DeclareLaunchArgument('node_config_file',            default_value='',                                                    description='Additional node configuration parameters (topic remappings, env. variables, etc.)'),
+
+        DeclareLaunchArgument('use_sim_time',                default_value='False',                                               description='Use simulation time (mainly for rosbag data replay)'),
+
+        # Feature flags
+        DeclareLaunchArgument('local_planner_method',        default_value='rcc',                                                 description='Local planner method. Values = [rcc, dwa, mpc, pf]'),
+        DeclareLaunchArgument('use_lidar_obstacle_detector', default_value='False',                                               description='Enable lidar obstacle segmentation'),
+        DeclareLaunchArgument('use_dual_costmaps',           default_value='True',                                                description='Spawn the dual global and local costmap perception nodes; when false a single perception_node is spawned instead'),
+        DeclareLaunchArgument('use_perception_rms',          default_value='True',                                                description='Enable the RMS perception node'),
+        DeclareLaunchArgument('use_speed_zones',             default_value='True',                                                description='Enable speed zones'),
+        DeclareLaunchArgument('use_uab_perception',          default_value='True',                                                description='Enable the UAB terrain segmentation perception node'),
+        DeclareLaunchArgument('use_obj_detector',            default_value='True',                                                description='Enable 2d bounding box detection of static objects using deep neural network inference'),
+        DeclareLaunchArgument('use_object_tracker',          default_value='True',                                                description='Enable the object tracking node'),
+        DeclareLaunchArgument('use_data_acquisition',        default_value='True',                                                description='Enable the data acquisition node'),
+        DeclareLaunchArgument('publish_urdf_to_tf',          default_value='True',                                                description='Publish the robot URDF description to tf via robot_state_publisher'),
+
+        # Logging and visualization
+        DeclareLaunchArgument('auto_launch_rviz',            default_value='True',                                                description='Automatically launch rviz display window'),
+        DeclareLaunchArgument('rviz_config',                 default_value=f'{SHARE_DIR}/rviz/avt_341_ros2.rviz',                 description='Single vehicle rviz config file'),
+        DeclareLaunchArgument('enable_logging',              default_value='False',                                               description='Enable standardized vehicle logging for V&V efforts'),
+        DeclareLaunchArgument('logging_path',                default_value=os.path.join(os.path.expanduser('~'), 'avt_341_data'), description='Save path for vehicle logging'),
+
+        *pargs.declare_arguments(),
+        OpaqueFunction(function=_spawn_vehicles),
+    ])

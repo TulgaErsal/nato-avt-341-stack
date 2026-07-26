@@ -1,0 +1,92 @@
+/**:
+  ros__parameters:
+    max_speed: 4.0    # single source for the mpc planner family and the mission manager
+    gis:
+      crs: 'EPSG:6495'
+      origin_x: 7885314.3400268555
+      origin_y: 264132.3708496094
+    costmap:
+      geometry:
+        width: 2955.0
+        height: 2290.0
+      publish:
+        method: 'window'
+
+/**/mission_manager_node:
+  ros__parameters:
+    mission_definition_file: $python{os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_mission_points.csv')}
+    mission_paths_file: $python{os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_paths - NAD83_m.csv')}
+
+/**/speed_zones_node:
+  ros__parameters:
+    zones_filepath: $python{os.path.join(get_package_share_directory('avt_341'), 'config', 'krc_speed_zones - NAD83_m.csv')}
+
+# perception_local_node runs on the template defaults (donor: legacy perception_local.yaml)
+
+# Preserves the pre-mixin uab template values (grid res 1.0, 800 m publish
+# window) now that the shared costmap mixins default to res 0.25 / 100 m.
+/**/uab_perception_node:
+  ros__parameters:
+    costmap:
+      geometry:
+        res: 1.0
+
+
+/**/perception_global_node:
+  ros__parameters:
+    costmap:
+      geometry:
+        res: 0.5
+      dilation:
+        x: 0.5
+        y: 0.5
+      publish:
+        max_grid_width: 800.0
+        max_grid_height: 800.0
+    clear_method:
+      voxel_height_res: 1.0
+      obj_range_filter: 0.5
+
+/**/perception_rms_node:
+  ros__parameters:
+    costmap:
+      geometry:
+        res: 1.0
+      dilation:
+        x: 0.5
+        y: 0.5
+      terrain_rms:
+        hfov: 1.0472
+        range: 15.0
+        time_window: 0.05
+      publish:
+        max_grid_width: 800.0
+        max_grid_height: 800.0
+    point_cloud_layer:
+      topic: '/ouster/points'
+      clear_topic: 'avt_341/ground_points'
+    clear_method:
+      type: 'time'
+      voxel_height_min: 0.0
+      voxel_height_res: 0.5
+      max_point_age: 1.0
+
+/**/avt_341_global_path_node:
+  ros__parameters:
+    map_topic: 'avt_341/occupancy_grid_low_res'
+    seg_topic: 'avt_341/terrain_seg/segmentation_grid'
+
+# object_detector_node / object_tracking_node run on the template defaults
+
+#/**/object_detector_node:
+#  ros__parameters:
+#    model:
+#      name: 'fedav8m-cuda-640x640'
+#      classes: ['FED Alpha']
+#
+#/**/object_tracking_node:
+#  ros__parameters:
+#    frames:
+#      odometry_child_frame: 'feda/odom'
+#    target_selection:
+#      autostart_target_classes: ['FED Alpha']

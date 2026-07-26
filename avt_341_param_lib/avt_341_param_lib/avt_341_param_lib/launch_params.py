@@ -3,18 +3,27 @@
 Command line parameter overrides use the same node-selector convention as ROS 2
 parameter override yaml files: a selector addresses nodes by namespace and node
 name with ``/`` delimiters, where ``**`` matches any number of tokens and ``*``
-exactly one, and parameter names use ``.`` for nesting. Two argument forms are
-supported:
+exactly one, and parameter names use ``.`` for nesting. Three argument forms
+are supported:
 
 * scalar form -- ``<selector>/<param.name>:=<value>``, e.g.
   ``**/cruise_speed:=9.0`` or ``veh1/planner/cruise_speed:=3.3``
 * mapping form -- ``<selector>:=<yaml mapping>``, e.g.
   ``/veh1/planner:='{cruise_speed: 3.3}'``; the mapping is the selector
   section's ``ros__parameters`` body (nested mappings express parameter groups)
+* bare form -- ``<param.name>:=<value>`` where the (possibly dotted) name is a
+  parameter declared in at least one node template; shorthand for
+  ``**/<param.name>:=<value>``, applying to every node that declares the
+  parameter. Names not declared in any template are not override arguments
+  (ordinary launch arguments keep their meaning).
 
 ROS 2 parameters can never hold mappings, so a mapping value always means
 "section body" and a scalar/list value always means "single parameter"; the two
 forms are unambiguous.
+
+String-typed override values may embed ``$pkg_path{<pkg_name>}`` anywhere in
+the text; each occurrence is replaced with the package's share directory (see
+:func:`expand_pkg_path`), e.g. ``**/zones_filepath:=$pkg_path{avt_341}/config/zones.csv``.
 
 Relative selectors (no leading ``/`` or ``**``) are resolved against the
 vehicle id list: a first segment naming a vehicle scopes the override to that
@@ -41,17 +50,55 @@ each declared name doubles as valid override syntax (``planner/cruise_speed``).
 """
 
 import functools
+import re
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 import yaml
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 
-from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY
+from avt_341_param_lib.node_selectors import selector_matches
+from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY, expand_mixins
 
 _ARRAY_SUFFIX = '_array'
 _MAP_PREFIX = '__map_'
+
+PKG_PATH_MARKER = '$pkg_path{'
+_PKG_PATH_RE = re.compile(r'\$pkg_path\{(?P<pkg>[^{}]*)\}')
+
+
+def expand_pkg_path(text: str, error_context: str) -> str:
+    """Expand ``$pkg_path{<pkg_name>}`` templates within a string value.
+
+    Each occurrence is replaced with the package's share directory
+    (``get_package_share_directory``). Unlike the full-value runtime templates
+    the syntax substitutes in place: it may appear anywhere -- and several
+    times -- inside the string, e.g. ``$pkg_path{avt_341}/config/zones.csv``.
+    ``error_context`` names the value's origin in error messages.
+    """
+    if PKG_PATH_MARKER not in text:
+        return text
+
+    def replace(match):
+        pkg = match.group('pkg').strip()
+        if not pkg:
+            raise ValueError(
+                f"Malformed template value '{text}' in {error_context}: "
+                '$pkg_path{} holds no package name')
+        try:
+            return get_package_share_directory(pkg)
+        except PackageNotFoundError as error:
+            raise ValueError(
+                f"Error resolving $pkg_path{{{pkg}}} in {error_context}: {error}") from error
+
+    expanded = _PKG_PATH_RE.sub(replace, text)
+    if PKG_PATH_MARKER in expanded:
+        raise ValueError(
+            f"Malformed template value '{text}' in {error_context}: "
+            'unterminated $pkg_path{')
+    return expanded
 
 
 class ParameterSpec:
@@ -84,10 +131,12 @@ def _flatten_parameters(node: dict, prefix: str, out: Dict[str, ParameterSpec]):
             _flatten_parameters(value, prefix + key + '.', out)
 
 
-def load_template_metadata(path: str) -> Dict[str, ParameterSpec]:
-    """Read a parameter template yaml file into launch-layer metadata.
+def load_template_specs(path: str) -> Dict[str, ParameterSpec]:
+    """Read a parameter template yaml file into launch-layer parameter specs.
 
-    Returns a mapping of the flattened (dot-nested) parameter name to its
+    ``__include_mixins`` entries are expanded first (see
+    :func:`avt_341_param_lib.parse_yaml.expand_mixins`). Returns a mapping
+    of the flattened (dot-nested) parameter name to its
     :class:`ParameterSpec`.
     """
     with open(path) as f:
@@ -98,7 +147,7 @@ def load_template_metadata(path: str) -> Dict[str, ParameterSpec]:
             f'{PARAMETERS_ROOT_KEY} root element'
         )
     specs: Dict[str, ParameterSpec] = {}
-    _flatten_parameters(doc[PARAMETERS_ROOT_KEY], '', specs)
+    _flatten_parameters(expand_mixins(doc[PARAMETERS_ROOT_KEY], path), '', specs)
     return specs
 
 
@@ -107,10 +156,12 @@ def _convert_scalar(value: Any, base_type: str, arg_name: str):
         return value
     if base_type == 'int' and isinstance(value, int) and not isinstance(value, bool):
         return value
-    if base_type == 'double' and isinstance(value, (int, float)) and not isinstance(value, bool):
+    if base_type in ('double', 'float') and isinstance(
+        value, (int, float)
+    ) and not isinstance(value, bool):
         return float(value)
     if base_type == 'string':
-        return str(value)
+        return expand_pkg_path(str(value), f"parameter override '{arg_name}'")
     raise ValueError(
         f"Value '{value}' of parameter override '{arg_name}' is not a valid {base_type}")
 
@@ -133,32 +184,8 @@ def convert_cli_value(raw_text: str, param_type: str, arg_name: str):
     if param_type == 'string':
         # the declared type is known, so string parameters take the text
         # verbatim - no quoting needed for values that look numeric
-        return raw_text
+        return expand_pkg_path(raw_text, f"parameter override '{arg_name}'")
     return convert_typed_value(yaml.safe_load(raw_text), param_type, arg_name)
-
-
-def selector_matches(selector: str, fqn: str) -> bool:
-    """Return whether a node selector matches a fully qualified node name.
-
-    A selector is a slash-delimited path where the token ``**`` matches any
-    number of tokens (including none), ``*`` matches exactly one token and any
-    other token matches literally - the section-key convention of ROS 2
-    parameter yaml files.
-    """
-    return _tokens_match(
-        [token for token in selector.split('/') if token],
-        [token for token in fqn.split('/') if token],
-    )
-
-
-def _tokens_match(pattern: List[str], tokens: List[str]) -> bool:
-    if not pattern:
-        return not tokens
-    if pattern[0] == '**':
-        return _tokens_match(pattern[1:], tokens) or (
-            bool(tokens) and _tokens_match(pattern, tokens[1:]))
-    return bool(tokens) and pattern[0] in ('*', tokens[0]) and _tokens_match(
-        pattern[1:], tokens[1:])
 
 
 @functools.lru_cache(maxsize=None)
@@ -264,12 +291,33 @@ class ResolvedOverrides:
         return dict(self._params_by_fqn.get(fqn, {}))
 
 
+def _merge_template_specs(
+    paths: Tuple[str, ...], specs_by_path: Dict[str, Dict[str, ParameterSpec]]
+) -> Dict[str, ParameterSpec]:
+    """Union of several templates' parameter specs; duplicate names are an error."""
+    if len(paths) == 1:
+        return specs_by_path[paths[0]]
+    merged: Dict[str, ParameterSpec] = {}
+    declared_in: Dict[str, str] = {}
+    for path in paths:
+        for name, spec in specs_by_path[path].items():
+            if name in merged:
+                raise ValueError(
+                    f"Parameter '{name}' is declared by several templates of one "
+                    f"node: '{declared_in[name]}' and '{path}'"
+                )
+            merged[name] = spec
+            declared_in[name] = path
+    return merged
+
+
 class ParameterCollection:
     """Declares launch override arguments for the nodes of a launch file and
     resolves explicitly provided overrides into per-node parameter dicts.
 
-    Construct with a mapping of node name to template yaml file; several node
-    names may share one template.
+    Construct with a mapping of node name to one template yaml file or a list
+    of them (a node whose executable links several generated parameter
+    services); several node names may share templates.
     """
 
     def __init__(self, node_specs: Dict[str, Dict[str, ParameterSpec]]):
@@ -277,14 +325,26 @@ class ParameterCollection:
         self._explicit = set()
 
     @classmethod
-    def from_node_templates(cls, node_templates: Dict[str, str]) -> 'ParameterCollection':
-        """Build a collection from a node-name -> template-yaml-path mapping."""
+    def from_node_templates(
+        cls, node_templates: Dict[str, Union[str, List[str]]]
+    ) -> 'ParameterCollection':
+        """Build a collection from a node-name -> template-yaml-path(s) mapping.
+
+        A node listing several templates is validated against the union of
+        their parameters; a parameter name declared by more than one of a
+        node's templates raises ValueError.
+        """
         specs_by_path: Dict[str, Dict[str, ParameterSpec]] = {}
+        merged_by_paths: Dict[Tuple[str, ...], Dict[str, ParameterSpec]] = {}
         node_specs: Dict[str, Dict[str, ParameterSpec]] = {}
-        for node_name, path in node_templates.items():
-            if path not in specs_by_path:
-                specs_by_path[path] = load_template_metadata(path)
-            node_specs[node_name] = specs_by_path[path]
+        for node_name, node_paths in node_templates.items():
+            paths = (node_paths,) if isinstance(node_paths, str) else tuple(node_paths)
+            for path in paths:
+                if path not in specs_by_path:
+                    specs_by_path[path] = load_template_specs(path)
+            if paths not in merged_by_paths:
+                merged_by_paths[paths] = _merge_template_specs(paths, specs_by_path)
+            node_specs[node_name] = merged_by_paths[paths]
         return cls(node_specs)
 
     @property
@@ -321,8 +381,9 @@ class ParameterCollection:
         """Resolve the explicitly provided override arguments for the given vehicles.
 
         Scans the pre-declaration snapshot for override-shaped arguments (any
-        name containing ``/``, starting with ``**``, or equal to a vehicle id
-        or node name), expands them against the vehicle id list and validates
+        name containing ``/``, starting with ``**``, equal to a vehicle id or
+        node name, or naming a parameter declared in one of the node
+        templates), expands them against the vehicle id list and validates
         them against the node templates. Raises RuntimeError for overrides
         that match no launched node or name no parameter declared by any
         matched node.
@@ -338,7 +399,12 @@ class ParameterCollection:
         return (
             '/' in key or key.startswith('**')
             or key.strip('/') in vehicles or key in self._node_specs
+            or self._is_declared_param(key)
         )
+
+    def _is_declared_param(self, name: str) -> bool:
+        """Whether at least one node template declares the (dot-nested) parameter."""
+        return any(name in specs for specs in self._node_specs.values())
 
     def resolve(self, cli_args: 'OrderedDict[str, str]', vehicle_ids: List[str]) -> ResolvedOverrides:
         """Pure resolution core of :meth:`resolve_cli_overrides` (testable without a context)."""
@@ -397,6 +463,10 @@ class ParameterCollection:
                 value = value[PARAMETERS_ROOT_KEY]
             selector = _normalize_selector(key, vehicles)
             return selector, _flatten_value_mapping(value, key), False
+        # bare form: a declared parameter name with no selector applies to
+        # every node that declares it
+        if '/' not in key and self._is_declared_param(key):
+            return '/**', {key: raw_value}, True
         # scalar form: the last slash segment is the (possibly dotted) parameter name
         selector_text, sep, param_name = key.rpartition('/')
         if not sep or not selector_text or not param_name or '*' in param_name:

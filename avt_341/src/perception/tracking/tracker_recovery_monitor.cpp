@@ -16,11 +16,11 @@ namespace perception {
 
 TrackerRecoveryMonitor::TrackerRecoveryMonitor(
     rclcpp::Node* node, const std::string& target_class,
-    const RecoverySettings& settings, const rclcpp::Logger& logger)
+    const RecoverySettings& params, const rclcpp::Logger& logger)
     : node_(node),
       logger_(logger),
       target_class_(target_class),
-      settings_(settings) {
+      params_(params) {
     // Both services live on the tracked vehicle's own mission manager, so
     // they are addressed absolutely under the target's namespace.
     check_speed_client_ = node_->create_client<avt_341_msgs::srv::CheckSpeed>(
@@ -57,9 +57,9 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
         }
 
         ResetWindows();
-        confirm_backoff_until_ = now + settings_.no_movement_backoff_time;
+        confirm_backoff_until_ = now + params_.no_movement_backoff_time;
         // Refresh pace of the ground truth while the tracker stays LOST.
-        recovery_retry_after_ = now + settings_.no_movement_backoff_time;
+        recovery_retry_after_ = now + params_.no_movement_backoff_time;
         result.recovery_odom = odom;
         return result;
     }
@@ -83,8 +83,8 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
                     "\"%s\" confirmed stationary; tracker is correct. Next "
                     "no-movement confirmation in %.1f s.",
                     target_class_.c_str(),
-                    settings_.no_movement_backoff_time);
-        confirm_backoff_until_ = now + settings_.no_movement_backoff_time;
+                    params_.no_movement_backoff_time);
+        confirm_backoff_until_ = now + params_.no_movement_backoff_time;
     }
 
     if (input.state == TrackerState::LOST) {
@@ -110,11 +110,11 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
     // Measurement timeout: measurements starved after active tracking (the
     // other two checks cannot catch a target leaving the sensor view).
     // allow_never_tracked extends it to targets never acquired at all.
-    if (settings_.timeout_enabled &&
-        (has_been_active_ || settings_.timeout_allow_never_tracked) &&
+    if (params_.timeout_enabled &&
+        (has_been_active_ || params_.timeout_allow_never_tracked) &&
         input.target_timeout > 0.0 &&
         input.time_since_valid_target > input.target_timeout) {
-        if (timeout_recovery_attempts_ >= settings_.timeout_max_attempts) {
+        if (timeout_recovery_attempts_ >= params_.timeout_max_attempts) {
             RCLCPP_WARN_THROTTLE(logger_, *node_->get_clock(),
                                  kServiceWarnPeriodMs,
                                  "Measurement timeout for \"%s\", but %d "
@@ -132,7 +132,7 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
                         target_class_.c_str(),
                         input.time_since_valid_target,
                         timeout_recovery_attempts_,
-                        settings_.timeout_max_attempts);
+                        static_cast<int>(params_.timeout_max_attempts));
             AbortPendingConfirm();
             ResetWindows();
             result.mark_lost = true;
@@ -143,7 +143,7 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
     // No-movement window: samples accumulate only in the configured states;
     // leaving them resets the window and any pending confirmation. A
     // disabled pathway never fills its window, so its check never fires.
-    if (settings_.no_movement_enabled && input.filter_initialized &&
+    if (params_.no_movement_enabled && input.filter_initialized &&
         IsInNoMovementCheckState(input.state)) {
         if (speed_window_start_ < 0.0) {
             speed_window_start_ = now;
@@ -155,7 +155,7 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
 
     // Uncertainty window: samples accumulate only while actively tracking
     // (a covariance reset seeds large values that would poison the mean).
-    if (settings_.uncertainty_enabled && input.filter_initialized &&
+    if (params_.uncertainty_enabled && input.filter_initialized &&
         IsActiveTrackerState(input.state)) {
         if (uncertainty_window_start_ < 0.0) {
             uncertainty_window_start_ = now;
@@ -168,15 +168,15 @@ TrackerRecoveryMonitor::UpdateResult TrackerRecoveryMonitor::Update(
 
     // Uncertainty above the threshold over a full window: lost.
     if (uncertainty_window_start_ >= 0.0 &&
-        now - uncertainty_window_start_ >= settings_.uncertainty_window_time) {
+        now - uncertainty_window_start_ >= params_.uncertainty_window_time) {
         const core::StatsSnapshot stats = uncertainty_stats_.GetStats(now);
         if (uncertainty_stats_.GetConfig().IsThresholdMet(stats.mean)) {
             RCLCPP_WARN(logger_,
                         "Mean position uncertainty (major-axis std dev) "
                         "%.2f m over the last %.1f s exceeds %.2f m: tracker "
                         "is lost.",
-                        stats.mean, settings_.uncertainty_window_time,
-                        settings_.uncertainty_threshold);
+                        stats.mean, params_.uncertainty_window_time,
+                        params_.uncertainty_threshold);
             AbortPendingConfirm();
             ResetWindows();
             result.mark_lost = true;
@@ -204,7 +204,7 @@ void TrackerRecoveryMonitor::RunNoMovementCheck(const double now) {
         return;
     }
     if (speed_window_start_ < 0.0 ||
-        now - speed_window_start_ < settings_.no_movement_window_time) {
+        now - speed_window_start_ < params_.no_movement_window_time) {
         return;
     }
     if (!speed_stats_.GetConfig().IsThresholdMet(
@@ -250,7 +250,7 @@ void TrackerRecoveryMonitor::RunRecovery(const double now) {
 void TrackerRecoveryMonitor::SendCheckSpeedRequest(const double now) {
     auto request = std::make_shared<avt_341_msgs::srv::CheckSpeed::Request>();
     // "Is your actual longitudinal speed above the no-movement threshold?"
-    request->speed = settings_.no_movement_threshold;
+    request->speed = params_.no_movement_threshold;
     request->operation = "gt";
     request->threshold = 0.0;
 
@@ -345,32 +345,31 @@ void TrackerRecoveryMonitor::Reset() {
     timeout_recovery_attempts_ = 0;
 }
 
-void TrackerRecoveryMonitor::UpdateSettings(const RecoverySettings& settings) {
-    settings_ = settings;
+void TrackerRecoveryMonitor::UpdateSettings(const RecoverySettings& params) {
+    params_ = params;
     // The window/threshold configuration may have changed.
     ResetWindows();
 }
 
 core::RunningStats TrackerRecoveryMonitor::MakeSpeedStats() const {
     core::RunningStatsConfig config;
-    config.window_time = settings_.no_movement_window_time;
-    config.threshold_check = settings_.no_movement_threshold;
+    config.window_time = params_.no_movement_window_time;
+    config.threshold_check = params_.no_movement_threshold;
     config.threshold_greater_than = false;  // No movement: mean BELOW threshold.
     return core::RunningStats(config);
 }
 
 core::RunningStats TrackerRecoveryMonitor::MakeUncertaintyStats() const {
     core::RunningStatsConfig config;
-    config.window_time = settings_.uncertainty_window_time;
-    config.threshold_check = settings_.uncertainty_threshold;
+    config.window_time = params_.uncertainty_window_time;
+    config.threshold_check = params_.uncertainty_threshold;
     config.threshold_greater_than = true;  // Uncertain: mean ABOVE threshold.
     return core::RunningStats(config);
 }
 
 bool TrackerRecoveryMonitor::IsInNoMovementCheckState(
     const TrackerState state) const {
-    const auto& states = settings_.no_movement_check_in_states;
-    return std::find(states.begin(), states.end(), state) != states.end();
+    return IsConfiguredTrackerState(params_, state);
 }
 
 }  // namespace perception

@@ -51,7 +51,7 @@ class ObjectTracker {
    public:
     ObjectTracker(rclcpp::Node* node,
                   const std::string& target_class,
-                  const ObjectTrackerSettings& settings,
+                  const ObjectTrackerSettings& params,
                   const core::CoordTransformer& coord_transformer,
                   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
                   );
@@ -109,8 +109,8 @@ class ObjectTracker {
      */
     virtual void Reset();
 
-    /** @brief Replace the shared settings (dynamic parameter propagation). */
-    virtual void UpdateSettings(const ObjectTrackerSettings& settings);
+    /** @brief Replace the shared parameters (dynamic parameter propagation). */
+    virtual void UpdateSettings(const ObjectTrackerSettings& params);
 
     // Accessors
     // -------------------------------------------------------------------------
@@ -188,7 +188,7 @@ class ObjectTracker {
     /** @brief Child frame ID for the Odometry messages of this target. */
     std::string odometry_child_frame_;
 
-    ObjectTrackerSettings settings_;
+    ObjectTrackerSettings params_;
 
     /** @brief Shared coordinate transformer owned by the node. */
     const core::CoordTransformer& coord_transformer_;

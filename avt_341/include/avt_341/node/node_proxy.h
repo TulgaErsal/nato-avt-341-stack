@@ -358,7 +358,7 @@ namespace avt_341 {
     public:
 
       template<typename CallbackT>
-      Subscriber(const std::string &topic_name, int qos, CallbackT &&callback,
+      Subscriber(const std::string &topic_name, const rclcpp::QoS &qos, CallbackT &&callback,
                  const std::shared_ptr<rclcpp::Node> &node_) {
         sub_ptr_ = node_->create_subscription<MessageT>(topic_name, qos, std::forward<CallbackT>(callback));
       }
@@ -425,9 +425,6 @@ namespace avt_341 {
           return;
         }
 
-        if(is_empty_waypoints_ && (name_local == "/waypoints_x" || name_local == "/waypoints_y")){
-            return;
-        }
         if (!node_->has_parameter(name_local))
         {
           node_->declare_parameter(name_local, default_value);
@@ -457,7 +454,7 @@ namespace avt_341 {
       }
 
       template<typename MessageT, typename CallbackT>
-      std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, int qos, CallbackT &&callback) {
+      std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, const rclcpp::QoS &qos, CallbackT &&callback) {
         return std::make_shared<Subscriber<MessageT>>(topic_name, qos, std::forward<CallbackT>(callback), node_);
       }
 
@@ -537,7 +534,6 @@ namespace avt_341 {
       std::shared_ptr<rclcpp::Node> node_;
       std::shared_ptr<ParamsProxy> params_;
 
-      bool is_empty_waypoints_;
       std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
       std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_{nullptr};
       std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_{nullptr};

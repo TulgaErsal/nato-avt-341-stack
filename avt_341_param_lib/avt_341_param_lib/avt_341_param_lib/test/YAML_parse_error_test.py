@@ -32,39 +32,44 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 def set_up(yaml_test_file):
     full_file_path = os.path.join(TEST_DIR, yaml_test_file)
     output_dir = tempfile.mkdtemp()
-    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.h'), full_file_path]
+    dto_output_file = os.path.join(output_dir, yaml_test_file + '_params_dto.hpp')
+    service_output_file = os.path.join(
+        output_dir, yaml_test_file + '_params_service.hpp')
+    testargs = [
+        sys.argv[0],
+        dto_output_file,
+        service_output_file,
+        full_file_path,
+    ]
 
     with patch.object(sys, 'argv', testargs):
         args = parse_args()
-        output_file = args.output_cpp_header_file
+        dto_output_file = args.output_cpp_dto_header_file
+        service_output_file = args.output_cpp_service_header_file
         yaml_file = args.input_yaml_file
         validate_header = args.validate_header
-        run_cpp(output_file, yaml_file, validate_header)
+        run_cpp(
+            dto_output_file,
+            service_output_file,
+            yaml_file,
+            validate_header,
+        )
 
-    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.py'), full_file_path]
-
-    with patch.object(sys, 'argv', testargs):
-        args = parse_args()
-        output_file = args.output_cpp_header_file
-        yaml_file = args.input_yaml_file
-        validate_header = args.validate_header
-        run_python(output_file, yaml_file, validate_header)
-
-    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.md'), full_file_path]
-
-    with patch.object(sys, 'argv', testargs):
-        args = parse_args()
-        output_file = args.output_cpp_header_file
-        yaml_file = args.input_yaml_file
-        run_md(yaml_file, output_file, 'markdown')
-
-    testargs = [sys.argv[0], os.path.join(output_dir, yaml_test_file + '.rst'), full_file_path]
-
-    with patch.object(sys, 'argv', testargs):
-        args = parse_args()
-        output_file = args.output_cpp_header_file
-        yaml_file = args.input_yaml_file
-        run_md(yaml_file, output_file, 'rst')
+    run_python(
+        os.path.join(output_dir, yaml_test_file + '.py'),
+        full_file_path,
+        '',
+    )
+    run_md(
+        full_file_path,
+        os.path.join(output_dir, yaml_test_file + '.md'),
+        'markdown',
+    )
+    run_md(
+        full_file_path,
+        os.path.join(output_dir, yaml_test_file + '.rst'),
+        'rst',
+    )
 
 
 # class TestViewValidCodeGen(unittest.TestCase):

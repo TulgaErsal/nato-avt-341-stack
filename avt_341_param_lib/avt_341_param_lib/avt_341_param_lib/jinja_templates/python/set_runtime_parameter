@@ -3,4 +3,4 @@ self.logger_.debug(param.name + ": " + param.type_.name + " = " + str(param.valu
 {% if parameter_validations|length -%}
 {{parameter_validations-}}
 {% endif -%}
-entry.{{parameter_field}} = param.{{parameter_as_function}}
+entry.{{parameter_field}} = {{parameter_value_expression}}

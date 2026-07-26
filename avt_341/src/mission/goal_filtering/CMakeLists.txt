@@ -26,3 +26,9 @@ if(USING_AMENT)
             DESTINATION "lib/${PROJECT_NAME}")
 
 endif ()
+
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET ${PROJECT_NAME}_obs_avoid_goal_filter_node)
+  target_link_libraries(
+    ${PROJECT_NAME}_obs_avoid_goal_filter_node mission_manager_params_dto)
+endif()

@@ -1,0 +1,25 @@
+code_namespace: avt_341/params/core
+ros__parameters:
+    geometry:
+        width:
+            type: float
+            default_value: 200.0
+            description: "Total grid width in meters."
+        height:
+            type: float
+            default_value: 200.0
+            description: "Total grid height in meters."
+        res:
+            type: float
+            default_value: 0.25
+            description: "Grid resolution in meters."
+            validation:
+                gt<>: [ 0.0 ]
+        llx:
+            type: float
+            default_value: 0.0
+            description: "X coordinate of the grid lower-left anchor."
+        lly:
+            type: float
+            default_value: 0.0
+            description: "Y coordinate of the grid lower-left anchor."

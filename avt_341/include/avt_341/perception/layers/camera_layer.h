@@ -22,9 +22,10 @@ namespace avt_341::perception
     public:
         CameraLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
-            const CostmapSettings& cm_settings,
+            const PerceptionSettings& settings,
             const std::string & label,
-            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+            const avt_341::params::perception::Params::CameraLayer& params
             );
 
         std::string ToString() const override;
@@ -38,7 +39,8 @@ namespace avt_341::perception
         using ImageSyncPolicy = message_filters::sync_policies::ApproximateTime<
             sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
 
-        void SetupCameraSubscriptions();
+        void SetupCameraSubscriptions(
+            const avt_341::params::perception::Params::CameraLayer& params);
 
         void CameraInfoCallback(const msg::CameraInfo::ConstSharedPtr& msg);
 

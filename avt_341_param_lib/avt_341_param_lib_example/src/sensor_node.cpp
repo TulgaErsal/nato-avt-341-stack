@@ -2,7 +2,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <avt_341_param_lib_example/sensor_parameters.hpp>
+#include <avt_341_param_lib_example/sensor_params_service.hpp>
 
 namespace sensor_demo {
 

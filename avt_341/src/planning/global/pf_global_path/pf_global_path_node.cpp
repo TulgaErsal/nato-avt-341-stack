@@ -16,7 +16,9 @@
 #include <avt_341/node/occupancy_grid_subscriber.h>
 // local includes
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/core/waypoint_file_parser.hpp"
 #include "avt_341/planning/local/pf_planner.h"
+#include <avt_341/pf_global_planner_params_service.hpp>
 avt_341::msg::Odometry odom;
 bool odom_rcvd = false;
 avt_341::msg::OccupancyGrid current_grid;
@@ -28,7 +30,6 @@ bool waypoints_rcvd = false;
 bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
-bool verbose_gp_log = false;
 bool shutdown_condition = false;
 
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
@@ -51,7 +52,7 @@ void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
 }
 
 // From mission planner
-void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints)
+void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints, bool verbose_gp_log)
 {
   // Brute force - overwrite the current global waypoints
   current_waypoints = *rcv_waypoints;
@@ -74,7 +75,8 @@ void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand) {
   nav_command_rcvd = true;
 }
 
-void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose)
+void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose,
+                      bool verbose_gp_log)
 {
   if(verbose_gp_log){
     n->log_info("Setting goal (%.2f, %.2f)", rcv_goal_pose->pose.position.x, rcv_goal_pose->pose.position.y);
@@ -123,53 +125,32 @@ void ResetCallback(avt_341::msg::StringPtr msg){
 int main(int argc, char *argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_pf_global_path_node");
-
-  float goal_dist;
-  double local_origin_x, local_origin_y;
-  std::vector<double> waypoints_x_list, waypoints_y_list;
-  bool auto_active_on_new_waypoint, use_global_path;
-  float max_sep;
-  std::string map_topic;
-  float kp, eta, cutoff_dist, inner_cutoff_dist, rate, motion_model_res;
-  int obs_cost_thresh;
-  std::string grid_topic;
+  avt_341::params::pf_global_planner::ParamsListener param_listener(n->get_raw_node());
+  const auto params = param_listener.get_params();
 
   std::vector<float> goal;
   goal.resize(2, 0.0f);
 
-  // General params
-  n->get_parameter("~goal_dist", goal_dist, 3.0f);
-  n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
-  n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
-  n->get_parameter("/map_origin_x", local_origin_x, 0.0);
-  n->get_parameter("/map_origin_y", local_origin_y, 0.0);
-  n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
-  n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
-  n->get_parameter("~max_separation", max_sep, 1.0f);
-  n->get_parameter("~use_global_path", use_global_path, true);
-  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
-
-  // PF params
-  n->get_parameter("~kp", kp, 5.0f);
-  n->get_parameter("~eta", eta, 100.0f);
-  n->get_parameter("~obstacle_cost_thresh", obs_cost_thresh, 0);
-  n->get_parameter("~cutoff_dist", cutoff_dist, 20.0f);
-  n->get_parameter("~inner_cutoff_dist", inner_cutoff_dist, 1.5f);
-  n->get_parameter("~motion_model_res", motion_model_res, 0.5f);
-  n->get_parameter("~pf_rate", rate, 50.0f);
-
-  int shutdown_behavior = avt_341::utils::NavStackState::InactiveCoast;
-  n->get_parameter("~shutdown_behavior", shutdown_behavior, shutdown_behavior);
+  int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
   if (shutdown_behavior>3 || shutdown_behavior<1)shutdown_behavior = 1;
 
-  if (waypoints_x_list.size() != waypoints_y_list.size())
+  avt_341::core::WaypointLists initial_waypoints;
+  if (!params.initial_waypoints.empty())
   {
-    std::cerr << "WARNING: " << waypoints_x_list.size() << " X COORDINATES WERE PROVIDED FOR " << waypoints_y_list.size() << " Y COORDINATES." << std::endl;
-  }
-  if (waypoints_x_list.size() == 0 || waypoints_y_list.size() == 0)
-  {
-    std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN /waypoints_x OR /waypoints_y." << std::endl;
-    //return 2;
+    initial_waypoints =
+        avt_341::core::WaypointFileParser::Parse(params.initial_waypoints);
+    if (initial_waypoints.x.size() != initial_waypoints.y.size())
+    {
+      std::cerr << "WARNING: " << initial_waypoints.x.size()
+                << " X COORDINATES WERE PROVIDED FOR "
+                << initial_waypoints.y.size() << " Y COORDINATES IN "
+                << params.initial_waypoints << std::endl;
+    }
+    if (initial_waypoints.x.empty() || initial_waypoints.y.empty())
+    {
+      std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN "
+                << params.initial_waypoints << std::endl;
+    }
   }
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
@@ -179,22 +160,34 @@ int main(int argc, char *argv[])
   auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  avt_341::node::OccupancyGridSubscriber map_sub(n, map_topic, 10, MapCallback);
-  avt_341::node::OccupancyGridSubscriber segmentation_map_sub(n, "avt_341/segmentation_grid", 10, SegmentationMapCallback);
-  auto waypoint_sub = n->create_subscription<avt_341::msg::Path>("avt_341/new_waypoints", 10, WaypointCallback);
+  avt_341::node::OccupancyGridSubscriber map_sub(
+      n, params.map_topic, 10, params.costmap.publish.method, MapCallback);
+  avt_341::node::OccupancyGridSubscriber segmentation_map_sub(
+      n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
+      SegmentationMapCallback);
+  auto waypoint_sub = n->create_subscription<avt_341::msg::Path>(
+      "avt_341/new_waypoints", 10,
+      [&params](avt_341::msg::PathPtr msg) {
+        WaypointCallback(msg, params.verbose_gp_log);
+      });
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
-  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
+  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>(
+      "avt_341/goal_pose", 10,
+      [&params](avt_341::msg::PoseStampedPtr msg) {
+        GoalPoseCallback(msg, params.verbose_gp_log);
+      });
   auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
   auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
 
   avt_341::planning::PfPlanner planner;
-  planner.SetEta(eta);
-  planner.SetKp(kp);
-  planner.SetCutoffDistance(cutoff_dist);
-  planner.SetInnerCutoff(inner_cutoff_dist);
-  planner.SetObstacleCostThreshold(obs_cost_thresh);
-  planner.SetMotionModelRes(motion_model_res);
+  planner.SetEta(static_cast<float>(params.eta));
+  planner.SetKp(static_cast<float>(params.kp));
+  planner.SetCutoffDistance(static_cast<float>(params.cutoff_dist));
+  planner.SetInnerCutoff(static_cast<float>(params.inner_cutoff_dist));
+  planner.SetObstacleCostThreshold(
+      static_cast<int>(params.obstacle_cost_thresh));
+  planner.SetMotionModelRes(static_cast<float>(params.motion_model_res));
 
   // ctg, 8-19-2021
   // the state values can be
@@ -206,7 +199,8 @@ int main(int argc, char *argv[])
   auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
   state.data = avt_341::utils::NavStackState::NotInit;
 
-  int num_waypoints = std::min(waypoints_x_list.size(), waypoints_y_list.size());
+  const auto num_waypoints =
+      std::min(initial_waypoints.x.size(), initial_waypoints.y.size());
   Reset();
 
   // Initialize current waypoints with the data from the waypoint yaml params
@@ -217,8 +211,10 @@ int main(int argc, char *argv[])
     //nav_msgs::Path loaded_waypoints;
     for (int32_t i=0;i<num_waypoints;i++){
       avt_341::msg::PoseStamped pose;
-      pose.pose.position.x = static_cast<float>(waypoints_x_list[i]) - local_origin_x;
-      pose.pose.position.y = static_cast<float>(waypoints_y_list[i]) - local_origin_y;
+      pose.pose.position.x =
+          static_cast<float>(initial_waypoints.x[i] - params.gis.origin_x);
+      pose.pose.position.y =
+          static_cast<float>(initial_waypoints.y[i] - params.gis.origin_y);
       pose.pose.position.z = 0.0f;
       pose.pose.orientation.w = 1.0f;
       pose.pose.orientation.x = 0.0f;
@@ -227,8 +223,8 @@ int main(int argc, char *argv[])
       current_waypoints.poses.push_back(pose);
     }
       // Initialize goal to first waypoint
-    goal[0] = waypoints_x_list[0] - local_origin_x;
-    goal[1] = waypoints_y_list[0] - local_origin_y;
+    goal[0] = initial_waypoints.x[0] - params.gis.origin_x;
+    goal[1] = initial_waypoints.y[0] - params.gis.origin_y;
     state.data = avt_341::utils::NavStackState::Active; // go active
     state_pub->publish(state);
   }
@@ -247,7 +243,7 @@ int main(int argc, char *argv[])
       ros_path.poses.clear();
       ros_path.header.frame_id = "map";
       ros_path.header.stamp = n->get_stamp();
-      if (use_global_path)
+      if (params.use_global_path)
         path_pub->publish(ros_path);
       state.data = avt_341::utils::NavStackState::NotInit;
       state_pub->publish(state);
@@ -285,13 +281,13 @@ int main(int argc, char *argv[])
         current_waypoint = 0;
         goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
         goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
-        if(verbose_gp_log){
+        if(params.verbose_gp_log){
           n->log_info("New waypoints! Updated goal %f, %f", goal[0], goal[1]);
         }
         waypoints_rcvd = false;
         shutdown_condition = false;
         // Maintaining current state - if we're idle, we'll need an explicit GO command unless auto_active option
-        if(auto_active_on_new_waypoint){
+        if(params.auto_active_on_new_waypoint){
           state.data = avt_341::utils::NavStackState::Active;  // go active
           state_pub->publish(state);
         }
@@ -318,7 +314,7 @@ int main(int argc, char *argv[])
         // ctg 8/19/21
         // if not on the last waypoint, add a straight path to the next waypoint to the global path
         // this helps the local planner make smooth transitions between waypoints
-        if (d<goal_dist || ros_path.poses.size()>1) {
+        if (d < params.goal_dist || ros_path.poses.size()>1) {
           int cp =current_waypoint;
           while (cp<current_waypoints.poses.size()-1){
             avt_341::utils::vec2 wp1(static_cast<float>(current_waypoints.poses[cp].pose.position.x),
@@ -328,9 +324,10 @@ int main(int argc, char *argv[])
             avt_341::utils::vec2 wp_diff = wp2-wp1;
             avt_341::utils::vec2 wp_diff_norm = wp_diff;
             wp_diff_norm.normalize();
-            if(wp_diff.mag() > max_sep) {
+            if(wp_diff.mag() > params.max_separation) {
               // Add intermediate waypoints
-              for(int d = max_sep; d < wp_diff.mag(); d+=max_sep){
+              for(double d = params.max_separation;
+                  d < wp_diff.mag(); d += params.max_separation) {
                 avt_341::msg::PoseStamped pose;
                 pose.pose.position.x = wp1.x + d*wp_diff_norm.x;
                 pose.pose.position.y = wp1.y + d*wp_diff_norm.y;
@@ -363,7 +360,7 @@ int main(int argc, char *argv[])
           ros_path.poses[i].header = ros_path.header;
         }
 
-        if (use_global_path)
+        if (params.use_global_path)
           path_pub->publish(ros_path);
         waypoint_pub->publish(current_waypoints);
 
@@ -372,7 +369,7 @@ int main(int argc, char *argv[])
         }
 
         dist_to_current_waypoint_pub->publish(dist_to_goal);
-        if (nl % 10 == 0 && verbose_gp_log){ //update every second
+        if (nl % 10 == 0 && params.verbose_gp_log){ //update every second
           auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - t1);
           t1 = std::chrono::system_clock::now();
           n->log_info("Global Path [%f]: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f", duration.count(),
@@ -380,7 +377,7 @@ int main(int argc, char *argv[])
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
-          if (d<goal_dist || shutdown_condition){   // reached the goal
+          if (d < params.goal_dist || shutdown_condition){   // reached the goal
 		  	    // send arrival notification
             shutdown_condition = true;
             state.data = shutdown_behavior; // request shutdown behavior
@@ -400,7 +397,7 @@ int main(int argc, char *argv[])
 		      }
         }
         else{     // intermediate waypoint
-          if (d<goal_dist){   // reached the waypoint
+          if (d < params.goal_dist){   // reached the waypoint
             goal_reached_pub->publish(current_waypoints.poses[current_waypoint]);
 
             current_waypoint++;

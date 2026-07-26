@@ -4,11 +4,25 @@
 
 #include <algorithm>
 #include <array>
+#include <builtin_interfaces/msg/time.hpp>
 #include <functional>
 #include <limits>
 #include <mutex>
 #include <rclcpp/node.hpp>
+
+// Win32 headers define ERROR as a macro, which collides with
+// LifecycleNodeInterface::CallbackReturn::ERROR.
+#ifdef ERROR
+#pragma push_macro("ERROR")
+#undef ERROR
+#define AVT_341_PARAM_LIB_RESTORE_ERROR_MACRO
+#endif
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
+#ifdef AVT_341_PARAM_LIB_RESTORE_ERROR_MACRO
+#pragma pop_macro("ERROR")
+#undef AVT_341_PARAM_LIB_RESTORE_ERROR_MACRO
+#endif
+
 #include <rclcpp/logger.hpp>
 #include <set>
 #include <sstream>
@@ -22,6 +36,7 @@
 #include <fmt/ranges.h>
 
 #include <avt_341_param_lib/parameter_validators.hpp>
+#include "{{dto_header_include}}"
 
 {% if user_validation_file|length -%}
 #include "{{user_validation_file}}"
@@ -52,26 +67,6 @@ template <typename T>
 [[nodiscard]] auto to_parameter_value(T value) {
     return rclcpp::ParameterValue(value);
 }
-
-{%- filter indent(width=4) %}
-struct {{class_name}} {
-{%- filter indent(width=4) %}
-{{field_content-}}
-{{sub_struct_content-}}
-// for detecting if the parameter struct has been updated
-rclcpp::Time __stamp;
-{% endfilter -%}
-};
-{%- endfilter %}
-
-{%- filter indent(width=4) %}
-struct {{stack_class_name}} {
-{%- filter indent(width=4) %}
-{{stack_field_content-}}
-{{stack_sub_struct_content-}}
-{% endfilter -%}
-};
-{%- endfilter %}
 
   class {{listener_class_name}}{
   public:
@@ -186,7 +181,7 @@ struct {{stack_class_name}} {
 {%- endfilter %}
       }
 {%- endif %}
-      updated_params.__stamp = clock_.now();
+      updated_params.__stamp = current_stamp();
       update_internal_params(updated_params);
       if (user_callback_) {
          user_callback_(updated_params);
@@ -213,7 +208,7 @@ struct {{stack_class_name}} {
 {%- endfilter %}
 {%- endif %}
 
-      updated_params.__stamp = clock_.now();
+      updated_params.__stamp = current_stamp();
       update_internal_params(updated_params);
     }
 
@@ -227,6 +222,11 @@ struct {{stack_class_name}} {
     }
 
     private:
+      [[nodiscard]] {{stamp_class_name}} current_stamp() {
+        const builtin_interfaces::msg::Time now = clock_.now();
+        return {{stamp_class_name}}{now.sec, now.nanosec};
+      }
+
       void update_internal_params({{class_name}} updated_params) {
         std::lock_guard<std::mutex> lock(mutex_);
         params_ = std::move(updated_params);

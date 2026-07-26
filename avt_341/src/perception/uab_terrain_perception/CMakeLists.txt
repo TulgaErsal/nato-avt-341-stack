@@ -128,3 +128,8 @@ else()
         "Unable to build UAB Terrain Perception node. Failed to find MATLAB R2025b."
     )
 endif()
+
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET uab_perception_node)
+  target_link_libraries(uab_perception_node uab_perception_params_service)
+endif()

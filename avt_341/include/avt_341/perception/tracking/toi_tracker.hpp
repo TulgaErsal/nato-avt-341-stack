@@ -1,7 +1,8 @@
 /**
 * @file      toi_tracker.hpp
 * @brief     ObjectTracker specialization for targets of interest (TOI):
-             targets whose id matches the "tracker_toi_regex" parameter.
+             targets whose id matches the "target_selection.toi_regex"
+             parameter.
              Publishes target contacts while actively tracking so the mission
              manager can trigger an investigation task.
 */
@@ -22,14 +23,14 @@ namespace perception {
 /**
  * @brief Tracker for a target of interest. The owning node creates this type
  * (instead of the Generic base) when the target id matches
- * "tracker_toi_regex". Adds target-contact publishing on top of the base
- * tracking behavior.
+ * "target_selection.toi_regex". Adds target-contact publishing on top of the
+ * base tracking behavior.
  */
 class ToiTracker : public ObjectTracker {
    public:
     ToiTracker(rclcpp::Node* node,
                const std::string& target_class,
-               const ObjectTrackerSettings& settings,
+               const ObjectTrackerSettings& params,
                const core::CoordTransformer& coord_transformer,
                rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher,
                rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher);

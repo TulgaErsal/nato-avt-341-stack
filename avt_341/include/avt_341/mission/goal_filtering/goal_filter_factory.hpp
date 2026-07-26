@@ -16,7 +16,9 @@ struct GoalFilterMethod {
 std::shared_ptr<GoalFilter> create_goal_filter(
     const std::string & vehicle_id,
     const std::string & method_id,
-    const std::shared_ptr<node::NodeProxy> & node
+    const std::shared_ptr<node::NodeProxy> & node,
+    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
+    const std::string & publish_method = std::string()
     );
 
 }

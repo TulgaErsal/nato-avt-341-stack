@@ -8,13 +8,13 @@ namespace avt_341::perception {
 
 
 OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells,
-                                                 const BaseClearingSettings &config,
+                                                 const PerceptionSettings &settings,
                                                  CellObstacleCalculator *cell_obstacle_calculator)
     : OccupancyClearingMethod(
         cells,
         static_cast<int>(cells.size()),
         static_cast<int>(cells[0].size()),
-        config,
+        settings,
         cell_obstacle_calculator
     )
 {
@@ -23,13 +23,13 @@ OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> 
 OccupancyClearingMethod::OccupancyClearingMethod(std::vector<std::vector<Cell>> &cells,
                                                     int Ny,
                                                     int Nx,
-                                                    const BaseClearingSettings &config,
+                                                    const PerceptionSettings &settings,
                                                     CellObstacleCalculator *cell_obstacle_calculator)
     :
     cells_(cells),
     Ny_(Ny),
     Nx_(Nx),
-    config_(config),
+    settings_(settings),
     cell_obstacle_calculator_(cell_obstacle_calculator)
 {
 }
@@ -71,13 +71,13 @@ void OccupancyClearingMethod::BroadcastClearToSiblings(int x, int y) {
 // ==================================================================================================================
 
 NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell> > &cells,
-                                       const BaseClearingSettings &config,
+                                       const PerceptionSettings &settings,
                                        CellObstacleCalculator *obs_calculator)
     : OccupancyClearingMethod(
         cells,
         static_cast<int>(cells.size()),
         static_cast<int>(cells[0].size()),
-        config,
+        settings,
         obs_calculator) {
 }
 
@@ -91,10 +91,11 @@ void OccupancyClearingMethod::RemoveDilationAtCell(int x, int y) const {
 
 void OccupancyClearingMethod::RemoveDilationAtCell(int x, int y, std::vector<std::vector<Cell>> &cells) const {
 
-    const int& dy = config_.grid_dilate_y;
-    const int& dx = config_.grid_dilate_x;
-    const bool& clr_dil = config_.immediate_clear_dilation;
-    const float& thresh = config_.thresh;
+    const int dy = settings_.dilation_y_cells();
+    const int dx = settings_.dilation_x_cells();
+    const bool clr_dil =
+        settings_.clear_method.immediate_clear_dilation;
+    const float thresh = settings_.costmap.thresholds.thresh;
 
     cells[y][x].has_dilated = false;
 

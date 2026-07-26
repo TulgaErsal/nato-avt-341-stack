@@ -5,10 +5,10 @@ namespace avt_341::perception {
 TimedClearingMethod::TimedClearingMethod(
     float max_point_age,
     std::vector<std::vector<Cell>> &cells,
-    const BaseClearingSettings &config,
+    const PerceptionSettings &settings,
     CellObstacleCalculator *obs_calculator
     )
-    : OccupancyClearingMethod(cells, config, obs_calculator),
+    : OccupancyClearingMethod(cells, settings, obs_calculator),
       max_point_age_(max_point_age) {
 }
 
@@ -47,11 +47,12 @@ std::string TimedClearingMethod::GetDescription() const {
 
 TimedNoObsClearingMethod::TimedNoObsClearingMethod(
     std::vector<std::vector<Cell>> &cells,
-    const BaseClearingSettings &base_config,
+    const PerceptionSettings &settings,
     const TimedNoObsClearingSettings &time_config,
     CellObstacleCalculator *obs_calculator
     )
-    : OccupancyClearingMethod(cells, base_config, obs_calculator), time_config_(time_config) {
+    : OccupancyClearingMethod(cells, settings, obs_calculator),
+      time_config_(time_config) {
 
     std::vector<Cell> row;
     row.resize(Nx_);
@@ -72,12 +73,19 @@ void TimedNoObsClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_clo
 
     // Small subtraction in case user enters 0.0 so that this setting is ignored
     constexpr float EPS = 1e-3;
-    const float dst_sqr_thresh = time_config_.distance_threshold * time_config_.distance_threshold - EPS;
+    const float dst_sqr_thresh =
+        time_config_.no_obs_dist_threshold *
+            time_config_.no_obs_dist_threshold -
+        EPS;
 
     for (int i = 0; i < point_cloud.points.size(); i++) {
 
-        const int xi = static_cast<int>((point_cloud.points[i].x - config_.llx) / config_.res);
-        const int yi = static_cast<int>((point_cloud.points[i].y - config_.lly) / config_.res);
+        const int xi = static_cast<int>(
+            (point_cloud.points[i].x - settings_.size_info().llx) /
+            settings_.size_info().res);
+        const int yi = static_cast<int>(
+            (point_cloud.points[i].y - settings_.size_info().lly) /
+            settings_.size_info().res);
 
         if (xi >= 0 && xi < Nx_ && yi >= 0 && yi < Ny_) {
 
@@ -103,9 +111,10 @@ void TimedNoObsClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_clo
                     timed_cells_data[yi][xi].last_scan_pos_y = veh_pos.y;
                 }
 
-                if (timed_cells_data[yi][xi].num_samples >= time_config_.sample_threshold
+                if (timed_cells_data[yi][xi].num_samples >=
+                        time_config_.sampled_threshold
                     && node::seconds_from_header(point_cloud.header) - timed_cells_data[yi][xi].obs_time >
-                    time_config_.time_threshold) {
+                    time_config_.max_point_age) {
 
                     // But currently timed tracked cell is not an obstacle. Clear it original.
                     cells_[yi][xi].ResetHeight();
@@ -133,9 +142,11 @@ void TimedNoObsClearingMethod::Reset() {
 
 std::string TimedNoObsClearingMethod::GetDescription() const {
     return "TimedNoObsClearingMethod: "
-           "time_threshold=" + std::to_string(time_config_.time_threshold) + "s" +
-            ", sample_threshold=" + std::to_string(time_config_.sample_threshold) +
-            ", distance_threshold=" + std::to_string(time_config_.distance_threshold) + "m";
+           "time_threshold=" + std::to_string(time_config_.max_point_age) + "s" +
+            ", sample_threshold=" +
+            std::to_string(time_config_.sampled_threshold) +
+            ", distance_threshold=" +
+            std::to_string(time_config_.no_obs_dist_threshold) + "m";
 }
 
 }

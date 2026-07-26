@@ -39,3 +39,9 @@ if(USING_AMENT)
     DESTINATION "lib/${PROJECT_NAME}"
   )
 endif()
+
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET goal_point_processor_node)
+  target_link_libraries(
+    goal_point_processor_node mpc_local_planner_params_service)
+endif()

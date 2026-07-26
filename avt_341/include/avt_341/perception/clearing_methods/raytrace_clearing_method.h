@@ -11,31 +11,7 @@ namespace avt_341::perception {
 // ==================================================================================================================
 // ==================================================================================================================
 
-struct RaytraceSettings {
-    float raytrace_range;
-    bool immediate_clear_dilation;
-    bool use_voxels;
-    bool clr_on_scan_below_only;
-    float voxel_height_min;
-    float voxel_height_res;
-    float obj_range_filter;
-    std::string lidar_frame;
-
-    RaytraceSettings() = default;
-
-    explicit RaytraceSettings(const ClearMethodRosParameters &params)
-        :
-        raytrace_range(params.raytrace_range),
-        immediate_clear_dilation(params.immediate_clr_dilation),
-        use_voxels(params.use_voxels),
-        clr_on_scan_below_only(params.clr_on_scan_below_only),
-        voxel_height_min(params.voxel_height_min),
-        voxel_height_res(params.voxel_height_res),
-        obj_range_filter(params.obj_range_filter),
-        lidar_frame(params.lidar_frame){
-    }
-
-};
+using RaytraceSettings = ClearMethodSettings;
 
 
 
@@ -49,7 +25,7 @@ public:
 
     RaytraceClearingMethod(const std::shared_ptr<node::NodeProxy> & node_ref,
                            std::vector<std::vector<Cell>> & cells,
-                           const BaseClearingSettings & base_config,
+                           const PerceptionSettings & settings,
                            const RaytraceSettings & rt_config,
                            CellObstacleCalculator *obs_calculator,
                            bool handle_dilation = true
@@ -59,7 +35,7 @@ public:
                            std::vector<std::vector<Cell>> & cells,
                            int Ny,
                            int Nx,
-                           const BaseClearingSettings & base_config,
+                           const PerceptionSettings & settings,
                            const RaytraceSettings & rt_config,
                            CellObstacleCalculator *obs_calculatorr,
                            bool handle_dilation = true
@@ -124,7 +100,7 @@ public:
 
     RaytraceWithFilteringClearingMethod(const std::shared_ptr<node::NodeProxy>& node_ref,
                                         std::vector<std::vector<Cell>> & cells,
-                                        const BaseClearingSettings & base_config,
+                                        const PerceptionSettings & settings,
                                         const RaytraceSettings & rt_config,
                                         CellObstacleCalculator *obs_calculator
                                         );

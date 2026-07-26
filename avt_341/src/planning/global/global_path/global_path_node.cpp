@@ -16,6 +16,7 @@
 #include <future>
 // local includes
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/core/waypoint_file_parser.hpp"
 #include "avt_341/planning/global/astar.h"
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/planning/global/d_star_lite.h"
@@ -23,6 +24,7 @@
 #include "avt_341/visualization/visualization_factory.h"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/core/dto_conversion.h"
+#include <avt_341/global_planner_params_service.hpp>
 #include <avt_341_msgs/srv/compute_global_path.hpp>
 #include <chrono>
 #include <stdexcept>
@@ -42,9 +44,7 @@ bool waypoints_rcvd = false;
 bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
-bool verbose_gp_log = false;
 std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
-bool use_segmentation = false;
 avt_341::msg::NavState state;
 int current_waypoint = 0;
 bool reset_called = false;
@@ -74,7 +74,8 @@ void MapCallback(avt_341::msg::OccupancyGridPtr rcv_grid)
   current_grid = *rcv_grid;
 }
 
-void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid)
+void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid,
+                             bool use_segmentation)
 {
   if (use_segmentation) {
     segmentation_grid = *rcv_grid;
@@ -82,7 +83,8 @@ void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid)
 }
 
 // From mission planner
-void WaypointCallback(avt_341::msg::NavGoalSequencePtr rcv_waypoints)
+void WaypointCallback(avt_341::msg::NavGoalSequencePtr rcv_waypoints,
+                      bool verbose_gp_log)
 {
   // Brute force - overwrite the current global waypoints
   auto nav_goals_in = *rcv_waypoints;
@@ -306,71 +308,23 @@ void ComputeGlobalPathServiceCallback(
 int main(int argc, char* argv[])
 {
   n = avt_341::node::init_node(argc, argv, "avt_341_global_path_node");
+  avt_341::params::global_planner::ParamsListener param_listener(n->get_raw_node());
+  const auto params = param_listener.get_params();
 
-  float global_lookahead, w_distance, w_occupancy, w_segmentation;
-  double local_origin_x, local_origin_y;
-  std::vector<double> waypoints_x_list, waypoints_y_list;
-  std::string display_type;
-  bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
-  int los_max_iterations;
-  float dilation_factor, max_separation;
-  float safety_margin_global, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
-  int gradient_descent_max_steps, gradient_descent_steps_per_point;
-  float clipping_distance;
-  std::string map_topic, seg_topic;
-  std::string planning_method, clearance_penalty_type, path_extraction_method;
-
-  n->get_parameter("~goal_dist", dft_dist_threshold, 3.0);
-  n->get_parameter("~goal_yaw_threshold", dft_yaw_threshold, 360.0);    // Set value > 180.0 degrees to disable
-  n->get_parameter("~display", display_type, avt_341::visualization::default_display);
-  n->get_parameter("~global_lookahead", global_lookahead, 50.0f);
-  n->get_parameter("/waypoints_x", waypoints_x_list, std::vector<double>(0));
-  n->get_parameter("/waypoints_y", waypoints_y_list, std::vector<double>(0));
+  dft_dist_threshold = params.goal_dist;
+  dft_yaw_threshold = params.goal_yaw_threshold;    // Set value > 180.0 degrees to disable
   dft_yaw_threshold *= M_PI / 180.0;
 
-  // TODO: Would like to get rid of these, name if confusing and just does coordinate transform which should be done by ROS2 tf system using frame ids
-  // TODO: Or Maybe encode them in file with waypoints?
-  n->get_parameter("/map_origin_x", local_origin_x, 0.0);
-  n->get_parameter("/map_origin_y", local_origin_y, 0.0);
-
-  n->get_parameter("~debug_visualize", debug_visualize, true);
-  n->get_parameter("~search_diagonals", search_diagonals, false);
-  n->get_parameter("~los_max_iterations", los_max_iterations, 1);
-  n->get_parameter("~los_break_on_first", los_break_on_first, true);
-  n->get_parameter("~w_distance", w_distance, 1.0f);
-  n->get_parameter("~w_occupancy", w_occupancy, 1.0f);
-  n->get_parameter("~w_segmentation", w_segmentation, 1.0f);
-  n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
-  n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
-  n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
-  n->get_parameter("~max_separation", max_separation, 1.0f);
-  n->get_parameter("~use_global_path", use_global_path, true);
-  n->get_parameter("~use_segmentation", use_segmentation, true);
-  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid_low_res"));
-  n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
-  n->get_parameter("~planning_method", planning_method, std::string("astar"));
-  n->get_parameter("~safety_margin_global", safety_margin_global, 0.5f);
-  n->get_parameter("~clearance_penalty_type", clearance_penalty_type, std::string("repulsive_potential"));
-  n->get_parameter("~path_extraction_method", path_extraction_method, std::string("gradient_descent"));
-  n->get_parameter("~obstacle_threshold", obstacle_threshold, 0.0f);
-  n->get_parameter("~clearance_penalty_scale", clearance_penalty_scale, 20.0f);
-  n->get_parameter("~clearance_penalty_range", clearance_penalty_range, 5.0f);
-  n->get_parameter("~clearance_penalty_exponent", clearance_penalty_exponent, 2.0f);
-  n->get_parameter("~gradient_descent_max_steps", gradient_descent_max_steps, 2000);
-  n->get_parameter("~gradient_descent_steps_per_point", gradient_descent_steps_per_point, 10);
-  n->get_parameter("~clipping_distance", clipping_distance, 0.0f);
-  int planning_timeout_ms;
-  n->get_parameter("~planning_timeout_ms", planning_timeout_ms, 1000);
+  int planning_timeout_ms = static_cast<int>(params.planning_timeout_ms);
 
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_smooth_pub = nullptr;
   std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> global_path_pre_fill_pub = nullptr;
-  if(debug_visualize){
+  if(params.debug_visualize){
     global_path_pre_smooth_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_smooth", 10);
     global_path_pre_fill_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path_pre_fill", 10);
   }
 
-  int shutdown_behavior;
-  n->get_parameter("~shutdown_behavior", shutdown_behavior, static_cast<int>(NavStackState::InactiveCoast));
+  int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
 
   if (!avt_341::utils::IsValidShutdownBehavior(shutdown_behavior)){
     const std::string error_msg = "Invalid shutdown behavior parameter: " + std::to_string(shutdown_behavior);
@@ -379,16 +333,26 @@ int main(int argc, char* argv[])
   }
 
   n->log_info("\nGlobal Planner Settings:\n w_distance: %.2f\n w_occupancy: %.2f\n w_segmentation: %.2f\n method: %s\n clipping_distance: %.2f",
-    w_distance, w_occupancy, w_segmentation, planning_method.c_str(), clipping_distance);
+    params.w_distance, params.w_occupancy, params.w_segmentation,
+    params.planning_method.c_str(), params.clipping_distance);
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 1);
   auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
   goal_reached_pub = n->create_publisher<avt_341::msg::NavState>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto map_sub = avt_341::node::OccupancyGridSubscriber(n, map_topic, 10, MapCallback);
-  auto segmentation_map_sub = avt_341::node::OccupancyGridSubscriber(n, seg_topic, 10, SegmentationMapCallback);
-  auto waypoint_sub = n->create_subscription<avt_341::msg::NavGoalSequence>("avt_341/new_waypoints", 10, WaypointCallback);
+  auto map_sub = avt_341::node::OccupancyGridSubscriber(
+      n, params.map_topic, 10, params.costmap.publish.method, MapCallback);
+  auto segmentation_map_sub = avt_341::node::OccupancyGridSubscriber(
+      n, params.seg_topic, 10, params.costmap.publish.method,
+      [&params](avt_341::msg::OccupancyGridPtr msg) {
+        SegmentationMapCallback(msg, params.use_segmentation);
+      });
+  auto waypoint_sub = n->create_subscription<avt_341::msg::NavGoalSequence>(
+      "avt_341/new_waypoints", 10,
+      [&params](avt_341::msg::NavGoalSequencePtr msg) {
+        WaypointCallback(msg, params.verbose_gp_log);
+      });
   auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>("avt_341/goal_pose", 10, GoalPoseCallback);
   auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
   auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
@@ -401,75 +365,79 @@ int main(int argc, char* argv[])
 
   Reset();
 
-  // Initialize current waypoints with the data from the waypoint yaml params
-  const auto map_origin = Point{static_cast<float>(local_origin_x), static_cast<float>(local_origin_y)};
-  nav_goals = ToNavGoalSequence(waypoints_x_list, waypoints_y_list, map_origin, dft_dist_threshold, dft_yaw_threshold, "map");
+    // Initialize current waypoints from the initial waypoints file, if given
+    const auto waypoints = WaypointFileParser::Parse(params.initial_waypoints);
+    const auto map_origin = Point{static_cast<float>(params.gis.origin_x), static_cast<float>(params.gis.origin_y)};
+    nav_goals = ToNavGoalSequence(waypoints.x, waypoints.y, map_origin,
+        dft_dist_threshold, dft_yaw_threshold, "map");
 
   if (!nav_goals.goals.empty()) {
     UpdateGoalState(nav_goals.goals[0]);
     SetRunState(NavStackState::Active);
   }
 
-  auto visualizer = avt_341::visualization::create_visualizer(display_type);
+  auto visualizer =
+      avt_341::visualization::create_visualizer(params.display);
 
-  if (planning_method == "fast_marching") {
+  if (params.planning_method == "fast_marching") {
     path_planner = std::make_shared<avt_341::planning::FastMarching>(visualizer,
-                                                       w_distance,
-                                                       w_occupancy,
-                                                       w_segmentation,
-                                                       search_diagonals,
-                                                       los_max_iterations,
-                                                       los_break_on_first,
-                                                       safety_margin_global,
-                                                       clearance_penalty_type,
-                                                       path_extraction_method,
-                                                       obstacle_threshold,
-                                                       clearance_penalty_scale,
-                                                       clearance_penalty_range,
-                                                       clearance_penalty_exponent,
-                                                       gradient_descent_max_steps,
-                                                       gradient_descent_steps_per_point,
-                                                       clipping_distance,
-                                                       verbose_gp_log);
-  } else if (planning_method == "d_star_lite") {
+                                                       params.w_distance,
+                                                       params.w_occupancy,
+                                                       params.w_segmentation,
+                                                       params.search_diagonals,
+                                                       static_cast<int>(params.los_max_iterations),
+                                                       params.los_break_on_first,
+                                                       params.safety_margin_global,
+                                                       params.clearance_penalty_type,
+                                                       params.path_extraction_method,
+                                                       params.obstacle_threshold,
+                                                       params.clearance_penalty_scale,
+                                                       params.clearance_penalty_range,
+                                                       params.clearance_penalty_exponent,
+                                                       static_cast<int>(params.gradient_descent_max_steps),
+                                                       static_cast<int>(params.gradient_descent_steps_per_point),
+                                                       params.clipping_distance,
+                                                       params.verbose_gp_log);
+  } else if (params.planning_method == "d_star_lite") {
     path_planner = std::make_shared<avt_341::planning::DStarLite>(visualizer,
-                                                    w_distance,
-                                                    w_occupancy,
-                                                    w_segmentation,
-                                                    search_diagonals,
-                                                    los_max_iterations,
-                                                    los_break_on_first);
-  } else if (planning_method == "fast_marching_square") {
+                                                    params.w_distance,
+                                                    params.w_occupancy,
+                                                    params.w_segmentation,
+                                                    params.search_diagonals,
+                                                    static_cast<int>(params.los_max_iterations),
+                                                    params.los_break_on_first);
+  } else if (params.planning_method == "fast_marching_square") {
     path_planner = std::make_shared<avt_341::planning::FastMarchingSquare>(visualizer,
-                                                             w_distance,
-                                                             w_occupancy,
-                                                             w_segmentation,
-                                                             search_diagonals,
-                                                             los_max_iterations,
-                                                             los_break_on_first,
-                                                             safety_margin_global,
-                                                             clearance_penalty_type,
-                                                             path_extraction_method,
-                                                             obstacle_threshold,
-                                                             clearance_penalty_scale,
-                                                             clearance_penalty_range,
-                                                             clearance_penalty_exponent,
-                                                             gradient_descent_max_steps,
-                                                             gradient_descent_steps_per_point,
-                                                             clipping_distance,
-                                                             verbose_gp_log);
+                                                             params.w_distance,
+                                                             params.w_occupancy,
+                                                             params.w_segmentation,
+                                                             params.search_diagonals,
+                                                             static_cast<int>(params.los_max_iterations),
+                                                             params.los_break_on_first,
+                                                             params.safety_margin_global,
+                                                             params.clearance_penalty_type,
+                                                             params.path_extraction_method,
+                                                             params.obstacle_threshold,
+                                                             params.clearance_penalty_scale,
+                                                             params.clearance_penalty_range,
+                                                             params.clearance_penalty_exponent,
+                                                             static_cast<int>(params.gradient_descent_max_steps),
+                                                             static_cast<int>(params.gradient_descent_steps_per_point),
+                                                             params.clipping_distance,
+                                                             params.verbose_gp_log);
   } else {
     path_planner = std::make_shared<avt_341::planning::Astar>(visualizer,
-                                                w_distance,
-                                                w_occupancy,
-                                                w_segmentation,
-                                                search_diagonals,
-                                                los_max_iterations,
-                                                los_break_on_first);
+                                                params.w_distance,
+                                                params.w_occupancy,
+                                                params.w_segmentation,
+                                                params.search_diagonals,
+                                                static_cast<int>(params.los_max_iterations),
+                                                params.los_break_on_first);
   }
 
-  if (dilation_factor > 0.0) {
-    path_planner->SetDilationFactor(static_cast<int>(dilation_factor));
+  if (params.dilation_factor > 0.0) {
+    path_planner->SetDilationFactor(
+        static_cast<int>(params.dilation_factor));
   }
 
   // Service: compute a global path through a sequence of NavGoals starting from a given pose.
@@ -497,7 +465,7 @@ int main(int argc, char* argv[])
       ros_path.poses.clear();
       ros_path.header.frame_id = "map";
       ros_path.header.stamp = n->get_stamp();
-      if (use_global_path)
+      if (params.use_global_path)
         path_pub->publish(ros_path);
       SetRunState(NavStackState::NotInit);
 
@@ -528,14 +496,14 @@ int main(int argc, char* argv[])
         // process a new set of waypoints
         // TODO: find closest point along path -  we probably don't want to reverse back to start point if we're past it.
         current_waypoint = 0;
-        if (verbose_gp_log) {
+        if (params.verbose_gp_log) {
           const auto goal = GetCurrentGoal();
           n->log_info("New waypoints! Updated goal %.2f, %.2f @ (dist=%.2f, yaw=%.2f)",
             goal.pose.position.x, goal.pose.position.y, goal.dist_threshold, goal.yaw_threshold);
         }
         waypoints_rcvd = false;
         // Maintaining current state - if we're idle, we'll need an explicit GO command unless auto_active option
-        if (auto_active_on_new_waypoint) {
+        if (params.auto_active_on_new_waypoint) {
           SetRunState(NavStackState::Active);
         }
         if (planning_future.valid()) {
@@ -558,7 +526,7 @@ int main(int argc, char* argv[])
             timeout_logged = false;
 
             if (!new_path.empty()) {
-              if (planning_method == "fast_marching") {
+              if (params.planning_method == "fast_marching") {
                 avt_341::msg::OccupancyGrid fast_marching_grid;
                 fast_marching_grid.header = current_grid.header;
                 fast_marching_grid.info = current_grid.info;
@@ -579,7 +547,7 @@ int main(int argc, char* argv[])
                 fastmatching_costs_pub->publish(fast_marching_grid);
               }
 
-              if (debug_visualize) {
+              if (params.debug_visualize) {
                 auto path_pre_smoothing = path_planner->GetPathWorldPreSmoothing();
                 auto ros_path_pre_smoothing = ToPath(path_pre_smoothing);
                 ros_path_pre_smoothing.header.stamp = n->get_stamp();
@@ -602,8 +570,10 @@ int main(int argc, char* argv[])
                   avt_341::utils::vec2 wp_diff = wp2 - wp1;
                   avt_341::utils::vec2 wp_diff_norm = wp_diff;
                   wp_diff_norm.normalize();
-                  if (wp_diff.mag() > max_separation) {
-                    for (int step = max_separation; step < wp_diff.mag(); step += max_separation) {
+                  if (wp_diff.mag() > params.max_separation) {
+                    for (double step = params.max_separation;
+                         step < wp_diff.mag();
+                         step += params.max_separation) {
                       float px = wp1.x + step * wp_diff_norm.x;
                       float py = wp1.y + step * wp_diff_norm.y;
                       ros_path.poses.push_back(ToPoseStamped(ros_path.header.frame_id, px, py));
@@ -644,12 +614,12 @@ int main(int argc, char* argv[])
         for (auto& pose : last_valid_ros_path.poses) {
           pose.header.stamp = last_valid_ros_path.header.stamp;
         }
-        if (use_global_path) {
+        if (params.use_global_path) {
           path_pub->publish(last_valid_ros_path);
         }
         waypoint_pub->publish(ToPath(nav_goals));
 
-        if (nl % 20 == 0 && verbose_gp_log) { // update every second
+        if (nl % 20 == 0 && params.verbose_gp_log) { // update every second
           auto t_now = std::chrono::system_clock::now();
           auto calc_duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t1);
           n->log_info("Global Path [%d]: Pos (%.2f, %.2f) Distance to goal (%.2f, %.2f) for %d of %d = %.2f",

@@ -47,7 +47,7 @@ class TrackerRecoveryMonitor {
         Eigen::Matrix2d xy_covariance = Eigen::Matrix2d::Zero();
         /** @brief Time [s] since the last valid measurement from any sensor. */
         double time_since_valid_target = 0.0;
-        /** @brief The tracker's measurement timeout [s] ("tracker_timeout"). */
+        /** @brief Measurement timeout [s] ("tracking.target_timeout"). */
         double target_timeout = 0.0;
     };
 
@@ -63,7 +63,7 @@ class TrackerRecoveryMonitor {
      *         vehicle; used to address its mission manager services. */
     TrackerRecoveryMonitor(rclcpp::Node* node,
                            const std::string& target_class,
-                           const RecoverySettings& settings,
+                           const RecoverySettings& params,
                            const rclcpp::Logger& logger);
 
     /** @brief Run one monitoring tick. Call once per estimator tick, in
@@ -73,8 +73,8 @@ class TrackerRecoveryMonitor {
     /** @brief Full reset: windows, backoff timing and pending requests. */
     void Reset();
 
-    /** @brief Replace the settings; resets the statistics windows. */
-    void UpdateSettings(const RecoverySettings& settings);
+    /** @brief Replace the parameters; resets the statistics windows. */
+    void UpdateSettings(const RecoverySettings& params);
 
    private:
     enum class RequestState { IDLE, WAITING_RESPONSE };
@@ -106,7 +106,7 @@ class TrackerRecoveryMonitor {
     rclcpp::Node* node_;
     rclcpp::Logger logger_;
     std::string target_class_;
-    RecoverySettings settings_;
+    RecoverySettings params_;
 
     rclcpp::Client<avt_341_msgs::srv::CheckSpeed>::SharedPtr
         check_speed_client_;

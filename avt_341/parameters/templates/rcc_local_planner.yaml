@@ -1,0 +1,138 @@
+code_namespace: avt_341/params/rcc_local_planner
+ros__parameters:
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
+  # Road-centerline constrained planner
+  # ====================================================================================================================
+  num_paths:
+    type: int
+    default_value: 41
+    description: "Number of candidate paths to be generated."
+    validation:
+      gt<>: [ 0 ]
+
+  # Dynamic window
+  use_dynamic_window:
+    type: bool
+    default_value: true
+    description: "Enable dynamic window"
+  time_look_ahead:
+    type: double
+    default_value: 3.0
+    description: "Look ahead time [s] (lookahead_dist [m] = time_look_ahead [s] * speed [m/s])"
+  min_path_look_ahead:
+    type: double
+    default_value: 10.0
+    description: "Minimum path lookahead [m]"
+  max_path_look_ahead:
+    type: double
+    default_value: 50.0
+    description: "Maximum path lookahead [m]"
+  path_look_ahead:
+    type: double
+    default_value: 20.0
+    description: "Default planning horizon (used if use_dynamic_window=false or no speed is received)."
+  max_lateral_accel:
+    type: double
+    default_value: 8.5
+    description: "Maximum lateral acceleration [m/s^s] (steer_angle_limit = atan(vehicle_wheelbase * max_lateral_accel / speed^2))"
+  min_steer_angle_limit:
+    type: double
+    default_value: 0.1
+    description: "Minimum steering angle limit [rad]"
+  max_steer_angle_limit:
+    type: double
+    default_value: 0.69
+    description: "Maximim steering angle limit [rad]"
+  steer_angle_limit:
+    type: double
+    default_value: 0.69
+    description: "Steer angle limit in radians (used if use_dynamic_window=false or no speed is received)."
+
+  vehicle_wheelbase:
+    type: double
+    default_value: 2.012
+    description: "Vehicle wheelbase [m]"
+  vehicle_width:
+    type: double
+    default_value: 5.0
+    description: "Vehicle width."
+  max_theta:
+    type: double
+    default_value: 1.0
+    description: "Maximum angle difference (in radians) between heading and goal used for generating paths."
+  output_path_step:
+    type: double
+    default_value: 0.5
+    description: "Output path step size."
+  path_integration_step:
+    type: double
+    default_value: 0.35
+    description: "Path integration step size."
+  dilation_factor:
+    type: double
+    default_value: 0.0
+    description: "Dilation to costmap to apply during local planning only."
+  w_c:
+    type: double
+    default_value: 0.0
+    description: "w_c conformability (minimize curvature) weighting factor"
+  w_s:
+    type: double
+    default_value: 0.5
+    description: "w_s static safety (avoid collisions) weighting factor"
+  w_d:
+    type: double
+    default_value: 0.0
+    description: "w_d dynamic safety weighting factor"
+  w_r:
+    type: double
+    default_value: 0.2
+    description: "w_r rho (minimize rho offset) weighting factor"
+  w_t:
+    type: double
+    default_value: 0.0
+    description: "w_t segmentation cost weight"
+  rate:
+    type: double
+    default_value: 10.0
+    description: "Planner update rate [Hz]"
+    validation:
+      gt_eq<>: [ 0.0 ]
+  trim_path:
+    type: bool
+    default_value: false
+    description: "Whether or not to trim path"
+  use_global_path:
+    type: bool
+    default_value: true
+    description: "Whether local planner should use path output from global planner for its road centerline or use simple line connecting waypoints"
+  use_blend:
+    type: bool
+    default_value: true
+    description: "Whether or not to apply blending with adjacent candidate paths during planning"
+  cost_vis:
+    type: string
+    default_value: "none"
+    description: "What type of cost to display on candidate paths: none | final | components | all"
+    validation:
+      one_of<>: [ [ "none", "final", "components", "all" ] ]
+  cost_vis_text_size:
+    type: double
+    default_value: 2.0
+    description: "Cost vis text size"
+  ignore_coll_before_dist:
+    type: double
+    default_value: 0.5
+    description: "Distance before which collisions are ignored in local planner candidate paths."
+  map_topic:
+    type: string
+    default_value: "avt_341/occupancy_grid"
+    description: "Occupancy grid topic"
+  display:
+    type: string
+    default_value: "rviz"
+    description: "Display backend used for candidate path visualization (x11, opencv, rviz, none)."

@@ -15,6 +15,7 @@
 // avt_341 includes
 #include "avt_341/planning/local/pf_planner.h"
 #include "avt_341/visualization/visualization_factory.h"
+#include <avt_341/pf_local_planner_params_service.hpp>
 
 avt_341::msg::Odometry odom;
 avt_341::msg::OccupancyGrid grid;
@@ -51,46 +52,39 @@ void WaypointCallback(avt_341::msg::PathPtr wp_path){
 int main(int argc, char *argv[]){
 
   auto n = avt_341::node::init_node(argc, argv, "avt_341_pf_planner_node");
+  avt_341::params::pf_local_planner::ParamsListener param_listener(n->get_raw_node());
+  const auto params = param_listener.get_params();
 
   // Create publishers and subscribers
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto grid_sub = avt_341::node::OccupancyGridSubscriber(n, "avt_341/occupancy_grid", 10, GridCallback);
-  auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(n, "avt_341/segmentation_grid", 10, SegmentationGridCallback);
+  auto grid_sub = avt_341::node::OccupancyGridSubscriber(
+      n, params.grid_topic, 10, params.costmap.publish.method, GridCallback);
+  auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(
+      n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
+      SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
-  // planner params
-  float kp, eta, cutoff_dist, inner_cutoff_dist, rate, motion_model_res;
-  bool use_global_path;
-  int obs_cost_thresh;
-  n->get_parameter("~kp", kp, 5.0f);
-  n->get_parameter("~eta", eta, 100.0f);
-  n->get_parameter("~obstacle_cost_thresh", obs_cost_thresh, 0);
-  n->get_parameter("~cutoff_dist", cutoff_dist, 20.0f);
-  n->get_parameter("~inner_cutoff_dist", inner_cutoff_dist, 1.5f);
-  n->get_parameter("~motion_model_res", motion_model_res, 0.5f);
-  n->get_parameter("~use_global_path", use_global_path, false);
-  n->get_parameter("~rate", rate, 50.0f);
-
   avt_341::planning::PfPlanner planner;
-  planner.SetEta(eta);
-  planner.SetKp(kp);
-  planner.SetCutoffDistance(cutoff_dist);
-  planner.SetInnerCutoff(inner_cutoff_dist);
-  planner.SetObstacleCostThreshold(obs_cost_thresh);
-  planner.SetMotionModelRes(motion_model_res);
+  planner.SetEta(static_cast<float>(params.eta));
+  planner.SetKp(static_cast<float>(params.kp));
+  planner.SetCutoffDistance(static_cast<float>(params.cutoff_dist));
+  planner.SetInnerCutoff(static_cast<float>(params.inner_cutoff_dist));
+  planner.SetObstacleCostThreshold(
+      static_cast<int>(params.obstacle_cost_thresh));
+  planner.SetMotionModelRes(static_cast<float>(params.motion_model_res));
 
   unsigned int loop_count = 0;
-  float dt = 1.0f / rate;
+  const float dt = 1.0f / static_cast<float>(params.rate);
   float elapsed_time = 0.0f;
-  avt_341::node::Rate rosrate(rate);
+  avt_341::node::Rate rosrate(params.rate);
   while (avt_341::node::ok()){
     double start_secs = n->get_now_seconds();
     if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
 
       float gx, gy;
-      if (use_global_path){
+      if (params.use_global_path){
         gx = global_path.poses.back().pose.position.x;
         gy = global_path.poses.back().pose.position.y;
       }

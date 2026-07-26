@@ -1,0 +1,52 @@
+{{comments}}
+
+#pragma once
+
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
+
+{% if mixin_includes|length -%}
+{{mixin_includes}}
+
+{% endif -%}
+namespace {{namespace}} {
+
+struct {{stamp_class_name}} {
+    std::int32_t sec = 0;
+    std::uint32_t nanosec = 0;
+
+    [[nodiscard]] constexpr bool operator==(
+        const {{stamp_class_name}}& other) const noexcept {
+      return sec == other.sec && nanosec == other.nanosec;
+    }
+
+    [[nodiscard]] constexpr bool operator!=(
+        const {{stamp_class_name}}& other) const noexcept {
+      return !(*this == other);
+    }
+};
+
+{%- filter indent(width=4) %}
+struct {{class_name}} {
+{%- filter indent(width=4) %}
+{{field_content-}}
+{{sub_struct_content-}}
+// for detecting if the parameter struct has been updated
+{{stamp_class_name}} __stamp;
+{% endfilter -%}
+};
+{%- endfilter %}
+
+{%- filter indent(width=4) %}
+struct {{stack_class_name}} {
+{%- filter indent(width=4) %}
+{{stack_field_content-}}
+{{stack_sub_struct_content-}}
+{% endfilter -%}
+};
+{%- endfilter %}
+
+} // namespace {{namespace}}

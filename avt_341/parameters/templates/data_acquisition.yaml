@@ -1,0 +1,39 @@
+code_namespace: avt_341/params/data_acquisition
+ros__parameters:
+
+  __include_mixins: gis_mixin
+
+  # Data Acquisition
+  # ====================================================================================================================
+  daq_rate:
+    type: double
+    default_value: 30.0
+    description: "Data acquisition rate [Hz]."
+    validation:
+      gt<>: [ 0.0 ]
+  world_frame:
+    type: string
+    default_value: 'nad83'
+    description: "World coordinate system reference frame."
+  map_frame:
+    type: string
+    default_value: 'map'
+    description: "Global map reference frame."
+  vehicle_cg_frame:
+    type: string
+    default_value: 'mrzr/vbox_link'
+    description: "Vehicle center-of-gravity reference frame."
+  velocity_averaging_window:
+    type: double
+    default_value: 0.5
+    description: "Time window to use for CG velocity estimation [sec]."
+  accel_averaging_samples:
+    type: int
+    default_value: 15
+    description: "Amount of previous frames used to find current acceleration."
+    validation:
+      gt<>: [ 0 ]
+  wheelbase:
+    type: double
+    default_value: 2.019
+    description: "Vehicle wheelbase [m]."

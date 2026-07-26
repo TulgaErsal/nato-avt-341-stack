@@ -1,6 +1,8 @@
 message(STATUS "Building Unit Tests")
 
 find_package(ament_cmake_gtest REQUIRED)
+find_package(ament_cmake_pytest REQUIRED)
+
 ament_add_gtest(null_test null_test.cpp)
 
 # MPC Planner Tests
@@ -83,6 +85,7 @@ target_include_directories(static_grid_layer_test
 
 target_link_libraries(static_grid_layer_test
   ${PROJECT_NAME}_proxy
+  perception_params_dto
 )
 
 message(STATUS "Adding utils unit tests")
@@ -96,6 +99,20 @@ target_include_directories(utils_test
 )
 
 target_link_libraries(utils_test
+        ${PROJECT_NAME}_proxy
+)
+
+message(STATUS "Adding waypoint file parser unit tests")
+ament_add_gtest(waypoint_file_parser_test
+        core/waypoint_file_parser_test.cpp
+)
+
+target_include_directories(waypoint_file_parser_test
+        PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(waypoint_file_parser_test
         ${PROJECT_NAME}_proxy
 )
 
@@ -143,6 +160,7 @@ target_include_directories(object_tracking_reset_test
 target_link_libraries(object_tracking_reset_test
   ${PROJECT_NAME}_proxy
   ${PCL_LIBRARIES}
+  object_tracking_params_service
 )
 
 ament_target_dependencies(object_tracking_reset_test
@@ -170,6 +188,7 @@ ament_target_dependencies(object_tracking_reset_test
 message(STATUS "Adding tracker recovery monitor unit tests")
 ament_add_gtest(tracker_recovery_monitor_test
   perception/tracking/tracker_recovery_monitor_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
 )
 
@@ -180,6 +199,7 @@ target_include_directories(tracker_recovery_monitor_test
 
 target_link_libraries(tracker_recovery_monitor_test
   ${PROJECT_NAME}_proxy
+  object_tracking_params_dto
 )
 
 ament_target_dependencies(tracker_recovery_monitor_test
@@ -190,4 +210,5 @@ ament_target_dependencies(tracker_recovery_monitor_test
   sensor_msgs
   visualization_msgs
 )
+
 

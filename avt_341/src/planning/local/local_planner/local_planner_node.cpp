@@ -18,6 +18,7 @@
 #include "avt_341/planning/local/spline_planner.h"
 #include "avt_341/planning/local/spline_plotter.h"
 #include "avt_341/visualization/visualization_factory.h"
+#include <avt_341/rcc_local_planner_params_service.hpp>
 
 avt_341::msg::Odometry odom;
 avt_341::msg::OccupancyGrid grid;
@@ -62,82 +63,52 @@ void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
 int main(int argc, char *argv[]){
 
   auto n = avt_341::node::init_node(argc, argv, "avt_341_planner_node");
+  avt_341::params::rcc_local_planner::ParamsListener param_listener(n->get_raw_node());
+  const auto params = param_listener.get_params();
 
   avt_341::planning::Planner planner;
-  // planner params
-  float path_look_ahead, vehicle_wheelbase, vehicle_width, steer_angle_limit, output_path_step, path_int_step, rate;
-  float time_look_ahead, min_path_look_ahead, max_path_look_ahead, max_lateral_accel, min_steer_angle_limit, max_steer_angle_limit;
-  float dilation_factor_param;
-  int num_paths;
-  float w_c, w_d, w_s, w_r, w_t, cost_vis_text_size, ignore_coll_before_dist, max_theta;
-  bool trim_path, use_global_path, use_blend, use_dynamic_window;
-  std::string display, cost_vis, map_topic;
-
-  n->get_parameter("~use_dynamic_window", use_dynamic_window, false);
-  n->get_parameter("~time_look_ahead", time_look_ahead, 3.0f);
-  n->get_parameter("~min_path_look_ahead", min_path_look_ahead, 10.0f);
-  n->get_parameter("~max_path_look_ahead", max_path_look_ahead, 20.0f);
-  n->get_parameter("~path_look_ahead", path_look_ahead, 15.0f);
-  n->get_parameter("~max_lateral_accel", max_lateral_accel, 5.0f);
-  n->get_parameter("~min_steer_angle_limit", min_steer_angle_limit, 0.1f);
-  n->get_parameter("~max_steer_angle_limit", max_steer_angle_limit, 0.69f);
-  n->get_parameter("~steer_angle_limit", steer_angle_limit, 0.43f);
-  n->get_parameter("~vehicle_wheelbase", vehicle_wheelbase, 2.012f);
-  n->get_parameter("~vehicle_width", vehicle_width, 3.0f);
-  n->get_parameter("~num_paths", num_paths, 31);
-  n->get_parameter("~max_theta", max_theta, 1.0f);
-  n->get_parameter("~output_path_step", output_path_step, 0.5f);
-  n->get_parameter("~path_integration_step", path_int_step, 0.25f);
-  n->get_parameter("~dilation_factor", dilation_factor_param, 0.0f);
-  n->get_parameter("~w_c", w_c, 0.2f);
-  n->get_parameter("~w_d", w_d, 0.2f);
-  n->get_parameter("~w_s", w_s, 0.2f);
-  n->get_parameter("~w_r", w_r, 0.4f);
-  n->get_parameter("~w_t", w_t, 0.0f);
-  n->get_parameter("~rate", rate, 50.0f);
-  n->get_parameter("~ignore_coll_before_dist", ignore_coll_before_dist, 0.0f);
-  n->get_parameter("~trim_path", trim_path, false);
-  n->get_parameter("~use_global_path", use_global_path, false);
-  n->get_parameter("~use_blend", use_blend, true);
-  n->get_parameter("~cost_vis", cost_vis, std::string("final"));
-  n->get_parameter("~cost_vis_text_size", cost_vis_text_size, 2.0f);
-  n->get_parameter("~display", display, avt_341::visualization::default_display);
-  n->get_parameter("~map_topic", map_topic, std::string("avt_341/occupancy_grid"));
-  const int dilation_factor = static_cast<int>(dilation_factor_param);
+  float path_look_ahead = static_cast<float>(params.path_look_ahead);
+  float steer_angle_limit = static_cast<float>(params.steer_angle_limit);
+  const int dilation_factor = static_cast<int>(params.dilation_factor);
 
     // Create publishers and subscribers
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  avt_341::node::OccupancyGridSubscriber grid_sub(n, map_topic, 10, GridCallback);
-  avt_341::node::OccupancyGridSubscriber segmentation_grid_sub(n, "avt_341/segmentation_grid", 10, SegmentationGridCallback);
+  avt_341::node::OccupancyGridSubscriber grid_sub(
+      n, params.map_topic, 10, params.costmap.publish.method, GridCallback);
+  avt_341::node::OccupancyGridSubscriber segmentation_grid_sub(
+      n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
+      SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",10,SpeedCallback);
 
-  planner.SetArcLengthIntegrationStep(path_int_step);
-  planner.SetComfortabilityWeight(w_c);
-  planner.SetDynamicSafetyWeight(w_d);
-  planner.SetStaticSafetyWeight(w_s);
-  planner.SetPathAdherenceWeight(w_r);
-  planner.SetSegmentationFactorWeight(w_t);
-  planner.SetUseBlend(use_blend);
-  planner.SetIgnoreCollBeforeDist(ignore_coll_before_dist);
+  planner.SetArcLengthIntegrationStep(
+      static_cast<float>(params.path_integration_step));
+  planner.SetComfortabilityWeight(static_cast<float>(params.w_c));
+  planner.SetDynamicSafetyWeight(static_cast<float>(params.w_d));
+  planner.SetStaticSafetyWeight(static_cast<float>(params.w_s));
+  planner.SetPathAdherenceWeight(static_cast<float>(params.w_r));
+  planner.SetSegmentationFactorWeight(static_cast<float>(params.w_t));
+  planner.SetUseBlend(params.use_blend);
+  planner.SetIgnoreCollBeforeDist(
+      static_cast<float>(params.ignore_coll_before_dist));
 
-  std::shared_ptr<avt_341::planning::Plotter> plotter = avt_341::visualization::create_local_path_plotter(display, cost_vis, n,
+  std::shared_ptr<avt_341::planning::Plotter> plotter = avt_341::visualization::create_local_path_plotter(params.display, params.cost_vis, n,
                                                                                                           planner.GetComfortabilityWeight(), planner.GetStaticSafetyWeight(),
                                                                                                           planner.GetPathAdherenceWeight(), planner.GetDynamicSafetyWeight(),
-                                                                                                          planner.GetSegmentationWeight(), cost_vis_text_size);
+                                                                                                          planner.GetSegmentationWeight(), static_cast<float>(params.cost_vis_text_size));
 
   unsigned int loop_count = 0;
-  float dt = 1.0f / rate;
+  const double dt = 1.0 / params.rate;
   float elapsed_time = 0.0f;
-  avt_341::node::Rate rosrate(rate);
+  avt_341::node::Rate rosrate(params.rate);
   while (avt_341::node::ok()){
     double start_secs = n->get_now_seconds();
     if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
       //std::cout << ros::this_node::getName() << " Running Local planner " << global_path.poses.size() << std::endl;
       std::vector<avt_341::utils::vec2> path_points;
-      if (use_global_path){
+      if (params.use_global_path){
         for (int i = 0; i < global_path.poses.size(); i++){
           avt_341::utils::vec2 point(global_path.poses[i].pose.position.x, global_path.poses[i].pose.position.y);
           path_points.push_back(point);
@@ -151,18 +122,29 @@ int main(int argc, char *argv[]){
         
       }
       avt_341::planning::Path path;
-      if (use_dynamic_window && speedometer_rcvd) {
+      if (params.use_dynamic_window && speedometer_rcvd) {
         // Calulate path look ahead
-        path_look_ahead = time_look_ahead * speedometer;
-        path_look_ahead = std::min(path_look_ahead, max_path_look_ahead);
-        path_look_ahead = std::max(path_look_ahead, min_path_look_ahead);
+        path_look_ahead =
+            static_cast<float>(params.time_look_ahead * speedometer);
+        path_look_ahead = std::min(
+            path_look_ahead,
+            static_cast<float>(params.max_path_look_ahead));
+        path_look_ahead = std::max(
+            path_look_ahead,
+            static_cast<float>(params.min_path_look_ahead));
 
         // Calculate max steering angle
-        steer_angle_limit = std::atan(vehicle_wheelbase * max_lateral_accel / (speedometer * speedometer));
-        steer_angle_limit = std::min(steer_angle_limit, max_steer_angle_limit);
-        steer_angle_limit = std::max(steer_angle_limit, min_steer_angle_limit);
+        steer_angle_limit = std::atan(
+            params.vehicle_wheelbase * params.max_lateral_accel /
+            (speedometer * speedometer));
+        steer_angle_limit = std::min(
+            steer_angle_limit,
+            static_cast<float>(params.max_steer_angle_limit));
+        steer_angle_limit = std::max(
+            steer_angle_limit,
+            static_cast<float>(params.min_steer_angle_limit));
       }
-      if (trim_path && use_global_path ){
+      if (params.trim_path && params.use_global_path ){
         avt_341::utils::vec2 current_pos(odom.pose.pose.position.x, odom.pose.pose.position.y);
         path.Init(path_points, current_pos, 1.5f * path_look_ahead);
       }
@@ -187,9 +169,14 @@ int main(int argc, char *argv[]){
       d_theta += (d_theta>M_PI) ? -2.0*M_PI : (d_theta<-M_PI) ? 2.0*M_PI : 0.0;
 
       // Fix bug with paths not converging when d_theta ~= 90 degrees
-      d_theta = std::max(std::min(d_theta, max_theta), -max_theta);
+      d_theta = std::max(
+          std::min(d_theta, static_cast<float>(params.max_theta)),
+          -static_cast<float>(params.max_theta));
       
-      planner.GeneratePaths(num_paths, s, rho_start, d_theta, s_lookahead, steer_angle_limit, vehicle_width);
+      planner.GeneratePaths(
+          static_cast<int>(params.num_paths), s, rho_start, d_theta,
+          s_lookahead, steer_angle_limit,
+          static_cast<float>(params.vehicle_width));
       planner.SetCenterline(path);
 
       // TODO: Issue #145 Add a better way to display this data instead of constant log (ex: rviz display or maybe just ros2 topic echo)
@@ -221,7 +208,7 @@ int main(int argc, char *argv[]){
 
       // most of the calculation time spent on this function call
       bool path_found = planner.CalculateCandidateCosts(grid, segmentation_grid, odom);
-      if (display != "none"){
+      if (params.display != "none"){
         plotter->AddMap(grid);
         plotter->SetPath(culled_points);
         plotter->AddWaypoints(waypoints);
@@ -231,7 +218,7 @@ int main(int argc, char *argv[]){
       }
 
       if (path_found){
-        float ds = output_path_step;
+        const float ds = static_cast<float>(params.output_path_step);
         avt_341::msg::Path local_path;
         avt_341::planning::Candidate best = planner.GetBestPath();
         float s0 = best.GetS0() + ds;
@@ -243,7 +230,7 @@ int main(int argc, char *argv[]){
           pose.pose.position.x = point.x;
           pose.pose.position.y = point.y;
           local_path.poses.push_back(pose);
-          s0 += output_path_step;
+          s0 += params.output_path_step;
         }
         //local_path.header.frame_id = "odom";
         local_path.header.frame_id = "map";

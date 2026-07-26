@@ -1,0 +1,50 @@
+code_namespace: float_codegen_test
+ros__parameters:
+  scalar:
+    type: float
+    default_value: 1.25
+    description: "A generated single-precision scalar"
+    validation:
+      bounds<>: [-10.0, 10.0]
+  required_scalar:
+    type: float
+    description: "A required single-precision scalar"
+  array:
+    type: float_array
+    default_value: [1.5, -2.25]
+    description: "A generated single-precision array"
+    validation:
+      element_bounds<>: [-10.0, 10.0]
+  required_array:
+    type: float_array
+    description: "A required single-precision array"
+  nan_value:
+    type: float
+    default_value: .NAN
+    description: "A single-precision NaN"
+  infinity_value:
+    type: float
+    default_value: .INF
+    description: "A single-precision infinity"
+  existing_double:
+    type: double
+    default_value: 2.5
+    description: "Existing double behavior remains unchanged"
+  nested:
+    scale:
+      type: float
+      default_value: 0.5
+      description: "A nested single-precision scalar"
+  profile_names:
+    type: string_array
+    default_value: ["left", "right"]
+    description: "Names used by the dynamic parameter map"
+  __map_profile_names:
+    gain:
+      type: float
+      default_value: 0.75
+      description: "A dynamically mapped single-precision scalar"
+    samples:
+      type: float_array
+      default_value: [0.25, 0.5]
+      description: "A dynamically mapped single-precision array"

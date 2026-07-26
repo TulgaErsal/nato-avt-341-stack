@@ -14,13 +14,15 @@ namespace avt_341::node {
         OccupancyGridSubscriber(
             const std::shared_ptr<NodeProxy> &node,
             const std::string & topic_name,
-            int qos
+            int qos,
+            const std::string & publish_method
             );
 
         OccupancyGridSubscriber(
             const std::shared_ptr<NodeProxy> &node,
             const std::string & topic_name,
             int qos,
+            const std::string & publish_method,
             const std::function<void(const msg::OccupancyGridPtr &)> &callback
             );
 

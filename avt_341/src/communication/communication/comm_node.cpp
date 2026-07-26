@@ -19,14 +19,14 @@
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/communication/tcp_socket_proxy.h"
 #include "avt_341/mission/mission_manager_parser.h"
+#include <avt_341/socket_comms_params_service.hpp>
 
 std::queue<avt_341::msg::Communication> pending_msgs;
 char message[256] = { 0 };
-std::string my_name;
 std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
-bool verbose_comm_log = false;
 
-void MessageCallback(avt_341::msg::CommunicationPtr msg) {
+void MessageCallback(avt_341::msg::CommunicationPtr msg,
+                     const bool verbose_comm_log) {
     pending_msgs.push(*msg);
     if(verbose_comm_log){
       nh->log_info("Received sender=%s,msg_id=%d,type=%s,receiver=%s to broadcast.", msg->sender_name.c_str(), msg->msg_id, msg->type.c_str(), msg->receiver_name.c_str());
@@ -37,52 +37,51 @@ int main(int argc, char* argv[])
 {
     // Initialize the node
     nh = avt_341::node::init_node(argc,argv,"avt_341_comm_node");
+    avt_341::params::socket_comms::ParamsListener param_listener(nh->get_raw_node());
+    const auto params = param_listener.get_params();
     avt_341::node::Rate loop_rate(100.0);
 
     // Set up subscriptions
     // Subscribe to avt_341/comm_messages to catch messages that should be relayed to the network
-    auto msg_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, MessageCallback);
+    auto msg_sub = nh->create_subscription<avt_341::msg::Communication>(
+        "avt_341/comm_messages", 10,
+        [&params](avt_341::msg::CommunicationPtr msg) {
+            MessageCallback(msg, params.verbose_comm_log);
+        });
 
     // Set up publishers
     auto msg_pub = nh->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 10);
 
-    int port, msg_count = 0;
-    bool broadcast_over_ros, add_name_id_to_msg;
+    int msg_count = 0;
     char buffer[256];
-    std::string hostname;
     avt_341::msg::Communication packed_msg;
-    std::vector<std::string> veh_namespaces;
-
-    // load parameters
-    nh->get_parameter("~host", hostname, std::string("localhost"));
-    nh->get_parameter("~port", port, 9000);
-    nh->get_parameter("~name", my_name, std::string("AGV1"));
-    nh->get_parameter("~broadcast_over_ros", broadcast_over_ros, false);
-    nh->get_parameter("~verbose_comm_log", verbose_comm_log, true);
-    nh->get_parameter("~vehicle_namespaces", veh_namespaces, std::vector<std::string>{"agv1", "agv2", "cgv1", "cgv2"});
+    const int port = static_cast<int>(params.port);
 
     // If broadcast_over_ros, comm node publishes to other vehicles on ros network instead of using tcp client
     std::vector<std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Communication>>> other_veh_pubs;
-    if(broadcast_over_ros){
-      for(const auto & veh_ns: veh_namespaces){
+    if(params.broadcast_over_ros){
+      for(const auto & veh_ns: params.vehicle_namespaces){
         std::string veh_ns_upper = veh_ns;
         std::transform(veh_ns_upper.begin(), veh_ns_upper.end(), veh_ns_upper.begin(), [](unsigned char c){ return std::toupper(c); });
-        if(veh_ns_upper != my_name){
+        if(veh_ns_upper != params.name){
           other_veh_pubs.push_back(nh->create_publisher<avt_341::msg::Communication>("/" + veh_ns + "/avt_341/comm_messages", 10));
         }
       }
     }
 
-    bool disable_socket_comms = broadcast_over_ros;
+    const bool disable_socket_comms = params.broadcast_over_ros;
     nh->log_info("Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_over_ros: %d, other_veh_pubs: %d",
-                 hostname.c_str(), port, my_name.c_str(), disable_socket_comms, broadcast_over_ros, other_veh_pubs.size());
+                 params.host.c_str(), port, params.name.c_str(),
+                 disable_socket_comms, params.broadcast_over_ros,
+                 other_veh_pubs.size());
 
     // Create the socket
     std::shared_ptr<avt_341::communication::TcpSocketClientBase> client = nullptr;
     if(disable_socket_comms){
         client = std::make_shared<avt_341::communication::NullTcpSocketClient>();
     }else{
-        client = std::make_shared<avt_341::communication::TcpSocketClient>(hostname, port);
+        client = std::make_shared<avt_341::communication::TcpSocketClient>(
+            params.host, port);
     }
 
     // connect to the server
@@ -99,16 +98,16 @@ int main(int argc, char* argv[])
             pending_msgs.pop();
 
             // Only broadcast messages to other vehicles that are from myself
-            if(next_msg.sender_name != my_name){
+            if(next_msg.sender_name != params.name){
               continue;
             }
 
             std::string msg_serialized = rosToSerializedMsg(next_msg);
-            if(verbose_comm_log){
+            if(params.verbose_comm_log){
               nh->log_info("Broadcasting %s", msg_serialized.c_str());
             }
 
-            if(broadcast_over_ros){
+            if(params.broadcast_over_ros){
               for(const auto & pub: other_veh_pubs){
                 pub->publish(next_msg);
               }
@@ -129,7 +128,7 @@ int main(int argc, char* argv[])
         if(client->read_available(buffer, 256) > 0)
         {
             std::string buffer_str = std::string(buffer);
-            if(verbose_comm_log){
+            if(params.verbose_comm_log){
               nh->log_info("Read %s", buffer_str.c_str());
             }
             packed_msg = serializedToROSMsg(buffer_str);

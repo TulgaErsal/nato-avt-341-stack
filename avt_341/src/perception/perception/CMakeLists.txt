@@ -38,3 +38,8 @@ if(USING_AMENT)
     EXPORT export_${PROJECT_NAME}
     DESTINATION "lib/${PROJECT_NAME}")
 endif() # if(USING_AMENT)
+
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET ${PROJECT_NAME}_perception_node)
+  target_link_libraries(${PROJECT_NAME}_perception_node perception_params_service)
+endif()

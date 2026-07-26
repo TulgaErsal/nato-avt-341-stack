@@ -43,25 +43,25 @@ public:
 	* Set the wheelbase of the vehicle in meters
 	* \param wb Wheelbase to set
 	*/
-	void SetWheelbase(float wb) { wheelbase_ = wb; }
+	void SetWheelbase(double wb) { wheelbase_ = wb; }
 
 	/**
 	* Set the max steering angle of the vehicle in radians
 	* \param st Max steering angle
 	*/
-	void SetMaxSteering(float st) { max_steering_angle_ = st; }
+	void SetMaxSteering(double st) { max_steering_angle_ = st; }
 
 	/** 
 	* Set the minimum look-ahead distance of the planner, in meters
 	* \param min_la The minimum look-ahead distance
 	*/
-	void SetMinLookAhead(float min_la) { min_lookahead_ = min_la; }
+	void SetMinLookAhead(double min_la) { min_lookahead_ = min_la; }
 
 	/**
 	* Set the maximum look-ahead distance of the planner, in meters
 	* \param max_la The maximum look-ahead distance
 	*/
-	void SetMaxLookAhead(float max_la) { max_lookahead_ = max_la; }
+	void SetMaxLookAhead(double max_la) { max_lookahead_ = max_la; }
 
 	/** 
 	* Set the gain factor on the steering controller
@@ -70,7 +70,7 @@ public:
 	* \param pursuit_kp proportional gain multiplying the error
 	* \param pursuit_kd derivative gain multiplying the delta error
 	*/
-	void SetSteeringParams(float k, float pursuit_k, float pursuit_kp, float pursuit_kd) { 
+	void SetSteeringParams(double k, double pursuit_k, double pursuit_kp, double pursuit_kd) {
 		k_ = k; 
 		pursuit_k_ = pursuit_k;
 		pursuit_kp_ = pursuit_kp;
@@ -82,13 +82,13 @@ public:
 	* Contoller will limit throttle to stay below this speed
 	* \param speed Maximum desired speed in m/s
 	*/
-	void SetMaxStableSpeed(float speed) { max_stable_speed_ = speed; }
+	void SetMaxStableSpeed(double speed) { max_stable_speed_ = speed; }
 
 	/**
 	* Set the desired speed of the vehicle in m/s
 	* \param speed The desired speed
 	*/
-	void SetDesiredSpeed(float speed) {
+	void SetDesiredSpeed(double speed) {
 		desired_speed_ = speed;
 		speed_controller_.SetSetpoint(speed);
 	}
@@ -99,7 +99,7 @@ public:
 	* \param ki Integral coefficient
 	* \param kd Derivative coefficient
 	*/
-	void SetSpeedControllerParams(float kp, float ki, float kd) {
+	void SetSpeedControllerParams(double kp, double ki, double kd) {
 		speed_controller_.SetKp(kp);
 		speed_controller_.SetKi(ki);
 		speed_controller_.SetKd(kd);
@@ -110,7 +110,7 @@ public:
 	* \param x Current x-coordinate in ENU
 	* \param y Current y-coordinate in ENU
 	*/
-	void SetVehiclePosition(float x, float y) {
+	void SetVehiclePosition(double x, double y) {
 		veh_x_ = x;
 		veh_y_ = y;
 	}
@@ -119,13 +119,13 @@ public:
 	* Set the current vehicle speed in m/s
 	* \param speed The current vehicle speed 
 	*/
-	void SetVehicleSpeed(float speed);
+	void SetVehicleSpeed(double speed);
 
 	/**
 	* Set the current vehicle heading in radians
 	* \param heading The current vehicle heading
 	*/
-	void SetVehicleOrientation(float heading) {
+	void SetVehicleOrientation(double heading) {
 		veh_heading_ = heading;
 	}
 
@@ -140,7 +140,7 @@ public:
 	* Set to one by default. Shouldn't be changed under most circumstances.
 	* The PID parameters should control the speed effectively
 	*/
-	void SetThrottleCoeff(float tc){ throttle_coeff_ = tc; }
+	void SetThrottleCoeff(double tc){ throttle_coeff_ = tc; }
 
 	/**
 	* Call this to turn skid-steering controller on or off
@@ -154,7 +154,7 @@ public:
 	* Ktheta = kt
 	* See "A Stable Tracking Control Method for a Non-Holonomic Mobile Robot"
 	*/
-	void SetSkidSteerParams(float kl, float kt){
+	void SetSkidSteerParams(double kl, double kt){
 		kx_ = kl;
 		ky_ = kl;
 		k_theta_ = kt;
@@ -165,38 +165,38 @@ public:
 
 private:
 	bool skid_steered_;
-	avt_341::msg::Twist GetDcAckermann(float alpha, float lookahead, utils::vec2 curr_dir, float target_speed);
-	avt_341::msg::Twist GetDcSkid(float dx, float dy, float dtheta);
+	avt_341::msg::Twist GetDcAckermann(double alpha, double lookahead, utils::vec2 curr_dir, double target_speed);
+	avt_341::msg::Twist GetDcSkid(double dx, double dy, double dtheta);
 
 	// steering parameters for the skid steered model
-	float kx_;
-	float ky_;
-	float k_theta_;
+	double kx_;
+	double ky_;
+	double k_theta_;
 
-	float wheelbase_; //meters
-	float max_steering_angle_; //radians
-	float min_lookahead_; //meters
-	float max_lookahead_; //meters
-	float k_; //unitless
-	float pursuit_k_;
-	float pursuit_kp_;
-	float pursuit_kd_;
-	float desired_speed_; // m/s
-	float max_stable_speed_;
-	float throttle_coeff_;
+	double wheelbase_; //meters
+	double max_steering_angle_; //radians
+	double min_lookahead_; //meters
+	double max_lookahead_; //meters
+	double k_; //unitless
+	double pursuit_k_;
+	double pursuit_kp_;
+	double pursuit_kd_;
+	double desired_speed_; // m/s
+	double max_stable_speed_;
+	double throttle_coeff_;
 	PidController speed_controller_;
 
 	//current vehicle state info
-	float veh_x_;
-	float veh_y_;
-	float veh_heading_;
-	float veh_speed_;
-	float vx_;
-	float vy_;
-	float steer_cur_;
-	float err_last_;
-	float err_accum_;
-	float current_angular_velocity_;
+	double veh_x_;
+	double veh_y_;
+	double veh_heading_;
+	double veh_speed_;
+	double vx_;
+	double vy_;
+	double steer_cur_;
+	double err_last_;
+	double err_accum_;
+	double current_angular_velocity_;
 };
 
 } // namespace control

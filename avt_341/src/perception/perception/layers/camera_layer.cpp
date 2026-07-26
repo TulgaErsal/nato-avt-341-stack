@@ -5,20 +5,24 @@ namespace avt_341::perception
 {
     CameraLayer::CameraLayer(
         const std::shared_ptr<node::NodeProxy>& node_ref,
-        const CostmapSettings& cm_settings,
+        const PerceptionSettings& settings,
         const std::string& label,
-        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder)
-            : PointCloudLayer(node_ref, cm_settings, label, compute_time_recorder)
+        const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+        const avt_341::params::perception::Params::CameraLayer& params)
+            : PointCloudLayer(
+                node_ref, settings, label, compute_time_recorder,
+                "", "", params.contribute_occupancy,
+                params.contribute_segmentation, false)
     {
-        SetupCameraSubscriptions();
+        SetupCameraSubscriptions(params);
     }
 
-    void CameraLayer::SetupCameraSubscriptions()
+    void CameraLayer::SetupCameraSubscriptions(
+        const avt_341::params::perception::Params::CameraLayer& params)
     {
-
-        node_ref_->get_parameter("~" + label_ + "_depth_topic", depth_img_topic_, std::string(""));
-        node_ref_->get_parameter("~" + label_ + "_segmentation_topic", seg_img_topic_, std::string(""));
-        node_ref_->get_parameter("~" + label_ + "_info_topic", camera_info_topic_, std::string(""));
+        depth_img_topic_ = params.depth_topic;
+        seg_img_topic_ = params.segmentation_topic;
+        camera_info_topic_ = params.info_topic;
 
         if (depth_img_topic_.empty() || camera_info_topic_.empty())
         {

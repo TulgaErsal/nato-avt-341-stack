@@ -15,12 +15,19 @@ namespace avt_341::perception
 
         PointCloudLayer(
             const std::shared_ptr<node::NodeProxy>& node_ref,
-            const CostmapSettings& cm_settings,
+            const PerceptionSettings& settings,
             const std::string & label,
-            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder
+            const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
+            const std::string& point_cloud_topic,
+            const std::string& clear_only_points_topic,
+            bool contribute_occupancy,
+            bool contribute_segmentation,
+            bool setup_point_cloud_subscriptions = true
             );
 
-        void SetupPointCloudFilter();
+        void SetupPointCloudFilter(
+            const PointCloudFilterConfig& point_cloud_config,
+            const PointCloudFilterConfig& clearing_config);
 
         /**
         * Add points to be processed
@@ -36,7 +43,8 @@ namespace avt_341::perception
 
         void AddOccupancy(const msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) override;
 
-        void SetupGridClearingMethod();
+        void SetupGridClearingMethod(
+            const ClearMethodSettings& clear_method_params);
 
         void Visualize() override;
 
@@ -45,7 +53,9 @@ namespace avt_341::perception
         bool PastSlopeThreshold(const Cell& cell) const override { return CostmapLayer::PastSlopeThreshold(cell); }
         float Slope(const Cell& cell) const override { return CostmapLayer::Slope(cell); }
 
-        void SetupPcSubscriptions();
+        void SetupPcSubscriptions(
+            const std::string& point_cloud_topic,
+            const std::string& clear_only_points_topic);
 
         std::string ToString() const override;
 
@@ -67,8 +77,10 @@ namespace avt_341::perception
         node::Subscriber<msg::PointCloud2>::SharedPtr pc_sub_;
         node::Subscriber<msg::PointCloud2>::SharedPtr pc_ground_sub_;
 
-        ClearMethodRosParameters ParseClearMethodsConfig() const;
-        PointCloudFilterConfig ParseFilterConfig(const std::string &param_prefix = "") const;
+        static PointCloudFilterConfig ParseFilterConfig(
+            const GeneratedPerceptionParams::PointCloudLayer::Filter& params);
+        static PointCloudFilterConfig ParseFilterConfig(
+            const GeneratedPerceptionParams::ClearMethod::Filter& params);
     };
 
 }

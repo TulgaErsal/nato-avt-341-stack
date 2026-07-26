@@ -90,3 +90,8 @@ if(BUILD_MPC)
     endif() # if(NOT EXISTS "(...)/sysimage.so")
   endif() # if(USING_AMENT)
 endif() # if(BUILD_MPC)
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET ${PROJECT_NAME}_mpc_planner_node)
+  target_link_libraries(
+    ${PROJECT_NAME}_mpc_planner_node mpc_local_planner_params_service)
+endif()

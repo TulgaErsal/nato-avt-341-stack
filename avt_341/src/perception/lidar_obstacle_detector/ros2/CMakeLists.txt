@@ -45,3 +45,10 @@ if(USING_AMENT)
       DESTINATION "lib/${PROJECT_NAME}")
 
 endif() # if(USING_AMENT)
+
+# Generated parameter library (avt_341_param_lib templates)
+if(USING_AMENT AND TARGET ${PROJECT_NAME}_lidar_obstacle_detector_node)
+  target_link_libraries(
+    ${PROJECT_NAME}_lidar_obstacle_detector_node
+    obstacle_detector_params_service)
+endif()

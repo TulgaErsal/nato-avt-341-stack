@@ -70,6 +70,7 @@
 #include <avt_341/perception/detection/common/hypothesis.hpp>
 #include <avt_341/perception/detection/common/object_visualizer.hpp>
 #include <avt_341/perception/detection/object_detector/object_detector.hpp>
+#include <avt_341/object_detector_params_service.hpp>
 
 namespace avt_341 {
 namespace perception {
@@ -125,6 +126,9 @@ class ObjectDetectorNode : public rclcpp::Node {
      */
     void DetectionCallback();
 
+    std::shared_ptr<avt_341::params::object_detector::ParamsListener> param_listener_;
+    avt_341::params::object_detector::Params params_;
+
     // ROS package management
     // ----------------------
     /** @brief Prefix of the node package. */
@@ -155,26 +159,6 @@ class ObjectDetectorNode : public rclcpp::Node {
     /** @brief Unique pointer to the object visualizer. */
     std::unique_ptr<ObjectVisualizer> visualizer_;
 
-    /** @brief Whether or not to published an object detections overlay image.
-     */
-    bool use_visualizer_;
-
-    /** @brief Whether or not to use a textbox behind the detections class
-     * label and score overlay. */
-    bool use_visualizer_textbox_;
-
-    /** @brief Seed for the random number generator used to shuffle detection
-     * colors in the visualizer. */
-    int visualizer_seed_;
-
-    /** @brief Font scale factor used in the visualizer for the object detector
-     * hypothesis class label. */
-    double visualizer_font_scale_;
-
-    /** @brief Border size in pixels used in the visualizer for object detector
-     * hypothesis bounding box. */
-    int visualizer_border_size_;
-
     /** @brief Handle for the visualization thread.
      * @details This thread runs in the background after a detection is
      * completed to publish an overlay image without blocking the processing of
@@ -202,45 +186,12 @@ class ObjectDetectorNode : public rclcpp::Node {
     /** @brief Unique pointer to the object detector. */
     std::unique_ptr<ObjectDetector> detector_;
 
-    /** @brief Path to the folder containing the external detection model to be
-     * loaded. If empty, the node defaults to a data folder in the package
-     * install directory. */
-    std::string external_model_path_;
-
-    /** @brief Name of the detection model used as a base name to load the
-     * TorchScript script and the names file. */
-    std::string model_name_;
-
     /** @brief Fully qualified path to the names file. Used when loading class
      * labels and publishing vision pipeline information. */
     std::string names_path_;
 
     /** @brief Vector of class labels. */
     std::vector<std::string> classes_;
-
-    /** @brief Threshold for the confidence score. */
-    double score_threshold_;
-
-    /** @brief Threshold for the intersection-over-union (IOU) score during
-     * the non-maximum suppression (NMS). */
-    double iou_threshold_;
-
-    /** @brief Threshold for the maximum number of detections in one detection
-     * (after non-maximum suppression). */
-    int count_threshold_;
-
-    /** @brief Vecor of class labels used to filter detections (if empty, no
-     * filtering is applied). */
-    std::vector<std::string> valid_classes_;
-
-    /** @brief Number of forward iterations to perform at model load to warm
-     * up the inference process. */
-    int warmup_iterations_;
-
-    /** @brief Minimum (theoretical) execution rate for the detection callback.
-     * @remarks Null or negative values will bypass the timer and perform
-     * detection directly on image receival. */
-    double detection_rate_;
 
     /** @brief Shared pointer to the detection timer.  */
     rclcpp::TimerBase::SharedPtr detection_timer_;

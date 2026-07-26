@@ -50,8 +50,8 @@ class MissionManager{
   public:
     /// Construct a formation controller
     MissionManager(
-        const FormationParameters & formation_params,
-        const ToiParameters & toi_params,
+        MissionManagerParams params,
+        const std::string & manager_name,
         const std::shared_ptr<node::NodeProxy> & node_proxy,
         const std::shared_ptr<GoalFilter> & goal_filter);
 
@@ -83,7 +83,6 @@ class MissionManager{
     void handleCancelAllTask(const CancelAllMsg & msg);
 
     std::string my_name;
-    double sodist_threshold;
     avt_341::msg::Odometry odometry;
     avt_341::msg::Odometry leader_odometry;
     bool rcvd_leader_odom = false;
@@ -121,8 +120,7 @@ class MissionManager{
 
     void publishTaskChange();
 
-    const FormationParameters & formation_params;
-    const ToiParameters & toi_params_;
+    MissionManagerParams params_;
     std::vector<MissionPoint> mission_data;
     std::vector<MissionPoint> overwatch_positions;
     std::vector<MissionPath> mission_paths;

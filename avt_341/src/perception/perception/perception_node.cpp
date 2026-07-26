@@ -4,12 +4,11 @@
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap.h"
+#include "avt_341/perception/perception_settings.hpp"
+#include <avt_341/perception_params_service.hpp>
 
 double start_time = 0.0;
 
-float max_grid_width = 0.0f;
-float max_grid_height = 0.0f;
-double grid_pub_force_full_every_x_sec = 0.0;
 std::map<std::string, double> occ_last_full_grid_update;
 std::map<std::string, double> seg_last_full_grid_update;
 
@@ -29,7 +28,7 @@ void ResetCallback(avt_341::msg::StringPtr msg) {
 
 void PublishGrid(
 	bool is_segmentation,
-	const std::string & grid_pub_method,
+	const avt_341::perception::PerceptionSettings& settings,
 	double now_seconds,
 	const std::string & target_layer,
 	avt_341::perception::Costmap& grid
@@ -37,10 +36,11 @@ void PublishGrid(
 
 	avt_341::msg::OccupancyGrid grid_msg;
 
-	if (grid_pub_method == avt_341::perception::GridPubMethod::Window) {
+	if (settings.costmap.publish.method ==
+		avt_341::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
-			max_grid_width,
-			max_grid_height,
+			settings.costmap.publish.max_grid_width,
+			settings.costmap.publish.max_grid_height,
 			is_segmentation
 			);
 	}else {
@@ -56,9 +56,12 @@ void PublishGrid(
 	    }
 	    else
 	    {
-	        is_full_update = (grid_pub_method == avt_341::perception::GridPubMethod::Full)
-                        || (grid_pub_force_full_every_x_sec > 0.0 &&
-                            (now_seconds - last_full_grid_update[target_layer] > grid_pub_force_full_every_x_sec)
+	        is_full_update =
+				(settings.costmap.publish.method ==
+					avt_341::perception::GridPubMethod::Full)
+                        || (settings.costmap.publish.force_full_every > 0.0 &&
+                            (now_seconds - last_full_grid_update[target_layer] >
+								settings.costmap.publish.force_full_every)
                             );
 	    }
 
@@ -82,88 +85,33 @@ void PublishGrid(
 	grid_pub->publish(grid_msg);
 }
 
-avt_341::perception::CostmapSizeInfo ParseSizeInfo()
-{
-	avt_341::perception::CostmapSizeInfo size_info;
-	n->get_parameter("/grid_width", size_info.width, 200.0f);
-	n->get_parameter("/grid_height", size_info.height, 200.0f);
-	n->get_parameter("~grid_res", size_info.res, 1.0f);
-	n->get_parameter("~grid_llx", size_info.llx, -100.0f);
-	n->get_parameter("~grid_lly", size_info.lly, -100.0f);
-	return size_info;
-}
-
-avt_341::perception::DilationSettings ParseDilationSettings()
-{
-	avt_341::perception::DilationSettings settings;
-	n->get_parameter("~grid_dilate", settings.enabled, true);
-	n->get_parameter("~grid_dilate_x", settings.x, 1.0f);
-	n->get_parameter("~grid_dilate_y", settings.y, 1.0f);
-	n->get_parameter("~grid_dilate_proportion", settings.proportion, 0.8f);
-	return settings;
-}
-
-avt_341::perception::TerrainRmsSettings ParseTerrainRmsSettings(float node_rate)
-{
-	avt_341::perception::TerrainRmsSettings settings;
-	n->get_parameter("~rms_calc_horizontal_fov_radians", settings.hfov, 0.7854f); // about 45 degrees
-	n->get_parameter("~rms_calc_range_meters", settings.range, 15.0f);
-	n->get_parameter("~rms_calc_time_average_window", settings.time_window, 1.0f);
-	settings.SetDiscreteRmsWindow(node_rate);
-	return settings;
-}
-
-avt_341::perception::ThresholdSettings ParseThresholdSettings()
-{
-	avt_341::perception::ThresholdSettings settings;
-	n->get_parameter("~use_elevation", settings.use_elevation, false);
-	n->get_parameter("~slope_threshold", settings.thresh, 0.5f);
-	n->get_parameter("~slope_threshold_max", settings.thresh_max, 2.5f);
-	n->get_parameter("~output_unknown_cells", settings.output_unknown_cells, false);
-	n->get_parameter("~replace_occ_unknown_with", settings.replace_occ_unknown_with, 0);
-	n->get_parameter("~replace_seg_unknown_with", settings.replace_seg_unknown_with, 0);
-	return settings;
-}
-
 int main(int argc, char* argv[]) {
 
 	n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
 	n->initialize_tf_listener();
-
-	// Read parameters
-	// --------------------------------------------------------------------------------------------------------------
-	float warmup_time, perception_rate;
-	std::string clear_method, grid_pub_method, layer_combination_method;
-	std::string publish_layers_param;
-
-	n->get_parameter("~warmup_time", warmup_time, 1.0f);
-	n->get_parameter("~perception_rate", perception_rate, 100.0f);
-	n->get_parameter("~max_grid_width", max_grid_width, 800.0f);
-	n->get_parameter("~max_grid_height", max_grid_height, 800.0f);
-
-	n->get_parameter("~grid_pub_method", grid_pub_method, std::string(avt_341::perception::GridPubMethod::Full));
-	n->get_parameter("~grid_pub_force_full_every", grid_pub_force_full_every_x_sec, 10.0);
-	n->get_parameter("~layer_combination_method", layer_combination_method, std::string("last"));
-
-	// Period for publishing layer compute time summaries, <= 0 disables
-	double compute_time_publish_period;
-	n->get_parameter("~compute_time_publish_period", compute_time_publish_period, 1.0);
+	avt_341::params::perception::ParamsListener param_listener(
+		n->get_raw_node());
+	avt_341::perception::PerceptionSettings settings(
+		param_listener.get_params());
 
 	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
-	n->get_parameter("~publish_layers", publish_layers_param, std::string());
-	std::vector<std::string> publish_layers = avt_341::utils::SplitByDelimiter(publish_layers_param, ',');
+	std::vector<std::string> publish_layers =
+		avt_341::utils::SplitByDelimiter(settings.costmap.publish.layers, ',');
 
-	if (!avt_341::perception::GridPubMethod::IsValid(grid_pub_method)){
-		n->log_error("Invalid grid_pub_method: %hs", grid_pub_method.c_str());
+	if (!avt_341::perception::GridPubMethod::IsValid(
+			settings.costmap.publish.method)){
+		n->log_error("Invalid costmap.publish.method: %hs",
+			settings.costmap.publish.method.c_str());
 		return -1;
 	}
 
-	const avt_341::perception::CostmapSizeInfo size_info = ParseSizeInfo();
-	const avt_341::perception::DilationSettings dilation = ParseDilationSettings();
-	const avt_341::perception::ThresholdSettings thresholds = ParseThresholdSettings();
-	avt_341::perception::TerrainRmsSettings rms_settings = ParseTerrainRmsSettings(perception_rate);
-	const avt_341::perception::CostmapSettings settings(size_info, thresholds, dilation, rms_settings);
-	avt_341::perception::Costmap grid(n, settings, layer_combination_method);
+	avt_341::perception::Costmap grid(n, settings);
+	param_listener.setUserCallback(
+		[&grid](const avt_341::params::perception::Params& updated_params) {
+			grid.UpdateThresholds(
+				updated_params.costmap.thresholds.thresh,
+				updated_params.costmap.thresholds.thresh_max);
+		});
 
 	// Configure grid
 	// --------------------------------------------------------------------------------------------------------------
@@ -172,12 +120,12 @@ int main(int argc, char* argv[]) {
 					"	size_info: %hs\n"
 					"	thresholds: %hs\n"
 					"	dilation: %hs\n"
-					"	grid_pub_method: %hs\n"
+					"	publish method: %hs\n"
 					"	layers: %hs",
-					size_info.ToString().c_str(),
-					thresholds.ToString().c_str(),
-					dilation.ToString().c_str(),
-					grid_pub_method.c_str(),
+					settings.size_info_string().c_str(),
+					settings.thresholds_string().c_str(),
+					settings.dilation_string().c_str(),
+					settings.costmap.publish.method.c_str(),
 					grid.ToLayerInfoString().c_str()
 					);
 
@@ -188,7 +136,9 @@ int main(int argc, char* argv[]) {
 	auto rms_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_rms", 1);
 	auto terrain_slope_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_slope", 1);
 
-	const bool use_inc_updates = grid_pub_method == avt_341::perception::GridPubMethod::Updates;
+	const bool use_inc_updates =
+		settings.costmap.publish.method ==
+		avt_341::perception::GridPubMethod::Updates;
 
 	publish_layers.push_back(""); // add empty string to represent combined grid layer for publishing
 
@@ -215,7 +165,7 @@ int main(int argc, char* argv[]) {
 
 	grid.Reset();
 	start_time = n->get_now_seconds();
-	avt_341::node::Rate rate(perception_rate);
+	avt_341::node::Rate rate(settings.runtime.rate);
 	int nloops = 0;
 	double last_compute_time_pub = 0.0;
 
@@ -223,17 +173,20 @@ int main(int argc, char* argv[]) {
 
 		const double now_seconds = n->get_now_seconds();
 
-		if (compute_time_publish_period > 0.0 && now_seconds - last_compute_time_pub >= compute_time_publish_period) {
+		if (settings.runtime.compute_time_publish_period > 0.0 &&
+			now_seconds - last_compute_time_pub >=
+				settings.runtime.compute_time_publish_period) {
 			last_compute_time_pub = now_seconds;
 			grid.PublishComputeTimes();
 		}
 
-		if (grid.HasOdomData() && (now_seconds - start_time) > warmup_time) {
+		if (grid.HasOdomData() &&
+			(now_seconds - start_time) > settings.runtime.warmup_time) {
 
 			for (const auto& pub_layer: publish_layers){
-				PublishGrid(false, grid_pub_method, now_seconds, pub_layer, grid);
+				PublishGrid(false, settings, now_seconds, pub_layer, grid);
 				if (grid.HasSegmentation()) {
-					PublishGrid(true, grid_pub_method, now_seconds, pub_layer, grid);
+					PublishGrid(true, settings, now_seconds, pub_layer, grid);
 				}
 			}
 			grid.ResetUpdateRegion();

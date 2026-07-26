@@ -1,0 +1,50 @@
+code_namespace: avt_341/params/uab_perception
+ros__parameters:
+
+  # Grid
+  # ====================================================================================================================
+  costmap:
+    __include_mixins: costmap_geometry_mixin, costmap_publish_mixin
+
+  publish_uab_occupancy_grid:
+    type: bool
+    default_value: false
+    description: "If true, publishes the UAB occupancy grid."
+
+  # Frames and topics
+  # ====================================================================================================================
+  frame_prefix:
+    type: string
+    default_value: ''
+    description: "Optional prefix prepended (as '<prefix>/') to lidar_frame_id, odom_frame_id and camera_frame_id."
+  lidar_frame_id:
+    type: string
+    default_value: 'os_sensor'
+    description: "Frame id of the lidar sensor."
+  odom_frame_id:
+    type: string
+    default_value: 'mrzr/base_link'
+    description: "Frame id used for odometry."
+  camera_frame_id:
+    type: string
+    default_value: 'flir_optical'
+    description: "Frame id of the camera optical frame."
+  camera_topic:
+    type: string
+    default_value: 'avt_341/camera/image_raw'
+    description: "Input camera image topic. Debug segmentation topics are derived from it by replacing the final path segment."
+
+  # Segmentation and display
+  # ====================================================================================================================
+  brightness_offset:
+    type: double
+    default_value: 75.0
+    description: "Brightness offset applied to the camera image."
+  publish_window:
+    type: bool
+    default_value: true
+    description: "If true, publishes the perception display window."
+  debug_vis_segmentation:
+    type: bool
+    default_value: false
+    description: "If true, publishes debug segmentation and segmentation overlay image topics derived from camera_topic."

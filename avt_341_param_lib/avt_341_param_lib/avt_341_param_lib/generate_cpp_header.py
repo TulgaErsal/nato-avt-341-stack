@@ -35,34 +35,46 @@ import os
 from avt_341_param_lib.parse_yaml import GenerateCode
 
 
-def run(output_file, yaml_file, validate_header=''):
+def run(dto_output_file, service_output_file, yaml_file, validate_header='',
+        mixin_include_prefix=''):
     gen_param_struct = GenerateCode('cpp')
-    output_dir = os.path.dirname(output_file)
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
+    gen_param_struct.mixin_include_prefix = mixin_include_prefix
+    for output_file in (dto_output_file, service_output_file):
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
 
     gen_param_struct.parse(yaml_file, validate_header)
 
-    code = str(gen_param_struct)
-    with open(output_file, 'w') as f:
-        f.write(code)
+    dto_header_include = os.path.basename(dto_output_file)
+    with open(dto_output_file, 'w') as f:
+        f.write(gen_param_struct.render_cpp_dto())
+    with open(service_output_file, 'w') as f:
+        f.write(gen_param_struct.render_cpp_service(dto_header_include))
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('output_cpp_header_file')
+    parser.add_argument('output_cpp_dto_header_file')
+    parser.add_argument('output_cpp_service_header_file')
     parser.add_argument('input_yaml_file')
     parser.add_argument('validate_header', nargs='?', default='')
+    parser.add_argument(
+        '--mixin-include-prefix', default='',
+        help='Include sub-path used to reference generated mixin DTO headers, '
+             'e.g. "avt_341" for #include <avt_341/<stem>_params_dto.hpp>')
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    output_file = args.output_cpp_header_file
+    dto_output_file = args.output_cpp_dto_header_file
+    service_output_file = args.output_cpp_service_header_file
     yaml_file = args.input_yaml_file
     validate_header = args.validate_header
 
-    run(output_file, yaml_file, validate_header)
+    run(dto_output_file, service_output_file, yaml_file, validate_header,
+        args.mixin_include_prefix)
 
 
 if __name__ == '__main__':

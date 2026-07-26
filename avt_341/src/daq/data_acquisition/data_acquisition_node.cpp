@@ -14,6 +14,7 @@
 // ROS includes
 #include "avt_341/node/ros_types.h"
 #include "avt_341/node/node_proxy.h"
+#include <avt_341/data_acquisition_params_service.hpp>
 
 
 avt_341::msg::Twist cmd_vel;
@@ -34,22 +35,12 @@ void speed_callback(avt_341::msg::Float64Ptr rcv_speed) {
 int main(int argc, char *argv[]){
     // Init node
     auto n = avt_341::node::init_node(argc, argv, "data_acquisition_node");
+    avt_341::params::data_acquisition::ParamsListener param_listener(n->get_raw_node());
+    const auto params = param_listener.get_params();
     n->initialize_tf_listener();
 
-    // Parameters
-    double local_origin_x, local_origin_y;
-    std::string frame_world, frame_map, frame_cg;
-    float vel_window, rate, wheelbase;
-    int accel_samples;
-    n->get_parameter("/map_origin_x", local_origin_x, 0.0);
-    n->get_parameter("/map_origin_y", local_origin_y, 0.0);
-    n->get_parameter("~world_frame", frame_world, std::string("nad83"));
-    n->get_parameter("~map_frame", frame_map, std::string("map"));
-    n->get_parameter("~vehicle_cg_frame", frame_cg, std::string("vbox_link"));
-    n->get_parameter("~velocity_averaging_window", vel_window, 0.2f);
-    n->get_parameter("~accel_averaging_samples", accel_samples, 5);
-    n->get_parameter("~daq_rate", rate, 60.0f);
-    n->get_parameter("~wheelbase", wheelbase, 2.019f);
+    const int accel_samples =
+        static_cast<int>(params.accel_averaging_samples);
 
     // Create publishers and subscribers
     auto time_pub = n->create_publisher<avt_341::msg::DurationMsg>("avt_341/elapsed_time", 10);
@@ -66,7 +57,8 @@ int main(int argc, char *argv[]){
     int64_t loop_count = 0;
     avt_341::msg::Float64 dist_travelled;
     avt_341::msg::Float64 avg_speed;
-    avt_341::msg::Duration vel_duration = avt_341::node::make_duration(vel_window);
+    avt_341::msg::Duration vel_duration =
+        avt_341::node::make_duration(params.velocity_averaging_window);
     avt_341::msg::Time last_t;
     avt_341::msg::PoseStamped last_cg_pos;
     avt_341::msg::TwistStamped last_cg_vel;
@@ -82,7 +74,7 @@ int main(int argc, char *argv[]){
 
     // MAINLOOP
     avt_341::msg::Time t_start = n->get_stamp();
-    avt_341::node::Rate rosrate(rate);
+    avt_341::node::Rate rosrate(params.daq_rate);
     while (avt_341::node::ok())
     {
         // Current elapsed time
@@ -93,12 +85,14 @@ int main(int argc, char *argv[]){
         // Publish lateral acceleration
         if (cmd_rcvd && vel_rcvd) {
             avt_341::msg::Float64 lat_accel;
-            lat_accel.data = (vel*vel) * tan(cmd_vel.angular.z) / wheelbase / 9.81;
+            lat_accel.data =
+                (vel * vel) * tan(cmd_vel.angular.z) / params.wheelbase / 9.81;
             cg_lat_g_pub->publish(lat_accel);
         }
 
         // Get CG transform
-        avt_341::msg::TransformStamped tfs_ref = n->lookup_transform(frame_world, frame_cg);
+        avt_341::msg::TransformStamped tfs_ref =
+            n->lookup_transform(params.world_frame, params.vehicle_cg_frame);
 
         // Calculate CG dynamics
         if (avt_341::node::seconds_from_header(tfs_ref.header) > 1e-3f)
@@ -114,10 +108,12 @@ int main(int argc, char *argv[]){
 
             // Lookup old tf
             avt_341::msg::Time old_stamp = avt_341::msg::Time(tfs_ref.header.stamp) - vel_duration;
-            avt_341::msg::TransformStamped tfs_old = n->lookup_transform(frame_cg, old_stamp, frame_cg, tfs_ref.header.stamp, frame_map);
+            avt_341::msg::TransformStamped tfs_old = n->lookup_transform(
+                params.vehicle_cg_frame, old_stamp, params.vehicle_cg_frame,
+                tfs_ref.header.stamp, params.map_frame);
             
             // Calculate twist
-            float dt_window = 1.0 / vel_window;
+            const double dt_window = 1.0 / params.velocity_averaging_window;
             avt_341::msg::Vector3 trans = tfs_old.transform.translation;
             avt_341::msg::Quaternion rot = tfs_old.transform.rotation;
             tf2::Quaternion q_rot(rot.x, rot.y, rot.z, rot.w);
@@ -128,7 +124,7 @@ int main(int argc, char *argv[]){
             // Publish CG velocity
             avt_341::msg::TwistStamped cg_vel;
             cg_vel.header = tfs_ref.header;
-            cg_vel.header.frame_id = frame_cg;
+            cg_vel.header.frame_id = params.vehicle_cg_frame;
             cg_vel.twist.linear.x = trans.x * dt_window;
             cg_vel.twist.linear.y = trans.y * dt_window;
             cg_vel.twist.linear.z = trans.z * dt_window;
@@ -183,7 +179,7 @@ int main(int argc, char *argv[]){
                 // Publish averaged acceleration
                 avt_341::msg::AccelStamped cg_accel;
                 cg_accel.header = tfs_ref.header;
-                cg_accel.header.frame_id = frame_cg;
+                cg_accel.header.frame_id = params.vehicle_cg_frame;
                 cg_accel.accel.linear.x = accel_frame[0];
                 cg_accel.accel.linear.y = accel_frame[1];
                 cg_accel.accel.linear.z = accel_frame[2];

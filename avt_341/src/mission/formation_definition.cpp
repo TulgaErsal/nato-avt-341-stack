@@ -5,7 +5,9 @@
 namespace avt_341 {
 namespace mission {
 
-FormationDefinition::FormationDefinition(const FormationParameters & params_in) : params(params_in){
+FormationDefinition::FormationDefinition(
+    const FormationParameters & params_in, const std::string & my_name)
+    : params(params_in), my_name_(my_name) {
   struct FormationOffsets f;
   f.follower1.x = 0;
   f.follower1.y = -1;
@@ -72,8 +74,10 @@ FormationDefinition::FormationDefinition(const FormationParameters & params_in) 
   offsets_map_["ECH_RIGHT"] = f;
 }
 
-FormationDefinition::FormationDefinition(FormationMsg &comm_msg, const MissionPoint & mp, const FormationParameters & params_in)
-: FormationDefinition(params_in){
+FormationDefinition::FormationDefinition(
+    FormationMsg &comm_msg, const MissionPoint & mp,
+    const FormationParameters & params_in, const std::string & my_name)
+    : FormationDefinition(params_in, my_name) {
   update(comm_msg, mp);
 }
 
@@ -136,7 +140,7 @@ bool FormationDefinition::update(FormationMsg &comm_msg, const MissionPoint & mp
   }
 
   current_formation_msg_ = comm_msg;
-  formation_status = commToFollowerStatus(comm_msg, params.my_name, my_index_);
+  formation_status = commToFollowerStatus(comm_msg, my_name_, my_index_);
 
   goal.pose.position.x = mp.pos_x;
   goal.pose.position.y = mp.pos_x;

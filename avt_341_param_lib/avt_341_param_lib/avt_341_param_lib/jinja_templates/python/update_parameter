@@ -3,6 +3,6 @@ if param.name == self.prefix_ + "{{parameter_name}}":
 {% if parameter_validations|length -%}
 {{parameter_validations-}}
 {% endif -%}
-updated_params.{{parameter_name}} = param.{{parameter_as_function}}
+updated_params.{{parameter_name}} = {{parameter_value_expression}}
 self.logger_.debug(param.name + ": " + param.type_.name + " = " + str(param.value))
 {% endfilter -%}
