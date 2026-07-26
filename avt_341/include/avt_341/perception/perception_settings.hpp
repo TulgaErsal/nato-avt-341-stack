@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <avt_341/costmap_geometry_mixin_params_dto.hpp>
 #include <avt_341/perception_params_dto.hpp>
 
 #include "avt_341/avt_341_utils.h"
@@ -26,7 +27,8 @@ using GeneratedPerceptionParams = avt_341::params::perception::Params;
 class PerceptionSettings final : public GeneratedPerceptionParams {
 public:
   using Base = GeneratedPerceptionParams;
-  using SizeInfo = Base::Costmap::SizeInfo;
+  // shared costmap geometry class from the costmap_info mixin DTO
+  using SizeInfo = avt_341::params::core::Geometry;
 
   PerceptionSettings() = default;
   explicit PerceptionSettings(Base params) : Base(std::move(params)) {}
@@ -42,7 +44,7 @@ public:
   }
 
   [[nodiscard]] const SizeInfo& size_info() const {
-    return costmap.size_info;
+    return costmap.geometry;
   }
 
   [[nodiscard]] static int nx(const SizeInfo& size) {

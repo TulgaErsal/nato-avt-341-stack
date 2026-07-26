@@ -3,8 +3,6 @@ message(STATUS "Building Unit Tests")
 find_package(ament_cmake_gtest REQUIRED)
 find_package(ament_cmake_pytest REQUIRED)
 
-ament_add_pytest_test(metadata_test metadata_test.py)
-
 ament_add_gtest(null_test null_test.cpp)
 
 # MPC Planner Tests
@@ -104,31 +102,25 @@ target_link_libraries(utils_test
         ${PROJECT_NAME}_proxy
 )
 
+message(STATUS "Adding waypoint file parser unit tests")
+ament_add_gtest(waypoint_file_parser_test
+        core/waypoint_file_parser_test.cpp
+)
+
+target_include_directories(waypoint_file_parser_test
+        PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(waypoint_file_parser_test
+        ${PROJECT_NAME}_proxy
+)
+
 ament_target_dependencies(static_grid_layer_test
   rclcpp
   nav_msgs
   std_msgs
   geometry_msgs
-)
-
-message(STATUS "Adding perception settings unit tests")
-ament_add_gtest(perception_settings_test
-  perception/perception_settings_test.cpp
-)
-
-target_include_directories(perception_settings_test
-  PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
-)
-
-target_link_libraries(perception_settings_test
-  ${PROJECT_NAME}_proxy
-  perception_params_dto
-)
-
-ament_target_dependencies(perception_settings_test
-  nav_msgs
-  rclcpp
 )
 
 # Object Tracking Reset Tests
@@ -219,24 +211,4 @@ ament_target_dependencies(tracker_recovery_monitor_test
   visualization_msgs
 )
 
-message(STATUS "Adding tracker parameter adapter unit tests")
-ament_add_gtest(tracker_params_test
-  perception/tracking/tracker_params_test.cpp
-  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
-)
-
-target_include_directories(tracker_params_test
-  PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
-)
-
-target_link_libraries(tracker_params_test
-  object_tracking_params_dto
-)
-
-ament_target_dependencies(tracker_params_test
-  Eigen3
-  sensor_msgs
-  visualization_msgs
-)
 

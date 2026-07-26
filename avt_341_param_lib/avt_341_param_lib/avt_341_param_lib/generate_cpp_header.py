@@ -35,8 +35,10 @@ import os
 from avt_341_param_lib.parse_yaml import GenerateCode
 
 
-def run(dto_output_file, service_output_file, yaml_file, validate_header=''):
+def run(dto_output_file, service_output_file, yaml_file, validate_header='',
+        mixin_include_prefix=''):
     gen_param_struct = GenerateCode('cpp')
+    gen_param_struct.mixin_include_prefix = mixin_include_prefix
     for output_file in (dto_output_file, service_output_file):
         output_dir = os.path.dirname(output_file)
         if output_dir and not os.path.isdir(output_dir):
@@ -57,6 +59,10 @@ def parse_args():
     parser.add_argument('output_cpp_service_header_file')
     parser.add_argument('input_yaml_file')
     parser.add_argument('validate_header', nargs='?', default='')
+    parser.add_argument(
+        '--mixin-include-prefix', default='',
+        help='Include sub-path used to reference generated mixin DTO headers, '
+             'e.g. "avt_341" for #include <avt_341/<stem>_params_dto.hpp>')
     return parser.parse_args()
 
 
@@ -67,7 +73,8 @@ def main():
     yaml_file = args.input_yaml_file
     validate_header = args.validate_header
 
-    run(dto_output_file, service_output_file, yaml_file, validate_header)
+    run(dto_output_file, service_output_file, yaml_file, validate_header,
+        args.mixin_include_prefix)
 
 
 if __name__ == '__main__':

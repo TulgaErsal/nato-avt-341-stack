@@ -37,7 +37,6 @@ set(AVT341_SOURCE_FILES
     "control/avt_bot_state_publisher"
     "control/control"
     "control/speed_control"
-    "control/speed_control_test"
     "control/speed_zones"
     "daq/data_acquisition"
     "mission/goal_filtering"
@@ -46,9 +45,7 @@ set(AVT341_SOURCE_FILES
     "perception/detection/training"
     "perception/detection/object_detector"
     "perception/tracking"
-    "perception/map_publisher"
     "perception/global_segmentation_grid"
-    "perception/grid_compression"
     "perception/lidar_obstacle_detector/ros1"
     "perception/lidar_obstacle_detector/ros2"
     "perception/perception"
@@ -128,6 +125,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
           "src/core/running_stats.cpp"
           "src/core/compute_time_recorder.cpp"
           "src/core/coord_transform.cpp"
+          "src/core/waypoint_file_parser.cpp"
   )
 
   target_include_directories(

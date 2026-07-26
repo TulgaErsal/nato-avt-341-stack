@@ -1,6 +1,8 @@
 code_namespace: avt_341/params/data_acquisition
 ros__parameters:
 
+  __include_mixins: gis_mixin
+
   # Data Acquisition
   # ====================================================================================================================
   daq_rate:
@@ -35,11 +37,3 @@ ros__parameters:
     type: double
     default_value: 2.019
     description: "Vehicle wheelbase [m]."
-  map_origin_x:
-    type: double
-    default_value: 0.0
-    description: "X coordinate of the local map origin. Renamed from the legacy global parameter /map_origin_x."
-  map_origin_y:
-    type: double
-    default_value: 0.0
-    description: "Y coordinate of the local map origin. Renamed from the legacy global parameter /map_origin_y."

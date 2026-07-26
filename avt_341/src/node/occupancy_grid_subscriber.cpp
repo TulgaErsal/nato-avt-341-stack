@@ -1,27 +1,38 @@
 #include "avt_341/node/occupancy_grid_subscriber.h"
 
+#include "avt_341/perception/costmap_dtos.h"
+
 namespace avt_341::node {
 
 OccupancyGridSubscriber::OccupancyGridSubscriber(
     const std::shared_ptr<NodeProxy> &node,
     const std::string & topic_name,
-    int qos
+    int qos,
+    const std::string & publish_method
     )
-    : OccupancyGridSubscriber(node, topic_name, qos, nullptr){
+    : OccupancyGridSubscriber(node, topic_name, qos, publish_method, nullptr){
 }
 
 OccupancyGridSubscriber::OccupancyGridSubscriber(
     const std::shared_ptr<NodeProxy> &node,
     const std::string & topic_name,
     int qos,
+    const std::string & publish_method,
     const std::function<void(const msg::OccupancyGridPtr &)> &callback
     )
     : grid_msg_(nullptr), external_callback_(callback){
 
+    // In incremental update mode the full grid is published rarely, so a
+    // late-joining subscriber must latch the last full grid.
+    rclcpp::QoS grid_qos{rclcpp::KeepLast(static_cast<size_t>(qos))};
+    if (publish_method == perception::GridPubMethod::Updates) {
+        grid_qos.transient_local();
+    }
+
     grid_sub_ = node->create_subscription<msg::OccupancyGrid>(
-    topic_name,
-    qos,
-    std::bind(&OccupancyGridSubscriber::OccupancyGridCallback, this, std::placeholders::_1));
+        topic_name,
+        grid_qos,
+        std::bind(&OccupancyGridSubscriber::OccupancyGridCallback, this, std::placeholders::_1));
 
     grid_sub_updates_ = node->create_subscription<msg::OccupancyGridUpdate>(
         topic_name + "_updates",

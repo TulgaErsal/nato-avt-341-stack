@@ -50,7 +50,7 @@ if(BUILD_TESTING)
   ament_add_pytest_test(yaml_parse_error_test ${PROJECT_NAME}/test/YAML_parse_error_test.py)
   ament_add_pytest_test(float_codegen_test ${PROJECT_NAME}/test/float_codegen_test.py)
   ament_add_pytest_test(launch_params_test ${PROJECT_NAME}/test/launch_params_test.py)
-  ament_add_pytest_test(launch_metadata_test ${PROJECT_NAME}/test/launch_metadata_test.py)
+  ament_add_pytest_test(launch_node_config_test ${PROJECT_NAME}/test/launch_node_config_test.py)
   ament_add_pytest_test(parse_runtime_yaml_test ${PROJECT_NAME}/test/parse_runtime_yaml_test.py)
 endif()
 

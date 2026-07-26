@@ -163,7 +163,6 @@ def recording_node(context):
 
 def launch_setup(context, *args, **kwargs):
     simulation_mode = LaunchConfiguration('simulation_mode')
-    waypoint_mode = LaunchConfiguration('waypoint_mode')
     max_speed = LaunchConfiguration('max_speed')
     record = LaunchConfiguration('record')
     record_select_topic = LaunchConfiguration('record_select_topic')
@@ -263,17 +262,15 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments={
                 "use_sim_time":                 use_sim_time.perform(context),
                 "auto_launch_rviz":             auto_launch_rviz.perform(context),
-                "waypoints_file":               f"{avt_341_dir}/config/krc_VDA_waypoints/loop_2_waypoints_nad83.yaml",
                 "robot_description_files":      str(robot_description_files),
                 "vehicle_ids":                  str(vehicle_namespaces),
                 "spawn_filter_vehicle_ids":     f"['{vehicle_name}']",
-                "ros_param_files":              f"['{avt_341_dir}/parameters/overrides/krc_mrzr.yaml']",
-                "node_config_file":             f"{avt_341_dir}/parameters/metadata/krc_mrzr.yaml",
+                "ros_param_files":              f"['{avt_341_dir}/parameters/krc_mrzr/ros_params.yaml']",
+                "node_config_file":             f"{avt_341_dir}/parameters/krc_mrzr/node_config.yaml",
                 "rviz_config":                  f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
                 "rviz_mult_config":             f"{avt_341_dir}/rviz/avt_341_multi_vehicle.rviz",
                 "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":         "mpc",
-                "waypoint_mode":                waypoint_mode.perform(context),
                 "enable_logging":               enable_logging.perform(context),
             }.items()
         )
@@ -282,12 +279,10 @@ def launch_setup(context, *args, **kwargs):
     return mrzr_nodes
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
 
     # Define arguments
     launch_arg_dict = {
         "simulation_mode":	        ["False",	                                    "Set to true if the vehicle is in Unreal Engine"],
-        "waypoint_mode":	        ["False",	                                    "Set to true for waypoint following mode"],
         "max_speed":	            ["5.0",	                                        "Maximum speed limit for the vehicle"],
         "record":	                ["False",	                                    "Record all topics to '~/avt_341_data/YYMMDD_MRZR_AVT-341_HHMMSS.bag'"],
         "record_select_topic":	    ["False",	                                    "Record only topics defined in 'record_topics'"],

@@ -16,6 +16,7 @@
 #include <future>
 // local includes
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/core/waypoint_file_parser.hpp"
 #include "avt_341/planning/global/astar.h"
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/planning/global/d_star_lite.h"
@@ -341,9 +342,9 @@ int main(int argc, char* argv[])
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto map_sub = avt_341::node::OccupancyGridSubscriber(
-      n, params.map_topic, 10, MapCallback);
+      n, params.map_topic, 10, params.costmap.publish.method, MapCallback);
   auto segmentation_map_sub = avt_341::node::OccupancyGridSubscriber(
-      n, params.seg_topic, 10,
+      n, params.seg_topic, 10, params.costmap.publish.method,
       [&params](avt_341::msg::OccupancyGridPtr msg) {
         SegmentationMapCallback(msg, params.use_segmentation);
       });
@@ -364,13 +365,11 @@ int main(int argc, char* argv[])
 
   Reset();
 
-  // Initialize current waypoints with the data from the waypoint yaml params
-  const auto map_origin = Point{
-      static_cast<float>(params.map_origin_x),
-      static_cast<float>(params.map_origin_y)};
-  nav_goals = ToNavGoalSequence(
-      params.waypoints_x, params.waypoints_y, map_origin,
-      dft_dist_threshold, dft_yaw_threshold, "map");
+    // Initialize current waypoints from the initial waypoints file, if given
+    const auto waypoints = WaypointFileParser::Parse(params.initial_waypoints);
+    const auto map_origin = Point{static_cast<float>(params.gis.origin_x), static_cast<float>(params.gis.origin_y)};
+    nav_goals = ToNavGoalSequence(waypoints.x, waypoints.y, map_origin,
+        dft_dist_threshold, dft_yaw_threshold, "map");
 
   if (!nav_goals.goals.empty()) {
     UpdateGoalState(nav_goals.goals[0]);

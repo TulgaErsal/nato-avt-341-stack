@@ -1,5 +1,12 @@
 code_namespace: avt_341/params/mission_manager
 ros__parameters:
+
+  __include_mixins: gis_mixin
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
   name:
     type: string
     description: "Vehicle name / id of this mission manager instance. Supplied by the launch system as the uppercased vehicle id."
@@ -10,14 +17,6 @@ ros__parameters:
     type: double
     default_value: 4.0
     description: "Default maximum vehicle speed (m/s). Single source for the mpc planner family and the mission manager."
-  map_origin_x:
-    type: double
-    default_value: 0.0
-    description: "X coordinate of the local map origin. Subtracted from mission definition coordinates to convert into the local frame. Renamed from the global /map_origin_x parameter."
-  map_origin_y:
-    type: double
-    default_value: 0.0
-    description: "Y coordinate of the local map origin. Subtracted from mission definition coordinates to convert into the local frame. Renamed from the global /map_origin_y parameter."
   mission_definition_file:
     type: string
     default_value: ''

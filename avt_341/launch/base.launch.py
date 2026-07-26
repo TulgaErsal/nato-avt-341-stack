@@ -1,6 +1,5 @@
 import os
 
-import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, OpaqueFunction
@@ -12,15 +11,16 @@ from avt_341_param_lib.launch_params import (
     perform_yaml,
     relevant_params_files,
 )
-from avt_341_param_lib.launch_metadata import MetadataCollection
+from avt_341_param_lib.launch_node_config import NodeConfigCollection
 from avt_341_param_lib.parse_runtime_yaml import resolve_params_files
 
 SHARE_DIR = get_package_share_directory('avt_341').replace('\\', '/')
 TEMPLATES_DIR = os.path.join(SHARE_DIR, 'parameters', 'templates')
 
 
-def _template(name):
-    return os.path.join(TEMPLATES_DIR, name)
+def _templates(*names):
+    """Paths of the given parameter templates (bare stems; .yaml is appended)."""
+    return [os.path.join(TEMPLATES_DIR, f'{name}.yaml') for name in names]
 
 
 def _is_true(text):
@@ -50,7 +50,9 @@ class NodeSpec:
     def __init__(self, executable, template=None, condition=None, sub_ns=None,
                  extra_params=None, output='screen', autonomy=True):
         self.executable = executable
-        self.template = template
+        # one template path or a list of paths (a node whose executable links
+        # several generated parameter services); normalized to a list
+        self.templates = [template] if isinstance(template, str) else list(template or [])
         self.condition = condition          # callable(context) -> bool; None = always
         self.sub_ns = sub_ns                # sub-namespace below the vehicle namespace
         self.extra_params = extra_params    # callable(vid, vehicles) -> dict of launch-computed params
@@ -61,76 +63,51 @@ class NodeSpec:
 NODES = {
 
     # Mission management
-    'mission_manager_node':             NodeSpec('avt_341_mission_manager_node',         _template('mission_manager.yaml'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'comm_node':                        NodeSpec('avt_341_comm_node',                    _template('socket_comms.yaml'),                                                          extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'speed_zones_node':                 NodeSpec('avt_341_speed_zones_node',             _template('speed_zones.yaml'),       condition=is_cfg('use_speed_zones')),
+    'mission_manager_node':             NodeSpec('avt_341_mission_manager_node',         _templates('mission_manager'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'comm_node':                        NodeSpec('avt_341_comm_node',                    _templates('socket_comms'),                                                          extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'speed_zones_node':                 NodeSpec('avt_341_speed_zones_node',             _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
 
     # Perception - Costmaps
-    'perception_local_node':            NodeSpec('avt_341_perception_node',              _template('perception.yaml'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_global_node':           NodeSpec('avt_341_perception_node',              _template('perception.yaml'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_node':                  NodeSpec('avt_341_perception_node',              _template('perception.yaml'),        condition=is_not_cfg('use_dual_costmaps')),
-    'perception_rms_node':              NodeSpec('avt_341_perception_node',              _template('perception.yaml'),        condition=is_cfg('use_perception_rms')),
+    'perception_local_node':            NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_global_node':           NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_node':                  NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
+    'perception_rms_node':              NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_perception_rms')),
 
     # Perception - Terrain segmentation
-    'uab_perception_node':              NodeSpec('uab_perception_node',                  _template('uab_perception.yaml'),    condition=is_cfg('use_uab_perception'),             extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
+    'uab_perception_node':              NodeSpec('uab_perception_node',                  _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),             extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
 
     # Perception - Object detection and tracking
-    'object_detector_node':             NodeSpec('avt_341_object_detector_node',         _template('object_detector.yaml'),   condition=is_cfg('use_obj_detector')),
-    'object_tracking_node':             NodeSpec('avt_341_object_tracking_node',         _template('object_tracking.yaml'),   condition=is_cfg('use_object_tracker'),             extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
-    'lidar_obstacle_detector_node':     NodeSpec('avt_341_lidar_obstacle_detector_node', _template('obstacle_detector.yaml'), condition=is_cfg('use_lidar_obstacle_detector')),
+    'object_detector_node':             NodeSpec('avt_341_object_detector_node',         _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
+    'object_tracking_node':             NodeSpec('avt_341_object_tracking_node',         _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),             extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
+    'lidar_obstacle_detector_node':     NodeSpec('avt_341_lidar_obstacle_detector_node', _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
 
     # Global planners
-    'avt_341_global_path_node':         NodeSpec('avt_341_global_path_node',             _template('global_planner.yaml'),                                                        extra_params=lambda vid, vehicles: _waypoint_params()),
+    'avt_341_global_path_node':         NodeSpec('avt_341_global_path_node',             _templates('global_planner')),
 
     # Local planners
-    'local_planner_node':               NodeSpec('avt_341_local_planner_node',           _template('rcc_local_planner.yaml'), condition=is_local_planner('rcc')),
-    'local_dwa_planner_node':           NodeSpec('avt_341_dwa_planner_node',             _template('dwa_local_planner.yaml'), condition=is_local_planner('dwa')),
-    'local_pf_planner_node':            NodeSpec('avt_341_pf_planner_node',              _template('pf_local_planner.yaml'),  condition=is_local_planner('pf')),
-    'mpc_planner_node':                 NodeSpec('avt_341_mpc_planner_node',             _template('mpc_local_planner.yaml'), condition=is_local_planner('mpc')),
+    'local_planner_node':               NodeSpec('avt_341_local_planner_node',           _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
+    'local_dwa_planner_node':           NodeSpec('avt_341_dwa_planner_node',             _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
+    'local_pf_planner_node':            NodeSpec('avt_341_pf_planner_node',              _templates('pf_local_planner'),  condition=is_local_planner('pf')),
+    'mpc_planner_node':                 NodeSpec('avt_341_mpc_planner_node',             _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
 
     # local planners - MPC supporting nodes
-    'obstacle_processor_node':          NodeSpec('obstacle_processor_node',              _template('mpc_local_planner.yaml'), condition=is_local_planner('mpc')),
-    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node',     _template('mpc_local_planner.yaml'), condition=is_local_planner('mpc')),
-    'goal_point_processor_node':        NodeSpec('goal_point_processor_node',            _template('mpc_local_planner.yaml'), condition=is_local_planner('mpc')),
-    'avt_341_veh_converter_node':       NodeSpec('veh_converter_node',                                                        condition=is_local_planner('mpc')),
+    'obstacle_processor_node':          NodeSpec('obstacle_processor_node',              _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node',     _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'goal_point_processor_node':        NodeSpec('goal_point_processor_node',            _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'avt_341_veh_converter_node':       NodeSpec('veh_converter_node',                                                    condition=is_local_planner('mpc')),
 
     # Controllers (selected by local planner method)
-    'speed_control_node':               NodeSpec('avt_341_speed_control_node',           _template('speed_control.yaml'),     condition=is_local_planner('dwa', 'mpc')),
-    'control_node':                     NodeSpec('avt_341_control_node',                 _template('control.yaml'),           condition=is_local_planner('rcc', 'pf')),
+    'speed_control_node':               NodeSpec('avt_341_speed_control_node',           _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
+    'control_node':                     NodeSpec('avt_341_control_node',                 _templates('control'),           condition=is_local_planner('rcc', 'pf')),
 
     # State pre-processing
-    'data_acquisition_node':            NodeSpec('data_acquisition_node',                _template('data_acquisition.yaml'),  condition=is_cfg('use_data_acquisition'),                                                                                                                output='log', autonomy=False),
+    'data_acquisition_node':            NodeSpec('data_acquisition_node',                _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                                output='log', autonomy=False),
 }
 
 pargs = ParameterCollection.from_node_templates(
-    {name: spec.template for name, spec in NODES.items() if spec.template})
+    {name: spec.templates for name, spec in NODES.items() if spec.templates})
 
-_waypoint_params_cache = {}
-
-
-def _waypoint_params():
-    """Waypoint parameters loaded from the waypoints file; {} when empty/disabled."""
-    return dict(_waypoint_params_cache)
-
-
-def _load_waypoint_params(context):
-    _waypoint_params_cache.clear()
-    if not _is_true(LaunchConfiguration('waypoint_mode').perform(context)):
-        return
-    waypoints_file = LaunchConfiguration('waypoints_file').perform(context)
-    if not waypoints_file or not os.path.isfile(waypoints_file):
-        return
-    with open(waypoints_file) as f:
-        doc = yaml.safe_load(f) or {}
-    waypoints_x = doc.get('waypoints_x') or []
-    waypoints_y = doc.get('waypoints_y') or []
-    if waypoints_x and waypoints_y:
-        # never inject empty lists; the template default [] means "no waypoints"
-        _waypoint_params_cache['waypoints_x'] = [float(x) for x in waypoints_x]
-        _waypoint_params_cache['waypoints_y'] = [float(y) for y in waypoints_y]
-
-
-def _make_node(name, spec, vid, vehicles, params_files, overrides, metadata):
+def _make_node(name, spec, vid, vehicles, params_files, cli_overrides, node_config):
     node_name = name.rsplit('/', 1)[-1]
     namespace_parts = [str(vid).strip('/')]
     if spec.sub_ns:
@@ -141,11 +118,11 @@ def _make_node(name, spec, vid, vehicles, params_files, overrides, metadata):
         extra = spec.extra_params(vid, vehicles)
         if extra:
             layers.append(extra)
-    cli_params = overrides.for_node(fqn)
+    cli_params = cli_overrides.for_node(fqn)
     if cli_params:
         layers.append(cli_params)
-    node_remappings = metadata.get_remappings(fqn)
-    node_additional_env = metadata.get_additional_env(fqn)
+    node_remappings = node_config.get_remappings(fqn)
+    node_additional_env = node_config.get_additional_env(fqn)
     node = Node(
         package='avt_341',
         executable=spec.executable,
@@ -160,7 +137,7 @@ def _make_node(name, spec, vid, vehicles, params_files, overrides, metadata):
     return node
 
 
-def _robot_state_publisher(vid, vehicle_index, context, metadata):
+def _robot_state_publisher(vid, vehicle_index, context, node_config):
     description_files = perform_yaml(context, 'robot_description_files') or []
     if not description_files:
         return None
@@ -176,10 +153,8 @@ def _robot_state_publisher(vid, vehicle_index, context, metadata):
         name='robot_state_publisher',
         output='screen',
         parameters=[{'robot_description': robot_description, 'frame_prefix': f'{vid}/'}],
-        remappings=metadata.get_remappings(
-            f'/{vid}/robot_state_publisher') or None,
-        additional_env=metadata.get_additional_env(
-            f'/{vid}/robot_state_publisher') or None,
+        remappings=node_config.get_remappings(f'/{vid}/robot_state_publisher') or None,
+        additional_env=node_config.get_additional_env(f'/{vid}/robot_state_publisher') or None,
     )
 
 
@@ -187,9 +162,9 @@ def _spawn_vehicles(context, *args, **kwargs):
     vehicles = [str(vid).strip('/') for vid in perform_yaml(context, 'vehicle_ids')]
     params_files = resolve_params_files(
         perform_yaml(context, 'ros_param_files') or [], vehicles)
-    metadata = MetadataCollection(
+    node_config = NodeConfigCollection(
         LaunchConfiguration('node_config_file').perform(context))
-    overrides = pargs.resolve_cli_overrides(context, vehicles)
+    cli_overrides = pargs.resolve_cli_overrides(context, vehicles)
     spawn_filter = {
         str(vid).strip('/')
         for vid in perform_yaml(context, 'spawn_filter_vehicle_ids') or []}
@@ -198,7 +173,6 @@ def _spawn_vehicles(context, *args, **kwargs):
         for vid in perform_yaml(context, 'manual_control_vehicles') or []}
     publish_urdf_to_tf = _is_true(
         LaunchConfiguration('publish_urdf_to_tf').perform(context))
-    _load_waypoint_params(context)
 
     actions = [SetParameter(name='use_sim_time', value=LaunchConfiguration('use_sim_time'))]
     spawned_vehicles = [
@@ -213,10 +187,10 @@ def _spawn_vehicles(context, *args, **kwargs):
             if spec.condition is not None and not spec.condition(context):
                 continue
             group.append(_make_node(
-                name, spec, vid, vehicles, params_files, overrides, metadata))
+                name, spec, vid, vehicles, params_files, cli_overrides, node_config))
         if publish_urdf_to_tf:
             state_publisher = _robot_state_publisher(
-                vid, vehicle_index, context, metadata)
+                vid, vehicle_index, context, node_config)
             if state_publisher is not None:
                 group.append(state_publisher)
         actions.append(GroupAction(group))
@@ -228,8 +202,8 @@ def _spawn_vehicles(context, *args, **kwargs):
             executable='rviz2',
             name='rviz2',
             arguments=['-d', LaunchConfiguration('rviz_config').perform(context)],
-            remappings=metadata.get_remappings('/rviz2') or None,
-            additional_env=metadata.get_additional_env('/rviz2') or None,
+            remappings=node_config.get_remappings('/rviz2') or None,
+            additional_env=node_config.get_additional_env('/rviz2') or None,
         ))
 
     # Standardized vehicle logging for V&V efforts
@@ -272,10 +246,6 @@ def generate_launch_description():
         DeclareLaunchArgument('use_object_tracker',          default_value='True',                                                description='Enable the object tracking node'),
         DeclareLaunchArgument('use_data_acquisition',        default_value='True',                                                description='Enable the data acquisition node'),
         DeclareLaunchArgument('publish_urdf_to_tf',          default_value='True',                                                description='Publish the robot URDF description to tf via robot_state_publisher'),
-
-        # Waypoints
-        DeclareLaunchArgument('waypoint_mode',               default_value='False',                                               description='Set to true for waypoint following mode'),
-        DeclareLaunchArgument('waypoints_file',              default_value=f'{SHARE_DIR}/config/no_waypoints.yaml',               description='Path to waypoint yaml file (waypoints_x/waypoints_y lists)'),
 
         # Logging and visualization
         DeclareLaunchArgument('auto_launch_rviz',            default_value='True',                                                description='Automatically launch rviz display window'),

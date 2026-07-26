@@ -1,5 +1,6 @@
 code_namespace: avt_341/params/perception
 ros__parameters:
+
   runtime:
     warmup_time:
       type: double
@@ -17,29 +18,8 @@ ros__parameters:
       description: "Period in seconds for publishing layer compute-time summaries; <= 0 disables."
 
   costmap:
-    size_info:
-      width:
-        type: float
-        default_value: 200.0
-        description: "Total grid width in meters."
-      height:
-        type: float
-        default_value: 200.0
-        description: "Total grid height in meters."
-      res:
-        type: float
-        default_value: 0.25
-        description: "Grid resolution in meters."
-        validation:
-          gt<>: [ 0.0 ]
-      llx:
-        type: float
-        default_value: 0.0
-        description: "X coordinate of the grid lower-left anchor."
-      lly:
-        type: float
-        default_value: 0.0
-        description: "Y coordinate of the grid lower-left anchor."
+
+    __include_mixins: costmap_geometry_mixin, costmap_publish_mixin
 
     thresholds:
       use_elevation:
@@ -109,30 +89,6 @@ ros__parameters:
       description: "Layer combination method: 'last', 'max', or 'mean'."
       validation:
         one_of<>: [ [ 'last', 'max', 'mean' ] ]
-
-  publish:
-    max_grid_width:
-      type: double
-      default_value: 100.0
-      description: "Maximum published grid width when method is 'window'."
-    max_grid_height:
-      type: double
-      default_value: 100.0
-      description: "Maximum published grid height when method is 'window'."
-    method:
-      type: string
-      default_value: 'window'
-      description: "Grid publication method: 'full', 'window', or incremental 'updates'."
-      validation:
-        one_of<>: [ [ 'full', 'window', 'updates' ] ]
-    force_full_every:
-      type: double
-      default_value: 10.0
-      description: "Seconds between forced full grids in update mode; <= 0 disables."
-    layers:
-      type: string
-      default_value: ''
-      description: "Comma-separated layer names to publish in addition to the combined costmap."
 
   point_cloud_layer:
     topic:

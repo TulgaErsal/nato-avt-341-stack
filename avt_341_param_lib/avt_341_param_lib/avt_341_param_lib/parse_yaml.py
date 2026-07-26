@@ -81,6 +81,155 @@ KNOWN_ROOT_KEYS = (
 
 DEFAULT_CLASS_NAME = 'Params'
 
+# Mixin entries: a mapping inside the ros__parameters tree may hold an
+# __include_mixins entry naming one or more mixin templates by bare file stem
+# (comma-separated or a yaml list). The referenced files live in a "mixins"
+# folder next to the including template and their ros__parameters content is
+# spliced into the including mapping.
+INCLUDE_MIXIN_KEY = '__include_mixins'
+MIXINS_DIR_NAME = 'mixins'
+
+
+def _contains_mixin_entry(node) -> bool:
+    if not isinstance(node, dict):
+        return False
+    return INCLUDE_MIXIN_KEY in node or any(
+        _contains_mixin_entry(value) for value in node.values()
+    )
+
+
+def _contains_mapped_parameter(node) -> bool:
+    if not isinstance(node, dict):
+        return False
+    return any(
+        is_mapped_parameter(key) or _contains_mapped_parameter(value)
+        for key, value in node.items()
+    )
+
+
+def _is_parameter_group(value) -> bool:
+    """Whether a template tree value is a nested group (not a parameter definition)."""
+    return isinstance(value, dict) and not isinstance(value.get('type'), str)
+
+
+def _read_mixin_file(mixin_path: str):
+    """Load and validate one mixin template file.
+
+    Returns ``(parameters, code_namespace)`` where ``parameters`` is the
+    mixin's ros__parameters mapping.
+    """
+    if not os.path.isfile(mixin_path):
+        raise compile_error(f"Mixin file '{mixin_path}' not found")
+    with open(mixin_path) as f:
+        try:
+            doc = yaml.safe_load(f)
+        except (ParserError, ScannerError) as e:
+            raise compile_error(f"Invalid mixin file '{mixin_path}': {e}")
+    if not isinstance(doc, dict) or not isinstance(
+        doc.get(PARAMETERS_ROOT_KEY), dict
+    ):
+        raise compile_error(
+            f"Mixin file '{mixin_path}' must be a mapping with a "
+            f'{PARAMETERS_ROOT_KEY} root element'
+        )
+    unknown_keys = [key for key in doc if key not in KNOWN_ROOT_KEYS]
+    if unknown_keys:
+        raise compile_error(
+            f"Unknown root element(s) {unknown_keys} in mixin file "
+            f"'{mixin_path}'. Supported root elements are: {list(KNOWN_ROOT_KEYS)}"
+        )
+    code_namespace = doc.get(CODE_NAMESPACE_ROOT_KEY)
+    if not isinstance(code_namespace, str):
+        raise compile_error(
+            f"Mixin file '{mixin_path}' must declare a "
+            f'{CODE_NAMESPACE_ROOT_KEY} root element holding a string'
+        )
+    parameters = doc[PARAMETERS_ROOT_KEY]
+    if _contains_mixin_entry(parameters):
+        raise compile_error(
+            f"Mixin file '{mixin_path}' holds a nested {INCLUDE_MIXIN_KEY} entry; "
+            'mixins cannot include other mixins'
+        )
+    if _contains_mapped_parameter(parameters):
+        raise compile_error(
+            f"Mixin file '{mixin_path}' holds a dynamically mapped (__map_) "
+            'parameter; mapped parameters are not supported in mixins'
+        )
+    return parameters, code_namespace
+
+
+def _load_mixin_parameters(stem, template_path: str):
+    """Resolve and load the mixin referenced by ``stem``.
+
+    Returns ``(parameters, code_namespace)``.
+    """
+    if not isinstance(stem, str) or not stem:
+        raise compile_error(
+            f"Invalid {INCLUDE_MIXIN_KEY} value {stem!r} in '{template_path}': "
+            'expected a mixin file stem, e.g. "costmap_geometry_mixin"'
+        )
+    mixin_path = os.path.join(
+        os.path.dirname(os.path.abspath(template_path)), MIXINS_DIR_NAME,
+        stem + '.yaml'
+    )
+    if not os.path.isfile(mixin_path):
+        raise compile_error(
+            f"Mixin '{stem}' included by '{template_path}' not found at "
+            f"'{mixin_path}'"
+        )
+    return _read_mixin_file(mixin_path)
+
+
+def expand_mixins(parameters: dict, template_path: str,
+                  mounts=None, used_stems=None, _path=()) -> dict:
+    """Expand ``__include_mixins`` entries in a template's ros__parameters mapping.
+
+    The value of an ``__include_mixins`` entry names one or more mixin file
+    stems -- as a single stem, a comma-separated string
+    (``costmap_geometry_mixin, costmap_publish_mixin``) or a yaml list -- each
+    resolved to ``mixins/<stem>.yaml`` next to the including template file.
+    Every mixin's ros__parameters content is merged into the mapping holding
+    the ``__include_mixins`` entry; a key provided both by the mapping and a
+    mixin (or by two mixins) is an error. The input mapping is modified in
+    place and returned.
+
+    When ``mounts`` (a dict) and ``used_stems`` (a list) are given, every
+    mixin root *group* records its mount path and the mixin's C++ namespace
+    (``mounts[path_tuple] = 'ns::tokens'``) and the contributing mixin stems
+    are appended to ``used_stems`` in first-use order. The C++ generator uses
+    these records to reference the shared mixin DTO structs instead of
+    re-defining them inline.
+    """
+    stems = parameters.pop(INCLUDE_MIXIN_KEY, None)
+    if stems is not None:
+        if isinstance(stems, str):
+            stems = [stem.strip() for stem in stems.split(',') if stem.strip()]
+        if not isinstance(stems, list):
+            raise compile_error(
+                f"Invalid {INCLUDE_MIXIN_KEY} value {stems!r} in '{template_path}': "
+                'expected a mixin file stem, a comma-separated string of stems '
+                'or a yaml list of stems'
+            )
+        for stem in stems:
+            mixin_parameters, mixin_namespace = _load_mixin_parameters(
+                stem, template_path)
+            for key, value in mixin_parameters.items():
+                if key in parameters:
+                    raise compile_error(
+                        f"Mixin '{stem}' included by '{template_path}' defines "
+                        f"'{key}', which already exists at the include location"
+                    )
+                parameters[key] = value
+                if mounts is not None and _is_parameter_group(value):
+                    mounts[_path + (key,)] = '::'.join(
+                        parse_code_namespace_tokens(mixin_namespace))
+                    if used_stems is not None and stem not in used_stems:
+                        used_stems.append(stem)
+    for key, value in parameters.items():
+        if isinstance(value, dict):
+            expand_mixins(value, template_path, mounts, used_stems, _path + (key,))
+    return parameters
+
 
 @typechecked
 def parse_code_namespace_tokens(code_namespace: str, root_key: str = CODE_NAMESPACE_ROOT_KEY) -> List[str]:
@@ -261,6 +410,18 @@ class VariableDeclaration:
         return code
 
 
+class ExternalStructMember:
+    """Struct member whose type is defined in a shared mixin DTO header."""
+
+    @typechecked
+    def __init__(self, struct_name: str, namespace: str):
+        self.struct_name = struct_name
+        self.namespace = namespace  # C++ namespace, e.g. avt_341::params::core
+
+    def __str__(self):
+        return f'{self.namespace}::{pascal_case(self.struct_name)} {self.struct_name};\n'
+
+
 class DeclareStruct:
     @typechecked
     def __init__(self, struct_name: str, fields: List[VariableDeclaration]):
@@ -268,6 +429,8 @@ class DeclareStruct:
         self.fields = fields
         self.sub_structs = []
         self.struct_instance = ''
+        # render as a standalone type definition without a member instance
+        self.type_only = False
 
     @typechecked
     def add_field(self, field: VariableDeclaration):
@@ -297,7 +460,8 @@ class DeclareStruct:
         else:
             map_val_type = ''
             map_name = ''
-            self.struct_instance = self.struct_name
+            if not self.type_only:
+                self.struct_instance = self.struct_name
 
         data = {
             'struct_name': pascal_case(self.struct_name),
@@ -756,6 +920,9 @@ class GenerateCode:
         self.declare_parameter_sets = []
         self.set_stack_params = []
         self.user_validation_file = ''
+        self.mixin_include_prefix = ''
+        self.mixin_mounts = {}
+        self.mixin_include_stems = []
 
     def parse(self, yaml_file, validate_header):
         with open(yaml_file) as f:
@@ -789,6 +956,8 @@ class GenerateCode:
                     f'The yaml definition must have a {PARAMETERS_ROOT_KEY} root '
                     'element holding a non-empty mapping of parameter definitions'
                 )
+            parameters = expand_mixins(
+                parameters, yaml_file, self.mixin_mounts, self.mixin_include_stems)
             class_name = doc.get(CLASS_NAME_ROOT_KEY, DEFAULT_CLASS_NAME)
             if not isinstance(class_name, str) or not re.match(
                 r'^[A-Za-z_][A-Za-z0-9_]*$', class_name
@@ -898,7 +1067,19 @@ class GenerateCode:
 
             sub_struct = DeclareStruct(name, [])
             sub_stack_struct = DeclareStruct(name, [])
-            self.struct_tree.add_sub_struct(sub_struct)
+            mount_path = tuple(nested_name[1:] + [name])
+            external_namespace = (
+                self.mixin_mounts.get(mount_path)
+                if self.language == 'cpp' else None)
+            if external_namespace is not None:
+                # mixin-owned group: the member references the shared struct
+                # from the mixin DTO header instead of re-defining it inline;
+                # sub_struct becomes a throwaway so no inline definition is
+                # emitted while the parameter fragments are still generated
+                self.struct_tree.add_sub_struct(
+                    ExternalStructMember(name, external_namespace))
+            else:
+                self.struct_tree.add_sub_struct(sub_struct)
             self.struct_tree = sub_struct
             self.stack_struct_tree.add_sub_struct(sub_stack_struct)
             self.stack_struct_tree = sub_stack_struct
@@ -923,10 +1104,21 @@ class GenerateCode:
         else:
             namespace = self.namespace
 
+        if self.language == 'cpp' and self.mixin_include_stems:
+            include_format = (
+                f'#include <{self.mixin_include_prefix}/{{}}_params_dto.hpp>'
+                if self.mixin_include_prefix
+                else '#include "{}_params_dto.hpp"')
+            mixin_includes = '\n'.join(
+                include_format.format(stem) for stem in self.mixin_include_stems)
+        else:
+            mixin_includes = ''
+
         return {
             'user_validation_file': self.user_validation_file,
             'comments': self.comments,
             'namespace': namespace,
+            'mixin_includes': mixin_includes,
             'logger_name': '.'.join(self.namespace_tokens),
             'class_name': self.class_name,
             'stamp_class_name': self.class_name + 'Stamp',
@@ -979,6 +1171,37 @@ class GenerateCode:
         data['dto_header_include'] = dto_header_include
         j2_template = Template(
             GenerateCode.templates['parameter_service_header'],
+            keep_trailing_newline=True,
+        )
+        return j2_template.render(data, trim_blocks=True)
+
+    def parse_mixin(self, yaml_file):
+        """Parse a mixin template for shared fragment DTO generation.
+
+        Each root-level parameter group of the mixin becomes one standalone
+        struct definition in the mixin's code_namespace. Root-level leaf
+        parameters produce no code here; they only exist spliced into
+        including templates.
+        """
+        parameters, code_namespace = _read_mixin_file(yaml_file)
+        self.namespace = code_namespace
+        self.namespace_tokens = parse_code_namespace_tokens(code_namespace)
+        for key, value in parameters.items():
+            if _is_parameter_group(value):
+                self.parse_dict(key, value, [])
+                self.struct_tree.sub_structs[-1].type_only = True
+
+    @typechecked
+    def render_cpp_mixin_dto(self) -> str:
+        if self.language != 'cpp':
+            raise AssertionError('render_cpp_mixin_dto() requires the cpp generator')
+        data = {
+            'comments': self.comments,
+            'namespace': '::'.join(self.namespace_tokens),
+            'struct_content': ''.join(str(s) for s in self.struct_tree.sub_structs),
+        }
+        j2_template = Template(
+            GenerateCode.templates['mixin_dto_header'],
             keep_trailing_newline=True,
         )
         return j2_template.render(data, trim_blocks=True)

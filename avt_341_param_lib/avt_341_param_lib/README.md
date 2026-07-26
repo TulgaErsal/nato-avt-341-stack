@@ -44,18 +44,50 @@ target_link_libraries(my_node nav_params_service)
 The former `_parameters.hpp` header and `_parameters` target are not
 generated.
 
-## Launch node metadata
+## Template mixins
 
-`avt_341_param_lib.launch_metadata.MetadataCollection` loads one optional
+A template's `ros__parameters` tree may splice in shared parameter
+definitions from one or more mixin files with an `__include_mixins` entry:
+
+```yaml
+ros__parameters:
+  __include_mixins: costmap_geometry_mixin, costmap_publish_mixin
+  # a single stem or a yaml list ([a_mixin, b_mixin]) are also accepted
+```
+
+The value names one or more mixin files by bare stem, resolved to
+`mixins/<stem>.yaml` next to the including template. A mixin file uses the
+same format as a template; its `ros__parameters` content is merged at the
+location of the `__include_mixins` entry before any further processing, so code
+generation, launch arguments, and documentation all see the expanded
+template. A key provided both by the including mapping and a mixin (or by
+two mixins) is an error, and mixins cannot include other mixins. Keep mixin
+files in the `mixins/` subfolder: the generation glob does not match
+subfolders, so they are never processed as node templates themselves.
+
+For C++ generation each mixin additionally produces one shared type-only DTO
+header (`<stem>_params_dto.hpp`) defining a struct per root-level parameter
+group in the mixin's `code_namespace` (which is therefore required). The
+including template's generated DTO references those shared structs (e.g.
+`avt_341::params::core::Geometry geometry;`) instead of re-defining them
+inline, so several nodes can pass the same parameter class to common code.
+Root-level leaf parameters of a mixin splice as plain fields into the
+including struct. Struct (group) names must stay unique within a shared
+`code_namespace` across mixins, and dynamically mapped (`__map_`) parameters
+are not supported in mixins.
+
+## Launch node configuration
+
+`avt_341_param_lib.launch_node_config.NodeConfigCollection` loads one optional
 launch-only YAML file and returns the topic remappings and additional process
 environment that apply to a node:
 
 ```python
-from avt_341_param_lib.launch_metadata import MetadataCollection
+from avt_341_param_lib.launch_node_config import NodeConfigCollection
 
-metadata = MetadataCollection('/path/to/metadata.yaml')
-tracker_remappings = metadata.get_remappings('/veh1/object_tracking_node')
-tracker_environment = metadata.get_additional_env('/veh1/object_tracking_node')
+node_config = NodeConfigCollection('/path/to/node_config.yaml')
+tracker_remappings = node_config.get_remappings('/veh1/object_tracking_node')
+tracker_environment = node_config.get_additional_env('/veh1/object_tracking_node')
 ```
 
 This file is separate from ROS parameter files. It is consumed by a Python
@@ -109,7 +141,7 @@ Environment strings support embedded launch-context lookups:
 * `$env_var{NAME:-default}` uses `default` when `NAME` is absent. The default
   may be empty.
 
-The metadata loader compiles these expressions to ROS
+The node configuration loader compiles these expressions to ROS
 `EnvironmentVariable` substitutions. Plain `$NAME` and `${NAME}` strings are
 not expanded by `Node.additional_env` and remain literal.
 
@@ -119,7 +151,7 @@ matching definition wins. Selectors that do not match a node remain dormant,
 which permits one file to cover optional nodes and several vehicle
 configurations.
 
-`MetadataCollection(None)` and `MetadataCollection('')` create an empty
+`NodeConfigCollection(None)` and `NodeConfigCollection('')` create an empty
 collection. The API intentionally accepts only one file; file stacking,
 parameter-file preprocessing expressions, and per-rule launch arguments are
 not supported.

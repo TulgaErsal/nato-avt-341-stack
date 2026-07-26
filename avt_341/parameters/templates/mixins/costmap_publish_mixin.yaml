@@ -1,0 +1,25 @@
+code_namespace: avt_341/params/core
+ros__parameters:
+    publish:
+        method:
+            type: string
+            default_value: 'updates'
+            description: "Data transition method: 'full', 'window', or incremental 'updates'."
+            validation:
+                one_of<>: [ [ 'full', 'window', 'updates' ] ]
+        max_grid_width:
+            type: double
+            default_value: 100.0
+            description: "Maximum published grid width when method is 'window'."
+        max_grid_height:
+            type: double
+            default_value: 100.0
+            description: "Maximum published grid height when method is 'window'."
+        force_full_every:
+            type: double
+            default_value: 10.0
+            description: "Seconds between forced full grids in update mode; <= 0 disables."
+        layers:
+            type: string
+            default_value: ''
+            description: "Comma-separated layer names to publish in addition to the combined costmap."

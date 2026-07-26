@@ -306,10 +306,12 @@ int main(int argc, char* argv[]) {
     avt_341::node::OccupancyGridSubscriber sub_grid_occ(node,
         params.map_topic,
         1,
+        params.costmap.publish.method,
         CallbackGridOccupancy);
     avt_341::node::OccupancyGridSubscriber sub_grid_seg(node,
         "avt_341/segmentation_grid",
         1,
+        params.costmap.publish.method,
         CallbackGridSegmentation);
     auto sub_path =
         node->create_subscription<avt_341::msg::Path>("avt_341/global_path",

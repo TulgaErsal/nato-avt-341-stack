@@ -77,6 +77,12 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
   set(DTO_HEADER_FILE ${LIB_INCLUDE_DIR}/${DTO_LIB_NAME}.hpp)
   set(SERVICE_HEADER_FILE ${LIB_INCLUDE_DIR}/${SERVICE_LIB_NAME}.hpp)
 
+  # Templates may pull in mixin files (__include_mixins) from a sibling mixins/ folder; depend
+  # on all of them (conservative) so mixin edits regenerate the headers.
+  cmake_path(GET YAML_FILE_PATH PARENT_PATH avt341_gp_yaml_dir)
+  file(GLOB avt341_gp_mixin_files CONFIGURE_DEPENDS
+    "${avt341_gp_yaml_dir}/mixins/*.yaml" "${avt341_gp_yaml_dir}/mixins/*.yml")
+
   # Parse the yaml once and generate both headers.
   set(PARAM_GENERATION_STAMP
     ${CMAKE_CURRENT_BINARY_DIR}/${BASE_NAME}_params_generation.stamp)
@@ -86,8 +92,9 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
     COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_header
       ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE} ${YAML_FILE_PATH}
       ${VALIDATE_HEADER_FILENAME}
+      --mixin-include-prefix ${LIB_INCLUDE_SUBDIR}
     COMMAND ${CMAKE_COMMAND} -E touch ${PARAM_GENERATION_STAMP}
-    DEPENDS ${YAML_FILE_PATH} ${VALIDATE_HEADER}
+    DEPENDS ${YAML_FILE_PATH} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
     COMMENT "Generating ${DTO_LIB_NAME}.hpp and ${SERVICE_LIB_NAME}.hpp"
     VERBATIM
   )
@@ -128,6 +135,11 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
   )
   target_compile_features(${DTO_LIB_NAME} INTERFACE cxx_std_17)
   add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+  # Shared mixin DTO headers referenced by the generated dto header
+  # (conservative: link all mixin DTO libraries; they are header-only)
+  if(AVT341_MIXIN_DTO_LIBS)
+    target_link_libraries(${DTO_LIB_NAME} INTERFACE ${AVT341_MIXIN_DTO_LIBS})
+  endif()
 
   # The service target owns all ROS, validation, and formatting dependencies.
   add_library(${SERVICE_LIB_NAME} INTERFACE
@@ -214,6 +226,47 @@ macro(_avt_341_generate_parameters_glob GENERATOR_COMMAND GLOB_PATTERN DEFAULT_N
 endmacro()
 
 
+# avt_341_generate_cpp_mixin_file(<base_name> <yaml_file>)
+#
+# Generates the shared type-only DTO header and INTERFACE library for one
+# mixin template. Including templates reference the mixin's structs through
+# these headers instead of re-defining them inline.
+macro(avt_341_generate_cpp_mixin_file BASE_NAME YAML_FILE)
+  set(LIB_INCLUDE_SUBDIR ${PROJECT_NAME})
+  set(LIB_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include/${LIB_INCLUDE_SUBDIR})
+  file(MAKE_DIRECTORY ${LIB_INCLUDE_DIR})
+
+  set(avt341_gp_yaml_file ${YAML_FILE})
+  cmake_path(ABSOLUTE_PATH avt341_gp_yaml_file BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE YAML_FILE_PATH)
+
+  set(DTO_LIB_NAME "${BASE_NAME}_params_dto")
+  set(DTO_HEADER_FILE ${LIB_INCLUDE_DIR}/${DTO_LIB_NAME}.hpp)
+
+  add_custom_command(
+    OUTPUT ${DTO_HEADER_FILE}
+    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_mixin_header
+      ${DTO_HEADER_FILE} ${YAML_FILE_PATH}
+    DEPENDS ${YAML_FILE_PATH}
+    COMMENT "Generating mixin DTO ${DTO_LIB_NAME}.hpp"
+    VERBATIM
+  )
+  add_custom_target(${BASE_NAME}_params_generation ALL
+    DEPENDS ${DTO_HEADER_FILE})
+
+  add_library(${DTO_LIB_NAME} INTERFACE ${DTO_HEADER_FILE})
+  target_include_directories(${DTO_LIB_NAME} INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_compile_features(${DTO_LIB_NAME} INTERFACE cxx_std_17)
+  add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+  install(
+    FILES ${DTO_HEADER_FILE}
+    DESTINATION include/${LIB_INCLUDE_SUBDIR}
+  )
+endmacro()
+
+
 # avt_341_generate_cpp_parameters(<glob_pattern> [<validate_header>] [RECURSE]
 #                                 [INCLUDE_SUBFOLDER <sub/folders>] [NAME_SUFFIX <suffix>])
 #
@@ -225,7 +278,28 @@ endmacro()
 # <name>.yaml produces the INTERFACE library target and header <name><suffix>,
 # where <suffix> defaults to empty and can be overridden with NAME_SUFFIX.
 # The fixed output suffixes are "_params_dto" and "_params_service".
+#
+# Mixin templates in a "mixins" subfolder of the pattern directory each
+# generate a shared type-only DTO header (see avt_341_generate_cpp_mixin_file)
+# before the node templates are processed; every node template DTO library
+# links the mixin DTO libraries.
 macro(avt_341_generate_cpp_parameters GLOB_PATTERN)
+  # Generate shared mixin DTO fragments first so the template DTO libraries
+  # can link them.
+  set(avt341_gpm_mixin_dir ${GLOB_PATTERN})
+  cmake_path(ABSOLUTE_PATH avt341_gpm_mixin_dir BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  if(NOT IS_DIRECTORY ${avt341_gpm_mixin_dir})
+    cmake_path(GET avt341_gpm_mixin_dir PARENT_PATH avt341_gpm_mixin_dir)
+  endif()
+  set(AVT341_MIXIN_DTO_LIBS "")
+  file(GLOB avt341_gpm_mixin_yamls CONFIGURE_DEPENDS
+    "${avt341_gpm_mixin_dir}/mixins/*.yaml" "${avt341_gpm_mixin_dir}/mixins/*.yml")
+  foreach(avt341_gpm_mixin_yaml IN LISTS avt341_gpm_mixin_yamls)
+    cmake_path(GET avt341_gpm_mixin_yaml STEM avt341_gpm_mixin_stem)
+    avt_341_generate_cpp_mixin_file(${avt341_gpm_mixin_stem} ${avt341_gpm_mixin_yaml})
+    list(APPEND AVT341_MIXIN_DTO_LIBS ${avt341_gpm_mixin_stem}_params_dto)
+  endforeach()
+
   _avt_341_generate_parameters_glob(
     avt_341_generate_cpp_parameter_file "${GLOB_PATTERN}" "" ${ARGN})
 endmacro()
@@ -251,11 +325,17 @@ function(avt_341_generate_python_parameter_file LIB_NAME YAML_FILE)
   # Generate into the build tree, not into CMAKE_INSTALL_PREFIX
   set(PARAM_HEADER_FILE ${PY_BUILD_DIR}/${LIB_NAME}.py)
 
+  # Templates may pull in mixin files (__include_mixins) from a sibling mixins/ folder; depend
+  # on all of them (conservative) so mixin edits regenerate the module.
+  cmake_path(GET YAML_FILE PARENT_PATH avt341_gp_yaml_dir)
+  file(GLOB avt341_gp_mixin_files CONFIGURE_DEPENDS
+    "${avt341_gp_yaml_dir}/mixins/*.yaml" "${avt341_gp_yaml_dir}/mixins/*.yml")
+
   # Generate the module for Python
   add_custom_command(
           OUTPUT ${PARAM_HEADER_FILE}
           COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}
-          DEPENDS ${YAML_FILE} ${VALIDATE_HEADER}
+          DEPENDS ${YAML_FILE} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
           COMMENT
           "Running `${Python3_EXECUTABLE} -m avt_341_param_lib.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}`"
           VERBATIM

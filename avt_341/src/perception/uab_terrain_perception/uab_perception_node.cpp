@@ -607,25 +607,25 @@ int main(int argc, char *argv[])
     }
 
     const int width_cells =
-        static_cast<int>(params.grid_width / params.grid_res);
+        static_cast<int>(params.costmap.geometry.width / params.costmap.geometry.res);
     const int height_cells =
-        static_cast<int>(params.grid_height / params.grid_res);
+        static_cast<int>(params.costmap.geometry.height / params.costmap.geometry.res);
 
     //initialize terrain grid with default cell values
     avt_341::msg::OccupancyGrid terrain_grid;
     BuildOccupancyGrid(
         terrain_grid, width_cells, height_cells,
-        static_cast<float>(params.grid_llx),
-        static_cast<float>(params.grid_lly),
-        static_cast<float>(params.grid_res), TERRAIN_GRID_DEFAULT_VAL);
+        static_cast<float>(params.costmap.geometry.llx),
+        static_cast<float>(params.costmap.geometry.lly),
+        static_cast<float>(params.costmap.geometry.res), TERRAIN_GRID_DEFAULT_VAL);
 
     //initialize obstacle grid with default cell values
     avt_341::msg::OccupancyGrid obstacle_grid;
     BuildOccupancyGrid(
         obstacle_grid, width_cells, height_cells,
-        static_cast<float>(params.grid_llx),
-        static_cast<float>(params.grid_lly),
-        static_cast<float>(params.grid_res), OBSTACLE_GRID_DEFAULT_VAL);
+        static_cast<float>(params.costmap.geometry.llx),
+        static_cast<float>(params.costmap.geometry.lly),
+        static_cast<float>(params.costmap.geometry.res), OBSTACLE_GRID_DEFAULT_VAL);
 
     avt_341::node::Rate rate(100.0);
     //number of seconds to wait for messages before exiting
@@ -669,9 +669,9 @@ int main(int argc, char *argv[])
             GetCostmapFromMatlab(
                 width_cells,
                 height_cells,
-                static_cast<float>(params.grid_res),
-                static_cast<float>(params.grid_llx),
-                static_cast<float>(params.grid_lly),
+                static_cast<float>(params.costmap.geometry.res),
+                static_cast<float>(params.costmap.geometry.llx),
+                static_cast<float>(params.costmap.geometry.lly),
                 params.brightness_offset,
                 terrain_sub_grid,
                 terrain_sub_grid_idxs,
@@ -719,14 +719,14 @@ int main(int argc, char *argv[])
                 terrain_grid_window = ExtractGridWindow(terrain_grid,
                                                         current_pose.pose.pose.position.x,
                                                         current_pose.pose.pose.position.y,
-                                                        params.max_width,
-                                                        params.max_height,
+                                                        params.costmap.publish.max_grid_width,
+                                                        params.costmap.publish.max_grid_height,
                                                         TERRAIN_GRID_DEFAULT_VAL);
                 obstacle_grid_window = ExtractGridWindow(obstacle_grid,
                                                          current_pose.pose.pose.position.x,
                                                          current_pose.pose.pose.position.y,
-                                                         params.max_width,
-                                                         params.max_height,
+                                                         params.costmap.publish.max_grid_width,
+                                                         params.costmap.publish.max_grid_height,
                                                          OBSTACLE_GRID_DEFAULT_VAL);
             }
 

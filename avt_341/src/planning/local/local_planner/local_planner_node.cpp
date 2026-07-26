@@ -75,8 +75,10 @@ int main(int argc, char *argv[]){
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   avt_341::node::OccupancyGridSubscriber grid_sub(
-      n, params.map_topic, 10, GridCallback);
-  avt_341::node::OccupancyGridSubscriber segmentation_grid_sub(n, "avt_341/segmentation_grid", 10, SegmentationGridCallback);
+      n, params.map_topic, 10, params.costmap.publish.method, GridCallback);
+  avt_341::node::OccupancyGridSubscriber segmentation_grid_sub(
+      n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
+      SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
   auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",10,SpeedCallback);

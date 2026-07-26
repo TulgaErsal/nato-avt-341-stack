@@ -8,6 +8,10 @@
 #include <string>
 #include <vector>
 
+{% if mixin_includes|length -%}
+{{mixin_includes}}
+
+{% endif -%}
 namespace {{namespace}} {
 
 struct {{stamp_class_name}} {

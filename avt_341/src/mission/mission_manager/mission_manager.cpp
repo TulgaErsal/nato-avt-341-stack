@@ -26,8 +26,8 @@ MissionManager::MissionManager(
     task_list.clear();
     mission_contacts.clear();
 
-    local_origin_x = params_.map_origin_x;
-    local_origin_y = params_.map_origin_y;
+    local_origin_x = params_.gis.origin_x;
+    local_origin_y = params_.gis.origin_y;
 
     waypoint_pub = node_proxy_->create_publisher<avt_341::msg::NavGoalSequence>("avt_341/new_waypoints", 10);
     reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);

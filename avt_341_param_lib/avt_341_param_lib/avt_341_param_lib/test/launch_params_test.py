@@ -3,14 +3,16 @@ from collections import OrderedDict
 from pathlib import Path
 
 import pytest
+from ament_index_python.packages import PackageNotFoundError
 
 from avt_341_param_lib.generate_cpp_header import run as run_cpp
+from avt_341_param_lib.generate_cpp_mixin_header import run as run_mixin_cpp
 from avt_341_param_lib.launch_params import (
     ParameterCollection,
     _normalize_selector,
     convert_cli_value,
     convert_typed_value,
-    load_template_metadata,
+    load_template_specs,
     relevant_params_files,
     selector_matches,
 )
@@ -66,7 +68,7 @@ def resolve(cli_args, vehicles=VEHICLES):
 
 
 def test_metadata():
-    specs = load_template_metadata(TEMPLATE_A)
+    specs = load_template_specs(TEMPLATE_A)
     assert set(specs.keys()) == {'cruise_speed', 'planner.mode', 'ids'}
     assert specs['cruise_speed'].param_type == 'double'
     assert specs['cruise_speed'].default_value == 1.5
@@ -76,9 +78,41 @@ def test_metadata():
     assert specs['ids'].default_value == [1, 2]
 
 
+def test_multi_template_node_merges_specs():
+    # a node may list several templates (executable linking several generated
+    # parameter services); overrides validate against the union
+    collection = ParameterCollection.from_node_templates({
+        'planner': TEMPLATE_A,
+        'combined': [TEMPLATE_A, TEMPLATE_B],
+    })
+    names = set(collection.argument_names())
+    assert 'combined/cruise_speed' in names
+    assert 'combined/enabled' in names
+    assert 'planner/enabled' not in names
+
+    overrides = collection.resolve(OrderedDict([
+        ('combined/cruise_speed', '3.5'),
+        ('combined/enabled', 'false'),
+    ]), VEHICLES)
+    assert overrides.for_node('/veh1/combined') == {
+        'cruise_speed': 3.5, 'enabled': False}
+    assert overrides.for_node('/veh1/planner') == {}
+
+    # a single-template node still rejects the other template's parameters
+    with pytest.raises(RuntimeError, match='enabled'):
+        collection.resolve(OrderedDict([('planner/enabled', 'false')]), VEHICLES)
+
+
+def test_multi_template_duplicate_parameter_raises():
+    with pytest.raises(ValueError, match='declared by several templates'):
+        ParameterCollection.from_node_templates({
+            'combined': [TEMPLATE_A, TEMPLATE_A],
+        })
+
+
 def test_object_tracking_metadata_and_generated_nested_structs(tmp_path):
     template = find_object_tracking_template()
-    specs = load_template_metadata(template)
+    specs = load_template_specs(template)
 
     assert specs['tracking.target_timeout'].param_type == 'double'
     assert (
@@ -123,7 +157,7 @@ def test_object_tracking_launch_overrides_use_dotted_names():
 
 def test_mission_manager_metadata_and_generated_nested_structs(tmp_path):
     template = find_mission_manager_template()
-    specs = load_template_metadata(template)
+    specs = load_template_specs(template)
 
     assert specs['formation.global_path_points_dist'].param_type == 'double'
     assert specs['fsc.oof.threshold'].param_type == 'double'
@@ -172,9 +206,11 @@ def test_mission_manager_launch_overrides_use_dotted_names():
 
 def test_perception_metadata_and_generated_nested_structs(tmp_path):
     template = find_perception_template()
-    specs = load_template_metadata(template)
+    specs = load_template_specs(template)
 
-    assert specs['costmap.size_info.res'].param_type == 'float'
+    assert specs['costmap.geometry.res'].param_type == 'float'
+    assert specs['costmap.publish.method'].param_type == 'string'
+    assert specs['costmap.publish.max_grid_width'].param_type == 'double'
     assert specs['costmap.thresholds.thresh'].param_type == 'float'
     assert specs['costmap.dilation.x'].param_type == 'float'
     assert specs['costmap.terrain_rms.hfov'].param_type == 'float'
@@ -189,12 +225,16 @@ def test_perception_metadata_and_generated_nested_structs(tmp_path):
     dto = dto_output.read_text()
     service = service_output.read_text()
 
-    assert 'struct SizeInfo' in dto
+    # geometry and publish reference the shared mixin DTO structs
+    assert '#include "costmap_geometry_mixin_params_dto.hpp"' in dto
+    assert '#include "costmap_publish_mixin_params_dto.hpp"' in dto
+    assert 'avt_341::params::core::Geometry geometry;' in dto
+    assert 'avt_341::params::core::Publish publish;' in dto
     assert 'struct Thresholds' in dto
     assert 'struct Dilation' in dto
     assert 'struct TerrainRms' in dto
-    assert 'float res = 0.25F;' in dto
-    assert '"costmap.size_info.res"' in service
+    assert '"costmap.geometry.res"' in service
+    assert '"costmap.publish.method"' in service
     assert '"costmap.thresholds.thresh"' in service
     assert '"costmap.terrain_rms.hfov"' in service
 
@@ -204,13 +244,13 @@ def test_perception_launch_overrides_use_dotted_names():
         'perception_node': find_perception_template(),
     })
     overrides = collection.resolve(OrderedDict([
-        ('perception_node/costmap.size_info.res', '0.5'),
+        ('perception_node/costmap.geometry.res', '0.5'),
         ('perception_node/costmap.dilation.x', '1.0'),
         ('perception_node/point_cloud_layer.topic', '/points'),
     ]), VEHICLES)
 
     expected = {
-        'costmap.size_info.res': 0.5,
+        'costmap.geometry.res': 0.5,
         'costmap.dilation.x': 1.0,
         'point_cloud_layer.topic': '/points',
     }
@@ -223,11 +263,170 @@ def test_perception_launch_overrides_use_dotted_names():
         ]), VEHICLES)
 
 
+MIXIN_TEXT = """
+code_namespace: avt_341/params/core
+ros__parameters:
+  costmap_info:
+    geometry:
+      res:
+        type: float
+        default_value: 0.25
+        description: "Grid resolution."
+        validation:
+          gt<>: [ 0.0 ]
+    transmission:
+      type: string
+      default_value: 'window'
+      description: "Transmission method."
+"""
+
+TEMPLATE_WITH_MIXIN = """
+code_namespace: demo
+ros__parameters:
+  __include_mixins: costmap_info_mixin
+  rate:
+    type: double
+    default_value: 10.0
+"""
+
+
+def write_template_with_mixin(tmp_path, template_text=TEMPLATE_WITH_MIXIN,
+                              mixin_text=MIXIN_TEXT, stem='costmap_info_mixin'):
+    mixins_dir = tmp_path / 'mixins'
+    mixins_dir.mkdir(exist_ok=True)
+    (mixins_dir / f'{stem}.yaml').write_text(mixin_text)
+    template = tmp_path / 'node.yaml'
+    template.write_text(template_text)
+    return str(template)
+
+
+def test_load_template_specs_expands_mixins(tmp_path):
+    specs = load_template_specs(write_template_with_mixin(tmp_path))
+    assert set(specs) == {
+        'rate', 'costmap_info.geometry.res', 'costmap_info.transmission'}
+    assert specs['costmap_info.geometry.res'].param_type == 'float'
+    assert specs['costmap_info.transmission'].default_value == 'window'
+
+
+def test_load_template_specs_expands_nested_mixin_list(tmp_path):
+    limits_mixin = (
+        'code_namespace: avt_341/params/core\n'
+        'ros__parameters:\n'
+        '  limits:\n'
+        '    max:\n'
+        '      type: double\n'
+        '      default_value: 5.0\n'
+    )
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  group:\n'
+        '    __include_mixins: [costmap_info_mixin, limits]\n'
+    )
+    path = write_template_with_mixin(tmp_path, template)
+    (tmp_path / 'mixins' / 'limits.yaml').write_text(limits_mixin)
+    specs = load_template_specs(path)
+    assert set(specs) == {
+        'group.costmap_info.geometry.res',
+        'group.costmap_info.transmission',
+        'group.limits.max',
+    }
+
+
+def test_include_mixins_comma_separated_string(tmp_path):
+    limits_mixin = (
+        'code_namespace: avt_341/params/core\n'
+        'ros__parameters:\n'
+        '  limits:\n'
+        '    max:\n'
+        '      type: double\n'
+        '      default_value: 5.0\n'
+    )
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __include_mixins: costmap_info_mixin, limits\n'
+    )
+    path = write_template_with_mixin(tmp_path, template)
+    (tmp_path / 'mixins' / 'limits.yaml').write_text(limits_mixin)
+    specs = load_template_specs(path)
+    assert set(specs) == {
+        'costmap_info.geometry.res',
+        'costmap_info.transmission',
+        'limits.max',
+    }
+
+
+def test_include_mixin_missing_file_raises(tmp_path):
+    template = tmp_path / 'node.yaml'
+    template.write_text(
+        'code_namespace: demo\nros__parameters:\n  __include_mixins: nope\n')
+    with pytest.raises(Exception, match='not found'):
+        load_template_specs(str(template))
+
+
+def test_include_mixin_key_collision_raises(tmp_path):
+    template = TEMPLATE_WITH_MIXIN + (
+        '  costmap_info:\n'
+        '    other:\n'
+        '      type: double\n'
+        '      default_value: 1.0\n'
+    )
+    with pytest.raises(Exception, match='already exists'):
+        load_template_specs(write_template_with_mixin(tmp_path, template))
+
+
+def test_mixin_nested_include_mixin_raises(tmp_path):
+    nested_mixin = (
+        'code_namespace: avt_341/params/core\n'
+        'ros__parameters:\n'
+        '  __include_mixins: other\n'
+    )
+    with pytest.raises(Exception, match='cannot include other mixins'):
+        load_template_specs(
+            write_template_with_mixin(tmp_path, mixin_text=nested_mixin))
+
+
+def test_generated_cpp_references_shared_mixin_structs(tmp_path):
+    template = write_template_with_mixin(tmp_path)
+    dto_output = tmp_path / 'node_params_dto.hpp'
+    service_output = tmp_path / 'node_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), template)
+    dto = dto_output.read_text()
+    service = service_output.read_text()
+    # the mixin group references the shared struct instead of re-defining it
+    # inline; the single remaining inline definition is StackParams' internal
+    # copy, which intentionally stays per-template
+    assert '#include "costmap_info_mixin_params_dto.hpp"' in dto
+    assert 'avt_341::params::core::CostmapInfo costmap_info;' in dto
+    assert dto.count('struct CostmapInfo') == 1
+    # the parameter fragments still cover the mixin's parameters
+    assert '"costmap_info.geometry.res"' in service
+    assert '"costmap_info.transmission"' in service
+
+
+def test_generated_mixin_fragment_header(tmp_path):
+    mixins_dir = tmp_path / 'mixins'
+    mixins_dir.mkdir(exist_ok=True)
+    mixin = mixins_dir / 'costmap_info_mixin.yaml'
+    mixin.write_text(MIXIN_TEXT)
+    output = tmp_path / 'costmap_info_mixin_params_dto.hpp'
+    run_mixin_cpp(str(output), str(mixin))
+    header = output.read_text()
+    assert 'namespace avt_341::params::core' in header
+    assert 'struct CostmapInfo' in header
+    assert 'struct Geometry' in header
+    assert 'float res = 0.25F;' in header
+    # type-only definitions: no member instance, no listener baggage
+    assert '} costmap_info;' not in header
+    assert '__stamp' not in header
+
+
 def test_metadata_rejects_non_template_file(tmp_path):
     bad = tmp_path / 'not_a_template.yaml'
     bad.write_text('just_a_key: 5\n')
     with pytest.raises(ValueError):
-        load_template_metadata(str(bad))
+        load_template_specs(str(bad))
 
 
 def test_argument_names():
@@ -294,6 +493,29 @@ def test_resolve_bare_vehicle_mapping():
     assert overrides.for_node('/veh1/planner') == {'cruise_speed': 3.25}
     assert overrides.for_node('/veh1/controller') == {'cruise_speed': 3.25}
     assert overrides.for_node('/veh2/planner') == {}
+
+
+def test_resolve_bare_parameter_name():
+    # a bare declared parameter name is shorthand for **/<param.name>
+    overrides = resolve([('cruise_speed', '9.0')])
+    for fqn in ('/veh1/planner', '/veh1/controller', '/veh2/planner', '/veh2/controller'):
+        assert overrides.for_node(fqn) == {'cruise_speed': 9.0}
+    # sensor does not declare cruise_speed: dormant, like a yaml file entry
+    assert overrides.for_node('/veh1/sensor') == {}
+
+
+def test_resolve_bare_dotted_parameter_name():
+    overrides = resolve([('planner.mode', 'graph')])
+    assert overrides.for_node('/veh1/planner') == {'planner.mode': 'graph'}
+    assert overrides.for_node('/veh2/controller') == {'planner.mode': 'graph'}
+    assert overrides.for_node('/veh1/sensor') == {}
+
+
+def test_resolve_rejects_bare_undeclared_name():
+    # names no template declares keep the malformed-key error (the
+    # resolve_cli_overrides gate never lets them through in the first place)
+    with pytest.raises(RuntimeError, match='Malformed'):
+        resolve([('cruse_speed', '1.0')])
 
 
 def test_resolve_mapping_with_nested_group():
@@ -383,6 +605,20 @@ def test_resolve_cli_overrides_accepts_bare_vehicle_and_node_keys():
     assert overrides.for_node('/veh2/planner') == {'planner.mode': 'graph'}
 
 
+def test_resolve_cli_overrides_accepts_bare_parameter_names():
+    pargs = make_collection()
+    context = FakeContext(OrderedDict([
+        ('vehicle_ids', '[veh1, veh2]'),  # ordinary argument: ignored
+        ('use_sim_time', 'False'),        # ordinary argument: ignored
+        ('cruise_speed', '4.5'),          # declared in a template: override
+    ]))
+    pargs._snapshot_cmd_args(context)
+    overrides = pargs.resolve_cli_overrides(context, VEHICLES)
+    assert overrides.for_node('/veh1/planner') == {'cruise_speed': 4.5}
+    assert overrides.for_node('/veh2/controller') == {'cruise_speed': 4.5}
+    assert overrides.for_node('/veh1/sensor') == {}
+
+
 def test_relevant_params_files(tmp_path):
     everyone = tmp_path / 'everyone.yaml'
     everyone.write_text('/**:\n  ros__parameters:\n    cruise_speed: 2.5\n')
@@ -438,3 +674,27 @@ def test_convert_typed_values():
     assert convert_typed_value([1, 2], 'int_array', 'a') == [1, 2]
     with pytest.raises(ValueError):
         convert_typed_value('nope', 'double', 'a')
+
+
+def test_convert_string_expands_pkg_path(monkeypatch):
+    monkeypatch.setattr(
+        'avt_341_param_lib.launch_params.get_package_share_directory',
+        lambda pkg: f'/opt/share/{pkg}')
+    assert convert_cli_value(
+        '$pkg_path{demo}/maps/a.csv', 'string', 'a') == '/opt/share/demo/maps/a.csv'
+    assert convert_typed_value('$pkg_path{demo}/m.csv', 'string', 'a') == '/opt/share/demo/m.csv'
+    assert convert_typed_value(
+        ['$pkg_path{p1}/a', 'plain'], 'string_array', 'a') == ['/opt/share/p1/a', 'plain']
+
+
+def test_convert_pkg_path_errors(monkeypatch):
+    def raise_not_found(pkg):
+        raise PackageNotFoundError(pkg)
+    monkeypatch.setattr(
+        'avt_341_param_lib.launch_params.get_package_share_directory', raise_not_found)
+    with pytest.raises(ValueError, match=r"\$pkg_path\{nope\} in parameter override 'a'"):
+        convert_cli_value('$pkg_path{nope}/f.csv', 'string', 'a')
+    with pytest.raises(ValueError, match='no package name'):
+        convert_cli_value('$pkg_path{}/f.csv', 'string', 'a')
+    with pytest.raises(ValueError, match='unterminated'):
+        convert_cli_value('$pkg_path{nope/f.csv', 'string', 'a')

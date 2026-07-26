@@ -3,34 +3,9 @@ ros__parameters:
 
   # Grid
   # ====================================================================================================================
-  grid_llx:
-    type: double
-    default_value: 0.0
-    description: "X coordinate grid bottom left anchor point."
-  grid_lly:
-    type: double
-    default_value: 0.0
-    description: "Y coordinate grid bottom left anchor point."
-  grid_width:
-    type: double
-    default_value: 100.0
-    description: "Occupancy grid width in meters. Renamed from the legacy global parameter /grid_width."
-  grid_height:
-    type: double
-    default_value: 100.0
-    description: "Occupancy grid height in meters. Renamed from the legacy global parameter /grid_height."
-  max_width:
-    type: double
-    default_value: 800.0
-    description: "Maximum grid width in meters."
-  max_height:
-    type: double
-    default_value: 800.0
-    description: "Maximum grid height in meters."
-  grid_res:
-    type: double
-    default_value: 1.0
-    description: "Grid resolution in meters."
+  costmap:
+    __include_mixins: costmap_geometry_mixin, costmap_publish_mixin
+
   publish_uab_occupancy_grid:
     type: bool
     default_value: false

@@ -14,6 +14,9 @@ namespace avt_341::mission {
 struct ObsAvoidGoalFilterParams {
 
     std::string vehicle_id;
+    // costmap publish method of the grid producer; drives grid subscription
+    // latching (empty = normal subscription)
+    std::string publish_method;
     int occ_threshold = 0;
     double padding = 1.0;
     bool pub_unfiltered_goal = false;
@@ -36,7 +39,8 @@ public:
         std::shared_ptr<node::NodeProxy> node,
         const std::string& vehicle_id,
         const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params =
-            avt_341::params::mission_manager::Params::FgfObsAvoid{});
+            avt_341::params::mission_manager::Params::FgfObsAvoid{},
+        const std::string& publish_method = std::string());
 
     msg::Pose Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) override;
 

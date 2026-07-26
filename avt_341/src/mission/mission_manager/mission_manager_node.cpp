@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
     std::shared_ptr<avt_341::mission::GoalFilter> goal_filter =
         avt_341::mission::create_goal_filter(
             my_name, params.formation_goal_filter, nh,
-            params.fgf_obs_avoid);
+            params.fgf_obs_avoid, params.costmap.publish.method);
 
     mgr = std::make_shared<avt_341::mission::MissionManager>(
         params, my_name, nh, goal_filter);

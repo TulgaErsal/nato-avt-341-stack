@@ -238,11 +238,11 @@ def _validate_node_fqn(node_fqn: str) -> None:
             f"Expected an absolute fully qualified node name, got {node_fqn!r}")
 
 
-class MetadataCollection:
-    """Launch metadata selected for nodes by fully qualified node name.
+class NodeConfigCollection:
+    """Launch node configuration selected for nodes by fully qualified node name.
 
-    ``path`` names zero or one launch-only metadata YAML file. ``None`` and
-    the empty string create an empty collection.
+    ``path`` names zero or one launch-only node configuration YAML file.
+    ``None`` and the empty string create an empty collection.
     """
 
     def __init__(self, path=None):

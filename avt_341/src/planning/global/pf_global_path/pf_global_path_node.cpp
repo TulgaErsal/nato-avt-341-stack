@@ -16,6 +16,7 @@
 #include <avt_341/node/occupancy_grid_subscriber.h>
 // local includes
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/core/waypoint_file_parser.hpp"
 #include "avt_341/planning/local/pf_planner.h"
 #include <avt_341/pf_global_planner_params_service.hpp>
 avt_341::msg::Odometry odom;
@@ -133,16 +134,23 @@ int main(int argc, char *argv[])
   int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
   if (shutdown_behavior>3 || shutdown_behavior<1)shutdown_behavior = 1;
 
-  if (params.waypoints_x.size() != params.waypoints_y.size())
+  avt_341::core::WaypointLists initial_waypoints;
+  if (!params.initial_waypoints.empty())
   {
-    std::cerr << "WARNING: " << params.waypoints_x.size()
-              << " X COORDINATES WERE PROVIDED FOR "
-              << params.waypoints_y.size() << " Y COORDINATES." << std::endl;
-  }
-  if (params.waypoints_x.empty() || params.waypoints_y.empty())
-  {
-    std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN /waypoints_x OR /waypoints_y." << std::endl;
-    //return 2;
+    initial_waypoints =
+        avt_341::core::WaypointFileParser::Parse(params.initial_waypoints);
+    if (initial_waypoints.x.size() != initial_waypoints.y.size())
+    {
+      std::cerr << "WARNING: " << initial_waypoints.x.size()
+                << " X COORDINATES WERE PROVIDED FOR "
+                << initial_waypoints.y.size() << " Y COORDINATES IN "
+                << params.initial_waypoints << std::endl;
+    }
+    if (initial_waypoints.x.empty() || initial_waypoints.y.empty())
+    {
+      std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN "
+                << params.initial_waypoints << std::endl;
+    }
   }
 
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
@@ -153,8 +161,10 @@ int main(int argc, char *argv[])
 
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   avt_341::node::OccupancyGridSubscriber map_sub(
-      n, params.map_topic, 10, MapCallback);
-  avt_341::node::OccupancyGridSubscriber segmentation_map_sub(n, "avt_341/segmentation_grid", 10, SegmentationMapCallback);
+      n, params.map_topic, 10, params.costmap.publish.method, MapCallback);
+  avt_341::node::OccupancyGridSubscriber segmentation_map_sub(
+      n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
+      SegmentationMapCallback);
   auto waypoint_sub = n->create_subscription<avt_341::msg::Path>(
       "avt_341/new_waypoints", 10,
       [&params](avt_341::msg::PathPtr msg) {
@@ -190,7 +200,7 @@ int main(int argc, char *argv[])
   state.data = avt_341::utils::NavStackState::NotInit;
 
   const auto num_waypoints =
-      std::min(params.waypoints_x.size(), params.waypoints_y.size());
+      std::min(initial_waypoints.x.size(), initial_waypoints.y.size());
   Reset();
 
   // Initialize current waypoints with the data from the waypoint yaml params
@@ -202,9 +212,9 @@ int main(int argc, char *argv[])
     for (int32_t i=0;i<num_waypoints;i++){
       avt_341::msg::PoseStamped pose;
       pose.pose.position.x =
-          static_cast<float>(params.waypoints_x[i] - params.map_origin_x);
+          static_cast<float>(initial_waypoints.x[i] - params.gis.origin_x);
       pose.pose.position.y =
-          static_cast<float>(params.waypoints_y[i] - params.map_origin_y);
+          static_cast<float>(initial_waypoints.y[i] - params.gis.origin_y);
       pose.pose.position.z = 0.0f;
       pose.pose.orientation.w = 1.0f;
       pose.pose.orientation.x = 0.0f;
@@ -213,8 +223,8 @@ int main(int argc, char *argv[])
       current_waypoints.poses.push_back(pose);
     }
       // Initialize goal to first waypoint
-    goal[0] = params.waypoints_x[0] - params.map_origin_x;
-    goal[1] = params.waypoints_y[0] - params.map_origin_y;
+    goal[0] = initial_waypoints.x[0] - params.gis.origin_x;
+    goal[1] = initial_waypoints.y[0] - params.gis.origin_y;
     state.data = avt_341::utils::NavStackState::Active; // go active
     state_pub->publish(state);
   }

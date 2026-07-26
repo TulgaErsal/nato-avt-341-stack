@@ -5,13 +5,13 @@ import pytest
 from launch.substitutions import SubstitutionFailure
 from launch.utilities import normalize_to_list_of_substitutions, perform_substitutions
 
-from avt_341_param_lib.launch_metadata import MetadataCollection
+from avt_341_param_lib.launch_node_config import NodeConfigCollection
 
 
-def load(tmp_path: Path, text: str) -> MetadataCollection:
+def load(tmp_path: Path, text: str) -> NodeConfigCollection:
     path = tmp_path / 'metadata.yaml'
     path.write_text(text, encoding='utf-8')
-    return MetadataCollection(path)
+    return NodeConfigCollection(path)
 
 
 class SubstitutionContext:
@@ -24,7 +24,7 @@ class SubstitutionContext:
         return substitution.perform(self)
 
 
-def resolve_env(metadata: MetadataCollection, node_fqn: str):
+def resolve_env(metadata: NodeConfigCollection, node_fqn: str):
     context = SubstitutionContext()
     return {
         name: perform_substitutions(
@@ -237,7 +237,7 @@ def test_results_are_defensive_collections(tmp_path):
 
 @pytest.mark.parametrize('path_value', [None, ''])
 def test_none_and_empty_paths_create_empty_collection(path_value):
-    metadata = MetadataCollection(path_value)
+    metadata = NodeConfigCollection(path_value)
     assert metadata.get_remappings('/veh1/node') == []
     assert metadata.get_additional_env('/veh1/node') == {}
 
@@ -251,7 +251,7 @@ def test_empty_files_and_mappings_are_valid(tmp_path, contents):
 
 def test_missing_file_raises_file_not_found(tmp_path):
     with pytest.raises(FileNotFoundError):
-        MetadataCollection(tmp_path / 'missing.yaml')
+        NodeConfigCollection(tmp_path / 'missing.yaml')
 
 
 @pytest.mark.parametrize(
@@ -288,14 +288,14 @@ def test_invalid_configurations_include_the_file_path(tmp_path, contents):
     path = tmp_path / 'invalid.yaml'
     path.write_text(contents, encoding='utf-8')
     with pytest.raises(ValueError, match='invalid.yaml'):
-        MetadataCollection(path)
+        NodeConfigCollection(path)
 
 
 def test_invalid_yaml_includes_the_file_path(tmp_path):
     path = tmp_path / 'invalid.yaml'
     path.write_text('/node: [\n', encoding='utf-8')
     with pytest.raises(ValueError, match='invalid.yaml'):
-        MetadataCollection(path)
+        NodeConfigCollection(path)
 
 
 @pytest.mark.parametrize(
@@ -305,4 +305,128 @@ def test_invalid_yaml_includes_the_file_path(tmp_path):
 @pytest.mark.parametrize('getter_name', ['get_remappings', 'get_additional_env'])
 def test_metadata_getters_require_an_absolute_node_fqn(node_fqn, getter_name):
     with pytest.raises(ValueError, match='fully qualified'):
-        getattr(MetadataCollection(), getter_name)(node_fqn)
+        getattr(NodeConfigCollection(), getter_name)(node_fqn)
+
+
+# ---------------------------------------------------------------------------
+# Shipped avt_341 deployment configuration (krc_mrzr node_config.yaml)
+# ---------------------------------------------------------------------------
+
+def find_krc_mrzr_node_config() -> Path:
+    for parent in Path(__file__).resolve().parents:
+        candidate = (
+            parent / 'avt_341' / 'parameters' / 'krc_mrzr' / 'node_config.yaml')
+        if candidate.is_file():
+            return candidate
+    raise RuntimeError('Could not locate avt_341 krc_mrzr node_config.yaml')
+
+
+KRC_MRZR_EXPECTED_REMAPPINGS = {
+    'perception_local_node': [
+        ('avt_341/terrain_slope', 'avt_341/terrain_slope_local'),
+        ('avt_341/terrain_rms', 'avt_341/terrain_rms_local'),
+    ],
+    'perception_global_node': [
+        ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
+        ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
+        ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+        ('avt_341/occupancy_grid_updates',
+         'avt_341/occupancy_grid_low_res_updates'),
+    ],
+    'perception_rms_node': [
+        ('avt_341/occupancy_grid', 'avt_341/rms_perception/occupancy_grid'),
+        ('avt_341/segmentation_grid',
+         'avt_341/rms_perception/segmentation_grid'),
+    ],
+    'grid_compression_global': [
+        ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
+        ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res'),
+    ],
+    'segmentation_grid_processor_node': [
+        ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
+    ],
+    'mission_manager_node': [
+        ('avt_341/comm_messages', '/avt_341/comm_messages'),
+    ],
+    'speed_zones_node': [
+        ('avt_341/comm_messages', '/avt_341/comm_messages'),
+    ],
+    'uab_perception_node': [
+        ('avt_341/points', '/ouster/points'),
+        ('avt_341/camera/image_raw', '/flir_camera/image_rect_color'),
+        ('avt_341/camera/camera_info', '/flir_camera/camera_info'),
+        ('avt_341/odom', 'avt_341/odometry'),
+        ('avt_341/occupancy_grid',
+         'avt_341/terrain_seg/occupancy_grid'),
+        ('avt_341/segmentation_grid',
+         'avt_341/terrain_seg/segmentation_grid'),
+    ],
+    'object_detector_node': [
+        ('image', '/flir_camera/image_rect_color'),
+    ],
+    'object_tracking_node': [
+        ('camera_info', '/flir_camera/camera_info'),
+        ('image', '/flir_camera/image_rect_color'),
+        ('points/input', '/ouster/points'),
+        ('detection_2d', 'detections/vision'),
+        ('avt_341/reset', 'avt_341/reset'),
+        ('task', 'avt_341/mission_task_state'),
+        ('avt_341/odometry/estimated/odom', 'odometry/estimated'),
+        ('avt_341/reset_ack', 'avt_341/reset_ack'),
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    'node_name, expected', KRC_MRZR_EXPECTED_REMAPPINGS.items())
+def test_shipped_krc_mrzr_config_preserves_base_launch_remappings(
+        node_name, expected):
+    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+    assert node_config.get_remappings(f'/veh1/{node_name}') == expected
+
+
+def test_shipped_krc_mrzr_tracker_section_applies_to_all_vehicles():
+    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+    expected = KRC_MRZR_EXPECTED_REMAPPINGS['object_tracking_node']
+
+    assert node_config.get_remappings('/veh1/object_tracking_node') == expected
+    assert node_config.get_remappings('/veh2/object_tracking_node') == expected
+
+
+def test_shipped_krc_mrzr_config_leaves_unconfigured_nodes_untouched():
+    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+    assert node_config.get_remappings('/veh1/control_node') == []
+    assert node_config.get_additional_env('/veh1/control_node') == {}
+
+
+def test_shipped_krc_mrzr_config_uses_existing_matlab_environment(monkeypatch):
+    monkeypatch.setenv('MCR_ROOT', '/opt/MATLAB_Runtime/R2025b')
+    monkeypatch.setenv('LD_LIBRARY_PATH', '/existing/one:/existing/two')
+    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+
+    assert resolve_env(node_config, '/veh1/uab_perception_node') == {
+        'LD_LIBRARY_PATH': ':'.join([
+            '/opt/MATLAB_Runtime/R2025b/runtime/glnxa64',
+            '/opt/MATLAB_Runtime/R2025b/bin/glnxa64',
+            '/opt/MATLAB_Runtime/R2025b/sys/os/glnxa64',
+            '/opt/MATLAB_Runtime/R2025b/extern/bin/glnxa64',
+            '/existing/one:/existing/two',
+        ]),
+    }
+
+
+def test_shipped_krc_mrzr_config_uses_matlab_environment_defaults(monkeypatch):
+    monkeypatch.delenv('MCR_ROOT', raising=False)
+    monkeypatch.delenv('LD_LIBRARY_PATH', raising=False)
+    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+    root = '/usr/local/MATLAB/MATLAB_Runtime/R2025b'
+
+    assert resolve_env(node_config, '/veh1/uab_perception_node') == {
+        'LD_LIBRARY_PATH': ':'.join([
+            f'{root}/runtime/glnxa64',
+            f'{root}/bin/glnxa64',
+            f'{root}/sys/os/glnxa64',
+            f'{root}/extern/bin/glnxa64',
+            '',
+        ]),
+    }

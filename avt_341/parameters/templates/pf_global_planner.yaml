@@ -1,28 +1,22 @@
 code_namespace: avt_341/params/pf_global_planner
 ros__parameters:
 
+  __include_mixins: gis_mixin
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
   # General
   # ====================================================================================================================
   goal_dist:
     type: double
     default_value: 5.0
     description: "Lookahead threshold within which next waypoint selected."
-  waypoints_x:
-    type: double_array
-    default_value: []
-    description: "X coordinates of the initial global waypoints loaded at startup."
-  waypoints_y:
-    type: double_array
-    default_value: []
-    description: "Y coordinates of the initial global waypoints loaded at startup."
-  map_origin_x:
-    type: double
-    default_value: 0.0
-    description: "X origin offset subtracted from the startup waypoint coordinates to transform them into the map frame."
-  map_origin_y:
-    type: double
-    default_value: 0.0
-    description: "Y origin offset subtracted from the startup waypoint coordinates to transform them into the map frame."
+  initial_waypoints:
+    type: string
+    default_value: ""
+    description: "Path to a yaml file with the initial global waypoints (waypoints_x/waypoints_y lists) loaded at startup. Empty string disables initial waypoints."
   shutdown_behavior:
     type: int
     default_value: 1

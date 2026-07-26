@@ -36,11 +36,11 @@ void PublishGrid(
 
 	avt_341::msg::OccupancyGrid grid_msg;
 
-	if (settings.publish.method ==
+	if (settings.costmap.publish.method ==
 		avt_341::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
-			settings.publish.max_grid_width,
-			settings.publish.max_grid_height,
+			settings.costmap.publish.max_grid_width,
+			settings.costmap.publish.max_grid_height,
 			is_segmentation
 			);
 	}else {
@@ -57,11 +57,11 @@ void PublishGrid(
 	    else
 	    {
 	        is_full_update =
-				(settings.publish.method ==
+				(settings.costmap.publish.method ==
 					avt_341::perception::GridPubMethod::Full)
-                        || (settings.publish.force_full_every > 0.0 &&
+                        || (settings.costmap.publish.force_full_every > 0.0 &&
                             (now_seconds - last_full_grid_update[target_layer] >
-								settings.publish.force_full_every)
+								settings.costmap.publish.force_full_every)
                             );
 	    }
 
@@ -96,12 +96,12 @@ int main(int argc, char* argv[]) {
 
 	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
 	std::vector<std::string> publish_layers =
-		avt_341::utils::SplitByDelimiter(settings.publish.layers, ',');
+		avt_341::utils::SplitByDelimiter(settings.costmap.publish.layers, ',');
 
 	if (!avt_341::perception::GridPubMethod::IsValid(
-			settings.publish.method)){
-		n->log_error("Invalid grid_pub_method: %hs",
-			settings.publish.method.c_str());
+			settings.costmap.publish.method)){
+		n->log_error("Invalid costmap.publish.method: %hs",
+			settings.costmap.publish.method.c_str());
 		return -1;
 	}
 
@@ -120,12 +120,12 @@ int main(int argc, char* argv[]) {
 					"	size_info: %hs\n"
 					"	thresholds: %hs\n"
 					"	dilation: %hs\n"
-					"	grid_pub_method: %hs\n"
+					"	publish method: %hs\n"
 					"	layers: %hs",
 					settings.size_info_string().c_str(),
 					settings.thresholds_string().c_str(),
 					settings.dilation_string().c_str(),
-					settings.publish.method.c_str(),
+					settings.costmap.publish.method.c_str(),
 					grid.ToLayerInfoString().c_str()
 					);
 
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
 	auto terrain_slope_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_slope", 1);
 
 	const bool use_inc_updates =
-		settings.publish.method ==
+		settings.costmap.publish.method ==
 		avt_341::perception::GridPubMethod::Updates;
 
 	publish_layers.push_back(""); // add empty string to represent combined grid layer for publishing

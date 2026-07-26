@@ -2,6 +2,7 @@ import os
 
 import pytest
 import yaml
+from ament_index_python.packages import PackageNotFoundError
 
 from avt_341_param_lib.parse_runtime_yaml import (
     _patterns_intersect,
@@ -9,6 +10,12 @@ from avt_341_param_lib.parse_runtime_yaml import (
 )
 
 VEHICLES = ['veh1', 'veh2']
+
+
+def patch_share_dirs(monkeypatch):
+    monkeypatch.setattr(
+        'avt_341_param_lib.launch_params.get_package_share_directory',
+        lambda pkg: f'/opt/share/{pkg}')
 
 
 def write(tmp_path, name, text):
@@ -47,6 +54,45 @@ def test_python_error_reports_expression(tmp_path):
     path = write(tmp_path, 'a.yaml', '/**:\n  ros__parameters:\n    x: $python{1 / 0}\n')
     with pytest.raises(RuntimeError, match=r'\$python\{1 / 0\}'):
         resolve_params_files([path], VEHICLES)
+
+
+def test_pkg_path_expands_in_place(tmp_path, monkeypatch):
+    patch_share_dirs(monkeypatch)
+    path = write(tmp_path, 'a.yaml', (
+        '/**:\n'
+        '  ros__parameters:\n'
+        '    whole: $pkg_path{avt_341}\n'
+        '    joined: $pkg_path{avt_341}/config/zones.csv\n'
+        '    doubled: $pkg_path{a}:$pkg_path{b}\n'
+    ))
+    resolved = resolve_params_files([path], VEHICLES)
+    assert resolved[0] != path  # $pkg_path{} alone marks the file templated
+    with open(resolved[0]) as f:
+        params = yaml.safe_load(f)['/**']['ros__parameters']
+    assert params['whole'] == '/opt/share/avt_341'
+    assert params['joined'] == '/opt/share/avt_341/config/zones.csv'
+    assert params['doubled'] == '/opt/share/a:/opt/share/b'
+
+
+def test_pkg_path_unknown_package_raises(tmp_path, monkeypatch):
+    def raise_not_found(pkg):
+        raise PackageNotFoundError(pkg)
+    monkeypatch.setattr(
+        'avt_341_param_lib.launch_params.get_package_share_directory', raise_not_found)
+    path = write(tmp_path, 'a.yaml', '/**:\n  ros__parameters:\n    x: $pkg_path{nope}/f.csv\n')
+    with pytest.raises(RuntimeError, match=r'\$pkg_path\{nope\}'):
+        resolve_params_files([path], VEHICLES)
+
+
+def test_pkg_path_malformed_raises(tmp_path, monkeypatch):
+    patch_share_dirs(monkeypatch)
+    empty = write(tmp_path, 'a.yaml', '/**:\n  ros__parameters:\n    x: $pkg_path{}/f.csv\n')
+    with pytest.raises(RuntimeError, match='no package name'):
+        resolve_params_files([empty], VEHICLES)
+    unterminated = write(
+        tmp_path, 'b.yaml', "/**:\n  ros__parameters:\n    x: '$pkg_path{avt_341/f.csv'\n")
+    with pytest.raises(RuntimeError, match='unterminated'):
+        resolve_params_files([unterminated], VEHICLES)
 
 
 def test_ref_concrete_selector(tmp_path):
@@ -157,6 +203,21 @@ def test_ref_chain_to_python_and_ref_across_files(tmp_path):
     assert second_doc['/**/planner']['ros__parameters']['root'] == 20
 
 
+def test_ref_to_pkg_path_value(tmp_path, monkeypatch):
+    patch_share_dirs(monkeypatch)
+    path = write(tmp_path, 'a.yaml', (
+        '/veh1/planner:\n'
+        '  ros__parameters:\n'
+        '    map_file: $pkg_path{maps}/grid.csv\n'
+        '/**:\n'
+        '  ros__parameters:\n'
+        '    copied: $ref{veh1/planner/map_file}\n'
+    ))
+    doc = resolved_doc([path])
+    assert doc['/veh1/planner']['ros__parameters']['map_file'] == '/opt/share/maps/grid.csv'
+    assert doc['/**']['ros__parameters']['copied'] == '/opt/share/maps/grid.csv'
+
+
 def test_ref_cycle_raises(tmp_path):
     path = write(tmp_path, 'a.yaml', (
         '/**/planner:\n'
@@ -197,20 +258,22 @@ def test_malformed_templates_raise(tmp_path):
         resolve_params_files([partial], VEHICLES)
 
 
-def test_resolved_output_is_valid_params_yaml_without_residue(tmp_path):
+def test_resolved_output_is_valid_params_yaml_without_residue(tmp_path, monkeypatch):
+    patch_share_dirs(monkeypatch)
     work_dir = tmp_path / 'out'
     work_dir.mkdir()
     path = write(tmp_path, 'a.yaml', (
         '/**:\n'
         '  ros__parameters:\n'
         "    data_file: $python{os.path.join('base', 'file.csv')}\n"
+        '    zones_file: $pkg_path{avt_341}/config/zones.csv\n'
         '    plain: kept\n'
     ))
     resolved = resolve_params_files([path], VEHICLES, str(work_dir))
     assert resolved[0] != path
     assert os.path.basename(resolved[0]) == '00_a.yaml'
     text = open(resolved[0]).read()
-    assert '$python{' not in text and '$ref{' not in text
+    assert '$python{' not in text and '$ref{' not in text and '$pkg_path{' not in text
     doc = yaml.safe_load(text)
     assert doc['/**']['ros__parameters']['plain'] == 'kept'
 

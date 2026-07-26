@@ -6,7 +6,8 @@ code-generation template yaml files consumed by
 :mod:`avt_341_param_lib.parse_yaml`; templating syntax in those files is not
 interpreted.
 
-A template must be the entire scalar string value of a parameter:
+A ``$python{}``/``$ref{}`` template must be the entire scalar string value of
+a parameter; ``$pkg_path{}`` substitutes in place within a string value:
 
 * ``$python{<expression>}`` -- replaced by the result of evaluating
   ``<expression>`` with a small namespace holding ``os``, ``math`` and
@@ -24,6 +25,13 @@ A template must be the entire scalar string value of a parameter:
   match wins (params_files order, then document order). Referenced values are
   resolved before substitution, so ``$ref`` -> ``$ref``/``$python`` chains
   work; circular references raise an error.
+
+* ``$pkg_path{<pkg_name>}`` -- each occurrence is replaced by the package's
+  share directory (``get_package_share_directory``). Unlike the other
+  templates it may appear anywhere -- and several times -- within a string
+  value, e.g.::
+
+      zones_filepath: $pkg_path{avt_341}/config/zones.csv
 """
 
 import math
@@ -35,12 +43,17 @@ from typing import Any, List, Optional, Tuple
 import yaml
 from ament_index_python.packages import get_package_share_directory
 
-from avt_341_param_lib.launch_params import _normalize_selector
+from avt_341_param_lib.launch_params import (
+    PKG_PATH_MARKER,
+    _normalize_selector,
+    expand_pkg_path,
+)
 from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY
 
 _PYTHON_RE = re.compile(r'^\$python\{(?P<expr>.*)\}$', re.DOTALL)
 _REF_RE = re.compile(r'^\$ref\{(?P<target>[^{}]*)\}$')
-_TEMPLATE_MARKERS = ('$python{', '$ref{')
+_FULL_VALUE_MARKERS = ('$python{', '$ref{')
+_TEMPLATE_MARKERS = _FULL_VALUE_MARKERS + (PKG_PATH_MARKER,)
 
 _PYTHON_EVAL_NAMESPACE = {
     'os': os,
@@ -52,7 +65,7 @@ _PYTHON_EVAL_NAMESPACE = {
 def resolve_params_files(
     paths: List[str], vehicle_ids: Optional[List[str]] = None, work_dir: Optional[str] = None
 ) -> List[str]:
-    """Resolve ``$python{}``/``$ref{}`` templates in runtime parameter yaml files.
+    """Resolve ``$python{}``/``$ref{}``/``$pkg_path{}`` templates in runtime parameter yaml files.
 
     Returns one path per input, in order: files containing no templating
     syntax pass through with their original path; templated files are resolved
@@ -118,12 +131,15 @@ class _Resolver:
         ref_match = _REF_RE.match(text)
         if ref_match:
             return self._resolve_ref(ref_match.group('target'), path)
-        if text.startswith(_TEMPLATE_MARKERS):
+        if text.startswith(_FULL_VALUE_MARKERS):
             raise RuntimeError(
                 f"Malformed template value '{text}' in '{path}': a $python{{}}/$ref{{}} "
                 'template must be the entire value'
             )
-        return text
+        try:
+            return expand_pkg_path(text, f"'{path}'")
+        except ValueError as error:
+            raise RuntimeError(str(error)) from error
 
     def _eval_python(self, expr: str, path: str):
         try:
@@ -156,7 +172,7 @@ class _Resolver:
                     continue
                 parent, key = found
                 value = parent[key]
-                if isinstance(value, str) and value.startswith(_TEMPLATE_MARKERS):
+                if _is_template(value):
                     cycle_key = (id(parent), key)
                     if cycle_key in self._resolving:
                         raise RuntimeError(
@@ -175,6 +191,12 @@ class _Resolver:
             f"matches no parameter in the given params files: "
             f"{[entry.path for entry in self.files]}"
         )
+
+
+def _is_template(value) -> bool:
+    """Whether a leaf value still holds unresolved templating syntax."""
+    return isinstance(value, str) and (
+        value.startswith(_FULL_VALUE_MARKERS) or PKG_PATH_MARKER in value)
 
 
 def _iter_sections(doc: dict, prefix: str = ''):

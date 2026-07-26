@@ -358,7 +358,7 @@ namespace avt_341 {
     public:
 
       template<typename CallbackT>
-      Subscriber(const std::string &topic_name, int qos, CallbackT &&callback,
+      Subscriber(const std::string &topic_name, const rclcpp::QoS &qos, CallbackT &&callback,
                  const std::shared_ptr<rclcpp::Node> &node_) {
         sub_ptr_ = node_->create_subscription<MessageT>(topic_name, qos, std::forward<CallbackT>(callback));
       }
@@ -454,7 +454,7 @@ namespace avt_341 {
       }
 
       template<typename MessageT, typename CallbackT>
-      std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, int qos, CallbackT &&callback) {
+      std::shared_ptr<Subscriber<MessageT>> create_subscription(const std::string &topic_name, const rclcpp::QoS &qos, CallbackT &&callback) {
         return std::make_shared<Subscriber<MessageT>>(topic_name, qos, std::forward<CallbackT>(callback), node_);
       }
 

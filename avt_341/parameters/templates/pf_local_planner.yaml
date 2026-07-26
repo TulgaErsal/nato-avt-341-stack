@@ -1,6 +1,10 @@
 code_namespace: avt_341/params/pf_local_planner
 ros__parameters:
 
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
   # Potential Field Local Planner
   # ====================================================================================================================
   use_global_path:

@@ -135,17 +135,18 @@ int main(int argc, char* argv[]) {
     vehicle_odom_input_stamp = init_time;
     last_vehicle_odom_stamp = init_time;
 
-    // Create publishers and subscribers
-    auto seg_grid_sub = avt_341::node::OccupancyGridSubscriber(node, "avt_341/segmentation_grid", 1, callback_seg);
-    auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 1, callback_veh);
-    auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
-    auto cells_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells", 1);
-    auto cell_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/cell_markers", 1);
-
     // Load parameters
     avt_341::params::mpc_local_planner::ParamsListener param_listener(node->get_raw_node());
     node_params = param_listener.get_params();
     max_speed = node_params.max_speed;
+
+    // Create publishers and subscribers
+    auto seg_grid_sub = avt_341::node::OccupancyGridSubscriber(
+        node, "avt_341/segmentation_grid", 1, node_params.costmap.publish.method, callback_seg);
+    auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 1, callback_veh);
+    auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
+    auto cells_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells", 1);
+    auto cell_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/cell_markers", 1);
 
     while (avt_341::node::ok()) {
         if (new_input_available(segmentation_grid_input, vehicle_odom_input)) {

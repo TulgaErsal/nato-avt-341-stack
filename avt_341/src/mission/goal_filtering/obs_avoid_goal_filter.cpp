@@ -14,13 +14,15 @@ namespace avt_341::mission {
 ObsAvoidGoalFilter::ObsAvoidGoalFilter(
     std::shared_ptr<node::NodeProxy> node,
     const std::string& vehicle_id,
-    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params)
+    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
+    const std::string& publish_method)
     : node_(node),
     params_(vehicle_id),
     last_point_(avt_341::optional<Eigen::Vector2d>()),
     row_idx_(-1),
     deadlock_(false) {
 
+    params_.publish_method = publish_method;
     params_.occ_threshold = static_cast<int>(filter_params.occ_threshold);
     params_.padding = filter_params.padding;
     params_.pub_unfiltered_goal = filter_params.pub_unfiltered_goal;
@@ -59,6 +61,7 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(
         node,
         OCCUPANCY_GRID_TOPIC_NAME,
         10,
+        params_.publish_method,
         std::bind(&ObsAvoidGoalFilter::OccupancyGridCallback, this, std::placeholders::_1));
 
     if (params_.pub_unfiltered_goal) {

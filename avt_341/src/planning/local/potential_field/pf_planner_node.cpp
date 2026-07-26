@@ -58,8 +58,11 @@ int main(int argc, char *argv[]){
   // Create publishers and subscribers
   auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto grid_sub = avt_341::node::OccupancyGridSubscriber(n, params.grid_topic, 10, GridCallback);
-  auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(n, "avt_341/segmentation_grid", 10, SegmentationGridCallback);
+  auto grid_sub = avt_341::node::OccupancyGridSubscriber(
+      n, params.grid_topic, 10, params.costmap.publish.method, GridCallback);
+  auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(
+      n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
+      SegmentationGridCallback);
   auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
