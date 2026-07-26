@@ -132,7 +132,3 @@ ros__parameters:
     type: string
     default_value: "avt_341/occupancy_grid"
     description: "Occupancy grid topic"
-  display:
-    type: string
-    default_value: "rviz"
-    description: "Display backend used for candidate path visualization (x11, opencv, rviz, none)."

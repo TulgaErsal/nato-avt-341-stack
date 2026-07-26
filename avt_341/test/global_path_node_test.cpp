@@ -32,7 +32,6 @@
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/planning/global/d_star_lite.h"
 #include "avt_341/planning/global/fast_marching_square.h"
-#include "avt_341/visualization/base_visualizer.h"
 
 // ROS message types (header-only abstractions)
 #include "avt_341/node/ros_types.h"
@@ -269,11 +268,8 @@ static ScenarioGrids BuildScenario(const std::string& scenario,
 // ===========================================================================
 static std::unique_ptr<avt_341::planning::Astar>
 CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
-  auto vis = std::make_shared<avt_341::visualization::VisualizerBase>();
-
   if (method == "fast_marching") {
     return std::make_unique<avt_341::planning::FastMarching>(
-        vis,
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
         p.safety_margin_global,
@@ -286,12 +282,10 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         /*verbose=*/false);
   } else if (method == "d_star_lite") {
     return std::make_unique<avt_341::planning::DStarLite>(
-        vis,
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first);
   } else if (method == "fast_marching_square") {
     return std::make_unique<avt_341::planning::FastMarchingSquare>(
-        vis,
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
         p.safety_margin_global,
@@ -305,7 +299,6 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
   } else {
     // Default: astar
     return std::make_unique<avt_341::planning::Astar>(
-        vis,
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first);
   }

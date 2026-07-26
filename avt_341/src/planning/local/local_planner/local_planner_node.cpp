@@ -16,8 +16,7 @@
 #include "avt_341/node/occupancy_grid_subscriber.h"
 // avt_341 includes
 #include "avt_341/planning/local/spline_planner.h"
-#include "avt_341/planning/local/spline_plotter.h"
-#include "avt_341/visualization/visualization_factory.h"
+#include "avt_341/planning/local/rviz_spline_plotter.h"
 #include <avt_341/rcc_local_planner_params_service.hpp>
 
 avt_341::msg::Odometry odom;
@@ -94,10 +93,10 @@ int main(int argc, char *argv[]){
   planner.SetIgnoreCollBeforeDist(
       static_cast<float>(params.ignore_coll_before_dist));
 
-  std::shared_ptr<avt_341::planning::Plotter> plotter = avt_341::visualization::create_local_path_plotter(params.display, params.cost_vis, n,
-                                                                                                          planner.GetComfortabilityWeight(), planner.GetStaticSafetyWeight(),
-                                                                                                          planner.GetPathAdherenceWeight(), planner.GetDynamicSafetyWeight(),
-                                                                                                          planner.GetSegmentationWeight(), static_cast<float>(params.cost_vis_text_size));
+  auto plotter = std::make_shared<avt_341::planning::RVIZPlotter>(params.cost_vis, n,
+                                                                  planner.GetComfortabilityWeight(), planner.GetStaticSafetyWeight(),
+                                                                  planner.GetPathAdherenceWeight(), planner.GetDynamicSafetyWeight(),
+                                                                  planner.GetSegmentationWeight(), static_cast<float>(params.cost_vis_text_size));
 
   unsigned int loop_count = 0;
   const double dt = 1.0 / params.rate;
@@ -208,14 +207,11 @@ int main(int argc, char *argv[]){
 
       // most of the calculation time spent on this function call
       bool path_found = planner.CalculateCandidateCosts(grid, segmentation_grid, odom);
-      if (params.display != "none"){
-        plotter->AddMap(grid);
-        plotter->SetPath(culled_points);
-        plotter->AddWaypoints(waypoints);
-        std::vector<avt_341::planning::Candidate> paths = planner.GetCandidates();
-        plotter->AddCurves(paths);
-        plotter->Display();
-      }
+      plotter->AddMap(grid);
+      plotter->SetPath(culled_points);
+      std::vector<avt_341::planning::Candidate> paths = planner.GetCandidates();
+      plotter->AddCurves(paths);
+      plotter->Display();
 
       if (path_found){
         const float ds = static_cast<float>(params.output_path_step);

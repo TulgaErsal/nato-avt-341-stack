@@ -144,8 +144,7 @@ int main(int argc, char *argv[]){
     controller.GetPidSpeedController()->SetOvershootLimiter(false);
   }
 
-  const bool display_rviz = params.display == "rviz";
-  auto next_waypoint_pub = display_rviz ? n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1) : nullptr;
+  auto next_waypoint_pub = n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1);
 
   const double rate = 100.0;
   const double dt = 1.0/rate;
@@ -250,15 +249,13 @@ int main(int argc, char *argv[]){
     // break the loop when an end state is reached
     if (time_to_quit) break;
     
-    if(display_rviz){
-      avt_341::msg::PointStamped next_waypoint_msg;
-      next_waypoint_msg.point.x = goal.x;
-      next_waypoint_msg.point.y = goal.y;
-      next_waypoint_msg.point.z = state.pose.pose.position.z;
-      next_waypoint_msg.header.frame_id = "map";
-      next_waypoint_msg.header.stamp = n->get_stamp();
-      next_waypoint_pub->publish(next_waypoint_msg);
-    }
+    avt_341::msg::PointStamped next_waypoint_msg;
+    next_waypoint_msg.point.x = goal.x;
+    next_waypoint_msg.point.y = goal.y;
+    next_waypoint_msg.point.z = state.pose.pose.position.z;
+    next_waypoint_msg.header.frame_id = "map";
+    next_waypoint_msg.header.stamp = n->get_stamp();
+    next_waypoint_pub->publish(next_waypoint_msg);
 
     n->spin_some();
     nl++;

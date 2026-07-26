@@ -12,8 +12,7 @@
 namespace avt_341 {
 namespace planning {
 
-Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
-             float w_distance,
+Astar::Astar(float w_distance,
              float w_occupancy,
              float w_segmentation,
              bool search_diagonals,
@@ -28,7 +27,6 @@ Astar::Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
   dfac_ = 0;
   width_ = 0;
   height_ = 0;
-  visualizer_ = visualizer;
 }
 
 Astar::~Astar() {
@@ -329,42 +327,6 @@ bool Astar::ExtractPath() {
   }*/
 
   return true;
-}
-
-void Astar::SaveMap(std::string imname) {
-  visualizer_->save(imname);
-}
-
-void Astar::Display() {
-  if (map_.empty()) return;
-  if (map_[0].empty()) return;
-  int nx = map_.size();
-  int ny = map_[0].size();
-  if (!visualizer_->initialize_display(nx, ny)) {
-    return;
-  }
-  avt_341::utils::vec3 red(255.0f, 0.0f, 0.0f);
-  avt_341::utils::vec3 green(0.0f, 255.0f, 0.0f);
-  avt_341::utils::vec3 yellow(255.0f, 255.0f, 0.0f);
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      if (map_[i][j] > 0) visualizer_->draw_point(i, j, red);
-    }
-  }
-
-  for (auto& index: path_world_) {
-    int ix = (int) floor((index.x - llx_) / map_res_);
-    int iy = (int) floor((index.y - lly_) / map_res_);
-    visualizer_->draw_point(ix, iy, yellow);
-  }
-
-  Point goal = GetCurrentGoal();
-
-  int goal_ix = (int) floor((goal.x - llx_) / map_res_);
-  int goal_iy = (int) floor((goal.y - lly_) / map_res_);
-  visualizer_->draw_circle(goal_ix, goal_iy, 2, green);
-
-  visualizer_->display();
 }
 
 int Astar::GetGridValue(avt_341::msg::OccupancyGrid* grid, double x, double y) {

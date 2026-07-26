@@ -127,10 +127,3 @@ ros__parameters:
     type: double
     default_value: 0.0
     description: "Min value for PID output."
-
-  # Display
-  # ====================================================================================================================
-  display:
-    type: string
-    default_value: 'rviz'
-    description: "Display method to use. When set to 'rviz', publishes the next waypoint marker for rviz display."

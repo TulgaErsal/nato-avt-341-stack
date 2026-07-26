@@ -11,10 +11,15 @@ if(USING_CATKIN)
       ${PROJECT_NAME}_slam_imu_preintegration_node
       ${catkin_EXPORTED_TARGETS}
       )
+    # Pre-built SLAM common library shipped alongside the reference code.
+    target_include_directories(
+      ${PROJECT_NAME}_slam_imu_preintegration_node
+      PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../lib"
+      )
     target_link_libraries(
       ${PROJECT_NAME}_slam_imu_preintegration_node
       Boost::timer
-      libCommonLib.so 
+      "${CMAKE_CURRENT_LIST_DIR}/../lib/libCommonLib.so"
       ${catkin_LIBRARIES}
       ${PCL_LIBRARIES}
       ${OpenCV_LIBRARIES}

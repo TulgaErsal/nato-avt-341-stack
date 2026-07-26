@@ -17,10 +17,6 @@ ros__parameters:
     type: double
     default_value: 360.0
     description: "Default goal yaw threshold (in degrees) when orientation matching is not specified on goal. Set > 180.0 to disable orientation matching."
-  display:
-    type: string
-    default_value: "rviz"
-    description: "Display backend used for planner debug visualization (x11, opencv, rviz, none)."
   global_lookahead:
     type: double
     default_value: 75.0

@@ -11,8 +11,8 @@ sudo apt-get update \
     && sudo apt install -y ros-noetic-robot-state-publisher
 ```
 - Alternatively, gtsam can be compiled from sources, see [https://github.com/borglab/gtsam]( https://github.com/borglab/gtsam).
-- Change `set(BUILD_SLAM OFF)` to `set(BUILD_SLAM ON)` in the` avt_341` package `CMakeList.txt`. Note that `set(BUILD_SLAM ON)` also changes the build type to `"Release"`, since otherwise, the SLAM performance might drop in some environments.
-- Compilation links to `avt_341/lib/libCommonLib.so`.
+- Set `BUILD_SLAM` to `ON` in the (catkin) root `CMakeLists.txt` — the current ament (ROS2) root no longer defines it. `BUILD_SLAM ON` should also set the build type to `"Release"`, since otherwise, the SLAM performance might drop in some environments.
+- Compilation links to the pre-built `avt_341/src/perception/slam/lib/libCommonLib.so`. The ROS1 (catkin) build wiring for the SLAM nodes is kept in `avt_341/src/perception/slam/CMakeLists.txt`; a catkin root CMakeLists only needs to `add_subdirectory(src/perception/slam)` with `BUILD_SLAM` set to `ON`.
 - Currently, only ROS1 is supported. We need to figure out additional details, such as message synchronization within the avt_341 node proxies, to support ROS2. 
 
 ### Startup

@@ -10,7 +10,7 @@
 
 #include "avt_341/node/node_proxy.h"
 #include "avt_341/node/ros_types.h"
-#include "avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp"
+#include "avt_341/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp"
 #include <avt_341/obstacle_detector_params_service.hpp>
 
 #include <pcl_conversions/pcl_conversions.h>

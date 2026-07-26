@@ -21,7 +21,6 @@
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/planning/global/d_star_lite.h"
 #include "avt_341/planning/global/fast_marching_square.h"
-#include "avt_341/visualization/visualization_factory.h"
 #include "avt_341/node/ros_types.h"
 #include "avt_341/core/dto_conversion.h"
 #include <avt_341/global_planner_params_service.hpp>
@@ -376,12 +375,8 @@ int main(int argc, char* argv[])
     SetRunState(NavStackState::Active);
   }
 
-  auto visualizer =
-      avt_341::visualization::create_visualizer(params.display);
-
   if (params.planning_method == "fast_marching") {
-    path_planner = std::make_shared<avt_341::planning::FastMarching>(visualizer,
-                                                       params.w_distance,
+    path_planner = std::make_shared<avt_341::planning::FastMarching>(params.w_distance,
                                                        params.w_occupancy,
                                                        params.w_segmentation,
                                                        params.search_diagonals,
@@ -399,16 +394,14 @@ int main(int argc, char* argv[])
                                                        params.clipping_distance,
                                                        params.verbose_gp_log);
   } else if (params.planning_method == "d_star_lite") {
-    path_planner = std::make_shared<avt_341::planning::DStarLite>(visualizer,
-                                                    params.w_distance,
+    path_planner = std::make_shared<avt_341::planning::DStarLite>(params.w_distance,
                                                     params.w_occupancy,
                                                     params.w_segmentation,
                                                     params.search_diagonals,
                                                     static_cast<int>(params.los_max_iterations),
                                                     params.los_break_on_first);
   } else if (params.planning_method == "fast_marching_square") {
-    path_planner = std::make_shared<avt_341::planning::FastMarchingSquare>(visualizer,
-                                                             params.w_distance,
+    path_planner = std::make_shared<avt_341::planning::FastMarchingSquare>(params.w_distance,
                                                              params.w_occupancy,
                                                              params.w_segmentation,
                                                              params.search_diagonals,
@@ -426,8 +419,7 @@ int main(int argc, char* argv[])
                                                              params.clipping_distance,
                                                              params.verbose_gp_log);
   } else {
-    path_planner = std::make_shared<avt_341::planning::Astar>(visualizer,
-                                                params.w_distance,
+    path_planner = std::make_shared<avt_341::planning::Astar>(params.w_distance,
                                                 params.w_occupancy,
                                                 params.w_segmentation,
                                                 params.search_diagonals,

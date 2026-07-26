@@ -14,7 +14,6 @@
 #include <avt_341/node/occupancy_grid_subscriber.h>
 // avt_341 includes
 #include "avt_341/planning/local/pf_planner.h"
-#include "avt_341/visualization/visualization_factory.h"
 #include <avt_341/pf_local_planner_params_service.hpp>
 
 avt_341::msg::Odometry odom;

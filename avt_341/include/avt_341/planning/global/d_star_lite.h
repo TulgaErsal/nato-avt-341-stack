@@ -33,8 +33,7 @@ struct DStarNode {
 
 class DStarLite : public Astar {
 public:
-  DStarLite(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
-            float w_distance,
+  DStarLite(float w_distance,
             float w_occupancy,
             float w_segmentation,
             bool search_diagonals,

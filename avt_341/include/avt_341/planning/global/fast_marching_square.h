@@ -18,8 +18,7 @@ namespace planning {
  */
 class FastMarchingSquare : public FastMarching {
 public:
-  FastMarchingSquare(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
-                     float w_distance,
+  FastMarchingSquare(float w_distance,
                      float w_occupancy,
                      float w_segmentation,
                      bool search_diagonals,
@@ -36,7 +35,7 @@ public:
                      int gradient_descent_steps_per_point,
                      float clipping_distance,
                      bool verbose)
-      : FastMarching(std::move(visualizer), w_distance, w_occupancy, w_segmentation,
+      : FastMarching(w_distance, w_occupancy, w_segmentation,
                      search_diagonals, los_max_iterations, los_break_on_first,
                      safety_margin, clearance_penalty_type, path_extraction_method, 
                      obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, 

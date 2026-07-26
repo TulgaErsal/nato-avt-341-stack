@@ -17,7 +17,6 @@
 #include <avt_341/node/ros_types.h>
 #include <avt_341/dwa_local_planner_params_service.hpp>
 #include <avt_341/planning/local/dwa/planner.hpp>
-#include <avt_341/visualization/visualization_factory.h>
 
 // Initialise ROS messages.
 avt_341::msg::Odometry msg_odom;

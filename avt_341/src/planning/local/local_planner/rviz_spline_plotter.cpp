@@ -1,3 +1,4 @@
+#include <cmath>
 #include <limits>
 #include "avt_341/planning/local/rviz_spline_plotter.h"
 #include <avt_341/planning/local/spline_path.h>
@@ -6,10 +7,23 @@
 namespace avt_341 {
   namespace planning{
 
-    RVIZPlotter::RVIZPlotter(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer, const std::string & cost_vis,
-                             std::shared_ptr<avt_341::node::NodeProxy> node, float w_c, float w_s, float w_r, float w_d, float w_t, float cost_vis_text_size_) : Plotter(visualizer), cost_vis_(cost_vis), node_(node),
-                                                                                                                                                      w_c_(w_c), w_s_(w_s), w_r_(w_r), w_d_(w_d), w_t_(w_t), cost_vis_text_size_(cost_vis_text_size_) {
+    RVIZPlotter::RVIZPlotter(const std::string & cost_vis,
+                             std::shared_ptr<avt_341::node::NodeProxy> node, float w_c, float w_s, float w_r, float w_d, float w_t, float cost_vis_text_size) : pixdim_(1.0f), map_set_(false), node_(node), cost_vis_(cost_vis), cost_vis_text_size_(cost_vis_text_size),
+                                                                                                                                                      w_c_(w_c), w_d_(w_d), w_r_(w_r), w_s_(w_s), w_t_(w_t) {
       candidate_paths_publisher = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/candidate_paths", 1);
+    }
+
+    void RVIZPlotter::SetPath(std::vector<utils::vec2> path){
+      path_ = path;
+    }
+
+    void RVIZPlotter::AddCurves(std::vector<Candidate> curves){
+      curves_ = curves;
+    }
+
+    void RVIZPlotter::AddMap(const avt_341::msg::OccupancyGrid & grid){
+      pixdim_ = grid.info.resolution;
+      map_set_ = true;
     }
 
     avt_341::msg::Marker RVIZPlotter::get_marker_msg(int type, int id, bool is_blocked) const{
@@ -37,7 +51,7 @@ namespace avt_341 {
       return marker;
     }
 
-    void RVIZPlotter::Display(bool save, const std::string & ofname, int nx, int ny) {
+    void RVIZPlotter::Display() {
       if (!map_set_)return;
 
       avt_341::msg::Marker candidate_paths_marker = get_marker_msg(avt_341::msg::Marker::LINE_LIST, 0, false);
@@ -82,7 +96,7 @@ namespace avt_341 {
         paths_last_points.push_back(pc1);
       }
 
-      candidate_paths_marker.action = candidate_paths_marker.points.empty() > 0 ? avt_341::msg::Marker::DELETE : avt_341::msg::Marker::MODIFY;
+      candidate_paths_marker.action = candidate_paths_marker.points.empty() ? avt_341::msg::Marker::DELETE : avt_341::msg::Marker::MODIFY;
       blocked_paths_marker.action = blocked_paths_marker.points.empty() ? avt_341::msg::Marker::DELETE : avt_341::msg::Marker::MODIFY;
       avt_341::msg::MarkerArray marker_array;
       marker_array.markers.push_back(candidate_paths_marker);

@@ -107,9 +107,7 @@ int main(int argc, char *argv[]){
     controller.SetIntegralAbsMax(params.integral_abs_max);
   }
 
-
-  const bool display_rviz = params.display == "rviz";
-  auto next_waypoint_pub = display_rviz ? n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1) : nullptr;
+  auto next_waypoint_pub = n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1);
 
   double rate = 100.0;
   double dt = 1.0/rate;
@@ -214,15 +212,13 @@ int main(int argc, char *argv[]){
     current_brake_value = dc_safe.linear.y;
     current_throttle_value = dc_safe.linear.x;
 
-    if(display_rviz){
-      avt_341::msg::PointStamped next_waypoint_msg;
-      next_waypoint_msg.point.x = state.pose.pose.position.x;
-      next_waypoint_msg.point.y = state.pose.pose.position.y;
-      next_waypoint_msg.point.z = state.pose.pose.position.z;
-      next_waypoint_msg.header.frame_id = "map";
-      next_waypoint_msg.header.stamp = n->get_stamp();
-      next_waypoint_pub->publish(next_waypoint_msg);
-    }
+    avt_341::msg::PointStamped next_waypoint_msg;
+    next_waypoint_msg.point.x = state.pose.pose.position.x;
+    next_waypoint_msg.point.y = state.pose.pose.position.y;
+    next_waypoint_msg.point.z = state.pose.pose.position.z;
+    next_waypoint_msg.header.frame_id = "map";
+    next_waypoint_msg.header.stamp = n->get_stamp();
+    next_waypoint_pub->publish(next_waypoint_msg);
 
     n->spin_some();
 

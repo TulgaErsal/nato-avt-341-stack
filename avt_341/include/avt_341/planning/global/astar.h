@@ -3,7 +3,7 @@
 
 #include <atomic>
 #include <vector>
-#include <avt_341/visualization/base_visualizer.h>
+#include "avt_341/avt_341_utils.h"
 #include "avt_341/node/ros_types.h"
 
 namespace avt_341 {
@@ -32,8 +32,7 @@ public:
   static const int EdgeDistanceCost = 1;
 
   /// Constructor
-  Astar(std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer,
-        float w_distance,
+  Astar(float w_distance,
         float w_occupancy,
         float w_segmentation,
         bool search_diagonals,
@@ -42,12 +41,6 @@ public:
 
   /// Destructor
   virtual ~Astar();
-
-  /// Inherited from base class
-  void Display();
-
-  /// Inherited from base class
-  void SaveMap(std::string ofname);
 
   /// Inherited from base class, return path in world coordinates
 //  std::vector<std::vector<float> >* GetCurrentPath() { return &path_world_; }
@@ -273,8 +266,6 @@ protected:
   bool los_break_on_first_;
   //bool dubins_smoothing_;
   //float dubins_radius_;
-
-  std::shared_ptr<avt_341::visualization::VisualizerBase> visualizer_;
 
   bool HasUp(int index) const { return index / width_ + 1 < height_; }
 

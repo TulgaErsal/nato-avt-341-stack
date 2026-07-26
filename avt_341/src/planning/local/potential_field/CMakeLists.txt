@@ -5,8 +5,7 @@ if(USING_CATKIN)
   add_executable(${PROJECT_NAME}_pf_planner_node "pf_planner.cpp"
                                                  "pf_planner_node.cpp")
   add_dependencies(${PROJECT_NAME}_pf_planner_node ${catkin_EXPORTED_TARGETS})
-  target_link_libraries(${PROJECT_NAME}_pf_planner_node ${PROJECT_NAME}_proxy
-                        X11)
+  target_link_libraries(${PROJECT_NAME}_pf_planner_node ${PROJECT_NAME}_proxy)
   install(
     TARGETS ${PROJECT_NAME}_pf_planner_node
     RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"

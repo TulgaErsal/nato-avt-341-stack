@@ -8,12 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-set(BUILD_SLAM OFF)
-
-if (BUILD_SLAM)
-  set(CMAKE_BUILD_TYPE "Release")
-endif()
-
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(WIN32 OR WIN64)
@@ -46,8 +40,7 @@ set(AVT341_SOURCE_FILES
     "perception/detection/object_detector"
     "perception/tracking"
     "perception/global_segmentation_grid"
-    "perception/lidar_obstacle_detector/ros1"
-    "perception/lidar_obstacle_detector/ros2"
+    "perception/lidar_obstacle_detector"
     "perception/perception"
     "perception/uab_terrain_perception"
     "perception/obstacles_processor"
@@ -55,9 +48,6 @@ set(AVT341_SOURCE_FILES
     "perception/normal_segmentation_grid"
     "perception/segmentation_grid_processor"
     "perception/geotiff_map"
-    "perception/slam/imu_preintegration"
-    "perception/slam/image_projection"
-    "perception/slam/map_optimization"
     "planning/local/local_planner"
     "planning/local/potential_field"
     "planning/local/dwa"
@@ -92,12 +82,7 @@ string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
   find_package(tf2_eigen REQUIRED)
   find_package(Eigen3 3.4 REQUIRED)
 
-  if(WIN32 OR WIN64)
-    set(link_libs ${OpenCV_LIBS})
-  else()
-    find_package(X11 REQUIRED)
-    set(link_libs ${OpenCV_LIBS} X11)
-  endif()
+  set(link_libs ${OpenCV_LIBS})
 
   # Since ROS Humble several header file endpoints changed (tf2_sensor_msgs, tf2_geometry_msgs, tf2_eigen, etc.)
   if($ENV{ROS_DISTRO} STREQUAL "humble" OR $ENV{ROS_DISTRO} STREQUAL "jazzy")

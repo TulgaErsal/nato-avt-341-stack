@@ -95,7 +95,7 @@
 
 #include <avt_341/core/coord_transform.hpp>
 #include <avt_341/perception/box.hpp>
-#include <avt_341/perception/lidar_obstacle_detector/ros2/lidar_obstacle_detector.hpp>
+#include <avt_341/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
 #include <avt_341/perception/tracking/object_tracker.hpp>
 #include <avt_341/perception/tracking/tracker_params.hpp>
 #include <avt_341/object_tracking_params_service.hpp>
