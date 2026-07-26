@@ -9,7 +9,7 @@
 namespace avt_341::perception
 {
     StaticGridLayer::StaticGridLayer(
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
         const PerceptionSettings& settings,
         const std::string& label,
         const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -105,16 +105,13 @@ namespace avt_341::perception
 
         if (height_col == -1)
         {
-            node_ref_->log_warning(
-                "[StaticGridLayer] '%s': height field '%s' not found in CSV header. Layer is invalid.",
-                label_.c_str(), csv_height_field_.c_str());
+            RCLCPP_WARN(node_ref_->get_logger(), "[StaticGridLayer] '%s': height field '%s' not found in CSV header. Layer is invalid.", label_.c_str(), csv_height_field_.c_str());
             is_enabled_ = false;
             return;
         }
 
         has_segmentation_ = seg_col != -1;
-        node_ref_->log_info("[StaticGridLayer] '%s': segmentation data found: %d.",
-            label_.c_str(), has_segmentation_);
+        RCLCPP_INFO(node_ref_->get_logger(), "[StaticGridLayer] '%s': segmentation data found: %d.", label_.c_str(), has_segmentation_);
 
         // Read data rows using discovered column indices
         std::string line;
@@ -230,7 +227,7 @@ namespace avt_341::perception
         }
         catch(const std::exception& e)
         {
-            node_ref_->log_error("Failed to load static grid layer: %s", e.what());
+            RCLCPP_ERROR(node_ref_->get_logger(), "Failed to load static grid layer: %s", e.what());
             is_enabled_ = false;
         }
     }

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -39,8 +40,8 @@ float FastMarching::clearance_penalty(float d, float r, const std::string& optio
   return 0.0f;
 }
 
-std::vector<Point> FastMarching::PlanPath(avt_341::msg::OccupancyGrid* grid,
-                                         avt_341::msg::OccupancyGrid* segmentation_grid,
+std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
+                                         nav_msgs::msg::OccupancyGrid* segmentation_grid,
                                          Point goal,
                                          Point position) {
     if (grid->info.height <= 0 || grid->info.width <= 0) {

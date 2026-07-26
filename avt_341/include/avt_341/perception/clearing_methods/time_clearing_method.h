@@ -2,6 +2,8 @@
 #define AVT_341_TIME_CLEARING_METHOD_H
 
 #include "costmap_clearing_method.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
 
 namespace avt_341::perception{
 
@@ -40,7 +42,7 @@ public:
         CellObstacleCalculator* obs_calculator
         );
 
-    void ClearOccupancy(const msg::PointCloud &point_cloud) override;
+    void ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) override;
     void AgeCells(const float dt) const;
     std::string GetDescription() const override;
 
@@ -61,8 +63,8 @@ public:
         CellObstacleCalculator* obs_calculator
         );
 
-    void ClearOccupancy(const msg::PointCloud &point_cloud) override;
-    void OnOccupancyAdded(const msg::PointCloud &point_cloud, const msg::Point & veh_pos) override;
+    void ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) override;
+    void OnOccupancyAdded(const sensor_msgs::msg::PointCloud &point_cloud, const geometry_msgs::msg::Point & veh_pos) override;
     void Reset() override;
     std::string GetDescription() const override;
     virtual void ResetInternalCellState(int xi, int yi) override;

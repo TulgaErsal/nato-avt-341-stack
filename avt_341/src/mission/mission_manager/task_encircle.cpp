@@ -3,16 +3,18 @@
 #include <fstream>
 #include <iostream>
 #include <math.h>
+#include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 namespace avt_341 {
 namespace mission {
 
-Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const avt_341::msg::PoseStamped & target,
+Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
   const ToiParameters & params)
     : Encircle(manager, sender, msg_id, target, params.encircle_radius, params.encircle_degrees, params.encircle_cw, params.goal_threshold) {
 }
 
-Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const avt_341::msg::PoseStamped & target,
+Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
                    double radius, double angular_range_degrees, bool is_cw, double goal_threshold)
                    : Task(manager, sender, msg_id), target_(target), radius_(radius),
                    angular_range_degrees_(angular_range_degrees), is_cw_(is_cw), goal_threshold_(goal_threshold) {
@@ -22,7 +24,7 @@ Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_
 void Encircle::init_() {
 
   circle_path_.poses.clear();
-  avt_341::msg::Pose current_pose = mgr->odometry.pose.pose;
+  geometry_msgs::msg::Pose current_pose = mgr->odometry.pose.pose;
   const auto pi = std::atan(1.0)*4.0;
   double dx = current_pose.position.x - target_.pose.position.x;
   double dy = current_pose.position.y - target_.pose.position.y;
@@ -31,7 +33,7 @@ void Encircle::init_() {
 
   for(int r_idx = 0; r_idx < static_cast<int>(angular_range_degrees_); r_idx += 1){
     double r = starting_rad + sign * r_idx / 180.0 * pi;
-    avt_341::msg::PoseStamped pose;
+    geometry_msgs::msg::PoseStamped pose;
     pose.pose.position.x = std::cos(r) * radius_ + target_.pose.position.x;
     pose.pose.position.y = std::sin(r) * radius_ + target_.pose.position.y;
     circle_path_.poses.push_back(pose);
@@ -66,7 +68,7 @@ std::string Encircle::description() const {
   return stream.str();
 }
 
-avt_341::msg::PoseStamped Encircle::terminalPose() const{
+geometry_msgs::msg::PoseStamped Encircle::terminalPose() const{
   if(circle_path_.poses.empty()){
     return Task::terminalPose();
   }

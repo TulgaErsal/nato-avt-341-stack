@@ -1,5 +1,6 @@
 // clas definition
 #include "avt_341/mission/task.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 namespace avt_341 {
 namespace mission {
@@ -24,8 +25,8 @@ void Task::init(){
   }
 }
 
-avt_341::msg::PoseStamped Task::terminalPose() const{
-  auto pose = avt_341::msg::PoseStamped();
+geometry_msgs::msg::PoseStamped Task::terminalPose() const{
+  auto pose = geometry_msgs::msg::PoseStamped();
   pose.pose = mgr->odometry.pose.pose;
   pose.header.stamp = mgr->odometry.header.stamp;
   pose.header.frame_id = mgr->odometry.header.frame_id;

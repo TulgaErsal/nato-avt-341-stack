@@ -23,7 +23,6 @@ function(DownloadLinuxSharedLibrary)
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
-
 # Manually set MATLAB paths (optional, only needed if "find_package(Matlab)" fails)
 # These should point to the installation location of MATLAB Runtime 2025b
 #
@@ -62,66 +61,32 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
         ${OpenCV_INCLUDE_DIRS}
         ${Matlab_INCLUDE_DIRS})
 
-    if(USING_CATKIN)
-        add_executable(uab_perception_node "uab_perception_node.cpp")
-        add_dependencies(uab_perception_node ${catkin_EXPORTED_TARGETS})
+    add_executable(uab_perception_node "uab_perception_node.cpp")
+    target_link_libraries(uab_perception_node ${PROJECT_NAME}_proxy)
 
-        if(WIN32 OR WIN64)
-            DownloadWindowsDll()
+    ament_target_dependencies(uab_perception_node cv_bridge)
 
-            target_link_libraries(uab_perception_node
-                ${PROJECT_NAME}_proxy
-                ${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.lib
-                ${Matlab_MCLMCRRT_LIB})
-            file(COPY
-		${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll
-                DESTINATION ${CMAKE_SOURCE_DIR}/../devel/lib/${PROJECT_NAME})
-        else()
-            DownloadLinuxSharedLibrary()
+    if(WIN32 OR WIN64)
+        DownloadWindowsDll()
 
-            target_link_libraries(uab_perception_node
-                ${PROJECT_NAME}_proxy
-                ${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so
-                ${Matlab_MCLMCRRT_LIB})
-            file(COPY
-		${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so
-                DESTINATION ${CMAKE_SOURCE_DIR}/../devel/lib/${PROJECT_NAME})
-        endif()
-
-        install(TARGETS
-                uab_perception_node
-                RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-                LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-    endif() # if(USING_CATKIN)
-
-    if(USING_AMENT)
-        add_executable(uab_perception_node "uab_perception_node.cpp")
-        target_link_libraries(uab_perception_node ${PROJECT_NAME}_proxy)
-
-        ament_target_dependencies(uab_perception_node cv_bridge)
-
-        if(WIN32 OR WIN64)
-            DownloadWindowsDll()
-
-            target_link_libraries(uab_perception_node
-                "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.lib"
-                ${Matlab_MCLMCRRT_LIB})
-            install(FILES "lib_uab_perception_wrapper.dll"
-                    DESTINATION "lib/${PROJECT_NAME}")
-        else()
-            DownloadLinuxSharedLibrary()
-
-            target_link_libraries(uab_perception_node
-                "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-                ${Matlab_MCLMCRRT_LIB})
-            install(FILES "lib_uab_perception_wrapper.so"
-                    DESTINATION "lib")
-        endif()
-
-        install(TARGETS uab_perception_node
-                EXPORT export_${PROJECT_NAME}
+        target_link_libraries(uab_perception_node
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.lib"
+            ${Matlab_MCLMCRRT_LIB})
+        install(FILES "lib_uab_perception_wrapper.dll"
                 DESTINATION "lib/${PROJECT_NAME}")
-    endif() # if(USING_AMENT)
+    else()
+        DownloadLinuxSharedLibrary()
+
+        target_link_libraries(uab_perception_node
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
+            ${Matlab_MCLMCRRT_LIB})
+        install(FILES "lib_uab_perception_wrapper.so"
+                DESTINATION "lib")
+    endif()
+
+    install(TARGETS uab_perception_node
+            EXPORT export_${PROJECT_NAME}
+            DESTINATION "lib/${PROJECT_NAME}")
 else()
     message(
         WARNING
@@ -130,6 +95,6 @@ else()
 endif()
 
 # Generated parameter library (avt_341_param_lib templates)
-if(USING_AMENT AND TARGET uab_perception_node)
+if(TARGET uab_perception_node)
   target_link_libraries(uab_perception_node uab_perception_params_service)
 endif()

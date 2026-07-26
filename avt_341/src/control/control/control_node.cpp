@@ -11,14 +11,20 @@
  * \date 7/13/2018
  */
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include <rclcpp/rclcpp.hpp>
 //avt_341 includes
 #include "avt_341/control/pure_pursuit_controller.h"
 #include <avt_341/control_params_service.hpp>
 
-avt_341::msg::Path control_msg;
-avt_341::msg::Odometry state;
+nav_msgs::msg::Path control_msg;
+nav_msgs::msg::Odometry state;
 int current_run_state = -1;   // startup state
 bool shutdown_condition = false;
 double mrzr_speedometer = 0.0;
@@ -28,44 +34,44 @@ double desired_speed = 0.0;
 
 using avt_341::utils::NavStackState;
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcv_state) {
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_state) {
 	state = *rcv_state; 
 }
 
-void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
+void SpeedCallback(std_msgs::msg::Float64::SharedPtr rcv_speed) {
 	mrzr_speedometer = rcv_speed->data;
   speedometer_rcvd = true; 
 }
 
-void DesiredSpeedCallback(avt_341::msg::Float64Ptr rcv_des_speed) {
+void DesiredSpeedCallback(std_msgs::msg::Float64::SharedPtr rcv_des_speed) {
 	desired_speed = rcv_des_speed->data;
   des_speed_rcvd = true; 
 }
 
 
-void PathCallback(avt_341::msg::PathPtr rcv_control){
+void PathCallback(nav_msgs::msg::Path::SharedPtr rcv_control){
   control_msg.poses = rcv_control->poses;
   control_msg.header = rcv_control->header;
 }
 
-void StateCallback(avt_341::msg::NavStatePtr rcv_state){
+void StateCallback(avt_341_msgs::msg::NavState::SharedPtr rcv_state){
   current_run_state = rcv_state->run_state;
   if (current_run_state==NavStackState::InactiveGradualStop) shutdown_condition = true;
 }
 
-double length(avt_341::msg::Point a, avt_341::msg::Point b){
+double length(geometry_msgs::msg::Point a, geometry_msgs::msg::Point b){
   double dx = a.x - b.x;
   double dy = a.y - b.y;
   double dz = a.z - b.z;
   return sqrt(dx*dx + dy*dy + dz*dz);
 }
 
-double TriangleArea(avt_341::msg::Point a, avt_341::msg::Point b, avt_341::msg::Point c) {
+double TriangleArea(geometry_msgs::msg::Point a, geometry_msgs::msg::Point b, geometry_msgs::msg::Point c) {
 	double area = std::fabs(a.x*(b.y - c.y) + b.x*(c.y - a.y) + c.x*(a.y - b.y));
 	return area;
 }
 
-double MengerCurvature(avt_341::msg::Point a, avt_341::msg::Point b, avt_341::msg::Point c) {
+double MengerCurvature(geometry_msgs::msg::Point a, geometry_msgs::msg::Point b, geometry_msgs::msg::Point c) {
 	double curv = 0.0;
 	double denom = length(a, b)*length(b, c)*length(c, b);
 	if (denom == 0.0) {
@@ -78,7 +84,7 @@ double MengerCurvature(avt_341::msg::Point a, avt_341::msg::Point b, avt_341::ms
 	return curv;
 }
 
-double GetMaxCurvature(avt_341::msg::Path path){
+double GetMaxCurvature(nav_msgs::msg::Path path){
   double max_curvature = 0.0;
   if (path.poses.size() > 2) {
 		for (int i = 1; i < path.poses.size() - 1; i++){
@@ -91,22 +97,23 @@ double GetMaxCurvature(avt_341::msg::Path path){
 
 
 int main(int argc, char *argv[]){
-  auto n = avt_341::node::init_node(argc,argv,"avt_341_control_node");
+  rclcpp::init(argc, argv);
+  auto n = rclcpp::Node::make_shared("avt_341_control_node");
 
-  avt_341::params::control::ParamsListener param_listener(n->get_raw_node());
+  avt_341::params::control::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
-  auto dc_pub = n->create_publisher<avt_341::msg::Twist>("avt_341/cmd_vel",1);
+  auto dc_pub = n->create_publisher<geometry_msgs::msg::Twist>("avt_341/cmd_vel",1);
 
-  auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/local_path",1, PathCallback);
+  auto path_sub = n->create_subscription<nav_msgs::msg::Path>("avt_341/local_path",1, PathCallback);
 
-  auto state_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",1, OdometryCallback);
+  auto state_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",1, OdometryCallback);
 
-  auto control_sub = n->create_subscription<avt_341::msg::NavState>("avt_341/state",1,StateCallback);
+  auto control_sub = n->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state",1,StateCallback);
 
-  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
+  auto speed_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
 
-  auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
+  auto desired_speed_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
 
 
   avt_341::control::PurePursuitController controller;
@@ -144,7 +151,7 @@ int main(int argc, char *argv[]){
     controller.GetPidSpeedController()->SetOvershootLimiter(false);
   }
 
-  auto next_waypoint_pub = n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1);
+  auto next_waypoint_pub = n->create_publisher<geometry_msgs::msg::PointStamped>("avt_341/control_next_waypoint", 1);
 
   const double rate = 100.0;
   const double dt = 1.0/rate;
@@ -152,11 +159,11 @@ int main(int argc, char *argv[]){
   const double max_throttle_step = dt / params.time_to_max_throttle;
   double current_brake_value = 0.0;
   double current_throttle_value = 0.0;
-  avt_341::node::Rate r(rate);
+  rclcpp::Rate r(rate);
   avt_341::utils::vec2 goal;
   int nl = 0;
-  while (avt_341::node::ok()){
-    avt_341::msg::Twist dc;
+  while (rclcpp::ok()){
+    geometry_msgs::msg::Twist dc;
     bool time_to_quit = false;
 
     // tell the controller the current vehicle state
@@ -249,15 +256,15 @@ int main(int argc, char *argv[]){
     // break the loop when an end state is reached
     if (time_to_quit) break;
     
-    avt_341::msg::PointStamped next_waypoint_msg;
+    geometry_msgs::msg::PointStamped next_waypoint_msg;
     next_waypoint_msg.point.x = goal.x;
     next_waypoint_msg.point.y = goal.y;
     next_waypoint_msg.point.z = state.pose.pose.position.z;
     next_waypoint_msg.header.frame_id = "map";
-    next_waypoint_msg.header.stamp = n->get_stamp();
+    next_waypoint_msg.header.stamp = n->now();
     next_waypoint_pub->publish(next_waypoint_msg);
 
-    n->spin_some();
+    rclcpp::spin_some(n);
     nl++;
     r.sleep();
   }

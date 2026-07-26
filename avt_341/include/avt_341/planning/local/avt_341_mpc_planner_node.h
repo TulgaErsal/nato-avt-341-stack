@@ -19,8 +19,8 @@
 #include <iostream>
 #include <mutex>
 
-#include <avt_341/node/node_proxy.h>
-#include <avt_341/node/ros_types.h>
+#include <rclcpp/rclcpp.hpp>
+#include "visualization_msgs/msg/marker_array.hpp"
 #include <avt_341/mpc_local_planner_params_dto.hpp>
 
 // Julia header throws "No Target Architecture" error otherwise on Windows systems
@@ -52,7 +52,7 @@ bool has_error = false;
 // ROS members
 // -----------
 
-std::shared_ptr<avt_341::node::NodeProxy> node;
+rclcpp::Node::SharedPtr node;
 // -----------
 
 // Generated parameter snapshot shared by the existing callback/Julia FFI
@@ -72,7 +72,7 @@ std::vector<std::pair<double, double>> mpc_path_cache;
 
 // Optional publisher for the corridor-culled obstacle MarkerArray.
 // Null when visualize_culled_obstacles is false.
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> culled_obs_marker_pub;
+std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> culled_obs_marker_pub;
 // --------------
 
 // Julia modules

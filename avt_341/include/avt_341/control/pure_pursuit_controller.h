@@ -20,7 +20,9 @@
 #define PURE_PURSUIT_CONTROLLER_H
 
 #include "avt_341/control/pid_controller.h"
-#include "avt_341/node/ros_types.h"
+#include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "avt_341/avt_341_utils.h"
 
 namespace avt_341 {
@@ -37,7 +39,7 @@ public:
 	* vehicle state.
 	* \param traj The desired trajectory
 	*/
-	avt_341::msg::Twist GetDcFromTraj(avt_341::msg::Path traj, utils::vec2 & goal);
+	geometry_msgs::msg::Twist GetDcFromTraj(nav_msgs::msg::Path traj, utils::vec2 & goal);
 
 	/**
 	* Set the wheelbase of the vehicle in meters
@@ -133,7 +135,7 @@ public:
 	 *  Set the vehicle position, orientation and speed
 	 * \param state The vehicle state
 	 */
-	void SetVehicleState(avt_341::msg::Odometry state);
+	void SetVehicleState(nav_msgs::msg::Odometry state);
 
 	/**
 	* A scale factor for the output throttle.
@@ -165,8 +167,8 @@ public:
 
 private:
 	bool skid_steered_;
-	avt_341::msg::Twist GetDcAckermann(double alpha, double lookahead, utils::vec2 curr_dir, double target_speed);
-	avt_341::msg::Twist GetDcSkid(double dx, double dy, double dtheta);
+	geometry_msgs::msg::Twist GetDcAckermann(double alpha, double lookahead, utils::vec2 curr_dir, double target_speed);
+	geometry_msgs::msg::Twist GetDcSkid(double dx, double dy, double dtheta);
 
 	// steering parameters for the skid steered model
 	double kx_;

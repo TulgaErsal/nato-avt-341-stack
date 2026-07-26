@@ -2,12 +2,13 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341 {
 namespace planning {
 
-std::vector<Point> FastMarchingSquare::PlanPath(avt_341::msg::OccupancyGrid* grid,
-                                                avt_341::msg::OccupancyGrid* segmentation_grid,
+std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
+                                                nav_msgs::msg::OccupancyGrid* segmentation_grid,
                                                 Point goal,
                                                 Point position) {
     if (grid->info.height <= 0 || grid->info.width <= 0) {

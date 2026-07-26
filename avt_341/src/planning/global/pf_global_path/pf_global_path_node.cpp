@@ -11,86 +11,93 @@
  */
 #include <chrono>
 // ros includes
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_types.h"
 #include <avt_341/node/occupancy_grid_subscriber.h>
 // local includes
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/core/waypoint_file_parser.hpp"
 #include "avt_341/planning/local/pf_planner.h"
 #include <avt_341/pf_global_planner_params_service.hpp>
-avt_341::msg::Odometry odom;
+nav_msgs::msg::Odometry odom;
 bool odom_rcvd = false;
-avt_341::msg::OccupancyGrid current_grid;
+nav_msgs::msg::OccupancyGrid current_grid;
 bool grid_rcvd = false;
-avt_341::msg::OccupancyGrid segmentation_grid;
+nav_msgs::msg::OccupancyGrid segmentation_grid;
 bool seg_rcvd = false;
-avt_341::msg::Path current_waypoints;
+nav_msgs::msg::Path current_waypoints;
 bool waypoints_rcvd = false;
 bool use_global_planner = true;
 int nav_command = 0;
 bool nav_command_rcvd = false;
 bool shutdown_condition = false;
 
-std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
+rclcpp::Node::SharedPtr n = nullptr;
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom)
 {
   odom = *rcv_odom;
   odom_rcvd = true;
 }
 
-void MapCallback(avt_341::msg::OccupancyGridPtr rcv_grid)
+void MapCallback(nav_msgs::msg::OccupancyGrid::SharedPtr rcv_grid)
 {
   current_grid = *rcv_grid;
   grid_rcvd = true;
 }
 
-void SegmentationMapCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
+void SegmentationMapCallback(nav_msgs::msg::OccupancyGrid::SharedPtr rcv_grid){
     segmentation_grid = *rcv_grid;
     seg_rcvd = true;
 }
 
 // From mission planner
-void WaypointCallback(avt_341::msg::PathPtr rcv_waypoints, bool verbose_gp_log)
+void WaypointCallback(nav_msgs::msg::Path::SharedPtr rcv_waypoints, bool verbose_gp_log)
 {
   // Brute force - overwrite the current global waypoints
   current_waypoints = *rcv_waypoints;
   waypoints_rcvd = true;
   if(verbose_gp_log){
-    n->log_info("%d waypoint(s) received! %.2f, %.2f", current_waypoints.poses.size(), current_waypoints.poses[0].pose.position.x, current_waypoints.poses[0].pose.position.y);
+    RCLCPP_INFO(n->get_logger(), "%d waypoint(s) received! %.2f, %.2f", current_waypoints.poses.size(), current_waypoints.poses[0].pose.position.x, current_waypoints.poses[0].pose.position.y);
   }
 }
 
-void GlobalPlannerToggleCallback(avt_341::msg::Int32Ptr rcv_gptoggle) {
+void GlobalPlannerToggleCallback(std_msgs::msg::Int32::SharedPtr rcv_gptoggle) {
   bool set_val = (bool)rcv_gptoggle->data;
   if(use_global_planner != set_val){
-    n->log_info("GP set to %d", rcv_gptoggle->data);
+    RCLCPP_INFO(n->get_logger(), "GP set to %d", rcv_gptoggle->data);
   }
   use_global_planner = set_val;
 }
 
-void NavCommandCallback(avt_341::msg::Int32Ptr rcv_navcommand) {
+void NavCommandCallback(std_msgs::msg::Int32::SharedPtr rcv_navcommand) {
   nav_command = rcv_navcommand->data;
   nav_command_rcvd = true;
 }
 
-void GoalPoseCallback(avt_341::msg::PoseStampedPtr rcv_goal_pose,
+void GoalPoseCallback(geometry_msgs::msg::PoseStamped::SharedPtr rcv_goal_pose,
                       bool verbose_gp_log)
 {
   if(verbose_gp_log){
-    n->log_info("Setting goal (%.2f, %.2f)", rcv_goal_pose->pose.position.x, rcv_goal_pose->pose.position.y);
+    RCLCPP_INFO(n->get_logger(), "Setting goal (%.2f, %.2f)", rcv_goal_pose->pose.position.x, rcv_goal_pose->pose.position.y);
   }
   current_waypoints.poses.clear();
   current_waypoints.poses.push_back(*rcv_goal_pose);
   waypoints_rcvd = true;
 }
 
-avt_341::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
-  avt_341::msg::Path ros_path;
+nav_msgs::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
+  nav_msgs::msg::Path ros_path;
   ros_path.header.frame_id = "map";
   for (const auto & p: path){
-    avt_341::msg::PoseStamped pose;
+    geometry_msgs::msg::PoseStamped pose;
     pose.pose.position.x = p[0];
     pose.pose.position.y = p[1];
     pose.pose.position.z = 0.0f;
@@ -103,11 +110,11 @@ avt_341::msg::Path ToROSPath(const std::vector<std::vector<float>> & path){
   return ros_path;
 }
 
-avt_341::msg::Int32 state;
+std_msgs::msg::Int32 state;
 int current_waypoint = 0;
 
 void Reset(){
-  n->log_info("Resetting node");
+  RCLCPP_INFO(n->get_logger(), "Resetting node");
   state.data = avt_341::utils::NavStackState::NotInit; // start up state
   current_waypoint = 0;
   odom_rcvd = false;
@@ -116,7 +123,7 @@ void Reset(){
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::StringPtr msg){
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg){
   if(msg->data.find(avt_341::node::NodeType::GlobalPlanner) != std::string::npos){
     reset_called = true;
   }
@@ -124,8 +131,9 @@ void ResetCallback(avt_341::msg::StringPtr msg){
 
 int main(int argc, char *argv[])
 {
-  n = avt_341::node::init_node(argc, argv, "avt_341_pf_global_path_node");
-  avt_341::params::pf_global_planner::ParamsListener param_listener(n->get_raw_node());
+  rclcpp::init(argc, argv);
+  n = rclcpp::Node::make_shared("avt_341_pf_global_path_node");
+  avt_341::params::pf_global_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
   std::vector<float> goal;
@@ -153,32 +161,32 @@ int main(int argc, char *argv[])
     }
   }
 
-  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
-  auto waypoint_pub = n->create_publisher<avt_341::msg::Path>("avt_341/waypoints", 10);
-  auto current_waypoint_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/current_waypoint", 10);
-  auto dist_to_current_waypoint_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
-  auto goal_reached_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/goal_reached", 10);
+  auto path_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/global_path", 10);
+  auto waypoint_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/waypoints", 10);
+  auto current_waypoint_pub = n->create_publisher<geometry_msgs::msg::PoseStamped>("avt_341/current_waypoint", 10);
+  auto dist_to_current_waypoint_pub = n->create_publisher<std_msgs::msg::Float64>("avt_341/distance_to_current_waypoint", 10);
+  auto goal_reached_pub = n->create_publisher<geometry_msgs::msg::PoseStamped>("avt_341/goal_reached", 10);
 
-  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
+  auto odometry_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   avt_341::node::OccupancyGridSubscriber map_sub(
       n, params.map_topic, 10, params.costmap.publish.method, MapCallback);
   avt_341::node::OccupancyGridSubscriber segmentation_map_sub(
       n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
       SegmentationMapCallback);
-  auto waypoint_sub = n->create_subscription<avt_341::msg::Path>(
+  auto waypoint_sub = n->create_subscription<nav_msgs::msg::Path>(
       "avt_341/new_waypoints", 10,
-      [&params](avt_341::msg::PathPtr msg) {
+      [&params](nav_msgs::msg::Path::SharedPtr msg) {
         WaypointCallback(msg, params.verbose_gp_log);
       });
-  auto gp_toggle_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
-  auto nav_command_sub = n->create_subscription<avt_341::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
-  auto goal_pose_sub = n->create_subscription<avt_341::msg::PoseStamped>(
+  auto gp_toggle_sub = n->create_subscription<std_msgs::msg::Int32>("avt_341/gp_toggle", 10, GlobalPlannerToggleCallback);
+  auto nav_command_sub = n->create_subscription<std_msgs::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
+  auto goal_pose_sub = n->create_subscription<geometry_msgs::msg::PoseStamped>(
       "avt_341/goal_pose", 10,
-      [&params](avt_341::msg::PoseStampedPtr msg) {
+      [&params](geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         GoalPoseCallback(msg, params.verbose_gp_log);
       });
-  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+  auto reset_sub = n->create_subscription<std_msgs::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto reset_ack_pub = n->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
   avt_341::planning::PfPlanner planner;
   planner.SetEta(static_cast<float>(params.eta));
@@ -196,7 +204,7 @@ int main(int argc, char *argv[])
   // 1 - bring to a smooth stop but do not shut down
   // 2 - bring to a smooth stop and shut down
   // 3 - bring to an immediate stop (hard braking) and shut down
-  auto state_pub = n->create_publisher<avt_341::msg::Int32>("avt_341/state", 10);
+  auto state_pub = n->create_publisher<std_msgs::msg::Int32>("avt_341/state", 10);
   state.data = avt_341::utils::NavStackState::NotInit;
 
   const auto num_waypoints =
@@ -210,7 +218,7 @@ int main(int argc, char *argv[])
   {
     //nav_msgs::Path loaded_waypoints;
     for (int32_t i=0;i<num_waypoints;i++){
-      avt_341::msg::PoseStamped pose;
+      geometry_msgs::msg::PoseStamped pose;
       pose.pose.position.x =
           static_cast<float>(initial_waypoints.x[i] - params.gis.origin_x);
       pose.pose.position.y =
@@ -229,31 +237,31 @@ int main(int argc, char *argv[])
     state_pub->publish(state);
   }
 
-  avt_341::node::Rate r(20.0f); // Hz
+  rclcpp::Rate r(20.0f); // Hz
   int nl = 0;
   int shutdown_count = 0;
   auto t1 = std::chrono::system_clock::now();
-  //while (avt_341::node::ok() && !goal_reached){
-  while (avt_341::node::ok()){
+  //while (rclcpp::ok() && !goal_reached){
+  while (rclcpp::ok()){
 
     if(reset_called){
       Reset();
 
-      avt_341::msg::Path ros_path;
+      nav_msgs::msg::Path ros_path;
       ros_path.poses.clear();
       ros_path.header.frame_id = "map";
-      ros_path.header.stamp = n->get_stamp();
+      ros_path.header.stamp = n->now();
       if (params.use_global_path)
         path_pub->publish(ros_path);
       state.data = avt_341::utils::NavStackState::NotInit;
       state_pub->publish(state);
 
-      avt_341::msg::String reset_ack_msg;
+      std_msgs::msg::String reset_ack_msg;
       reset_ack_msg.data = avt_341::node::NodeType::GlobalPlanner;
       reset_ack_pub->publish(reset_ack_msg);
 
       reset_called = false;
-      n->spin_some();
+      rclcpp::spin_some(n);
       r.sleep();
       continue;
     }
@@ -268,7 +276,7 @@ int main(int argc, char *argv[])
         state_pub->publish(state);
         nav_command_rcvd = false;
         nav_command = avt_341::utils::NavStateCmd::GoInactive;
-		//n->log_info("Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
+		//RCLCPP_INFO(n->get_logger(), "Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
 	    }
 	  } else if(use_global_planner){
 	    state_pub->publish(state);
@@ -282,7 +290,7 @@ int main(int argc, char *argv[])
         goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
         goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
         if(params.verbose_gp_log){
-          n->log_info("New waypoints! Updated goal %f, %f", goal[0], goal[1]);
+          RCLCPP_INFO(n->get_logger(), "New waypoints! Updated goal %f, %f", goal[0], goal[1]);
         }
         waypoints_rcvd = false;
         shutdown_condition = false;
@@ -303,13 +311,13 @@ int main(int argc, char *argv[])
         float dx = goal[0] - odom.pose.pose.position.x;
         float dy = goal[1] - odom.pose.pose.position.y;
         double d = sqrt(dx * dx + dy * dy);
-        avt_341::msg::Float64 dist_to_goal;
+        std_msgs::msg::Float64 dist_to_goal;
         dist_to_goal.data = d;
 
         planner.SetGoal(goal[0], goal[1]);
 
         if (seg_rcvd) planner.SetSegGrid(segmentation_grid);
-        avt_341::msg::Path ros_path = planner.Plan(current_grid, odom);
+        nav_msgs::msg::Path ros_path = planner.Plan(current_grid, odom);
 
         // ctg 8/19/21
         // if not on the last waypoint, add a straight path to the next waypoint to the global path
@@ -328,7 +336,7 @@ int main(int argc, char *argv[])
               // Add intermediate waypoints
               for(double d = params.max_separation;
                   d < wp_diff.mag(); d += params.max_separation) {
-                avt_341::msg::PoseStamped pose;
+                geometry_msgs::msg::PoseStamped pose;
                 pose.pose.position.x = wp1.x + d*wp_diff_norm.x;
                 pose.pose.position.y = wp1.y + d*wp_diff_norm.y;
                 pose.pose.position.z = 0.0f;
@@ -339,7 +347,7 @@ int main(int argc, char *argv[])
                 ros_path.poses.push_back(pose);
               }
             }
-            avt_341::msg::PoseStamped pose;
+            geometry_msgs::msg::PoseStamped pose;
             pose.pose.position.x = wp2.x;
             pose.pose.position.y = wp2.y;
             pose.pose.position.z = 0.0f;
@@ -352,9 +360,8 @@ int main(int argc, char *argv[])
           }
         }
 
-        ros_path.header.stamp = n->get_stamp();
+        ros_path.header.stamp = n->now();
         ros_path.header.frame_id = "map";
-        avt_341::node::set_seq(ros_path.header, nl);
 
         for (int i = 0; i < ros_path.poses.size(); i++){
           ros_path.poses[i].header = ros_path.header;
@@ -372,8 +379,7 @@ int main(int argc, char *argv[])
         if (nl % 10 == 0 && params.verbose_gp_log){ //update every second
           auto duration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - t1);
           t1 = std::chrono::system_clock::now();
-          n->log_info("Global Path [%f]: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f", duration.count(),
-                      odom.pose.pose.position.x, odom.pose.pose.position.y, goal[0], goal[1], current_waypoint, current_waypoints.poses.size() - 1, d);
+          RCLCPP_INFO(n->get_logger(), "Global Path [%f]: Pos %.2f, %.2f Distance to goal (%.2f, %.2f) for %d of %d = %.2f", duration.count(), odom.pose.pose.position.x, odom.pose.pose.position.y, goal[0], goal[1], current_waypoint, current_waypoints.poses.size() - 1, d);
         }
         if (current_waypoint == current_waypoints.poses.size() - 1){  // last waypoint
 		      //std::cout << "Goal Dist: " << d << " Shutdown Condition: " << shutdown_condition << std::endl;
@@ -423,7 +429,7 @@ int main(int argc, char *argv[])
     grid_rcvd = false;
     seg_rcvd = false;
 
-    n->spin_some();
+    rclcpp::spin_some(n);
     r.sleep();
     nl++;
   }

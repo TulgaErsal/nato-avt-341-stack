@@ -5,7 +5,7 @@
 #include <boost/algorithm/clamp.hpp>
 
 #include <avt_341/avt_341_utils.h>
-#include <avt_341/node/ros_types.h>
+#include "nav_msgs/msg/path.hpp"
 #include <avt_341/planning/local/dwa/dynamic_window.hpp>
 #include <avt_341/planning/local/dwa/obstacles.hpp>
 #include <avt_341/planning/local/dwa/path.hpp>
@@ -28,7 +28,7 @@ class Planner {
 
     const Trajectory& GetOptimalTrajectory() const;
 
-    avt_341::msg::Path GetPlannedPathRos();
+    nav_msgs::msg::Path GetPlannedPathRos();
 
     void SetWindowLinearSpeedMin(double speed_lin_min);
 

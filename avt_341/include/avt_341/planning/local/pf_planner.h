@@ -21,7 +21,9 @@
 // c++ includes
 #include <vector>
 // ROS INCLUDES
-#include "avt_341/node/ros_types.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
 
 namespace avt_341 {
 namespace planning{
@@ -38,10 +40,10 @@ public:
 	 * \param grid ROS occupancy grid.
 	 * \param odom ROS odometry of the current vehicle.
 	 */ 
-	avt_341::msg::Path Plan(avt_341::msg::OccupancyGrid grid, avt_341::msg::Odometry odom);
+	nav_msgs::msg::Path Plan(nav_msgs::msg::OccupancyGrid grid, nav_msgs::msg::Odometry odom);
 
 	/// Set the segmentation grid to use
-	void SetSegGrid(avt_341::msg::OccupancyGrid seg_grid){ seg_grid_ = seg_grid; seg_grid_set_ = true; }
+	void SetSegGrid(nav_msgs::msg::OccupancyGrid seg_grid){ seg_grid_ = seg_grid; seg_grid_set_ = true; }
 
 	/**
 	 * Set the goal point in the local ENU coordinate frame
@@ -88,7 +90,7 @@ private:
 	std::vector<float> ry_;
 	std::vector<float> old_rx_;
 	std::vector<float> old_ry_;
-	avt_341::msg::OccupancyGrid seg_grid_;
+	nav_msgs::msg::OccupancyGrid seg_grid_;
 	bool seg_grid_set_;
 	int obs_cost_thresh_;
 };

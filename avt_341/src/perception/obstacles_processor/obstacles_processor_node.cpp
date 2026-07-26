@@ -3,12 +3,20 @@
 #include <algorithm>
 #include <avt_341/node/occupancy_grid_subscriber.h>
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/time.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Vector3.h"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include <rclcpp/rclcpp.hpp>
 #include <avt_341/mpc_local_planner_params_service.hpp>
 
 // Global variables
-std::shared_ptr<avt_341::node::NodeProxy> node;
+rclcpp::Node::SharedPtr node;
 
 double max_speed;
 
@@ -16,17 +24,17 @@ double obstacle_size_meters = 0.0;
 
 avt_341::params::mpc_local_planner::Params node_params;
 
-avt_341::msg::Time init_time;
+rclcpp::Time init_time;
 
-avt_341::msg::Time vehicle_odom_input_stamp;
+rclcpp::Time vehicle_odom_input_stamp;
 
-avt_341::msg::Time last_vehicle_odom_stamp;
+rclcpp::Time last_vehicle_odom_stamp;
 
-avt_341::msg::Odometry vehicle_odom_input;
+nav_msgs::msg::Odometry vehicle_odom_input;
 
-avt_341::msg::OccupancyGrid occupancy_grid_input;
+nav_msgs::msg::OccupancyGrid occupancy_grid_input;
 
-avt_341::msg::OccupancyGrid segmentation_grid_input;
+nav_msgs::msg::OccupancyGrid segmentation_grid_input;
 
 std::vector<std::vector<bool>> obstacles;
 
@@ -36,24 +44,24 @@ std::vector<double> obstacles_origin;
 
 std::vector<double> obstacles_clustered;
 
-std::vector<avt_341::msg::Marker> obstacle_markers;
+std::vector<visualization_msgs::msg::Marker> obstacle_markers;
 
 double prediction_horizon;
 
-void callback_veh(avt_341::msg::OdometryPtr veh) {
+void callback_veh(nav_msgs::msg::Odometry::SharedPtr veh) {
     vehicle_odom_input = *veh;
     vehicle_odom_input_stamp = vehicle_odom_input.header.stamp;
 }
 
-void callback_obs(avt_341::msg::OccupancyGridPtr obs) {
+void callback_obs(nav_msgs::msg::OccupancyGrid::SharedPtr obs) {
     occupancy_grid_input = *obs;
 }
 
-void callback_seg(avt_341::msg::OccupancyGridPtr seg) {
+void callback_seg(nav_msgs::msg::OccupancyGrid::SharedPtr seg) {
     segmentation_grid_input = *seg;
 }
 
-void callback_speed(avt_341::msg::Float64Ptr speed_setpoint) {
+void callback_speed(std_msgs::msg::Float64::SharedPtr speed_setpoint) {
     max_speed = speed_setpoint->data;
     prediction_horizon =
         (node_params.prediction_time_horizon + 0.1) * max_speed;
@@ -127,7 +135,7 @@ std::vector<double> cluster_occupied_cells(double r) {
     return output;
 }
 
-bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341::msg::Odometry& vehicle_odom) {
+bool new_input_available(const nav_msgs::msg::OccupancyGrid& grid, const nav_msgs::msg::Odometry& vehicle_odom) {
     if (vehicle_odom_input_stamp == last_vehicle_odom_stamp || grid.header.stamp == init_time
         || vehicle_odom_input_stamp == init_time) {
         return false;
@@ -143,16 +151,16 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
         node_params.vehicle_axle_distance_front * sin(yaw);  // y position of front axle
 
     // Rotation matrix
-    avt_341::msg_tf::Matrix3x3 rotation_matrix;
+    tf2::Matrix3x3 rotation_matrix;
     rotation_matrix[0] = {cos(yaw), -sin(yaw), 0.0};
     rotation_matrix[1] = {sin(yaw), cos(yaw), 0.0};
     rotation_matrix[2] = {0.0, 0.0, 1.0};
 
     // Observational region determined by right/left vectors
-    avt_341::msg_tf::Vector3 left_vector = {
+    tf2::Vector3 left_vector = {
         cos(node_params.front_angle_obstacle),
         sin(node_params.front_angle_obstacle), 0};  // 45deg to left
-    avt_341::msg_tf::Vector3 right_vector = {
+    tf2::Vector3 right_vector = {
         cos(node_params.front_angle_obstacle),
         -sin(node_params.front_angle_obstacle), 0}; // 45deg to right
     auto left_boundary_vector = rotation_matrix * left_vector;
@@ -200,7 +208,7 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
             if (isObstacle) {
                 std::vector<double> point = {(j + 0.5) * grid.info.resolution + grid.info.origin.position.x,
                                              (i + 0.5) * grid.info.resolution + grid.info.origin.position.y};
-                avt_341::msg_tf::Vector3 obstacle = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
+                tf2::Vector3 obstacle = {point[0] - x_vehicle, point[1] - y_vehicle, 0};
 
                 // Add obstacle if it is within range of prediction time horizon driving distance or within observation region
                 if (obstacle.length() >
@@ -226,11 +234,11 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
     }
 
     // Clear all previous markers
-    avt_341::msg::Marker obs_marker_clear;
+    visualization_msgs::msg::Marker obs_marker_clear;
     obs_marker_clear.header.frame_id = "map";
-    obs_marker_clear.header.stamp = node->get_stamp();
+    obs_marker_clear.header.stamp = node->now();
     obs_marker_clear.id = 0;
-    obs_marker_clear.action = avt_341::msg::Marker::DELETEALL;
+    obs_marker_clear.action = visualization_msgs::msg::Marker::DELETEALL;
     obstacle_markers.push_back(obs_marker_clear);
 
     // Cluster obstacles
@@ -241,12 +249,12 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
             double y = obstacles_clustered[3*i+1];
             double obs_size = obstacles_clustered[3*i+2];
 
-            avt_341::msg::Marker obs_marker;
+            visualization_msgs::msg::Marker obs_marker;
             obs_marker.header.frame_id = "map";
-            obs_marker.header.stamp = node->get_stamp();
+            obs_marker.header.stamp = node->now();
             obs_marker.id = i + 1; // 0 is reserved for the DELETEALL marker
-            obs_marker.type = avt_341::msg::Marker::CUBE;
-            obs_marker.action = avt_341::msg::Marker::ADD;
+            obs_marker.type = visualization_msgs::msg::Marker::CUBE;
+            obs_marker.action = visualization_msgs::msg::Marker::ADD;
             obs_marker.scale.x = obs_size;
             obs_marker.scale.y = obs_size;
             obs_marker.scale.z = obs_size;
@@ -265,17 +273,18 @@ bool new_input_available(const avt_341::msg::OccupancyGrid& grid, const avt_341:
 }
 
 int main(int argc, char* argv[]) {
-    node = avt_341::node::init_node(argc, argv, "occupancy_processor_node");
+    rclcpp::init(argc, argv);
+    node = rclcpp::Node::make_shared("occupancy_processor_node");
     double rate = 30.0;
-    avt_341::node::Rate ros_rate(rate);
+    rclcpp::Rate ros_rate(rate);
 
-    init_time = node->get_stamp();
+    init_time = node->now();
     occupancy_grid_input.header.stamp = init_time;
     vehicle_odom_input_stamp = init_time;
     last_vehicle_odom_stamp = init_time;
 
     // Load parameters
-    avt_341::params::mpc_local_planner::ParamsListener param_listener(node->get_raw_node());
+    avt_341::params::mpc_local_planner::ParamsListener param_listener(node);
     node_params = param_listener.get_params();
     max_speed = node_params.max_speed;
 
@@ -284,24 +293,24 @@ int main(int argc, char* argv[]) {
         node, "avt_341/occupancy_grid", 10, node_params.costmap.publish.method, callback_obs);
     auto seg_grid_sub = avt_341::node::OccupancyGridSubscriber(
         node, "avt_341/segmentation_grid", 1, node_params.costmap.publish.method, callback_seg);
-    auto odometry_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, callback_veh);
-    auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
-    auto obstacle_clusters_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
-    auto obstacles_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/obstacle_markers", 1);
+    auto odometry_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, callback_veh);
+    auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);
+    auto obstacle_clusters_pub = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
+    auto obstacles_marker_pub = node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/obstacle_markers", 1);
 
     int count = 0;
     prediction_horizon =
         (node_params.prediction_time_horizon + 0.1) * max_speed;
 
-    while (avt_341::node::ok()) {
+    while (rclcpp::ok()) {
         if (new_input_available(occupancy_grid_input, vehicle_odom_input)) {
             // Publish obstacle clusters message
-            avt_341::msg::Float64MultiArray obs_cluster_msg;
+            std_msgs::msg::Float64MultiArray obs_cluster_msg;
             obs_cluster_msg.data = obstacles_clustered;
             obstacle_clusters_pub->publish(obs_cluster_msg);
 
             if (node_params.obstacles_vizualize) {
-                avt_341::msg::MarkerArray obs_marker_msg;
+                visualization_msgs::msg::MarkerArray obs_marker_msg;
                 obs_marker_msg.markers = obstacle_markers;
                 obstacles_marker_pub->publish(obs_marker_msg);
             }
@@ -309,7 +318,7 @@ int main(int argc, char* argv[]) {
             count++;
         }
 
-        node->spin_some();
+        rclcpp::spin_some(node);
         ros_rate.sleep();
     }
 

@@ -1,4 +1,5 @@
 #include "avt_341/perception/clearing_methods/channel_clearing_method.h"
+#include "sensor_msgs/msg/point_cloud.hpp"
 
 namespace avt_341::perception {
 
@@ -11,7 +12,7 @@ ChannelThresholdClearingMethod::ChannelThresholdClearingMethod(
           ch_config_(ch_config) {
 }
 
-void ChannelThresholdClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
+void ChannelThresholdClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) {
     if (point_cloud.channels.empty()) {
         return;
     }

@@ -1,4 +1,9 @@
 #include "avt_341/mission/formation_speed_control.h"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "visualization_msgs/msg/marker.hpp"
 
 namespace avt_341 {
   namespace mission {
@@ -7,14 +12,14 @@ namespace avt_341 {
         : my_name_(veh_name), fsc_params_(params) {
     }
 
-    avt_341::msg::PoseStamped
-    FormationSpeedController::getFollowerTargetPose(avt_341::msg::Odometry leader_odom,
-                                                    avt_341::msg::FollowerStatus status) {
+    geometry_msgs::msg::PoseStamped
+    FormationSpeedController::getFollowerTargetPose(nav_msgs::msg::Odometry leader_odom,
+                                                    avt_341_msgs::msg::FollowerStatus status) {
       Vec2d leaderVx, leaderVy;
       PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
       double leaderYoffset = status.y_offset;
       double leaderXoffset = status.x_offset;
-      avt_341::msg::PoseStamped target_pose;
+      geometry_msgs::msg::PoseStamped target_pose;
       target_pose.pose.position.x =
           leader_odom.pose.pose.position.x + leaderVy[0] * leaderYoffset + leaderVx[0] * leaderXoffset;
       target_pose.pose.position.y =
@@ -37,8 +42,8 @@ namespace avt_341 {
     }
 
     double NullFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
-                                                        const avt_341::msg::PoseStamped &terminal_pose,
-                                                        std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                        const geometry_msgs::msg::PoseStamped &terminal_pose,
+                                                        std::map<std::string, nav_msgs::msg::Odometry> &formation_poses,
                                                         double speed_setpoint) {
       return 1.0;
     }
@@ -52,8 +57,8 @@ namespace avt_341 {
     }
 
     double SpeedUpFollowerFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
-                                                                   const avt_341::msg::PoseStamped &terminal_pose,
-                                                                   std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                                   const geometry_msgs::msg::PoseStamped &terminal_pose,
+                                                                   std::map<std::string, nav_msgs::msg::Odometry> &formation_poses,
                                                                    double speed_setpoint) {
 
       if (formation_def == nullptr || !formation_def->has_formation() ||
@@ -96,20 +101,21 @@ namespace avt_341 {
 
     SlowLeaderFormationSpeedController::SlowLeaderFormationSpeedController(const std::string &my_name,
                                                                            const FormationSpeedControlParams &params,
-                                                                           std::shared_ptr<avt_341::node::NodeProxy> node_proxy)
-        : FormationSpeedController(my_name, params), node_proxy_(node_proxy) {
+                                                                           rclcpp::Node::SharedPtr node,
+                                                                           std::shared_ptr<avt_341::node::TfInterface> tf)
+        : FormationSpeedController(my_name, params), node_(node), tf_(tf) {
       if (fsc_params_.debug_visualize) {
-        marker_pub_ = node_proxy_->create_publisher<avt_341::msg::Marker>("avt_341/formation_visualize", 1);
+        marker_pub_ = node_->create_publisher<visualization_msgs::msg::Marker>("avt_341/formation_visualize", 1);
       }
     }
 
     double SlowLeaderFormationSpeedController::getSpeedFactor(const FormationDefinition *formation_def,
-                                                              const avt_341::msg::PoseStamped &terminal_pose,
-                                                              std::map<std::string, avt_341::msg::Odometry> &formation_poses,
+                                                              const geometry_msgs::msg::PoseStamped &terminal_pose,
+                                                              std::map<std::string, nav_msgs::msg::Odometry> &formation_poses,
                                                               double speed_setpoint) {
 
       if (formation_poses.find(my_name_) == formation_poses.end()) {
-        node_proxy_->log_error_once("FormationSpeedController %s not found in formation_poses", my_name_.c_str());
+        RCLCPP_ERROR_ONCE(node_->get_logger(), "FormationSpeedController %s not found in formation_poses", my_name_.c_str());
         return 1.0;
       }
 
@@ -123,7 +129,7 @@ namespace avt_341 {
       // loop through formation_poses, get pose target
       std::vector<std::string> out_formation_veh;
       std::map<std::string, double> delta_pos_map;
-      std::map<std::string, avt_341::msg::PoseStamped> target_poses;
+      std::map<std::string, geometry_msgs::msg::PoseStamped> target_poses;
 
       int first_oof_idx = -1;
       const std::string leader_name = formation_def->leaderName();
@@ -260,32 +266,32 @@ namespace avt_341 {
       if(!has_visualized_){
         return;
       }
-      avt_341::msg::Marker marker;
+      visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "map";
-      marker.header.stamp = node_proxy_->get_stamp();
+      marker.header.stamp = node_->now();
       marker.id = 0;
-      marker.type = avt_341::msg::Marker::TEXT_VIEW_FACING;
-      marker.action = avt_341::msg::Marker::DELETE;
+      marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+      marker.action = visualization_msgs::msg::Marker::DELETE;
       marker_pub_->publish(marker);
       has_visualized_ = false;
     }
 
     void SlowLeaderFormationSpeedController::visualizeSpeedIndicators(double speed_factor, double delta_pos,
-                                                                      const avt_341::msg::PoseStamped &target_pose,
-                                                                      const avt_341::msg::Point &current_pos,
+                                                                      const geometry_msgs::msg::PoseStamped &target_pose,
+                                                                      const geometry_msgs::msg::Point &current_pos,
                                                                       bool heading_filter_on,
                                                                       bool follower_dist_break_on, double speed_setpoint) {
 
       std::string str1 = "map";
       std::string str2 = my_name_ + "_target";
-      node_proxy_->publish_tf(str1, str2, target_pose);
+      tf_->publish_tf(str1, str2, target_pose);
 
-      avt_341::msg::Marker marker;
+      visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "map";
-      marker.header.stamp = node_proxy_->get_stamp();
+      marker.header.stamp = node_->now();
       marker.id = 0;
-      marker.type = avt_341::msg::Marker::TEXT_VIEW_FACING;
-      marker.action = avt_341::msg::Marker::MODIFY;
+      marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+      marker.action = visualization_msgs::msg::Marker::MODIFY;
       marker.color.a = 1.0;
       marker.scale.z = 3.0;
       if (speed_factor < 0.4) {
@@ -325,9 +331,10 @@ namespace avt_341 {
     std::shared_ptr<FormationSpeedController>
     createFormationSpeedController(const std::string &veh_name,
                                    const FormationSpeedControlParams &params,
-                                   std::shared_ptr<avt_341::node::NodeProxy> node_proxy) {
+                                   rclcpp::Node::SharedPtr node,
+                                   std::shared_ptr<avt_341::node::TfInterface> tf) {
       if (params.type == FormationSpeedControlType::SLOW_DOWN_LEADER) {
-        return std::make_shared<SlowLeaderFormationSpeedController>(veh_name, params, node_proxy);
+        return std::make_shared<SlowLeaderFormationSpeedController>(veh_name, params, node, tf);
       }
       if (params.type == FormationSpeedControlType::SPEED_UP_FOLLOWER) {
         return std::make_shared<SpeedUpFollowerFormationSpeedController>(veh_name, params);
@@ -335,8 +342,7 @@ namespace avt_341 {
       if (params.type == FormationSpeedControlType::NONE) {
         return std::make_shared<NullFormationSpeedController>(veh_name, params);
       }
-      node_proxy->log_error(
-          "Unknown formation speed control type: %s", params.type.c_str());
+      RCLCPP_ERROR(node->get_logger(), "Unknown formation speed control type: %s", params.type.c_str());
       return nullptr;
     }
 

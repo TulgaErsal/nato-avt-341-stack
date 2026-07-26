@@ -5,8 +5,15 @@
 #define NOMINMAX
 #endif
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_types.h"
 #include "avt_341/perception/lib_uab_perception_wrapper.h"
 #include <avt_341/uab_perception_params_service.hpp>
 #include "mclcppclass.h"
@@ -25,49 +32,51 @@
 #include <cv_bridge/cv_bridge.hpp>
 #else
 #include <cv_bridge/cv_bridge.h>
+#include "avt_341/node/tf_interface.h"
 #endif
 
 const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
-std::shared_ptr<avt_341::node::NodeProxy> node;
+rclcpp::Node::SharedPtr node;
+std::shared_ptr<avt_341::node::TfInterface> tf;
 geometry_msgs::msg::TransformStamped lidar_to_base_link_tf;
 geometry_msgs::msg::TransformStamped lidar_to_camera_tf;
 
-avt_341::msg::Odometry current_pose;
+nav_msgs::msg::Odometry current_pose;
 bool odom_received = false;
 
-avt_341::msg::PointCloud2 pc;
+sensor_msgs::msg::PointCloud2 pc;
 bool pc_received = false;
 
-avt_341::msg::Image img;
+sensor_msgs::msg::Image img;
 bool img_received = false;
 
-avt_341::msg::CameraInfo cam_info;
+sensor_msgs::msg::CameraInfo cam_info;
 bool cam_info_received = false;
 
 std::unique_ptr<tf2_ros::Buffer> tf_buffer;
 std::shared_ptr<tf2_ros::TransformListener> tf_listener;
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom)
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom)
 {
     current_pose = *rcv_odom;
     odom_received = true;
 }
 
-void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcv_pc)
+void PointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr rcv_pc)
 {
     pc = *rcv_pc;
     pc_received = true;
 }
 
-void ImageCallback(avt_341::msg::ImagePtr rcv_img)
+void ImageCallback(sensor_msgs::msg::Image::ConstSharedPtr rcv_img)
 {
     img = *rcv_img;
     img_received = true;
 }
 
-void CameraInfoCallback(avt_341::msg::CameraInfoPtr msg)
+void CameraInfoCallback(sensor_msgs::msg::CameraInfo::ConstSharedPtr msg)
 {
     cam_info = *msg;
     cam_info_received = true;
@@ -103,7 +112,7 @@ static mxArray* toDoubleColumn(const std::array<double, 4>& vec)
 }
 
 //packages up an Image message into matlab-friendly struct
-static mwArray imageToMwArray(const avt_341::msg::Image &img)
+static mwArray imageToMwArray(const sensor_msgs::msg::Image &img)
 {
     const size_t num_fields = 5;
     const char *field_names[]
@@ -136,7 +145,7 @@ static mwArray imageToMwArray(const avt_341::msg::Image &img)
 //extracts the xyz channels of a PointCloud2 into an Nx3 (x|y|z columns) matlab
 //matrix. Decoding here is cheaper than serializing the whole cloud into matlab
 //and de-serializing it on the matlab side.
-static mwArray pcToXyzMwArray(const avt_341::msg::PointCloud2 &pc)
+static mwArray pcToXyzMwArray(const sensor_msgs::msg::PointCloud2 &pc)
 {
     int x_offset = -1, y_offset = -1, z_offset = -1;
     for (const auto& field : pc.fields) {
@@ -243,7 +252,7 @@ static mwArray translationOrientationToMwArray(
     return mwTform;
 }
 
-static mwArray odomToMwArray(const avt_341::msg::Odometry &odom)
+static mwArray odomToMwArray(const nav_msgs::msg::Odometry &odom)
 {
     return translationOrientationToMwArray(odom.pose.pose.position, odom.pose.pose.orientation);
 }
@@ -308,7 +317,7 @@ static cv::Mat segMaskToMat(mwArray &mw_mask)
 
 //builds an rgb8 image message from an rgb cv::Mat, carrying the same header
 //(stamp/frame) as the source camera image
-static avt_341::msg::Image matToRgbMsg(const avt_341::msg::Image &reference, const cv::Mat &rgb)
+static sensor_msgs::msg::Image matToRgbMsg(const sensor_msgs::msg::Image &reference, const cv::Mat &rgb)
 {
     return *cv_bridge::CvImage(reference.header, "rgb8", rgb).toImageMsg();
 }
@@ -367,8 +376,8 @@ void GetCostmapFromMatlab(float width_cells,
     //raw pointcloud xyz, expected to be in lidar coordinate frame
     mwArray mwXYZ;
     if (pc.header.frame_id != lidar_frame_id) {
-        avt_341::msg::PointCloud2 pc_out;
-        if (!node->transform_cloud(pc, pc_out, lidar_frame_id)) {
+        sensor_msgs::msg::PointCloud2 pc_out;
+        if (!tf->transform_cloud(pc, pc_out, lidar_frame_id)) {
             return;
         }
         mwXYZ = pcToXyzMwArray(pc_out);
@@ -460,7 +469,7 @@ void GetCostmapFromMatlab(float width_cells,
     }
 }
 
-void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
+void BuildOccupancyGrid(nav_msgs::msg::OccupancyGrid &grid,
                         float width_cells,
                         float height_cells,
                         float grid_llx,
@@ -482,7 +491,7 @@ void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid,
     grid.data = initVals;
 }
 
-avt_341::msg::OccupancyGrid ExtractGridWindow(const avt_341::msg::OccupancyGrid &src,
+nav_msgs::msg::OccupancyGrid ExtractGridWindow(const nav_msgs::msg::OccupancyGrid &src,
                                               double center_x,
                                               double center_y,
                                               float max_width,
@@ -516,7 +525,7 @@ avt_341::msg::OccupancyGrid ExtractGridWindow(const avt_341::msg::OccupancyGrid 
     const double win_llx = src_llx + start_col * res;
     const double win_lly = src_lly + start_row * res;
 
-    avt_341::msg::OccupancyGrid window;
+    nav_msgs::msg::OccupancyGrid window;
     BuildOccupancyGrid(window, win_width_cells, win_height_cells, win_llx, win_lly, res, default_cell_value);
 
     // Copy the overlapping cells from src into the window
@@ -534,7 +543,7 @@ avt_341::msg::OccupancyGrid ExtractGridWindow(const avt_341::msg::OccupancyGrid 
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::StringPtr msg)
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg)
 {
     if (msg->data.find(avt_341::node::NodeType::Perception) != std::string::npos)
     {
@@ -544,24 +553,25 @@ void ResetCallback(avt_341::msg::StringPtr msg)
 
 int main(int argc, char *argv[])
 {
-    node = avt_341::node::init_node(argc, argv, "uab_perception_node");
-    node->initialize_tf_listener();
+    rclcpp::init(argc, argv);
+    node = rclcpp::Node::make_shared("uab_perception_node");
+    tf = std::make_shared<avt_341::node::TfInterface>(node);
 
-    avt_341::params::uab_perception::ParamsListener param_listener(node->get_raw_node());
+    avt_341::params::uab_perception::ParamsListener param_listener(node);
     const auto params = param_listener.get_params();
 
-    auto odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
-    auto pc_sub = node->create_subscription<avt_341::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
-    auto img_sub = node->create_subscription<avt_341::msg::Image>(
+    auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
+    auto pc_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
+    auto img_sub = node->create_subscription<sensor_msgs::msg::Image>(
         params.camera_topic, 10, ImageCallback);
-    auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-    auto camera_info_sub = node->create_subscription<avt_341::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
+    auto reset_sub = node->create_subscription<std_msgs::msg::String>("avt_341/reset", 10, ResetCallback);
+    auto camera_info_sub = node->create_subscription<sensor_msgs::msg::CameraInfo>("avt_341/camera/camera_info", 10, CameraInfoCallback);
 
-    auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
-    auto occ_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
-    auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+    auto seg_grid_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
+    auto occ_grid_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>("avt_341/occupancy_grid", 1);
+    auto reset_ack_pub = node->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
-    tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_raw_node()->get_clock());
+    tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
     std::string lidar_frame_id, odom_frame_id, camera_frame_id;
@@ -583,11 +593,11 @@ int main(int argc, char *argv[])
         makeSiblingTopic(params.camera_topic, "segmentation");
     const std::string seg_overlay_topic =
         makeSiblingTopic(params.camera_topic, "segmentation_overlay");
-    decltype(node->create_publisher<avt_341::msg::Image>(seg_topic, 1)) seg_pub, seg_overlay_pub;
+    decltype(node->create_publisher<sensor_msgs::msg::Image>(seg_topic, 1)) seg_pub, seg_overlay_pub;
     if (params.debug_vis_segmentation)
     {
-        seg_pub = node->create_publisher<avt_341::msg::Image>(seg_topic, 1);
-        seg_overlay_pub = node->create_publisher<avt_341::msg::Image>(seg_overlay_topic, 1);
+        seg_pub = node->create_publisher<sensor_msgs::msg::Image>(seg_topic, 1);
+        seg_overlay_pub = node->create_publisher<sensor_msgs::msg::Image>(seg_overlay_topic, 1);
         std::cout << "debug_vis_segmentation enabled. Publishing debug topics: "
                   << seg_topic << ", " << seg_overlay_topic << std::endl;
     }
@@ -612,7 +622,7 @@ int main(int argc, char *argv[])
         static_cast<int>(params.costmap.geometry.height / params.costmap.geometry.res);
 
     //initialize terrain grid with default cell values
-    avt_341::msg::OccupancyGrid terrain_grid;
+    nav_msgs::msg::OccupancyGrid terrain_grid;
     BuildOccupancyGrid(
         terrain_grid, width_cells, height_cells,
         static_cast<float>(params.costmap.geometry.llx),
@@ -620,20 +630,20 @@ int main(int argc, char *argv[])
         static_cast<float>(params.costmap.geometry.res), TERRAIN_GRID_DEFAULT_VAL);
 
     //initialize obstacle grid with default cell values
-    avt_341::msg::OccupancyGrid obstacle_grid;
+    nav_msgs::msg::OccupancyGrid obstacle_grid;
     BuildOccupancyGrid(
         obstacle_grid, width_cells, height_cells,
         static_cast<float>(params.costmap.geometry.llx),
         static_cast<float>(params.costmap.geometry.lly),
         static_cast<float>(params.costmap.geometry.res), OBSTACLE_GRID_DEFAULT_VAL);
 
-    avt_341::node::Rate rate(100.0);
+    rclcpp::Rate rate(100.0);
     //number of seconds to wait for messages before exiting
     uint16_t timeout_sec = 20;
-    while (avt_341::node::ok())
+    while (rclcpp::ok())
     {
         if(reset_called){
-            avt_341::msg::String reset_ack_msg;
+            std_msgs::msg::String reset_ack_msg;
             reset_ack_msg.data = avt_341::node::NodeType::Perception;
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
@@ -649,7 +659,7 @@ int main(int argc, char *argv[])
             if (!cam_info_received) waiting_on += "camera_info";
             std::cout << waiting_on << std::endl;
 
-            avt_341::node::Rate wait(1.0);
+            rclcpp::Rate wait(1.0);
             wait.sleep();
 
             if (--timeout_sec == 0) break;
@@ -711,7 +721,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-            avt_341::msg::OccupancyGrid terrain_grid_window, obstacle_grid_window;
+            nav_msgs::msg::OccupancyGrid terrain_grid_window, obstacle_grid_window;
             if (params.publish_window)
             {
                 //extract a local grid centered at the vehicle pose, clamped so it does
@@ -775,7 +785,7 @@ int main(int argc, char *argv[])
             }
 
         }
-        node->spin_some();
+        rclcpp::spin_some(node);
         rate.sleep();
     }
 

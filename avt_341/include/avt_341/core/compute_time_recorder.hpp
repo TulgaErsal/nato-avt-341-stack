@@ -8,8 +8,8 @@
 #include <string>
 
 #include "avt_341/core/running_stats.hpp"
-#include "avt_341/node/node_proxy.h"
-#include "avt_341/node/ros_types.h"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341_msgs/msg/compute_time_array.hpp"
 
 namespace avt_341::core {
 
@@ -47,7 +47,7 @@ private:
 class ComputeTimeRecorder {
 
 public:
-    ComputeTimeRecorder(const std::shared_ptr<node::NodeProxy>& node, const std::string& tag);
+    ComputeTimeRecorder(const rclcpp::Node::SharedPtr& node, const std::string& tag);
 
     /// Set the statistics properties of a section. Discards any samples already
     /// recorded for the section. Sections recorded without prior configuration
@@ -83,17 +83,17 @@ public:
     static double NowSeconds();
 
     /// "<node namespace>/<node name>" tag helper for recorder construction.
-    static std::string MakeNodeTag(const std::shared_ptr<node::NodeProxy>& node);
+    static std::string MakeNodeTag(const rclcpp::Node::SharedPtr& node);
 
 private:
-    std::shared_ptr<node::NodeProxy> node_;
+    rclcpp::Node::SharedPtr node_;
     std::string tag_;
 
     std::mutex mutex_;
     std::map<std::string, RunningStats> sections_;
     std::map<std::string, double> pending_start_seconds_;
 
-    node::Publisher<msg::ComputeTimeArray>::SharedPtr pub_;
+    rclcpp::Publisher<avt_341_msgs::msg::ComputeTimeArray>::SharedPtr pub_;
 };
 
 }

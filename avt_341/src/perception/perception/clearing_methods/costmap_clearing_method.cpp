@@ -1,4 +1,6 @@
 #include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
 
 namespace avt_341::perception {
 
@@ -38,7 +40,7 @@ void OccupancyClearingMethod::Visualize() const {
     // Default empty implementation
 }
 
-void OccupancyClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_cloud, const msg::Point &veh_pos) {
+void OccupancyClearingMethod::OnOccupancyAdded(const sensor_msgs::msg::PointCloud &point_cloud, const geometry_msgs::msg::Point &veh_pos) {
     // Default empty implementation
 }
 
@@ -81,7 +83,7 @@ NullClearingMethod::NullClearingMethod(std::vector<std::vector<Cell> > &cells,
         obs_calculator) {
 }
 
-void NullClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
+void NullClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) {
     // No implementation
 }
 

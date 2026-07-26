@@ -12,19 +12,31 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
-#include <avt_341/node/node_proxy.h>
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_types.h"
 #include <avt_341/node/occupancy_grid_subscriber.h>
-#include <avt_341/node/ros_types.h>
+#include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
+#include "avt_341_msgs/msg/dwa_info.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/string.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 #include <avt_341/dwa_local_planner_params_service.hpp>
 #include <avt_341/planning/local/dwa/planner.hpp>
 
 // Initialise ROS messages.
-avt_341::msg::Odometry msg_odom;
-avt_341::msg::OccupancyGrid msg_grid_occ;
-avt_341::msg::OccupancyGrid msg_grid_seg;
-avt_341::msg::Path msg_waypoints;
-avt_341::msg::Pose msg_waypoint_pose;
-avt_341::msg::Path msg_path;
+nav_msgs::msg::Odometry msg_odom;
+nav_msgs::msg::OccupancyGrid msg_grid_occ;
+nav_msgs::msg::OccupancyGrid msg_grid_seg;
+nav_msgs::msg::Path msg_waypoints;
+geometry_msgs::msg::Pose msg_waypoint_pose;
+nav_msgs::msg::Path msg_path;
 
 // Initialise receive flags.
 bool rcvd_odom = false;
@@ -45,7 +57,7 @@ unsigned int loop_count = 0;
  *
  * @param msg_rcvd_odom Pointer to the odometry ROS nav_msgs/Odometry message.
  */
-void CallbackOdometry(avt_341::msg::OdometryPtr msg_rcvd_odom) {
+void CallbackOdometry(nav_msgs::msg::Odometry::SharedPtr msg_rcvd_odom) {
     msg_odom = *msg_rcvd_odom;
     rcvd_odom = true;
 }
@@ -56,7 +68,7 @@ void CallbackOdometry(avt_341::msg::OdometryPtr msg_rcvd_odom) {
  * @param msg_rcvd_grid Pointer to the occupancy grid ROS nav_msgs/OccupancyGrid
  * message.
  */
-void CallbackGridOccupancy(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
+void CallbackGridOccupancy(nav_msgs::msg::OccupancyGrid::SharedPtr msg_rcvd_grid) {
     msg_grid_occ = *msg_rcvd_grid;
     rcvd_grid_occ = true;
 }
@@ -67,7 +79,7 @@ void CallbackGridOccupancy(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
  * @param msg_rcvd_grid Pointer to the segmentation grid ROS
  * nav_msgs/OccupancyGrid message.
  */
-void CallbackGridSegmentation(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
+void CallbackGridSegmentation(nav_msgs::msg::OccupancyGrid::SharedPtr msg_rcvd_grid) {
     msg_grid_seg = *msg_rcvd_grid;
     rcvd_grid_seg = true;
 }
@@ -78,12 +90,12 @@ void CallbackGridSegmentation(avt_341::msg::OccupancyGridPtr msg_rcvd_grid) {
  * @param msg_rcvd_path Pointer to the navigation waypoints ROS nav_msgs/Path
  * message.
  */
-void CallbackWaypoints(avt_341::msg::PathPtr msg_rcvd_path) {
+void CallbackWaypoints(nav_msgs::msg::Path::SharedPtr msg_rcvd_path) {
     msg_waypoints = *msg_rcvd_path;
     rcvd_path = true;
 }
 
-void NavStateCallback(avt_341::msg::NavStatePtr gp_nav_state) {
+void NavStateCallback(avt_341_msgs::msg::NavState::SharedPtr gp_nav_state) {
     if (gp_nav_state->run_state != avt_341::utils::NavStackState::Active) {
         return;
     }
@@ -96,7 +108,7 @@ void NavStateCallback(avt_341::msg::NavStatePtr gp_nav_state) {
  *
  * @param msg_rcvd_path Pointer to the global path ROS nav_msgs/Path message.
  */
-void CallbackPath(avt_341::msg::PathPtr msg_rcvd_path) {
+void CallbackPath(nav_msgs::msg::Path::SharedPtr msg_rcvd_path) {
     msg_path = *msg_rcvd_path;
     rcvd_path = true;
 }
@@ -195,41 +207,41 @@ void UpdateGrids(avt_341::planning::dwa::Planner& planner) {
     }
 }
 
-void ResetCallback(avt_341::msg::StringPtr msg) {
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg) {
     if(msg->data.find(avt_341::node::NodeType::LocalPlanner) !=
        std::string::npos) {
         reset_called = true;
     }
 }
 
-avt_341::msg::MarkerArray
-GetClearMarkersMessage(std::shared_ptr<avt_341::node::NodeProxy> node) {
-    avt_341::msg::Marker delete_marker;
-    delete_marker.header.stamp = node->get_stamp();
+visualization_msgs::msg::MarkerArray
+GetClearMarkersMessage(rclcpp::Node::SharedPtr node) {
+    visualization_msgs::msg::Marker delete_marker;
+    delete_marker.header.stamp = node->now();
     delete_marker.header.frame_id = "map";
     delete_marker.ns = "paths";
-    delete_marker.action = avt_341::msg::Marker::DELETEALL;
+    delete_marker.action = visualization_msgs::msg::Marker::DELETEALL;
 
-    avt_341::msg::MarkerArray marker_array_message;
+    visualization_msgs::msg::MarkerArray marker_array_message;
     marker_array_message.markers.push_back(delete_marker);
 
     return marker_array_message;
 }
 
-avt_341::msg::MarkerArray
-GetTrajectoryMarkersMessage(std::shared_ptr<avt_341::node::NodeProxy> node,
+visualization_msgs::msg::MarkerArray
+GetTrajectoryMarkersMessage(rclcpp::Node::SharedPtr node,
                             const avt_341::planning::dwa::Planner& planner) {
     auto trajectories = planner.GetTrajectories();
-    avt_341::msg::MarkerArray marker_array_message;
+    visualization_msgs::msg::MarkerArray marker_array_message;
     for(size_t trajectory_index = 0; trajectory_index < trajectories.size();
         ++trajectory_index) {
-        avt_341::msg::Marker trajectory_marker_message;
-        trajectory_marker_message.header.stamp = node->get_stamp();
+        visualization_msgs::msg::Marker trajectory_marker_message;
+        trajectory_marker_message.header.stamp = node->now();
         trajectory_marker_message.header.frame_id = "map";
         trajectory_marker_message.ns = "dwa/paths";
         trajectory_marker_message.id = trajectory_index;
-        trajectory_marker_message.type = avt_341::msg::Marker::LINE_STRIP;
-        trajectory_marker_message.action = avt_341::msg::Marker::ADD;
+        trajectory_marker_message.type = visualization_msgs::msg::Marker::LINE_STRIP;
+        trajectory_marker_message.action = visualization_msgs::msg::Marker::ADD;
         trajectory_marker_message.pose.position.x = 0.0;
         trajectory_marker_message.pose.position.y = 0.0;
         trajectory_marker_message.pose.position.z = 0.0;
@@ -254,7 +266,7 @@ GetTrajectoryMarkersMessage(std::shared_ptr<avt_341::node::NodeProxy> node,
         for(int state_index = 0;
             state_index < trajectories[trajectory_index].GetNumberOfStates();
             ++state_index) {
-            avt_341::msg::Point state_point_message;
+            geometry_msgs::msg::Point state_point_message;
             state_point_message.x =
                 trajectories[trajectory_index].GetState(state_index).GetX();
             state_point_message.y =
@@ -268,12 +280,12 @@ GetTrajectoryMarkersMessage(std::shared_ptr<avt_341::node::NodeProxy> node,
     return marker_array_message;
 }
 
-avt_341::msg::DwaInfo
-GetInfoMessage(std::shared_ptr<avt_341::node::NodeProxy> node,
+avt_341_msgs::msg::DwaInfo
+GetInfoMessage(rclcpp::Node::SharedPtr node,
                avt_341::planning::dwa::Planner& planner) {
-    avt_341::msg::DwaInfo info_message;
+    avt_341_msgs::msg::DwaInfo info_message;
     info_message.header.frame_id = "dwa";
-    info_message.header.stamp = node->get_stamp();
+    info_message.header.stamp = node->now();
     for(auto& trajectory : planner.GetTrajectories()) {
         info_message.planned_trajectories.push_back(
             trajectory.GetROSTrajectoryMessage());
@@ -285,21 +297,21 @@ GetInfoMessage(std::shared_ptr<avt_341::node::NodeProxy> node,
 
 int main(int argc, char* argv[]) {
     // Initialize ROS node.
-    auto node =
-        avt_341::node::init_node(argc, argv, "avt_341_dwa_planner_node");
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("avt_341_dwa_planner_node");
     avt_341::params::dwa_local_planner::ParamsListener param_listener(
-        node->get_raw_node());
+        node);
     const auto params = param_listener.get_params();
 
 #ifndef USE_OPENMP
-    node->log_warning("DWA planner was not compiled with OpenMP enabled. "
+    RCLCPP_WARN(node->get_logger(), "DWA planner was not compiled with OpenMP enabled. "
                       "Planning will be significantly slower.");
 #endif
 
 
     // Create node subscribers.
     auto sub_odom =
-        node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",
+        node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",
                                                           1,
                                                           CallbackOdometry);
     avt_341::node::OccupancyGridSubscriber sub_grid_occ(node,
@@ -313,41 +325,41 @@ int main(int argc, char* argv[]) {
         params.costmap.publish.method,
         CallbackGridSegmentation);
     auto sub_path =
-        node->create_subscription<avt_341::msg::Path>("avt_341/global_path",
+        node->create_subscription<nav_msgs::msg::Path>("avt_341/global_path",
                                                       1,
                                                       CallbackPath);
-    auto sub_waypoint = node->create_subscription<avt_341::msg::NavState>(
+    auto sub_waypoint = node->create_subscription<avt_341_msgs::msg::NavState>(
         "avt_341/state",
         1,
         NavStateCallback);
     auto sub_waypoints =
-        node->create_subscription<avt_341::msg::Path>("avt_341/waypoints",
+        node->create_subscription<nav_msgs::msg::Path>("avt_341/waypoints",
                                                       1,
                                                       CallbackWaypoints);
     auto reset_sub =
-        node->create_subscription<avt_341::msg::String>("avt_341/reset",
+        node->create_subscription<std_msgs::msg::String>("avt_341/reset",
                                                         1,
                                                         ResetCallback);
     auto reset_ack_pub =
-        node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+        node->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
     // Create node publishers.
     auto pub_path =
-        node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
+        node->create_publisher<nav_msgs::msg::Path>("avt_341/local_path", 1);
     auto pub_ctrl_speed =
-        node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",
+        node->create_publisher<std_msgs::msg::Float64>("avt_341/desired_speed",
                                                       1);
     auto pub_ctrl_steer =
-        node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+        node->create_publisher<std_msgs::msg::Float64>("avt_341/cmd_steer", 1);
     auto pub_ctrl_drive =
-        node->create_publisher<avt_341::msg::AckermannDriveStamped>(
+        node->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(
             "avt_341/drive",
             1);
     auto pub_markers =
-        node->create_publisher<avt_341::msg::MarkerArray>("avt_341/markers",
+        node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/markers",
                                                           1);
     auto pub_info =
-        node->create_publisher<avt_341::msg::DwaInfo>("avt_341/dwa/info",
+        node->create_publisher<avt_341_msgs::msg::DwaInfo>("avt_341/dwa/info",
                                                           1);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
@@ -385,9 +397,9 @@ int main(int argc, char* argv[]) {
     planner.SetPrintSummary(params.print_summary);
 
     // Set the node spin rate to 50 Hz.
-    avt_341::node::Rate rosrate(50.0f);
+    rclcpp::Rate rosrate(50.0f);
 
-    while(avt_341::node::ok()) {
+    while(rclcpp::ok()) {
         if(msg_path.poses.size() > 0 && rcvd_odom &&
            msg_grid_occ.data.size() > 0) {
             if(params.use_segmentation && !(msg_grid_seg.data.size() > 0)) break;
@@ -402,25 +414,24 @@ int main(int argc, char* argv[]) {
             auto optimal_trajectory = planner.GetOptimalTrajectory();
 
             // Serialise and publish the local path.
-            avt_341::msg::Path msg_path = planner.GetPlannedPathRos();
+            nav_msgs::msg::Path msg_path = planner.GetPlannedPathRos();
             msg_path.header.frame_id = "map";
-            msg_path.header.stamp = node->get_stamp();
-            avt_341::node::set_seq(msg_path.header, loop_count);
+            msg_path.header.stamp = node->now();
             pub_path->publish(msg_path);
 
             // Serialise and publish the target speed.
-            avt_341::msg::Float64 msg_ctrl_speed;
+            std_msgs::msg::Float64 msg_ctrl_speed;
             msg_ctrl_speed.data = planner.GetPlannedLinearSpeed();
             pub_ctrl_speed->publish(msg_ctrl_speed);
 
             // Serialise and publish the target steering angle.
-            avt_341::msg::Float64 msg_ctrl_steer;
+            std_msgs::msg::Float64 msg_ctrl_steer;
             msg_ctrl_steer.data = planner.GetPlannedAngularSpeed();
             pub_ctrl_steer->publish(msg_ctrl_steer);
 
-            avt_341::msg::AckermannDriveStamped msg_ctrl_drive;
+            ackermann_msgs::msg::AckermannDriveStamped msg_ctrl_drive;
             msg_ctrl_drive.header.frame_id = "avt_341";
-            msg_ctrl_drive.header.stamp = node->get_stamp();
+            msg_ctrl_drive.header.stamp = node->now();
             msg_ctrl_drive.drive.speed = planner.GetPlannedLinearSpeed();
             msg_ctrl_drive.drive.steering_angle =
                 planner.GetPlannedAngularSpeed();
@@ -438,7 +449,7 @@ int main(int argc, char* argv[]) {
 
         if(reset_called) {
             planner.Reset();
-            avt_341::msg::String reset_ack_msg;
+            std_msgs::msg::String reset_ack_msg;
             reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
@@ -451,7 +462,7 @@ int main(int argc, char* argv[]) {
         rcvd_odom = false;
 
         // Run the ROS node at the specified rate.
-        node->spin_some();
+        rclcpp::spin_some(node);
         rosrate.sleep();
     }
 

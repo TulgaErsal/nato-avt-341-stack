@@ -15,7 +15,22 @@
  *         Keweenaw Research Center (KRC)
  */
 #include <avt_341/planning/local/avt_341_mpc_planner_node.h>
+#include <avt_341/node/node_types.h>
 #include <avt_341/mpc_local_planner_params_service.hpp>
+#include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/sinkage.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/string.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include <rclcpp/rclcpp.hpp>
 
 // This call must be included in the ROS node executable before initialising
 // the Julia C bindings and is required for fast execution of wrapped Julia
@@ -29,14 +44,14 @@ void CatchJuliaException()
     // Catch exceptions from the Julia function call.
     if (jl_exception_occurred()) {
         const char *p = jl_string_ptr(jl_eval_string("sprint(showerror, ccall(:jl_exception_occurred, Any, ()))"));
-        node->log_error("Julia module has thrown an exception: %s", p);
+        RCLCPP_ERROR(node->get_logger(), "Julia module has thrown an exception: %s", p);
         has_error = true;
     }
 }
 
 bool reset_called = false;
 
-void ResetCallback(avt_341::msg::StringPtr msg) {
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg) {
     if(msg->data.find(avt_341::node::NodeType::LocalPlanner) !=
        std::string::npos) {
         reset_called = true;
@@ -44,7 +59,7 @@ void ResetCallback(avt_341::msg::StringPtr msg) {
 }
 
 
-void VehicleStateCallback(avt_341::msg::Float64MultiArrayPtr f64_ma_msg)
+void VehicleStateCallback(std_msgs::msg::Float64MultiArray::SharedPtr f64_ma_msg)
 {
     jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
     double* veh_data_arr = const_cast<double*>(&f64_ma_msg->data[0]);
@@ -110,7 +125,7 @@ static std::vector<double> CullObstaclesToCorridor(
     return culled;
 }
 
-void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
+void ObstaclesCallback(std_msgs::msg::Float64MultiArray::SharedPtr obs_msg)
 {
     if (!is_initialized) return;
 
@@ -124,23 +139,23 @@ void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
     }
 
     if (mpc_params.visualize_culled_obstacles && culled_obs_marker_pub) {
-        avt_341::msg::MarkerArray marker_array;
+        visualization_msgs::msg::MarkerArray marker_array;
         // Delete all previous markers.
-        avt_341::msg::Marker clear_marker;
+        visualization_msgs::msg::Marker clear_marker;
         clear_marker.header.frame_id = "map";
-        clear_marker.header.stamp = node->get_stamp();
+        clear_marker.header.stamp = node->now();
         clear_marker.id = 0;
-        clear_marker.action = avt_341::msg::Marker::DELETEALL;
+        clear_marker.action = visualization_msgs::msg::Marker::DELETEALL;
         marker_array.markers.push_back(clear_marker);
         // Add one cube per obstacle cluster in the culled set.
         const int num_obs = static_cast<int>(obs_to_use->size()) / 3;
         for (int i = 0; i < num_obs; i++) {
-            avt_341::msg::Marker m;
+            visualization_msgs::msg::Marker m;
             m.header.frame_id = "map";
-            m.header.stamp = node->get_stamp();
+            m.header.stamp = node->now();
             m.id = i + 1; // 0 is reserved for the DELETEALL marker
-            m.type = avt_341::msg::Marker::CUBE;
-            m.action = avt_341::msg::Marker::ADD;
+            m.type = visualization_msgs::msg::Marker::CUBE;
+            m.action = visualization_msgs::msg::Marker::ADD;
             m.pose.position.x = (*obs_to_use)[3 * i];
             m.pose.position.y = (*obs_to_use)[3 * i + 1];
             m.pose.position.z = 0.0;
@@ -164,7 +179,7 @@ void ObstaclesCallback(avt_341::msg::Float64MultiArrayPtr obs_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void GoalPointCallback(avt_341::msg::PointStampedPtr point_stamped_msg)
+void GoalPointCallback(const geometry_msgs::msg::PointStamped::SharedPtr point_stamped_msg)
 {
     double x = point_stamped_msg->point.x;
     double y = point_stamped_msg->point.y;
@@ -176,7 +191,7 @@ void GoalPointCallback(avt_341::msg::PointStampedPtr point_stamped_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void GoalPointEndOfGlobalPathCallback(avt_341::msg::BoolPtr msg)
+void GoalPointEndOfGlobalPathCallback(const std_msgs::msg::Bool::SharedPtr msg)
 {
     bool flag = msg->data;
     jl_value_t *j_flag = jl_box_bool(flag);
@@ -185,7 +200,7 @@ void GoalPointEndOfGlobalPathCallback(avt_341::msg::BoolPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void HeadingCallback(avt_341::msg::Float64Ptr heading_msg)
+void HeadingCallback(std_msgs::msg::Float64::SharedPtr heading_msg)
 {
     double psi = heading_msg->data;
 
@@ -195,7 +210,7 @@ void HeadingCallback(avt_341::msg::Float64Ptr heading_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void FinalHeadingCallback(avt_341::msg::Float64Ptr heading_msg)
+void FinalHeadingCallback(std_msgs::msg::Float64::SharedPtr heading_msg)
 {
     double theta = heading_msg->data;
 
@@ -205,7 +220,7 @@ void FinalHeadingCallback(avt_341::msg::Float64Ptr heading_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void SpeedCallback(avt_341::msg::Float64Ptr speed_msg)
+void SpeedCallback(std_msgs::msg::Float64::SharedPtr speed_msg)
 {
     double speed = speed_msg->data;
 
@@ -215,7 +230,7 @@ void SpeedCallback(avt_341::msg::Float64Ptr speed_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void SinkageCallback(avt_341::msg::SinkagePtr sinkage_msg)
+void SinkageCallback(avt_341_msgs::msg::Sinkage::SharedPtr sinkage_msg)
 {
     double sinkage = sinkage_msg->n;
 
@@ -225,7 +240,7 @@ void SinkageCallback(avt_341::msg::SinkagePtr sinkage_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
+void SegCallback(std_msgs::msg::Float64MultiArray::SharedPtr seg_msg)
 {
     if (!is_initialized) return;
 
@@ -241,7 +256,7 @@ void SegCallback(avt_341::msg::Float64MultiArrayPtr seg_msg)
     recv_seg_input = true;
 }
 
-void TerrainSlopeCallback(avt_341::msg::Float64Ptr terrain_slope_msg)
+void TerrainSlopeCallback(std_msgs::msg::Float64::SharedPtr terrain_slope_msg)
 {
     double terrain_slope = terrain_slope_msg->data;
 
@@ -251,7 +266,7 @@ void TerrainSlopeCallback(avt_341::msg::Float64Ptr terrain_slope_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void TerrainRMSCallback(avt_341::msg::Float64Ptr terrain_rms_msg)
+void TerrainRMSCallback(std_msgs::msg::Float64::SharedPtr terrain_rms_msg)
 {
     double terrain_rms = terrain_rms_msg->data;
 
@@ -261,7 +276,7 @@ void TerrainRMSCallback(avt_341::msg::Float64Ptr terrain_rms_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
+void LeaderOdomCallback(nav_msgs::msg::Odometry::SharedPtr msg)
 {
     double speed = msg->twist.twist.linear.x;
     jl_value_t *j_speed = jl_box_float64(speed);
@@ -284,7 +299,7 @@ void LeaderOdomCallback(avt_341::msg::OdometryPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void FollowerStatusCallback(avt_341::msg::FollowerStatusPtr msg)
+void FollowerStatusCallback(avt_341_msgs::msg::FollowerStatus::SharedPtr msg)
 {
     jl_value_t *j_xo = jl_box_float64(msg->x_offset);
     jl_value_t *j_yo = jl_box_float64(msg->y_offset);
@@ -292,7 +307,7 @@ void FollowerStatusCallback(avt_341::msg::FollowerStatusPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void LeaderStatusCallback(avt_341::msg::BoolPtr msg)
+void LeaderStatusCallback(const std_msgs::msg::Bool::SharedPtr msg)
 {
     bool status = !(msg->data);
     jl_value_t *j_status = jl_box_bool(status);
@@ -300,18 +315,18 @@ void LeaderStatusCallback(avt_341::msg::BoolPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-avt_341::msg::Path GetMPCPath()
+nav_msgs::msg::Path GetMPCPath()
 {
     jl_array_t *j_path = (jl_array_t*)jl_call0(j_get_path);
     CATCH_JULIA_EXCEPTION;
     double *path = (double*)jl_array_data(j_path);
     size_t path_len = jl_array_dim(j_path,0);
 
-    avt_341::msg::Path path_msg;
+    nav_msgs::msg::Path path_msg;
     path_msg.header.frame_id = "odom";
-    path_msg.header.stamp = node->get_stamp();
+    path_msg.header.stamp = node->now();
     for (int i=0; i<path_len; i++) {
-        avt_341::msg::PoseStamped pose;
+        geometry_msgs::msg::PoseStamped pose;
         pose.header.frame_id = "odom";
         pose.pose.position.x = path[path_len*0 + i];
         pose.pose.position.y = path[path_len*1 + i];
@@ -325,51 +340,51 @@ avt_341::msg::Path GetMPCPath()
     return path_msg;
 }
 
-avt_341::msg::Float64 GetMPCSpeed()
+std_msgs::msg::Float64 GetMPCSpeed()
 {
     double speed = jl_unbox_float64(jl_call0(j_get_speed));
     CATCH_JULIA_EXCEPTION;
     
-    avt_341::msg::Float64 speed_msg;
+    std_msgs::msg::Float64 speed_msg;
     speed_msg.data = speed;
     return speed_msg;
 }
 
-avt_341::msg::Float64 GetMPCFinalSpeed()
+std_msgs::msg::Float64 GetMPCFinalSpeed()
 {
     double final_speed = jl_unbox_float64(jl_call0(j_get_final_speed));
     CATCH_JULIA_EXCEPTION;
     
-    avt_341::msg::Float64 final_speed_msg;
+    std_msgs::msg::Float64 final_speed_msg;
     final_speed_msg.data = final_speed;
     return final_speed_msg;
 }
 
-avt_341::msg::Float64 GetMPCSteering()
+std_msgs::msg::Float64 GetMPCSteering()
 {
     double steering = jl_unbox_float64(jl_call0(j_get_steering));
     CATCH_JULIA_EXCEPTION;
     
-    avt_341::msg::Float64 steering_msg;
+    std_msgs::msg::Float64 steering_msg;
     steering_msg.data = steering;
     return steering_msg;
 }
 
-avt_341::msg::AckermannDriveStamped GetMPCDrive()
+ackermann_msgs::msg::AckermannDriveStamped GetMPCDrive()
 {
     double speed = jl_unbox_float64(jl_call0(j_get_speed));
     double steering = jl_unbox_float64(jl_call0(j_get_steering));
     CATCH_JULIA_EXCEPTION;
     
-    avt_341::msg::AckermannDriveStamped drive_msg;
+    ackermann_msgs::msg::AckermannDriveStamped drive_msg;
     drive_msg.header.frame_id = "avt_341";
-    drive_msg.header.stamp = node->get_stamp();
+    drive_msg.header.stamp = node->now();
     drive_msg.drive.speed = speed;
     drive_msg.drive.steering_angle = steering;
     return drive_msg;
 }
 
-avt_341::msg::Float64MultiArray GetMPCHeading()
+std_msgs::msg::Float64MultiArray GetMPCHeading()
 {
   
     jl_array_t *j_heading = (jl_array_t*)jl_call0(j_get_heading);
@@ -377,7 +392,7 @@ avt_341::msg::Float64MultiArray GetMPCHeading()
 
     double *heading_data = (double*)jl_array_data(j_heading);
     size_t heading_len = jl_array_dim(j_heading, 0);
-    avt_341::msg::Float64MultiArray heading_msg;
+    std_msgs::msg::Float64MultiArray heading_msg;
     heading_msg.data.resize(heading_len);
 
     for (size_t i = 0; i < heading_len; i++) {
@@ -386,12 +401,12 @@ avt_341::msg::Float64MultiArray GetMPCHeading()
     return heading_msg;
 }
 
-avt_341::msg::Bool GetSlopeLimited()
+std_msgs::msg::Bool GetSlopeLimited()
 {
     bool slope_limited = jl_unbox_bool(jl_call0(j_get_slope_limited));
     CATCH_JULIA_EXCEPTION;
     
-    avt_341::msg::Bool slope_limited_msg;
+    std_msgs::msg::Bool slope_limited_msg;
     slope_limited_msg.data = slope_limited;
     return slope_limited_msg;
 }
@@ -414,13 +429,12 @@ void InitialiseJuliaAPI()
     // ----------[ Initialize Julia system image. ]----------
     if (mpc_params.sysimage_path.empty())
     {
-        node->log_info("Loading Julia system image at %s ...", MPC_SYSIMAGE_PATH);
+        RCLCPP_INFO(node->get_logger(), "Loading Julia system image at %s ...", MPC_SYSIMAGE_PATH);
         jl_init_with_image(NULL, MPC_SYSIMAGE_PATH);
     }
     else
     {
-        node->log_info("Loading Julia system image at %s ...",
-                       mpc_params.sysimage_path.c_str());
+        RCLCPP_INFO(node->get_logger(), "Loading Julia system image at %s ...", mpc_params.sysimage_path.c_str());
         jl_init_with_image(NULL, mpc_params.sysimage_path.c_str());
     }
     CATCH_JULIA_EXCEPTION;
@@ -431,20 +445,16 @@ void InitialiseJuliaAPI()
     // ----------[ Load the Julia MPC planner module. ]----------
     if (!mpc_params.planner_module_path.empty())
     {
-        node->log_info("Loading Julia module from user-defined path at: %s ...",
-                       mpc_params.planner_module_path.c_str());
+        RCLCPP_INFO(node->get_logger(), "Loading Julia module from user-defined path at: %s ...", mpc_params.planner_module_path.c_str());
     }
     else if (!strlen(MPC_PLANNER_MODULE_PATH) == 0)
     {
-        node->log_info(
-            "No absolute path to the Julia module was defined. Reverting to "
-            "CMake compile definition, defined at: %s",
-            MPC_PLANNER_MODULE_PATH);
+        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia module was defined. Reverting to "
+            "CMake compile definition, defined at: %s", MPC_PLANNER_MODULE_PATH);
     }
     else
     {
-        node->log_error(
-            "No valid path to the Julia module could be found. Check your "
+        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia module could be found. Check your "
             "CMake build log for variable MPC_PLANNER_MODULE_PATH or define the "
             "parameter ~julia_planner_module_path manually.");
         has_error = EXIT_FAILURE;
@@ -453,7 +463,7 @@ void InitialiseJuliaAPI()
             "No valid path to the Julia MPC module could be found.");
     }
 
-    node->log_info("Loading Julia planner module at: %s", MPC_PLANNER_MODULE_PATH);
+    RCLCPP_INFO(node->get_logger(), "Loading Julia planner module at: %s", MPC_PLANNER_MODULE_PATH);
     std::string planner_module_include_command(std::string("Base.include(Main, \"") + MPC_PLANNER_MODULE_PATH +
                                                std::string("\")"));
     jl_eval_string(planner_module_include_command.c_str());
@@ -464,20 +474,16 @@ void InitialiseJuliaAPI()
     // ----------[ Load the Julia MPC parameters module. ]----------
     if (!mpc_params.parameters_module_path.empty())
     {
-        node->log_info("Loading Julia MPC parameters module from user-defined path at: %s ...",
-                       mpc_params.parameters_module_path.c_str());
+        RCLCPP_INFO(node->get_logger(), "Loading Julia MPC parameters module from user-defined path at: %s ...", mpc_params.parameters_module_path.c_str());
     }
     else if (!strlen(MPC_PARAMETERS_MODULE_PATH) == 0)
     {
-        node->log_info(
-            "No absolute path to the Julia MPC parameters module was defined. Reverting to "
-            "CMake compile definition, defined at: %s",
-            MPC_PARAMETERS_MODULE_PATH);
+        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia MPC parameters module was defined. Reverting to "
+            "CMake compile definition, defined at: %s", MPC_PARAMETERS_MODULE_PATH);
     }
     else
     {
-        node->log_error(
-            "No valid path to the Julia MPC parameters module could be found. Check your "
+        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia MPC parameters module could be found. Check your "
             "CMake build log for variable MPC_PARAMETERS_MODULE_PATH or define the "
             "parameter ~julia_parameters_module_path manually.");
         has_error = EXIT_FAILURE;
@@ -486,7 +492,7 @@ void InitialiseJuliaAPI()
             "No valid path to the Julia MPC parameters module could be found.");
     }
 
-    node->log_info("Loading Julia MPC parameters module at: %s", MPC_PARAMETERS_MODULE_PATH);
+    RCLCPP_INFO(node->get_logger(), "Loading Julia MPC parameters module at: %s", MPC_PARAMETERS_MODULE_PATH);
 
     std::string parameters_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_PARAMETERS_MODULE_PATH +
                                                   std::string("\")"));
@@ -498,20 +504,16 @@ void InitialiseJuliaAPI()
     // ----------[ Load the Julia MPC models module. ]----------
     if (!mpc_params.models_module_path.empty())
     {
-        node->log_info("Loading Julia MPC models module from user-defined path at: %s ...",
-                       mpc_params.models_module_path.c_str());
+        RCLCPP_INFO(node->get_logger(), "Loading Julia MPC models module from user-defined path at: %s ...", mpc_params.models_module_path.c_str());
     }
     else if (!strlen(MPC_MODELS_MODULE_PATH) == 0)
     {
-        node->log_info(
-            "No absolute path to the Julia MPC models module was defined. Reverting to "
-            "CMake compile definition, defined at: %s",
-            MPC_MODELS_MODULE_PATH);
+        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia MPC models module was defined. Reverting to "
+            "CMake compile definition, defined at: %s", MPC_MODELS_MODULE_PATH);
     }
     else
     {
-        node->log_error(
-            "No valid path to the Julia MPC models module could be found. Check your "
+        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia MPC models module could be found. Check your "
             "CMake build log for variable MPC_MODELS_MODULE_PATH or define the "
             "parameter ~julia_models_module_path manually.");
         has_error = EXIT_FAILURE;
@@ -520,9 +522,8 @@ void InitialiseJuliaAPI()
             "No valid path to the Julia MPC models module could be found.");
     }
 
-    node->log_info("Loading Julia MPC models module at: %s", MPC_MODELS_MODULE_PATH);
-    node->log_info("Using linear solver: %s",
-                   mpc_params.linear_solver.c_str());
+    RCLCPP_INFO(node->get_logger(), "Loading Julia MPC models module at: %s", MPC_MODELS_MODULE_PATH);
+    RCLCPP_INFO(node->get_logger(), "Using linear solver: %s", mpc_params.linear_solver.c_str());
 
     std::string models_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_MODELS_MODULE_PATH +
                                                   std::string("\")"));
@@ -693,7 +694,7 @@ void InitialiseJuliaAPI()
 
 void InitialisePlanner()
 {
-    node->log_info("Initializing MPC planner.");
+    RCLCPP_INFO(node->get_logger(), "Initializing MPC planner.");
 
     // Initialise the planner
     // ----------------------
@@ -702,7 +703,7 @@ void InitialisePlanner()
     // ----------------------
 
     is_initialized = true;
-    node->log_info("MPC planner initialized.");
+    RCLCPP_INFO(node->get_logger(), "MPC planner initialized.");
 }
 
 void UpdateCostFnWeights(
@@ -734,9 +735,10 @@ void UpdateCostFnWeights(
 
 int main(int argc, char *argv[])
 {
-    node = avt_341::node::init_node(argc, argv, "avt_341_mpc_wrapper_node");
+    rclcpp::init(argc, argv);
+    node = rclcpp::Node::make_shared("avt_341_mpc_wrapper_node");
     avt_341::params::mpc_local_planner::ParamsListener param_listener(
-        node->get_raw_node());
+        node);
     mpc_params = param_listener.get_params();
 
     // Initialise the Julia C API.
@@ -744,50 +746,48 @@ int main(int argc, char *argv[])
 
     // Register subscriptions
     // ----------------------
-    auto veh_state_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,VehicleStateCallback);
-    auto obs_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/obstacle_clusters",1,ObstaclesCallback);
-    auto goal_pt_sub = node->create_subscription<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
-    auto goal_end_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
-    auto head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
-    auto final_head_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
-    auto speed_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
-    auto sink_sub = node->create_subscription<avt_341::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
-    auto seg_sub = node->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
-    auto reset_sub = node->create_subscription<avt_341::msg::String>("avt_341/reset",1,ResetCallback);
-    auto terrain_slope_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
-    auto terrain_rms_sub = node->create_subscription<avt_341::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
-    auto leader_odom_sub = node->create_subscription<avt_341::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
-    auto leader_status_sub = node->create_subscription<avt_341::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
-    auto follower_status_sub = node->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
+    auto veh_state_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/veh",1,VehicleStateCallback);
+    auto obs_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/obstacle_clusters",1,ObstaclesCallback);
+    auto goal_pt_sub = node->create_subscription<geometry_msgs::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
+    auto goal_end_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
+    auto head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
+    auto final_head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
+    auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
+    auto sink_sub = node->create_subscription<avt_341_msgs::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
+    auto seg_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
+    auto reset_sub = node->create_subscription<std_msgs::msg::String>("avt_341/reset",1,ResetCallback);
+    auto terrain_slope_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
+    auto terrain_rms_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
+    auto leader_odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
+    auto leader_status_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
+    auto follower_status_sub = node->create_subscription<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
 
     // Register publishers
     // -------------------.
-    auto path_pub = node->create_publisher<avt_341::msg::Path>("avt_341/local_path", 1);
-    auto speed_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed",1);
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> steer_pub = nullptr;
+    auto path_pub = node->create_publisher<nav_msgs::msg::Path>("avt_341/local_path", 1);
+    auto speed_pub = node->create_publisher<std_msgs::msg::Float64>("avt_341/desired_speed",1);
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> steer_pub = nullptr;
     if (mpc_params.publish_steering_commands) {
-        steer_pub = node->create_publisher<avt_341::msg::Float64>("avt_341/cmd_steer", 1);
+        steer_pub = node->create_publisher<std_msgs::msg::Float64>("avt_341/cmd_steer", 1);
     }
-    auto drive_pub = node->create_publisher<avt_341::msg::AckermannDriveStamped>("avt_341/drive", 1);
-    auto heading_pub = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
-    auto reset_ack_pub = node->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-    auto slope_limited_pub = node->create_publisher<avt_341::msg::Bool>("avt_341/mpc_slope_limited", 1);
+    auto drive_pub = node->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>("avt_341/drive", 1);
+    auto heading_pub = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
+    auto reset_ack_pub = node->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
+    auto slope_limited_pub = node->create_publisher<std_msgs::msg::Bool>("avt_341/mpc_slope_limited", 1);
     if (mpc_params.visualize_culled_obstacles) {
-        culled_obs_marker_pub = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/culled_obstacle_markers", 1);
+        culled_obs_marker_pub = node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/culled_obstacle_markers", 1);
     }
 
-    node->log_info("Julia API initialized. Running main loop.");
+    RCLCPP_INFO(node->get_logger(), "Julia API initialized. Running main loop.");
 
-    node->log_info("Node running at %.2f Hz.", mpc_params.rate);
+    RCLCPP_INFO(node->get_logger(), "Node running at %.2f Hz.", mpc_params.rate);
 
-    node->log_info("Number of collocation points: %lld.",
-                   static_cast<long long>(mpc_params.num_col_points));
+    RCLCPP_INFO(node->get_logger(), "Number of collocation points: %lld.", static_cast<long long>(mpc_params.num_col_points));
 
-    node->log_info("Prediction time horizon: %.1f.",
-                   mpc_params.prediction_time_horizon);
+    RCLCPP_INFO(node->get_logger(), "Prediction time horizon: %.1f.", mpc_params.prediction_time_horizon);
 
-    avt_341::node::Rate node_rate(mpc_params.rate);
-    while (avt_341::node::ok() && !has_error)
+    rclcpp::Rate node_rate(mpc_params.rate);
+    while (rclcpp::ok() && !has_error)
     {
         auto updated_params = mpc_params;
         if (param_listener.try_update_params(updated_params)) {
@@ -821,14 +821,14 @@ int main(int argc, char *argv[])
 
         if(reset_called && is_initialized) {
             // Nothing to reset currently
-            node->log_info("Resetting MPC local planner.");
-            avt_341::msg::String reset_ack_msg;
+            RCLCPP_INFO(node->get_logger(), "Resetting MPC local planner.");
+            std_msgs::msg::String reset_ack_msg;
             reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }
 
-        node->spin_some();
+        rclcpp::spin_some(node);
         node_rate.sleep();
     }
 

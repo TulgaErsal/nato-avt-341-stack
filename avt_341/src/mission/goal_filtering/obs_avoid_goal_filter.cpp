@@ -4,6 +4,10 @@
 
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
 #include "avt_341/node/occupancy_grid_subscriber.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341::mission {
 
@@ -12,13 +16,13 @@ namespace avt_341::mission {
 #define WORLD_TF_FRAME "map"
 
 ObsAvoidGoalFilter::ObsAvoidGoalFilter(
-    std::shared_ptr<node::NodeProxy> node,
+    rclcpp::Node::SharedPtr node,
     const std::string& vehicle_id,
     const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
     const std::string& publish_method)
     : node_(node),
     params_(vehicle_id),
-    last_point_(avt_341::optional<Eigen::Vector2d>()),
+    last_point_(std::optional<Eigen::Vector2d>()),
     row_idx_(-1),
     deadlock_(false) {
 
@@ -33,7 +37,7 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(
     params_.persist_state = filter_params.persist_state;
     params_.ignore_deadlock = filter_params.ignore_deadlock;
 
-    node_->log_info("Formation goal filter parameters:"
+    RCLCPP_INFO(node_->get_logger(), "Formation goal filter parameters:"
                     "\n vehicle_id: %s"
                     "\n method: obs_avoid"
                     "\n occ_threshold: %d"
@@ -44,18 +48,7 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(
                     "\n follower_divergence_threshold: %.2f"
                     "\n reset_side_on_free_space: %d"
                     "\n persist_state: %d"
-                    "\n ignore_deadlock: %d",
-                    params_.vehicle_id.c_str(),
-                    params_.occ_threshold,
-                    params_.padding,
-                    params_.pub_unfiltered_goal,
-                    params_.patch_pad_width,
-                    params_.min_obstacle_width,
-                    params_.follower_divergence_threshold,
-                    params_.reset_side_on_free_space,
-                    params_.persist_state,
-                    params_.ignore_deadlock
-                    );
+                    "\n ignore_deadlock: %d", params_.vehicle_id.c_str(), params_.occ_threshold, params_.padding, params_.pub_unfiltered_goal, params_.patch_pad_width, params_.min_obstacle_width, params_.follower_divergence_threshold, params_.reset_side_on_free_space, params_.persist_state, params_.ignore_deadlock);
 
     grid_sub_ = std::make_shared<node::OccupancyGridSubscriber>(
         node,
@@ -65,11 +58,11 @@ ObsAvoidGoalFilter::ObsAvoidGoalFilter(
         std::bind(&ObsAvoidGoalFilter::OccupancyGridCallback, this, std::placeholders::_1));
 
     if (params_.pub_unfiltered_goal) {
-        unfiltered_goal_pub_ = node_->create_publisher<msg::PoseStamped>(UNFILTERED_GOAL_TOPIC_NAME, 1);
+        unfiltered_goal_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(UNFILTERED_GOAL_TOPIC_NAME, 1);
     }
 }
 
-void ObsAvoidGoalFilter::OccupancyGridCallback(msg::OccupancyGridPtr msg) {
+void ObsAvoidGoalFilter::OccupancyGridCallback(nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
     const int W = msg->info.width;
     const int H = msg->info.height;
 
@@ -122,7 +115,7 @@ void ObsAvoidGoalFilter::OccupancyGridCallback(msg::OccupancyGridPtr msg) {
     occupancy_grid_.block(i_start, j_start, i_end-i_start, j_end-j_start) = region_to_pad;
 }
 
-Eigen::Vector2d ObsAvoidGoalFilter::ToGridCoords(const msg::Point& ros_point) {
+Eigen::Vector2d ObsAvoidGoalFilter::ToGridCoords(const geometry_msgs::msg::Point& ros_point) {
     // Code currently expects rows to be in x position
     return (Eigen::Vector2d(ros_point.y, ros_point.x) - map_origin_)/map_resolution_;
 }
@@ -133,10 +126,10 @@ Eigen::Vector2d ObsAvoidGoalFilter::ToRosCoords(const Eigen::Vector2d& grid_poin
     return Eigen::Vector2d(temp.y(), temp.x());
 }
 
-msg::Pose ObsAvoidGoalFilter::Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) {
+geometry_msgs::msg::Pose ObsAvoidGoalFilter::Filter(const geometry_msgs::msg::Pose &candidate_goal, const geometry_msgs::msg::Pose &leader_pose) {
 
     if (occupancy_grid_.size() == 0) {
-        node_->log_warning("No occupancy grid received yet.");
+        RCLCPP_WARN(node_->get_logger(), "No occupancy grid received yet.");
         return candidate_goal;
     }
 
@@ -149,14 +142,14 @@ msg::Pose ObsAvoidGoalFilter::Filter(const msg::Pose &candidate_goal, const msg:
     new_pt = ToRosCoords(new_pt);
 
     if (params_.pub_unfiltered_goal) {
-        msg::PoseStamped unfiltered_goal;
+        geometry_msgs::msg::PoseStamped unfiltered_goal;
         unfiltered_goal.pose = candidate_goal;
         unfiltered_goal.header.frame_id = WORLD_TF_FRAME;
-        unfiltered_goal.header.stamp = node_->get_stamp();
+        unfiltered_goal.header.stamp = node_->now();
         unfiltered_goal_pub_->publish(unfiltered_goal);
     }
 
-    msg::Pose return_msg = candidate_goal;
+    geometry_msgs::msg::Pose return_msg = candidate_goal;
     return_msg.position.x = new_pt.x();
     return_msg.position.y = new_pt.y();
     return return_msg;
@@ -166,7 +159,7 @@ void ObsAvoidGoalFilter::Reset() {
     deadlock_ = false;
     direction_ = "";
     row_idx_ = -1;
-    last_point_ = avt_341::optional<Eigen::Vector2d>();
+    last_point_ = std::optional<Eigen::Vector2d>();
 }
 
 bool ObsAvoidGoalFilter::FollowerDiverges(const Eigen::Vector2d& leader_point, const Eigen::Vector2d& follower_point) const {
@@ -256,7 +249,7 @@ ObsAvoidGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
     // --------------------------------------------
     if (deadlock) {
         if (!deadlock_) {
-            node_->log_warning("ObsAvoidGoalFilter: Entering deadlock state");
+            RCLCPP_WARN(node_->get_logger(), "ObsAvoidGoalFilter: Entering deadlock state");
         }
         newpt = last_filtered_goal;    // stay at previous point
         prev  = -1;     // no valid row index
@@ -265,8 +258,7 @@ ObsAvoidGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
     // divergence diagnostic
     const Vector2d leader_pt = pt - off;
     if (!deadlock && FollowerDiverges(leader_pt, newpt)) {
-        node_->log_warning("Follower %s diverges from leader path at point [%.2f, %.2f]",
-            params_.vehicle_id.c_str(), newpt[0], newpt[1]);
+        RCLCPP_WARN(node_->get_logger(), "Follower %s diverges from leader path at point [%.2f, %.2f]", params_.vehicle_id.c_str(), newpt[0], newpt[1]);
     }
 
     if (params_.persist_state)
@@ -279,7 +271,7 @@ ObsAvoidGoalFilter::GetRefPoint(const Eigen::MatrixXi& grid,
     }
 
     if (deadlock_ && params_.ignore_deadlock) {
-        node_->log_warning("Ignoring detected deadlock and resetting internal state since ignore_deadlock=True");
+        RCLCPP_WARN(node_->get_logger(), "Ignoring detected deadlock and resetting internal state since ignore_deadlock=True");
         deadlock_ = false;
         Reset();
     }

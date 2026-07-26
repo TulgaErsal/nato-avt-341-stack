@@ -9,7 +9,8 @@ namespace avt_341::perception {
 
 std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMethod(
         const std::string& clear_method_type,
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
+        const std::shared_ptr<node::TfInterface>& tf,
         std::vector<std::vector<Cell>> & cells,
         const ClearMethodSettings & params,
         const PerceptionSettings& settings,
@@ -38,7 +39,7 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type == CostmapClearMethodType::Raytrace) {
         return std::make_shared<RaytraceClearingMethod>(
-            node_ref, cells, settings, params, obs_calculator);
+            node_ref, tf, cells, settings, params, obs_calculator);
     }
 
     // RAYTRACE CLEARING WITH OBS DISTANCE FILTER
@@ -47,11 +48,11 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
 
         if (settings.dilation_x_cells() <= 0 ||
             settings.dilation_y_cells() <= 0) {
-            node_ref->log_warning("Raytrace Clearing: Dilation should be enabled to reduce intermittent obstacle.");
+            RCLCPP_WARN(node_ref->get_logger(), "Raytrace Clearing: Dilation should be enabled to reduce intermittent obstacle.");
         }
 
         return std::make_shared<RaytraceWithFilteringClearingMethod>(
-            node_ref, cells, settings, params, obs_calculator);
+            node_ref, tf, cells, settings, params, obs_calculator);
     }
 
     // CLEAR BY CHANNEL THRESHOLD
@@ -59,11 +60,11 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
     if (cm_type == CostmapClearMethodType::ChannelThreshold) {
 
         if (params.channel_to_clear.empty()) {
-            node_ref->log_error("Channel threshold clearing method channel name empty.");
+            RCLCPP_ERROR(node_ref->get_logger(), "Channel threshold clearing method channel name empty.");
         }
 
         if (params.channel_threshold < 1e-3) {
-            node_ref->log_error("Channel threshold clearing method should have > 0 threshold configured.");
+            RCLCPP_ERROR(node_ref->get_logger(), "Channel threshold clearing method should have > 0 threshold configured.");
         }
 
         return std::make_shared<ChannelThresholdClearingMethod>(
@@ -73,10 +74,7 @@ std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMe
     // NULL / NO CLEARING METHOD
     // ----------------------------------------------------------------------------------------------------------------
     if (cm_type != CostmapClearMethodType::None) {
-        node_ref->log_warning(
-            "Unknown costmap clearing method: %s. Reverting to default no clearing behavior.",
-            clear_method_type.c_str()
-            );
+        RCLCPP_WARN(node_ref->get_logger(), "Unknown costmap clearing method: %s. Reverting to default no clearing behavior.", clear_method_type.c_str());
     }
 
     return std::make_shared<NullClearingMethod>(
@@ -98,7 +96,8 @@ std::vector<std::string> ClearingMethodFactory::ParseClearMethodsString(std::str
 
 
 std::vector<std::shared_ptr<OccupancyClearingMethod>> ClearingMethodFactory::CreateClearingMethods(
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
+        const std::shared_ptr<node::TfInterface>& tf,
         std::vector<std::vector<Cell>> & cells,
         const ClearMethodSettings & params,
         const PerceptionSettings& settings,
@@ -111,7 +110,7 @@ std::vector<std::shared_ptr<OccupancyClearingMethod>> ClearingMethodFactory::Cre
     // Create clearing methods
     for (const auto& cm_type: cm_types) {
         cm_methods.push_back(CreateClearingMethod(
-            cm_type, node_ref, cells, params, settings, obs_calculator));
+            cm_type, node_ref, tf, cells, params, settings, obs_calculator));
     }
 
     // Set sibling clearing methods for each method
@@ -122,11 +121,9 @@ std::vector<std::shared_ptr<OccupancyClearingMethod>> ClearingMethodFactory::Cre
         cm->SetSiblingClearingMethods(sibling_cms);
     }
 
-	node_ref->log_info(
-        "Costmap clearing methods: %s (%d)",
-        params.type.c_str(), cm_methods.size());
+	RCLCPP_INFO(node_ref->get_logger(), "Costmap clearing methods: %s (%d)", params.type.c_str(), cm_methods.size());
     for (const auto & cm: cm_methods) {
-        node_ref->log_info(" - %s", cm->GetDescription().c_str());
+        RCLCPP_INFO(node_ref->get_logger(), " - %s", cm->GetDescription().c_str());
     }
 
 

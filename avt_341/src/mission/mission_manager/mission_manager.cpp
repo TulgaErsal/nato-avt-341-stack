@@ -1,9 +1,26 @@
 // clas definition
 #include "avt_341/mission/mission_manager.h"
+#include "avt_341/node/node_types.h"
 #include <fstream>
 #include <sstream>
 #include <utility>
 #include <avt_341/core/dto_conversion.h>
+#include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/map_marker.hpp"
+#include "avt_341_msgs/msg/map_marker_list.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
+#include "avt_341_msgs/msg/mission_task_status.hpp"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
 
 namespace avt_341 {
 namespace mission {
@@ -11,10 +28,10 @@ namespace mission {
 MissionManager::MissionManager(
     MissionManagerParams params,
     const std::string & manager_name,
-    const std::shared_ptr<node::NodeProxy> & node_proxy,
+    const rclcpp::Node::SharedPtr & node,
     const std::shared_ptr<GoalFilter> & goal_filter
     )
-    : params_(std::move(params)), node_proxy_(node_proxy),
+    : params_(std::move(params)), node_(node),
       goal_filter_(goal_filter) {
 
     my_name = manager_name;
@@ -29,18 +46,18 @@ MissionManager::MissionManager(
     local_origin_x = params_.gis.origin_x;
     local_origin_y = params_.gis.origin_y;
 
-    waypoint_pub = node_proxy_->create_publisher<avt_341::msg::NavGoalSequence>("avt_341/new_waypoints", 10);
-    reset_pub = node_proxy_->create_publisher<avt_341::msg::String>("avt_341/reset", 10);
-    gp_path_pub = node_proxy_->create_publisher<avt_341::msg::Path>("avt_341/global_path", 10);
-    navcommand_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/nav_command_state", 10);
-    communication_pub = node_proxy_->create_publisher<avt_341::msg::Communication>("avt_341/comm_messages", 100);
-    gp_toggle_pub = node_proxy_->create_publisher<avt_341::msg::Int32>("avt_341/gp_toggle", 10);
-    speed_pub = node_proxy_->create_publisher<avt_341::msg::Float64>("avt_341/speed_setpoint", 10);
-    follower_status_pub = node_proxy_->create_publisher<avt_341::msg::FollowerStatus>("avt_341/follower_status", 10);
-    leader_status_pub = node_proxy_->create_publisher<avt_341::msg::Bool>("avt_341/leader_status", 10);
-    task_status_pub = node_proxy_->create_publisher<avt_341::msg::MissionTaskStatus>("avt_341/task_status", 10);
-    task_change_pub = node_proxy_->create_latching_publisher<avt_341::msg::MissionModuleStatus>("avt_341/task_change");
-    map_markers_pub = node_proxy_->create_latching_publisher<avt_341::msg::MapMarkerList>("/avt_341/map_markers_change");
+    waypoint_pub = node_->create_publisher<avt_341_msgs::msg::NavGoalSequence>("avt_341/new_waypoints", 10);
+    reset_pub = node_->create_publisher<std_msgs::msg::String>("avt_341/reset", 10);
+    gp_path_pub = node_->create_publisher<nav_msgs::msg::Path>("avt_341/global_path", 10);
+    navcommand_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/nav_command_state", 10);
+    communication_pub = node_->create_publisher<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 100);
+    gp_toggle_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/gp_toggle", 10);
+    speed_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/speed_setpoint", 10);
+    follower_status_pub = node_->create_publisher<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status", 10);
+    leader_status_pub = node_->create_publisher<std_msgs::msg::Bool>("avt_341/leader_status", 10);
+    task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
+    task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
+    map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
 }
 
 MissionManager::~MissionManager() {
@@ -90,7 +107,7 @@ int MissionManager::loadMissionDefinition(std::string filename) {
         }
         setMissionPoints(mission_points);
     } else {
-        node_proxy_->log_info("Error reading mission definition %s", filename.c_str());
+        RCLCPP_INFO(node_->get_logger(), "Error reading mission definition %s", filename.c_str());
     }
 
     return 0;
@@ -109,26 +126,24 @@ void MissionManager::updateOverwatchPositions() {
 void MissionManager::setMissionPoints(const std::vector<MissionPoint> & mission_points) {
     mission_data = mission_points;
     updateOverwatchPositions();
-    node_proxy_->log_info("%s updated mission point definitions (%d points, %d overwatch).",
-                          my_name.c_str(), static_cast<int>(mission_data.size()),
-                          static_cast<int>(overwatch_positions.size()));
+    RCLCPP_INFO(node_->get_logger(), "%s updated mission point definitions (%d points, %d overwatch).", my_name.c_str(), static_cast<int>(mission_data.size()), static_cast<int>(overwatch_positions.size()));
     publishMapMarkers();
 }
 
 void MissionManager::publishMapMarkers() {
     // Publish the current mission points as a MapMarkerList on the latched topic
     // so late-joining subscribers (e.g. the RViz panel) get the current set.
-    avt_341::msg::MapMarkerList marker_list;
-    marker_list.header.stamp = node_proxy_->get_stamp();
+    avt_341_msgs::msg::MapMarkerList marker_list;
+    marker_list.header.stamp = node_->now();
     marker_list.header.frame_id = "map";
 
     marker_list.markers.reserve(mission_data.size());
     for(const auto & mp : mission_data) {
-        avt_341::msg::MapMarker marker;
+        avt_341_msgs::msg::MapMarker marker;
         marker.header = marker_list.header;
         marker.marker_id = mp.name;
         marker.label = mp.name;
-        marker.type = avt_341::msg::MapMarker::MISSION_POINT;
+        marker.type = avt_341_msgs::msg::MapMarker::MISSION_POINT;
         marker.pose.position.x = mp.pos_x;
         marker.pose.position.y = mp.pos_y;
         marker.pose.position.z = mp.pos_z;
@@ -146,10 +161,10 @@ bool MissionManager::getMissionPoint(MissionPoint& mission_point, std::string na
     auto it = std::find_if(std::begin(mission_data), std::end(mission_data), 
                 [&](const auto& e) {return e.name == name; });
     if(it == mission_data.end()) {
-        node_proxy_->log_info("Missing Mission Point %s", name.c_str());
+        RCLCPP_INFO(node_->get_logger(), "Missing Mission Point %s", name.c_str());
         return false;
     }
-//    node_proxy_->log_info("Found Mission Point %s = (%.2f, %.2f, %.2f) found", name.c_str(), it->pos_x, it->pos_y, it->pos_z);
+//    RCLCPP_INFO(node_->get_logger(), "Found Mission Point %s = (%.2f, %.2f, %.2f) found", name.c_str(), it->pos_x, it->pos_y, it->pos_z);
     mission_point = *it;
     return true;
 }
@@ -185,7 +200,7 @@ bool MissionManager::loadMissionPaths(std::string filename) {
             row++;
         }    
     } else {
-        node_proxy_->log_info("Error reading mission paths %s", filename.c_str());
+        RCLCPP_INFO(node_->get_logger(), "Error reading mission paths %s", filename.c_str());
         return false;
     }
     return true;
@@ -195,7 +210,7 @@ bool MissionManager::getMissionPath(MissionPath& mission_path, std::string name)
     auto it = std::find_if(std::begin(mission_paths), std::end(mission_paths), 
                 [&](const auto& e) {return e.name == name; });
     if(it == mission_paths.end()) {
-        node_proxy_->log_info("Missing Mission Path %s", name.c_str());
+        RCLCPP_INFO(node_->get_logger(), "Missing Mission Path %s", name.c_str());
         return false;
     }
     mission_path = *it;
@@ -224,18 +239,18 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
       if(preempted_task != nullptr){
         preempted_task->onPreempt();
       }
-      node_proxy_->log_info("%s PREEMPT %s", my_name.c_str(), task->description().c_str());
+      RCLCPP_INFO(node_->get_logger(), "%s PREEMPT %s", my_name.c_str(), task->description().c_str());
     }else{
       task_list.push_back(task);
-      node_proxy_->log_info("%s QUEUED %s", my_name.c_str(), task->description().c_str());
+      RCLCPP_INFO(node_->get_logger(), "%s QUEUED %s", my_name.c_str(), task->description().c_str());
     }
     return true;
 }
 
-void MissionManager::publishGoal(const msg::NavGoal & goal_in){
+void MissionManager::publishGoal(const avt_341_msgs::msg::NavGoal & goal_in){
 
-    msg::NavGoal goal = goal_in;
-    goal.header.stamp = node_proxy_->get_stamp();
+    avt_341_msgs::msg::NavGoal goal = goal_in;
+    goal.header.stamp = node_->now();
     goal.header.frame_id = "map";
 
     Task* current_task = currentTask();
@@ -245,36 +260,36 @@ void MissionManager::publishGoal(const msg::NavGoal & goal_in){
         goal.pose = goal_filter_->Filter(goal.pose, leader_odometry.pose.pose);
     }
 
-    msg::NavGoalSequence goal_seq_msg;
+    avt_341_msgs::msg::NavGoalSequence goal_seq_msg;
     goal_seq_msg.header = goal.header;
     goal_seq_msg.goals = {goal};
     waypoint_pub->publish(goal_seq_msg);
 }
 
-void MissionManager::publishGoalPath(const avt_341::msg::Path& path) {
-    avt_341::msg::Path path_msg;
-    path_msg.header.stamp = node_proxy_->get_stamp();
+void MissionManager::publishGoalPath(const nav_msgs::msg::Path& path) {
+    nav_msgs::msg::Path path_msg;
+    path_msg.header.stamp = node_->now();
     path_msg.header.frame_id = "map";
     path_msg.poses = path.poses;
     waypoint_pub->publish(core::ToNavGoalSequence(path_msg));
 }
 
-void MissionManager::publishPath(const avt_341::msg::Path& path){
-  avt_341::msg::Path path_msg;
-  path_msg.header.stamp = node_proxy_->get_stamp();
+void MissionManager::publishPath(const nav_msgs::msg::Path& path){
+  nav_msgs::msg::Path path_msg;
+  path_msg.header.stamp = node_->now();
   path_msg.header.frame_id = "map";
   path_msg.poses = path.poses;
   gp_path_pub->publish(path_msg);
 }
 
 void MissionManager::publishGpToggle(int state){
-  avt_341::msg::Int32 nav_msg;
+  std_msgs::msg::Int32 nav_msg;
   nav_msg.data = state;
   gp_toggle_pub->publish(nav_msg);
 }
 
 void MissionManager::publishNavStateCmd(int state){
-    avt_341::msg::Int32 nav_msg;
+    std_msgs::msg::Int32 nav_msg;
     nav_msg.data = state;
     navcommand_pub->publish(nav_msg);
 }
@@ -283,7 +298,7 @@ void MissionManager::publishTaskCompletion(Task * task){
   publishTaskCompletion(task->sender_name, task->msg_id);
 }
 
-void MissionManager::publishFormationStatus(avt_341::msg::FollowerStatus & status_msg){
+void MissionManager::publishFormationStatus(avt_341_msgs::msg::FollowerStatus & status_msg){
   follower_status_pub->publish(status_msg);
 }
 
@@ -302,7 +317,7 @@ void MissionManager::publishLeaderStatus(){
     }
   }
   // Publish follower status
-  avt_341::msg::Bool status_msg;
+  std_msgs::msg::Bool status_msg;
   status_msg.data = is_leader;
   leader_status_pub->publish(status_msg);
 }
@@ -312,14 +327,14 @@ void MissionManager::publishTaskStatus() {
     if (task == nullptr) {
         return;
     }
-    const msg::MissionTaskStatus task_status = createTaskStatusMsg(task);
+    const avt_341_msgs::msg::MissionTaskStatus task_status = createTaskStatusMsg(task);
     task_status_pub->publish(task_status);
 }
 
-msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const Task* task) const
+avt_341_msgs::msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const Task* task) const
 {
-    msg::MissionTaskStatus status_msg;
-    status_msg.header.stamp = node_proxy_->get_stamp();
+    avt_341_msgs::msg::MissionTaskStatus status_msg;
+    status_msg.header.stamp = node_->now();
     status_msg.header.frame_id = "map";
 
     if(task == nullptr) {
@@ -372,14 +387,14 @@ void MissionManager::updateTasks() {
           publishSpeedSetPoint();
           active_task->init();
           goal_filter_->Reset();
-          node_proxy_->log_info("    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
+          RCLCPP_INFO(node_->get_logger(), "    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
           publishTaskChange();
         }
 
         active_task->run();
         if(active_task->is_done()){
           active_task->on_done();
-          node_proxy_->log_info("    > %s TASK COMPLETE (of %d): %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
+          RCLCPP_INFO(node_->get_logger(), "    > %s TASK COMPLETE (of %d): %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
           publishTaskCompletion(active_task);
           task_list.pop_front();
           delete active_task;
@@ -393,7 +408,7 @@ Task* MissionManager::currentTask(){
 }
 
 // Contact Management
-bool MissionManager::hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose) {
+bool MissionManager::hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
 	std::vector<Contact>::iterator it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
 	            [&](const Contact& e) {
                   return e.name == name &&
@@ -422,25 +437,24 @@ auto MissionManager::getClosestNewContact() {
     return it;
 }
 
-void MissionManager::addContact(const std::string & name, const avt_341::msg::PoseStamped & pose) {
+void MissionManager::addContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
   Contact new_contact;
   new_contact.name = name;
   new_contact.pose = pose;
   new_contact.investigating = false;
   new_contact.investigated = false;
   new_contact.is_new = true;
-  new_contact.first_seen_sec = node_proxy_->get_now_seconds();
+  new_contact.first_seen_sec = node_->now().seconds();
   mission_contacts.push_back(new_contact);
 }
 
 void MissionManager::updateExistingContact(
     std::vector<Contact>::iterator it,
-    const avt_341::msg::PoseStamped & pose)
+    const geometry_msgs::msg::PoseStamped & pose)
 {
     it->pose = pose;
     const std::string & name = it->name;
-    node_proxy_->log_info("Updated contact \"%s\" position to (%.2f, %.2f).",
-                          name.c_str(), pose.pose.position.x, pose.pose.position.y);
+    RCLCPP_INFO(node_->get_logger(), "Updated contact \"%s\" position to (%.2f, %.2f).", name.c_str(), pose.pose.position.x, pose.pose.position.y);
 
     for (Task* task : task_list) {
         if (auto* moveto = dynamic_cast<MoveTo*>(task)) {
@@ -462,7 +476,7 @@ void MissionManager::updateExistingContact(
 }
 
 void MissionManager::resetTaskList(bool send_completion_msg) {
-  node_proxy_->log_info("%s CANCEL_ALL: Clearing task list of size %d.",  my_name.c_str(), task_list.size());
+  RCLCPP_INFO(node_->get_logger(), "%s CANCEL_ALL: Clearing task list of size %d.", my_name.c_str(), task_list.size());
   for(auto task : task_list) {
     cancelTask(task->msg_id, send_completion_msg);
   }
@@ -473,13 +487,13 @@ void MissionManager::reset(){
   resetTaskList(false);
   obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
   task_completions_.clear();
-  current_gp_goal = avt_341::msg::PoseStamped();
+  current_gp_goal = geometry_msgs::msg::PoseStamped();
   mission_contacts.clear();
   arrivals_.clear();
   goal_filter_->Reset();
   speed_setpoint_state = -1.0;
 
-  avt_341::msg::String reset_msg;
+  std_msgs::msg::String reset_msg;
   reset_msg.data = avt_341::node::NodeType::GlobalPlanner;
   reset_pub->publish(reset_msg);
 }
@@ -490,7 +504,7 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
   if(it != task_list.end()){
     Task* task = *it;
     task->onPreempt();
-    node_proxy_->log_info("%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
+    RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
     if(send_completion_msg){
       publishTaskCompletion(task);
     }
@@ -499,7 +513,7 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
   }
 }
 
-void MissionManager::createToiTasks(Contact & contact, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
+void MissionManager::createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
     contact.is_new = false;
     contact.investigating = true;
 
@@ -508,7 +522,7 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
 
     // Trigger investigation for ego-vehicle: approach and encircle
     // ------------------------------------------------------------------------------------------
-    node_proxy_->log_info("Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
+    RCLCPP_INFO(node_->get_logger(), "Requesting move to %s at (%.2f, %.2f)", contact.name.c_str(), contact.pose.pose.position.x, contact.pose.pose.position.y);
     auto investigateTask = new MoveTo(
         this, my_name, -1, nullptr, 0.0, 0.0,
         params_.toi.approach_dist);
@@ -539,7 +553,7 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
     }
 
     if(overwatch_veh.empty() && formation_def != nullptr) {
-        node_proxy_->log_warning("Could not find closest overwatch vehicle in pose list. Reverting to first available vehicle in formation.");
+        RCLCPP_WARN(node_->get_logger(), "Could not find closest overwatch vehicle in pose list. Reverting to first available vehicle in formation.");
         const auto ordered_vehicles = formation_def->orderedVehicles();
         const auto it = std::find_if(ordered_vehicles.begin(), ordered_vehicles.end(),
                                      [this](const std::string & veh){ return veh != my_name; });
@@ -547,15 +561,15 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
     }
 
     if(overwatch_veh.empty()){
-        node_proxy_->log_info("No overwatch vehicle available");
+        RCLCPP_INFO(node_->get_logger(), "No overwatch vehicle available");
     }else{
         communication_pub->publish(OverwatchMsg(my_name, -1, overwatch_veh, encircle_task_id).toROSMsg());
     }
 }
 
 // Message Handlers
-void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const std::map<std::string, avt_341::msg::Odometry> & veh_poses) {
-    const double now = node_proxy_->get_now_seconds();
+void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    const double now = node_->now().seconds();
 
     for(const auto& pose: contacts.poses) {
         auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
@@ -567,9 +581,7 @@ void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const s
                 existing->pose = pose;
                 if (now - existing->first_seen_sec >=
                     params_.toi.contact_trigger_delay) {
-                    node_proxy_->log_info("Contact \"%s\" confirmed after %.1f s; creating tasks.",
-                                         existing->name.c_str(),
-                                         params_.toi.contact_trigger_delay);
+                    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", existing->name.c_str(), params_.toi.contact_trigger_delay);
                     createToiTasks(*existing, veh_poses);
                 }
             } else {
@@ -585,9 +597,7 @@ void MissionManager::handleContacts(const avt_341::msg::Path & contacts, const s
         if (params_.toi.contact_trigger_delay <= 0.0) {
             createToiTasks(contact, veh_poses);
         } else {
-            node_proxy_->log_info("Contact \"%s\" first seen; waiting %.1f s before creating tasks.",
-                                  contact.name.c_str(),
-                                  params_.toi.contact_trigger_delay);
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen; waiting %.1f s before creating tasks.", contact.name.c_str(), params_.toi.contact_trigger_delay);
         }
     }
 }
@@ -596,7 +606,7 @@ void MissionManager::handleOverwatch(const OverwatchMsg & msg){
 
   MissionPoint mp = getClosestOverwatch();
   if(!mp.name.empty()){
-    node_proxy_->log_info("Moving to overwatch %s at (%.2f, %.2f)", mp.name.c_str(), mp.pos_x, mp.pos_y);
+    RCLCPP_INFO(node_->get_logger(), "Moving to overwatch %s at (%.2f, %.2f)", mp.name.c_str(), mp.pos_x, mp.pos_y);
 
     auto overwatchTask = new MoveTo(this, my_name, -1);
     overwatchTask->setGoalByMissionPoint(mp.name);
@@ -607,7 +617,7 @@ void MissionManager::handleOverwatch(const OverwatchMsg & msg){
     waitTask->is_preemptable = false;
     addTask(waitTask, PriorityType::PREEMPT);
   }else{
-    node_proxy_->log_info("No overwatch found to investigate contact");
+    RCLCPP_INFO(node_->get_logger(), "No overwatch found to investigate contact");
   }
 
 }
@@ -647,7 +657,7 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
 
     MissionPoint mp;
     if(!getMissionPoint(mp, msg.objective_name)){
-      node_proxy_->log_warning("Could not find mission point %s associated with formation.", msg.objective_name.c_str());
+      RCLCPP_WARN(node_->get_logger(), "Could not find mission point %s associated with formation.", msg.objective_name.c_str());
       return;
     }
     msg.receiver_name = my_name;
@@ -669,7 +679,7 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
 void MissionManager::handleAcknowledge(const AcknowledgeMsg & msg) {
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
     if(msg.receiver_name == my_name) {
-        node_proxy_->log_info("%s acknowledged my msg %d", msg.sender_name.c_str(), msg.ack_msg_id);
+        RCLCPP_INFO(node_->get_logger(), "%s acknowledged my msg %d", msg.sender_name.c_str(), msg.ack_msg_id);
     }
 }
 
@@ -683,7 +693,7 @@ void MissionManager::handleArrive(const ArrivedMsg & msg) {
 void MissionManager::handleTaskComplete(const TaskCompleteMsg & msg) {
     // If tracking, mark complete
 //    if(msg.original_sender == my_name) {
-//        node_proxy_->log_info("%s has completed the assigned task from my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
+//        RCLCPP_INFO(node_->get_logger(), "%s has completed the assigned task from my msg #%s", msg.sender_name.c_str(), msg.original_msg_id.c_str());
 //    }
     task_completions_.push_back(msg);
 }
@@ -696,7 +706,7 @@ void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double
         moveTask->setGoalByMissionPoint(msg.objective_name);
         addTask(moveTask, msg.priority_type);
     } else {
-        node_proxy_->log_info("Ignoring MoveTo (not for me)");
+        RCLCPP_INFO(node_->get_logger(), "Ignoring MoveTo (not for me)");
     }
 }
 
@@ -707,12 +717,12 @@ void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinit
         pathTask->setPathByDef(msg.objective_name);
         addTask(pathTask, msg.priority_type);
     } else {
-        node_proxy_->log_info("Ignoring PathFollow (not for me)");
+        RCLCPP_INFO(node_->get_logger(), "Ignoring PathFollow (not for me)");
     }
 }
 
 void MissionManager::publishSpeedSetPoint() {
-    avt_341::msg::Float64 speed_msg;
+    std_msgs::msg::Float64 speed_msg;
     speed_msg.data = getSpeedSetpoint();
     speed_pub->publish(speed_msg);
 }
@@ -722,11 +732,11 @@ void MissionManager::handleSetSpeedMsg(const SetSpeedMsg & msg) {
     if (Task* current_task = currentTask()) {
         current_task->task_speed = msg.desired_speed;
     }
-    node_proxy_->log_info("SET SPEED TO %lf", speed_setpoint_state);
+    RCLCPP_INFO(node_->get_logger(), "SET SPEED TO %lf", speed_setpoint_state);
     publishSpeedSetPoint();
 }
 
-void MissionManager::onGoalReached(const avt_341::msg::PoseStamped & pose){
+void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose){
   Task* task = currentTask();
   if(task != nullptr){
     task->onGoalReached(pose);

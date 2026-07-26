@@ -3,14 +3,18 @@
 #include "avt_341/planning/local/rviz_spline_plotter.h"
 #include <avt_341/planning/local/spline_path.h>
 #include <sstream>
+#include "geometry_msgs/msg/point.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 namespace avt_341 {
   namespace planning{
 
     RVIZPlotter::RVIZPlotter(const std::string & cost_vis,
-                             std::shared_ptr<avt_341::node::NodeProxy> node, float w_c, float w_s, float w_r, float w_d, float w_t, float cost_vis_text_size) : pixdim_(1.0f), map_set_(false), node_(node), cost_vis_(cost_vis), cost_vis_text_size_(cost_vis_text_size),
+                             rclcpp::Node::SharedPtr node, float w_c, float w_s, float w_r, float w_d, float w_t, float cost_vis_text_size) : pixdim_(1.0f), map_set_(false), node_(node), cost_vis_(cost_vis), cost_vis_text_size_(cost_vis_text_size),
                                                                                                                                                       w_c_(w_c), w_d_(w_d), w_r_(w_r), w_s_(w_s), w_t_(w_t) {
-      candidate_paths_publisher = node->create_publisher<avt_341::msg::MarkerArray>("avt_341/candidate_paths", 1);
+      candidate_paths_publisher = node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/candidate_paths", 1);
     }
 
     void RVIZPlotter::SetPath(std::vector<utils::vec2> path){
@@ -21,20 +25,20 @@ namespace avt_341 {
       curves_ = curves;
     }
 
-    void RVIZPlotter::AddMap(const avt_341::msg::OccupancyGrid & grid){
+    void RVIZPlotter::AddMap(const nav_msgs::msg::OccupancyGrid & grid){
       pixdim_ = grid.info.resolution;
       map_set_ = true;
     }
 
-    avt_341::msg::Marker RVIZPlotter::get_marker_msg(int type, int id, bool is_blocked) const{
-      avt_341::msg::Marker marker;
+    visualization_msgs::msg::Marker RVIZPlotter::get_marker_msg(int type, int id, bool is_blocked) const{
+      visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "map";
-      marker.header.stamp = node_->get_stamp();
+      marker.header.stamp = node_->now();
       marker.id = id;
       marker.type = type;
-      marker.action = avt_341::msg::Marker::MODIFY;
+      marker.action = visualization_msgs::msg::Marker::MODIFY;
       marker.color.a = 1.0;
-      if(type == avt_341::msg::Marker::LINE_LIST){
+      if(type == visualization_msgs::msg::Marker::LINE_LIST){
         marker.scale.x = 0.15;
       }else{
         marker.scale.z = cost_vis_text_size_;
@@ -54,8 +58,8 @@ namespace avt_341 {
     void RVIZPlotter::Display() {
       if (!map_set_)return;
 
-      avt_341::msg::Marker candidate_paths_marker = get_marker_msg(avt_341::msg::Marker::LINE_LIST, 0, false);
-      avt_341::msg::Marker blocked_paths_marker = get_marker_msg(avt_341::msg::Marker::LINE_LIST, 1, true);
+      visualization_msgs::msg::Marker candidate_paths_marker = get_marker_msg(visualization_msgs::msg::Marker::LINE_LIST, 0, false);
+      visualization_msgs::msg::Marker blocked_paths_marker = get_marker_msg(visualization_msgs::msg::Marker::LINE_LIST, 1, true);
 
       float ds = pixdim_;
       Path wp_path(path_);
@@ -76,8 +80,8 @@ namespace avt_341 {
           if (std::isnan(pc0.x) || std::isnan(pc0.y) || std::isnan(pc1.x) || std::isnan(pc1.y)){
             break;
           }
-          avt_341::msg::Point p0;
-          avt_341::msg::Point p1;
+          geometry_msgs::msg::Point p0;
+          geometry_msgs::msg::Point p1;
           p0.x = pc0.x;
           p0.y = pc0.y;
           p0.z = 0.0;
@@ -96,15 +100,15 @@ namespace avt_341 {
         paths_last_points.push_back(pc1);
       }
 
-      candidate_paths_marker.action = candidate_paths_marker.points.empty() ? avt_341::msg::Marker::DELETE : avt_341::msg::Marker::MODIFY;
-      blocked_paths_marker.action = blocked_paths_marker.points.empty() ? avt_341::msg::Marker::DELETE : avt_341::msg::Marker::MODIFY;
-      avt_341::msg::MarkerArray marker_array;
+      candidate_paths_marker.action = candidate_paths_marker.points.empty() ? visualization_msgs::msg::Marker::DELETE : visualization_msgs::msg::Marker::MODIFY;
+      blocked_paths_marker.action = blocked_paths_marker.points.empty() ? visualization_msgs::msg::Marker::DELETE : visualization_msgs::msg::Marker::MODIFY;
+      visualization_msgs::msg::MarkerArray marker_array;
       marker_array.markers.push_back(candidate_paths_marker);
       marker_array.markers.push_back(blocked_paths_marker);
 
       if(cost_vis_ != "none"){
         for(int j = 0; j < curves_.size(); j++){
-          avt_341::msg::Marker text_marker = get_marker_msg(avt_341::msg::Marker::TEXT_VIEW_FACING, marker_array.markers.size()+1);
+          visualization_msgs::msg::Marker text_marker = get_marker_msg(visualization_msgs::msg::Marker::TEXT_VIEW_FACING, marker_array.markers.size()+1);
 
           std::ostringstream out;
           out.precision(2);

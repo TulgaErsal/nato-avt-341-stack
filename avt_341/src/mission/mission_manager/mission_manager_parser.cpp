@@ -1,5 +1,6 @@
 #include "avt_341/mission/mission_manager_parser.h"
 #include <sstream>
+#include "avt_341_msgs/msg/communication.hpp"
 
 std::vector<std::string> tokenizeMsg(std::string input){
   std::vector<std::string> tokens;
@@ -14,10 +15,10 @@ std::vector<std::string> tokenizeMsg(std::string input){
   return tokens;
 }
 
-avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
+avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   auto tokens = tokenizeMsg(msg);
 
-  avt_341::msg::Communication message;
+  avt_341_msgs::msg::Communication message;
   if(tokens.size() < 3){
     return message;
   }
@@ -120,7 +121,7 @@ avt_341::msg::Communication serializedToROSMsg(const std::string & msg) {
   return message;
 }
 
-std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
+std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
   std::ostringstream stream;
   stream << msg.sender_name << "," << msg.msg_id << "," << msg.type;
 
@@ -177,11 +178,11 @@ std::string rosToSerializedMsg(const avt_341::msg::Communication & msg){
 
 }
 
-avt_341::msg::Communication concreteToROSMsg(MissionManagerDto * msg){
+avt_341_msgs::msg::Communication concreteToROSMsg(MissionManagerDto * msg){
   return msg->toROSMsg();
 }
 
-std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341::msg::Communication & msg){
+std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341_msgs::msg::Communication & msg){
   if(msg.type == MissionMsgType::Formation){
     return std::make_shared<FormationMsg>(msg);
   }
@@ -228,7 +229,7 @@ std::string concreteToSerializedMsg(MissionManagerDto * msg){
   return rosToSerializedMsg(ros_msg);
 }
 
-bool isMsgFor(const std::string & veh, const avt_341::msg::Communication & msg){
+bool isMsgFor(const std::string & veh, const avt_341_msgs::msg::Communication & msg){
   return msg.type == MissionMsgType::TaskComplete
          || msg.type == MissionMsgType::Arrived
          || (msg.type == MissionMsgType::Formation && isVehicleInFormation(veh, msg))
@@ -239,7 +240,7 @@ bool isMsgFor(const std::string & veh, MissionManagerDto* msg){
   return isMsgFor(veh, msg->toROSMsg());
 }
 
-bool isVehicleInFormation(const std::string & veh, const avt_341::msg::Communication & msg){
+bool isVehicleInFormation(const std::string & veh, const avt_341_msgs::msg::Communication & msg){
   return msg.leader_name == veh || msg.follower1_name == veh
          || msg.follower2_name == veh || msg.follower3_name == veh;
 }

@@ -1,7 +1,11 @@
 #include <map>
 #include <string>
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "map_msgs/msg/occupancy_grid_update.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_types.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/perception/costmap.h"
 #include "avt_341/perception/perception_settings.hpp"
@@ -12,15 +16,15 @@ double start_time = 0.0;
 std::map<std::string, double> occ_last_full_grid_update;
 std::map<std::string, double> seg_last_full_grid_update;
 
-std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr> occ_publisher;
-std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGrid>::SharedPtr> seg_publisher;
-std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGridUpdate>::SharedPtr> occ_updates_publisher;
-std::map<std::string, avt_341::node::Publisher<avt_341::msg::OccupancyGridUpdate>::SharedPtr> seg_updates_publisher;
+std::map<std::string, rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> occ_publisher;
+std::map<std::string, rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> seg_publisher;
+std::map<std::string, rclcpp::Publisher<map_msgs::msg::OccupancyGridUpdate>::SharedPtr> occ_updates_publisher;
+std::map<std::string, rclcpp::Publisher<map_msgs::msg::OccupancyGridUpdate>::SharedPtr> seg_updates_publisher;
 
-std::shared_ptr<avt_341::node::NodeProxy> n = nullptr;
+rclcpp::Node::SharedPtr n = nullptr;
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::StringPtr msg) {
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg) {
 	if (msg->data.find(avt_341::node::NodeType::Perception) != std::string::npos) {
 		reset_called = true;
 	}
@@ -34,7 +38,7 @@ void PublishGrid(
 	avt_341::perception::Costmap& grid
 	) {
 
-	avt_341::msg::OccupancyGrid grid_msg;
+	nav_msgs::msg::OccupancyGrid grid_msg;
 
 	if (settings.costmap.publish.method ==
 		avt_341::perception::GridPubMethod::Window) {
@@ -69,10 +73,10 @@ void PublishGrid(
 			last_full_grid_update[target_layer] = now_seconds;
 			grid_msg = grid.GetGrid(is_segmentation, target_layer);
 		}else {
-			avt_341::msg::OccupancyGridUpdate grid_update_msg;
+			map_msgs::msg::OccupancyGridUpdate grid_update_msg;
 			grid_update_msg = grid.GetGridUpdate(is_segmentation, target_layer);
 			if (grid_update_msg.height > 0 && grid_update_msg.width > 0) {
-				grid_update_msg.header.stamp = n->get_stamp();
+				grid_update_msg.header.stamp = n->now();
 				auto grid_pub_updates = is_segmentation ? seg_updates_publisher[target_layer] : occ_updates_publisher[target_layer];
 				grid_pub_updates->publish(grid_update_msg);
 			}
@@ -81,16 +85,17 @@ void PublishGrid(
 	}
 
 	auto grid_pub = is_segmentation ? seg_publisher[target_layer] : occ_publisher[target_layer];
-	grid_msg.header.stamp = n->get_stamp();
+	grid_msg.header.stamp = n->now();
 	grid_pub->publish(grid_msg);
 }
 
 int main(int argc, char* argv[]) {
 
-	n = avt_341::node::init_node(argc, argv, "avt_341_perception_node");
-	n->initialize_tf_listener();
+	rclcpp::init(argc, argv);
+	n = rclcpp::Node::make_shared("avt_341_perception_node");
+	auto tf = std::make_shared<avt_341::node::TfInterface>(n);
 	avt_341::params::perception::ParamsListener param_listener(
-		n->get_raw_node());
+		n);
 	avt_341::perception::PerceptionSettings settings(
 		param_listener.get_params());
 
@@ -100,12 +105,11 @@ int main(int argc, char* argv[]) {
 
 	if (!avt_341::perception::GridPubMethod::IsValid(
 			settings.costmap.publish.method)){
-		n->log_error("Invalid costmap.publish.method: %hs",
-			settings.costmap.publish.method.c_str());
+		RCLCPP_ERROR(n->get_logger(), "Invalid costmap.publish.method: %hs", settings.costmap.publish.method.c_str());
 		return -1;
 	}
 
-	avt_341::perception::Costmap grid(n, settings);
+	avt_341::perception::Costmap grid(n, tf, settings);
 	param_listener.setUserCallback(
 		[&grid](const avt_341::params::perception::Params& updated_params) {
 			grid.UpdateThresholds(
@@ -116,25 +120,19 @@ int main(int argc, char* argv[]) {
 	// Configure grid
 	// --------------------------------------------------------------------------------------------------------------
 
-	n->log_info("Perception node settings:\n"
+	RCLCPP_INFO(n->get_logger(), "Perception node settings:\n"
 					"	size_info: %hs\n"
 					"	thresholds: %hs\n"
 					"	dilation: %hs\n"
 					"	publish method: %hs\n"
-					"	layers: %hs",
-					settings.size_info_string().c_str(),
-					settings.thresholds_string().c_str(),
-					settings.dilation_string().c_str(),
-					settings.costmap.publish.method.c_str(),
-					grid.ToLayerInfoString().c_str()
-					);
+					"	layers: %hs", settings.size_info_string().c_str(), settings.thresholds_string().c_str(), settings.dilation_string().c_str(), settings.costmap.publish.method.c_str(), grid.ToLayerInfoString().c_str());
 
 	// Create publishers + subscribers
 	// --------------------------------------------------------------------------------------------------------------
-	auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-	auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-	auto rms_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_rms", 1);
-	auto terrain_slope_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/terrain_slope", 1);
+	auto reset_sub = n->create_subscription<std_msgs::msg::String>("avt_341/reset", 10, ResetCallback);
+	auto reset_ack_pub = n->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
+	auto rms_pub = n->create_publisher<std_msgs::msg::Float64>("avt_341/terrain_rms", 1);
+	auto terrain_slope_pub = n->create_publisher<std_msgs::msg::Float64>("avt_341/terrain_slope", 1);
 
 	const bool use_inc_updates =
 		settings.costmap.publish.method ==
@@ -148,15 +146,15 @@ int main(int argc, char* argv[]) {
 
 		if (use_inc_updates)
 		{
-		    occ_publisher[layer_id] = n->create_latching_publisher<avt_341::msg::OccupancyGrid>(occ_pub_name);
-		    seg_publisher[layer_id] = n->create_latching_publisher<avt_341::msg::OccupancyGrid>(seg_pub_name);
-			occ_updates_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGridUpdate>(occ_pub_name + "_updates", 1);
-			seg_updates_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGridUpdate>(seg_pub_name + "_updates", 1);
+		    occ_publisher[layer_id] = n->create_publisher<nav_msgs::msg::OccupancyGrid>(occ_pub_name, rclcpp::QoS(1).transient_local());
+		    seg_publisher[layer_id] = n->create_publisher<nav_msgs::msg::OccupancyGrid>(seg_pub_name, rclcpp::QoS(1).transient_local());
+			occ_updates_publisher[layer_id] = n->create_publisher<map_msgs::msg::OccupancyGridUpdate>(occ_pub_name + "_updates", 1);
+			seg_updates_publisher[layer_id] = n->create_publisher<map_msgs::msg::OccupancyGridUpdate>(seg_pub_name + "_updates", 1);
 		}
 	    else
 		{
-		    occ_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(occ_pub_name, 1);
-		    seg_publisher[layer_id] = n->create_publisher<avt_341::msg::OccupancyGrid>(seg_pub_name, 1);
+		    occ_publisher[layer_id] = n->create_publisher<nav_msgs::msg::OccupancyGrid>(occ_pub_name, 1);
+		    seg_publisher[layer_id] = n->create_publisher<nav_msgs::msg::OccupancyGrid>(seg_pub_name, 1);
 		}
 	}
 
@@ -164,14 +162,14 @@ int main(int argc, char* argv[]) {
 	// --------------------------------------------------------------------------------------------------------------
 
 	grid.Reset();
-	start_time = n->get_now_seconds();
-	avt_341::node::Rate rate(settings.runtime.rate);
+	start_time = n->now().seconds();
+	rclcpp::Rate rate(settings.runtime.rate);
 	int nloops = 0;
 	double last_compute_time_pub = 0.0;
 
-	while (avt_341::node::ok()) {
+	while (rclcpp::ok()) {
 
-		const double now_seconds = n->get_now_seconds();
+		const double now_seconds = n->now().seconds();
 
 		if (settings.runtime.compute_time_publish_period > 0.0 &&
 			now_seconds - last_compute_time_pub >=
@@ -192,7 +190,7 @@ int main(int argc, char* argv[]) {
 			grid.ResetUpdateRegion();
 
 			// get the slope and RMS
-			avt_341::msg::Float64 rms_msg, slope_msg;
+			std_msgs::msg::Float64 rms_msg, slope_msg;
 			grid.UpdateRmsAndSlope();
 			rms_msg.data = grid.GetCurrentRms();
 			slope_msg.data = grid.GetCurrentSlope();
@@ -208,17 +206,17 @@ int main(int argc, char* argv[]) {
 		}
 
 		if (reset_called) {
-			n->log_info("Resetting node");
+			RCLCPP_INFO(n->get_logger(), "Resetting node");
 			occ_last_full_grid_update.clear();
 			seg_last_full_grid_update.clear();
 			grid.Reset();
-			avt_341::msg::String reset_ack_msg;
+			std_msgs::msg::String reset_ack_msg;
 			reset_ack_msg.data = avt_341::node::NodeType::Perception;
 			reset_ack_pub->publish(reset_ack_msg);
 			reset_called = false;
 		}
 
-		n->spin_some();
+		rclcpp::spin_some(n);
 		rate.sleep();
 	}
 

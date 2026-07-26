@@ -4,11 +4,15 @@
 #include "avt_341/perception/layers/static_grid_layer.h"
 #include "avt_341/perception/layers/camera_layer.h"
 #include <algorithm>
+#include "map_msgs/msg/occupancy_grid_update.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 namespace avt_341::perception {
 
 Costmap::Costmap(
-	const std::shared_ptr<node::NodeProxy>& node_ref,
+	const rclcpp::Node::SharedPtr& node_ref,
+	const std::shared_ptr<node::TfInterface>& tf,
 	const PerceptionSettings& settings
 	)
 	: node_ref_(node_ref),
@@ -21,13 +25,13 @@ Costmap::Costmap(
 			node_ref, settings, "static_grid_layer", compute_time_recorder_,
 			settings.static_grid_layer),
 		std::make_shared<PointCloudLayer>(
-			node_ref, settings, "point_cloud_layer", compute_time_recorder_,
+			node_ref, tf, settings, "point_cloud_layer", compute_time_recorder_,
 			settings.point_cloud_layer.topic,
 			settings.point_cloud_layer.clear_topic,
 			settings.point_cloud_layer.contribute_occupancy,
 			settings.point_cloud_layer.contribute_segmentation),
 		std::make_shared<CameraLayer>(
-			node_ref, settings, "camera_layer", compute_time_recorder_,
+			node_ref, tf, settings, "camera_layer", compute_time_recorder_,
 			settings.camera_layer),
 		std::make_shared<PolygonLayer>(
 			node_ref, settings, "polygon_layer", compute_time_recorder_,
@@ -42,7 +46,7 @@ Costmap::Costmap(
 
 	LayerCombinationMethod::SetFlags(layer_cmb_method_, layer_cmb_last_, layer_cmd_mn_);
 
-	odom_sub_ = node_ref_->create_subscription<msg::Odometry>(
+	odom_sub_ = node_ref_->create_subscription<nav_msgs::msg::Odometry>(
 		"avt_341/odometry",
 		10,
 		std::bind(&Costmap::OdometryCallback, this, std::placeholders::_1));
@@ -58,7 +62,7 @@ void Costmap::UpdateThresholds(
 	}
 }
 
-void Costmap::OdometryCallback(msg::OdometryPtr rcv_odom) {
+void Costmap::OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom) {
 	current_odom_ = *rcv_odom;
 	for (const auto & layer : layers_){
 		layer->UpdateOdometry(current_odom_);
@@ -145,11 +149,11 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 	}
 }
 
-msg::OccupancyGridUpdate Costmap::GetGridUpdate(
+map_msgs::msg::OccupancyGridUpdate Costmap::GetGridUpdate(
 		const bool is_segmentation,
 		const std::string& target_layer
 	) const {
-	msg::OccupancyGridUpdate grid_update_msg;
+	map_msgs::msg::OccupancyGridUpdate grid_update_msg;
 	grid_update_msg.header.frame_id = "map";
 
 	core::GridRegion update_region;
@@ -180,11 +184,11 @@ void Costmap::ResetUpdateRegion()
 	}
 }
 
-msg::OccupancyGrid Costmap::GetGrid(
+nav_msgs::msg::OccupancyGrid Costmap::GetGrid(
 		const bool is_segmentation,
 		const std::string& target_layer
 	) const {
-	msg::OccupancyGrid grid;
+	nav_msgs::msg::OccupancyGrid grid;
 	grid.header.frame_id = "map";
 	grid.info = settings_.to_ros_metadata();
 	grid.data.resize(grid.info.width  * grid.info.height);
@@ -194,7 +198,7 @@ msg::OccupancyGrid Costmap::GetGrid(
 	return grid;
 }
 
-msg::OccupancyGrid Costmap::GetGrid(double width, double height, bool is_segmentation) const {
+nav_msgs::msg::OccupancyGrid Costmap::GetGrid(double width, double height, bool is_segmentation) const {
 	double local_x_origin = current_odom_.pose.pose.position.x - width / 2.0;
 	double local_y_origin = current_odom_.pose.pose.position.y - height / 2.0;
 
@@ -205,7 +209,7 @@ msg::OccupancyGrid Costmap::GetGrid(double width, double height, bool is_segment
 	int xi_max = std::min(settings_.nx(), xi_min + local_nx);
 	int yi_max = std::min(settings_.ny(), yi_min + local_ny);
 
-	msg::OccupancyGrid grid;
+	nav_msgs::msg::OccupancyGrid grid;
 	grid.header.frame_id = "map";
 	grid.info = settings_.to_ros_metadata();
 	grid.info.width = local_nx; //xi_max-xi_min;

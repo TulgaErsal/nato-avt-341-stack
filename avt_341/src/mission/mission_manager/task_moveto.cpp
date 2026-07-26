@@ -7,6 +7,7 @@
 #include "avt_341/mission/task.h"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/mission/formation_utils.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 namespace avt_341 {
 namespace mission {
@@ -21,12 +22,12 @@ const std::string MoveTo::ACTOR = "ACTOR";
 MoveTo::MoveTo(MissionManager* manager, const std::string & sender, int id, FormationDefinition* formation_def,
                double x_offset, double y_offset, double goal_threshold, double yaw_threshold, double desired_speed)
 : Task(manager, sender, id, formation_def), x_offset_(x_offset), y_offset_(y_offset), goal_threshold_(goal_threshold > 0.0 ? goal_threshold : -1.0), yaw_threshold_(yaw_threshold) {
-    setGoalInternal(avt_341::msg::PoseStamped(), "", MoveTo::NONE);
+    setGoalInternal(geometry_msgs::msg::PoseStamped(), "", MoveTo::NONE);
     terminate_on_all_arrived_ = formation_def != nullptr && formation_def->terminationMethod() == "ALL_ARRIVED";
     task_speed = desired_speed;
 }
 
-bool MoveTo::setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type){
+bool MoveTo::setGoalInternal(const geometry_msgs::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type){
   goal_type = pose_type;
   name = name_in;
   goal = pose;
@@ -46,14 +47,14 @@ bool MoveTo::setGoalByContact(const Contact & contact) {
   return setGoalInternal(contact.pose, contact.name, MoveTo::CONTACT);
 }
 
-bool MoveTo::setGoalByPose(const avt_341::msg::PoseStamped & pose) {
+bool MoveTo::setGoalByPose(const geometry_msgs::msg::PoseStamped & pose) {
   return setGoalInternal(pose, "pose", MoveTo::POSE);
 }
 
 bool MoveTo::setGoalByMissionPoint(std::string mp_name) {
     MissionPoint target;
     if(mgr->getMissionPoint(target, mp_name)) {
-        avt_341::msg::PoseStamped pose;
+        geometry_msgs::msg::PoseStamped pose;
         pose.pose.position.x = target.pos_x;
         pose.pose.position.y = target.pos_y;
         pose.pose.position.z = target.pos_z;
@@ -110,7 +111,7 @@ std::string MoveTo::description() const {
   return stream.str();
 }
 
-void MoveTo::onGoalReached(const avt_341::msg::PoseStamped & pose){
+void MoveTo::onGoalReached(const geometry_msgs::msg::PoseStamped & pose){
   bool goal_reached = std::abs(target_pose.pose.position.x - pose.pose.position.x + target_pose.pose.position.y - pose.pose.position.y) < 1.0;
   if(!arrived && goal_reached){
     mgr->publishArrival(mgr->my_name, "TASK_" + std::to_string(msg_id));
@@ -118,7 +119,7 @@ void MoveTo::onGoalReached(const avt_341::msg::PoseStamped & pose){
   arrived = arrived || goal_reached;
 }
 
-avt_341::msg::PoseStamped MoveTo::terminalPose() const{
+geometry_msgs::msg::PoseStamped MoveTo::terminalPose() const{
   return target_pose;
 }
 

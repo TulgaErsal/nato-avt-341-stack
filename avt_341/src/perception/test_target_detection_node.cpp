@@ -5,13 +5,18 @@
 #include <vector>
 #include <algorithm>
 // ros includes
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/point32.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_utils.h"
 
-avt_341::msg::Odometry current_pose;
+nav_msgs::msg::Odometry current_pose;
 bool odom_rcvd = false;
 
-double CalcDistanceSquaredToTarget(const avt_341::msg::Point& odom_pose, const avt_341::msg::Point32& point)
+double CalcDistanceSquaredToTarget(const geometry_msgs::msg::Point& odom_pose, const geometry_msgs::msg::Point32& point)
 {
 	double dx = odom_pose.x - point.x;
 	double dy = odom_pose.y - point.y;
@@ -19,7 +24,7 @@ double CalcDistanceSquaredToTarget(const avt_341::msg::Point& odom_pose, const a
 	return dx*dx + dy*dy + dz*dz;
 }
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom){
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom){
 	current_pose = *rcv_odom;
 	odom_rcvd = true;
 }
@@ -27,32 +32,33 @@ void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom){
 int main(int argc, char *argv[]) {
 
 	// Initialize the node
-	auto n = avt_341::node::init_node(argc, argv, "test_target_detection_node");
+	rclcpp::init(argc, argv);
+	auto n = rclcpp::Node::make_shared("test_target_detection_node");
 	// Subscriptions
-    auto odom_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
+    auto odom_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
 	// Publishers
-    auto detect_pub = n->create_publisher<avt_341::msg::Path>("avt_341/target_contacts", 1);
+    auto detect_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
 
 	// handle parameters
 	double detection_range = 10.0f;
-	n->get_parameter("~detection_range", detection_range, 10.0);
+	avt_341::node::get_parameter(n, "~detection_range", detection_range, 10.0);
 	double detection_range_squared = detection_range * detection_range;
 
 	std::vector<std::string> target_name;
 	std::vector<double> target_x;
 	std::vector<double> target_y;
-	n->get_parameter("/targets_name", target_name, std::vector<std::string>(0));                                                                 
-	n->get_parameter("/targets_x", target_x, std::vector<double>(0));                                                                 
-    n->get_parameter("/targets_y", target_y, std::vector<double>(0));
+	avt_341::node::get_parameter(n, "/targets_name", target_name, std::vector<std::string>(0));                                                                 
+	avt_341::node::get_parameter(n, "/targets_x", target_x, std::vector<double>(0));                                                                 
+    avt_341::node::get_parameter(n, "/targets_y", target_y, std::vector<double>(0));
 
-	avt_341::msg::Point32 target_pt;
-	avt_341::msg::Path targets_pt; 
-	avt_341::msg::PoseStamped pose;
+	geometry_msgs::msg::Point32 target_pt;
+	nav_msgs::msg::Path targets_pt; 
+	geometry_msgs::msg::PoseStamped pose;
 
-	avt_341::node::Rate rate(10.0);
-	while (avt_341::node::ok()){
+	rclcpp::Rate rate(10.0);
+	while (rclcpp::ok()){
 		targets_pt.poses.clear();
-		targets_pt.header.stamp = n->get_stamp();
+		targets_pt.header.stamp = n->now();
 
 		// loop through the list of targets 
 		for(int i = 0; i < target_name.size(); i++) {
@@ -63,7 +69,7 @@ int main(int argc, char *argv[]) {
 			if(CalcDistanceSquaredToTarget(current_pose.pose.pose.position, target_pt) < detection_range_squared) {
 				// Signal detection
 				//std::cout << "Target " << target_name[i] << " detected at " << target_x[i] << ", " << target_y[i] << std::endl;
-				pose.header.stamp = n->get_stamp();
+				pose.header.stamp = n->now();
 				pose.header.frame_id = target_name[i];
 				targets_pt.poses.push_back(pose);
 			}
@@ -71,7 +77,7 @@ int main(int argc, char *argv[]) {
 		//std::cout << "Publishing " << targets_pt.poses.size() << " Targets as Path" << std::endl;
 
 		detect_pub->publish(targets_pt);
-		n->spin_some();
+		rclcpp::spin_some(n);
 		rate.sleep();
 	}
 

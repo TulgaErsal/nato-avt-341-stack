@@ -14,6 +14,9 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <opencv2/core/types.hpp>
+#include "sensor_msgs/msg/camera_info.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include <rclcpp/rclcpp.hpp>
 
 namespace avt_341::perception
 {
@@ -21,7 +24,8 @@ namespace avt_341::perception
     {
     public:
         CameraLayer(
-            const std::shared_ptr<node::NodeProxy>& node_ref,
+            const rclcpp::Node::SharedPtr& node_ref,
+            const std::shared_ptr<node::TfInterface>& tf,
             const PerceptionSettings& settings,
             const std::string & label,
             const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -42,17 +46,17 @@ namespace avt_341::perception
         void SetupCameraSubscriptions(
             const avt_341::params::perception::Params::CameraLayer& params);
 
-        void CameraInfoCallback(const msg::CameraInfo::ConstSharedPtr& msg);
+        void CameraInfoCallback(const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg);
 
         void SyncedImageCallback(
-            const msg::Image::ConstSharedPtr& depth_msg,
-            const msg::Image::ConstSharedPtr& seg_msg);
+            const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
+            const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg);
 
-        void DepthImageCallback(const msg::Image::ConstSharedPtr& depth_msg);
+        void DepthImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg);
 
         void ProcessToPointCloud(
-            const msg::Image::ConstSharedPtr& depth_msg,
-            const msg::Image::ConstSharedPtr& seg_msg = nullptr);
+            const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
+            const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg = nullptr);
 
         void RebuildRayCache();
 

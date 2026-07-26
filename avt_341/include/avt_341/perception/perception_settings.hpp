@@ -11,7 +11,7 @@
 #include <avt_341/perception_params_dto.hpp>
 
 #include "avt_341/avt_341_utils.h"
-#include "avt_341/node/ros_types.h"
+#include "nav_msgs/msg/map_meta_data.hpp"
 
 namespace avt_341::perception {
 

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <avt_341/node/ros_types.h>
+#include "avt_341_msgs/msg/dwa_trajectory.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include <avt_341/planning/local/dwa/cells.hpp>
 #include <avt_341/planning/local/dwa/obstacles.hpp>
 #include <avt_341/planning/local/dwa/path.hpp>
@@ -22,7 +23,7 @@ class Trajectory {
 
     const State& GetLastState() const;
 
-    avt_341::msg::Path ToRosPath();
+    nav_msgs::msg::Path ToRosPath();
 
     void Reset();
 
@@ -71,7 +72,7 @@ class Trajectory {
 
     const double& GetTotalCost();
 
-    avt_341::msg::DwaTrajectory GetROSTrajectoryMessage() const;
+    avt_341_msgs::msg::DwaTrajectory GetROSTrajectoryMessage() const;
 
   private:
     std::vector<State> states_;

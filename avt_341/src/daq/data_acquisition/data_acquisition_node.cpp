@@ -12,56 +12,71 @@
 #include <vector>
 
 // ROS includes
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "builtin_interfaces/msg/duration.hpp"
+#include "geometry_msgs/msg/accel_stamped.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
+#include "geometry_msgs/msg/vector3.hpp"
+#include "rclcpp/duration.hpp"
+#include "rclcpp/time.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Quaternion.h"
+#include <rclcpp/rclcpp.hpp>
 #include <avt_341/data_acquisition_params_service.hpp>
+#include "avt_341/node/tf_interface.h"
 
 
-avt_341::msg::Twist cmd_vel;
+geometry_msgs::msg::Twist cmd_vel;
 double vel;
 bool cmd_rcvd;
 bool vel_rcvd;
 
-void cmd_vel_callback(avt_341::msg::TwistPtr msg) {
+void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
     cmd_vel = *msg;
     cmd_rcvd = true;
 }
 
-void speed_callback(avt_341::msg::Float64Ptr rcv_speed) {
+void speed_callback(std_msgs::msg::Float64::SharedPtr rcv_speed) {
 	vel = rcv_speed->data;
     vel_rcvd = true;
 }
 
 int main(int argc, char *argv[]){
     // Init node
-    auto n = avt_341::node::init_node(argc, argv, "data_acquisition_node");
-    avt_341::params::data_acquisition::ParamsListener param_listener(n->get_raw_node());
+    rclcpp::init(argc, argv);
+    auto n = rclcpp::Node::make_shared("data_acquisition_node");
+    avt_341::params::data_acquisition::ParamsListener param_listener(n);
     const auto params = param_listener.get_params();
-    n->initialize_tf_listener();
+    auto tf = std::make_shared<avt_341::node::TfInterface>(n);
 
     const int accel_samples =
         static_cast<int>(params.accel_averaging_samples);
 
     // Create publishers and subscribers
-    auto time_pub = n->create_publisher<avt_341::msg::DurationMsg>("avt_341/elapsed_time", 10);
-    auto dist_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/dist_travelled", 10);
-    auto avg_speed_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/avg_speed", 10);
-    auto cg_pos_pub = n->create_publisher<avt_341::msg::PoseStamped>("avt_341/vehicle_cg/pos", 10);
-    auto cg_vel_pub = n->create_publisher<avt_341::msg::TwistStamped>("avt_341/vehicle_cg/vel", 10);
-    auto cg_accel_pub = n->create_publisher<avt_341::msg::AccelStamped>("avt_341/vehicle_cg/accel", 10);
-    auto cg_lat_g_pub = n->create_publisher<avt_341::msg::Float64>("avt_341/vehicle_cg/lateral_g", 10);
-    auto cmd_vel_sub = n->create_subscription<avt_341::msg::Twist>("avt_341/cmd_vel",1,cmd_vel_callback);
-    auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,speed_callback);
+    auto time_pub = n->create_publisher<builtin_interfaces::msg::Duration>("avt_341/elapsed_time", 10);
+    auto dist_pub = n->create_publisher<std_msgs::msg::Float64>("avt_341/vehicle_cg/dist_travelled", 10);
+    auto avg_speed_pub = n->create_publisher<std_msgs::msg::Float64>("avt_341/vehicle_cg/avg_speed", 10);
+    auto cg_pos_pub = n->create_publisher<geometry_msgs::msg::PoseStamped>("avt_341/vehicle_cg/pos", 10);
+    auto cg_vel_pub = n->create_publisher<geometry_msgs::msg::TwistStamped>("avt_341/vehicle_cg/vel", 10);
+    auto cg_accel_pub = n->create_publisher<geometry_msgs::msg::AccelStamped>("avt_341/vehicle_cg/accel", 10);
+    auto cg_lat_g_pub = n->create_publisher<std_msgs::msg::Float64>("avt_341/vehicle_cg/lateral_g", 10);
+    auto cmd_vel_sub = n->create_subscription<geometry_msgs::msg::Twist>("avt_341/cmd_vel",1,cmd_vel_callback);
+    auto speed_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/forward_speed",1,speed_callback);
 
     // Timestep variables
     int64_t loop_count = 0;
-    avt_341::msg::Float64 dist_travelled;
-    avt_341::msg::Float64 avg_speed;
-    avt_341::msg::Duration vel_duration =
-        avt_341::node::make_duration(params.velocity_averaging_window);
-    avt_341::msg::Time last_t;
-    avt_341::msg::PoseStamped last_cg_pos;
-    avt_341::msg::TwistStamped last_cg_vel;
+    std_msgs::msg::Float64 dist_travelled;
+    std_msgs::msg::Float64 avg_speed;
+    rclcpp::Duration vel_duration =
+        rclcpp::Duration::from_seconds(params.velocity_averaging_window);
+    rclcpp::Time last_t;
+    geometry_msgs::msg::PoseStamped last_cg_pos;
+    geometry_msgs::msg::TwistStamped last_cg_vel;
     cmd_rcvd = false;
     vel_rcvd = false;
     
@@ -73,32 +88,32 @@ int main(int argc, char *argv[]){
     int i_accel = 0;
 
     // MAINLOOP
-    avt_341::msg::Time t_start = n->get_stamp();
-    avt_341::node::Rate rosrate(params.daq_rate);
-    while (avt_341::node::ok())
+    rclcpp::Time t_start = n->now();
+    rclcpp::Rate rosrate(params.daq_rate);
+    while (rclcpp::ok())
     {
         // Current elapsed time
-        avt_341::msg::Time t_now = n->get_stamp();
-        avt_341::msg::Duration time_elapsed = t_now - t_start;
-        time_pub->publish(time_elapsed);
+        rclcpp::Time t_now = n->now();
+        rclcpp::Duration time_elapsed = t_now - t_start;
+        time_pub->publish(static_cast<builtin_interfaces::msg::Duration>(time_elapsed));
 
         // Publish lateral acceleration
         if (cmd_rcvd && vel_rcvd) {
-            avt_341::msg::Float64 lat_accel;
+            std_msgs::msg::Float64 lat_accel;
             lat_accel.data =
                 (vel * vel) * tan(cmd_vel.angular.z) / params.wheelbase / 9.81;
             cg_lat_g_pub->publish(lat_accel);
         }
 
         // Get CG transform
-        avt_341::msg::TransformStamped tfs_ref =
-            n->lookup_transform(params.world_frame, params.vehicle_cg_frame);
+        geometry_msgs::msg::TransformStamped tfs_ref =
+            tf->lookup_transform(params.world_frame, params.vehicle_cg_frame);
 
         // Calculate CG dynamics
-        if (avt_341::node::seconds_from_header(tfs_ref.header) > 1e-3f)
+        if (rclcpp::Time(tfs_ref.header.stamp).seconds() > 1e-3f)
         {
             // Publish CG position
-            avt_341::msg::PoseStamped cg_pos;
+            geometry_msgs::msg::PoseStamped cg_pos;
             cg_pos.header = tfs_ref.header;
             cg_pos.pose.orientation = tfs_ref.transform.rotation;
             cg_pos.pose.position.x = tfs_ref.transform.translation.x;
@@ -107,22 +122,22 @@ int main(int argc, char *argv[]){
             cg_pos_pub->publish(cg_pos);
 
             // Lookup old tf
-            avt_341::msg::Time old_stamp = avt_341::msg::Time(tfs_ref.header.stamp) - vel_duration;
-            avt_341::msg::TransformStamped tfs_old = n->lookup_transform(
+            rclcpp::Time old_stamp = rclcpp::Time(tfs_ref.header.stamp) - vel_duration;
+            geometry_msgs::msg::TransformStamped tfs_old = tf->lookup_transform(
                 params.vehicle_cg_frame, old_stamp, params.vehicle_cg_frame,
                 tfs_ref.header.stamp, params.map_frame);
             
             // Calculate twist
             const double dt_window = 1.0 / params.velocity_averaging_window;
-            avt_341::msg::Vector3 trans = tfs_old.transform.translation;
-            avt_341::msg::Quaternion rot = tfs_old.transform.rotation;
+            geometry_msgs::msg::Vector3 trans = tfs_old.transform.translation;
+            geometry_msgs::msg::Quaternion rot = tfs_old.transform.rotation;
             tf2::Quaternion q_rot(rot.x, rot.y, rot.z, rot.w);
             tf2::Matrix3x3 m_rot(q_rot);
             double roll, pitch, yaw;
             m_rot.getRPY(roll, pitch, yaw);
 
             // Publish CG velocity
-            avt_341::msg::TwistStamped cg_vel;
+            geometry_msgs::msg::TwistStamped cg_vel;
             cg_vel.header = tfs_ref.header;
             cg_vel.header.frame_id = params.vehicle_cg_frame;
             cg_vel.twist.linear.x = trans.x * dt_window;
@@ -137,11 +152,11 @@ int main(int argc, char *argv[]){
             avg_speed.data += (cg_vel.twist.linear.x - avg_speed.data) / (double)(++loop_count);
             avg_speed_pub->publish(avg_speed);
 
-            if (avt_341::node::seconds_from_time(last_t) > 1e-3)
+            if (last_t.seconds() > 1e-3)
             {
                 // Publish distance travelled
-                avt_341::msg::Point pos = cg_pos.pose.position;
-                avt_341::msg::Point last_pos = last_cg_pos.pose.position;
+                geometry_msgs::msg::Point pos = cg_pos.pose.position;
+                geometry_msgs::msg::Point last_pos = last_cg_pos.pose.position;
                 double dx_sqr = pow((double)pos.x - (double)last_pos.x,2);
                 double dy_sqr = pow((double)pos.y - (double)last_pos.y,2);
                 double dz_sqr = pow((double)pos.z - (double)last_pos.z,2);
@@ -152,7 +167,7 @@ int main(int argc, char *argv[]){
                 dist_pub->publish(dist_travelled);
 
                 // Calculate current acceleration estimate
-                double dt = avt_341::node::seconds_from_time(t_now - last_t);
+                double dt = (t_now - last_t).seconds();
                 if (i_accel >= accel_samples) {
                     i_accel = 0;
                 }
@@ -177,7 +192,7 @@ int main(int argc, char *argv[]){
                 }
 
                 // Publish averaged acceleration
-                avt_341::msg::AccelStamped cg_accel;
+                geometry_msgs::msg::AccelStamped cg_accel;
                 cg_accel.header = tfs_ref.header;
                 cg_accel.header.frame_id = params.vehicle_cg_frame;
                 cg_accel.accel.linear.x = accel_frame[0];
@@ -197,7 +212,7 @@ int main(int argc, char *argv[]){
         }
 
         // Loop rate control
-        n->spin_some();
+        rclcpp::spin_some(n);
         rosrate.sleep();
     }
 }

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <avt_341/core/dto_conversion.h>
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 namespace avt_341 {
 namespace mission {
@@ -43,7 +44,7 @@ void Follow::run() {
     }
 }
 
-avt_341::msg::PoseStamped Follow::terminalPose() const{
+geometry_msgs::msg::PoseStamped Follow::terminalPose() const{
   const auto & follower_path = path_generator_.GetPath();
   if(follower_path.poses.empty()){
     return Task::terminalPose();

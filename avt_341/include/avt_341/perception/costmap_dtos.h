@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <limits>
-#include <avt_341/node/ros_types.h>
+#include "sensor_msgs/msg/point_cloud.hpp"
 #include <string>
 #include "avt_341/avt_341_utils.h"
 #include <optional>
@@ -76,7 +76,7 @@ namespace avt_341::perception
 
   class CellObstacleCalculator {
   public:
-    virtual void AddOccupancy(const msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) = 0;
+    virtual void AddOccupancy(const sensor_msgs::msg::PointCloud &point_cloud, std::vector< std::vector<Cell> > & cells, bool dilate) = 0;
     virtual bool PastSlopeThreshold(const Cell & cell) const = 0;
     virtual float Slope(const Cell & cell) const = 0;
   };

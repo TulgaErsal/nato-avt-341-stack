@@ -1,6 +1,6 @@
 #ifndef FORMATION_GOAL_FILTER_H
 #define FORMATION_GOAL_FILTER_H
-#include "avt_341/node/ros_types.h"
+#include "geometry_msgs/msg/pose.hpp"
 
 namespace avt_341::mission {
 
@@ -8,7 +8,7 @@ class GoalFilter {
 
 public:
     virtual ~GoalFilter() = default;
-    virtual msg::Pose Filter(const msg::Pose& candidate_goal, const msg::Pose& leader_pose) = 0;
+    virtual geometry_msgs::msg::Pose Filter(const geometry_msgs::msg::Pose& candidate_goal, const geometry_msgs::msg::Pose& leader_pose) = 0;
     virtual void Reset() = 0;
 };
 
@@ -16,7 +16,7 @@ public:
 class NullGoalFilter : public GoalFilter {
 
 public:
-    msg::Pose Filter(const msg::Pose& candidate_goal, const msg::Pose& leader_pose) override { return candidate_goal; }
+    geometry_msgs::msg::Pose Filter(const geometry_msgs::msg::Pose& candidate_goal, const geometry_msgs::msg::Pose& leader_pose) override { return candidate_goal; }
     void Reset() override {}
 };
 

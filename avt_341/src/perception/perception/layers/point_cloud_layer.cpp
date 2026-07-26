@@ -3,16 +3,17 @@
 #include <chrono>
 #include <thread>
 
-#ifdef ROS_1
-#include "sensor_msgs/point_cloud_conversion.h"
-#else
 #include "sensor_msgs/point_cloud_conversion.hpp"
-#endif
+#include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
 namespace avt_341::perception
 {
 PointCloudLayer::PointCloudLayer(
-    const std::shared_ptr<node::NodeProxy>& node_ref,
+    const rclcpp::Node::SharedPtr& node_ref,
+    const std::shared_ptr<node::TfInterface>& tf,
     const PerceptionSettings& settings,
     const std::string & label,
     const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -24,7 +25,8 @@ PointCloudLayer::PointCloudLayer(
     )
         : CostmapLayer(
             node_ref, settings, label, compute_time_recorder,
-            contribute_occupancy, contribute_segmentation)
+            contribute_occupancy, contribute_segmentation),
+          tf_(tf)
 {
 	const double pc_callback_warn_dur =
         settings.point_cloud_layer.callback_warn_time;
@@ -57,7 +59,7 @@ void PointCloudLayer::SetupPcSubscriptions(
         return;
     }
 
-    pc_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
+    pc_sub_ = node_ref_->create_subscription<sensor_msgs::msg::PointCloud2>(
         pc_topic_id_,
         10,
         std::bind(&PointCloudLayer::PointCloudCallback, this, std::placeholders::_1)
@@ -65,7 +67,7 @@ void PointCloudLayer::SetupPcSubscriptions(
 
     if (!clear_only_points_topic.empty())
     {
-        pc_ground_sub_ = node_ref_->create_subscription<msg::PointCloud2>(
+        pc_ground_sub_ = node_ref_->create_subscription<sensor_msgs::msg::PointCloud2>(
             clear_only_points_topic,
             10,
             std::bind(&PointCloudLayer::ClearOnlyPointsCallback, this, std::placeholders::_1));
@@ -96,22 +98,18 @@ PointCloudFilterConfig PointCloudLayer::ParseFilterConfig(
 	return config;
 }
 
-std::shared_ptr<msg::PointCloud> PointCloudLayer::RegisterPc2Msg(const msg::PointCloud2Ptr & rcv_cloud) {
+std::shared_ptr<sensor_msgs::msg::PointCloud> PointCloudLayer::RegisterPc2Msg(const sensor_msgs::msg::PointCloud2::SharedPtr & rcv_cloud) {
 
-#ifdef ROS_1
-    std::shared_ptr<msg::PointCloud2> pc2_ptr = std::make_shared<avt_341::msg::PointCloud2>(*rcv_cloud);
-#else
-    std::shared_ptr<msg::PointCloud2> pc2_ptr = rcv_cloud;
-#endif
+    std::shared_ptr<sensor_msgs::msg::PointCloud2> pc2_ptr = rcv_cloud;
 
     if (rcv_cloud->header.frame_id != "odom" && rcv_cloud->header.frame_id != "map") {
-        pc2_ptr = std::make_shared<msg::PointCloud2>();
-        if (!node_ref_->transform_cloud(*rcv_cloud, *pc2_ptr, "map")) {
+        pc2_ptr = std::make_shared<sensor_msgs::msg::PointCloud2>();
+        if (!tf_->transform_cloud(*rcv_cloud, *pc2_ptr, "map")) {
             return nullptr;
         }
     }
 
-    std::shared_ptr<msg::PointCloud> pc_ptr = std::make_shared<msg::PointCloud>();
+    std::shared_ptr<sensor_msgs::msg::PointCloud> pc_ptr = std::make_shared<sensor_msgs::msg::PointCloud>();
     if (!sensor_msgs::convertPointCloud2ToPointCloud(*pc2_ptr, *pc_ptr)) {
         return nullptr;
     }
@@ -119,11 +117,11 @@ std::shared_ptr<msg::PointCloud> PointCloudLayer::RegisterPc2Msg(const msg::Poin
     return pc_ptr;
 }
 
-void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
+void PointCloudLayer::PointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr rcv_cloud) {
 
     auto recording = compute_time_recorder_->RecordScope(pc_section_id_);
 
-    std::shared_ptr<msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
+    std::shared_ptr<sensor_msgs::msg::PointCloud> pc = RegisterPc2Msg(rcv_cloud);
     const std::string veh_frame = current_odom_.child_frame_id;
 
     if (veh_frame.empty() || pc == nullptr) {
@@ -132,16 +130,16 @@ void PointCloudLayer::PointCloudCallback(msg::PointCloud2Ptr rcv_cloud) {
     }
 
     if (clr_only_pc_ != nullptr) {
-        msg::PoseStamped origin_pose = node_ref_->lookup_pose("map", veh_frame, clr_only_pc_->header.stamp);
+        geometry_msgs::msg::PoseStamped origin_pose = tf_->lookup_pose("map", veh_frame, clr_only_pc_->header.stamp);
         ClearPoints(clr_only_pc_, origin_pose.pose);
         clr_only_pc_ = nullptr;
     }
 
-    msg::PoseStamped origin_pose = node_ref_->lookup_pose("map", veh_frame, rcv_cloud->header.stamp);
+    geometry_msgs::msg::PoseStamped origin_pose = tf_->lookup_pose("map", veh_frame, rcv_cloud->header.stamp);
     ProcessPoints(pc, origin_pose.pose);
 }
 
-void PointCloudLayer::ClearOnlyPointsCallback(msg::PointCloud2Ptr rcv_cloud) {
+void PointCloudLayer::ClearOnlyPointsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr rcv_cloud) {
     clr_only_pc_ = RegisterPc2Msg(rcv_cloud);
 }
 
@@ -152,18 +150,12 @@ void PointCloudLayer::SetupPointCloudFilter(
     pc_filter.SetConfig(point_cloud_config);
     pc_cm_filter.SetConfig(clearing_config);
 
-    node_ref_->log_info(
-        "Point cloud culling: %s",
-        pc_filter.GetDescription().c_str()
-        );
+    RCLCPP_INFO(node_ref_->get_logger(), "Point cloud culling: %s", pc_filter.GetDescription().c_str());
 
-    node_ref_->log_info(
-        "Point cloud culling (extra for grid clearing): %s",
-        pc_cm_filter.GetDescription().c_str()
-        );
+    RCLCPP_INFO(node_ref_->get_logger(), "Point cloud culling (extra for grid clearing): %s", pc_cm_filter.GetDescription().c_str());
 }
 
-void PointCloudLayer::ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose, const bool clear_only) {
+void PointCloudLayer::ProcessPoints(const std::shared_ptr<sensor_msgs::msg::PointCloud>& pc_ptr, const geometry_msgs::msg::Pose& vehicle_pose, const bool clear_only) {
 
     if (is_resetting_) {
         return;
@@ -191,7 +183,7 @@ void PointCloudLayer::ProcessPoints(const std::shared_ptr<msg::PointCloud>& pc_p
 
 }
 
-void PointCloudLayer::AddOccupancy(const msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) {
+void PointCloudLayer::AddOccupancy(const sensor_msgs::msg::PointCloud& point_cloud, std::vector< std::vector<Cell> >& cells, bool dilate) {
 
     bool has_segmentation_local = !point_cloud.channels.empty() && point_cloud.channels[0].name == pc_seg_channel_;
     has_segmentation_ = has_segmentation_local || has_segmentation_;
@@ -247,7 +239,7 @@ void PointCloudLayer::AddOccupancy(const msg::PointCloud& point_cloud, std::vect
     }
 }
 
-void PointCloudLayer::ClearPoints(const std::shared_ptr<msg::PointCloud>& pc_ptr, const msg::Pose& vehicle_pose) {
+void PointCloudLayer::ClearPoints(const std::shared_ptr<sensor_msgs::msg::PointCloud>& pc_ptr, const geometry_msgs::msg::Pose& vehicle_pose) {
     ProcessPoints(pc_ptr, vehicle_pose, true);
 }
 
@@ -268,7 +260,7 @@ void PointCloudLayer::Reset() {
 void PointCloudLayer::SetupGridClearingMethod(
     const ClearMethodSettings& params) {
     clear_methods_ = ClearingMethodFactory::CreateClearingMethods(
-        node_ref_, cells_, params, settings_, this);
+        node_ref_, tf_, cells_, params, settings_, this);
 }
 
 void PointCloudLayer::Visualize()

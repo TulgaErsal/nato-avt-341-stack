@@ -19,12 +19,6 @@ if(SET_BIG_OBJ)
   message(STATUS "/bigobj added to CMAKE_CXX_FLAGS")
 endif(SET_BIG_OBJ)
 
-set(USING_AMENT ON)
-message(STATUS "========================================================")
-message(STATUS " Compiling NATO AVT-341 autonomy stack with AMENT ")
-message(STATUS "========================================================")
-
-
 set(AVT341_SOURCE_FILES
     "communication/comms_publisher"
     "communication/communication"
@@ -61,112 +55,106 @@ set(AVT341_SOURCE_FILES
 string(REGEX REPLACE "([^;]+)" "src/\\1" AVT341_SOURCE_FILES
                      "${AVT341_SOURCE_FILES}")
 
+find_package(ackermann_msgs)
+find_package(ament_cmake REQUIRED)
+find_package(avt_341_param_lib REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(map_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(avt_341_msgs REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(Eigen3 3.4 REQUIRED)
 
+set(link_libs ${OpenCV_LIBS})
 
+# Since ROS Humble several header file endpoints changed (tf2_sensor_msgs, tf2_geometry_msgs, tf2_eigen, etc.)
+if($ENV{ROS_DISTRO} STREQUAL "humble" OR $ENV{ROS_DISTRO} STREQUAL "jazzy")
+  add_definitions(-DGTE_ROS_HUMBLE)
+endif()
 
+if($ENV{ROS_DISTRO} STREQUAL "jazzy")
+  add_definitions(-DGTE_ROS_JAZZY)
+endif()
 
-  find_package(ackermann_msgs)
-  find_package(ament_cmake REQUIRED)
-  find_package(avt_341_param_lib REQUIRED)
-  find_package(rclcpp REQUIRED)
-  find_package(sensor_msgs REQUIRED)
-  find_package(nav_msgs REQUIRED)
-  find_package(map_msgs REQUIRED)
-  find_package(visualization_msgs REQUIRED)
-  find_package(avt_341_msgs REQUIRED)
-  find_package(OpenCV REQUIRED)
-  find_package(rclpy REQUIRED)
-  find_package(tf2_sensor_msgs REQUIRED)
-  find_package(tf2_geometry_msgs REQUIRED)
-  find_package(tf2_ros REQUIRED)
-  find_package(tf2_eigen REQUIRED)
-  find_package(Eigen3 3.4 REQUIRED)
+# Build
+include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 
-  set(link_libs ${OpenCV_LIBS})
+# Generated parameter DTO and service libraries:
+# <stem>_params_dto and <stem>_params_service.
+avt_341_generate_cpp_parameters(parameters/templates)
 
-  # Since ROS Humble several header file endpoints changed (tf2_sensor_msgs, tf2_geometry_msgs, tf2_eigen, etc.)
-  if($ENV{ROS_DISTRO} STREQUAL "humble" OR $ENV{ROS_DISTRO} STREQUAL "jazzy")
-    add_definitions(-DGTE_ROS_HUMBLE)
-  endif()
+# Node proxy library
+# ------------------
+add_library(${PROJECT_NAME}_proxy
+        "src/node/tf_interface.cpp"
+        "src/node/occupancy_grid_subscriber.cpp"
+        "src/core/grid_components.cpp"
+        "src/core/running_stats.cpp"
+        "src/core/compute_time_recorder.cpp"
+        "src/core/coord_transform.cpp"
+        "src/core/waypoint_file_parser.cpp"
+)
 
-  if($ENV{ROS_DISTRO} STREQUAL "jazzy")
-    add_definitions(-DGTE_ROS_JAZZY)
-  endif()
+target_include_directories(
+  ${PROJECT_NAME}_proxy
+  PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include>)
 
-  # Build
-  include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
+ament_target_dependencies(
+  ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
+  tf2_ros tf2_eigen Eigen3 visualization_msgs map_msgs)
 
-  # Generated parameter DTO and service libraries:
-  # <stem>_params_dto and <stem>_params_service.
-  avt_341_generate_cpp_parameters(parameters/templates)
+foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
+  add_subdirectory(${SOURCE_FILE})
+endforeach()
 
-  # Node proxy library
-  # ------------------
-  add_library(${PROJECT_NAME}_proxy
-          "src/node/node_proxy.cpp"
-          "src/node/params_proxy.cpp"
-          "src/node/occupancy_grid_subscriber.cpp"
-          "src/core/grid_components.cpp"
-          "src/core/running_stats.cpp"
-          "src/core/compute_time_recorder.cpp"
-          "src/core/coord_transform.cpp"
-          "src/core/waypoint_file_parser.cpp"
-  )
+# Install the Python package
+ament_python_install_package(${PROJECT_NAME})
 
-  target_include_directories(
-    ${PROJECT_NAME}_proxy
-    PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-           $<INSTALL_INTERFACE:include>)
+# Simulation test node
+add_executable(
+  ${PROJECT_NAME}_sim_test_node
+  "src/perception/point_cloud_generator.cpp"
+  "src/simulation/sim_test_node.cpp")
+target_link_libraries(${PROJECT_NAME}_sim_test_node ${PROJECT_NAME}_proxy)
+install(
+  TARGETS ${PROJECT_NAME}_sim_test_node
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION "lib/${PROJECT_NAME}")
 
-  ament_target_dependencies(
-    ${PROJECT_NAME}_proxy ackermann_msgs avt_341_msgs rclcpp tf2_geometry_msgs tf2_sensor_msgs
-    tf2_ros tf2_eigen Eigen3 visualization_msgs map_msgs)
+# Test Nodes
+# ===============
 
-  foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
-    add_subdirectory(${SOURCE_FILE})
-  endforeach()
+# Target detection test node
+add_executable(test_target_detection_node
+               "src/perception/test_target_detection_node.cpp")
+target_link_libraries(test_target_detection_node ${PROJECT_NAME}_proxy)
+install(
+  TARGETS test_target_detection_node
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION "lib/${PROJECT_NAME}")
 
-  # Install the Python package
-  ament_python_install_package(${PROJECT_NAME})
+install(
+  PROGRAMS "launch/vehicle_logging.py" "launch/ros_param_dump.py" "launch/tf_to_odometry.py"
+            "test/global_path_test_driver.py"
+            "test/mpc_terminal_heading_test_driver.py"
+            "test/formation_distance_test_driver.py"
+            "test/formation_distance_two_follower_test_driver.py"
+  DESTINATION lib/${PROJECT_NAME})
 
-  # Simulation test node
-  add_executable(
-    ${PROJECT_NAME}_sim_test_node
-    "src/node/clock_publisher.cpp" "src/perception/point_cloud_generator.cpp"
-    "src/simulation/sim_test_node.cpp")
-  target_link_libraries(${PROJECT_NAME}_sim_test_node ${PROJECT_NAME}_proxy)
-  install(
-    TARGETS ${PROJECT_NAME}_sim_test_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
+install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
 
-  # Test Nodes
-  # ===============
+# Automated Tests
+# ===============
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
 
-  # Target detection test node
-  add_executable(test_target_detection_node
-                 "src/perception/test_target_detection_node.cpp")
-  target_link_libraries(test_target_detection_node ${PROJECT_NAME}_proxy)
-  install(
-    TARGETS test_target_detection_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-  
-  install(
-    PROGRAMS "launch/vehicle_logging.py" "launch/ros_param_dump.py" "launch/tf_to_odometry.py"
-              "test/global_path_test_driver.py"
-              "test/mpc_terminal_heading_test_driver.py"
-              "test/formation_distance_test_driver.py"
-              "test/formation_distance_two_follower_test_driver.py"
-    DESTINATION lib/${PROJECT_NAME})
-  
-  install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
-
-  # Automated Tests
-  # ===============
-  if(BUILD_TESTING)
-    add_subdirectory(test)
-  endif()
-
-  ament_package()
-
+ament_package()

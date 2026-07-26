@@ -1,61 +1,3 @@
-#ifdef ROS_1
-#include <string>
-#include <ros/ros.h>
-#include "nav_msgs/Odometry.h"
-#include <sensor_msgs/JointState.h>
-#include <tf/transform_broadcaster.h>
-#include <queue>
-
-std::queue<nav_msgs::Odometry> odometry_msgs;
-void OdometryCallback(const nav_msgs::Odometry::ConstPtr& rcv_odom){
-  odometry_msgs.push(*rcv_odom);
-}
-
-int main(int argc, char** argv) {
-  ros::init(argc, argv, "avt_state_publisher");
-  ros::NodeHandle n;
-  ros::Subscriber odom_sub = n.subscribe("avt_341/odometry", 100, OdometryCallback);
-
-  tf::TransformBroadcaster broadcaster;
-
-  std::string frame_prefix = "";
-  if(ros::param::has("~frame_prefix")) {
-    ros::param::get("~frame_prefix", frame_prefix);
-  }
-
-  // message declarations
-  geometry_msgs::TransformStamped odom_trans;
-  odom_trans.header.frame_id = "odom";
-  odom_trans.child_frame_id = frame_prefix + (frame_prefix.empty() ? "" : "/") + "base_link";
-
-  // set up parent and child frames
-  geometry_msgs::TransformStamped map_trans;
-  map_trans.header.frame_id = "map";
-  map_trans.child_frame_id = "odom";
-
-  ros::Rate loop_rate(100.0);
-  while (ros::ok()) {
-    while(!odometry_msgs.empty()) {
-      nav_msgs::Odometry odometry = odometry_msgs.front();
-      odometry_msgs.pop();
-
-      odom_trans.header.seq = odometry.header.seq;
-      odom_trans.header.stamp = odometry.header.stamp;
-      odom_trans.transform.translation.x = odometry.pose.pose.position.x;
-      odom_trans.transform.translation.y = odometry.pose.pose.position.y;
-      odom_trans.transform.translation.z = odometry.pose.pose.position.z;
-      odom_trans.transform.rotation = odometry.pose.pose.orientation;
-      broadcaster.sendTransform(odom_trans);
-    }
-
-    ros::spinOnce();
-    loop_rate.sleep();
-  }
-
-  return 0;
-}
-
-#else 
 #include <string>
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -133,5 +75,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-
-#endif // ROS_1

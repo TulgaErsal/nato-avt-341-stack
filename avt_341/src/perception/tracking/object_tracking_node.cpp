@@ -49,7 +49,7 @@
 */
 
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
-#include <avt_341/node/node_proxy.h>
+#include <avt_341/node/node_types.h>
 
 #include <algorithm>
 #include <regex>

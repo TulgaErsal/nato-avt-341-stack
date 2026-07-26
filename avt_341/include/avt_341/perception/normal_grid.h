@@ -10,7 +10,7 @@
 #include <pcl/common/common.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include "avt_341/node/ros_types.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 #include "avt_341/avt_341_utils.h"
 
 
@@ -111,9 +111,9 @@ class NormalGrid {
 
     void ClearGrid();
 
-    avt_341::msg::OccupancyGrid GetGrid(bool is_segmentation=false);
+    nav_msgs::msg::OccupancyGrid GetGrid(bool is_segmentation=false);
 
-    avt_341::msg::OccupancyGrid GetGrid(double x, double y, double width, double height);
+    nav_msgs::msg::OccupancyGrid GetGrid(double x, double y, double width, double height);
 
     void SetCorner(float llx, float lly){
         llx_ = llx;

@@ -1,4 +1,5 @@
 #include <avt_341/planning/local/dwa/planner.hpp>
+#include "nav_msgs/msg/path.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -158,7 +159,7 @@ double Planner::GetPlannedAngularSpeed() { return speed_ang_best_; }
 
 const Trajectory& Planner::GetOptimalTrajectory() const { return traj_best_; }
 
-avt_341::msg::Path Planner::GetPlannedPathRos() {
+nav_msgs::msg::Path Planner::GetPlannedPathRos() {
     return traj_best_.ToRosPath();
 }
 

@@ -1,4 +1,7 @@
 #include "avt_341/perception/clearing_methods/time_clearing_method.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
+#include <rclcpp/rclcpp.hpp>
 
 namespace avt_341::perception {
 
@@ -20,9 +23,9 @@ void TimedClearingMethod::AgeCells(const float dt) const {
     }
 }
 
-void TimedClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
+void TimedClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) {
 
-    const double now = node::seconds_from_header(point_cloud.header);
+    const double now = rclcpp::Time(point_cloud.header.stamp).seconds();
 
     if (last_timestamp_ > 0) {
         AgeCells(now - last_timestamp_);
@@ -63,11 +66,11 @@ TimedNoObsClearingMethod::TimedNoObsClearingMethod(
     timed_cells_data.resize(Ny_, row_data);
 }
 
-void TimedNoObsClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
+void TimedNoObsClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) {
     // No implementation
 }
 
-void TimedNoObsClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_cloud, const msg::Point &veh_pos) {
+void TimedNoObsClearingMethod::OnOccupancyAdded(const sensor_msgs::msg::PointCloud &point_cloud, const geometry_msgs::msg::Point &veh_pos) {
 
     cell_obstacle_calculator_->AddOccupancy(point_cloud, timed_cells_, false);
 
@@ -93,7 +96,7 @@ void TimedNoObsClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_clo
 
                 // Monitored timed cell is an obstacle, reset timed no-obstacle check
                 timed_cells_[yi][xi].ResetHeight();
-                timed_cells_data[yi][xi].Reset(node::seconds_from_header(point_cloud.header));
+                timed_cells_data[yi][xi].Reset(rclcpp::Time(point_cloud.header.stamp).seconds());
                 timed_cells_data[yi][xi].last_scan_pos_x = veh_pos.x;
                 timed_cells_data[yi][xi].last_scan_pos_y = veh_pos.y;
 
@@ -113,7 +116,7 @@ void TimedNoObsClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_clo
 
                 if (timed_cells_data[yi][xi].num_samples >=
                         time_config_.sampled_threshold
-                    && node::seconds_from_header(point_cloud.header) - timed_cells_data[yi][xi].obs_time >
+                    && rclcpp::Time(point_cloud.header.stamp).seconds() - timed_cells_data[yi][xi].obs_time >
                     time_config_.max_point_age) {
 
                     // But currently timed tracked cell is not an obstacle. Clear it original.

@@ -4,7 +4,9 @@
 // c++ includes
 #include <string>
 // local includes
-#include "avt_341/node/ros_types.h"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "avt_341/mission/formation_utils.h"
 #include "avt_341/mission/formation_definition.h"
 
@@ -19,23 +21,23 @@ class FormationPathGenerator{
   FormationPathGenerator(const avt_341::mission::FormationParameters & params);
 	
 	/// Update the controller based on the most recent leader odometry, vehicle odometry, and status message
-  void Update(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status);
-  const avt_341::msg::Path & GetPath() const { return desired_global_path_; }
+  void Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, avt_341_msgs::msg::FollowerStatus status);
+  const nav_msgs::msg::Path & GetPath() const { return desired_global_path_; }
   inline bool useBreadcrumbs() const { return params_.use_breadcrumbs; }
   void Reset();
 
   private:
 
 	// Method to generate global path based on formation
-  void GenerateLeaderPath(const avt_341::msg::Odometry & leader_odom, const avt_341::msg::Odometry & odom,
-													avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
+  void GenerateLeaderPath(const nav_msgs::msg::Odometry & leader_odom, const nav_msgs::msg::Odometry & odom,
+													avt_341_msgs::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
 	// control parameters
 	double gpp2_; // square of global_path_points_dist_
 
 	// outputs / messages published
-	avt_341::msg::Path desired_global_path_;
-	avt_341::msg::Path leader_path_history_;
+	nav_msgs::msg::Path desired_global_path_;
+	nav_msgs::msg::Path leader_path_history_;
   const avt_341::mission::FormationParameters & params_;
 
 	// tangent heading state
@@ -46,7 +48,7 @@ class FormationPathGenerator{
 	float tangent_vy_[2];
 
 	// utility functions and intermediate calculations
-	void CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx);
+	void CalcVehicleRotation(nav_msgs::msg::Odometry odom, Vec2d &vehicleVx);
 
 }; // class formation controller
 

@@ -1,10 +1,19 @@
 #include "avt_341/perception/clearing_methods/raytrace_clearing_method.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/point32.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "rclcpp/time.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 namespace avt_341::perception {
 
 constexpr int RaytraceClearingMethod::N_VOXELS_PER_CELL;
 
-RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeProxy> & node_ref,
+RaytraceClearingMethod::RaytraceClearingMethod(const rclcpp::Node::SharedPtr & node_ref,
+                                               const std::shared_ptr<node::TfInterface> & tf,
                                                std::vector<std::vector<Cell>> & cells,
                                                const PerceptionSettings & settings,
                                                const RaytraceSettings & rt_config,
@@ -12,6 +21,7 @@ RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeP
                                                bool handle_dilation)
     : RaytraceClearingMethod(
         node_ref,
+        tf,
         cells,
         static_cast<int>(cells.size()),
         static_cast<int>(cells[0].size()),
@@ -22,7 +32,8 @@ RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeP
         ) {
 }
 
-RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeProxy> & node_ref,
+RaytraceClearingMethod::RaytraceClearingMethod(const rclcpp::Node::SharedPtr & node_ref,
+                                               const std::shared_ptr<node::TfInterface> & tf,
                                                std::vector<std::vector<Cell>> &cells,
                                                int Ny,
                                                int Nx,
@@ -33,13 +44,14 @@ RaytraceClearingMethod::RaytraceClearingMethod(const std::shared_ptr<node::NodeP
     :
     OccupancyClearingMethod(cells, Ny, Nx, settings, obs_calculator),
     node_(node_ref),
+    tf_(tf),
     rt_config_(rt_config),
     handle_dilation_(handle_dilation){
 
     SetLidarFrame();
 
     if (settings_.clear_method.visualize) {
-        minmax_vis_publisher_ = node_ref->create_publisher<msg::MarkerArray>("avt_341/occupancy_grid/voxels", 1);
+        minmax_vis_publisher_ = node_ref->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/occupancy_grid/voxels", 1);
     }
 
     if (rt_config_.use_voxels) {
@@ -51,7 +63,7 @@ void RaytraceClearingMethod::SetLidarFrame() {
 
     std::string lidar_frame_in = rt_config_.lidar_frame;
     if (lidar_frame_in.empty()) {
-        node_->log_warning("Raytrace Clearing: Lidar frame not set, defaulting to 'lidar'");
+        RCLCPP_WARN(node_->get_logger(), "Raytrace Clearing: Lidar frame not set, defaulting to 'lidar'");
         lidar_frame_in = "lidar";
     }
 
@@ -65,7 +77,7 @@ RaytraceClearingMethod::~RaytraceClearingMethod() {
     delete voxel_grid;
 }
 
-void RaytraceClearingMethod::CleanupUnattachedDilation(const msg::Point &origin, std::vector<std::vector<Cell> > &cells) {
+void RaytraceClearingMethod::CleanupUnattachedDilation(const geometry_msgs::msg::Point &origin, std::vector<std::vector<Cell> > &cells) {
 
     const int dy = settings_.dilation_y_cells();
     const int dx = settings_.dilation_x_cells();
@@ -104,26 +116,26 @@ void RaytraceClearingMethod::CleanupUnattachedDilation(const msg::Point &origin,
     }
 }
 
-msg::Point RaytraceClearingMethod::TfTransformToPoint(
-    const msg::TransformStamped &transform) const {
-    msg::Point point;
+geometry_msgs::msg::Point RaytraceClearingMethod::TfTransformToPoint(
+    const geometry_msgs::msg::TransformStamped &transform) const {
+    geometry_msgs::msg::Point point;
     point.x = transform.transform.translation.x;
     point.y = transform.transform.translation.y;
     point.z = transform.transform.translation.z;
     return point;
 }
 
-msg::Point RaytraceClearingMethod::GetSensorOrigin() const {
-    return TfTransformToPoint(node_->lookup_transform("map", lidar_frame_));
+geometry_msgs::msg::Point RaytraceClearingMethod::GetSensorOrigin() const {
+    return TfTransformToPoint(tf_->lookup_transform("map", lidar_frame_));
 }
 
-msg::Point RaytraceClearingMethod::GetSensorOrigin(const msg::Time &stamp) const {
-    return TfTransformToPoint(node_->lookup_transform("map", lidar_frame_, stamp));
+geometry_msgs::msg::Point RaytraceClearingMethod::GetSensorOrigin(const rclcpp::Time &stamp) const {
+    return TfTransformToPoint(tf_->lookup_transform("map", lidar_frame_, stamp));
 }
 
-void RaytraceClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
+void RaytraceClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) {
 
-    msg::Point origin = GetSensorOrigin(point_cloud.header.stamp);
+    geometry_msgs::msg::Point origin = GetSensorOrigin(point_cloud.header.stamp);
     const float rt_range_sqr = rt_config_.raytrace_range * rt_config_.raytrace_range;
 
     for (const auto &point: point_cloud.points) {
@@ -195,7 +207,7 @@ void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
     }
 }
 
-void RaytraceClearingMethod::RaytraceLine(const msg::Point &start, const msg::Point32 &end) {
+void RaytraceClearingMethod::RaytraceLine(const geometry_msgs::msg::Point &start, const geometry_msgs::msg::Point32 &end) {
 
     int x1 = settings_.to_x_index(start.x);
     int y1 = settings_.to_y_index(start.y);
@@ -278,14 +290,14 @@ void RaytraceClearingMethod::RaytraceLine(const msg::Point &start, const msg::Po
     }
 }
 
-msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, utils::vec3 color, float alpha,
+visualization_msgs::msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, utils::vec3 color, float alpha,
                                                           double z_scale) const {
-    msg::Marker marker;
+    visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "map";
-    marker.header.stamp = node_->get_stamp();
+    marker.header.stamp = node_->now();
     marker.id = id;
     marker.type = type;
-    marker.action = msg::Marker::MODIFY;
+    marker.action = visualization_msgs::msg::Marker::MODIFY;
     marker.color.a = alpha;
     marker.scale.x = 1.0;
     marker.scale.y = 1.0;
@@ -297,12 +309,12 @@ msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, utils::vec3 c
     marker.pose.orientation.y = 0.0;
     marker.pose.orientation.z = 0.0;
     marker.pose.orientation.w = 1.0;
-    marker.lifetime = node::make_duration(1.0);
+    marker.lifetime = rclcpp::Duration::from_seconds(1.0);
     return marker;
 }
 
 void RaytraceClearingMethod::GetGridBounds(
-    const msg::Point &origin,
+    const geometry_msgs::msg::Point &origin,
     float range,
     int &x_0,
     int &y_0,
@@ -343,13 +355,13 @@ void RaytraceClearingMethod::Visualize() const {
     const float& vx_h_res = rt_config_.voxel_height_res;
     const float& vx_h_min = rt_config_.voxel_height_min;
 
-    msg::MarkerArray marker_array;
-    msg::Marker mins_marker = GetMarkerMsg(msg::Marker::CUBE_LIST, 0, utils::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
-    msg::Marker maxes_marker = GetMarkerMsg(msg::Marker::CUBE_LIST, 1, utils::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
-    msg::Marker voxel_marker = GetMarkerMsg(msg::Marker::CUBE_LIST, 2, utils::vec3(0.8, 0.8, 0.8), 0.4f, vx_h_res);
+    visualization_msgs::msg::MarkerArray marker_array;
+    visualization_msgs::msg::Marker mins_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 0, utils::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
+    visualization_msgs::msg::Marker maxes_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 1, utils::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
+    visualization_msgs::msg::Marker voxel_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 2, utils::vec3(0.8, 0.8, 0.8), 0.4f, vx_h_res);
 
     const float max_value = std::numeric_limits<float>::max() - 1e-5f;
-    msg::Point origin = GetSensorOrigin();
+    geometry_msgs::msg::Point origin = GetSensorOrigin();
     int x_0, y_0, x_N, y_N;
     GetGridBounds(
         origin, settings_.clear_method.visualization_range,
@@ -363,14 +375,14 @@ void RaytraceClearingMethod::Visualize() const {
                 float x_i = settings_.to_x_world(x);
                 float y_i = settings_.to_y_world(y);
 
-                msg::Point p1;
+                geometry_msgs::msg::Point p1;
                 p1.x = x_i;
                 p1.y = y_i;
                 p1.z = cells_[y][x].low.val;
                 mins_marker.points.push_back(p1);
 
                 if (std::abs(cells_[y][x].high.val - cells_[y][x].low.val) > 1e-1) {
-                    msg::Point p0;
+                    geometry_msgs::msg::Point p0;
                     p0.x = x_i;
                     p0.y = y_i;
                     p0.z = cells_[y][x].high.val;
@@ -384,7 +396,7 @@ void RaytraceClearingMethod::Visualize() const {
 
                     while (z_pos <= max_z_pos) {
                         if (voxel_grid[y * Nx_ + x].test(z_pos)) {
-                            msg::Point p2;
+                            geometry_msgs::msg::Point p2;
                             p2.x = x_i;
                             p2.y = y_i;
                             p2.z = vx_h_min + (static_cast<float>(z_pos) + 0.5) * vx_h_res;
@@ -439,13 +451,15 @@ std::string RaytraceClearingMethod::GetDescription() const {
 // ==================================================================================================================
 
 RaytraceWithFilteringClearingMethod::RaytraceWithFilteringClearingMethod(
-    const std::shared_ptr<node::NodeProxy> & node_ref,
+    const rclcpp::Node::SharedPtr & node_ref,
+    const std::shared_ptr<node::TfInterface> & tf,
     std::vector<std::vector<Cell>> & cells,
     const PerceptionSettings & settings,
     const RaytraceSettings & rt_config,
     CellObstacleCalculator *obs_calculator
     )
     : RaytraceClearingMethod(node_ref,
+        tf,
         cells_with_clearing_,
         cells.size(),
         cells[0].size(),
@@ -466,18 +480,18 @@ RaytraceWithFilteringClearingMethod::RaytraceWithFilteringClearingMethod(
     occupancy_delta_ = std::vector<std::vector<bool> >(N, std::vector<bool>(N, false));
 
     if (settings_.clear_method.visualize) {
-        occupancy_delta_publisher_ = node_->create_publisher<msg::OccupancyGrid>("avt_341/occupancy_grid/clear_delta", 1);
+        occupancy_delta_publisher_ = node_->create_publisher<nav_msgs::msg::OccupancyGrid>("avt_341/occupancy_grid/clear_delta", 1);
     }
 }
 
-void RaytraceWithFilteringClearingMethod::ClearOccupancy(const msg::PointCloud &point_cloud) {
+void RaytraceWithFilteringClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) {
     RaytraceClearingMethod::ClearOccupancy(point_cloud);
     cell_obstacle_calculator_->AddOccupancy(point_cloud, cells_with_clearing_, false);
 }
 
-void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const msg::PointCloud &point_cloud,
-                                                           const msg::Point &veh_pos) {
-    msg::Point origin = GetSensorOrigin();
+void RaytraceWithFilteringClearingMethod::OnOccupancyAdded(const sensor_msgs::msg::PointCloud &point_cloud,
+                                                           const geometry_msgs::msg::Point &veh_pos) {
+    geometry_msgs::msg::Point origin = GetSensorOrigin();
     int x_0, y_0, x_N, y_N;
     GetGridBounds(origin, rt_config_.raytrace_range, x_0, y_0, x_N, y_N);
     int search_range = static_cast<int>(
@@ -529,8 +543,8 @@ void RaytraceWithFilteringClearingMethod::Visualize() const {
     const int N_size = 2 * static_cast<int>(
         rt_config_.raytrace_range / settings_.size_info().res);
 
-    msg::OccupancyGrid occupancy_grid;
-    occupancy_grid.header.stamp = node_->get_stamp();
+    nav_msgs::msg::OccupancyGrid occupancy_grid;
+    occupancy_grid.header.stamp = node_->now();
     occupancy_grid.header.frame_id = "map";
     occupancy_grid.info.resolution = settings_.size_info().res;
     occupancy_grid.info.width = N_size;

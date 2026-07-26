@@ -13,20 +13,18 @@ bool GoalFilterMethod::IsValid(const std::string & selected_method){
 std::shared_ptr<GoalFilter> create_goal_filter(
     const std::string & vehicle_id,
     const std::string & method_id,
-    const std::shared_ptr<node::NodeProxy> & node,
+    const rclcpp::Node::SharedPtr & node,
     const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
     const std::string & publish_method
     ) {
 
     std::string candidate_method = method_id;
     if (candidate_method.empty() || !GoalFilterMethod::IsValid(candidate_method)) {
-        node->log_warning(
-            "Formation goal filter %s for follow vehicles is invalid. Using default instead.",
-            candidate_method.c_str());
+        RCLCPP_WARN(node->get_logger(), "Formation goal filter %s for follow vehicles is invalid. Using default instead.", candidate_method.c_str());
         candidate_method = GoalFilterMethod::Default();
     }
 
-    node->log_info("Using goal filter method: %s", candidate_method.c_str());
+    RCLCPP_INFO(node->get_logger(), "Using goal filter method: %s", candidate_method.c_str());
 
     if (candidate_method == GoalFilterMethod::ObstacleAvoidance) {
         return std::make_shared<ObsAvoidGoalFilter>(

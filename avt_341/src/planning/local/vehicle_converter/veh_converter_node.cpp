@@ -9,12 +9,19 @@
  * \date 5/7/2023
 */
 
-#include "avt_341/node/node_proxy.h"
-#include "avt_341/node/ros_types.h"
+#include <rclcpp/rclcpp.hpp>
+#include "geometry_msgs/msg/accel_stamped.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Quaternion.h"
 
-std::shared_ptr <avt_341::node::Publisher<avt_341::msg::Float64MultiArray>> pub_veh;
+std::shared_ptr <rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> pub_veh;
 
-avt_341::msg::Odometry g_odometry;
+nav_msgs::msg::Odometry g_odometry;
 
 double g_acceleration{0.0};
 
@@ -26,19 +33,19 @@ bool g_received_acceleration{false};
 
 bool g_received_steering_angle{false};
 
-double quaternionMsg2Yaw(const avt_341::msg::Quaternion& orientation_msg) {
-    avt_341::msg_tf::Quaternion orientation(orientation_msg.x, orientation_msg.y, orientation_msg.z, orientation_msg.w);
+double quaternionMsg2Yaw(const geometry_msgs::msg::Quaternion& orientation_msg) {
+    tf2::Quaternion orientation(orientation_msg.x, orientation_msg.y, orientation_msg.z, orientation_msg.w);
     // NOTE: getRPY() expects a double, hence we can cast back to float when setting the state.
     double roll, pitch, yaw;
-    avt_341::msg_tf::Matrix3x3 rotation(orientation);
+    tf2::Matrix3x3 rotation(orientation);
     rotation.getRPY(roll, pitch, yaw);
     return yaw;
 }
 
-void callbackOdometry(avt_341::msg::OdometryPtr msg_received_odometry) {
+void callbackOdometry(nav_msgs::msg::Odometry::SharedPtr msg_received_odometry) {
     g_odometry = *msg_received_odometry;
     g_received_odometry = true;
-    avt_341::msg::Float64MultiArray veh;
+    std_msgs::msg::Float64MultiArray veh;
     double time = 0.0;
     double x = g_odometry.pose.pose.position.x;
     double y = g_odometry.pose.pose.position.y;
@@ -56,38 +63,39 @@ void callbackOdometry(avt_341::msg::OdometryPtr msg_received_odometry) {
     pub_veh->publish(veh);
 }
 
-void callbackImu(avt_341::msg::ImuPtr msg_received_imu) {
+void callbackImu(sensor_msgs::msg::Imu::ConstSharedPtr msg_received_imu) {
     g_acceleration = msg_received_imu->linear_acceleration.x;
     g_received_acceleration = true;
 }
 
-void callbackAccel(avt_341::msg::AccelStampedPtr msg_accel) {
+void callbackAccel(geometry_msgs::msg::AccelStamped::SharedPtr msg_accel) {
     g_acceleration = msg_accel->accel.linear.x;
     g_received_acceleration = true;
 }
 
-void callbackSteeringAngle(avt_341::msg::Float64Ptr msg_received_steering_angle) {
+void callbackSteeringAngle(std_msgs::msg::Float64::SharedPtr msg_received_steering_angle) {
     g_steering_angle = msg_received_steering_angle->data;
     g_received_steering_angle = true;
 }
 
 int main(int argc, char* argv[]) {
     // Initialize ROS node.
-    auto node = avt_341::node::init_node(argc, argv, "avt_341_veh_converter_node");
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("avt_341_veh_converter_node");
 
     // Create node subscribers.
-    auto sub_odometry = node->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
+    auto sub_odometry = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
     auto sub_steering_angle =
-        node->create_subscription<avt_341::msg::Float64>("avt_341/steering_angle", 1, callbackSteeringAngle);
-    auto sub_imu = node->create_subscription<avt_341::msg::Imu>("/mavs_ros/imu", 1, callbackImu);
-    auto sub_accel = node->create_subscription<avt_341::msg::AccelStamped>("/avt_341/acceleration", 1, callbackAccel);
+        node->create_subscription<std_msgs::msg::Float64>("avt_341/steering_angle", 1, callbackSteeringAngle);
+    auto sub_imu = node->create_subscription<sensor_msgs::msg::Imu>("/mavs_ros/imu", 1, callbackImu);
+    auto sub_accel = node->create_subscription<geometry_msgs::msg::AccelStamped>("/avt_341/acceleration", 1, callbackAccel);
 
     // Create node publishers.
-    pub_veh = node->create_publisher<avt_341::msg::Float64MultiArray>("avt_341/veh", 1);
+    pub_veh = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/veh", 1);
 
-    avt_341::node::Rate rosrate(100.0f);
-    while (avt_341::node::ok()) {
-        node->spin_some();
+    rclcpp::Rate rosrate(100.0f);
+    while (rclcpp::ok()) {
+        rclcpp::spin_some(node);
         rosrate.sleep();
     }
 }

@@ -1,5 +1,7 @@
 // ros includes
-#include "avt_341/node/node_proxy.h"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_types.h"
+#include "avt_341/node/tf_interface.h"
 // local includes
 #include "avt_341/mission/mission_manager.h"
 #include "avt_341/mission/mission_manager_parser.h"
@@ -15,28 +17,36 @@
 #include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 #include <avt_341/mission_manager_params_service.hpp>
+#include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/string.hpp"
 
-std::queue<avt_341::msg::Communication> comm_msgs;
-std::queue<avt_341::msg::PoseStamped> reached_goals;
-std::queue<avt_341::msg::Path> contacts;
+std::queue<avt_341_msgs::msg::Communication> comm_msgs;
+std::queue<geometry_msgs::msg::PoseStamped> reached_goals;
+std::queue<nav_msgs::msg::Path> contacts;
 
-avt_341::msg::Odometry odom;
+nav_msgs::msg::Odometry odom;
 bool odom_rcvd = false;
 
 std::optional<int> nav_run_state;
 
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Odometry>> leader_pub;
+std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> leader_pub;
 std::shared_ptr<avt_341::mission::MissionManager> mgr;
 
-std::map<std::string, avt_341::msg::Odometry> formation_odoms;
-std::shared_ptr<avt_341::node::NodeProxy> nh = nullptr;
+std::map<std::string, nav_msgs::msg::Odometry> formation_odoms;
+rclcpp::Node::SharedPtr nh = nullptr;
+std::shared_ptr<avt_341::node::TfInterface> tf = nullptr;
 
 // Receive updates from comms
-void CommunicationCallback(avt_341::msg::CommunicationPtr msg) {
+void CommunicationCallback(avt_341_msgs::msg::Communication::SharedPtr msg) {
     comm_msgs.push(*msg);
 }
 
-void EgoOdometryCallback(avt_341::msg::OdometryPtr msg) {
+void EgoOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
 	// need to know our own position
 	odom = *msg;
 	odom_rcvd = true;
@@ -49,7 +59,7 @@ std::string toUpper(const std::string & str){
 }
 
 // Receive updated odometry information
-void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
+void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
     // Ensure same case as leader_name
     std::string child_frame_id = msg->child_frame_id;
     avt_341::mission::Task* current_task = mgr->currentTask();
@@ -65,14 +75,14 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
     const std::string leader_name = current_task->getFormationDef()->followedVehicle();
 
     if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
-      avt_341::msg::Odometry leader_odom = *msg;
+      nav_msgs::msg::Odometry leader_odom = *msg;
 
       // Check if odometry is in map frame
       if (msg->header.frame_id != "map") {
-        avt_341::msg::PoseStamped leader_pose, leader_pose_map;
+        geometry_msgs::msg::PoseStamped leader_pose, leader_pose_map;
         leader_pose.header = msg->header;
         leader_pose.pose = leader_odom.pose.pose;
-        nh->transform_pose(leader_pose, leader_pose_map, "map", 0.2);
+        tf->transform_pose(leader_pose, leader_pose_map, "map", 0.2);
         leader_odom.pose.pose = leader_pose_map.pose;
       }
       
@@ -83,7 +93,7 @@ void VehicleOdometryCallback(avt_341::msg::OdometryPtr msg) {
 }
 
 // Receive information on target contacts
-void TargetContactsCallback(avt_341::msg::PathPtr msg) {
+void TargetContactsCallback(nav_msgs::msg::Path::SharedPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
   // Handle detection of potential targets of interest
   if(mgr->nav_state != avt_341::utils::NavStackState::NotInit) {       // avoid premature detection of contacts
@@ -92,8 +102,8 @@ void TargetContactsCallback(avt_341::msg::PathPtr msg) {
 }
 
 bool current_goal_rcvd = false;
-avt_341::msg::PoseStamped gp_goal_rcvd;
-void NavStateCallback(avt_341::msg::NavStatePtr msg) {
+geometry_msgs::msg::PoseStamped gp_goal_rcvd;
+void NavStateCallback(avt_341_msgs::msg::NavState::SharedPtr msg) {
     nav_run_state = msg->run_state;
     if (avt_341::core::HasActiveGoal(msg))
     {
@@ -103,13 +113,13 @@ void NavStateCallback(avt_341::msg::NavStatePtr msg) {
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::StringPtr msg){
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg){
   if(msg->data.find(avt_341::node::NodeType::Mission) != std::string::npos){
     reset_called = true;
   }
 }
 
-void GoalReachedCallback(avt_341::msg::NavStatePtr msg){
+void GoalReachedCallback(avt_341_msgs::msg::NavState::SharedPtr msg){
   reached_goals.push(avt_341::core::ToPoseStamped(msg->goal));
 }
 
@@ -122,7 +132,7 @@ auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int targe
     ? "avt_341/odometry/estimated/" + target_veh_ns
     : "/" + target_veh_ns + "/avt_341/odometry";
   return target_veh_present
-    ? nh->create_subscription<avt_341::msg::Odometry>(topic, 10, VehicleOdometryCallback)
+    ? nh->create_subscription<nav_msgs::msg::Odometry>(topic, 10, VehicleOdometryCallback)
     : nullptr;
 }
 
@@ -142,7 +152,7 @@ void CheckSpeedServiceImpl(
     } else if (op == "gt") {
         response->is_true = ego_speed > request->speed - request->threshold;
     } else {
-        nh->log_warning("CheckSpeed: unknown operation \"%s\" (expected eq, ne, lt or gt).", op.c_str());
+        RCLCPP_WARN(nh->get_logger(), "CheckSpeed: unknown operation \"%s\" (expected eq, ne, lt or gt).", op.c_str());
         response->is_true = false;
     }
 }
@@ -158,7 +168,7 @@ void GetOdometryServiceImpl(
 
     const auto it = formation_odoms.find(toUpper(request->vehicle_id));
     if (it == formation_odoms.end()) {
-        nh->log_warning("GetOdometry: no odometry received for vehicle \"%s\".", request->vehicle_id.c_str());
+        RCLCPP_WARN(nh->get_logger(), "GetOdometry: no odometry received for vehicle \"%s\".", request->vehicle_id.c_str());
         return;
     }
     response->odom = it->second;
@@ -171,7 +181,7 @@ void SetNavPointDefinitionsServiceImpl(
     auto fail = [&](const std::string & reason) {
         response->success = false;
         response->message = reason;
-        nh->log_warning("SetNavPointDefinitions rejected: %s", reason.c_str());
+        RCLCPP_WARN(nh->get_logger(), "SetNavPointDefinitions rejected: %s", reason.c_str());
     };
     if (request->labels.size() != request->poses.size()) {
         fail("labels size (" + std::to_string(request->labels.size()) + ") does not match poses size ("
@@ -213,11 +223,12 @@ void SetNavPointDefinitionsServiceImpl(
 int main(int argc, char **argv) {
 
     // initialize the node
-    nh = avt_341::node::init_node(argc, argv, "mission_manager");
-    nh->initialize_tf_listener();
-    avt_341::params::mission_manager::ParamsListener param_listener(nh->get_raw_node());
+    rclcpp::init(argc, argv);
+    nh = rclcpp::Node::make_shared("mission_manager");
+    tf = std::make_shared<avt_341::node::TfInterface>(nh);
+    avt_341::params::mission_manager::ParamsListener param_listener(nh);
     const auto params = param_listener.get_params();
-    avt_341::node::Rate loop_rate(10);
+    rclcpp::Rate loop_rate(10);
 
     const std::string my_name = toUpper(params.name);
 
@@ -231,24 +242,19 @@ int main(int argc, char **argv) {
 
     std::shared_ptr<avt_341::mission::FormationSpeedController>
         speedController = avt_341::mission::createFormationSpeedController(
-            my_name, params.fsc, nh);
+            my_name, params.fsc, nh, tf);
 
-    nh->log_info("Mission Manager Settings:\n  fsc.type=%s\n  formation.use_breadcrumbs=%d\n  formation.x_offset_on_path=%d\n  formation.prune_global_path=%d",
-                params.fsc.type.c_str(), params.formation.use_breadcrumbs,
-                params.formation.x_offset_on_path,
-                params.formation.prune_global_path);
-    nh->log_info("%s loading definition file %s", mgr->my_name.c_str(),
-                 params.mission_definition_file.c_str());
+    RCLCPP_INFO(nh->get_logger(), "Mission Manager Settings:\n  fsc.type=%s\n  formation.use_breadcrumbs=%d\n  formation.x_offset_on_path=%d\n  formation.prune_global_path=%d", params.fsc.type.c_str(), params.formation.use_breadcrumbs, params.formation.x_offset_on_path, params.formation.prune_global_path);
+    RCLCPP_INFO(nh->get_logger(), "%s loading definition file %s", mgr->my_name.c_str(), params.mission_definition_file.c_str());
     mgr->loadMissionDefinition(params.mission_definition_file);
-    nh->log_info("%s loading paths file %s", mgr->my_name.c_str(),
-                 params.mission_paths_file.c_str());
+    RCLCPP_INFO(nh->get_logger(), "%s loading paths file %s", mgr->my_name.c_str(), params.mission_paths_file.c_str());
     mgr->loadMissionPaths(params.mission_paths_file);
 
     // set up subscriptions
-    auto communication_sub = nh->create_subscription<avt_341::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
-    auto odom_sub = nh->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
-    auto nav_state_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/state", 10, NavStateCallback);
-    auto detect_sub = nh->create_subscription<avt_341::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
+    auto communication_sub = nh->create_subscription<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
+    auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
+    auto nav_state_sub = nh->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state", 10, NavStateCallback);
+    auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
     auto veh1_sub = get_veh_odom_sub(
         params.vehicle_namespaces, 0, params.use_avt_tracker,
         my_name);
@@ -262,38 +268,38 @@ int main(int argc, char **argv) {
         params.vehicle_namespaces, 3, params.use_avt_tracker,
         my_name);
 
-    auto reset_sub = nh->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-    auto goal_reached_sub = nh->create_subscription<avt_341::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);
+    auto reset_sub = nh->create_subscription<std_msgs::msg::String>("avt_341/reset", 10, ResetCallback);
+    auto goal_reached_sub = nh->create_subscription<avt_341_msgs::msg::NavState>("avt_341/goal_reached", 10, GoalReachedCallback);
 
-    auto speed_factor_pub = nh->create_publisher<avt_341::msg::Float64>("avt_341/desired_speed_factor", 10);
-    auto reset_ack_pub = nh->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
-    leader_pub = nh->create_publisher<avt_341::msg::Odometry>("avt_341/leader_odometry", 10);
+    auto speed_factor_pub = nh->create_publisher<std_msgs::msg::Float64>("avt_341/desired_speed_factor", 10);
+    auto reset_ack_pub = nh->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
+    leader_pub = nh->create_publisher<nav_msgs::msg::Odometry>("avt_341/leader_odometry", 10);
 
     // Services
     auto set_nav_point_definitions_srv =
-        nh->get_raw_node()->create_service<avt_341_msgs::srv::SetNavPointDefinitions>(
+        nh->create_service<avt_341_msgs::srv::SetNavPointDefinitions>(
             "avt_341/set_nav_point_definitions", &SetNavPointDefinitionsServiceImpl);
 
     auto check_speed_srv =
-        nh->get_raw_node()->create_service<avt_341_msgs::srv::CheckSpeed>(
+        nh->create_service<avt_341_msgs::srv::CheckSpeed>(
             "avt_341/check_speed", &CheckSpeedServiceImpl);
 
     auto get_odometry_srv =
-        nh->get_raw_node()->create_service<avt_341_msgs::srv::GetOdometry>(
+        nh->create_service<avt_341_msgs::srv::GetOdometry>(
             "avt_341/get_odometry", &GetOdometryServiceImpl);
 
     // start the loop
-    while(avt_341::node::ok()){
+    while(rclcpp::ok()){
     // Handle external notifications
 
         if(reset_called){
-          nh->log_info("Resetting node");
+          RCLCPP_INFO(nh->get_logger(), "Resetting node");
           mgr->reset();
           current_goal_rcvd = false;
           mgr->rcvd_leader_odom = false;
           while(!reached_goals.empty()) reached_goals.pop();
           while(!contacts.empty()) contacts.pop();
-          avt_341::msg::String reset_ack_msg;
+          std_msgs::msg::String reset_ack_msg;
           reset_ack_msg.data = avt_341::node::NodeType::Mission;
           reset_ack_pub->publish(reset_ack_msg);
           reset_called = false;
@@ -315,11 +321,11 @@ int main(int argc, char **argv) {
             comm_msgs.pop();
             std::string msg_text = rosToSerializedMsg(rcvd_msg);
             if(!isMsgFor(mgr->my_name, rcvd_msg)){
-              nh->log_info("%s ignoring message: %s", mgr->my_name.c_str(), msg_text.c_str());
+              RCLCPP_INFO(nh->get_logger(), "%s ignoring message: %s", mgr->my_name.c_str(), msg_text.c_str());
               continue;
             }
             //std::string msg_text = rosToSerializedMsg(rcvd_msg);
-            nh->log_info("%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
+            RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
             if(rcvd_msg.type == MissionMsgType::Formation) {
                 mgr->handleFormationRequest(FormationMsg(rcvd_msg));
@@ -346,7 +352,7 @@ int main(int argc, char **argv) {
                 mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
             }
             else{
-              nh->log_warning("Unknown message type: %s", rcvd_msg.type.c_str());
+              RCLCPP_WARN(nh->get_logger(), "Unknown message type: %s", rcvd_msg.type.c_str());
             }
         }
 
@@ -379,14 +385,14 @@ int main(int argc, char **argv) {
 
         avt_341::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
-            avt_341::msg::Float64 speed_msg;
+            std_msgs::msg::Float64 speed_msg;
             speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_odoms, mgr->getSpeedSetpoint());
             speed_factor_pub->publish(speed_msg);
         }else{
           speedController->clearVisualization();
         }
         
-        nh->spin_some();
+        rclcpp::spin_some(nh);
         loop_rate.sleep();
     }
 }

@@ -1,11 +1,14 @@
 #include "avt_341/perception/layers/polygon_layer.h"
 #include "avt_341/perception/layers/polygon_zone_parser.h"
 #include <fstream>
+#include "geometry_msgs/msg/point.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 namespace avt_341::perception
 {
     PolygonLayer::PolygonLayer(
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
         const PerceptionSettings& settings,
         const std::string& label,
         const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -17,7 +20,7 @@ namespace avt_341::perception
     {
         input_file_ = params.data_file;
         visualize_ = params.visualize;
-        marker_pub_ = node_ref_->create_publisher<msg::MarkerArray>("avt_341/" + label + "/markers", 1);
+        marker_pub_ = node_ref_->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/" + label + "/markers", 1);
 
         LoadZones();
         RebuildCellCache(false);
@@ -36,7 +39,7 @@ namespace avt_341::perception
 
         try {
 
-            node_ref_->log_info("Attempting to read polygon zones file: %hs", input_file_.c_str());
+            RCLCPP_INFO(node_ref_->get_logger(), "Attempting to read polygon zones file: %hs", input_file_.c_str());
 
             std::ifstream file(input_file_);
             if (!file.is_open()) {
@@ -52,14 +55,14 @@ namespace avt_341::perception
                 if (zone.vertices.size() >= 3) {
                     zones_.push_back(zone);
                 } else {
-                    node_ref_->log_warning("Zone '%s' has fewer than 3 vertices — skipping.", zone.label.c_str());
+                    RCLCPP_WARN(node_ref_->get_logger(), "Zone '%s' has fewer than 3 vertices — skipping.", zone.label.c_str());
                 }
             }
 
-            node_ref_->log_info("Loaded %zu zone(s) from %s", zones_.size(), input_file_.c_str());
+            RCLCPP_INFO(node_ref_->get_logger(), "Loaded %zu zone(s) from %s", zones_.size(), input_file_.c_str());
 
         } catch (const std::exception& e) {
-            node_ref_->log_error("Failed to polygon zones: %s", e.what());
+            RCLCPP_ERROR(node_ref_->get_logger(), "Failed to polygon zones: %s", e.what());
             is_enabled_ = false;
         }
     }
@@ -96,7 +99,7 @@ namespace avt_341::perception
             }
         }
 
-        node_ref_->log_info("Polygon layer cells cache rebuilt: %d cell(s) marked occupied.", marked_cells);
+        RCLCPP_INFO(node_ref_->get_logger(), "Polygon layer cells cache rebuilt: %d cell(s) marked occupied.", marked_cells);
     }
 
     void PolygonLayer::Visualize()
@@ -113,18 +116,18 @@ namespace avt_341::perception
             return;
         }
 
-        msg::MarkerArray ma;
+        visualization_msgs::msg::MarkerArray ma;
         int marker_id = 0;
 
         for (const auto& zone : zones_) {
             // Polygon outline.
-            msg::Marker outline;
+            visualization_msgs::msg::Marker outline;
             outline.header.frame_id = "map";
-            outline.header.stamp    = node_ref_->get_stamp();
+            outline.header.stamp    = node_ref_->now();
             outline.ns              = "no_go_zones";
             outline.id              = marker_id++;
-            outline.type            = msg::Marker::LINE_STRIP;
-            outline.action          = msg::Marker::ADD;
+            outline.type            = visualization_msgs::msg::Marker::LINE_STRIP;
+            outline.action          = visualization_msgs::msg::Marker::ADD;
             outline.scale.x         = 0.3; // line width in metres
             outline.color.r         = 1.0f;
             outline.color.g         = 0.0f;
@@ -155,12 +158,12 @@ namespace avt_341::perception
             cx /= static_cast<double>(zone.vertices.size());
             cy /= static_cast<double>(zone.vertices.size());
 
-            msg::Marker label;
+            visualization_msgs::msg::Marker label;
             label.header          = outline.header;
             label.ns              = "no_go_zones_labels";
             label.id              = marker_id++;
-            label.type            = msg::Marker::TEXT_VIEW_FACING;
-            label.action          = msg::Marker::ADD;
+            label.type            = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+            label.action          = visualization_msgs::msg::Marker::ADD;
             label.scale.z         = 1.5; // text height in metres
             label.color.r         = 1.0f;
             label.color.g         = 1.0f;

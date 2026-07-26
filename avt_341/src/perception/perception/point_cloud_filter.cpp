@@ -1,6 +1,9 @@
 #include "avt_341/perception/point_cloud_filter.hpp"
 
 #include <avt_341/avt_341_utils.h>
+#include "geometry_msgs/msg/point32.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
 
 namespace avt_341::perception {
 
@@ -34,19 +37,19 @@ bool PointCloudFilter::IsEnabled() const {
     return filter_max_dist_ || filter_min_dist_ || filter_hfov_ || filter_height_clearance_;
 }
 
-std::shared_ptr<msg::PointCloud> PointCloudFilter::Filter(const std::shared_ptr<msg::PointCloud> &pc, const msg::Pose& origin) const {
+std::shared_ptr<sensor_msgs::msg::PointCloud> PointCloudFilter::Filter(const std::shared_ptr<sensor_msgs::msg::PointCloud> &pc, const geometry_msgs::msg::Pose& origin) const {
 
     if (!IsEnabled()) {
         return pc;
     }
 
-    std::shared_ptr<msg::PointCloud> pc_out = std::make_shared<msg::PointCloud>();
+    std::shared_ptr<sensor_msgs::msg::PointCloud> pc_out = std::make_shared<sensor_msgs::msg::PointCloud>();
     Filter(*pc, origin, *pc_out);
     return pc_out;
 }
 
 
-void PointCloudFilter::Filter(const msg::PointCloud &pc, const msg::Pose& origin, msg::PointCloud &pc_out) const {
+void PointCloudFilter::Filter(const sensor_msgs::msg::PointCloud &pc, const geometry_msgs::msg::Pose& origin, sensor_msgs::msg::PointCloud &pc_out) const {
 
     pc_out.header = pc.header;
     pc_out.channels.resize(pc.channels.size());
@@ -54,7 +57,7 @@ void PointCloudFilter::Filter(const msg::PointCloud &pc, const msg::Pose& origin
     const double origin_heading = utils::GetHeadingFromOrientation(origin.orientation) * 180.0 / M_PI;
 
     for (int i = 0; i < pc.points.size(); i++) {
-        const msg::Point32& p = pc.points[i];
+        const geometry_msgs::msg::Point32& p = pc.points[i];
         if (IsValid(p, origin, origin_heading)) {
             pc_out.points.push_back(p);
             for (int c = 0; c < pc.channels.size(); c++) {
@@ -69,7 +72,7 @@ void PointCloudFilter::Filter(const msg::PointCloud &pc, const msg::Pose& origin
     }
 }
 
-bool PointCloudFilter::IsValid(const msg::Point32 &point, const msg::Pose& origin, const double& origin_heading) const {
+bool PointCloudFilter::IsValid(const geometry_msgs::msg::Point32 &point, const geometry_msgs::msg::Pose& origin, const double& origin_heading) const {
 
     if (filter_min_dist_ || filter_max_dist_) {
         const double dx = point.x - origin.position.x;

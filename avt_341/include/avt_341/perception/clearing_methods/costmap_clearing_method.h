@@ -1,8 +1,8 @@
 #ifndef AVT_341_COSTMAP_CLEARING_METHOD_H
 #define AVT_341_COSTMAP_CLEARING_METHOD_H
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "geometry_msgs/msg/point.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
 #include "avt_341/perception/costmap_dtos.h"
 #include "avt_341/perception/perception_settings.hpp"
 
@@ -42,7 +42,7 @@ public:
     * Clear occupancy for the given point cloud.
     * @param point_cloud Point cloud being processed.
     */
-    virtual void ClearOccupancy(const msg::PointCloud &point_cloud) = 0;
+    virtual void ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) = 0;
 
     /**
     * Invokes any visualization that clearing method may have.
@@ -53,7 +53,7 @@ public:
      * Called after occupancy has beed added to the costmap for the input point cloud.
      * @param point_cloud Point cloud that has been processed.
      */
-    virtual void OnOccupancyAdded(const msg::PointCloud &point_cloud, const msg::Point &veh_pos);
+    virtual void OnOccupancyAdded(const sensor_msgs::msg::PointCloud &point_cloud, const geometry_msgs::msg::Point &veh_pos);
 
     /**
      * Resets the clearing method's local state.
@@ -100,7 +100,7 @@ public:
         CellObstacleCalculator *obs_calculator
         );
 
-    void ClearOccupancy(const msg::PointCloud &point_cloud) override;
+    void ClearOccupancy(const sensor_msgs::msg::PointCloud &point_cloud) override;
 
     std::string GetDescription() const override;
 };

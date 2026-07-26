@@ -2,6 +2,9 @@
 #include "avt_341/mission/formation_path_generator.h"
 // c++ includes
 #include <math.h>
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 namespace avt_341 {
 namespace mission {
@@ -20,14 +23,14 @@ FormationPathGenerator::FormationPathGenerator(const avt_341::mission::Formation
  * @param status Message containing desired offsets for this vehicle
  * @param leaderVy y (left) norm vector in coordiante frame of leader
  */
-void FormationPathGenerator::GenerateLeaderPath(const avt_341::msg::Odometry & leader_odom, const avt_341::msg::Odometry & odom,
-                                             avt_341::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
+void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & leader_odom, const nav_msgs::msg::Odometry & odom,
+                                             avt_341_msgs::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
   if(!(bool)status.use_leader) return;
 
   double leaderYoffset = status.y_offset;
   double leaderXoffset = params_.x_offset_on_path ? 0.0 : status.x_offset;
 
-  avt_341::msg::PoseStamped target_pose;
+  geometry_msgs::msg::PoseStamped target_pose;
   target_pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset + leaderVx[0]*leaderXoffset;
   target_pose.pose.position.y = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset + leaderVx[1]*leaderXoffset;
   target_pose.pose.position.z = leader_odom.pose.pose.position.z;
@@ -68,7 +71,7 @@ void FormationPathGenerator::GenerateLeaderPath(const avt_341::msg::Odometry & l
       for(int i = 0; i < cutoff_index; i++){
         desired_global_path_.poses.push_back(leader_path_history_.poses[i]);
       }
-      leader_path_history_.poses = std::vector<avt_341::msg::PoseStamped>(leader_path_history_.poses.begin()+cutoff_index,
+      leader_path_history_.poses = std::vector<geometry_msgs::msg::PoseStamped>(leader_path_history_.poses.begin()+cutoff_index,
                                                                           leader_path_history_.poses.end());
     }
   }
@@ -87,7 +90,7 @@ void FormationPathGenerator::GenerateLeaderPath(const avt_341::msg::Odometry & l
       }
     }
     if(min_index > 0){
-      desired_global_path_.poses = std::vector<avt_341::msg::PoseStamped>(desired_global_path_.poses.begin()+min_index,
+      desired_global_path_.poses = std::vector<geometry_msgs::msg::PoseStamped>(desired_global_path_.poses.begin()+min_index,
                                                                           desired_global_path_.poses.end());
     }
   }
@@ -95,7 +98,7 @@ void FormationPathGenerator::GenerateLeaderPath(const avt_341::msg::Odometry & l
 }
 
 /// @brief  Calculate the 2D rotation of the ego vehicle
-void FormationPathGenerator::CalcVehicleRotation(avt_341::msg::Odometry odom, Vec2d &vehicleVx){
+void FormationPathGenerator::CalcVehicleRotation(nav_msgs::msg::Odometry odom, Vec2d &vehicleVx){
 	Matrix3x3 vehicleRotMatrix;
 	TQuat q;
 	q[0] = odom.pose.pose.orientation.x; 
@@ -108,7 +111,7 @@ void FormationPathGenerator::CalcVehicleRotation(avt_341::msg::Odometry odom, Ve
 	NormalizeVec2D(vehicleVx);
 }
 
-void FormationPathGenerator::Update(avt_341::msg::Odometry leader_odom, avt_341::msg::Odometry odom, avt_341::msg::FollowerStatus status){
+void FormationPathGenerator::Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, avt_341_msgs::msg::FollowerStatus status){
 
 	Vec2d leaderVx, leaderVy;
 

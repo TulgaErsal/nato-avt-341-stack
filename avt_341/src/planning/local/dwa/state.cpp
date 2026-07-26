@@ -1,4 +1,6 @@
 #include <avt_341/planning/local/dwa/state.hpp>
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "tf2/LinearMath/Quaternion.h"
 
 namespace avt_341 {
 namespace planning {
@@ -33,13 +35,13 @@ double State::GetAngularSpeed() { return speed_ang_; }
 
 void State::SetAngularSpeed(double speed_ang) { speed_ang_ = speed_ang; }
 
-avt_341::msg::PoseStamped State::ToRosPoseStamped() {
-    avt_341::msg::PoseStamped msg_posestamped;
+geometry_msgs::msg::PoseStamped State::ToRosPoseStamped() {
+    geometry_msgs::msg::PoseStamped msg_posestamped;
 
     msg_posestamped.pose.position.x = x_;
     msg_posestamped.pose.position.y = y_;
 
-    avt_341::msg_tf::Quaternion quaternion;
+    tf2::Quaternion quaternion;
     quaternion.setRPY(0.0, 0.0, yaw_);
     msg_posestamped.pose.orientation.x = quaternion.x();
     msg_posestamped.pose.orientation.y = quaternion.y();

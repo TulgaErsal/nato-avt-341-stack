@@ -18,7 +18,7 @@ public:
         std::string leader_vehicle_id = get_parameter("leader_vehicle_id").as_string();
 
         declare_parameter("vehicle_id", "mrzr2");
-        std::string vehicle_id = get_parameter("vehicle_id").as_string();
+        vehicle_id_ = get_parameter("vehicle_id").as_string();
 
         leader_pose_sub_ = create_subscription<nav_msgs::msg::Odometry>(
         "/" + leader_vehicle_id + "/" + TOPIC_LEADER_POSE_IN,
@@ -34,11 +34,16 @@ public:
         TOPIC_FOLLOWER_POSE_OUT,
         10);
 
-        auto node_proxy = std::make_shared<avt_341::node::NodeProxy>(this);
-        goal_filter_ = std::make_shared<avt_341::mission::ObsAvoidGoalFilter>(node_proxy, vehicle_id);  // streaming, no stored path
+    }
+
+    // Requires shared_from_this, so must run after construction via make_shared.
+    void Init() {
+        goal_filter_ = std::make_shared<avt_341::mission::ObsAvoidGoalFilter>(shared_from_this(), vehicle_id_);  // streaming, no stored path
     }
 
 private:
+
+    std::string vehicle_id_;
 
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr            leader_pose_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr    candidate_pose_sub_;
@@ -74,6 +79,7 @@ int main(int argc, char** argv) {
     // Note: Put --ros-args -r __ns:=/<vehicle_id> in programs args when debugging from IDE to work with rest of stack
 
     auto node = std::make_shared<ObsAvoidGoalFilterNode>();
+    node->Init();
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node->get_node_base_interface());
     executor.spin();

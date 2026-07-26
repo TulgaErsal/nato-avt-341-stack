@@ -5,6 +5,8 @@
 #include <cmath>
 #include <set>
 #include <vector>
+#include "avt_341_msgs/msg/compute_time.hpp"
+#include "avt_341_msgs/msg/compute_time_array.hpp"
 
 namespace avt_341::core {
 
@@ -61,9 +63,9 @@ void ScopedRecording::Cancel() {
 // ComputeTimeRecorder
 // ---------------------------------------------------------------------------------------------------------------
 
-ComputeTimeRecorder::ComputeTimeRecorder(const std::shared_ptr<node::NodeProxy>& node, const std::string& tag)
+ComputeTimeRecorder::ComputeTimeRecorder(const rclcpp::Node::SharedPtr& node, const std::string& tag)
     : node_(node), tag_(tag) {
-    pub_ = node_->create_publisher<msg::ComputeTimeArray>(COMPUTE_TIMES_TOPIC, 10);
+    pub_ = node_->create_publisher<avt_341_msgs::msg::ComputeTimeArray>(COMPUTE_TIMES_TOPIC, 10);
 }
 
 void ComputeTimeRecorder::Configure(const std::string& section_id, const RunningStatsConfig& config) {
@@ -88,7 +90,7 @@ void ComputeTimeRecorder::Stop(const std::string& section_id) {
         std::lock_guard<std::mutex> lock(mutex_);
         const auto it = pending_start_seconds_.find(section_id);
         if (it == pending_start_seconds_.end()) {
-            node_->log_warning("Stop called for section %s without a matching Start.", section_id.c_str());
+            RCLCPP_WARN(node_->get_logger(), "Stop called for section %s without a matching Start.", section_id.c_str());
             return;
         }
         start_seconds = it->second;
@@ -111,9 +113,7 @@ void ComputeTimeRecorder::AddSample(const std::string& section_id, const double 
 
     const StatsSnapshot snapshot = stats.GetStats(now_seconds);
     if (config.IsThresholdMet(snapshot.mean) && stats.ShouldLogWarning(now_seconds)) {
-        node_->log_warning("%s took %.2f ms (%s %.2f ms warning threshold).",
-            section_id.c_str(), snapshot.mean * 1e3,
-            config.threshold_greater_than ? ">" : "<", config.threshold_check * 1e3);
+        RCLCPP_WARN(node_->get_logger(), "%s took %.2f ms (%s %.2f ms warning threshold).", section_id.c_str(), snapshot.mean * 1e3, config.threshold_greater_than ? ">" : "<", config.threshold_check * 1e3);
     }
 }
 
@@ -127,8 +127,8 @@ std::optional<StatsSnapshot> ComputeTimeRecorder::GetStats(const std::string& se
 }
 
 void ComputeTimeRecorder::PublishSummary() {
-    msg::ComputeTimeArray summary_msg;
-    summary_msg.header.stamp = node_->get_stamp();
+    avt_341_msgs::msg::ComputeTimeArray summary_msg;
+    summary_msg.header.stamp = node_->now();
     summary_msg.header.frame_id = "";
     summary_msg.tag = tag_;
 
@@ -204,7 +204,7 @@ void ComputeTimeRecorder::PublishSummary() {
 
         summary_msg.compute_times.reserve(entries.size());
         for (const auto& [section_id, entry] : entries) {
-            msg::ComputeTime compute_time_msg;
+            avt_341_msgs::msg::ComputeTime compute_time_msg;
             compute_time_msg.section_id = section_id;
             compute_time_msg.time = static_cast<float>(entry.mean);
             compute_time_msg.time_std = static_cast<float>(std::sqrt(entry.variance));
@@ -223,7 +223,7 @@ double ComputeTimeRecorder::NowSeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-std::string ComputeTimeRecorder::MakeNodeTag(const std::shared_ptr<node::NodeProxy>& node) {
+std::string ComputeTimeRecorder::MakeNodeTag(const rclcpp::Node::SharedPtr& node) {
     std::string ns = node->get_namespace();
     if (ns.empty() || ns.back() != '/') {
         ns += '/';

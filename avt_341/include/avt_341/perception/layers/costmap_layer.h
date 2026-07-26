@@ -3,9 +3,10 @@
 #define AVT_341_COSTMAP_LAYER_H
 #include "avt_341/core/compute_time_recorder.hpp"
 #include "avt_341/core/grid_components.h"
-#include "avt_341/node/node_proxy.h"
+#include <rclcpp/rclcpp.hpp>
 #include "avt_341/perception/costmap_dtos.h"
 #include "avt_341/perception/perception_settings.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 namespace avt_341::perception
 {
@@ -14,7 +15,7 @@ namespace avt_341::perception
 	public:
 
 		CostmapLayer(
-			const std::shared_ptr<node::NodeProxy>& node_ref,
+			const rclcpp::Node::SharedPtr& node_ref,
 			const PerceptionSettings& settings,
 			const std::string& label,
 			const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -61,7 +62,7 @@ namespace avt_341::perception
 
 		const core::GridRegion& GetUpdateRegion() const { return grid_update_region_; }
 		void ResetUpdateRegion() { grid_update_region_.Reset(); }
-		void UpdateOdometry(const msg::Odometry& odom_msg);
+		void UpdateOdometry(const nav_msgs::msg::Odometry& odom_msg);
 
 		int GetSegValue(const int i, const int j) const { return cells_[i][j].terrain_seg; }
 		int GetOccValue(const int i, const int j) const { return std::max(GetGridCellValue(cells_[i][j]), cells_[i][j].dilated_val); }
@@ -80,12 +81,12 @@ namespace avt_341::perception
 		bool contribute_occupancy_ = true;
 		bool contribute_segmentation_ = true;
 
-		std::shared_ptr<node::NodeProxy> node_ref_;
+		rclcpp::Node::SharedPtr node_ref_;
 		std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
 		PerceptionSettings settings_;
 		std::string label_;
 
-		msg::Odometry current_odom_;
+		nav_msgs::msg::Odometry current_odom_;
 
 		core::GridRegion grid_update_region_;
 	};

@@ -6,33 +6,34 @@
 #include "mclcppclass.h"
 #include "mclmcrrt.h"
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include <rclcpp/rclcpp.hpp>
+#include "nav_msgs/msg/odometry.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 #include "autr4k/Detection/Detector.hpp"
 #include "lib_tracker_wrapper.h"
 
-avt_341::msg::Odometry odom;
+nav_msgs::msg::Odometry odom;
 bool odomReceived = false;
 
-avt_341::msg::PointCloud2 pc;
+sensor_msgs::msg::PointCloud2 pc;
 bool pcReceived = false;
 
 autr4k_msgs::msg::Detection detection;
 bool detectionReceived = false;
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcvOdom)
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcvOdom)
 {
     odom = *rcvOdom;
     odomReceived = true;
 }
 
-void PointCloudCallback(avt_341::msg::PointCloud2Ptr rcvPc)
+void PointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr rcvPc)
 {
     pc = *rcvPc;
     pcReceived = true;
 }
 
-void DetectionCallback(autr4k_msgs::msg::Detection rcvDetection)
+void DetectionCallback(autr4k_msgs::msg::Detection::SharedPtr rcvDetection)
 {
     detection = *rcvDetection;
     detectionReceived = true;
@@ -114,6 +115,9 @@ std::vector<double> GetVehiclePosition(bool& mrzrFound)
 
 int main(int argc, char *argv[])
 {
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("uab_obstacle_tracker_node");
+
     //initialize matlab runtime
     if (!mclInitializeApplication(NULL, 0))
     {
@@ -128,8 +132,8 @@ int main(int argc, char *argv[])
         return -1;
     }
     
-    avt_341::node::Rate rate(100.0);
-    while (avt_341::node::ok())
+    rclcpp::Rate rate(100.0);
+    while (rclcpp::ok())
     {
         if (!allMsgsReceived())
         {
@@ -138,8 +142,8 @@ int main(int argc, char *argv[])
             if (!pcReceived) waitingOn += "pointcloud ";
             if (!detectionReceived) waitingOn += "detection";
             std::cout << waitingOn << std::endl;
-            
-            avt_341::node::Rate wait(1.0);
+
+            rclcpp::Rate wait(1.0);
             wait.sleep();
         }
         else
@@ -147,7 +151,7 @@ int main(int argc, char *argv[])
             std::vector<double> vehiclePos = GetVehiclePosition();
             std::cout << vehiclePos[0] << "," << vehiclePos[1] << std::endl;
         }
-        node->spin_some();
+        rclcpp::spin_some(node);
         rate.sleep();
     }
 

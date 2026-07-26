@@ -1,6 +1,6 @@
 #pragma once
 
-#include <avt_341/node/ros_types.h>
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -32,7 +32,7 @@ class State {
 
     void SetAngularSpeed(double speed_ang);
 
-    avt_341::msg::PoseStamped ToRosPoseStamped();
+    geometry_msgs::msg::PoseStamped ToRosPoseStamped();
 
   private:
     double x_;

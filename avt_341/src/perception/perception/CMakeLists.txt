@@ -18,28 +18,17 @@ add_executable(
         "costmap.cpp"
 )
 
-if(USING_CATKIN)
-  add_dependencies(${PROJECT_NAME}_perception_node ${catkin_EXPORTED_TARGETS})
-  target_link_libraries(${PROJECT_NAME}_perception_node ${PROJECT_NAME}_proxy)
-  install(
-    TARGETS ${PROJECT_NAME}_perception_node
-    RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
-    LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}")
-endif() # if(USING_CATKIN)
-
-if(USING_AMENT)
-  find_package(image_geometry REQUIRED)
-  find_package(message_filters REQUIRED)
-  ament_target_dependencies(
-          ${PROJECT_NAME}_perception_node image_geometry message_filters)
-  target_link_libraries(${PROJECT_NAME}_perception_node ${PROJECT_NAME}_proxy)
-  install(
-    TARGETS ${PROJECT_NAME}_perception_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-endif() # if(USING_AMENT)
+find_package(image_geometry REQUIRED)
+find_package(message_filters REQUIRED)
+ament_target_dependencies(
+        ${PROJECT_NAME}_perception_node image_geometry message_filters)
+target_link_libraries(${PROJECT_NAME}_perception_node ${PROJECT_NAME}_proxy)
+install(
+  TARGETS ${PROJECT_NAME}_perception_node
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION "lib/${PROJECT_NAME}")
 
 # Generated parameter library (avt_341_param_lib templates)
-if(USING_AMENT AND TARGET ${PROJECT_NAME}_perception_node)
+if(TARGET ${PROJECT_NAME}_perception_node)
   target_link_libraries(${PROJECT_NAME}_perception_node perception_params_service)
 endif()

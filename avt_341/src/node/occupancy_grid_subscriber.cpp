@@ -1,11 +1,13 @@
 #include "avt_341/node/occupancy_grid_subscriber.h"
 
 #include "avt_341/perception/costmap_dtos.h"
+#include "map_msgs/msg/occupancy_grid_update.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341::node {
 
 OccupancyGridSubscriber::OccupancyGridSubscriber(
-    const std::shared_ptr<NodeProxy> &node,
+    const rclcpp::Node::SharedPtr &node,
     const std::string & topic_name,
     int qos,
     const std::string & publish_method
@@ -14,11 +16,11 @@ OccupancyGridSubscriber::OccupancyGridSubscriber(
 }
 
 OccupancyGridSubscriber::OccupancyGridSubscriber(
-    const std::shared_ptr<NodeProxy> &node,
+    const rclcpp::Node::SharedPtr &node,
     const std::string & topic_name,
     int qos,
     const std::string & publish_method,
-    const std::function<void(const msg::OccupancyGridPtr &)> &callback
+    const std::function<void(const nav_msgs::msg::OccupancyGrid::SharedPtr &)> &callback
     )
     : grid_msg_(nullptr), external_callback_(callback){
 
@@ -29,26 +31,26 @@ OccupancyGridSubscriber::OccupancyGridSubscriber(
         grid_qos.transient_local();
     }
 
-    grid_sub_ = node->create_subscription<msg::OccupancyGrid>(
+    grid_sub_ = node->create_subscription<nav_msgs::msg::OccupancyGrid>(
         topic_name,
         grid_qos,
         std::bind(&OccupancyGridSubscriber::OccupancyGridCallback, this, std::placeholders::_1));
 
-    grid_sub_updates_ = node->create_subscription<msg::OccupancyGridUpdate>(
+    grid_sub_updates_ = node->create_subscription<map_msgs::msg::OccupancyGridUpdate>(
         topic_name + "_updates",
         qos,
         std::bind(&OccupancyGridSubscriber::OccupancyGridUpdateCallback, this, std::placeholders::_1));
 }
 
-msg::OccupancyGridPtr OccupancyGridSubscriber::GetGrid() const { return grid_msg_; }
+nav_msgs::msg::OccupancyGrid::SharedPtr OccupancyGridSubscriber::GetGrid() const { return grid_msg_; }
 
-msg::OccupancyGrid OccupancyGridSubscriber::GetGridCopy() const { return grid_msg_ == nullptr ? msg::OccupancyGrid() : *grid_msg_; }
+nav_msgs::msg::OccupancyGrid OccupancyGridSubscriber::GetGridCopy() const { return grid_msg_ == nullptr ? nav_msgs::msg::OccupancyGrid() : *grid_msg_; }
 
 bool OccupancyGridSubscriber::HasData() const { return grid_msg_ != nullptr; }
 
-void OccupancyGridSubscriber::OccupancyGridCallback(msg::OccupancyGridPtr grid_msg) {
+void OccupancyGridSubscriber::OccupancyGridCallback(nav_msgs::msg::OccupancyGrid::SharedPtr grid_msg) {
 
-    grid_msg_ = avt_341::node::make_msg_shared<msg::OccupancyGrid>(*grid_msg);
+    grid_msg_ = std::make_shared<nav_msgs::msg::OccupancyGrid>(*grid_msg);
 
     last_update_bounds_.UpdateBounds(0, 0, grid_msg_->info.width, grid_msg_->info.height);
 
@@ -64,7 +66,7 @@ core::GridRegion OccupancyGridSubscriber::GetAndResetLastUpdateBounds() {
 }
 
 
-void OccupancyGridSubscriber::OccupancyGridUpdateCallback(msg::OccupancyGridUpdatePtr update) {
+void OccupancyGridSubscriber::OccupancyGridUpdateCallback(map_msgs::msg::OccupancyGridUpdate::SharedPtr update) {
 
     if (!HasData()) {
         return;
@@ -89,7 +91,7 @@ void OccupancyGridSubscriber::OccupancyGridUpdateCallback(msg::OccupancyGridUpda
     }
 }
 
-void OccupancyGridSubscriber::SetOnGridUpdated(std::function<void(const msg::OccupancyGridPtr &)> callback) {
+void OccupancyGridSubscriber::SetOnGridUpdated(std::function<void(const nav_msgs::msg::OccupancyGrid::SharedPtr &)> callback) {
     external_callback_ = std::move(callback);
 }
 

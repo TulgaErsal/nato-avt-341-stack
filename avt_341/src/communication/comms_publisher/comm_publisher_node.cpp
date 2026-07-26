@@ -11,23 +11,25 @@
  * \date 2/19/2023
  */
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_utils.h"
 
 int main(int argc, char** argv)
 {
-    auto nh = avt_341::node::init_node(argc,argv,"avt_341_comm_publisher_node");
-    auto test_comm_pub = nh->create_publisher<avt_341::msg::String>("avt_341/comm_messages", 100);
-    avt_341::node::Rate loop_rate(1);
+    rclcpp::init(argc, argv);
+    auto nh = rclcpp::Node::make_shared("avt_341_comm_publisher_node");
+    auto test_comm_pub = nh->create_publisher<std_msgs::msg::String>("avt_341/comm_messages", 100);
+    rclcpp::Rate loop_rate(1);
     
     std::vector<std::string> comms_list; 
     std::string myid = "vehicle";
-    nh->get_parameter("~comms_list", comms_list, std::vector<std::string>(0));
-    nh->get_parameter("~myid", myid, std::string("vehicle"));
+    avt_341::node::get_parameter(nh, "~comms_list", comms_list, std::vector<std::string>(0));
+    avt_341::node::get_parameter(nh, "~myid", myid, std::string("vehicle"));
 
     int count = 0;
-    while(avt_341::node::ok()) {
-        avt_341::msg::String msg;
+    while(rclcpp::ok()) {
+        std_msgs::msg::String msg;
         
     
         if(comms_list.size() > 0) {
@@ -42,7 +44,7 @@ int main(int argc, char** argv)
                 ++count;
             }
         }
-        nh->spin_some();
+        rclcpp::spin_some(nh);
         loop_rate.sleep();
     }
     return 0;

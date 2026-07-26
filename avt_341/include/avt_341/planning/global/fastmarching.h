@@ -7,6 +7,7 @@
 #include <string>
 
 #include "avt_341/planning/global/astar.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -54,8 +55,8 @@ public:
    */
   bool Solve() override;
 
-  std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
-                              avt_341::msg::OccupancyGrid* segmentation_grid,
+  std::vector<Point> PlanPath(nav_msgs::msg::OccupancyGrid* grid,
+                              nav_msgs::msg::OccupancyGrid* segmentation_grid,
                               Point goal,
                               Point position) override;
 

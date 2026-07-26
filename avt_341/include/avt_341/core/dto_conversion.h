@@ -1,14 +1,21 @@
 #ifndef AVT_341_DTO_CONVERSION_H
 #define AVT_341_DTO_CONVERSION_H
 
-#include "avt_341/node/ros_types.h"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/transform.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "avt_341/avt_341_utils.h"
 #include <algorithm>
 #include <stdexcept>
 
 namespace avt_341::core
 {
-    inline auto ToVec2(const msg::Point & p)
+    inline auto ToVec2(const geometry_msgs::msg::Point & p)
     {
         return utils::vec2{
             static_cast<float>(p.x),
@@ -16,7 +23,7 @@ namespace avt_341::core
         };
     }
 
-    inline auto ToVec2(const msg::Pose & p)
+    inline auto ToVec2(const geometry_msgs::msg::Pose & p)
     {
         return utils::vec2{
             static_cast<float>(p.position.x),
@@ -24,24 +31,24 @@ namespace avt_341::core
         };
     }
 
-    inline bool HasActiveGoal(const msg::NavStatePtr& msg)
+    inline bool HasActiveGoal(const avt_341_msgs::msg::NavState::SharedPtr& msg)
     {
         return msg->run_state == utils::NavStackState::Active;
     }
 
-    inline msg::PoseStamped ToPoseStamped(const msg::NavGoal & nav_goal)
+    inline geometry_msgs::msg::PoseStamped ToPoseStamped(const avt_341_msgs::msg::NavGoal & nav_goal)
     {
-        msg::PoseStamped pose;
+        geometry_msgs::msg::PoseStamped pose;
         pose.header = nav_goal.header;
         pose.pose = nav_goal.pose;
         return pose;
     }
 
-    inline msg::NavGoal ToNavGoal(
-            const msg::PoseStamped & pose,
+    inline avt_341_msgs::msg::NavGoal ToNavGoal(
+            const geometry_msgs::msg::PoseStamped & pose,
             const double dist_threshold = -1.0,
             const double yaw_threshold = -1.0) {
-        msg::NavGoal goal;
+        avt_341_msgs::msg::NavGoal goal;
         goal.header = pose.header;
         goal.pose = pose.pose;
         goal.dist_threshold = dist_threshold;
@@ -49,12 +56,12 @@ namespace avt_341::core
         return goal;
     }
 
-    inline msg::NavGoalSequence ToNavGoalSequence(
-            const msg::Path & path,
+    inline avt_341_msgs::msg::NavGoalSequence ToNavGoalSequence(
+            const nav_msgs::msg::Path & path,
             const double dist_threshold = -1.0,
             const double yaw_threshold = -1.0
             ) {
-        msg::NavGoalSequence sequence;
+        avt_341_msgs::msg::NavGoalSequence sequence;
         sequence.header = path.header;
         sequence.goals.reserve(path.poses.size());
         for (const auto & pose : path.poses) {
@@ -63,24 +70,24 @@ namespace avt_341::core
         return sequence;
     }
 
-    inline msg::Path ToPath(const msg::NavGoalSequence & nav_goals)
+    inline nav_msgs::msg::Path ToPath(const avt_341_msgs::msg::NavGoalSequence & nav_goals)
     {
-        msg::Path path;
+        nav_msgs::msg::Path path;
         path.header = nav_goals.header;
         path.poses.resize(nav_goals.goals.size());
         std::transform(nav_goals.goals.begin(), nav_goals.goals.end(), path.poses.begin(),
-            [](const msg::NavGoal & goal) { return ToPoseStamped(goal); });
+            [](const avt_341_msgs::msg::NavGoal & goal) { return ToPoseStamped(goal); });
         return path;
     }
 
-    inline msg::Pose ToPose(float px,
+    inline geometry_msgs::msg::Pose ToPose(float px,
                             float py,
                             float pz = 0.0f,
                             float ow = 1.0f,
                             float ox = 0.0f,
                             float oy = 0.0f,
                             float oz = 0.0f) {
-        msg::Pose pose;
+        geometry_msgs::msg::Pose pose;
         pose.position.x = px;
         pose.position.y = py;
         pose.position.z = pz;
@@ -91,7 +98,7 @@ namespace avt_341::core
         return pose;
     }
 
-    inline msg::PoseStamped ToPoseStamped(std::string frame_id,
+    inline geometry_msgs::msg::PoseStamped ToPoseStamped(std::string frame_id,
                                             float px,
                                             float py,
                                             float pz = 0.0f,
@@ -99,13 +106,13 @@ namespace avt_341::core
                                             float ox = 0.0f,
                                             float oy = 0.0f,
                                             float oz = 0.0f) {
-        msg::PoseStamped pose;
+        geometry_msgs::msg::PoseStamped pose;
         pose.header.frame_id = std::move(frame_id);
         pose.pose = ToPose(px, py, pz, ow, ox, oy, oz);
         return pose;
     }
 
-    inline msg::NavGoal ToNavGoal(const double x,
+    inline avt_341_msgs::msg::NavGoal ToNavGoal(const double x,
         const double y,
         const double dist_threshold,
         const double yaw_threshold,
@@ -114,8 +121,8 @@ namespace avt_341::core
         return ToNavGoal(ToPoseStamped(frame_id, static_cast<float>(x), static_cast<float>(y)), dist_threshold, yaw_threshold);
     }
 
-    inline msg::Pose ToPose(const msg::Transform & tx) {
-        msg::Pose pose_msg;
+    inline geometry_msgs::msg::Pose ToPose(const geometry_msgs::msg::Transform & tx) {
+        geometry_msgs::msg::Pose pose_msg;
 
         pose_msg.position.x = tx.translation.x;
         pose_msg.position.y = tx.translation.y;
@@ -126,9 +133,9 @@ namespace avt_341::core
         return pose_msg;
     }
 
-    inline msg::Path ToPath(const std::vector<utils::vec2>& path)
+    inline nav_msgs::msg::Path ToPath(const std::vector<utils::vec2>& path)
     {
-        msg::Path ros_path;
+        nav_msgs::msg::Path ros_path;
         ros_path.header.frame_id = "map";
         for (const auto& p: path) {
             ros_path.poses.push_back(ToPoseStamped(ros_path.header.frame_id, p.x, p.y));
@@ -136,7 +143,7 @@ namespace avt_341::core
         return ros_path;
     }
 
-    inline msg::NavGoalSequence ToNavGoalSequence(
+    inline avt_341_msgs::msg::NavGoalSequence ToNavGoalSequence(
         const std::vector<double> & goals_x,
         const std::vector<double> & goals_y,
         const utils::vec2 tx,
@@ -144,7 +151,7 @@ namespace avt_341::core
         const double yaw_threshold,
         const std::string& frame_id = "map"
     ) {
-        msg::NavGoalSequence nav_goals;
+        avt_341_msgs::msg::NavGoalSequence nav_goals;
         nav_goals.header.frame_id = frame_id;
 
         if (goals_x.size() != goals_y.size()) {

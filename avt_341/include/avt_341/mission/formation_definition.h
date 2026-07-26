@@ -1,7 +1,9 @@
 #ifndef AVT_341_FORMATION_DEFINITION_H
 #define AVT_341_FORMATION_DEFINITION_H
 
-#include "avt_341/node/ros_types.h"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "avt_341/mission/mission_manager_dto.h"
 #include <avt_341/mission_manager_params_dto.hpp>
 #include <map>
@@ -11,9 +13,9 @@ namespace avt_341 {
 namespace mission {
 
 struct FormationOffsets {
-  avt_341::msg::Point follower1;
-  avt_341::msg::Point follower2;
-  avt_341::msg::Point follower3;
+  geometry_msgs::msg::Point follower1;
+  geometry_msgs::msg::Point follower2;
+  geometry_msgs::msg::Point follower3;
 };
 
 struct MissionPoint {
@@ -40,8 +42,8 @@ public:
                       const FormationParameters &params_in,
                       const std::string & my_name);
 
-  avt_341::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
-  avt_341::msg::FollowerStatus commToFollowerStatus(const FormationMsg & comm_msg, const std::string &veh_name, int &out_idx) const;
+  avt_341_msgs::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
+  avt_341_msgs::msg::FollowerStatus commToFollowerStatus(const FormationMsg & comm_msg, const std::string &veh_name, int &out_idx) const;
   bool update(FormationMsg &comm_msg, const MissionPoint & mp);
   FormationOffsets getOffsets(const std::string &formation) const;
 
@@ -57,8 +59,8 @@ public:
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
   inline std::string getFormationType() const { return current_formation_msg_.formation; }
 
-  avt_341::msg::FollowerStatus formation_status;
-  avt_341::msg::PoseStamped goal;
+  avt_341_msgs::msg::FollowerStatus formation_status;
+  geometry_msgs::msg::PoseStamped goal;
   const FormationParameters &params;
 
 private:

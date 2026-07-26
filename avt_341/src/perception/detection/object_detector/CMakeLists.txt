@@ -59,50 +59,41 @@ install(
   PATTERN "*.torchscript"
   PATTERN "*.names")
 
-if(USING_CATKIN)
-  message(
-    WARNING
-      "Object detector node not yet supported in the catkin build - skipping..."
-  )
-endif() # if(USING_CATKIN)
+find_package(OpenCV REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(vision_msgs REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(Boost REQUIRED)
 
-if(USING_AMENT)
-  find_package(OpenCV REQUIRED)
-  find_package(cv_bridge REQUIRED)
-  find_package(rclcpp REQUIRED)
-  find_package(sensor_msgs REQUIRED)
-  find_package(vision_msgs REQUIRED)
-  find_package(image_transport REQUIRED)
-  find_package(Boost REQUIRED)
+# > Lookup CUDA
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+  find_package(Torch REQUIRED PATHS ${Torch_CUDA_DIR})
+else()
+  find_package(Torch REQUIRED PATHS ${Torch_DIR})
+endif() # if(CMAKE_CUDA_COMPILER)
 
-  # > Lookup CUDA
-  include(CheckLanguage)
-  check_language(CUDA)
-  if(CMAKE_CUDA_COMPILER)
-    find_package(Torch REQUIRED PATHS ${Torch_CUDA_DIR})
-  else()
-    find_package(Torch REQUIRED PATHS ${Torch_DIR})
-  endif() # if(CMAKE_CUDA_COMPILER)
+add_executable(
+  ${PROJECT_NAME}_object_detector_node
+  "object_detection_node.cpp" "object_detection_node_executor.cpp"
+  "object_detector.cpp")
 
-  add_executable(
-    ${PROJECT_NAME}_object_detector_node
-    "object_detection_node.cpp" "object_detection_node_executor.cpp"
-    "object_detector.cpp")
+ament_target_dependencies(${PROJECT_NAME}_object_detector_node cv_bridge
+                          OpenCV rclcpp sensor_msgs vision_msgs image_transport)
 
-  ament_target_dependencies(${PROJECT_NAME}_object_detector_node cv_bridge
-                            OpenCV rclcpp sensor_msgs vision_msgs image_transport)
+target_include_directories(
+        ${PROJECT_NAME}_object_detector_node
+        PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
 
-  target_include_directories(
-          ${PROJECT_NAME}_object_detector_node
-          PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
+target_link_libraries(${PROJECT_NAME}_object_detector_node
+                      object_detector_params_service
+                      ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES}
+                      ament_index_cpp::ament_index_cpp)
 
-  target_link_libraries(${PROJECT_NAME}_object_detector_node
-                        object_detector_params_service
-                        ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES}
-                        ament_index_cpp::ament_index_cpp)
-
-  install(
-    TARGETS ${PROJECT_NAME}_object_detector_node
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION "lib/${PROJECT_NAME}")
-endif() # if(USING_AMENT)
+install(
+  TARGETS ${PROJECT_NAME}_object_detector_node
+  EXPORT export_${PROJECT_NAME}
+  DESTINATION "lib/${PROJECT_NAME}")

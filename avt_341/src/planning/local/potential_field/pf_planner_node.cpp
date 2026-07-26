@@ -9,61 +9,65 @@
  * \date 1/19/2022
  */
 // ROS includes
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include <rclcpp/rclcpp.hpp>
 #include <avt_341/node/occupancy_grid_subscriber.h>
 // avt_341 includes
 #include "avt_341/planning/local/pf_planner.h"
 #include <avt_341/pf_local_planner_params_service.hpp>
 
-avt_341::msg::Odometry odom;
-avt_341::msg::OccupancyGrid grid;
-avt_341::msg::OccupancyGrid segmentation_grid;
-avt_341::msg::Path global_path;
-avt_341::msg::Path waypoints;
+nav_msgs::msg::Odometry odom;
+nav_msgs::msg::OccupancyGrid grid;
+nav_msgs::msg::OccupancyGrid segmentation_grid;
+nav_msgs::msg::Path global_path;
+nav_msgs::msg::Path waypoints;
 bool odom_rcvd = false;
 bool new_grid_rcvd = false;
 bool new_seg_grid_rcvd = false;
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcv_odom){
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom){
   odom = *rcv_odom;
   odom_rcvd = true;
 }
 
-void GridCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
+void GridCallback(nav_msgs::msg::OccupancyGrid::SharedPtr rcv_grid){
   grid = *rcv_grid;
   new_grid_rcvd = true;
 }
 
-void SegmentationGridCallback(avt_341::msg::OccupancyGridPtr rcv_grid){
+void SegmentationGridCallback(nav_msgs::msg::OccupancyGrid::SharedPtr rcv_grid){
     segmentation_grid = *rcv_grid;
     new_seg_grid_rcvd = true;
 }
 
-void PathCallback(avt_341::msg::PathPtr rcv_path){
+void PathCallback(nav_msgs::msg::Path::SharedPtr rcv_path){
   global_path = *rcv_path;
 }
 
-void WaypointCallback(avt_341::msg::PathPtr wp_path){
+void WaypointCallback(nav_msgs::msg::Path::SharedPtr wp_path){
   waypoints = *wp_path;
 }
 
 int main(int argc, char *argv[]){
 
-  auto n = avt_341::node::init_node(argc, argv, "avt_341_pf_planner_node");
-  avt_341::params::pf_local_planner::ParamsListener param_listener(n->get_raw_node());
+  rclcpp::init(argc, argv);
+  auto n = rclcpp::Node::make_shared("avt_341_pf_planner_node");
+  avt_341::params::pf_local_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
   // Create publishers and subscribers
-  auto path_pub = n->create_publisher<avt_341::msg::Path>("avt_341/local_path", 10);
-  auto odometry_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
+  auto path_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/local_path", 10);
+  auto odometry_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
   auto grid_sub = avt_341::node::OccupancyGridSubscriber(
       n, params.grid_topic, 10, params.costmap.publish.method, GridCallback);
   auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(
       n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
       SegmentationGridCallback);
-  auto path_sub = n->create_subscription<avt_341::msg::Path>("avt_341/global_path", 10, PathCallback);
-  auto wp_sub = n->create_subscription<avt_341::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
+  auto path_sub = n->create_subscription<nav_msgs::msg::Path>("avt_341/global_path", 10, PathCallback);
+  auto wp_sub = n->create_subscription<nav_msgs::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
   avt_341::planning::PfPlanner planner;
   planner.SetEta(static_cast<float>(params.eta));
@@ -77,9 +81,9 @@ int main(int argc, char *argv[]){
   unsigned int loop_count = 0;
   const float dt = 1.0f / static_cast<float>(params.rate);
   float elapsed_time = 0.0f;
-  avt_341::node::Rate rosrate(params.rate);
-  while (avt_341::node::ok()){
-    double start_secs = n->get_now_seconds();
+  rclcpp::Rate rosrate(params.rate);
+  while (rclcpp::ok()){
+    double start_secs = n->now().seconds();
     if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
 
       float gx, gy;
@@ -95,21 +99,19 @@ int main(int argc, char *argv[]){
       planner.SetGoal(gx, gy);
 
       if (new_seg_grid_rcvd) planner.SetSegGrid(segmentation_grid);
-      avt_341::msg::Path local_path = planner.Plan(grid, odom);
+      nav_msgs::msg::Path local_path = planner.Plan(grid, odom);
 
       local_path.header.frame_id = "map";
-      local_path.header.stamp = n->get_stamp();
-      avt_341::node::set_seq(local_path.header, loop_count);
+      local_path.header.stamp = n->now();
       path_pub->publish(local_path);
       /*}
       else {
-        avt_341::msg::Path local_path;
-        avt_341::msg::PoseStamped pose;
+        nav_msgs::msg::Path local_path;
+        geometry_msgs::msg::PoseStamped pose;
         pose.pose = odom.pose.pose;
         local_path.poses.push_back(pose);
         local_path.header.frame_id = "map";
-        local_path.header.stamp = n->get_stamp();
-        avt_341::node::set_seq(local_path.header, loop_count);
+        local_path.header.stamp = n->now();
         path_pub->publish(local_path);
       }*/
 
@@ -129,12 +131,12 @@ int main(int argc, char *argv[]){
     new_grid_rcvd = false;
     new_seg_grid_rcvd = false;
     loop_count++;
-    double end_secs = n->get_now_seconds();
+    double end_secs = n->now().seconds();
     if ((end_secs - start_secs) > 2.5 * dt){
       std::cout << "WARNING: POTENTIAL FIELD PLANNER TOOK " << (end_secs - start_secs) << " TO COMPLETE. REQUESTED UPDATE SPEED IS " << dt << std::endl;
     }
 
-    n->spin_some();
+    rclcpp::spin_some(n);
     rosrate.sleep();
   }
 

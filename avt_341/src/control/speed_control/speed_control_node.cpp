@@ -11,8 +11,14 @@
  * \date 2/9/23
  */
 // avt - ros includes
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_types.h"
 #include "avt_341/avt_341_utils.h"
 //avt_341 includes
 #include "avt_341/control/pid_controller.h"
@@ -21,7 +27,7 @@
 
 using avt_341::utils::NavStackState;
 
-avt_341::msg::Odometry state;
+nav_msgs::msg::Odometry state;
 int current_run_state = NavStackState::NotInit;   // startup state
 double mrzr_speedometer = 0.0;
 bool speedometer_rcvd = false;
@@ -29,58 +35,59 @@ double desired_speed = 0.0;
 double desired_speed_factor = 1.0;
 double desired_steer_radians = 0.0;
 
-void OdometryCallback(avt_341::msg::OdometryPtr rcv_state) {
+void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_state) {
 	state = *rcv_state;
 }
 
-void SpeedCallback(avt_341::msg::Float64Ptr rcv_speed) {
+void SpeedCallback(std_msgs::msg::Float64::SharedPtr rcv_speed) {
 	mrzr_speedometer = rcv_speed->data;
   speedometer_rcvd = true;
 }
 
-void DesiredSpeedCallback(avt_341::msg::Float64Ptr rcv_des_speed) {
+void DesiredSpeedCallback(std_msgs::msg::Float64::SharedPtr rcv_des_speed) {
 	desired_speed = rcv_des_speed->data;
 }
 
-void DesiredSpeedFactorCallback(avt_341::msg::Float64Ptr speed_factor_msg) {
+void DesiredSpeedFactorCallback(std_msgs::msg::Float64::SharedPtr speed_factor_msg) {
   desired_speed_factor = speed_factor_msg->data;
 }
 
-void DesiredSteerCallback(avt_341::msg::Float64Ptr rcv_des_steer) {
+void DesiredSteerCallback(std_msgs::msg::Float64::SharedPtr rcv_des_steer) {
 	desired_steer_radians = rcv_des_steer->data;
 }
 
-void StateCallback(avt_341::msg::NavStatePtr rcv_state){
+void StateCallback(avt_341_msgs::msg::NavState::SharedPtr rcv_state){
   current_run_state = rcv_state->run_state;
 }
 
 bool reset_called = false;
-void ResetCallback(avt_341::msg::StringPtr msg){
+void ResetCallback(const std_msgs::msg::String::SharedPtr msg){
   if(msg->data.find(avt_341::node::NodeType::Control) != std::string::npos){
     reset_called = true;
   }
 }
 
 int main(int argc, char *argv[]){
-  auto n = avt_341::node::init_node(argc,argv,"avt_341_speed_control_node");
+  rclcpp::init(argc, argv);
+  auto n = rclcpp::Node::make_shared("avt_341_speed_control_node");
 
-  avt_341::params::speed_control::ParamsListener param_listener(n->get_raw_node());
+  avt_341::params::speed_control::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
-  auto dc_pub = n->create_publisher<avt_341::msg::Twist>("avt_341/cmd_vel",1);
+  auto dc_pub = n->create_publisher<geometry_msgs::msg::Twist>("avt_341/cmd_vel",1);
 
-  auto state_sub = n->create_subscription<avt_341::msg::Odometry>("avt_341/odometry",1, OdometryCallback);
+  auto state_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",1, OdometryCallback);
 
-  auto control_sub = n->create_subscription<avt_341::msg::NavState>("avt_341/state",1,StateCallback);
+  auto control_sub = n->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state",1,StateCallback);
 
-  auto speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
+  auto speed_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/forward_speed",1,SpeedCallback);
 
-  auto desired_speed_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
-  auto desired_speed_factor_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/desired_speed_factor",1,DesiredSpeedFactorCallback);
+  auto desired_speed_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
+  auto desired_speed_factor_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/desired_speed_factor",1,DesiredSpeedFactorCallback);
 
-  auto desired_steer_sub = n->create_subscription<avt_341::msg::Float64>("avt_341/cmd_steer",1,DesiredSteerCallback);
-  auto reset_sub = n->create_subscription<avt_341::msg::String>("avt_341/reset", 10, ResetCallback);
-  auto reset_ack_pub = n->create_publisher<avt_341::msg::String>("avt_341/reset_ack", 1);
+  auto desired_steer_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/cmd_steer",1,DesiredSteerCallback);
+  auto reset_sub = n->create_subscription<std_msgs::msg::String>("avt_341/reset", 10, ResetCallback);
+  auto reset_ack_pub = n->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
   const double max_steer_angle_rad =
       params.vehicle_max_steer_angle_degrees * M_PI / 180.0;
@@ -89,11 +96,8 @@ int main(int argc, char *argv[]){
       params.anti_windup_method, params.pid_output_min,
       params.pid_output_max);
 
-  n->log_info(
-      "PID Values:\n  kp=%.2f\n  ki=%.2f\n  kd=%.2f\n  "
-      "anti_windup_method=%s",
-      params.throttle_kp, params.throttle_ki, params.throttle_kd,
-      params.anti_windup_method.c_str());
+  RCLCPP_INFO(n->get_logger(), "PID Values:\n  kp=%.2f\n  ki=%.2f\n  kd=%.2f\n  "
+      "anti_windup_method=%s", params.throttle_kp, params.throttle_ki, params.throttle_kd, params.anti_windup_method.c_str());
 
   controller.SetKp(params.throttle_kp);
   controller.SetKi(params.throttle_ki);
@@ -107,7 +111,7 @@ int main(int argc, char *argv[]){
     controller.SetIntegralAbsMax(params.integral_abs_max);
   }
 
-  auto next_waypoint_pub = n->create_publisher<avt_341::msg::PointStamped>("avt_341/control_next_waypoint", 1);
+  auto next_waypoint_pub = n->create_publisher<geometry_msgs::msg::PointStamped>("avt_341/control_next_waypoint", 1);
 
   double rate = 100.0;
   double dt = 1.0/rate;
@@ -115,16 +119,16 @@ int main(int argc, char *argv[]){
   const double max_throttle_step = dt / params.time_to_max_throttle;
   double current_brake_value = 0.0;
   double current_throttle_value = 0.0;
-  avt_341::node::Rate r(rate);
+  rclcpp::Rate r(rate);
 
-  while (avt_341::node::ok()){
-    avt_341::msg::Twist dc;
+  while (rclcpp::ok()){
+    geometry_msgs::msg::Twist dc;
 
     if(reset_called){
       controller.Reset();
       desired_speed = 0.0;
       current_run_state = NavStackState::NotInit;
-      avt_341::msg::String reset_ack_msg;
+      std_msgs::msg::String reset_ack_msg;
       reset_ack_msg.data = avt_341::node::NodeType::Control;
       reset_ack_pub->publish(reset_ack_msg);
       reset_called = false;
@@ -186,11 +190,11 @@ int main(int argc, char *argv[]){
     }
 
     // Enforce maximum lateral acceleration
-    avt_341::msg::Twist dc_safe = dc;
+    geometry_msgs::msg::Twist dc_safe = dc;
     double lat_accel_g = (vel*vel) * tan(dc_safe.angular.z) /
         params.vehicle_wheelbase / 9.81;
     if (abs(lat_accel_g) > params.max_desired_lateral_g) {
-      n->log_info("Lateral acceleration limit activated: %f g", lat_accel_g);
+      RCLCPP_INFO(n->get_logger(), "Lateral acceleration limit activated: %f g", lat_accel_g);
       // Calculate maximum speed for commanded steering angle
       dc_safe.linear.x = sqrt(abs(
           (params.max_desired_lateral_g * 9.81) *
@@ -212,15 +216,15 @@ int main(int argc, char *argv[]){
     current_brake_value = dc_safe.linear.y;
     current_throttle_value = dc_safe.linear.x;
 
-    avt_341::msg::PointStamped next_waypoint_msg;
+    geometry_msgs::msg::PointStamped next_waypoint_msg;
     next_waypoint_msg.point.x = state.pose.pose.position.x;
     next_waypoint_msg.point.y = state.pose.pose.position.y;
     next_waypoint_msg.point.z = state.pose.pose.position.z;
     next_waypoint_msg.header.frame_id = "map";
-    next_waypoint_msg.header.stamp = n->get_stamp();
+    next_waypoint_msg.header.stamp = n->now();
     next_waypoint_pub->publish(next_waypoint_msg);
 
-    n->spin_some();
+    rclcpp::spin_some(n);
 
     r.sleep();
   }

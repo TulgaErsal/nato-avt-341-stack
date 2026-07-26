@@ -1,11 +1,12 @@
 #include "avt_341/perception/layers/costmap_layer.h"
 #include <algorithm>
+#include "nav_msgs/msg/odometry.hpp"
 
 namespace avt_341::perception
 {
 
 CostmapLayer::CostmapLayer(
-    const std::shared_ptr<node::NodeProxy>& node_ref,
+    const rclcpp::Node::SharedPtr& node_ref,
     const PerceptionSettings& settings,
     const std::string& label,
     const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -27,7 +28,7 @@ void CostmapLayer::UpdateThresholds(
     RecomputeGridDilation();
 }
 
-void CostmapLayer::UpdateOdometry(const msg::Odometry& odom_msg)
+void CostmapLayer::UpdateOdometry(const nav_msgs::msg::Odometry& odom_msg)
 {
 	current_odom_ = odom_msg;
 }

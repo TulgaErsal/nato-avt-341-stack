@@ -15,7 +15,8 @@
 #include <string>
 #include <sstream>
 // local includes
-#include "avt_341/node/ros_types.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "avt_341/mission/mission_manager.h"
 #include "avt_341/mission/formation_definition.h"
 #include "avt_341/mission/formation_path_generator.h"
@@ -36,7 +37,7 @@ public:
     virtual bool is_done() { return true; }
     virtual void on_done() = 0;
     virtual std::string description() const { return "Task"; }
-    virtual void onGoalReached(const avt_341::msg::PoseStamped & pose){};
+    virtual void onGoalReached(const geometry_msgs::msg::PoseStamped & pose){};
     virtual void onPreempt() {}
 
     bool hasFormation() const;
@@ -48,7 +49,7 @@ public:
     bool arrived = false;
     double task_speed = -1.0;
     FormationDefinition* getFormationDef() const { return formation_def_; }
-    virtual avt_341::msg::PoseStamped terminalPose() const;
+    virtual geometry_msgs::msg::PoseStamped terminalPose() const;
 
 
 protected:
@@ -74,22 +75,22 @@ public:
     bool is_done() override;
     void on_done() override;
     void onPreempt() override;
-    void onGoalReached(const avt_341::msg::PoseStamped & pose) override;
+    void onGoalReached(const geometry_msgs::msg::PoseStamped & pose) override;
 
     bool setGoalByContact(const Contact & contact);
-    bool setGoalByPose(const avt_341::msg::PoseStamped & pose);
+    bool setGoalByPose(const geometry_msgs::msg::PoseStamped & pose);
     bool setGoalByMissionPoint(std::string name);
-    avt_341::msg::PoseStamped terminalPose() const override;
+    geometry_msgs::msg::PoseStamped terminalPose() const override;
 
     // goal = position and orientation
-    avt_341::msg::PoseStamped goal;
-    avt_341::msg::PoseStamped target_pose;
+    geometry_msgs::msg::PoseStamped goal;
+    geometry_msgs::msg::PoseStamped target_pose;
     std::string goal_type;
     std::string name;
     bool terminate_on_all_arrived_;
     std::string description() const override;
 private:
-    bool setGoalInternal(const avt_341::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
+    bool setGoalInternal(const geometry_msgs::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
     void applyOffset();
     double x_offset_;
     double y_offset_;
@@ -112,30 +113,30 @@ private:
 
 class Encircle : public Task {
 public:
-    Encircle(MissionManager* manager, const std::string & sender, int msg_id, const avt_341::msg::PoseStamped & target,
+    Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
            const ToiParameters & params);
-    Encircle(MissionManager* manager, const std::string & sender, int msg_id, const avt_341::msg::PoseStamped & target,
+    Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
              double radius=15.0, double angular_range_degrees=180.0, bool is_cw = true, double goal_threshold=5.0);
     void init_() override;
     void run() override;
     bool is_done() override;
     void on_done() override;
     std::string description() const override;
-    avt_341::msg::PoseStamped terminalPose() const override;
+    geometry_msgs::msg::PoseStamped terminalPose() const override;
 
-    void updateTarget(const avt_341::msg::PoseStamped & target) { target_ = target; }
+    void updateTarget(const geometry_msgs::msg::PoseStamped & target) { target_ = target; }
     void setContactName(const std::string & name) { contact_name_ = name; }
     const std::string & contactName() const { return contact_name_; }
 
 private:
   bool arrived;
-  avt_341::msg::PoseStamped target_;
+  geometry_msgs::msg::PoseStamped target_;
   std::string contact_name_;
   double radius_;
   double angular_range_degrees_;
   bool is_cw_;
   double goal_threshold_;
-  avt_341::msg::Path circle_path_;
+  nav_msgs::msg::Path circle_path_;
 }; // class Encircle
 
 class Follow : public Task {
@@ -148,7 +149,7 @@ public:
     void on_done() override;
     void onPreempt() override;
     std::string description() const override;
-    avt_341::msg::PoseStamped terminalPose() const override;
+    geometry_msgs::msg::PoseStamped terminalPose() const override;
 
 private:
   bool terminate_on_leader_arrived_;
@@ -166,19 +167,19 @@ public:
     bool is_done() override;
     void on_done() override;
     void onPreempt() override;
-    void onGoalReached(const avt_341::msg::PoseStamped & pose) override;
+    void onGoalReached(const geometry_msgs::msg::PoseStamped & pose) override;
 
     bool setPathByDef(std::string name);
-    avt_341::msg::PoseStamped terminalPose() const override;
+    geometry_msgs::msg::PoseStamped terminalPose() const override;
 
-    avt_341::msg::Path path;
-    avt_341::msg::PoseStamped target_pose;
+    nav_msgs::msg::Path path;
+    geometry_msgs::msg::PoseStamped target_pose;
     std::string goal_type;
     std::string name;
     bool terminate_on_all_arrived_;
     std::string description() const override;
 private:
-    bool setPathInternal(const avt_341::msg::Path & path_in, const std::string & name_in);
+    bool setPathInternal(const nav_msgs::msg::Path & path_in, const std::string & name_in);
 
 }; // class PathFollow
 

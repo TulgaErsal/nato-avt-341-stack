@@ -1,5 +1,6 @@
 #include <queue>
 #include <limits>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -7,6 +8,7 @@
 // project includes
 #include "avt_341/planning/global/astar.h"
 #include "avt_341/planning/global/astar_cell.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 //#include "avt_341/planning/global/dubins_smoothing.h"
 
 namespace avt_341 {
@@ -329,7 +331,7 @@ bool Astar::ExtractPath() {
   return true;
 }
 
-int Astar::GetGridValue(avt_341::msg::OccupancyGrid* grid, double x, double y) {
+int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) {
   int seg_val = 0;
   if (x >= grid->info.origin.position.x && x < grid->info.origin.position.x + grid->info.width * grid->info.resolution
     && y >= grid->info.origin.position.y
@@ -342,8 +344,8 @@ int Astar::GetGridValue(avt_341::msg::OccupancyGrid* grid, double x, double y) {
   return seg_val;
 }
 
-std::vector<Point> Astar::PlanPath(avt_341::msg::OccupancyGrid* grid,
-                                   avt_341::msg::OccupancyGrid* grid_segmentation,
+std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
+                                   nav_msgs::msg::OccupancyGrid* grid_segmentation,
                                    Point goal,
                                    Point position) {
   if (grid->info.height <= 0 || grid->info.width <= 0) {

@@ -1,5 +1,6 @@
 #include "avt_341/mission/mission_manager_dto.h"
 #include <sstream>
+#include "avt_341_msgs/msg/communication.hpp"
 
 const std::string MissionMsgType::Formation = "FORM";
 const std::string MissionMsgType::Acknowledge = "ACK";
@@ -24,7 +25,7 @@ const std::string PriorityType::CANCEL_ALL_PREVIOUS_SHORT = "C";
 // =====================================================================================================================
 MissionManagerDto::MissionManagerDto(){}
 
-MissionManagerDto::MissionManagerDto(const avt_341::msg::Communication &msg) : MissionManagerDto(msg.sender_name,
+MissionManagerDto::MissionManagerDto(const avt_341_msgs::msg::Communication &msg) : MissionManagerDto(msg.sender_name,
                                                                                                       msg.msg_id,
                                                                                                       msg.receiver_name,
                                                                                                       msg.priority_type) {
@@ -34,8 +35,8 @@ MissionManagerDto::MissionManagerDto(const std::string &sender, int msgId, const
                                      const std::string &priority) : sender_name(sender), msg_id(msgId), receiver_name(recipient),
                                                                     priority_type(priority.empty() ? PriorityType::QUEUE : priority) {}
 
-avt_341::msg::Communication MissionManagerDto::toROSMsg() {
-  avt_341::msg::Communication msg;
+avt_341_msgs::msg::Communication MissionManagerDto::toROSMsg() {
+  avt_341_msgs::msg::Communication msg;
   msg.sender_name = sender_name;
   msg.msg_id = msg_id;
   msg.receiver_name = receiver_name;
@@ -48,7 +49,7 @@ avt_341::msg::Communication MissionManagerDto::toROSMsg() {
 // =====================================================================================================================
 MoveToMsg::MoveToMsg() : MissionManagerDto() {}
 
-MoveToMsg::MoveToMsg(const avt_341::msg::Communication &msg)
+MoveToMsg::MoveToMsg(const avt_341_msgs::msg::Communication &msg)
   : MissionManagerDto(msg), objective_name(msg.objective_name), goal_x_offset(msg.x_offset), goal_y_offset(msg.y_offset),
     yaw_threshold(msg.yaw_threshold), dist_threshold(msg.distance) {
 }
@@ -59,8 +60,8 @@ MoveToMsg::MoveToMsg(const std::string &sender, int msgId, const std::string &re
     : MissionManagerDto(sender, msgId, recipient, priority), objective_name(objectiveName), goal_x_offset(xOffset),
       goal_y_offset(yOffset), yaw_threshold(yaw_threshold), dist_threshold(dist_threshold) {}
 
-avt_341::msg::Communication MoveToMsg::toROSMsg() {
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication MoveToMsg::toROSMsg() {
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.objective_name = objective_name;
   msg.x_offset = goal_x_offset;
   msg.y_offset = goal_y_offset;
@@ -75,15 +76,15 @@ std::string MoveToMsg::getType() { return MissionMsgType::MoveTo; }
 // =====================================================================================================================
 PathFollowMsg::PathFollowMsg() : MissionManagerDto() {}
 
-PathFollowMsg::PathFollowMsg(const avt_341::msg::Communication &msg)
+PathFollowMsg::PathFollowMsg(const avt_341_msgs::msg::Communication &msg)
   : MissionManagerDto(msg), objective_name(msg.objective_name), desired_speed(msg.desired_speed) {}
 
 PathFollowMsg::PathFollowMsg(const std::string &sender, int msgId, const std::string & recipient,
             const std::string &objectiveName, double desiredSpeed, const std::string &priority)
     : MissionManagerDto(sender, msgId, recipient, priority), objective_name(objectiveName), desired_speed(desiredSpeed) {}
 
-avt_341::msg::Communication PathFollowMsg::toROSMsg() {
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication PathFollowMsg::toROSMsg() {
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.objective_name = objective_name;
   msg.desired_speed = desired_speed;
   return msg;
@@ -95,7 +96,7 @@ std::string PathFollowMsg::getType() { return MissionMsgType::PathFollow; }
 // =====================================================================================================================
 FormationMsg::FormationMsg() : MoveToMsg() {}
 
-FormationMsg::FormationMsg(const avt_341::msg::Communication &msg)
+FormationMsg::FormationMsg(const avt_341_msgs::msg::Communication &msg)
   : MoveToMsg(msg) {
   formation = msg.formation;
   leader_name = msg.leader_name;
@@ -121,8 +122,8 @@ FormationMsg::FormationMsg(const std::string &sender, int msgId, const std::stri
 
 std::string FormationMsg::getType() { return MissionMsgType::Formation; }
 
-avt_341::msg::Communication FormationMsg::toROSMsg(){
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication FormationMsg::toROSMsg(){
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
 
   msg.formation = formation;
   msg.leader_name = leader_name;
@@ -150,7 +151,7 @@ SetSpeedMsg FormationMsg::speedMsg() {
 // AcknowledgeMsg
 // =====================================================================================================================
 
-AcknowledgeMsg::AcknowledgeMsg(const avt_341::msg::Communication &msg)
+AcknowledgeMsg::AcknowledgeMsg(const avt_341_msgs::msg::Communication &msg)
 : MissionManagerDto(msg), ack_msg_id(msg.target_msg_id) {
 }
 
@@ -158,8 +159,8 @@ AcknowledgeMsg::AcknowledgeMsg(const std::string &sender, int msgId, const std::
 : MissionManagerDto(sender, msgId, recipient), ack_msg_id(ackMsdId){
 }
 
-avt_341::msg::Communication AcknowledgeMsg::toROSMsg(){
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication AcknowledgeMsg::toROSMsg(){
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.target_msg_id = ack_msg_id;
   return msg;
 }
@@ -168,7 +169,7 @@ std::string AcknowledgeMsg::getType() { return MissionMsgType::Acknowledge; }
 
 // ArrivedMsg
 // =====================================================================================================================
-ArrivedMsg::ArrivedMsg(const avt_341::msg::Communication &msg)
+ArrivedMsg::ArrivedMsg(const avt_341_msgs::msg::Communication &msg)
   : MissionManagerDto(msg), objective_name(msg.objective_name){
 }
 
@@ -176,8 +177,8 @@ ArrivedMsg::ArrivedMsg(const std::string &sender, int msgId, const std::string& 
   : MissionManagerDto(sender, msgId, "", PriorityType::PREEMPT), objective_name(objectiveName){
 }
 
-avt_341::msg::Communication ArrivedMsg::toROSMsg(){
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication ArrivedMsg::toROSMsg(){
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.objective_name = objective_name;
   return msg;
 };
@@ -187,7 +188,7 @@ std::string ArrivedMsg::getType() { return MissionMsgType::Arrived; }
 // ShutdownMsg
 // =====================================================================================================================
 
-ShutdownMsg::ShutdownMsg(const avt_341::msg::Communication &msg)
+ShutdownMsg::ShutdownMsg(const avt_341_msgs::msg::Communication &msg)
   : MissionManagerDto(msg){
 }
 
@@ -195,7 +196,7 @@ ShutdownMsg::ShutdownMsg(const std::string &sender, int msgId, const std::string
             const std::string &priority) : MissionManagerDto(sender, msgId, receiver, priority){
 }
 
-avt_341::msg::Communication ShutdownMsg::toROSMsg(){
+avt_341_msgs::msg::Communication ShutdownMsg::toROSMsg(){
   return MissionManagerDto::toROSMsg();
 }
 std::string ShutdownMsg::getType() { return MissionMsgType::Shutdown; }
@@ -203,7 +204,7 @@ std::string ShutdownMsg::getType() { return MissionMsgType::Shutdown; }
 // TaskCompleteMsg
 // =====================================================================================================================
 
-TaskCompleteMsg::TaskCompleteMsg(const avt_341::msg::Communication &msg)
+TaskCompleteMsg::TaskCompleteMsg(const avt_341_msgs::msg::Communication &msg)
     : MissionManagerDto(msg), target_msg_id(msg.target_msg_id){
 }
 
@@ -211,8 +212,8 @@ TaskCompleteMsg::TaskCompleteMsg(const std::string &sender, int msgId, const std
     : MissionManagerDto(sender, msgId, receiver), target_msg_id(completedMsgId){
 }
 
-avt_341::msg::Communication TaskCompleteMsg::toROSMsg(){
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication TaskCompleteMsg::toROSMsg(){
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.target_msg_id = target_msg_id;
   return msg;
 }
@@ -222,7 +223,7 @@ std::string TaskCompleteMsg::getType() { return MissionMsgType::TaskComplete; }
 // SetSpeedMsg
 // =====================================================================================================================
 
-SetSpeedMsg::SetSpeedMsg(const avt_341::msg::Communication &msg)
+SetSpeedMsg::SetSpeedMsg(const avt_341_msgs::msg::Communication &msg)
 : MissionManagerDto(msg){
   desired_speed = msg.desired_speed;
 }
@@ -232,7 +233,7 @@ SetSpeedMsg::SetSpeedMsg(const std::string &sender, int msgId, const std::string
   desired_speed = desiredSpeed;
 }
 
-avt_341::msg::Communication SetSpeedMsg::toROSMsg() {
+avt_341_msgs::msg::Communication SetSpeedMsg::toROSMsg() {
   auto msg = MissionManagerDto::toROSMsg();
   msg.desired_speed = desired_speed;
   return msg;
@@ -242,7 +243,7 @@ std::string SetSpeedMsg::getType() { return MissionMsgType::SetSpeed; }
 // CancelMsg
 // =====================================================================================================================
 
-CancelMsg::CancelMsg(const avt_341::msg::Communication &msg)
+CancelMsg::CancelMsg(const avt_341_msgs::msg::Communication &msg)
   : MissionManagerDto(msg){
   target_msg_id = msg.target_msg_id;
 }
@@ -252,7 +253,7 @@ CancelMsg::CancelMsg(const std::string &sender, int msgId, const std::string & r
           : MissionManagerDto(sender, msgId, recipient, priority), target_msg_id(targetMsgId){
 }
 
-avt_341::msg::Communication CancelMsg::toROSMsg(){
+avt_341_msgs::msg::Communication CancelMsg::toROSMsg(){
   auto msg = MissionManagerDto::toROSMsg();
   msg.target_msg_id = target_msg_id;
   return msg;
@@ -262,7 +263,7 @@ std::string CancelMsg::getType() { return MissionMsgType::Cancel; }
 // CancelAllMsg
 // =====================================================================================================================
 
-CancelAllMsg::CancelAllMsg(const avt_341::msg::Communication &msg)
+CancelAllMsg::CancelAllMsg(const avt_341_msgs::msg::Communication &msg)
     : MissionManagerDto(msg){
 }
 
@@ -270,7 +271,7 @@ CancelAllMsg::CancelAllMsg(const std::string &sender, int msgId, const std::stri
     : MissionManagerDto(sender, msgId, recipient, priority){
 }
 
-avt_341::msg::Communication CancelAllMsg::toROSMsg(){
+avt_341_msgs::msg::Communication CancelAllMsg::toROSMsg(){
   return MissionManagerDto::toROSMsg();
 }
 std::string CancelAllMsg::getType() { return MissionMsgType::CancelAll; }
@@ -278,7 +279,7 @@ std::string CancelAllMsg::getType() { return MissionMsgType::CancelAll; }
 // Overwatch
 // =====================================================================================================================
 
-OverwatchMsg::OverwatchMsg(const avt_341::msg::Communication &msg)
+OverwatchMsg::OverwatchMsg(const avt_341_msgs::msg::Communication &msg)
 : MissionManagerDto(msg){
   wait_for_msg_id = msg.target_msg_id;
 }
@@ -287,8 +288,8 @@ OverwatchMsg::OverwatchMsg(const std::string &sender, int msgId, const std::stri
              : MissionManagerDto(sender, msgId, recipient, priority), wait_for_msg_id(waitForMsgId){
 }
 
-avt_341::msg::Communication OverwatchMsg::toROSMsg(){
-  avt_341::msg::Communication msg = MissionManagerDto::toROSMsg();
+avt_341_msgs::msg::Communication OverwatchMsg::toROSMsg(){
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
   msg.target_msg_id = wait_for_msg_id;
   return msg;
 }

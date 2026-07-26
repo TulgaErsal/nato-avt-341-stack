@@ -1,6 +1,7 @@
 #ifndef AVT_341_CLEARING_METHOD_FACTORY_H
 #define AVT_341_CLEARING_METHOD_FACTORY_H
 
+#include "avt_341/node/tf_interface.h"
 #include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
 
 namespace avt_341::perception {
@@ -11,7 +12,8 @@ public:
 
     static std::shared_ptr<OccupancyClearingMethod> CreateClearingMethod(
         const std::string& clear_method_type,
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
+        const std::shared_ptr<node::TfInterface>& tf,
         std::vector<std::vector<Cell>> & cells,
         const ClearMethodSettings & params,
         const PerceptionSettings& settings,
@@ -19,7 +21,8 @@ public:
     );
 
     static std::vector<std::shared_ptr<OccupancyClearingMethod>> CreateClearingMethods(
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
+        const std::shared_ptr<node::TfInterface>& tf,
         std::vector<std::vector<Cell>> & cells,
         const ClearMethodSettings & params,
         const PerceptionSettings& settings,

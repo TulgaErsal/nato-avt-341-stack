@@ -1,16 +1,21 @@
 #include "avt_341/perception/layers/camera_layer.h"
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include "sensor_msgs/msg/camera_info.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/msg/point_field.hpp"
 
 namespace avt_341::perception
 {
     CameraLayer::CameraLayer(
-        const std::shared_ptr<node::NodeProxy>& node_ref,
+        const rclcpp::Node::SharedPtr& node_ref,
+        const std::shared_ptr<node::TfInterface>& tf,
         const PerceptionSettings& settings,
         const std::string& label,
         const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
         const avt_341::params::perception::Params::CameraLayer& params)
             : PointCloudLayer(
-                node_ref, settings, label, compute_time_recorder,
+                node_ref, tf, settings, label, compute_time_recorder,
                 "", "", params.contribute_occupancy,
                 params.contribute_segmentation, false)
     {
@@ -31,9 +36,9 @@ namespace avt_341::perception
         }
         is_enabled_ = true;
 
-        std::shared_ptr<rclcpp::Node> raw_node = node_ref_->get_raw_node();
+        std::shared_ptr<rclcpp::Node> raw_node = node_ref_;
 
-        camera_info_sub_ = raw_node->create_subscription<msg::CameraInfo>(
+        camera_info_sub_ = raw_node->create_subscription<sensor_msgs::msg::CameraInfo>(
             camera_info_topic_, 10,
             std::bind(&CameraLayer::CameraInfoCallback, this, std::placeholders::_1));
 
@@ -41,9 +46,9 @@ namespace avt_341::perception
         if (has_segmentation_)
         {
             // Use approximate time synchronizer for depth + segmentation images
-            depth_sub_ = std::make_shared<message_filters::Subscriber<msg::Image>>(
+            depth_sub_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(
                 raw_node, depth_img_topic_);
-            seg_sub_ = std::make_shared<message_filters::Subscriber<msg::Image>>(
+            seg_sub_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(
                 raw_node, seg_img_topic_);
 
             sync_ = std::make_shared<message_filters::Synchronizer<ImageSyncPolicy>>(
@@ -55,7 +60,7 @@ namespace avt_341::perception
         else
         {
             // No segmentation topic: subscribe to depth only
-            depth_only_sub_ = raw_node->create_subscription<msg::Image>(
+            depth_only_sub_ = raw_node->create_subscription<sensor_msgs::msg::Image>(
                 depth_img_topic_, 10,
                 std::bind(&CameraLayer::DepthImageCallback, this, std::placeholders::_1));
         }
@@ -72,7 +77,7 @@ namespace avt_341::perception
             RebuildRayCache();
             cached_camera_info_ = *msg;
             camera_info_received_ = true;
-            node_ref_->log_info("CameraLayer: camera model updated (%ux%u)", msg->width, msg->height);
+            RCLCPP_INFO(node_ref_->get_logger(), "CameraLayer: camera model updated (%ux%u)", msg->width, msg->height);
         }
     }
 
@@ -93,26 +98,25 @@ namespace avt_341::perception
     }
 
     void CameraLayer::SyncedImageCallback(
-        const msg::Image::ConstSharedPtr& depth_msg,
-        const msg::Image::ConstSharedPtr& seg_msg)
+        const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg)
     {
         ProcessToPointCloud(depth_msg, seg_msg);
     }
 
-    void CameraLayer::DepthImageCallback(const msg::Image::ConstSharedPtr& depth_msg)
+    void CameraLayer::DepthImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg)
     {
         ProcessToPointCloud(depth_msg, nullptr);
     }
 
     void CameraLayer::ProcessToPointCloud(
-        const msg::Image::ConstSharedPtr& depth_msg,
-        const msg::Image::ConstSharedPtr& seg_msg)
+        const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg)
     {
         // Guard: must have received a CameraInfo before we can project pixels
         if (!camera_info_received_)
         {
-            node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
-                "CameraLayer: depth image received but no CameraInfo yet, skipping.");
+            RCLCPP_WARN_THROTTLE(node_ref_->get_logger(), *node_ref_->get_clock(), (THROTTLE_LOG_PERIOD) * 1000.0, "CameraLayer: depth image received but no CameraInfo yet, skipping.");
             return;
         }
 
@@ -122,18 +126,13 @@ namespace avt_341::perception
         // Verify the ray cache matches the image dimensions
         if (ray_cache_.size() != static_cast<size_t>(width * height))
         {
-            node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
-                "CameraLayer: ray cache size (%zu) does not match image (%ux%u), skipping.",
-                ray_cache_.size(), width, height);
+            RCLCPP_WARN_THROTTLE(node_ref_->get_logger(), *node_ref_->get_clock(), (THROTTLE_LOG_PERIOD) * 1000.0, "CameraLayer: ray cache size (%zu) does not match image (%ux%u), skipping.", ray_cache_.size(), width, height);
             return;
         }
 
         if (depth_msg->encoding != EXPECTED_DEPTH_FORMAT)
         {
-            node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
-                "CameraLayer: unsupported depth encoding '%s', expected %s.",
-                depth_msg->encoding.c_str(),
-                std::string(EXPECTED_DEPTH_FORMAT).c_str());
+            RCLCPP_WARN_THROTTLE(node_ref_->get_logger(), *node_ref_->get_clock(), (THROTTLE_LOG_PERIOD) * 1000.0, "CameraLayer: unsupported depth encoding '%s', expected %s.", depth_msg->encoding.c_str(), std::string(EXPECTED_DEPTH_FORMAT).c_str());
             return;
         }
 
@@ -143,18 +142,13 @@ namespace avt_341::perception
         {
             if (seg_msg->encoding != EXPECTED_SEG_FORMAT)
             {
-                node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
-                    "CameraLayer: unsupported segmentation encoding '%s', expected %s.",
-                    seg_msg->encoding.c_str(),
-                    std::string(EXPECTED_SEG_FORMAT).c_str());
+                RCLCPP_WARN_THROTTLE(node_ref_->get_logger(), *node_ref_->get_clock(), (THROTTLE_LOG_PERIOD) * 1000.0, "CameraLayer: unsupported segmentation encoding '%s', expected %s.", seg_msg->encoding.c_str(), std::string(EXPECTED_SEG_FORMAT).c_str());
                 return;
             }
 
             if (seg_msg->width != width || seg_msg->height != height)
             {
-                node_ref_->log_warning_throttle(THROTTLE_LOG_PERIOD,
-                    "CameraLayer: segmentation image size (%ux%u) doesn't match depth (%ux%u).",
-                    seg_msg->width, seg_msg->height, width, height);
+                RCLCPP_WARN_THROTTLE(node_ref_->get_logger(), *node_ref_->get_clock(), (THROTTLE_LOG_PERIOD) * 1000.0, "CameraLayer: segmentation image size (%ux%u) doesn't match depth (%ux%u).", seg_msg->width, seg_msg->height, width, height);
                 return;
             }
         }
@@ -195,9 +189,9 @@ namespace avt_341::perception
         if (has_seg)
         {
             modifier.setPointCloud2Fields(4,
-                "x", 1, msg::PointField::FLOAT32,
-                "y", 1, msg::PointField::FLOAT32,
-                "z", 1, msg::PointField::FLOAT32,
+                "x", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "z", 1, sensor_msgs::msg::PointField::FLOAT32,
                 pc_seg_channel_.c_str(), 1, sensor_msgs::msg::PointField::FLOAT32);
         }
         else

@@ -1,4 +1,5 @@
 #include "avt_341/perception/normal_grid.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 
 namespace avt_341{
@@ -57,8 +58,8 @@ uint8_t NormalGrid::GetGridCellValue(const NormalCell & cell) const{
   return cell.Value();
 }
 
-avt_341::msg::OccupancyGrid NormalGrid::GetGrid(bool is_segmentation){
-  avt_341::msg::OccupancyGrid grid;
+nav_msgs::msg::OccupancyGrid NormalGrid::GetGrid(bool is_segmentation){
+  nav_msgs::msg::OccupancyGrid grid;
   grid.header.frame_id = "map";
   grid.info.resolution = res_;
   grid.info.width = nx_;
@@ -77,7 +78,7 @@ avt_341::msg::OccupancyGrid NormalGrid::GetGrid(bool is_segmentation){
   return grid;
 }
 
-avt_341::msg::OccupancyGrid NormalGrid::GetGrid(double x, double y, double width, double height) {
+nav_msgs::msg::OccupancyGrid NormalGrid::GetGrid(double x, double y, double width, double height) {
     double local_x_origin = x - width/2.0;
     double local_y_origin = y - height/2.0;
     int local_nx = (int)(width/res_);
@@ -87,7 +88,7 @@ avt_341::msg::OccupancyGrid NormalGrid::GetGrid(double x, double y, double width
     int xi_max = std::min(nx_,xi_min+local_nx);
     int yi_max = std::min(ny_,yi_min+local_ny);
 
-    avt_341::msg::OccupancyGrid grid;
+    nav_msgs::msg::OccupancyGrid grid;
     grid.header.frame_id = "map";
     grid.info.resolution = res_;
     grid.info.width = local_nx;

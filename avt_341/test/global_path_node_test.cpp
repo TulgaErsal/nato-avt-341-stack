@@ -34,7 +34,7 @@
 #include "avt_341/planning/global/fast_marching_square.h"
 
 // ROS message types (header-only abstractions)
-#include "avt_341/node/ros_types.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 using avt_341::planning::Point;
 
@@ -179,10 +179,10 @@ static GlobalPlannerParams LoadParams(const std::string& yaml_path) {
 // ===========================================================================
 
 /// Fill an OccupancyGrid message from a flat byte buffer.
-static avt_341::msg::OccupancyGrid MakeGrid(const std::vector<int8_t>& data,
+static nav_msgs::msg::OccupancyGrid MakeGrid(const std::vector<int8_t>& data,
                                              int width, int height,
                                              float resolution) {
-  avt_341::msg::OccupancyGrid g;
+  nav_msgs::msg::OccupancyGrid g;
   g.info.width      = static_cast<uint32_t>(width);
   g.info.height     = static_cast<uint32_t>(height);
   g.info.resolution = resolution;
@@ -195,8 +195,8 @@ static avt_341::msg::OccupancyGrid MakeGrid(const std::vector<int8_t>& data,
 /// Struct that bundles a pair of grids (occupancy + terrain/segmentation)
 /// with start/goal points – mirrors the Python helper `setup_grids()`.
 struct ScenarioGrids {
-  avt_341::msg::OccupancyGrid occupancy;
-  avt_341::msg::OccupancyGrid segmentation;
+  nav_msgs::msg::OccupancyGrid occupancy;
+  nav_msgs::msg::OccupancyGrid segmentation;
   Point start;   ///< vehicle starting position in world metres
   Point goal;    ///< goal position in world metres
 };

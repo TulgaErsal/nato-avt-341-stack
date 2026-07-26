@@ -17,8 +17,21 @@
 #include <chrono>
 #include <map>
 // local includes
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/map_marker_list.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
+#include "avt_341_msgs/msg/mission_task_status.hpp"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
 #include "avt_341/mission/task.h"
 #include "avt_341/mission/formation_utils.h"
 #include "avt_341/mission/formation_definition.h"
@@ -36,7 +49,7 @@ class Task;
 struct Contact {
     // storage for contact information
     // timestamp, position, class/name, investigated
-    avt_341::msg::PoseStamped pose;
+    geometry_msgs::msg::PoseStamped pose;
     std::string name;
     bool investigated;
     bool investigating;
@@ -52,7 +65,7 @@ class MissionManager{
     MissionManager(
         MissionManagerParams params,
         const std::string & manager_name,
-        const std::shared_ptr<node::NodeProxy> & node_proxy,
+        const rclcpp::Node::SharedPtr & node,
         const std::shared_ptr<GoalFilter> & goal_filter);
 
     ~MissionManager();
@@ -68,7 +81,7 @@ class MissionManager{
     bool getMissionPath(MissionPath& mission_path, std::string pathname);
 
     // internal messages
-    void handleContacts(const avt_341::msg::Path &, const std::map<std::string, avt_341::msg::Odometry> &);
+    void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
 
     // external messages
     void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr, double desired_speed = 0.0);
@@ -83,8 +96,8 @@ class MissionManager{
     void handleCancelAllTask(const CancelAllMsg & msg);
 
     std::string my_name;
-    avt_341::msg::Odometry odometry;
-    avt_341::msg::Odometry leader_odometry;
+    nav_msgs::msg::Odometry odometry;
+    nav_msgs::msg::Odometry leader_odometry;
     bool rcvd_leader_odom = false;
     int nav_state;
     bool goal_changed;
@@ -95,25 +108,25 @@ class MissionManager{
     // Task management
     void updateTasks();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
-    void publishPath(const avt_341::msg::Path& path);
-    void publishGoal(const msg::NavGoal & goal_in);
-    void publishGoalPath(const avt_341::msg::Path& path);
+    void publishPath(const nav_msgs::msg::Path& path);
+    void publishGoal(const avt_341_msgs::msg::NavGoal & goal_in);
+    void publishGoalPath(const nav_msgs::msg::Path& path);
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
     void publishArrival(const std::string & sender_name, const std::string & objective);
-    void publishFormationStatus(avt_341::msg::FollowerStatus & status_msg);
+    void publishFormationStatus(avt_341_msgs::msg::FollowerStatus & status_msg);
     void publishLeaderStatus();
     void publishTaskStatus();
-    msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
+    avt_341_msgs::msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
     void reset();
     void resetTaskList(bool send_completion_msg);
     void cancelTask(int task_id,bool send_completion_msg);
-    void onGoalReached(const avt_341::msg::PoseStamped & pose);
+    void onGoalReached(const geometry_msgs::msg::PoseStamped & pose);
     bool hasCompletedTask(const std::string & target_veh, int target_msg_id) const;
     bool hasArrival(const std::string & target_veh, const std::string & objective) const;
 
     Task* currentTask();
-    avt_341::msg::PoseStamped current_gp_goal;
+    geometry_msgs::msg::PoseStamped current_gp_goal;
     double getSpeedSetpoint();
 
   private:
@@ -126,7 +139,7 @@ class MissionManager{
     std::vector<MissionPath> mission_paths;
     std::deque<Task*> task_list;
     std::vector<Contact> mission_contacts;
-    std::shared_ptr<node::NodeProxy> node_proxy_;
+    rclcpp::Node::SharedPtr node_;
     std::shared_ptr<GoalFilter> goal_filter_;
     double speed_setpoint_state = -1.0;
 
@@ -134,26 +147,26 @@ class MissionManager{
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
 
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::NavGoalSequence>> waypoint_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> reset_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Path>> gp_path_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> navcommand_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Int32>> gp_toggle_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Communication>> communication_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> speed_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::FollowerStatus>> follower_status_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> leader_status_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionTaskStatus>> task_status_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MissionModuleStatus>> task_change_pub = nullptr;
-    std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MapMarkerList>> map_markers_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavGoalSequence>> waypoint_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::String>> reset_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Path>> gp_path_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Int32>> navcommand_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Int32>> gp_toggle_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::Communication>> communication_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> speed_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::FollowerStatus>> follower_status_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> leader_status_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionTaskStatus>> task_status_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionModuleStatus>> task_change_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MapMarkerList>> map_markers_pub = nullptr;
 
     // Methods
-    bool hasContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
+    bool hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose);
     auto getClosestNewContact();
     MissionPoint getClosestOverwatch();
-    void addContact(const std::string & name, const avt_341::msg::PoseStamped & pose);
-    void updateExistingContact(std::vector<Contact>::iterator it, const avt_341::msg::PoseStamped & pose);
-    void createToiTasks(Contact & contact, const std::map<std::string, avt_341::msg::Odometry> & veh_poses);
+    void addContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose);
+    void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
+    void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void updateOverwatchPositions();
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);

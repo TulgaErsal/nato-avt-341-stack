@@ -10,7 +10,7 @@ namespace avt_341::perception
     {
     public:
         StaticGridLayer(
-            const std::shared_ptr<node::NodeProxy>& node_ref,
+            const rclcpp::Node::SharedPtr& node_ref,
             const PerceptionSettings& settings,
             const std::string& label,
             const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,

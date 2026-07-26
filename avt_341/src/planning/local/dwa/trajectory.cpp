@@ -1,4 +1,8 @@
 #include <avt_341/planning/local/dwa/trajectory.hpp>
+#include "avt_341_msgs/msg/dwa_objective.hpp"
+#include "avt_341_msgs/msg/dwa_trajectory.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/path.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -14,8 +18,8 @@ State Trajectory::GetState(int i) { return states_[i]; }
 
 const State& Trajectory::GetLastState() const { return states_.back(); }
 
-avt_341::msg::Path Trajectory::ToRosPath() {
-    avt_341::msg::Path msg_path;
+nav_msgs::msg::Path Trajectory::ToRosPath() {
+    nav_msgs::msg::Path msg_path;
 
     // Fill the poses array with all states in the trajectory.
     for(State& state : states_) {
@@ -154,13 +158,13 @@ void Trajectory::EvaluateTotalCost() {
 
 const double& Trajectory::GetTotalCost() { return cost_; }
 
-avt_341::msg::DwaTrajectory Trajectory::GetROSTrajectoryMessage() const {
-    avt_341::msg::DwaTrajectory trajectory_message;
+avt_341_msgs::msg::DwaTrajectory Trajectory::GetROSTrajectoryMessage() const {
+    avt_341_msgs::msg::DwaTrajectory trajectory_message;
 
-    avt_341::msg::Path path_message;
+    nav_msgs::msg::Path path_message;
     path_message.header.frame_id = "map";
     for (auto& state : states_)  {
-        avt_341::msg::PoseStamped pose_stamped_message;
+        geometry_msgs::msg::PoseStamped pose_stamped_message;
         pose_stamped_message.header.frame_id = "map";
         pose_stamped_message.pose.position.x = state.GetX();
         pose_stamped_message.pose.position.y = state.GetY();
@@ -169,7 +173,7 @@ avt_341::msg::DwaTrajectory Trajectory::GetROSTrajectoryMessage() const {
     trajectory_message.path = path_message;
 
 
-    avt_341::msg::DwaObjective objective_message;
+    avt_341_msgs::msg::DwaObjective objective_message;
     objective_message.goal_cost = goal_cost_;
     objective_message.obstacle_cost = obstacle_cost_;
     objective_message.segmentation_cost = segmentation_cost_;

@@ -2,12 +2,17 @@
 #define OBS_AVOIDANCE_GOAL_FILTER_HPP
 
 #include <Eigen/Dense>
+#include <optional>
 #include <string>
 
 #include "goal_filter.hpp"
-#include "avt_341/node/node_proxy.h"
+#include <rclcpp/rclcpp.hpp>
 #include "avt_341/node/occupancy_grid_subscriber.h"
 #include <avt_341/mission_manager_params_dto.hpp>
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341::mission {
 
@@ -36,13 +41,13 @@ class ObsAvoidGoalFilter : public GoalFilter {
 
 public:
     explicit ObsAvoidGoalFilter(
-        std::shared_ptr<node::NodeProxy> node,
+        rclcpp::Node::SharedPtr node,
         const std::string& vehicle_id,
         const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params =
             avt_341::params::mission_manager::Params::FgfObsAvoid{},
         const std::string& publish_method = std::string());
 
-    msg::Pose Filter(const msg::Pose &candidate_goal, const msg::Pose &leader_pose) override;
+    geometry_msgs::msg::Pose Filter(const geometry_msgs::msg::Pose &candidate_goal, const geometry_msgs::msg::Pose &leader_pose) override;
 
     void Reset() override;
 
@@ -58,8 +63,8 @@ public:
 
 private:
 
-    void OccupancyGridCallback(msg::OccupancyGridPtr msg);
-    Eigen::Vector2d ToGridCoords(const msg::Point& ros_point);
+    void OccupancyGridCallback(nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+    Eigen::Vector2d ToGridCoords(const geometry_msgs::msg::Point& ros_point);
     Eigen::Vector2d ToRosCoords(const Eigen::Vector2d& grid_point);
 
     // process one (point, offset) sample and return corrected point
@@ -67,16 +72,16 @@ private:
                                   const Eigen::Vector2d& offset,
                                   double desired_yaw);
 
-    std::shared_ptr<node::NodeProxy> node_;
+    rclcpp::Node::SharedPtr node_;
     ObsAvoidGoalFilterParams params_;
 
     std::shared_ptr<node::OccupancyGridSubscriber> grid_sub_;
-    std::shared_ptr<node::Publisher<msg::PoseStamped>> unfiltered_goal_pub_ = nullptr;
+    std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseStamped>> unfiltered_goal_pub_ = nullptr;
 
     Eigen::MatrixXi occupancy_grid_;
 
     // minimal state to preserve behavior across steps
-    avt_341::optional<Eigen::Vector2d> last_point_;    // last published (for intersection check)
+    std::optional<Eigen::Vector2d> last_point_;    // last published (for intersection check)
 
     // cached patch / state used by the avoidance logic
     Eigen::Vector2d map_origin_;

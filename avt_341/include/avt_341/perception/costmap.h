@@ -8,14 +8,18 @@
 #include <vector>
 #include <string>
 
-#include "avt_341/node/ros_types.h"
+#include "map_msgs/msg/occupancy_grid_update.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "avt_341/avt_341_utils.h"
+#include "avt_341/node/tf_interface.h"
 #include "avt_341/perception/costmap_dtos.h"
 #include "avt_341/perception/perception_settings.hpp"
 #include "avt_341/core/compute_time_recorder.hpp"
 #include "avt_341/core/grid_components.h"
 #include "layers/costmap_layer.h"
 #include <deque>
+#include <rclcpp/rclcpp.hpp>
 
 namespace avt_341::perception
 {
@@ -23,7 +27,8 @@ namespace avt_341::perception
 class Costmap {
 public:
 	Costmap(
-		const std::shared_ptr<node::NodeProxy>& node_ref,
+		const rclcpp::Node::SharedPtr& node_ref,
+		const std::shared_ptr<node::TfInterface>& tf,
 		const PerceptionSettings& settings
 	);
 
@@ -32,9 +37,9 @@ public:
 	void Clear() const;
 	void ResetUpdateRegion();
 
-	msg::OccupancyGrid GetGrid(bool is_segmentation = false, const std::string& target_layer = "") const;
-	msg::OccupancyGrid GetGrid(double width, double height, bool is_segmentation = false) const;
-	msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation, const std::string& target_layer = "") const;
+	nav_msgs::msg::OccupancyGrid GetGrid(bool is_segmentation = false, const std::string& target_layer = "") const;
+	nav_msgs::msg::OccupancyGrid GetGrid(double width, double height, bool is_segmentation = false) const;
+	map_msgs::msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation, const std::string& target_layer = "") const;
 
 	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation, std::string target_layer = "") const;
 	void Reset() const;
@@ -65,15 +70,15 @@ private:
 
     std::vector<std::shared_ptr<CostmapLayer>> GetTargetLayers(const std::string& target_layer, bool is_segmentation) const;
 
-	void OdometryCallback(msg::OdometryPtr rcv_odom);
+	void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom);
 
-	msg::Odometry current_odom_;
+	nav_msgs::msg::Odometry current_odom_;
 
-	std::shared_ptr<node::NodeProxy> node_ref_;
+	rclcpp::Node::SharedPtr node_ref_;
 
 	std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
 
-	node::Subscriber<msg::Odometry>::SharedPtr odom_sub_;
+	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 
 	PerceptionSettings settings_;
 

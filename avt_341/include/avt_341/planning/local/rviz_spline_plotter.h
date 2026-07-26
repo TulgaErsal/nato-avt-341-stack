@@ -8,8 +8,10 @@
 
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/local/candidate.h"
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include <rclcpp/rclcpp.hpp>
 
 namespace avt_341 {
   namespace planning{
@@ -17,7 +19,7 @@ namespace avt_341 {
     class RVIZPlotter {
     public:
       RVIZPlotter(const std::string & cost_vis,
-                  std::shared_ptr<avt_341::node::NodeProxy> node, float w_c, float w_s, float w_r, float w_d, float w_t, float cost_vis_text_size);
+                  rclcpp::Node::SharedPtr node, float w_c, float w_s, float w_r, float w_d, float w_t, float cost_vis_text_size);
 
       /**
        * Set the centerline to be plotted.
@@ -35,7 +37,7 @@ namespace avt_341 {
        * Add the occupancy grid that will be plotted
        * \param grid The occupancy grid to be plotted.
        */
-      void AddMap(const avt_341::msg::OccupancyGrid & grid);
+      void AddMap(const nav_msgs::msg::OccupancyGrid & grid);
 
       /**
        * Publish the candidate path markers for rviz.
@@ -43,17 +45,17 @@ namespace avt_341 {
       void Display();
 
     private:
-      avt_341::msg::Marker get_marker_msg(int type, int id, bool is_blocked = false) const;
+      visualization_msgs::msg::Marker get_marker_msg(int type, int id, bool is_blocked = false) const;
 
       std::vector<utils::vec2> path_;
       std::vector<Candidate> curves_;
       float pixdim_;
       bool map_set_;
 
-      std::shared_ptr<avt_341::node::NodeProxy> node_;
+      rclcpp::Node::SharedPtr node_;
       std::string cost_vis_;
       float cost_vis_text_size_;
-      std::shared_ptr<avt_341::node::Publisher<avt_341::msg::MarkerArray>> candidate_paths_publisher;
+      std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> candidate_paths_publisher;
       float w_c_;
       float w_d_;
       float w_r_;

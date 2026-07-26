@@ -1,7 +1,9 @@
 #ifndef POINT_CLOUD_FILTER_H
 #define POINT_CLOUD_FILTER_H
 
-#include "avt_341/node/ros_types.h"
+#include "geometry_msgs/msg/point32.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "sensor_msgs/msg/point_cloud.hpp"
 
 namespace avt_341::perception {
 
@@ -23,10 +25,10 @@ public:
 
     void SetConfig(const PointCloudFilterConfig & config);
 
-    std::shared_ptr<msg::PointCloud> Filter(const std::shared_ptr<msg::PointCloud> &pc, const msg::Pose& origin) const;
-    void Filter(const msg::PointCloud &pc, const msg::Pose& origin, msg::PointCloud &pc_out) const;
+    std::shared_ptr<sensor_msgs::msg::PointCloud> Filter(const std::shared_ptr<sensor_msgs::msg::PointCloud> &pc, const geometry_msgs::msg::Pose& origin) const;
+    void Filter(const sensor_msgs::msg::PointCloud &pc, const geometry_msgs::msg::Pose& origin, sensor_msgs::msg::PointCloud &pc_out) const;
 
-    inline bool IsValid(const msg::Point32 & point, const msg::Pose& origin, const double& origin_heading) const;
+    inline bool IsValid(const geometry_msgs::msg::Point32 & point, const geometry_msgs::msg::Pose& origin, const double& origin_heading) const;
 
     bool IsEnabled() const;
 

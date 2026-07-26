@@ -21,13 +21,16 @@
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_utils.h"
+#include "avt_341/node/tf_interface.h"
 
 
 // Global variables
-std::shared_ptr<avt_341::node::NodeProxy> node;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointCloud2>> cloud_pub;
+rclcpp::Node::SharedPtr node;
+std::shared_ptr<avt_341::node::TfInterface> tf;
+std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> cloud_pub;
 Eigen::Vector4f roi_max_point, roi_min_point, body_max_point, body_min_point;
 
 // ROS params
@@ -97,13 +100,13 @@ void pclComputeNorms(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointClo
 	ne.compute(*cloud_out);
 }
 
-void callback_cloud(avt_341::msg::PointCloud2Ptr msg) {
+void callback_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
     // Transform point cloud
-    avt_341::msg::PointCloud2 lidar_points_fixed;
+    sensor_msgs::msg::PointCloud2 lidar_points_fixed;
     if(msg->header.frame_id != robot_base_link)
     {
-        if (!node->transform_cloud(*msg, lidar_points_fixed, robot_base_link)) {
-            node->log_warning("Unable to transform pointcloud from %s -> %s",msg->header.frame_id.c_str(),robot_base_link.c_str());
+        if (!tf->transform_cloud(*msg, lidar_points_fixed, robot_base_link)) {
+            RCLCPP_WARN(node->get_logger(), "Unable to transform pointcloud from %s -> %s", msg->header.frame_id.c_str(), robot_base_link.c_str());
             return;
         }
     }
@@ -124,33 +127,34 @@ void callback_cloud(avt_341::msg::PointCloud2Ptr msg) {
     pcl::PointCloud<pcl::PointNormal>::Ptr normals_cloud(new pcl::PointCloud<pcl::PointNormal>);
     pclComputeNorms(filtered_cloud, normals_cloud, obstacle_scale);
 
-    avt_341::msg::PointCloud2 normals_cloud_msg;
+    sensor_msgs::msg::PointCloud2 normals_cloud_msg;
     pcl::toROSMsg(*normals_cloud, normals_cloud_msg);
     normals_cloud_msg.header = lidar_points_fixed.header;
     cloud_pub->publish(normals_cloud_msg);
 }
 
 int main(int argc, char* argv[]) {
-    node = avt_341::node::init_node(argc, argv, "lidar_normal_estimation_node");
-    node->initialize_tf_listener();
+    rclcpp::init(argc, argv);
+    node = rclcpp::Node::make_shared("lidar_normal_estimation_node");
+    tf = std::make_shared<avt_341::node::TfInterface>(node);
 
     // Load parameters
-    node->get_parameter("~pc_topic", pc_topic, std::string("avt_341/points"));
-    node->get_parameter("~robot_base_link", robot_base_link, std::string("mrzr/base_link"));
-    node->get_parameter("~fixed_frame", fixed_frame, std::string("map"));
-    node->get_parameter("~roi_max_x", roi_max_x,  70.0f);
-    node->get_parameter("~roi_max_y", roi_max_y,  30.0f);
-    node->get_parameter("~roi_max_z", roi_max_z,  3.0f);
-    node->get_parameter("~roi_min_x", roi_min_x,  -5.0f);
-    node->get_parameter("~roi_min_y", roi_min_y,  -30.0f);
-    node->get_parameter("~roi_min_z", roi_min_z,  -2.5f);
-    node->get_parameter("~body_max_x", body_max_x,  0.3f);
-    node->get_parameter("~body_max_y", body_max_y,  0.8f);
-    node->get_parameter("~body_max_z", body_max_z,  2.0f);
-    node->get_parameter("~body_min_x", body_min_x,  -2.2f);
-    node->get_parameter("~body_min_y", body_min_y,  -0.8f);
-    node->get_parameter("~body_min_z", body_min_z,  -0.3f);
-    node->get_parameter("~obstacle_scale", obstacle_scale,  1.0f);
+    avt_341::node::get_parameter(node, "~pc_topic", pc_topic, std::string("avt_341/points"));
+    avt_341::node::get_parameter(node, "~robot_base_link", robot_base_link, std::string("mrzr/base_link"));
+    avt_341::node::get_parameter(node, "~fixed_frame", fixed_frame, std::string("map"));
+    avt_341::node::get_parameter(node, "~roi_max_x", roi_max_x, 70.0f);
+    avt_341::node::get_parameter(node, "~roi_max_y", roi_max_y, 30.0f);
+    avt_341::node::get_parameter(node, "~roi_max_z", roi_max_z, 3.0f);
+    avt_341::node::get_parameter(node, "~roi_min_x", roi_min_x, -5.0f);
+    avt_341::node::get_parameter(node, "~roi_min_y", roi_min_y, -30.0f);
+    avt_341::node::get_parameter(node, "~roi_min_z", roi_min_z, -2.5f);
+    avt_341::node::get_parameter(node, "~body_max_x", body_max_x, 0.3f);
+    avt_341::node::get_parameter(node, "~body_max_y", body_max_y, 0.8f);
+    avt_341::node::get_parameter(node, "~body_max_z", body_max_z, 2.0f);
+    avt_341::node::get_parameter(node, "~body_min_x", body_min_x, -2.2f);
+    avt_341::node::get_parameter(node, "~body_min_y", body_min_y, -0.8f);
+    avt_341::node::get_parameter(node, "~body_min_z", body_min_z, -0.3f);
+    avt_341::node::get_parameter(node, "~obstacle_scale", obstacle_scale, 1.0f);
     roi_max_point = Eigen::Vector4f(roi_max_x, roi_max_y, roi_max_z, 1);
     roi_min_point = Eigen::Vector4f(roi_min_x, roi_min_y, roi_min_z, 1);
     body_max_point = Eigen::Vector4f(body_max_x, body_max_y, body_max_z, 1);
@@ -158,10 +162,10 @@ int main(int argc, char* argv[]) {
 
 
     // Create publishers and subscribers
-    auto cloud_sub = node->create_subscription<avt_341::msg::PointCloud2>(pc_topic, 1, callback_cloud);
-    cloud_pub = node->create_publisher<avt_341::msg::PointCloud2>("avt_341/normals_cloud", 1);
+    auto cloud_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(pc_topic, 1, callback_cloud);
+    cloud_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>("avt_341/normals_cloud", 1);
 
-    node->spin();
+    rclcpp::spin(node);
     
     return 0;
 }

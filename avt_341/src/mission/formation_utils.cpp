@@ -1,4 +1,5 @@
 #include "avt_341/mission/formation_utils.h"
+#include "geometry_msgs/msg/pose.hpp"
 
 void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R) {
   R[0][0] = 1.f + 2.f * (-q[1] * q[1] - q[2] * q[2]);
@@ -19,7 +20,7 @@ void NormalizeVec2D(Vec2d &v) {
   v[1] *= l;
 }
 
-void PoseToForwardRightVectors(const avt_341::msg::Pose & pose, Vec2d &vx, Vec2d &vy) {
+void PoseToForwardRightVectors(const geometry_msgs::msg::Pose & pose, Vec2d &vx, Vec2d &vy) {
   Matrix3x3 leaderRotMatrix;
   TQuat q;
   q[0] = pose.orientation.x;
@@ -34,7 +35,7 @@ void PoseToForwardRightVectors(const avt_341::msg::Pose & pose, Vec2d &vx, Vec2d
   vy[1] = -vx[0];
 }
 
-bool IsClose(const avt_341::msg::Pose & p1, const avt_341::msg::Pose & p2, double threshold){
+bool IsClose(const geometry_msgs::msg::Pose & p1, const geometry_msgs::msg::Pose & p2, double threshold){
   return PosePlanarDistanceSq(p1.position, p2.position) < threshold * threshold;
 }
 

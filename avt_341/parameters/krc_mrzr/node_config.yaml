@@ -15,11 +15,6 @@
     avt_341/occupancy_grid: avt_341/rms_perception/occupancy_grid
     avt_341/segmentation_grid: avt_341/rms_perception/segmentation_grid
 
-/**/grid_compression_global:
-  remappings:
-    avt_341/occupancy_grid: avt_341/occupancy_grid_low_res
-    avt_341/occupied_cells: avt_341/occupied_cells_low_res
-
 /**/segmentation_grid_processor_node:
   remappings:
     avt_341/segmentation_grid: avt_341/normal_segmentation_grid

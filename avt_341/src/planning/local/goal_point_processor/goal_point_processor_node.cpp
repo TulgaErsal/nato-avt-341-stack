@@ -1,31 +1,40 @@
 /**
  C++ implementation of the goal_point_processor.jl found in the MPC planner stack.
 */
-#include "avt_341/node/node_proxy.h"
-#include "avt_341/node/ros_types.h"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "rclcpp/duration.hpp"
+#include "rclcpp/time.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/core/dto_conversion.h"
 #include <avt_341/mpc_local_planner_params_service.hpp>
 #include <memory>
 // Globals
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_steering_angle;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_steering_rate;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_time_gap;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::String>> pub_scenario_tag;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_segment_start;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_segment_end;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::PointStamped>> pub_goalPoint;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_desiredHeading;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Bool>> pub_goalPointIsEnd;
-std::shared_ptr<avt_341::node::Publisher<avt_341::msg::Float64>> pub_finalHeading;
-std::shared_ptr<avt_341::node::NodeProxy> n;
-avt_341::msg::Path global_path_input;
-avt_341::msg::Float64MultiArray veh_input;
-avt_341::msg::Float64 speedSetpoint_input;
-avt_341::msg::Time veh_input_stamp, last_veh_stamp, init_time;
-avt_341::msg::FollowerStatus follower_status_input;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_steering_angle;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_steering_rate;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_time_gap;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::String>> pub_scenario_tag;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> pub_segment_start;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> pub_segment_end;
+std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PointStamped>> pub_goalPoint;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_desiredHeading;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> pub_goalPointIsEnd;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_finalHeading;
+rclcpp::Node::SharedPtr n;
+nav_msgs::msg::Path global_path_input;
+std_msgs::msg::Float64MultiArray veh_input;
+std_msgs::msg::Float64 speedSetpoint_input;
+rclcpp::Time veh_input_stamp, last_veh_stamp, init_time;
+avt_341_msgs::msg::FollowerStatus follower_status_input;
 double last_steer_angle = 0.0;
-avt_341::msg::Time last_steer_time;
+rclcpp::Time last_steer_time;
 bool steer_initialized = false;
 
 float speedSetpoint, desiredHeading, finalHeading;
@@ -41,7 +50,7 @@ bool goal_is_end = false;
 
 avt_341::params::mpc_local_planner::Params params;
 
-void callback_global_path(avt_341::msg::PathPtr global_path) {
+void callback_global_path(nav_msgs::msg::Path::SharedPtr global_path) {
     global_path_input = *global_path;
 
     // Auto-compute final heading from the direction of the last two waypoints.
@@ -52,33 +61,33 @@ void callback_global_path(avt_341::msg::PathPtr global_path) {
         autoFinalHeadingSet = true;
     }
 
-    avt_341::msg::String scenario_msg;
+    std_msgs::msg::String scenario_msg;
     scenario_msg.data = "path_update";
     pub_scenario_tag->publish(scenario_msg);
 
-    avt_341::msg::Bool seg_start_msg;
+    std_msgs::msg::Bool seg_start_msg;
     seg_start_msg.data = true;
     pub_segment_start->publish(seg_start_msg);
 
-    avt_341::msg::Bool seg_end_msg;
+    std_msgs::msg::Bool seg_end_msg;
     seg_end_msg.data = true;
     pub_segment_end->publish(seg_end_msg);
 }
 
-void callback_veh(avt_341::msg::Float64MultiArrayPtr veh) {
+void callback_veh(std_msgs::msg::Float64MultiArray::SharedPtr veh) {
     veh_input = *veh;
-    veh_input_stamp = n->get_stamp();
+    veh_input_stamp = n->now();
 }
 
-void callback_speedSetpoint(avt_341::msg::Float64Ptr ss) {
+void callback_speedSetpoint(std_msgs::msg::Float64::SharedPtr ss) {
     speedSetpoint_input = *ss;
 }
 
-void callback_follower_status(avt_341::msg::FollowerStatusPtr follower_status) {
+void callback_follower_status(avt_341_msgs::msg::FollowerStatus::SharedPtr follower_status) {
     follower_status_input = *follower_status;
 }
 
-void callback_gp_state(avt_341::msg::NavStatePtr msg) {
+void callback_gp_state(avt_341_msgs::msg::NavState::SharedPtr msg) {
 
 	if (!avt_341::core::HasActiveGoal(msg)) {
 		return;
@@ -89,21 +98,21 @@ void callback_gp_state(avt_341::msg::NavStatePtr msg) {
 
 void publishSteeringRate(double current_angle) {
     if (steer_initialized) {
-        avt_341::msg::Duration dt = n->get_stamp() - last_steer_time;
-        double seconds_since_last_update = avt_341::node::seconds_from_time(dt);
+        rclcpp::Duration dt = n->now() - last_steer_time;
+        double seconds_since_last_update = dt.seconds();
         if (seconds_since_last_update > 0.001) {
             double steer_rate = (current_angle - last_steer_angle) / seconds_since_last_update;
-            avt_341::msg::Float64 msg;
+            std_msgs::msg::Float64 msg;
             msg.data = steer_rate;
             pub_steering_rate->publish(msg);
         }
     }
     last_steer_angle = current_angle;
-    last_steer_time = n->get_stamp();
+    last_steer_time = n->now();
     steer_initialized = true;
 }
 
-bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path global_path, avt_341::msg::Float64 ss) {
+bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Path global_path, std_msgs::msg::Float64 ss) {
     // Check for new input
 	if (veh_input_stamp == last_veh_stamp || global_path.poses.size() < 2 || veh_input_stamp == init_time) {
 		return false;
@@ -126,7 +135,7 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 	double steer_angle = veh.data[5];
 	
 	//Steering angle publishing; could be set in a better place
-	avt_341::msg::Float64 steer_msg;
+	std_msgs::msg::Float64 steer_msg;
 	steer_msg.data = steer_angle;
 	pub_steering_angle->publish(steer_msg);
 
@@ -291,30 +300,31 @@ bool new_input_available(avt_341::msg::Float64MultiArray veh, avt_341::msg::Path
 
 int main(int argc, char* argv[]) {
     // Initialize ROS node.
-    n = avt_341::node::init_node(argc, argv, "goal_point_processor");
+    rclcpp::init(argc, argv);
+    n = rclcpp::Node::make_shared("goal_point_processor");
     // Crate node subscribers
-    auto sub_path = n->create_subscription<avt_341::msg::Path>("avt_341/global_path",1,callback_global_path);
-    auto sub_veh = n->create_subscription<avt_341::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
-    auto sub_speed = n->create_subscription<avt_341::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
-    auto sub_follow = n->create_subscription<avt_341::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
-    auto sub_goal_pose = n->create_subscription<avt_341::msg::NavState>("avt_341/state",1,callback_gp_state);
+    auto sub_path = n->create_subscription<nav_msgs::msg::Path>("avt_341/global_path",1,callback_global_path);
+    auto sub_veh = n->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
+    auto sub_speed = n->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
+    auto sub_follow = n->create_subscription<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
+    auto sub_goal_pose = n->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state",1,callback_gp_state);
 
-    pub_time_gap = n->create_publisher<avt_341::msg::Float64>("time_gap",10);
-    pub_steering_angle = n->create_publisher<avt_341::msg::Float64>("steering_angle",10);
-    pub_steering_rate = n->create_publisher<avt_341::msg::Float64>("steering_rate",10);
-    pub_scenario_tag = n->create_publisher<avt_341::msg::String>("scenario_tag",10);
-    pub_segment_start = n->create_publisher<avt_341::msg::Bool>("segment_start_tag",10);
-    pub_segment_end = n->create_publisher<avt_341::msg::Bool>("segment_end_tag",10);
-    pub_goalPoint = n->create_publisher<avt_341::msg::PointStamped>("avt_341/mpc_goalPoint",1);
-    pub_desiredHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_desiredHeading",1);
-    pub_goalPointIsEnd = n->create_publisher<avt_341::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
-    pub_finalHeading = n->create_publisher<avt_341::msg::Float64>("avt_341/mpc_final_heading",1);
+    pub_time_gap = n->create_publisher<std_msgs::msg::Float64>("time_gap",10);
+    pub_steering_angle = n->create_publisher<std_msgs::msg::Float64>("steering_angle",10);
+    pub_steering_rate = n->create_publisher<std_msgs::msg::Float64>("steering_rate",10);
+    pub_scenario_tag = n->create_publisher<std_msgs::msg::String>("scenario_tag",10);
+    pub_segment_start = n->create_publisher<std_msgs::msg::Bool>("segment_start_tag",10);
+    pub_segment_end = n->create_publisher<std_msgs::msg::Bool>("segment_end_tag",10);
+    pub_goalPoint = n->create_publisher<geometry_msgs::msg::PointStamped>("avt_341/mpc_goalPoint",1);
+    pub_desiredHeading = n->create_publisher<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1);
+    pub_goalPointIsEnd = n->create_publisher<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
+    pub_finalHeading = n->create_publisher<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1);
  
-    avt_341::params::mpc_local_planner::ParamsListener param_listener(n->get_raw_node());
+    avt_341::params::mpc_local_planner::ParamsListener param_listener(n);
     params = param_listener.get_params();
 
     // Initialize variables
-    init_time = n->get_stamp();
+    init_time = n->now();
     veh_input_stamp = init_time;
     last_veh_stamp = init_time;
     speedSetpoint = static_cast<float>(params.max_speed);
@@ -329,19 +339,19 @@ int main(int argc, char* argv[]) {
     autoFinalHeading = 0.0f;
     autoFinalHeadingSet = false;
 
-    avt_341::node::Rate rosrate(20.0f);
-    while (avt_341::node::ok()) {
+    rclcpp::Rate rosrate(20.0f);
+    while (rclcpp::ok()) {
         if (new_input_available(veh_input, global_path_input, speedSetpoint_input)) {
-            avt_341::msg::PointStamped ros_goalPoint;
+            geometry_msgs::msg::PointStamped ros_goalPoint;
             ros_goalPoint.point.x = goal.x;
             ros_goalPoint.point.y = goal.y;
             ros_goalPoint.point.z = 0.0f;
             ros_goalPoint.header.frame_id = "map";
             pub_goalPoint->publish(ros_goalPoint);
-            avt_341::msg::Bool ros_goalPointIsEnd;
+            std_msgs::msg::Bool ros_goalPointIsEnd;
             ros_goalPointIsEnd.data = goal_is_end;
             pub_goalPointIsEnd->publish(ros_goalPointIsEnd);
-            avt_341::msg::Float64 ros_desiredHeading;
+            std_msgs::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
             pub_desiredHeading->publish(ros_desiredHeading);
             if (goal_is_end) {
@@ -356,13 +366,13 @@ int main(int argc, char* argv[]) {
                     shouldPublish = true;
                 }
                 if (shouldPublish) {
-                    avt_341::msg::Float64 ros_finalHeading;
+                    std_msgs::msg::Float64 ros_finalHeading;
                     ros_finalHeading.data = headingToPublish;
                     pub_finalHeading->publish(ros_finalHeading);
                 }
             }
         }
         rosrate.sleep();
-        n->spin_some();
+        rclcpp::spin_some(n);
     }
 }

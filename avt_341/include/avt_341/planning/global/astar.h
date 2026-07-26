@@ -4,7 +4,7 @@
 #include <atomic>
 #include <vector>
 #include "avt_341/avt_341_utils.h"
-#include "avt_341/node/ros_types.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -72,11 +72,11 @@ public:
   int GetGridHeight() { return height_; }
 
   /// Get grid value at coordinates
-  static int GetGridValue(avt_341::msg::OccupancyGrid* segmentation_grid, double x, double y);
+  static int GetGridValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y);
 
   /// Inherited from planner base class.
-  virtual std::vector<Point> PlanPath(avt_341::msg::OccupancyGrid* grid,
-                              avt_341::msg::OccupancyGrid* segmentation_grid,
+  virtual std::vector<Point> PlanPath(nav_msgs::msg::OccupancyGrid* grid,
+                              nav_msgs::msg::OccupancyGrid* segmentation_grid,
                               Point goal,
                               Point position);
 

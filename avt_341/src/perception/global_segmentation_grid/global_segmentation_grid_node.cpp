@@ -1,5 +1,6 @@
-#include "avt_341/node/ros_types.h"
-#include "avt_341/node/node_proxy.h"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include "avt_341/node/node_utils.h"
 #include <vector>
 #include <fstream>
 
@@ -10,7 +11,7 @@ const int COLS = 1971;
 //resolution
 const float RES = 0.5;
 
-void BuildOccupancyGrid(avt_341::msg::OccupancyGrid &grid, std::vector<double> data, float grid_llx, float grid_lly)
+void BuildOccupancyGrid(nav_msgs::msg::OccupancyGrid &grid, std::vector<double> data, float grid_llx, float grid_lly)
 {
     grid.header.frame_id = "map";
     grid.info.resolution = RES;
@@ -63,18 +64,19 @@ std::vector<double> GetCostMapFromTif(std::string path)
 
 int main(int argc, char *argv[])
 {
-    auto node = avt_341::node::init_node(argc, argv, "avt_341_global_grid_publisher_node");
-    auto seg_grid_pub = node->create_publisher<avt_341::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("avt_341_global_grid_publisher_node");
+    auto seg_grid_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>("avt_341/segmentation_grid", 1);
 
     std::string globalGridCSVPath = "";
     std::string defaultPath = "";
-    node->get_parameter("~global_grid_csv_path", globalGridCSVPath, defaultPath);
+    avt_341::node::get_parameter(node, "~global_grid_csv_path", globalGridCSVPath, defaultPath);
     float grid_llx;
-    node->get_parameter("~grid_llx", grid_llx, 0.0f);
+    avt_341::node::get_parameter(node, "~grid_llx", grid_llx, 0.0f);
     float grid_lly;
-    node->get_parameter("~grid_lly", grid_lly, 0.0f);
+    avt_341::node::get_parameter(node, "~grid_lly", grid_lly, 0.0f);
     float res;
-    node->get_parameter("~grid_res", res, 1.0f);
+    avt_341::node::get_parameter(node, "~grid_res", res, 1.0f);
 
     std::vector<double> costmap = GetCostMapFromTif(globalGridCSVPath);
     if (costmap.size() > 0)
@@ -84,11 +86,11 @@ int main(int argc, char *argv[])
         rclcpp::Rate rate(std::chrono::seconds(2));
         rate.sleep();
 
-        avt_341::msg::OccupancyGrid grid;
+        nav_msgs::msg::OccupancyGrid grid;
         BuildOccupancyGrid(grid, costmap, grid_llx, grid_lly);
         seg_grid_pub->publish(grid);
 
-        node->spin_some();
+        rclcpp::spin_some(node);
         rate.sleep();
     }
     return 0;

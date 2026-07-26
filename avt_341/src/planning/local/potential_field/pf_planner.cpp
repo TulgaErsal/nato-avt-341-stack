@@ -4,6 +4,10 @@
 #include <algorithm>
 // system includes
 #include <omp.h>
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
 
 namespace avt_341 {
 namespace planning {
@@ -18,7 +22,7 @@ PfPlanner::PfPlanner() {
 	motion_model_res_ = 0.5f;
 }
 
-avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::msg::Odometry odom){
+nav_msgs::msg::Path PfPlanner::Plan(nav_msgs::msg::OccupancyGrid grid, nav_msgs::msg::Odometry odom){
 
 	float sx = odom.pose.pose.position.x;
 	float sy = odom.pose.pose.position.y;
@@ -51,9 +55,9 @@ avt_341::msg::Path PfPlanner::Plan(avt_341::msg::OccupancyGrid grid, avt_341::ms
 	PotentialFieldPlanning(grid.info.origin.position.x, grid.info.origin.position.y, motion_model_res_, sx, sy, gx, gy, ox, oy);
 
 	// copy the result to a path message
-	avt_341::msg::Path path;
+	nav_msgs::msg::Path path;
 	for (int i = 0; i < (int)rx_.size(); i++){
-		avt_341::msg::PoseStamped pose;
+		geometry_msgs::msg::PoseStamped pose;
 		pose.pose.position.x = rx_[i];
 		pose.pose.position.y = ry_[i];
 		path.poses.push_back(pose);

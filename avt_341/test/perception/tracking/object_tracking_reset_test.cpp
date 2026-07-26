@@ -8,7 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
 
-#include <avt_341/node/node_proxy.h>
+#include <avt_341/node/node_types.h>
 #include <avt_341/perception/tracking/object_tracking_node.hpp>
 
 #include <chrono>

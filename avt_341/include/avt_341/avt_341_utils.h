@@ -8,7 +8,13 @@
 #ifndef AVT_341_UTILS_H
 #define AVT_341_UTILS_H
 
-#include "avt_341/node/ros_types.h"
+#include "avt_341_msgs/msg/nav_goal.hpp"
+#include "avt_341_msgs/msg/nav_state.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Quaternion.h"
 #include <iomanip>
 #include <sstream>
 #include <array>
@@ -144,7 +150,7 @@ inline float cross(vec2 v1, vec2 v2) {
 	return v1.x*v2.y - v1.y*v2.x;
 }
 
-inline double GetDistance(msg::Point p1, msg::Point p2)
+inline double GetDistance(geometry_msgs::msg::Point p1, geometry_msgs::msg::Point p2)
 {
 	const double dx = p1.x - p2.x;
 	const double dy = p1.y - p2.y;
@@ -185,13 +191,13 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
 	return d0;
 }
 
-inline float GetHeadingFromOrientation(const avt_341::msg::Quaternion& orientation){
-    avt_341::msg_tf::Quaternion q(
+inline float GetHeadingFromOrientation(const geometry_msgs::msg::Quaternion& orientation){
+    tf2::Quaternion q(
         orientation.x,
         orientation.y,
         orientation.z,
         orientation.w);
-    const avt_341::msg_tf::Matrix3x3 m(q);
+    const tf2::Matrix3x3 m(q);
 	double roll, pitch, yaw;
 	m.getRPY(roll, pitch, yaw);
     return static_cast<float>(yaw);
@@ -270,12 +276,12 @@ inline double DiffDeg(const double a, const double b) {
 	return DiffAngle(a * s, b * s) / s;
 }
 
-inline bool UseGoalOrientation(const msg::NavGoal& msg)
+inline bool UseGoalOrientation(const avt_341_msgs::msg::NavGoal& msg)
 {
 	return msg.yaw_threshold < M_PI;
 }
 
-inline void GetGoalError(const msg::Pose& pose, const msg::NavGoal& goal, double& dist_error, double& yaw_error)
+inline void GetGoalError(const geometry_msgs::msg::Pose& pose, const avt_341_msgs::msg::NavGoal& goal, double& dist_error, double& yaw_error)
 {
 	if (UseGoalOrientation(goal))
 	{
@@ -291,14 +297,14 @@ inline void GetGoalError(const msg::Pose& pose, const msg::NavGoal& goal, double
 	dist_error = GetDistance(pose.position, goal.pose.position);
 }
 
-inline bool IsGoalReached(const msg::Pose& pose, const msg::NavGoal& goal)
+inline bool IsGoalReached(const geometry_msgs::msg::Pose& pose, const avt_341_msgs::msg::NavGoal& goal)
 {
 	double dist_diff, yaw_diff;
 	GetGoalError(pose, goal, dist_diff, yaw_diff);
 	return yaw_diff < goal.yaw_threshold && dist_diff < goal.dist_threshold;
 }
 
-inline bool IsGoalReached(const msg::NavState& state, const msg::NavGoal& goal)
+inline bool IsGoalReached(const avt_341_msgs::msg::NavState& state, const avt_341_msgs::msg::NavGoal& goal)
 {
 	return state.goal_distance < goal.dist_threshold && state.goal_yaw_difference < goal.yaw_threshold;
 }

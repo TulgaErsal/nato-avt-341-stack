@@ -1,5 +1,6 @@
 #include <iostream>
 #include "avt_341/mission/formation_definition.h"
+#include "avt_341_msgs/msg/follower_status.hpp"
 
 
 namespace avt_341 {
@@ -93,12 +94,12 @@ FormationOffsets FormationDefinition::getOffsets(const std::string &formation) c
 }
 
 
-avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const std::string & veh_name, int & out_idx) const {
+avt_341_msgs::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const std::string & veh_name, int & out_idx) const {
   return commToFollowerStatus(current_formation_msg_, veh_name, out_idx);
 }
 
-avt_341::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const FormationMsg & comm_msg, const std::string & veh_name, int & out_idx) const{
-  avt_341::msg::FollowerStatus follower_status_msg;
+avt_341_msgs::msg::FollowerStatus FormationDefinition::commToFollowerStatus(const FormationMsg & comm_msg, const std::string & veh_name, int & out_idx) const{
+  avt_341_msgs::msg::FollowerStatus follower_status_msg;
   follower_status_msg.leader_name = comm_msg.leader_name;
   if(comm_msg.leader_name == veh_name){
     follower_status_msg.x_offset = 0.0;

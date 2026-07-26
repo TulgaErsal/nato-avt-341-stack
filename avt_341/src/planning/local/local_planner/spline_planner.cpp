@@ -1,5 +1,7 @@
 #include "avt_341/planning/local/spline_planner.h"
 #include <algorithm>
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 namespace avt_341 {
 namespace planning{
@@ -101,7 +103,7 @@ void Planner::CalculateComfortability() {
 	}
 }
 
-void Planner::CalculateDynamicSafety(avt_341::msg::Odometry odom) {
+void Planner::CalculateDynamicSafety(nav_msgs::msg::Odometry odom) {
 	for (int i = 0; i < candidates_.size(); i++) {
 		float km = candidates_[i].GetMaxCurvature();
 		float vk = (float)sqrt(alpha_max_ / km);
@@ -112,7 +114,7 @@ void Planner::CalculateDynamicSafety(avt_341::msg::Odometry odom) {
 	}
 }
 
-void Planner::DilateGrid(avt_341::msg::OccupancyGrid &grid, int x, float llx, float lly, float urx, float ury){
+void Planner::DilateGrid(nav_msgs::msg::OccupancyGrid &grid, int x, float llx, float lly, float urx, float ury){
 	//std::cerr << "Grid Size: " << grid.info.width << ", " << grid.info.height << std::endl;
 	//std::cerr << "Grid Origin: " << grid.info.origin.position.x << ", " << grid.info.origin.position.y << std::endl;
 	//std::cerr << "Grid Resolution: " << grid.info.resolution << std::endl;
@@ -147,7 +149,7 @@ void Planner::DilateGrid(avt_341::msg::OccupancyGrid &grid, int x, float llx, fl
 	grid.data = new_data;
 }
 
-void Planner::CalculateStaticSafetyAndSegCost(const avt_341::msg::OccupancyGrid & grid, const avt_341::msg::OccupancyGrid & grid_seg) {
+void Planner::CalculateStaticSafetyAndSegCost(const nav_msgs::msg::OccupancyGrid & grid, const nav_msgs::msg::OccupancyGrid & grid_seg) {
 	bool has_segmentation = grid_seg.info.height>0 && grid_seg.info.width>0;
 	for (int i = 0; i < candidates_.size(); i++) {
 		float s = s_no_coll_before_;
@@ -217,7 +219,7 @@ float Planner::GetTotalCostOfCandidate(int i) {
 	return cost;
 }
 
-bool Planner::CalculateCandidateCosts(avt_341::msg::OccupancyGrid grid, avt_341::msg::OccupancyGrid segmentation_grid, avt_341::msg::Odometry odom) {
+bool Planner::CalculateCandidateCosts(nav_msgs::msg::OccupancyGrid grid, nav_msgs::msg::OccupancyGrid segmentation_grid, nav_msgs::msg::Odometry odom) {
 
 	CalculateStaticSafetyAndSegCost(grid, segmentation_grid);
 	CalculateComfortability();
