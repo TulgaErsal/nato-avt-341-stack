@@ -267,7 +267,7 @@ def launch_setup(context, *args, **kwargs):
                 "spawn_filter_vehicle_ids":     f"['{vehicle_name}']",
                 "ros_param_files":              f"['{avt_341_dir}/parameters/krc_mrzr/ros_params.yaml']",
                 "node_config_file":             f"{avt_341_dir}/parameters/krc_mrzr/node_config.yaml",
-                "rviz_config":                  f"{avt_341_dir}/rviz/avt_341_mrzr_ros2.rviz",
+                "rviz_config":                  f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
                 "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":         "mpc",
                 "enable_logging":               enable_logging.perform(context),

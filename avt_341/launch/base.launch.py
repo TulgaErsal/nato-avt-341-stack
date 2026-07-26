@@ -249,7 +249,7 @@ def generate_launch_description():
 
         # Logging and visualization
         DeclareLaunchArgument('auto_launch_rviz',            default_value='True',                                                description='Automatically launch rviz display window'),
-        DeclareLaunchArgument('rviz_config',                 default_value=f'{SHARE_DIR}/rviz/avt_341_ros2.rviz',                 description='Single vehicle rviz config file'),
+        DeclareLaunchArgument('rviz_config',                 default_value=f'{SHARE_DIR}/rviz/avt_341.rviz',                 description='Single vehicle rviz config file'),
         DeclareLaunchArgument('enable_logging',              default_value='False',                                               description='Enable standardized vehicle logging for V&V efforts'),
         DeclareLaunchArgument('logging_path',                default_value=os.path.join(os.path.expanduser('~'), 'avt_341_data'), description='Save path for vehicle logging'),
 
