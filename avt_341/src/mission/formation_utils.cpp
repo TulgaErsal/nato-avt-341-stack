@@ -1,4 +1,5 @@
 #include "avt_341/mission/formation_utils.h"
+#include <cmath>
 #include "geometry_msgs/msg/pose.hpp"
 
 void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R) {

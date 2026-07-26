@@ -1,6 +1,8 @@
 #ifndef AVT_341_FORMATION_UTILS_H
 #define AVT_341_FORMATION_UTILS_H
 
+#include <cmath>
+
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 

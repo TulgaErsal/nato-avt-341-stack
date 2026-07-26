@@ -93,6 +93,12 @@ target_link_libraries(${PROJECT_NAME}_object_detector_node
                       ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES}
                       ament_index_cpp::ament_index_cpp)
 
+# libtorch vendors its own fmt headers in its include directory, which shadow
+# the system fmt that fmt::fmt links against. Build fmt header-only here so the
+# generated params service resolves against the headers actually included.
+target_compile_definitions(${PROJECT_NAME}_object_detector_node
+                           PRIVATE FMT_HEADER_ONLY)
+
 install(
   TARGETS ${PROJECT_NAME}_object_detector_node
   EXPORT export_${PROJECT_NAME}

@@ -2,6 +2,8 @@
 #include "avt_341/planning/local/pf_planner.h"
 // c++ includes
 #include <algorithm>
+#include <cmath>
+#include <limits>
 // system includes
 #include <omp.h>
 #include "geometry_msgs/msg/pose_stamped.hpp"
