@@ -13,7 +13,7 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      object_tracking_node_executor.cpp
+* @file      object_tracker_node_executor.cpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
 * @brief     Source file for the camera/LiDAR sensor fusion object tracker rclcpp ROS node executor.
 * @copyright MIT License
@@ -41,12 +41,12 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
+#include <avt_341_nav/perception/tracking/object_tracker_node.hpp>
 
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
 
-    auto node = std::make_shared<avt_341_nav::perception::ObjectTrackingNode>();
+    auto node = std::make_shared<avt_341_nav::perception::ObjectTrackerNode>();
 
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node->get_node_base_interface());

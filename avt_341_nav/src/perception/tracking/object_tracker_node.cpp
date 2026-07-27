@@ -13,7 +13,7 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      object_tracking_node.cpp
+* @file      object_tracker_node.cpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
 * @brief     Source file for the camera/LiDAR sensor fusion object tracker
              rclcpp ROS node. The node owns the shared sensor inputs (camera,
@@ -48,8 +48,8 @@
   SOFTWARE.
 */
 
-#include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
-#include <avt_341_nav/object_tracking_params_service.hpp>
+#include <avt_341_nav/perception/tracking/object_tracker_node.hpp>
+#include <avt_341_nav/object_tracker_params_service.hpp>
 #include <avt_341_nav/node/node_types.h>
 
 #include <algorithm>
@@ -62,7 +62,21 @@
 namespace avt_341_nav {
 namespace perception {
 
-ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracking_node") {
+namespace {
+
+// Compute time section ids. Obstacle detection is recorded as a real parent rather than being
+// synthesized from its children, so that the work not covered by a child (transforming the incoming
+// cloud, fromROSMsg, the transform to the fixed frame) shows up as parent minus children.
+const std::string OBSTACLE_DETECTION_SECTION_ID = "obstacle_detection";
+const std::string FILTER_CLOUD_SECTION_ID = OBSTACLE_DETECTION_SECTION_ID + "/filter_cloud";
+const std::string FILTER_NORMS_SECTION_ID = OBSTACLE_DETECTION_SECTION_ID + "/filter_norms";
+const std::string CLUSTERING_SECTION_ID = OBSTACLE_DETECTION_SECTION_ID + "/clustering";
+const std::string TRACKING_TICK_SECTION_ID = "tracking_tick";
+const std::string ESTIMATOR_TICK_SECTION_ID = "estimator_tick";
+
+}
+
+ObjectTrackerNode::ObjectTrackerNode() : rclcpp::Node("object_tracker_node") {
     GetParameters();
     Initialize();
     CreateSubscriptions();
@@ -76,9 +90,9 @@ ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracking_node") 
     info_timer_->reset();
 }
 
-void ObjectTrackingNode::GetParameters() {
+void ObjectTrackerNode::GetParameters() {
     param_listener_ =
-        std::make_shared<avt_341_nav::params::object_tracking::ParamsListener>(
+        std::make_shared<avt_341_nav::params::object_tracker::ParamsListener>(
             get_node_parameters_interface(), get_logger());
     params_ = param_listener_->get_params();
     param_listener_->setUserCallback(
@@ -87,11 +101,27 @@ void ObjectTrackingNode::GetParameters() {
         });
 }
 
-void ObjectTrackingNode::Initialize() {
+const std::shared_ptr<core::ComputeTimeRecorder>& ObjectTrackerNode::Recorder() {
+    if (compute_time_recorder_ == nullptr) {
+        compute_time_recorder_ = std::make_shared<core::ComputeTimeRecorder>(
+            shared_from_this(), core::ComputeTimeRecorder::MakeNodeTag(shared_from_this()));
+
+        core::RunningStatsConfig section_config;
+        section_config.window_num_samples = 40;
+        for (const auto& section_id : {OBSTACLE_DETECTION_SECTION_ID, FILTER_CLOUD_SECTION_ID,
+                                       FILTER_NORMS_SECTION_ID, CLUSTERING_SECTION_ID,
+                                       TRACKING_TICK_SECTION_ID, ESTIMATOR_TICK_SECTION_ID}) {
+            compute_time_recorder_->Configure(section_id, section_config);
+        }
+    }
+    return compute_time_recorder_;
+}
+
+void ObjectTrackerNode::Initialize() {
     pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
 }
 
-void ObjectTrackingNode::CreateSubscriptions() {
+void ObjectTrackerNode::CreateSubscriptions() {
     // Create the transform listener.
     transform_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
     transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*transform_buffer_);
@@ -100,37 +130,37 @@ void ObjectTrackingNode::CreateSubscriptions() {
     detections_subscription_ =
         create_subscription<vision_msgs::msg::Detection2DArray>(
             "detection_2d", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::DetectionsCallback, this,
+            std::bind(&ObjectTrackerNode::DetectionsCallback, this,
                       std::placeholders::_1));
 
     image_subscription_ = create_subscription<sensor_msgs::msg::Image>(
         "image", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-        std::bind(&ObjectTrackingNode::ImageCallback, this,
+        std::bind(&ObjectTrackerNode::ImageCallback, this,
                   std::placeholders::_1));
 
     camera_info_subscription_ =
         create_subscription<sensor_msgs::msg::CameraInfo>(
             "camera_info", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::CameraInfoCallback, this,
+            std::bind(&ObjectTrackerNode::CameraInfoCallback, this,
                       std::placeholders::_1));
 
     point_cloud_subscription_ =
         create_subscription<sensor_msgs::msg::PointCloud2>(
             "points/input", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackingNode::PointCloudCallback, this,
+            std::bind(&ObjectTrackerNode::PointCloudCallback, this,
                       std::placeholders::_1));
 
     if (params_.target_selection.use_mission_manager) {
         task_status_subscription_ =
             create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
                 "task", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-                std::bind(&ObjectTrackingNode::TaskChangedCallback, this,
+                std::bind(&ObjectTrackerNode::TaskChangedCallback, this,
                         std::placeholders::_1));
     }
 
     reset_subscription_ = create_subscription<std_msgs::msg::String>(
         "avt_341/reset", 10,
-        std::bind(&ObjectTrackingNode::ResetCallback, this, std::placeholders::_1));
+        std::bind(&ObjectTrackerNode::ResetCallback, this, std::placeholders::_1));
 
     // Initialize the integrated obstacle detector.
     obstacle_detector_ =
@@ -138,34 +168,34 @@ void ObjectTrackingNode::CreateSubscriptions() {
     obstacle_id_ = 0;
 }
 
-void ObjectTrackingNode::CreateServices() {
+void ObjectTrackerNode::CreateServices() {
     if (!params_.target_selection.use_mission_manager) {
         set_target_service_server_ =
             create_service<avt_341_msgs::srv::SetTarget>(
                 "set_target",
-                std::bind(&ObjectTrackingNode::SetTargetServiceCallback, this,
+                std::bind(&ObjectTrackerNode::SetTargetServiceCallback, this,
                           std::placeholders::_1, std::placeholders::_2));
     }
 }
 
-void ObjectTrackingNode::CreateTimers() {
+void ObjectTrackerNode::CreateTimers() {
     estimator_timer_ = create_wall_timer(
         std::chrono::duration<double>(1.0 / params_.filter.estimator_rate),
-        std::bind(&ObjectTrackingNode::EstimatorTimerCallback, this));
+        std::bind(&ObjectTrackerNode::EstimatorTimerCallback, this));
     estimator_timer_->cancel();
 
     tracking_timer_ = create_wall_timer(
         std::chrono::duration<double>(1.0 / params_.tracking.tracking_rate),
-        std::bind(&ObjectTrackingNode::TrackingTimerCallback, this));
+        std::bind(&ObjectTrackerNode::TrackingTimerCallback, this));
     tracking_timer_->cancel();
 
     info_timer_ = create_wall_timer(
         std::chrono::duration<double>(1.0 / params_.tracking.info_rate),
-        std::bind(&ObjectTrackingNode::TrackerInfoCallback, this));
+        std::bind(&ObjectTrackerNode::TrackerInfoCallback, this));
     info_timer_->cancel();
 }
 
-void ObjectTrackingNode::CreatePublishers() {
+void ObjectTrackerNode::CreatePublishers() {
     if (params_.publish.image) {
         image_publisher_ =
             create_publisher<sensor_msgs::msg::Image>("out_image", 1);
@@ -201,7 +231,7 @@ void ObjectTrackingNode::CreatePublishers() {
     }
 }
 
-void ObjectTrackingNode::SpawnAutostartTrackers() {
+void ObjectTrackerNode::SpawnAutostartTrackers() {
     if (!params_.target_selection.use_autostart) {
         return;
     }
@@ -235,7 +265,7 @@ void ObjectTrackingNode::SpawnAutostartTrackers() {
     }
 }
 
-ObjectTracker* ObjectTrackingNode::AddOrResetTracker(
+ObjectTracker* ObjectTrackerNode::AddOrResetTracker(
     const std::string& target_class) {
     auto existing = trackers_.find(target_class);
     if (existing != trackers_.end()) {
@@ -265,7 +295,7 @@ ObjectTracker* ObjectTrackingNode::AddOrResetTracker(
     return tracker_ptr;
 }
 
-std::unique_ptr<ObjectTracker> ObjectTrackingNode::CreateTracker(
+std::unique_ptr<ObjectTracker> ObjectTrackerNode::CreateTracker(
     const std::string& target_class) {
 
     // Formation vehicle tracker
@@ -301,7 +331,7 @@ std::unique_ptr<ObjectTracker> ObjectTrackingNode::CreateTracker(
         leader_odom_publisher_);
 }
 
-bool ObjectTrackingNode::IsEgoVehicle(const std::string& target_class) const {
+bool ObjectTrackerNode::IsEgoVehicle(const std::string& target_class) const {
     // The node runs under the ego vehicle's namespace (e.g. "/agv1") and
     // target ids are the bare vehicle namespaces (e.g. "agv1"): compare the
     // top-level namespace token against the target id.
@@ -316,7 +346,7 @@ bool ObjectTrackingNode::IsEgoVehicle(const std::string& target_class) const {
     return !ego.empty() && ego == target_class;
 }
 
-bool ObjectTrackingNode::MatchesToiRegex(
+bool ObjectTrackerNode::MatchesToiRegex(
     const std::string& target_class) const {
     const std::string& toi_regex = params_.target_selection.toi_regex;
     if (toi_regex.empty()) {
@@ -332,7 +362,7 @@ bool ObjectTrackingNode::MatchesToiRegex(
     }
 }
 
-void ObjectTrackingNode::MaybeSpawnToiTrackers(
+void ObjectTrackerNode::MaybeSpawnToiTrackers(
     const vision_msgs::msg::Detection2DArray& detections_message) {
 
     const bool single_tracking = !params_.target_selection.use_multi_tracking;
@@ -357,14 +387,14 @@ void ObjectTrackingNode::MaybeSpawnToiTrackers(
     }
 }
 
-bool ObjectTrackingNode::HasTrackerOfType(const ObjectTrackerType type) const {
+bool ObjectTrackerNode::HasTrackerOfType(const ObjectTrackerType type) const {
     return std::any_of(trackers_.begin(), trackers_.end(),
                        [type](const auto& entry) {
                            return entry.second->GetTrackerType() == type;
                        });
 }
 
-void ObjectTrackingNode::RemoveStaleToiTrackers() {
+void ObjectTrackerNode::RemoveStaleToiTrackers() {
     for (auto it = trackers_.begin(); it != trackers_.end();) {
         if (it->second->GetTrackerType() == ObjectTrackerType::Toi &&
             !MatchesToiRegex(it->first)) {
@@ -380,7 +410,7 @@ void ObjectTrackingNode::RemoveStaleToiTrackers() {
     }
 }
 
-void ObjectTrackingNode::TrackerInfoCallback() {
+void ObjectTrackerNode::TrackerInfoCallback() {
     // Publish a single module status aggregating every child tracker's status.
     // The module is UNINITIALIZED while no target is selected (and the message
     // still publishes to preserve topic liveness for consumers), ACTIVE once at
@@ -402,9 +432,12 @@ void ObjectTrackingNode::TrackerInfoCallback() {
     }
 
     info_publisher_->publish(module_status);
+
+    // Publishing rides the info timer, so the compute time publish rate follows tracking.info_rate.
+    Recorder()->PublishSummary();
 }
 
-void ObjectTrackingNode::TrackingTimerCallback() {
+void ObjectTrackerNode::TrackingTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Tracking timer callback triggered!");
 
     if (reset_called_) {
@@ -418,15 +451,16 @@ void ObjectTrackingNode::TrackingTimerCallback() {
         RCLCPP_INFO(get_logger(), "Reset complete.");
     }
 
-    auto start_time = get_clock()->now();
-
     TrackerSensorContext context;
     context.obstacle_markers = &latest_obstacle_markers_;
     context.has_obstacle_markers = has_obstacle_markers_;
     context.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;
 
-    for (auto& [target_class, tracker] : trackers_) {
-        tracker->TrackingTick(context);
+    {
+        auto recording = Recorder()->RecordScope(TRACKING_TICK_SECTION_ID);
+        for (auto& [target_class, tracker] : trackers_) {
+            tracker->TrackingTick(context);
+        }
     }
 
     // Note: the debug image is target-independent and is republished once per
@@ -435,21 +469,18 @@ void ObjectTrackingNode::TrackingTimerCallback() {
     if (params_.publish.image) {
         PublishImage();
     }
-
-    execution_time_ = (get_clock()->now() - start_time).nanoseconds() / 1.0e6;
-    RCLCPP_DEBUG(get_logger(), "Tracker pipeline execution time: %0.2lf ms",
-                 execution_time_);
 }
 
-void ObjectTrackingNode::EstimatorTimerCallback() {
+void ObjectTrackerNode::EstimatorTimerCallback() {
     RCLCPP_DEBUG_ONCE(get_logger(), "Estimator timer callback triggered!");
 
+    auto recording = Recorder()->RecordScope(ESTIMATOR_TICK_SECTION_ID);
     for (auto& [target_class, tracker] : trackers_) {
         tracker->EstimatorTick();
     }
 }
 
-void ObjectTrackingNode::PublishObstacleDeleteAll(
+void ObjectTrackerNode::PublishObstacleDeleteAll(
     const std_msgs::msg::Header& header) {
     visualization_msgs::msg::MarkerArray marker_array;
     visualization_msgs::msg::Marker delete_marker;
@@ -461,7 +492,7 @@ void ObjectTrackingNode::PublishObstacleDeleteAll(
     obstacle_bboxes_publisher_->publish(marker_array);
 }
 
-void ObjectTrackingNode::PublishObstacleMarkers(
+void ObjectTrackerNode::PublishObstacleMarkers(
     const std_msgs::msg::Header& header) {
     visualization_msgs::msg::MarkerArray marker_array;
 
@@ -494,8 +525,14 @@ void ObjectTrackingNode::PublishObstacleMarkers(
     obstacle_bboxes_publisher_->publish(marker_array);
 }
 
-void ObjectTrackingNode::RunObstacleDetection(
+void ObjectTrackerNode::RunObstacleDetection(
     const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg) {
+    // Recorded over the whole body, including the early returns: they all do real work (a TF lookup
+    // and often a full cloud transform) before bailing out. This runs synchronously from the point
+    // cloud callback on the same single threaded executor as the timers, so whatever it costs is
+    // taken directly out of the tracking and estimator ticks.
+    auto detection_recording = Recorder()->RecordScope(OBSTACLE_DETECTION_SECTION_ID);
+
     const auto& od = params_.obstacle_detector;
     const std::string robot_base_link = ResolveRobotBaseLink(params_);
     const Eigen::Vector4f roi_min_point = ToEigenPoint4f(od.roi_min_point);
@@ -535,9 +572,13 @@ void ObjectTrackingNode::RunObstacleDetection(
     pcl::fromROSMsg(transformed_cloud, *raw_cloud);
 
     // Downsample, crop ROI, remove ego-vehicle body.
-    auto filtered_cloud = obstacle_detector_->filterCloud(
-        raw_cloud, static_cast<float>(od.voxel_grid_size),
-        roi_min_point, roi_max_point, body_min_point, body_max_point);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud;
+    {
+        auto recording = Recorder()->RecordScope(FILTER_CLOUD_SECTION_ID);
+        filtered_cloud = obstacle_detector_->filterCloud(
+            raw_cloud, static_cast<float>(od.voxel_grid_size),
+            roi_min_point, roi_max_point, body_min_point, body_max_point);
+    }
 
     if (static_cast<int>(filtered_cloud->size()) < od.cluster_min_size) {
         PublishObstacleDeleteAll(header);
@@ -584,12 +625,15 @@ void ObjectTrackingNode::RunObstacleDetection(
         new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr ground_filtered(
         new pcl::PointCloud<pcl::PointXYZ>);
-    obstacle_detector_->pclFilterNorms(
-        filtered_cloud, fixed_cloud,
-        norm_filtered, ground_filtered,
-        ground_normal, static_cast<float>(od.ground_normal_threshold),
-        static_cast<float>(od.obstacle_scale),
-        static_cast<int>(od.obstacle_min_neighbors));
+    {
+        auto recording = Recorder()->RecordScope(FILTER_NORMS_SECTION_ID);
+        obstacle_detector_->pclFilterNorms(
+            filtered_cloud, fixed_cloud,
+            norm_filtered, ground_filtered,
+            ground_normal, static_cast<float>(od.ground_normal_threshold),
+            static_cast<float>(od.obstacle_scale),
+            static_cast<int>(od.obstacle_min_neighbors));
+    }
 
     if (od.publish_ground_cloud && obstacle_ground_cloud_publisher_) {
         sensor_msgs::msg::PointCloud2 ground_msg;
@@ -611,10 +655,14 @@ void ObjectTrackingNode::RunObstacleDetection(
     }
 
     // Cluster and build bounding boxes.
-    auto cloud_clusters = obstacle_detector_->clustering(
-        norm_filtered, static_cast<float>(od.cluster_threshold),
-        static_cast<int>(od.cluster_min_size),
-        static_cast<int>(od.cluster_max_size));
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_clusters;
+    {
+        auto recording = Recorder()->RecordScope(CLUSTERING_SECTION_ID);
+        cloud_clusters = obstacle_detector_->clustering(
+            norm_filtered, static_cast<float>(od.cluster_threshold),
+            static_cast<int>(od.cluster_min_size),
+            static_cast<int>(od.cluster_max_size));
+    }
 
     curr_boxes_.clear();
     for (auto& cluster : cloud_clusters) {
@@ -638,7 +686,7 @@ void ObjectTrackingNode::RunObstacleDetection(
     curr_boxes_.clear();
 }
 
-void ObjectTrackingNode::PointCloudCallback(
+void ObjectTrackerNode::PointCloudCallback(
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Point cloud callback triggered!");
 
@@ -647,7 +695,7 @@ void ObjectTrackingNode::PointCloudCallback(
     RunObstacleDetection(point_cloud_message);
 }
 
-void ObjectTrackingNode::ImageCallback(
+void ObjectTrackerNode::ImageCallback(
     const sensor_msgs::msg::Image::SharedPtr image_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Camera image callback triggered!");
 
@@ -661,7 +709,7 @@ void ObjectTrackingNode::ImageCallback(
     }
 }
 
-void ObjectTrackingNode::CameraInfoCallback(
+void ObjectTrackerNode::CameraInfoCallback(
     const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Camera info callback triggered!!");
 
@@ -671,7 +719,7 @@ void ObjectTrackingNode::CameraInfoCallback(
     has_camera_info_ = true;
 }
 
-void ObjectTrackingNode::DetectionsCallback(
+void ObjectTrackerNode::DetectionsCallback(
     const vision_msgs::msg::Detection2DArray::SharedPtr detections_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Detections callback triggered!");
 
@@ -722,7 +770,7 @@ void ObjectTrackingNode::DetectionsCallback(
     }
 }
 
-void ObjectTrackingNode::PublishImage() {
+void ObjectTrackerNode::PublishImage() {
     if (!has_image_)
         return;
 
@@ -740,7 +788,7 @@ void ObjectTrackingNode::PublishImage() {
     image_publisher_->publish(*cv_image.toImageMsg());
 }
 
-void ObjectTrackingNode::TaskChangedCallback(
+void ObjectTrackerNode::TaskChangedCallback(
     avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_status_message) {
     const std::string& target_class = task_status_message->active_task.tracked_vehicle;
 
@@ -760,12 +808,12 @@ void ObjectTrackingNode::TaskChangedCallback(
                 target_class.c_str());
 }
 
-void ObjectTrackingNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {
+void ObjectTrackerNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {
     if (msg->data.find(avt_341_nav::node::NodeType::Perception) == std::string::npos) return;
     reset_called_ = true;
 }
 
-void ObjectTrackingNode::ApplyUpdatedParameters(
+void ObjectTrackerNode::ApplyUpdatedParameters(
     const ObjectTrackerSettings& updated_params) {
     const std::string old_toi_regex = params_.target_selection.toi_regex;
     if (ApplyRuntimeParameters(params_, updated_params)) {
@@ -778,7 +826,7 @@ void ObjectTrackingNode::ApplyUpdatedParameters(
     }
 }
 
-void ObjectTrackingNode::SetTargetServiceCallback(
+void ObjectTrackerNode::SetTargetServiceCallback(
     const std::shared_ptr<avt_341_msgs::srv::SetTarget::Request> request,
     std::shared_ptr<avt_341_msgs::srv::SetTarget::Response> response) {
     if (request->id.empty()) {

@@ -1,4 +1,4 @@
-code_namespace: avt_341_nav/params/object_tracking
+code_namespace: avt_341_nav/params/object_tracker
 ros__parameters:
   frames:
     prefix:

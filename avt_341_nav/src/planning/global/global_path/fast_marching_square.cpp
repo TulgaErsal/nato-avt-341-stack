@@ -55,22 +55,28 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
     // For FM2, we mainly care about "is obstacle" vs "is free".
     // We can also use segmentation as obstacles if needed.
     int n_cells = w * h;
-    for (int i = 0; i < n_cells; ++i) {
-        int ix = i % w;
-        int iy = i / w;
-        double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
-        double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        
-        float occ = (float)grid->data[i];
-        float seg = 100.0f - (float)GetGridValue(segmentation_grid, x_grid, y_grid);
-        
-        map_[ix][iy] = occ; 
-        base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
+    {
+        auto recording = RecordSection(planner_sections::GRID_INGEST);
+        for (int i = 0; i < n_cells; ++i) {
+            int ix = i % w;
+            int iy = i / w;
+            double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
+            double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
+
+            float occ = (float)grid->data[i];
+            float seg = 100.0f - (float)GetGridValue(segmentation_grid, x_grid, y_grid);
+
+            map_[ix][iy] = occ;
+            base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
+        }
     }
-    
+
     // 1. Compute Distance Map (EDT) - The first "Fast Marching" step (or solving Eikonal for distance)
-    ComputeEDT();
-    
+    {
+        auto recording = RecordSection(planner_sections::EDT);
+        ComputeEDT();
+    }
+
     float adjusted_safety_margin = safety_margin_global_ + (map_res_ * 0.5f);
 
     if (verbose_) {
@@ -82,6 +88,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
     const float transition_buffer = 3.0f * map_res_; // 3-cell smooth transition
     const float w_penalty = 5.0f; // Magnitude of the safety push
 
+    auto clearance_recording = RecordSection(planner_sections::CLEARANCE_SHIFTS);
     for (int i = 0; i < n_cells; ++i) {
         float d = edt_flat_[i];
         int ix = i % width_;
@@ -124,9 +131,14 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
         }
     }
 
+    clearance_recording.reset();
+
     // 3. Solve Path (Second Fast Marching step)
-    if (!Solve()) {
-        if (verbose_) std::cerr << "WARNING: Fast Marching Square failed to find path" << std::endl;
+    {
+        auto recording = RecordSection(planner_sections::SOLVE);
+        if (!Solve()) {
+            if (verbose_) std::cerr << "WARNING: Fast Marching Square failed to find path" << std::endl;
+        }
     }
 
     return path_world_;

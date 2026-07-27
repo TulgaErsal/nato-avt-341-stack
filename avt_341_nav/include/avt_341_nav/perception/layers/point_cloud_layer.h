@@ -77,6 +77,12 @@ namespace avt_341_nav::perception
         PointCloudFilter pc_cm_filter;					// Additional filter for clearing methods applied after regular filter
 	    std::vector<std::shared_ptr<OccupancyClearingMethod>> clear_methods_;
         std::string pc_section_id_;
+        // Sub-sections of pc_section_id_, recorded inside ProcessPoints. The parent stays directly
+        // recorded, so the difference between it and these children is the unaccounted remainder
+        // (mainly RegisterPc2Msg: the PointCloud2 -> PointCloud conversion and the cloud transform).
+        std::string pc_filter_section_id_;
+        std::string pc_clear_section_id_;
+        std::string pc_occupancy_section_id_;
         std::shared_ptr<sensor_msgs::msg::PointCloud> clr_only_pc_ = nullptr;
         std::string pc_topic_id_;
 

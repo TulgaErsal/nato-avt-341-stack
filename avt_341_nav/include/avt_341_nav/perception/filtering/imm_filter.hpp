@@ -49,7 +49,6 @@ namespace filtering {
 /**
  * @brief IMM filter: CV (model 0) + CTR (model 1) + NM (model 2).
  *
- * External interface mirrors the previous CAFilter API used in ObjectTrackingNode.
  */
 class IMMFilter {
   public:

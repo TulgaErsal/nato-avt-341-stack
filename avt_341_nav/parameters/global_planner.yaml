@@ -9,6 +9,10 @@ ros__parameters:
 
   # Global Parameters
   # ====================================================================================================================
+  compute_time_publish_period:
+    type: double
+    default_value: 1.0
+    description: "Period in seconds for publishing planner compute-time summaries; <= 0 disables."
   goal_dist:
     type: double
     default_value: 10.0

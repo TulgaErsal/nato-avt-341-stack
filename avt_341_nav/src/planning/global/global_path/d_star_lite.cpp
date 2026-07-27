@@ -189,21 +189,27 @@ std::vector<Point> DStarLite::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
   SetGoal(goal_idx);
   SetStart(start_idx);
 
-  int n = 0;
-  for (int iy = 0; iy < height_; iy++) {
-    for (int ix = 0; ix < width_; ix++) {
-      double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
-      double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-      SetMapValue({ix, iy}, grid->data[n], 100 - GetGridValue(segmentation_grid, x_grid, y_grid));
-      n++;
+  {
+    auto recording = RecordSection(planner_sections::GRID_INGEST);
+    int n = 0;
+    for (int iy = 0; iy < height_; iy++) {
+      for (int ix = 0; ix < width_; ix++) {
+        double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
+        double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
+        SetMapValue({ix, iy}, grid->data[n], 100 - GetGridValue(segmentation_grid, x_grid, y_grid));
+        n++;
+      }
     }
   }
 
   // For this global planner, we re-initialize D* Lite every time a new map comes
   // because we don't track which cells changed specifically from the caller.
   // D* Lite behaves like reverse A* in this case.
-  Initialize();
-  bool solved = Solve();
+  {
+    auto recording = RecordSection(planner_sections::SOLVE);
+    Initialize();
+    Solve();
+  }
 
   return path_world_;
 }

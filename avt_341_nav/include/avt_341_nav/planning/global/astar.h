@@ -2,12 +2,28 @@
 #define ASTAR_H
 
 #include <atomic>
+#include <memory>
+#include <optional>
+#include <string>
 #include <vector>
+#include "avt_341_nav/core/compute_time_recorder.hpp"
 #include "avt_341_nav/core/math_dto.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341_nav {
 namespace planning {
+
+/// Compute time section ids recorded by the planners. PlanPath is recorded by the node that owns the
+/// planner; the rest are recorded here, so the difference between the two is the unmeasured
+/// remainder of a plan.
+namespace planner_sections {
+inline const std::string PLAN_PATH = "plan_path";
+inline const std::string GRID_INGEST = PLAN_PATH + "/grid_ingest";
+inline const std::string DILATION = PLAN_PATH + "/dilation";
+inline const std::string EDT = PLAN_PATH + "/edt";
+inline const std::string CLEARANCE_SHIFTS = PLAN_PATH + "/clearance_shifts";
+inline const std::string SOLVE = PLAN_PATH + "/solve";
+}
 
 typedef core::vec2 Point;
 typedef core::vec2 Vec2;
@@ -209,8 +225,30 @@ public:
   void RequestCancel() { cancel_.store(true, std::memory_order_relaxed); }
   void ClearCancel() { cancel_.store(false, std::memory_order_relaxed); }
 
+  /**
+   * Attach a recorder so that the phases of PlanPath are profiled. Optional: planners are also
+   * constructed without a ROS node, in which case no compute times are recorded.
+   */
+  void SetComputeTimeRecorder(const std::shared_ptr<core::ComputeTimeRecorder>& recorder) {
+    compute_time_recorder_ = recorder;
+  }
+
 protected:
   static constexpr float INF = std::numeric_limits<float>::infinity();
+
+  /**
+   * Record a section for the duration of the returned scope, or nothing when no recorder is
+   * attached. Hold the result in its own block per phase: ScopedRecording is not move-assignable,
+   * so the result cannot be assigned over an existing recording to start the next phase.
+   */
+  std::optional<core::ScopedRecording> RecordSection(const std::string& section_id) const {
+    if (compute_time_recorder_ == nullptr) {
+      return std::nullopt;
+    }
+    return compute_time_recorder_->RecordScope(section_id);
+  }
+
+  std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_ = nullptr;
 
   Index FoldIndex(int n) const;
 

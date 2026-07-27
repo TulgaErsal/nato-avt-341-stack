@@ -49,7 +49,7 @@
   remappings:
     image: /flir_camera/image_rect_color
 
-/**/object_tracking_node:
+/**/object_tracker_node:
   remappings:
     camera_info: /flir_camera/camera_info
     image: /flir_camera/image_rect_color

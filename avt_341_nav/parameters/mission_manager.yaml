@@ -144,7 +144,7 @@ ros__parameters:
       description: "Distance threshold for combining observations of the same target."
     tracker_node_name:
       type: string
-      default_value: 'object_tracking_node'
+      default_value: 'object_tracker_node'
       description: "Object tracking node whose target_selection.toi_regex is reconfigured when a formation command carries a toi_regex. Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:

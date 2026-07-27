@@ -9,17 +9,17 @@
 #include <std_msgs/msg/string.hpp>
 
 #include <avt_341_nav/node/node_types.h>
-#include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
+#include <avt_341_nav/perception/tracking/object_tracker_node.hpp>
 
 #include <chrono>
 #include <functional>
 
 using namespace std::chrono_literals;
 
-class ObjectTrackingResetTest : public ::testing::Test {
+class ObjectTrackerResetTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        tracking_node_ = std::make_shared<avt_341_nav::perception::ObjectTrackingNode>();
+        tracking_node_ = std::make_shared<avt_341_nav::perception::ObjectTrackerNode>();
         helper_node_ = rclcpp::Node::make_shared("reset_test_helper");
 
         reset_pub_ = helper_node_->create_publisher<std_msgs::msg::String>(
@@ -52,7 +52,7 @@ protected:
         }
     }
 
-    std::shared_ptr<avt_341_nav::perception::ObjectTrackingNode> tracking_node_;
+    std::shared_ptr<avt_341_nav::perception::ObjectTrackerNode> tracking_node_;
     std::shared_ptr<rclcpp::Node> helper_node_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr ack_sub_;
@@ -61,7 +61,7 @@ protected:
 };
 
 // A "perception" reset must be acknowledged on avt_341/reset_ack.
-TEST_F(ObjectTrackingResetTest, PerceptionResetTriggersAck) {
+TEST_F(ObjectTrackerResetTest, PerceptionResetTriggersAck) {
     // Let subscriptions settle before publishing.
     SpinUntil([] { return false; }, 100ms);
 
@@ -75,7 +75,7 @@ TEST_F(ObjectTrackingResetTest, PerceptionResetTriggersAck) {
 }
 
 // A reset addressed to a different node type must not trigger the perception ack.
-TEST_F(ObjectTrackingResetTest, NonPerceptionResetIsIgnored) {
+TEST_F(ObjectTrackerResetTest, NonPerceptionResetIsIgnored) {
     SpinUntil([] { return false; }, 100ms);
 
     std_msgs::msg::String msg;
@@ -88,7 +88,7 @@ TEST_F(ObjectTrackingResetTest, NonPerceptionResetIsIgnored) {
 }
 
 // A second reset after the first must also be acknowledged (flag is cleared correctly).
-TEST_F(ObjectTrackingResetTest, RepeatedResetsAreAcknowledged) {
+TEST_F(ObjectTrackerResetTest, RepeatedResetsAreAcknowledged) {
     SpinUntil([] { return false; }, 100ms);
 
     std_msgs::msg::String msg;

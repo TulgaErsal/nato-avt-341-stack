@@ -68,8 +68,8 @@ def launch_setup(context, *args, **kwargs):
     # 2. Object Tracking Node
     tracking_node = Node(
         package='avt_341_nav',
-        executable='object_tracking_node',
-        name='object_tracking_node',
+        executable='object_tracker_node',
+        name='object_tracker_node',
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
         remappings=[
@@ -122,7 +122,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('bag_file', description='Path to the rosbag directory or file'),
         DeclareLaunchArgument('rviz_config', default_value=os.path.join(system_tests_dir, 'rviz', 'test_object_tracking.rviz')),
-        DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'config', 'parameters', 'object_tracking.yaml')),
+        DeclareLaunchArgument('tracking_params', default_value=os.path.join(avt_341_dir, 'config', 'parameters', 'object_tracker.yaml')),
         DeclareLaunchArgument('record', default_value='false', description='Whether to record a rosbag'),
         DeclareLaunchArgument('output_bag', default_value='output_bag', description='Name/path of the output bag to record'),
         OpaqueFunction(function=launch_setup)

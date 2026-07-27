@@ -32,6 +32,10 @@ ros__parameters:
     description: "Planner update rate"
     validation:
       gt<>: [ 0.0 ]
+  compute_time_publish_period:
+    type: double
+    default_value: 1.0
+    description: "Period in seconds for publishing planner compute-time summaries; <= 0 disables."
   tire_model:
     type: string
     default_value: "P"

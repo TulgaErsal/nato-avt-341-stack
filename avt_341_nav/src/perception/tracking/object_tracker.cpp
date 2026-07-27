@@ -1,7 +1,7 @@
 /**
 * @file      object_tracker.cpp
 * @brief     Per-target core of the camera/LiDAR sensor fusion object
-             tracker. Logic extracted from object_tracking_node.cpp so that
+             tracker. Logic extracted from object_tracker_node.cpp so that
              one instance can be replicated per tracked target class. This is
              the "Generic" tracker type; role-specific behavior lives in the
              derived ToiTracker and FormationVehicleTracker classes.

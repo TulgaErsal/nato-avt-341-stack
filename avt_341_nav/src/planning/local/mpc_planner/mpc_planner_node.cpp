@@ -16,6 +16,7 @@
  */
 #include <avt_341_nav/planning/local/mpc_planner_node.h>
 #include <avt_341_nav/node/node_types.h>
+#include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
@@ -38,6 +39,12 @@
 JULIA_DEFINE_FAST_TLS();
 
 jl_function_t* j_get_heading = nullptr;
+
+// Compute time profiling. "plan" is the Julia nonlinear program solve, which dominates everything
+// else this node does; "cull_obstacles" is the corridor culling done in the obstacle callback.
+std::shared_ptr<avt_341_nav::core::ComputeTimeRecorder> compute_time_recorder = nullptr;
+const std::string PLAN_SECTION_ID = "plan";
+const std::string CULL_OBSTACLES_SECTION_ID = "cull_obstacles";
 
 void CatchJuliaException()
 {
@@ -133,6 +140,7 @@ void ObstaclesCallback(std_msgs::msg::Float64MultiArray::SharedPtr obs_msg)
     std::vector<double> culled;
 
     if (mpc_params.use_corridor_culling && mpc_path_cache.size() >= 2) {
+        auto recording = compute_time_recorder->RecordScope(CULL_OBSTACLES_SECTION_ID);
         culled = CullObstaclesToCorridor(
             obs_msg->data, mpc_path_cache, mpc_params.corridor_half_width);
         obs_to_use = &culled;
@@ -743,6 +751,19 @@ int main(int argc, char *argv[])
         node);
     mpc_params = param_listener.get_params();
 
+    compute_time_recorder = std::make_shared<avt_341_nav::core::ComputeTimeRecorder>(
+        node, avt_341_nav::core::ComputeTimeRecorder::MakeNodeTag(node));
+    {
+        avt_341_nav::core::RunningStatsConfig section_config;
+        section_config.window_num_samples = 40;
+        section_config.threshold_check = 1.0 / mpc_params.rate;
+        compute_time_recorder->Configure(PLAN_SECTION_ID, section_config);
+
+        avt_341_nav::core::RunningStatsConfig cull_section_config;
+        cull_section_config.window_num_samples = section_config.window_num_samples;
+        compute_time_recorder->Configure(CULL_OBSTACLES_SECTION_ID, cull_section_config);
+    }
+
     // Initialise the Julia C API.
     InitialiseJuliaAPI();
 
@@ -789,6 +810,7 @@ int main(int argc, char *argv[])
     RCLCPP_INFO(node->get_logger(), "Prediction time horizon: %.1f.", mpc_params.prediction_time_horizon);
 
     rclcpp::Rate node_rate(mpc_params.rate);
+    double last_compute_time_pub = 0.0;
     while (rclcpp::ok() && !has_error)
     {
         auto updated_params = mpc_params;
@@ -802,7 +824,10 @@ int main(int argc, char *argv[])
             }
 
             // Update Julia MPC planner
-            jl_call0(j_plan);
+            {
+                auto recording = compute_time_recorder->RecordScope(PLAN_SECTION_ID);
+                jl_call0(j_plan);
+            }
             CATCH_JULIA_EXCEPTION;
 
             // Publish MPC outputs and cache path for obstacle corridor culling
@@ -819,6 +844,16 @@ int main(int argc, char *argv[])
             drive_pub->publish(GetMPCDrive());
 	        heading_pub->publish(GetMPCHeading());
             slope_limited_pub->publish(GetSlopeLimited());
+        }
+
+        // Published outside the NewInputAvailable block above so that compute times keep flowing
+        // while the node idles waiting for vehicle state or a goal point, which is exactly when they
+        // are needed to diagnose why it is stalled.
+        const double now_seconds = node->now().seconds();
+        if (mpc_params.compute_time_publish_period > 0.0 &&
+            now_seconds - last_compute_time_pub >= mpc_params.compute_time_publish_period) {
+            last_compute_time_pub = now_seconds;
+            compute_time_recorder->PublishSummary();
         }
 
         if(reset_called && is_initialized) {

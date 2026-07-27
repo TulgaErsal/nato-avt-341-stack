@@ -139,9 +139,9 @@ find_package(vision_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
 message(STATUS "Adding object tracking reset unit tests")
-ament_add_gtest(object_tracking_reset_test
-  perception/tracking/object_tracking_reset_test.cpp
-  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracking_node.cpp"
+ament_add_gtest(object_tracker_reset_test
+  perception/tracking/object_tracker_reset_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker_node.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/toi_tracker.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/formation_vehicle_tracker.cpp"
@@ -149,19 +149,19 @@ ament_add_gtest(object_tracking_reset_test
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
 )
 
-target_include_directories(object_tracking_reset_test
+target_include_directories(object_tracker_reset_test
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../include"
     ${PCL_INCLUDE_DIRS}
 )
 
-target_link_libraries(object_tracking_reset_test
+target_link_libraries(object_tracker_reset_test
   ${PROJECT_NAME}_proxy
   ${PCL_LIBRARIES}
-  object_tracking_params_service
+  object_tracker_params_service
 )
 
-ament_target_dependencies(object_tracking_reset_test
+ament_target_dependencies(object_tracker_reset_test
   avt_341_msgs
   cv_bridge
   Eigen3
@@ -197,7 +197,7 @@ target_include_directories(tracker_recovery_monitor_test
 
 target_link_libraries(tracker_recovery_monitor_test
   ${PROJECT_NAME}_proxy
-  object_tracking_params_dto
+  object_tracker_params_dto
 )
 
 ament_target_dependencies(tracker_recovery_monitor_test

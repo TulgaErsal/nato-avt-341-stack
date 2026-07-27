@@ -81,7 +81,7 @@ NODES = {
 
     # Perception - Object detection and tracking
     'object_detector_node':             NodeSpec('object_detector_node',             _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
-    'object_tracking_node':             NodeSpec('object_tracking_node',             _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),          extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
+    'object_tracker_node':             NodeSpec('object_tracker_node',             _templates('object_tracker'),   condition=is_cfg('use_object_tracker'),          extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
     'lidar_obstacle_detector_node':     NodeSpec('lidar_obstacle_detector_node',     _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
 
     # Global planners

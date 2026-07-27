@@ -10,12 +10,12 @@
 
 #include <Eigen/Dense>
 
-#include <avt_341_nav/object_tracking_params_dto.hpp>
+#include <avt_341_nav/object_tracker_params_dto.hpp>
 #include <avt_341_nav/perception/tracking/tracker_dto.hpp>
 
 namespace avt_341_nav::perception {
 
-using ObjectTrackerSettings = avt_341_nav::params::object_tracking::Params;
+using ObjectTrackerSettings = avt_341_nav::params::object_tracker::Params;
 using RecoverySettings = ObjectTrackerSettings::Recovery;
 
 /** Resolve a frame id using the configured tracker frame prefix. */

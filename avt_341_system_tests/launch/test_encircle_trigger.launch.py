@@ -97,8 +97,8 @@ def launch_setup(context, *args, **kwargs):
     # 3. Object Tracking Node (uses autostart to begin tracking immediately)
     tracking_node = Node(
         package='avt_341_nav',
-        executable='object_tracking_node',
-        name='object_tracking_node',
+        executable='object_tracker_node',
+        name='object_tracker_node',
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
         remappings=[

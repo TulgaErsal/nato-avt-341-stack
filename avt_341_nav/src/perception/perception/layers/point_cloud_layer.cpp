@@ -38,6 +38,17 @@ PointCloudLayer::PointCloudLayer(
 	section_config.threshold_check = pc_callback_warn_dur;
 	compute_time_recorder_->Configure(pc_section_id_, section_config);
 
+	// Breakdown of the callback, recorded in ProcessPoints. Only the parent carries the warning
+	// threshold; the children exist to show where the time inside the callback goes.
+	pc_filter_section_id_ = pc_section_id_ + "/filter";
+	pc_clear_section_id_ = pc_section_id_ + "/clear";
+	pc_occupancy_section_id_ = pc_section_id_ + "/add_occupancy";
+	core::RunningStatsConfig subsection_config;
+	subsection_config.window_num_samples = section_config.window_num_samples;
+	compute_time_recorder_->Configure(pc_filter_section_id_, subsection_config);
+	compute_time_recorder_->Configure(pc_clear_section_id_, subsection_config);
+	compute_time_recorder_->Configure(pc_occupancy_section_id_, subsection_config);
+
     SetupGridClearingMethod(settings.clear_method);
     SetupPointCloudFilter(
         ParseFilterConfig(settings.point_cloud_layer.filter),
@@ -161,24 +172,46 @@ void PointCloudLayer::ProcessPoints(const std::shared_ptr<sensor_msgs::msg::Poin
         return;
     }
 
-    // Filtered point cloud for normal occupancy addition
-    auto filtered_pc = pc_filter.Filter(pc_ptr, vehicle_pose);
+    // Sections are recorded in their own scopes rather than one reassigned recording, since a
+    // ScopedRecording is move-only and not move-assignable.
+    // Note when a clear-only cloud is pending, PointCloudCallback runs ProcessPoints twice within a
+    // single pc_callback recording (once through ClearPoints, once directly), so the filter and
+    // clear means are per invocation of this method rather than per callback.
+    std::shared_ptr<sensor_msgs::msg::PointCloud> filtered_pc;
+    std::shared_ptr<sensor_msgs::msg::PointCloud> filtered_cms_pc;
+    {
+        auto recording = compute_time_recorder_->RecordScope(pc_filter_section_id_);
 
-    // Additional filtering for clearing methods if desired
-    auto filtered_cms_pc = clear_methods_.empty() ? filtered_pc : pc_cm_filter.Filter(filtered_pc, vehicle_pose);
+        // Filtered point cloud for normal occupancy addition
+        filtered_pc = pc_filter.Filter(pc_ptr, vehicle_pose);
 
-    for (auto& cm : clear_methods_) {
-        cm->ClearOccupancy(*filtered_cms_pc);
+        // Additional filtering for clearing methods if desired
+        filtered_cms_pc = clear_methods_.empty() ? filtered_pc : pc_cm_filter.Filter(filtered_pc, vehicle_pose);
+    }
+
+    {
+        auto recording = compute_time_recorder_->RecordScope(pc_clear_section_id_);
+        for (auto& cm : clear_methods_) {
+            cm->ClearOccupancy(*filtered_cms_pc);
+        }
     }
 
     if (clear_only) {
         return;
     }
 
-    AddOccupancy(
-        *filtered_pc, cells_, settings_.costmap.dilation.enabled);
-    for (auto& cm : clear_methods_) {
-        cm->OnOccupancyAdded(*filtered_cms_pc, vehicle_pose.position);
+    // OnOccupancyAdded is counted here rather than under the clear section: it is the second half of
+    // the occupancy update, and several clearing methods do most of their work in it (the timed
+    // no-obstacle method does all of it there, and the filtering raytracer runs a full grid sweep).
+    // Recording it under the clear id instead would need a second, disjoint scope on that id, which
+    // would halve the reported mean rather than add to it.
+    {
+        auto recording = compute_time_recorder_->RecordScope(pc_occupancy_section_id_);
+        AddOccupancy(
+            *filtered_pc, cells_, settings_.costmap.dilation.enabled);
+        for (auto& cm : clear_methods_) {
+            cm->OnOccupancyAdded(*filtered_cms_pc, vehicle_pose.position);
+        }
     }
 
 }

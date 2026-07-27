@@ -13,7 +13,7 @@
  +                                                                           +
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-* @file      object_tracking_node.hpp
+* @file      object_tracker_node.hpp
 * @author    Dario Sirangelo (dsi@aarhusrobotics.com)
 * @brief     Header file for the camera/LiDAR sensor fusion object tracker
              rclcpp ROS node. The node owns the shared sensor inputs (camera,
@@ -93,6 +93,7 @@
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
+#include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/core/coord_transform.hpp>
 #include <avt_341_nav/perception/box.hpp>
 #include <avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
@@ -102,16 +103,16 @@
 #include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
 
-namespace avt_341_nav::params::object_tracking {
+namespace avt_341_nav::params::object_tracker {
 class ParamsListener;
 }
 
 namespace avt_341_nav {
 namespace perception {
 
-class ObjectTrackingNode : public rclcpp::Node {
+class ObjectTrackerNode : public rclcpp::Node {
    public:
-    ObjectTrackingNode();
+    ObjectTrackerNode();
 
    private:
     // ROS node interface
@@ -151,7 +152,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     ObjectTrackerSettings params_;
 
     /** @brief Generated parameter declaration and validation listener. */
-    std::shared_ptr<avt_341_nav::params::object_tracking::ParamsListener>
+    std::shared_ptr<avt_341_nav::params::object_tracker::ParamsListener>
         param_listener_;
 
     /** Apply a validated listener snapshot to the supported runtime subset. */
@@ -364,7 +365,20 @@ class ObjectTrackingNode : public rclcpp::Node {
 
     void TrackingTimerCallback();
 
-    double execution_time_ = -1.0;
+    // Compute time profiling
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief The compute time recorder, created on first use and configured once.
+     *
+     * Created lazily rather than in the constructor: this node is an rclcpp::Node and the recorder
+     * needs a Node::SharedPtr, which shared_from_this() cannot supply until construction finishes.
+     * Every caller runs from a timer or subscription callback, so the node is fully constructed by
+     * then. Lazy creation also keeps tests that construct the node directly working.
+     */
+    const std::shared_ptr<core::ComputeTimeRecorder>& Recorder();
+
+    std::shared_ptr<core::ComputeTimeRecorder> compute_time_recorder_;
 
     // Target selection service
     // -------------------------------------------------------------------------

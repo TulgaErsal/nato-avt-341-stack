@@ -16,6 +16,7 @@
 #include <avt_341_nav/node/occupancy_grid_subscriber.h>
 #include <future>
 // local includes
+#include "avt_341_nav/core/compute_time_recorder.hpp"
 #include "avt_341_nav/core/math_dto.hpp"
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/waypoint_file_parser.hpp"
@@ -65,6 +66,7 @@ double goal_start_time = 0.0;
 std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavState>> state_pub = nullptr;
 std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavState>> goal_reached_pub = nullptr;
 std::shared_ptr<avt_341_nav::planning::Astar> path_planner = nullptr;
+std::shared_ptr<avt_341_nav::core::ComputeTimeRecorder> compute_time_recorder = nullptr;
 
 // Async planning state
 std::future<std::vector<avt_341_nav::planning::Point>> planning_future;
@@ -298,6 +300,22 @@ int main(int argc, char* argv[])
   avt_341_nav::params::global_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
+  compute_time_recorder = std::make_shared<avt_341_nav::core::ComputeTimeRecorder>(
+      n, avt_341_nav::core::ComputeTimeRecorder::MakeNodeTag(n));
+  {
+    avt_341_nav::core::RunningStatsConfig planning_section_config;
+    planning_section_config.window_num_samples = 20;
+    for (const auto & section_id : {
+             avt_341_nav::planning::planner_sections::PLAN_PATH,
+             avt_341_nav::planning::planner_sections::GRID_INGEST,
+             avt_341_nav::planning::planner_sections::DILATION,
+             avt_341_nav::planning::planner_sections::EDT,
+             avt_341_nav::planning::planner_sections::CLEARANCE_SHIFTS,
+             avt_341_nav::planning::planner_sections::SOLVE}) {
+      compute_time_recorder->Configure(section_id, planning_section_config);
+    }
+  }
+
   dft_dist_threshold = params.goal_dist;
   dft_yaw_threshold = params.goal_yaw_threshold;    // Set value > 180.0 degrees to disable
   dft_yaw_threshold *= M_PI / 180.0;
@@ -418,6 +436,8 @@ int main(int argc, char* argv[])
         static_cast<int>(params.dilation_factor));
   }
 
+  path_planner->SetComputeTimeRecorder(compute_time_recorder);
+
   // Service: compute a global path through a sequence of NavGoals starting from a given pose.
   auto compute_global_path_srv =
       n->create_service<avt_341_msgs::srv::ComputeGlobalPath>(
@@ -426,6 +446,7 @@ int main(int argc, char* argv[])
   rclcpp::Rate r(20.0f); // Hz
   int nl = 0;
   int shutdown_count = 0;
+  double last_compute_time_pub = 0.0;
   auto t1 = std::chrono::system_clock::now();
   //while (rclcpp::ok() && !goal_reached){
   while (rclcpp::ok()) {
@@ -582,6 +603,10 @@ int main(int argc, char* argv[])
           plan_start = std::chrono::steady_clock::now();
           planning_future = std::async(std::launch::async,
               [grid_snap, seg_snap, goal_pt, pos_snap]() mutable -> std::vector<Point> {
+                // Recording from the planning thread is safe: the recorder guards its sections with
+                // a mutex. Only PublishSummary is kept on the main loop, since it publishes.
+                auto recording = compute_time_recorder->RecordScope(
+                    avt_341_nav::planning::planner_sections::PLAN_PATH);
                 return path_planner->PlanPath(&grid_snap, &seg_snap, goal_pt, pos_snap);
               });
         }
@@ -615,6 +640,15 @@ int main(int argc, char* argv[])
       }
     } else {
       SetRunState(NavStackState::Active);
+    }
+
+    // Published outside the active-planning branch above so that compute times keep flowing while
+    // the planner is idle, which is when they are most useful for diagnosing a stall.
+    const double now_seconds = n->now().seconds();
+    if (params.compute_time_publish_period > 0.0 &&
+        now_seconds - last_compute_time_pub >= params.compute_time_publish_period) {
+      last_compute_time_pub = now_seconds;
+      compute_time_recorder->PublishSummary();
     }
 
     rclcpp::spin_some(n);

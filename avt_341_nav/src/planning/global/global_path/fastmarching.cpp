@@ -84,21 +84,27 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
 
     // Fast map copy and weight init
     int n_cells = w * h;
-    for (int i = 0; i < n_cells; ++i) {
-        int ix = i % w;
-        int iy = i / w;
-        double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
-        double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        
-        float occ = (float)grid->data[i];
-        float seg = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
-        
-        map_[ix][iy] = occ;
-        base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
+    {
+        auto recording = RecordSection(planner_sections::GRID_INGEST);
+        for (int i = 0; i < n_cells; ++i) {
+            int ix = i % w;
+            int iy = i / w;
+            double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
+            double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
+
+            float occ = (float)grid->data[i];
+            float seg = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
+
+            map_[ix][iy] = occ;
+            base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
+        }
     }
-    
+
     float adjusted_safety_margin = safety_margin_global_ + (map_res_ * 0.5f);
-    ComputeEDT();
+    {
+        auto recording = RecordSection(planner_sections::EDT);
+        ComputeEDT();
+    }
 
     if (verbose_) {
         std::cout << "[FastMarching] Safety margin (input/adjusted): " << safety_margin_global_ << "/" << adjusted_safety_margin << "m" << std::endl;
@@ -107,6 +113,7 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
     shifts_.assign(n_cells, {0.0f, 0.0f});
 
     // Combine base weights with EDT-based clearance and compute shifts
+    auto clearance_recording = RecordSection(planner_sections::CLEARANCE_SHIFTS);
     for (int i = 0; i < n_cells; ++i) {
         float d = edt_flat_[i];
         int ix = i % w;
@@ -147,8 +154,13 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
         }
     }
 
-    if (!Solve()) {
-        if (verbose_) std::cerr << "WARNING: Fast Marching failed to find path" << std::endl;
+    clearance_recording.reset();
+
+    {
+        auto recording = RecordSection(planner_sections::SOLVE);
+        if (!Solve()) {
+            if (verbose_) std::cerr << "WARNING: Fast Marching failed to find path" << std::endl;
+        }
     }
 
     return path_world_;

@@ -373,18 +373,22 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
   SetStart(start_idx);
   Point goal_r;
   goal_r = GetCurrentGoal();
-  int n = 0;
-  for (int iy = 0; iy < height_; iy++) {
-    for (int ix = 0; ix < width_; ix++) {
-      double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
-      double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-      SetMapValue({ix, iy}, grid->data[n], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
-      n++;
+  {
+    auto recording = RecordSection(planner_sections::GRID_INGEST);
+    int n = 0;
+    for (int iy = 0; iy < height_; iy++) {
+      for (int ix = 0; ix < width_; ix++) {
+        double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
+        double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
+        SetMapValue({ix, iy}, grid->data[n], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
+        n++;
+      }
     }
   }
 
   // dilate
   if (dfac_ > 0) {
+    auto recording = RecordSection(planner_sections::DILATION);
     std::vector<std::vector<float> > dmap = map_;
     for (int i = dfac_; i < width_ - dfac_; i++) {
       for (int j = dfac_; j < height_ - dfac_; j++) {
@@ -406,13 +410,11 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
     }
   }
 
-  auto t0 = std::chrono::steady_clock::now();
-
-  bool solved = Solve();
-
-  auto t1 = std::chrono::steady_clock::now();
-
-  std::cout << "A* solve time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << " ms" << std::endl;
+  bool solved;
+  {
+    auto recording = RecordSection(planner_sections::SOLVE);
+    solved = Solve();
+  }
 
   if (!solved) {
     std::cerr << "WARNING: Path planner failed to solve map " << std::endl;
