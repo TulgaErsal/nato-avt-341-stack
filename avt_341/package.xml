@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<package format="3">
+  <name>avt_341</name>
+  <version>0.0.0</version>
+  <description>Metapackage for the AVT-341 autonomy stack.</description>
+
+  <maintainer email="cgoodin@cavs.msstate.edu">Chris Goodin</maintainer>
+  <maintainer email="dsi@aarhusrobotics.com">Dario Sirangelo</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>avt_341_bringup</exec_depend>
+  <exec_depend>avt_341_msgs</exec_depend>
+  <exec_depend>avt_341_nav</exec_depend>
+  <exec_depend>avt_341_param_lib</exec_depend>
+  <exec_depend>avt_341_rviz_plugins</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
