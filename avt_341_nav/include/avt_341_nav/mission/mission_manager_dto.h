@@ -95,7 +95,7 @@ struct FormationMsg : public MoveToMsg {
                const std::string &objectiveName, const std::string &formation, double desiredSpeed,
                double xOffset=0.0, double yOffset=0.0, double distance=0.0, double yaw_threshold=-1.0,
                double xScale=-1.0, double yScale=-1.0, const std::string & terminationMethod = "",
-               const std::string &priority = PriorityType::QUEUE);
+               const std::string &priority = PriorityType::QUEUE, const std::string & toiRegex = "");
 
   avt_341_msgs::msg::Communication toROSMsg() override;
   std::string getType() override;
@@ -110,6 +110,9 @@ struct FormationMsg : public MoveToMsg {
   double x_scale;
   double y_scale;
   double desired_speed;
+  // Object ids matching this regex are the targets of interest for this formation. Empty means no
+  // target of interest is investigated.
+  std::string toi_regex;
 };
 
 struct AcknowledgeMsg : public MissionManagerDto {

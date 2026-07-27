@@ -1,5 +1,6 @@
 // ros includes
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/parameter_client.hpp>
 #include "avt_341_nav/node/node_types.h"
 #include "avt_341_nav/node/tf_interface.h"
 // local includes
@@ -8,6 +9,7 @@
 #include <queue>
 #include <avt_341_nav/core/dto_conversion.h>
 #include <optional>
+#include <regex>
 #include <set>
 #include <cmath>
 
@@ -40,6 +42,47 @@ std::shared_ptr<avt_341_nav::mission::MissionManager> mgr;
 std::map<std::string, nav_msgs::msg::Odometry> formation_odoms;
 rclcpp::Node::SharedPtr nh = nullptr;
 std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
+
+std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
+std::optional<std::string> applied_toi_regex;
+
+// Reconfigure the object tracking node with the targets of interest regex of a formation command.
+// An empty regex is a valid value: it tells the tracker to ignore all targets of interest.
+void UpdateTrackerToiRegex(const std::string & toi_regex) {
+    if(applied_toi_regex.has_value() && applied_toi_regex.value() == toi_regex) {
+        return;
+    }
+
+    try {
+        std::regex{toi_regex};
+    } catch (const std::regex_error & e) {
+        RCLCPP_WARN(nh->get_logger(), "Ignoring invalid toi_regex \"%s\" in formation command: %s",
+            toi_regex.c_str(), e.what());
+        return;
+    }
+
+    if(!tracker_param_client->service_is_ready()) {
+        RCLCPP_WARN(nh->get_logger(), "Object tracking node parameter service not available, cannot apply toi_regex \"%s\".",
+            toi_regex.c_str());
+        return;
+    }
+
+    tracker_param_client->set_parameters(
+        {rclcpp::Parameter("target_selection.toi_regex", toi_regex)},
+        [toi_regex](const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
+            const auto results = future.get();
+            if(results.empty() || !results.front().successful) {
+                const std::string reason = results.empty() ? "no result returned" : results.front().reason;
+                RCLCPP_WARN(nh->get_logger(), "Failed to apply toi_regex \"%s\" to the object tracking node: %s",
+                    toi_regex.c_str(), reason.c_str());
+                return;
+            }
+            // Only remember the value once it is known to have been applied, so that a failed
+            // reconfigure is retried on the next formation command.
+            applied_toi_regex = toi_regex;
+            RCLCPP_INFO(nh->get_logger(), "Applied toi_regex \"%s\" to the object tracking node.", toi_regex.c_str());
+        });
+}
 
 // Receive updates from comms
 void CommunicationCallback(avt_341_msgs::msg::Communication::SharedPtr msg) {
@@ -232,6 +275,8 @@ int main(int argc, char **argv) {
 
     const std::string my_name = toUpper(params.name);
 
+    tracker_param_client = std::make_shared<rclcpp::AsyncParametersClient>(nh, params.toi.tracker_node_name);
+
     std::shared_ptr<avt_341_nav::mission::GoalFilter> goal_filter =
         avt_341_nav::mission::create_goal_filter(
             my_name, params.formation_goal_filter, nh,
@@ -328,6 +373,7 @@ int main(int argc, char **argv) {
             RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
             if(rcvd_msg.type == MissionMsgType::Formation) {
+                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handleFormationRequest(FormationMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Acknowledge) {
                 mgr->handleAcknowledge(AcknowledgeMsg(rcvd_msg));

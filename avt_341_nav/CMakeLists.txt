@@ -140,9 +140,8 @@ install(
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")
 
-# Launch files, rviz configurations, urdf models and deployment data live in
-# avt_341_bringup; the system level test drivers live in avt_341_system_tests.
-install(DIRECTORY config parameters DESTINATION "share/${PROJECT_NAME}")
+# Install template parameter files
+install(DIRECTORY parameters DESTINATION "share/${PROJECT_NAME}")
 
 # Automated Tests
 # ===============

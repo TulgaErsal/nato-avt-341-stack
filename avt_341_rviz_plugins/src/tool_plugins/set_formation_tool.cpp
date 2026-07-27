@@ -117,6 +117,14 @@ SetFormationTool::SetFormationTool()
     distance_property_ = new FloatProperty( "Distance", 0.0f, "Communication.distance.", form_group );
     target_msg_id_property_ = new IntProperty(
         "Target Message ID", 0, "Communication.target_msg_id.", form_group );
+
+    // Defaults to the object tracker's own default so that publishing a formation does not silently
+    // turn off target of interest detection; an empty value tells the tracker to ignore all of them.
+    toi_regex_property_ = new StringProperty(
+        "TOI Regex", "^TI_",
+        "Communication.toi_regex: detected object ids matching this regex are the targets of "
+        "interest for this formation. Empty means no target of interest is investigated.",
+        form_group );
 }
 
 SetFormationTool::~SetFormationTool() = default;
@@ -278,6 +286,8 @@ void SetFormationTool::publishFormation( const std::string& objective_name )
     msg.y_offset = y_offset_property_->getFloat();
     msg.distance = distance_property_->getFloat();
     msg.target_msg_id = target_msg_id_property_->getInt();
+    // Not uppercased: this is a regex matched against detected object ids, so case is significant.
+    msg.toi_regex = toi_regex_property_->getStdString();
     // yaw_threshold is left at its message default (-1), as MissionCommandPanel does.
 
     publisher_->publish( msg );

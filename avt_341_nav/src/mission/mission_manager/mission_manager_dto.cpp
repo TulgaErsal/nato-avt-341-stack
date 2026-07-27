@@ -107,16 +107,17 @@ FormationMsg::FormationMsg(const avt_341_msgs::msg::Communication &msg)
   desired_speed = msg.desired_speed;
   x_scale = msg.x_scale > 0.0 ? msg.x_scale : -1.0;
   y_scale = msg.y_scale > 0.0 ? msg.y_scale : -1.0;
+  toi_regex = msg.toi_regex;
 }
 
 FormationMsg::FormationMsg(const std::string &sender, int msgId, const std::string & recipient,
   const std::string &objectiveName, const std::string &formation, double desiredSpeed,
   double xOffset, double yOffset, double distance, double yaw_threshold,
   double xScale, double yScale, const std::string & terminationMethod,
-  const std::string &priority)
+  const std::string &priority, const std::string & toiRegex)
   : MoveToMsg(sender, msgId, recipient, objectiveName, xOffset, yOffset, distance, yaw_threshold, priority),
   formation(formation), desired_speed(desiredSpeed),
-  x_scale(xScale), y_scale(yScale), termination_method(terminationMethod)
+  x_scale(xScale), y_scale(yScale), termination_method(terminationMethod), toi_regex(toiRegex)
 {
 }
 
@@ -139,6 +140,7 @@ avt_341_msgs::msg::Communication FormationMsg::toROSMsg(){
   msg.distance = dist_threshold;
   msg.termination_method = termination_method;
   msg.yaw_threshold = yaw_threshold;
+  msg.toi_regex = toi_regex;
 
   return msg;
 }

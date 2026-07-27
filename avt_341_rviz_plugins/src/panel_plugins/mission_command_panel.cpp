@@ -26,6 +26,10 @@ namespace avt_341::rviz_plugins
         y_offset_entry_ = new QLineEdit("0.0");
         distance_entry_ = new QLineEdit("0.0");
         target_msg_entry_ = new QLineEdit("0");
+        // Only applies to FORM messages. Defaults to the object tracker's own default so that a
+        // formation command does not silently turn off target of interest detection; clearing the
+        // field tells the tracker to ignore all targets of interest.
+        toi_regex_entry_ = new QLineEdit("^TI_");
 
         // Setup entries
         msg_id_entry_->setValidator(new QIntValidator(0, 99, this));
@@ -84,8 +88,10 @@ namespace avt_341::rviz_plugins
         layout->addWidget( distance_entry_,                     17, 1,  Qt::AlignLeft);
         layout->addWidget( new QLabel( "Target Message ID:" ),  18, 0,  Qt::AlignRight);
         layout->addWidget( target_msg_entry_,                   18, 1,  Qt::AlignLeft);
-        layout->addWidget( send_msg_button_,                    19, 0,  1,  2,  Qt::AlignHCenter);
-        layout->addWidget( reset_perception_button_,            20, 0,  1,  2,  Qt::AlignHCenter);
+        layout->addWidget( new QLabel( "TOI Regex:" ),          19, 0,  Qt::AlignRight);
+        layout->addWidget( toi_regex_entry_,                    19, 1,  Qt::AlignLeft);
+        layout->addWidget( send_msg_button_,                    20, 0,  1,  2,  Qt::AlignHCenter);
+        layout->addWidget( reset_perception_button_,            21, 0,  1,  2,  Qt::AlignHCenter);
         setLayout( layout );
 
         // Create signal/slot connections.
@@ -123,6 +129,8 @@ namespace avt_341::rviz_plugins
         command_msg.y_offset = y_offset_entry_->text().toDouble();
         command_msg.distance = distance_entry_->text().toDouble();
         command_msg.target_msg_id = target_msg_entry_->text().toInt();
+        // Not uppercased: this is a regex matched against detected object ids, so case is significant.
+        command_msg.toi_regex = toi_regex_entry_->text().toStdString();
         command_pub_->publish(command_msg);
     }
 
