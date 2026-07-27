@@ -29,7 +29,6 @@
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(fmt REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
 
 include("${avt_341_param_lib_DIR}/avt_341_param_lib.cmake")
 

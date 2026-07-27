@@ -6,8 +6,11 @@
 #include <functional>
 #include <limits>
 #include <mutex>
-#include <rclcpp/node.hpp>
-#include <rclcpp_lifecycle/lifecycle_node.hpp>
+// Only rclcpp::Parameter and rclcpp::ParameterType are used here; pulling in
+// rclcpp/node.hpp (or rclcpp_lifecycle) would drag the whole pub/sub/service
+// template machinery into every translation unit that validates a parameter.
+#include <rclcpp/parameter.hpp>
+#include <rclcpp/parameter_value.hpp>
 #include <rclcpp/logger.hpp>
 #include <set>
 #include <sstream>

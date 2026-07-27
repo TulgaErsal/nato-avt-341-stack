@@ -1,0 +1,58 @@
+# Synthetic node configuration fixture for launch_node_config_test.py.
+#
+# This file is OWNED BY THE TESTS and must not be treated as a deployment
+# configuration. It is deliberately shaped like a real one -- several sections,
+# overlapping remapping keys, a nested selector, and an environment block using
+# both forms -- so the tests can check that a whole document parses correctly and
+# that sections do not bleed into one another. The node and topic names are
+# invented; do not replace them with names from a real robot, and do not edit
+# this file to reflect a deployment change. The expectations in the test module
+# are pinned to these exact contents.
+
+# Two sections that remap the SAME keys to DIFFERENT values. Any cross-section
+# leakage in the selector matching shows up here immediately.
+/**/costmap_local_node:
+  remappings:
+    grid: grid_local
+    grid_updates: grid_local_updates
+
+/**/costmap_global_node:
+  remappings:
+    grid: grid_global
+    grid_updates: grid_global_updates
+    cells: cells_global
+
+# Remapping order within a section must be preserved, and a section with both
+# field kinds must keep them independent.
+/**/sensor_driver_node:
+  remappings:
+    scan: /lidar/scan
+    imu: /imu/data
+    fix: /gnss/fix
+  additional_env:
+    FIXTURE_LOG_LEVEL: debug
+
+# Nested selector form: the section below applies to <any namespace>/telemetry/
+# reporter_node, exercising multi-token matching inside a wildcard document.
+/**:
+  telemetry:
+    reporter_node:
+      remappings:
+        status: /fleet/status
+
+# Environment block using the separator/values form with defaulted lookups.
+/**/inference_node:
+  remappings:
+    image: /camera/image_rect
+    detection_2d: detections/vision
+  additional_env:
+    FIXTURE_RUNTIME_PATH:
+      separator: ":"
+      values:
+        - "$env_var{FIXTURE_RUNTIME_ROOT:-/opt/fixture_runtime}/lib"
+        - "$env_var{FIXTURE_RUNTIME_ROOT:-/opt/fixture_runtime}/bin"
+        - "$env_var{FIXTURE_RUNTIME_ROOT:-/opt/fixture_runtime}/extern/lib"
+        - "$env_var{FIXTURE_RUNTIME_PATH:-}"
+
+# NOTE: there is deliberately no section for `unconfigured_node`; the tests rely
+# on it staying absent to check that unmatched nodes get empty results.

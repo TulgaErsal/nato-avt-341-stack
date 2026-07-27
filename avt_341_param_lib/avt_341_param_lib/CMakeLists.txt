@@ -5,7 +5,6 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(fmt REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
 
 # --- C++ validator library ---
 add_library(${PROJECT_NAME} src/parameter_validators.cpp)
@@ -16,7 +15,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PUBLIC
   fmt::fmt
   rclcpp::rclcpp
-  rclcpp_lifecycle::rclcpp_lifecycle
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -51,12 +49,13 @@ if(BUILD_TESTING)
   ament_add_pytest_test(float_codegen_test ${PROJECT_NAME}/test/float_codegen_test.py)
   ament_add_pytest_test(launch_params_test ${PROJECT_NAME}/test/launch_params_test.py)
   ament_add_pytest_test(launch_node_config_test ${PROJECT_NAME}/test/launch_node_config_test.py)
+  ament_add_pytest_test(launch_expressions_test ${PROJECT_NAME}/test/launch_expressions_test.py)
   ament_add_pytest_test(parse_runtime_yaml_test ${PROJECT_NAME}/test/parse_runtime_yaml_test.py)
 endif()
 
 # --- Export ---
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_dependencies(fmt rclcpp rclcpp_lifecycle)
+ament_export_dependencies(fmt rclcpp)
 
 ament_package(
   CONFIG_EXTRAS "avt_341_param_lib-extras.cmake"

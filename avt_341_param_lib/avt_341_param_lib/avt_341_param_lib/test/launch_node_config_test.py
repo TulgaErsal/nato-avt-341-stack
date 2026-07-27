@@ -309,124 +309,105 @@ def test_metadata_getters_require_an_absolute_node_fqn(node_fqn, getter_name):
 
 
 # ---------------------------------------------------------------------------
-# Shipped avt_341 deployment configuration (krc_mrzr node_config.yaml)
+# Whole-document parsing against a checked-in fixture
+#
+# The tests above build one-off documents per behaviour. The tests below parse a
+# single realistic multi-section document (test/node_config.yaml) to check that
+# the sections of a complete file are resolved independently of one another.
+#
+# The fixture is owned by this test module -- it is NOT a deployment
+# configuration, and no application package's config should be substituted for
+# it. Reading a real bringup config here would couple these tests to a file that
+# is expected to change for operational reasons.
 # ---------------------------------------------------------------------------
 
-def find_krc_mrzr_node_config() -> Path:
-    for parent in Path(__file__).resolve().parents:
-        candidate = (
-            parent / 'avt_341' / 'parameters' / 'krc_mrzr' / 'node_config.yaml')
-        if candidate.is_file():
-            return candidate
-    raise RuntimeError('Could not locate avt_341 krc_mrzr node_config.yaml')
+FIXTURE_CONFIG = Path(__file__).resolve().parent / 'node_config.yaml'
 
-
-KRC_MRZR_EXPECTED_REMAPPINGS = {
-    'perception_local_node': [
-        ('avt_341/terrain_slope', 'avt_341/terrain_slope_local'),
-        ('avt_341/terrain_rms', 'avt_341/terrain_rms_local'),
+FIXTURE_EXPECTED_REMAPPINGS = {
+    # Two sections remapping the same keys to different values; the pair guards
+    # against one section's rules leaking into another's results.
+    'costmap_local_node': [
+        ('grid', 'grid_local'),
+        ('grid_updates', 'grid_local_updates'),
     ],
-    'perception_global_node': [
-        ('avt_341/terrain_slope', 'avt_341/terrain_slope_global'),
-        ('avt_341/terrain_rms', 'avt_341/terrain_rms_global'),
-        ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
-        ('avt_341/occupancy_grid_updates',
-         'avt_341/occupancy_grid_low_res_updates'),
+    'costmap_global_node': [
+        ('grid', 'grid_global'),
+        ('grid_updates', 'grid_global_updates'),
+        ('cells', 'cells_global'),
     ],
-    'perception_rms_node': [
-        ('avt_341/occupancy_grid', 'avt_341/rms_perception/occupancy_grid'),
-        ('avt_341/segmentation_grid',
-         'avt_341/rms_perception/segmentation_grid'),
+    # Section carrying both remappings and additional_env; the remapping order
+    # declared in the file must survive parsing.
+    'sensor_driver_node': [
+        ('scan', '/lidar/scan'),
+        ('imu', '/imu/data'),
+        ('fix', '/gnss/fix'),
     ],
-    'grid_compression_global': [
-        ('avt_341/occupancy_grid', 'avt_341/occupancy_grid_low_res'),
-        ('avt_341/occupied_cells', 'avt_341/occupied_cells_low_res'),
-    ],
-    'segmentation_grid_processor_node': [
-        ('avt_341/segmentation_grid', 'avt_341/normal_segmentation_grid'),
-    ],
-    'mission_manager_node': [
-        ('avt_341/comm_messages', '/avt_341/comm_messages'),
-    ],
-    'speed_zones_node': [
-        ('avt_341/comm_messages', '/avt_341/comm_messages'),
-    ],
-    'uab_perception_node': [
-        ('avt_341/points', '/ouster/points'),
-        ('avt_341/camera/image_raw', '/flir_camera/image_rect_color'),
-        ('avt_341/camera/camera_info', '/flir_camera/camera_info'),
-        ('avt_341/odom', 'avt_341/odometry'),
-        ('avt_341/occupancy_grid',
-         'avt_341/terrain_seg/occupancy_grid'),
-        ('avt_341/segmentation_grid',
-         'avt_341/terrain_seg/segmentation_grid'),
-    ],
-    'object_detector_node': [
-        ('image', '/flir_camera/image_rect_color'),
-    ],
-    'object_tracking_node': [
-        ('camera_info', '/flir_camera/camera_info'),
-        ('image', '/flir_camera/image_rect_color'),
-        ('points/input', '/ouster/points'),
+    'inference_node': [
+        ('image', '/camera/image_rect'),
         ('detection_2d', 'detections/vision'),
-        ('avt_341/reset', 'avt_341/reset'),
-        ('task', 'avt_341/mission_task_state'),
-        ('avt_341/odometry/estimated/odom', 'odometry/estimated'),
-        ('avt_341/reset_ack', 'avt_341/reset_ack'),
     ],
 }
 
+FIXTURE_RUNTIME_SUBDIRS = ('lib', 'bin', 'extern/lib')
+
 
 @pytest.mark.parametrize(
-    'node_name, expected', KRC_MRZR_EXPECTED_REMAPPINGS.items())
-def test_shipped_krc_mrzr_config_preserves_base_launch_remappings(
-        node_name, expected):
-    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+    'node_name, expected', FIXTURE_EXPECTED_REMAPPINGS.items())
+def test_fixture_sections_resolve_independently(node_name, expected):
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
     assert node_config.get_remappings(f'/veh1/{node_name}') == expected
 
 
-def test_shipped_krc_mrzr_tracker_section_applies_to_all_vehicles():
-    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
-    expected = KRC_MRZR_EXPECTED_REMAPPINGS['object_tracking_node']
+def test_fixture_wildcard_section_applies_to_every_vehicle():
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
+    expected = FIXTURE_EXPECTED_REMAPPINGS['inference_node']
 
-    assert node_config.get_remappings('/veh1/object_tracking_node') == expected
-    assert node_config.get_remappings('/veh2/object_tracking_node') == expected
-
-
-def test_shipped_krc_mrzr_config_leaves_unconfigured_nodes_untouched():
-    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
-    assert node_config.get_remappings('/veh1/control_node') == []
-    assert node_config.get_additional_env('/veh1/control_node') == {}
+    assert node_config.get_remappings('/veh1/inference_node') == expected
+    assert node_config.get_remappings('/veh2/inference_node') == expected
 
 
-def test_shipped_krc_mrzr_config_uses_existing_matlab_environment(monkeypatch):
-    monkeypatch.setenv('MCR_ROOT', '/opt/MATLAB_Runtime/R2025b')
-    monkeypatch.setenv('LD_LIBRARY_PATH', '/existing/one:/existing/two')
-    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
+def test_fixture_nested_selector_section_resolves():
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
+    assert node_config.get_remappings('/veh1/telemetry/reporter_node') == [
+        ('status', '/fleet/status')]
+    assert node_config.get_remappings('/veh1/reporter_node') == []
 
-    assert resolve_env(node_config, '/veh1/uab_perception_node') == {
-        'LD_LIBRARY_PATH': ':'.join([
-            '/opt/MATLAB_Runtime/R2025b/runtime/glnxa64',
-            '/opt/MATLAB_Runtime/R2025b/bin/glnxa64',
-            '/opt/MATLAB_Runtime/R2025b/sys/os/glnxa64',
-            '/opt/MATLAB_Runtime/R2025b/extern/bin/glnxa64',
+
+def test_fixture_leaves_unconfigured_nodes_untouched():
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
+    assert node_config.get_remappings('/veh1/unconfigured_node') == []
+    assert node_config.get_additional_env('/veh1/unconfigured_node') == {}
+
+
+def test_fixture_scalar_additional_env_is_isolated_from_remappings():
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
+    assert resolve_env(node_config, '/veh1/sensor_driver_node') == {
+        'FIXTURE_LOG_LEVEL': 'debug'}
+    # a section holding only remappings contributes no environment
+    assert node_config.get_additional_env('/veh1/costmap_local_node') == {}
+
+
+def test_fixture_env_block_prefers_the_ambient_environment(monkeypatch):
+    monkeypatch.setenv('FIXTURE_RUNTIME_ROOT', '/opt/runtime/v2')
+    monkeypatch.setenv('FIXTURE_RUNTIME_PATH', '/existing/one:/existing/two')
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
+
+    assert resolve_env(node_config, '/veh1/inference_node') == {
+        'FIXTURE_RUNTIME_PATH': ':'.join([
+            *(f'/opt/runtime/v2/{sub}' for sub in FIXTURE_RUNTIME_SUBDIRS),
             '/existing/one:/existing/two',
         ]),
     }
 
 
-def test_shipped_krc_mrzr_config_uses_matlab_environment_defaults(monkeypatch):
-    monkeypatch.delenv('MCR_ROOT', raising=False)
-    monkeypatch.delenv('LD_LIBRARY_PATH', raising=False)
-    node_config = NodeConfigCollection(find_krc_mrzr_node_config())
-    root = '/usr/local/MATLAB/MATLAB_Runtime/R2025b'
+def test_fixture_env_block_falls_back_to_declared_defaults(monkeypatch):
+    monkeypatch.delenv('FIXTURE_RUNTIME_ROOT', raising=False)
+    monkeypatch.delenv('FIXTURE_RUNTIME_PATH', raising=False)
+    node_config = NodeConfigCollection(FIXTURE_CONFIG)
 
-    assert resolve_env(node_config, '/veh1/uab_perception_node') == {
-        'LD_LIBRARY_PATH': ':'.join([
-            f'{root}/runtime/glnxa64',
-            f'{root}/bin/glnxa64',
-            f'{root}/sys/os/glnxa64',
-            f'{root}/extern/bin/glnxa64',
+    assert resolve_env(node_config, '/veh1/inference_node') == {
+        'FIXTURE_RUNTIME_PATH': ':'.join([
+            *(f'/opt/fixture_runtime/{sub}' for sub in FIXTURE_RUNTIME_SUBDIRS),
             '',
         ]),
     }

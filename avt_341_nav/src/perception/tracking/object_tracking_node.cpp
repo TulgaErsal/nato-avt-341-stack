@@ -49,6 +49,7 @@
 */
 
 #include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
+#include <avt_341_nav/object_tracking_params_service.hpp>
 #include <avt_341_nav/node/node_types.h>
 
 #include <algorithm>

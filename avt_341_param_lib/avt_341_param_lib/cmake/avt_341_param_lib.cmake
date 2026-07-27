@@ -27,6 +27,117 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 
+# Codegen batching
+# ----------------
+# Spawning one python interpreter per template yaml is dominated by interpreter
+# start-up and the jinja/yaml imports (~1.4 s each), and under the Visual Studio
+# generator each one is also a separate .vcxproj that MSBuild walks serially.
+# avt_341_generate_cpp_parameters therefore opens a "batch": the per-file macros
+# record their job instead of emitting a custom command, and the batch is
+# flushed into a single command, a single target and a single manifest.
+#
+# The per-file macros stay usable on their own - with no batch open they emit
+# their own custom command exactly as before.
+
+# Jobs are spread round-robin over AVT341_PARAM_CODEGEN_CHUNKS commands rather
+# than collapsed into one. One command would amortise interpreter start-up but
+# put the whole codegen run on the critical path of a parallel build; a handful
+# of chunks keeps them overlapping with each other and with compilation while
+# still paying start-up a few times instead of once per template.
+if(NOT DEFINED AVT341_PARAM_CODEGEN_CHUNKS)
+  set(AVT341_PARAM_CODEGEN_CHUNKS 4 CACHE STRING
+    "Number of parallel parameter codegen commands per package")
+endif()
+
+macro(_avt_341_param_batch_begin)
+  set(AVT341_PARAM_BATCH_ACTIVE TRUE)
+  set(AVT341_PARAM_BATCH_LIBS "")
+  set(AVT341_PARAM_BATCH_COUNT 0)
+  math(EXPR avt341_batch_last "${AVT341_PARAM_CODEGEN_CHUNKS} - 1")
+  foreach(avt341_batch_slot RANGE 0 ${avt341_batch_last})
+    set(AVT341_PARAM_BATCH_JOBS_${avt341_batch_slot} "")
+    set(AVT341_PARAM_BATCH_OUTPUTS_${avt341_batch_slot} "")
+    set(AVT341_PARAM_BATCH_DEPENDS_${avt341_batch_slot} "")
+  endforeach()
+endmacro()
+
+# _avt_341_param_batch_add(<json_object> OUTPUTS <outputs...> DEPENDS <depends...>)
+macro(_avt_341_param_batch_add JOB_JSON)
+  cmake_parse_arguments(avt341_bja "" "" "OUTPUTS;DEPENDS" ${ARGN})
+  math(EXPR avt341_bja_slot
+    "${AVT341_PARAM_BATCH_COUNT} % ${AVT341_PARAM_CODEGEN_CHUNKS}")
+  string(APPEND AVT341_PARAM_BATCH_JOBS_${avt341_bja_slot} "${JOB_JSON}")
+  list(APPEND AVT341_PARAM_BATCH_OUTPUTS_${avt341_bja_slot} ${avt341_bja_OUTPUTS})
+  list(APPEND AVT341_PARAM_BATCH_DEPENDS_${avt341_bja_slot} ${avt341_bja_DEPENDS})
+  math(EXPR AVT341_PARAM_BATCH_COUNT "${AVT341_PARAM_BATCH_COUNT} + 1")
+endmacro()
+
+macro(_avt_341_param_batch_flush)
+  set(AVT341_PARAM_BATCH_ACTIVE FALSE)
+  if(AVT341_PARAM_BATCH_COUNT GREATER 0)
+    # Unique suffix so a package may call avt_341_generate_cpp_parameters more
+    # than once without colliding on target or manifest names.
+    get_property(avt341_batch_id GLOBAL PROPERTY AVT341_PARAM_BATCH_COUNTER)
+    if(NOT avt341_batch_id)
+      set(avt341_batch_id 0)
+      set(avt341_batch_suffix "")
+    else()
+      set(avt341_batch_suffix "_${avt341_batch_id}")
+    endif()
+    math(EXPR avt341_batch_next "${avt341_batch_id} + 1")
+    set_property(GLOBAL PROPERTY AVT341_PARAM_BATCH_COUNTER ${avt341_batch_next})
+
+    set(avt341_batch_targets "")
+    math(EXPR avt341_batch_last "${AVT341_PARAM_CODEGEN_CHUNKS} - 1")
+    foreach(avt341_batch_slot RANGE 0 ${avt341_batch_last})
+      # Fewer templates than chunks leaves trailing slots empty.
+      if(AVT341_PARAM_BATCH_JOBS_${avt341_batch_slot})
+        set(avt341_batch_name
+          "${PROJECT_NAME}_params_generation${avt341_batch_suffix}_${avt341_batch_slot}")
+        set(avt341_batch_manifest
+          "${CMAKE_CURRENT_BINARY_DIR}/avt_341_param_codegen${avt341_batch_suffix}_${avt341_batch_slot}.json")
+        set(avt341_batch_stamp
+          "${CMAKE_CURRENT_BINARY_DIR}/avt_341_param_codegen${avt341_batch_suffix}_${avt341_batch_slot}.stamp")
+
+        # Trailing comma from the accumulator; CMake paths are forward-slashed
+        # so they need no JSON escaping.
+        string(REGEX REPLACE ",$" "" avt341_batch_jobs
+          "${AVT341_PARAM_BATCH_JOBS_${avt341_batch_slot}}")
+        # file(GENERATE), not file(WRITE): the manifest is a DEPENDS of the
+        # codegen command, and colcon reconfigures on every build with the
+        # Visual Studio generator. file(WRITE) would bump the mtime each time
+        # and re-run codegen forever; file(GENERATE) leaves the file alone when
+        # the content matches.
+        file(GENERATE
+          OUTPUT ${avt341_batch_manifest}
+          CONTENT "{\"jobs\":[${avt341_batch_jobs}]}")
+
+        add_custom_command(
+          OUTPUT ${avt341_batch_stamp}
+          BYPRODUCTS ${AVT341_PARAM_BATCH_OUTPUTS_${avt341_batch_slot}}
+          COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_headers
+            ${avt341_batch_manifest}
+          COMMAND ${CMAKE_COMMAND} -E touch ${avt341_batch_stamp}
+          DEPENDS ${AVT341_PARAM_BATCH_DEPENDS_${avt341_batch_slot}} ${avt341_batch_manifest}
+          COMMENT "Generating parameter headers for ${PROJECT_NAME} (group ${avt341_batch_slot})"
+          VERBATIM
+        )
+        add_custom_target(${avt341_batch_name} ALL DEPENDS ${avt341_batch_stamp})
+        list(APPEND avt341_batch_targets ${avt341_batch_name})
+      endif()
+    endforeach()
+
+    # Deferred so the generated libraries never forward-reference the targets.
+    # Each library waits on every group: which group produced which header is an
+    # internal scheduling detail.
+    foreach(avt341_batch_lib IN LISTS AVT341_PARAM_BATCH_LIBS)
+      add_dependencies(${avt341_batch_lib} ${avt341_batch_targets})
+    endforeach()
+  endif()
+  set(AVT341_PARAM_BATCH_LIBS "")
+endmacro()
+
+
 # avt_341_generate_cpp_parameter_file(<base_name> <yaml_file> [<validate_header>] [INCLUDE_SUBFOLDER <sub/folders>])
 #
 # Generates <base_name>_params_dto.hpp and <base_name>_params_service.hpp from
@@ -62,10 +173,9 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
     cmake_path(SET VALIDATE_HEADER ${LIB_INCLUDE_DIR})
     cmake_path(APPEND VALIDATE_HEADER ${VALIDATE_HEADER_FILENAME})
 
-    # Copy the header file into the include directory
+    # Copy the header file into the include directory. The generated service
+    # header includes it by bare filename, which resolves next to itself.
     file(COPY ${IN_VALIDATE_HEADER} DESTINATION ${LIB_INCLUDE_DIR})
-    # necessary so that #include <param_file.hpp> can be used in the local package (deprecated)
-    file(COPY ${IN_VALIDATE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include)
   endif()
 
   # Resolve the yaml file relative to the current source dir (absolute paths are kept)
@@ -83,58 +193,39 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
   file(GLOB avt341_gp_mixin_files CONFIGURE_DEPENDS
     "${avt341_gp_yaml_dir}/mixins/*.yaml" "${avt341_gp_yaml_dir}/mixins/*.yml")
 
-  # Parse the yaml once and generate both headers.
-  set(PARAM_GENERATION_STAMP
-    ${CMAKE_CURRENT_BINARY_DIR}/${BASE_NAME}_params_generation.stamp)
-  add_custom_command(
-    OUTPUT ${PARAM_GENERATION_STAMP}
-    BYPRODUCTS ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
-    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_header
-      ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE} ${YAML_FILE_PATH}
-      ${VALIDATE_HEADER_FILENAME}
-      --mixin-include-prefix ${LIB_INCLUDE_SUBDIR}
-    COMMAND ${CMAKE_COMMAND} -E touch ${PARAM_GENERATION_STAMP}
-    DEPENDS ${YAML_FILE_PATH} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
-    COMMENT "Generating ${DTO_LIB_NAME}.hpp and ${SERVICE_LIB_NAME}.hpp"
-    VERBATIM
-  )
-  add_custom_target(${BASE_NAME}_params_generation ALL
-    DEPENDS ${PARAM_GENERATION_STAMP})
-
-  # Preserve the build-local short include path for both new headers.
-  set(LOCAL_DTO_HEADER_FILE ${CMAKE_CURRENT_BINARY_DIR}/include/${DTO_LIB_NAME}.hpp)
-  set(LOCAL_SERVICE_HEADER_FILE
-    ${CMAKE_CURRENT_BINARY_DIR}/include/${SERVICE_LIB_NAME}.hpp)
-  foreach(avt341_gp_header_kind IN ITEMS DTO SERVICE)
-    set(avt341_gp_lib_name ${${avt341_gp_header_kind}_LIB_NAME})
-    set(avt341_gp_header_file ${${avt341_gp_header_kind}_HEADER_FILE})
-    set(avt341_gp_local_header_file
-      ${LOCAL_${avt341_gp_header_kind}_HEADER_FILE})
-    set(avt341_gp_pragma_file
-      ${CMAKE_CURRENT_BINARY_DIR}/${avt341_gp_lib_name}_pragma_warning)
-    file(WRITE ${avt341_gp_pragma_file}
-      "#pragma message(\"#include \\\"${avt341_gp_lib_name}.hpp\\\" is deprecated. Use #include <${LIB_INCLUDE_SUBDIR}/${avt341_gp_lib_name}.hpp> instead.\")\n")
+  # Parse the yaml once and generate both headers. Inside a batch this only
+  # records the job; the batch emits one command for every template at once.
+  if(AVT341_PARAM_BATCH_ACTIVE)
+    _avt_341_param_batch_add(
+      "{\"kind\":\"template\",\"dto\":\"${DTO_HEADER_FILE}\",\"service\":\"${SERVICE_HEADER_FILE}\",\"yaml\":\"${YAML_FILE_PATH}\",\"validate_header\":\"${VALIDATE_HEADER_FILENAME}\",\"mixin_include_prefix\":\"${LIB_INCLUDE_SUBDIR}\"},"
+      OUTPUTS ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
+      DEPENDS ${YAML_FILE_PATH} ${avt341_gp_mixin_files} ${VALIDATE_HEADER})
+  else()
+    set(PARAM_GENERATION_STAMP
+      ${CMAKE_CURRENT_BINARY_DIR}/${BASE_NAME}_params_generation.stamp)
     add_custom_command(
-      OUTPUT ${avt341_gp_local_header_file}
-      COMMAND ${CMAKE_COMMAND} -E cat ${avt341_gp_pragma_file}
-        ${avt341_gp_header_file} > ${avt341_gp_local_header_file}
-      DEPENDS ${avt341_gp_header_file}
-      COMMENT "Creating deprecated header file ${avt341_gp_local_header_file}"
+      OUTPUT ${PARAM_GENERATION_STAMP}
+      BYPRODUCTS ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
+      COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_header
+        ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE} ${YAML_FILE_PATH}
+        ${VALIDATE_HEADER_FILENAME}
+        --mixin-include-prefix ${LIB_INCLUDE_SUBDIR}
+      COMMAND ${CMAKE_COMMAND} -E touch ${PARAM_GENERATION_STAMP}
+      DEPENDS ${YAML_FILE_PATH} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
+      COMMENT "Generating ${DTO_LIB_NAME}.hpp and ${SERVICE_LIB_NAME}.hpp"
       VERBATIM
     )
-  endforeach()
+    add_custom_target(${BASE_NAME}_params_generation ALL
+      DEPENDS ${PARAM_GENERATION_STAMP})
+  endif()
 
   # The DTO target supplies only generated standard-library data types.
-  add_library(${DTO_LIB_NAME} INTERFACE
-    ${DTO_HEADER_FILE}
-    ${LOCAL_DTO_HEADER_FILE}
-  )
+  add_library(${DTO_LIB_NAME} INTERFACE ${DTO_HEADER_FILE})
   target_include_directories(${DTO_LIB_NAME} INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
   )
   target_compile_features(${DTO_LIB_NAME} INTERFACE cxx_std_17)
-  add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
   # Shared mixin DTO headers referenced by the generated dto header
   # (conservative: link all mixin DTO libraries; they are header-only)
   if(AVT341_MIXIN_DTO_LIBS)
@@ -145,20 +236,24 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
   add_library(${SERVICE_LIB_NAME} INTERFACE
     ${SERVICE_HEADER_FILE}
     ${VALIDATE_HEADER}
-    ${LOCAL_SERVICE_HEADER_FILE}
   )
   target_include_directories(${SERVICE_LIB_NAME} INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
   )
-  add_dependencies(${SERVICE_LIB_NAME} ${BASE_NAME}_params_generation)
   target_link_libraries(${SERVICE_LIB_NAME} INTERFACE
     ${DTO_LIB_NAME}
     fmt::fmt
     rclcpp::rclcpp
-    rclcpp_lifecycle::rclcpp_lifecycle
     avt_341_param_lib::avt_341_param_lib
   )
+
+  if(AVT341_PARAM_BATCH_ACTIVE)
+    list(APPEND AVT341_PARAM_BATCH_LIBS ${DTO_LIB_NAME} ${SERVICE_LIB_NAME})
+  else()
+    add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+    add_dependencies(${SERVICE_LIB_NAME} ${BASE_NAME}_params_generation)
+  endif()
   install(
     FILES ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
     DESTINATION include/${LIB_INCLUDE_SUBDIR}
@@ -170,7 +265,7 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
     )
   endif()
   ament_export_dependencies(
-    fmt rclcpp rclcpp_lifecycle avt_341_param_lib
+    fmt rclcpp avt_341_param_lib
   )
 endmacro()
 
@@ -242,16 +337,23 @@ macro(avt_341_generate_cpp_mixin_file BASE_NAME YAML_FILE)
   set(DTO_LIB_NAME "${BASE_NAME}_params_dto")
   set(DTO_HEADER_FILE ${LIB_INCLUDE_DIR}/${DTO_LIB_NAME}.hpp)
 
-  add_custom_command(
-    OUTPUT ${DTO_HEADER_FILE}
-    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_mixin_header
-      ${DTO_HEADER_FILE} ${YAML_FILE_PATH}
-    DEPENDS ${YAML_FILE_PATH}
-    COMMENT "Generating mixin DTO ${DTO_LIB_NAME}.hpp"
-    VERBATIM
-  )
-  add_custom_target(${BASE_NAME}_params_generation ALL
-    DEPENDS ${DTO_HEADER_FILE})
+  if(AVT341_PARAM_BATCH_ACTIVE)
+    _avt_341_param_batch_add(
+      "{\"kind\":\"mixin\",\"dto\":\"${DTO_HEADER_FILE}\",\"yaml\":\"${YAML_FILE_PATH}\"},"
+      OUTPUTS ${DTO_HEADER_FILE}
+      DEPENDS ${YAML_FILE_PATH})
+  else()
+    add_custom_command(
+      OUTPUT ${DTO_HEADER_FILE}
+      COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_mixin_header
+        ${DTO_HEADER_FILE} ${YAML_FILE_PATH}
+      DEPENDS ${YAML_FILE_PATH}
+      COMMENT "Generating mixin DTO ${DTO_LIB_NAME}.hpp"
+      VERBATIM
+    )
+    add_custom_target(${BASE_NAME}_params_generation ALL
+      DEPENDS ${DTO_HEADER_FILE})
+  endif()
 
   add_library(${DTO_LIB_NAME} INTERFACE ${DTO_HEADER_FILE})
   target_include_directories(${DTO_LIB_NAME} INTERFACE
@@ -259,7 +361,11 @@ macro(avt_341_generate_cpp_mixin_file BASE_NAME YAML_FILE)
     $<INSTALL_INTERFACE:include>
   )
   target_compile_features(${DTO_LIB_NAME} INTERFACE cxx_std_17)
-  add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+  if(AVT341_PARAM_BATCH_ACTIVE)
+    list(APPEND AVT341_PARAM_BATCH_LIBS ${DTO_LIB_NAME})
+  else()
+    add_dependencies(${DTO_LIB_NAME} ${BASE_NAME}_params_generation)
+  endif()
   install(
     FILES ${DTO_HEADER_FILE}
     DESTINATION include/${LIB_INCLUDE_SUBDIR}
@@ -283,7 +389,11 @@ endmacro()
 # generate a shared type-only DTO header (see avt_341_generate_cpp_mixin_file)
 # before the node templates are processed; every node template DTO library
 # links the mixin DTO libraries.
+# Every matched template is generated by ONE python process driven by a single
+# custom target, rather than one interpreter and one target per yaml.
 macro(avt_341_generate_cpp_parameters GLOB_PATTERN)
+  _avt_341_param_batch_begin()
+
   # Generate shared mixin DTO fragments first so the template DTO libraries
   # can link them.
   set(avt341_gpm_mixin_dir ${GLOB_PATTERN})
@@ -302,6 +412,8 @@ macro(avt_341_generate_cpp_parameters GLOB_PATTERN)
 
   _avt_341_generate_parameters_glob(
     avt_341_generate_cpp_parameter_file "${GLOB_PATTERN}" "" ${ARGN})
+
+  _avt_341_param_batch_flush()
 endmacro()
 
 

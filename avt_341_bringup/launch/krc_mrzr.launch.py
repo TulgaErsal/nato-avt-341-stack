@@ -4,15 +4,14 @@ from datetime import datetime
 import launch
 import launch.conditions
 from launch.conditions import IfCondition, UnlessCondition
-from launch.condition import Condition
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution
-from launch.substitution import Substitution
-from launch.some_substitutions_type import SomeSubstitutionsType
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess, GroupAction
 from launch_ros.actions import Node
+
+from avt_341_param_lib.runtime.launch_expressions import TernarySubstitution
 
 
 # Global Constants
@@ -21,21 +20,6 @@ mrzr_tools_dir = get_package_share_directory('mrzr_tools')
 
 vehicle_namespaces = ['mrzr','mrzr2','feda']
 
-class TernarySubstitution(Substitution):
-
-    def __init__(self, true_val: SomeSubstitutionsType, false_val: SomeSubstitutionsType, condition: Condition):
-        self.__true_val = true_val
-        self.__false_val = false_val
-        self.__condition = condition
-
-    def describe(self):
-        return 'TernarySubstitution(%s %s %s)' % (self.__true_val.describe(), self.__false_val.describe(), self.__condition.describe())
-
-    def perform(self, context: launch.LaunchContext):
-        if self.__condition.evaluate(context):
-            return self.__true_val.perform(context)
-        else:
-            return self.__false_val.perform(context)
 
 # tf publishers
 def tf2_nodes(context):

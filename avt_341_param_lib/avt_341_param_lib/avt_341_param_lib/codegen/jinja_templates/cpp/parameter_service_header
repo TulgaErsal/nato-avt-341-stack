@@ -8,22 +8,20 @@
 #include <functional>
 #include <limits>
 #include <mutex>
-#include <rclcpp/node.hpp>
 
-// Win32 headers define ERROR as a macro, which collides with
-// LifecycleNodeInterface::CallbackReturn::ERROR.
-#ifdef ERROR
-#pragma push_macro("ERROR")
-#undef ERROR
-#define AVT_341_PARAM_LIB_RESTORE_ERROR_MACRO
-#endif
-#include <rclcpp_lifecycle/lifecycle_node.hpp>
-#ifdef AVT_341_PARAM_LIB_RESTORE_ERROR_MACRO
-#pragma pop_macro("ERROR")
-#undef AVT_341_PARAM_LIB_RESTORE_ERROR_MACRO
-#endif
+// Narrow rclcpp includes on purpose: ParamsListener only needs the parameter
+// interfaces, a clock and a logger. rclcpp/node.hpp and
+// rclcpp_lifecycle/lifecycle_node.hpp used to be included here but no symbol
+// from either was ever referenced, and each one costs roughly as much to parse
+// as everything else in this header combined.
+#include <rclcpp/clock.hpp>
+#include <rclcpp/exceptions/exceptions.hpp>
+#include <rclcpp/node_interfaces/node_parameters_interface.hpp>
+#include <rclcpp/parameter.hpp>
+#include <rclcpp/parameter_value.hpp>
 
 #include <rclcpp/logger.hpp>
+#include <rclcpp/logging.hpp>
 #include <set>
 #include <sstream>
 #include <string>

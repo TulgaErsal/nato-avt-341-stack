@@ -33,6 +33,7 @@ import sys
 import os
 
 from avt_341_param_lib.codegen.parse_yaml import GenerateCode
+from avt_341_param_lib.common.output_file import write_if_changed
 
 
 def run(dto_output_file, service_output_file, yaml_file, validate_header='',
@@ -47,10 +48,11 @@ def run(dto_output_file, service_output_file, yaml_file, validate_header='',
     gen_param_struct.parse(yaml_file, validate_header)
 
     dto_header_include = os.path.basename(dto_output_file)
-    with open(dto_output_file, 'w') as f:
-        f.write(gen_param_struct.render_cpp_dto())
-    with open(service_output_file, 'w') as f:
-        f.write(gen_param_struct.render_cpp_service(dto_header_include))
+    # write_if_changed, not a plain write: these headers are compile inputs and
+    # touching one with identical content recompiles every dependent TU.
+    write_if_changed(dto_output_file, gen_param_struct.render_cpp_dto())
+    write_if_changed(service_output_file,
+                     gen_param_struct.render_cpp_service(dto_header_include))
 
 
 def parse_args():

@@ -42,6 +42,7 @@
 */
 
 #include <avt_341_nav/perception/detection/object_detector/object_detection_node.hpp>
+#include <avt_341_nav/object_detector_params_service.hpp>
 
 namespace avt_341_nav {
 namespace perception {

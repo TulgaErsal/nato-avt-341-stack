@@ -12,6 +12,7 @@ import os
 import sys
 
 from avt_341_param_lib.codegen.parse_yaml import GenerateCode
+from avt_341_param_lib.common.output_file import write_if_changed
 
 
 def run(dto_output_file, yaml_file):
@@ -22,8 +23,7 @@ def run(dto_output_file, yaml_file):
 
     gen_param_struct.parse_mixin(yaml_file)
 
-    with open(dto_output_file, 'w') as f:
-        f.write(gen_param_struct.render_cpp_mixin_dto())
+    write_if_changed(dto_output_file, gen_param_struct.render_cpp_mixin_dto())
 
 
 def parse_args():

@@ -73,7 +73,11 @@
 #include <avt_341_nav/perception/detection/common/hypothesis.hpp>
 #include <avt_341_nav/perception/detection/common/object_visualizer.hpp>
 #include <avt_341_nav/perception/detection/object_detector/object_detector.hpp>
-#include <avt_341_nav/object_detector_params_service.hpp>
+#include <avt_341_nav/object_detector_params_dto.hpp>
+
+namespace avt_341_nav::params::object_detector {
+class ParamsListener;
+}  // namespace avt_341_nav::params::object_detector
 
 namespace avt_341_nav {
 namespace perception {

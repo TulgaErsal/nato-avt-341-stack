@@ -98,10 +98,13 @@
 #include <avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
 #include <avt_341_nav/perception/tracking/object_tracker.hpp>
 #include <avt_341_nav/perception/tracking/tracker_params.hpp>
-#include <avt_341_nav/object_tracking_params_service.hpp>
 #include <avt_341_msgs/msg/mission_module_status.hpp>
 #include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
+
+namespace avt_341_nav::params::object_tracking {
+class ParamsListener;
+}
 
 namespace avt_341_nav {
 namespace perception {

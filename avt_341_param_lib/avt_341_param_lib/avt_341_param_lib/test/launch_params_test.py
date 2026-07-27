@@ -21,37 +21,14 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_A = os.path.join(TEST_DIR, 'launch_template_a.yaml')
 TEMPLATE_B = os.path.join(TEST_DIR, 'launch_template_b.yaml')
 
+# Multi-level template fixture (with mixins/fixture_geometry_mixin.yaml beside
+# it). Owned by these tests -- see the header of the yaml file. A real node
+# template must not be substituted here: those change whenever a node gains or
+# renames a parameter, which would make these expectations churn.
+TEMPLATE_NESTED = os.path.join(TEST_DIR, 'launch_template_nested.yaml')
+MIXIN_NESTED = os.path.join(TEST_DIR, 'mixins', 'fixture_geometry_mixin.yaml')
+
 VEHICLES = ['veh1', 'veh2']
-
-
-def find_object_tracking_template() -> str:
-    for parent in Path(__file__).resolve().parents:
-        candidate = (
-            parent / 'avt_341' / 'parameters' / 'templates' /
-            'object_tracking.yaml')
-        if candidate.is_file():
-            return str(candidate)
-    raise RuntimeError('Could not locate avt_341 object_tracking.yaml')
-
-
-def find_mission_manager_template() -> str:
-    for parent in Path(__file__).resolve().parents:
-        candidate = (
-            parent / 'avt_341' / 'parameters' / 'templates' /
-            'mission_manager.yaml')
-        if candidate.is_file():
-            return str(candidate)
-    raise RuntimeError('Could not locate avt_341 mission_manager.yaml')
-
-
-def find_perception_template() -> str:
-    for parent in Path(__file__).resolve().parents:
-        candidate = (
-            parent / 'avt_341' / 'parameters' / 'templates' /
-            'perception.yaml')
-        if candidate.is_file():
-            return str(candidate)
-    raise RuntimeError('Could not locate avt_341 perception.yaml')
 
 
 def make_collection() -> ParameterCollection:
@@ -110,157 +87,170 @@ def test_multi_template_duplicate_parameter_raises():
         })
 
 
-def test_object_tracking_metadata_and_generated_nested_structs(tmp_path):
-    template = find_object_tracking_template()
-    specs = load_template_specs(template)
+# ---------------------------------------------------------------------------
+# Whole-template behaviour against the checked-in nested fixture
+#
+# The tests above cover one feature per one-off template. The tests below run a
+# single complete template (several nesting levels, multi-word group names, a
+# mixin include and a spread of scalar types) through spec loading, launch
+# argument resolution and C++ generation, to check those features compose.
+# ---------------------------------------------------------------------------
 
-    assert specs['tracking.target_timeout'].param_type == 'double'
-    assert (
-        specs['target_selection.formation_vehicle_ids'].param_type ==
-        'string_array')
-    assert 'tracker_timeout' not in specs
-    assert 'formation_vehicle_ids' not in specs
+# Every parameter the fixture declares: dotted name -> (type, default value).
+# Names ending in a group that came from mixins/fixture_geometry_mixin.yaml are
+# marked; they must appear exactly as if declared inline.
+NESTED_EXPECTED_SPECS = {
+    'update_rate':                            ('double', 10.0),
+    'tracking.target_timeout':                ('double', 1.5),
+    'tracking.max_targets':                   ('int', 8),
+    'target_selection.formation_vehicle_ids': ('string_array', []),
+    'target_selection.enabled':               ('bool', True),
+    'fsc.type':                               ('string', 'none'),
+    'fsc.oof.threshold':                      ('double', 0.75),
+    'costmap.thresholds.thresh':              ('float', 0.5),
+    'costmap.terrain_rms.hfov':               ('float', 1.57),
+    'costmap.frame_id':                       ('string', 'odom'),   # from mixin
+    'costmap.geometry.res':                   ('float', 0.25),      # from mixin
+    'costmap.geometry.width':                 ('float', 100.0),     # from mixin
+}
 
-    dto_output = tmp_path / 'object_tracking_params_dto.hpp'
-    service_output = tmp_path / 'object_tracking_params_service.hpp'
-    run_cpp(str(dto_output), str(service_output), template)
+
+def test_nested_template_specs_use_dotted_names_only():
+    specs = load_template_specs(TEMPLATE_NESTED)
+
+    # every parameter is addressed by its full dotted path, with the declared
+    # type and default carried through
+    assert set(specs) == set(NESTED_EXPECTED_SPECS)
+    for name, (param_type, default) in NESTED_EXPECTED_SPECS.items():
+        assert specs[name].param_type == param_type, name
+        assert specs[name].default_value == default, name
+
+    # ...and no bare leaf name leaks in as an alias. `type` also confirms that a
+    # parameter literally named `type` is treated as a parameter rather than as
+    # the type declaration of its enclosing group.
+    for bare in ('target_timeout', 'max_targets', 'formation_vehicle_ids',
+                 'enabled', 'threshold', 'res', 'width', 'thresh', 'hfov',
+                 'frame_id', 'type', 'oof', 'geometry'):
+        assert bare not in specs
+
+
+def test_nested_template_mixin_content_is_spliced_into_the_group():
+    specs = load_template_specs(TEMPLATE_NESTED)
+
+    # a mixin's root-level group mounts under the including group...
+    assert specs['costmap.geometry.res'].param_type == 'float'
+    assert specs['costmap.geometry.res'].default_value == 0.25
+    assert specs['costmap.geometry.width'].default_value == 100.0
+    # ...and a mixin's root-level leaf splices in as a plain scalar
+    assert specs['costmap.frame_id'].param_type == 'string'
+    assert specs['costmap.frame_id'].default_value == 'odom'
+    # the mixin mounts under `costmap`, not at the template root
+    assert 'geometry.res' not in specs
+    assert 'frame_id' not in specs
+
+
+def test_nested_template_generates_a_struct_per_group(tmp_path):
+    dto_output = tmp_path / 'nested_params_dto.hpp'
+    service_output = tmp_path / 'nested_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), TEMPLATE_NESTED)
     dto = dto_output.read_text()
     service = service_output.read_text()
+
     assert 'struct Tracking' in dto
+    assert 'struct Costmap' in dto
+    assert 'struct Thresholds' in dto
+    # multi-word group names become PascalCase
     assert 'struct TargetSelection' in dto
-    assert '"tracking.target_timeout"' in service
-    assert '"target_selection.formation_vehicle_ids"' in service
+    assert 'struct TerrainRms' in dto
+    # third-level group nests inside its parent's struct
+    assert 'struct Fsc' in dto
+    assert 'struct Oof' in dto
+
+    # the generated field keeps the yaml type
+    assert 'std::vector<std::string> formation_vehicle_ids = {};' in dto
+    assert 'std::string type = "none";' in dto
+
+    # ROS declares the parameters under their dotted names
+    for declared in ('"update_rate"', '"tracking.target_timeout"',
+                     '"target_selection.formation_vehicle_ids"',
+                     '"fsc.type"', '"fsc.oof.threshold"',
+                     '"costmap.geometry.res"', '"costmap.terrain_rms.hfov"'):
+        assert declared in service
 
 
-def test_object_tracking_launch_overrides_use_dotted_names():
+def test_nested_template_dto_references_shared_mixin_structs(tmp_path):
+    dto_output = tmp_path / 'nested_params_dto.hpp'
+    service_output = tmp_path / 'nested_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), TEMPLATE_NESTED)
+    dto = dto_output.read_text()
+
+    # the mixin group is referenced through the shared DTO rather than being
+    # re-defined inline. Only the Params tree is checked: StackParams is a plain
+    # value-copy mirror and always inlines its sub-structs (parse_yaml.py adds
+    # the ExternalStructMember to the Params tree only).
+    params_dto = dto.split('struct StackParams')[0]
+    assert '#include "fixture_geometry_mixin_params_dto.hpp"' in dto
+    assert 'fixture::params::shared::Geometry geometry;' in params_dto
+    assert 'struct Geometry' not in params_dto
+    # the mixin's root-level leaf is an ordinary field of the including struct
+    assert 'std::string frame_id = "odom";' in params_dto
+
+
+def test_nested_template_mixin_fragment_header(tmp_path):
+    output = tmp_path / 'fixture_geometry_mixin_params_dto.hpp'
+    run_mixin_cpp(str(output), MIXIN_NESTED)
+    header = output.read_text()
+
+    assert 'namespace fixture::params::shared' in header
+    assert 'struct Geometry' in header
+    # only groups become shared structs; root-level leaves are not emitted here
+    assert 'frame_id' not in header
+
+
+def test_nested_template_launch_overrides_use_dotted_names():
     collection = ParameterCollection.from_node_templates({
-        'object_tracking_node': find_object_tracking_template(),
+        'nested_node': TEMPLATE_NESTED,
     })
     overrides = collection.resolve(OrderedDict([
-        ('object_tracking_node/tracking.target_timeout', '2.5'),
-        ('object_tracking_node/target_selection.formation_vehicle_ids',
-         '[veh1, veh2]'),
+        ('nested_node/tracking.target_timeout', '2.5'),
+        ('nested_node/target_selection.formation_vehicle_ids', '[veh1, veh2]'),
+        ('nested_node/target_selection.enabled', 'false'),
+        ('nested_node/fsc.type', 'strict'),
+        ('nested_node/fsc.oof.threshold', '0.25'),
+        ('nested_node/costmap.geometry.res', '0.5'),
+        ('nested_node/costmap.terrain_rms.hfov', '1.0'),
     ]), VEHICLES)
 
     expected = {
         'tracking.target_timeout': 2.5,
         'target_selection.formation_vehicle_ids': VEHICLES,
-    }
-    assert overrides.for_node('/veh1/object_tracking_node') == expected
-    assert overrides.for_node('/veh2/object_tracking_node') == expected
-
-    with pytest.raises(RuntimeError, match='tracker_timeout'):
-        collection.resolve(OrderedDict([
-            ('object_tracking_node/tracker_timeout', '2.5'),
-        ]), VEHICLES)
-
-
-def test_mission_manager_metadata_and_generated_nested_structs(tmp_path):
-    template = find_mission_manager_template()
-    specs = load_template_specs(template)
-
-    assert specs['formation.global_path_points_dist'].param_type == 'double'
-    assert specs['fsc.oof.threshold'].param_type == 'double'
-    assert specs['toi.same_object_distance_threshold'].param_type == 'double'
-    assert 'global_path_point_dist' not in specs
-    assert 'fsc_type' not in specs
-    assert 'same_object_distance_threshold' not in specs
-
-    dto_output = tmp_path / 'mission_manager_params_dto.hpp'
-    service_output = tmp_path / 'mission_manager_params_service.hpp'
-    run_cpp(str(dto_output), str(service_output), template)
-    dto = dto_output.read_text()
-    service = service_output.read_text()
-    assert 'struct Formation' in dto
-    assert 'struct Fsc' in dto
-    assert 'struct Oof' in dto
-    assert 'struct Toi' in dto
-    assert '"formation.global_path_points_dist"' in service
-    assert '"fsc.oof.threshold"' in service
-    assert '"toi.same_object_distance_threshold"' in service
-
-
-def test_mission_manager_launch_overrides_use_dotted_names():
-    collection = ParameterCollection.from_node_templates({
-        'mission_manager_node': find_mission_manager_template(),
-    })
-    overrides = collection.resolve(OrderedDict([
-        ('mission_manager_node/formation.use_breadcrumbs', 'true'),
-        ('mission_manager_node/fsc.type', 'none'),
-        ('mission_manager_node/toi.same_object_distance_threshold', '2.5'),
-    ]), VEHICLES)
-
-    expected = {
-        'formation.use_breadcrumbs': True,
-        'fsc.type': 'none',
-        'toi.same_object_distance_threshold': 2.5,
-    }
-    assert overrides.for_node('/veh1/mission_manager_node') == expected
-    assert overrides.for_node('/veh2/mission_manager_node') == expected
-
-    with pytest.raises(RuntimeError, match='fsc_type'):
-        collection.resolve(OrderedDict([
-            ('mission_manager_node/fsc_type', 'none'),
-        ]), VEHICLES)
-
-
-def test_perception_metadata_and_generated_nested_structs(tmp_path):
-    template = find_perception_template()
-    specs = load_template_specs(template)
-
-    assert specs['costmap.geometry.res'].param_type == 'float'
-    assert specs['costmap.publish.method'].param_type == 'string'
-    assert specs['costmap.publish.max_grid_width'].param_type == 'double'
-    assert specs['costmap.thresholds.thresh'].param_type == 'float'
-    assert specs['costmap.dilation.x'].param_type == 'float'
-    assert specs['costmap.terrain_rms.hfov'].param_type == 'float'
-    assert specs['clear_method.visualization_range'].param_type == 'float'
-    assert 'grid_res' not in specs
-    assert 'slope_threshold' not in specs
-    assert 'rms_calc_horizontal_fov_radians' not in specs
-
-    dto_output = tmp_path / 'perception_params_dto.hpp'
-    service_output = tmp_path / 'perception_params_service.hpp'
-    run_cpp(str(dto_output), str(service_output), template)
-    dto = dto_output.read_text()
-    service = service_output.read_text()
-
-    # geometry and publish reference the shared mixin DTO structs
-    assert '#include "costmap_geometry_mixin_params_dto.hpp"' in dto
-    assert '#include "costmap_publish_mixin_params_dto.hpp"' in dto
-    assert 'avt_341::params::core::Geometry geometry;' in dto
-    assert 'avt_341::params::core::Publish publish;' in dto
-    assert 'struct Thresholds' in dto
-    assert 'struct Dilation' in dto
-    assert 'struct TerrainRms' in dto
-    assert '"costmap.geometry.res"' in service
-    assert '"costmap.publish.method"' in service
-    assert '"costmap.thresholds.thresh"' in service
-    assert '"costmap.terrain_rms.hfov"' in service
-
-
-def test_perception_launch_overrides_use_dotted_names():
-    collection = ParameterCollection.from_node_templates({
-        'perception_node': find_perception_template(),
-    })
-    overrides = collection.resolve(OrderedDict([
-        ('perception_node/costmap.geometry.res', '0.5'),
-        ('perception_node/costmap.dilation.x', '1.0'),
-        ('perception_node/point_cloud_layer.topic', '/points'),
-    ]), VEHICLES)
-
-    expected = {
+        'target_selection.enabled': False,
+        'fsc.type': 'strict',
+        'fsc.oof.threshold': 0.25,
         'costmap.geometry.res': 0.5,
-        'costmap.dilation.x': 1.0,
-        'point_cloud_layer.topic': '/points',
+        'costmap.terrain_rms.hfov': 1.0,
     }
-    assert overrides.for_node('/veh1/perception_node') == expected
-    assert overrides.for_node('/veh2/perception_node') == expected
+    assert overrides.for_node('/veh1/nested_node') == expected
+    assert overrides.for_node('/veh2/nested_node') == expected
 
-    with pytest.raises(RuntimeError, match='grid_res'):
-        collection.resolve(OrderedDict([
-            ('perception_node/grid_res', '0.5'),
-        ]), VEHICLES)
+
+@pytest.mark.parametrize(
+    'bad_name',
+    [
+        'target_timeout',          # bare leaf of a nested group
+        'threshold',               # bare leaf of a third-level group
+        'tracking_target_timeout',  # underscore instead of dot
+        'tracking.missing',        # unknown leaf in a known group
+        'missing.target_timeout',  # known leaf under an unknown group
+    ],
+)
+def test_nested_template_rejects_names_that_are_not_declared(bad_name):
+    collection = ParameterCollection.from_node_templates({
+        'nested_node': TEMPLATE_NESTED,
+    })
+    with pytest.raises(RuntimeError, match=bad_name.split('.')[-1]):
+        collection.resolve(
+            OrderedDict([(f'nested_node/{bad_name}', '1.0')]), VEHICLES)
 
 
 MIXIN_TEXT = """
