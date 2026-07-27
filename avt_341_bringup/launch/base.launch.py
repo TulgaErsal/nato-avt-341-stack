@@ -14,8 +14,11 @@ from avt_341_param_lib.launch_params import (
 from avt_341_param_lib.launch_node_config import NodeConfigCollection
 from avt_341_param_lib.parse_runtime_yaml import resolve_params_files
 
-SHARE_DIR = get_package_share_directory('avt_341').replace('\\', '/')
-TEMPLATES_DIR = os.path.join(SHARE_DIR, 'parameters', 'templates')
+# Parameter templates ship with the avt_341 source package; the deployment
+# assets (urdf, rviz, bagging configuration) ship with avt_341_bringup.
+AVT_341_DIR = get_package_share_directory('avt_341').replace('\\', '/')
+BRINGUP_DIR = get_package_share_directory('avt_341_bringup').replace('\\', '/')
+TEMPLATES_DIR = os.path.join(AVT_341_DIR, 'parameters')
 
 
 def _templates(*names):
@@ -85,7 +88,7 @@ NODES = {
     'avt_341_global_path_node':         NodeSpec('avt_341_global_path_node',             _templates('global_planner')),
 
     # Local planners
-    'local_planner_node':               NodeSpec('avt_341_local_planner_node',           _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
+    'rcc_planner_node':                 NodeSpec('avt_341_rcc_planner_node',             _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
     'local_dwa_planner_node':           NodeSpec('avt_341_dwa_planner_node',             _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
     'local_pf_planner_node':            NodeSpec('avt_341_pf_planner_node',              _templates('pf_local_planner'),  condition=is_local_planner('pf')),
     'mpc_planner_node':                 NodeSpec('avt_341_mpc_planner_node',             _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
@@ -210,8 +213,8 @@ def _spawn_vehicles(context, *args, **kwargs):
     if _is_true(LaunchConfiguration('enable_logging').perform(context)):
         actions.append(ExecuteProcess(
             cmd=[
-                'ros2', 'run', 'avt_341', 'vehicle_logging.py',
-                f'{SHARE_DIR}/parameters/bag_config/rw_bag_config.yaml',
+                'ros2', 'run', 'avt_341_bringup', 'vehicle_logging.py',
+                f'{BRINGUP_DIR}/bagging/config/rw_bag_config.yaml',
                 LaunchConfiguration('logging_path').perform(context),
                 '--bag_format', 'mcap',
             ],
@@ -227,7 +230,7 @@ def generate_launch_description():
         DeclareLaunchArgument('vehicle_ids',                                                                                      description='List of all vehicle ids in formation.'),
         DeclareLaunchArgument('spawn_filter_vehicle_ids',    default_value='[]',                                                  description='Subset of vehicle_ids to actually create nodes for. If empty, spawns all vehicles in vehicle_ids'),
         DeclareLaunchArgument('manual_control_vehicles',     default_value='[]',                                                  description='List of vehicle ids under manual human control.'),
-        DeclareLaunchArgument('robot_description_files',     default_value=f"['{SHARE_DIR}/config/MRZR.urdf']",                   description='List of URDF files, one per vehicle (first entry reused when fewer files than vehicles are given)'),
+        DeclareLaunchArgument('robot_description_files',     default_value=f"['{BRINGUP_DIR}/urdf/MRZR.urdf']",                   description='List of URDF files, one per vehicle (first entry reused when fewer files than vehicles are given)'),
 
         # Parameter files
         DeclareLaunchArgument('ros_param_files',             default_value='[]',                                                  description='Parameter files used to override default ROS arguments'),
@@ -249,7 +252,7 @@ def generate_launch_description():
 
         # Logging and visualization
         DeclareLaunchArgument('auto_launch_rviz',            default_value='True',                                                description='Automatically launch rviz display window'),
-        DeclareLaunchArgument('rviz_config',                 default_value=f'{SHARE_DIR}/rviz/avt_341.rviz',                 description='Single vehicle rviz config file'),
+        DeclareLaunchArgument('rviz_config',                 default_value=f'{BRINGUP_DIR}/rviz/avt_341.rviz',                    description='Single vehicle rviz config file'),
         DeclareLaunchArgument('enable_logging',              default_value='False',                                               description='Enable standardized vehicle logging for V&V efforts'),
         DeclareLaunchArgument('logging_path',                default_value=os.path.join(os.path.expanduser('~'), 'avt_341_data'), description='Save path for vehicle logging'),
 

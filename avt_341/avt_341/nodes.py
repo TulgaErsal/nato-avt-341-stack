@@ -79,7 +79,7 @@ class YoloGym(AvtNode):
     def _get_model(self: YoloGym, model: str) -> Path:
 
         return Path(get_package_share_directory('avt_341')) / Path(
-            f"data/detection/models/{model}.pt")
+            f"ml_weights/detection/models/{model}.pt")
 
     def _oneshot_timer_callback(self: YoloGym) -> None:
 

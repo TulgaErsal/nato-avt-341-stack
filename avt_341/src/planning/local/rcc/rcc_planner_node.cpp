@@ -1,5 +1,5 @@
 /**
- * \file avt_341_planner_node.cpp
+ * \file rcc_planner_node.cpp
  * Plan a local trajectory using a global path.
  * 
  * \author Chris Goodin

@@ -49,7 +49,10 @@
 #include <opencv2/opencv.hpp>
 #include <torch/script.h>
 
+// get_package_prefix.hpp declares PackageNotFoundError, thrown by
+// get_package_share_directory().
 #include <ament_index_cpp/get_package_prefix.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 #ifdef GTE_ROS_JAZZY
 #include <cv_bridge/cv_bridge.hpp>
@@ -131,8 +134,8 @@ class ObjectDetectorNode : public rclcpp::Node {
 
     // ROS package management
     // ----------------------
-    /** @brief Prefix of the node package. */
-    std::string package_prefix_;
+    /** @brief Share directory of the package deploying the detection models. */
+    std::string model_package_share_dir_;
     // ----------------------
 
     // Interfaces for vision_msgs

@@ -13,18 +13,18 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    avt_341_package_dir = get_package_share_directory('avt_341')
-    urdf = os.path.join(avt_341_package_dir, 'config', 'avt_bot.urdf')
+    avt_341_bringup_dir = get_package_share_directory('avt_341_bringup')
+    urdf = os.path.join(avt_341_bringup_dir, 'urdf', 'avt_bot.urdf')
     with open(urdf, 'r') as infp:
         robot_desc = infp.read()
     waypoints_file = os.path.join(
-        avt_341_package_dir,
-        'config',
-        'waypoints.yaml'
+        avt_341_bringup_dir,
+        'env_data',
+        'example',
+        'example_waypoints.yaml'
     )
-    avt_341_dir = get_package_share_directory('avt_341')
     base_launch = launch.actions.IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(avt_341_dir, 'launch', 'base.launch.py')),
+        PythonLaunchDescriptionSource(os.path.join(avt_341_bringup_dir, 'launch', 'base.launch.py')),
         launch_arguments={'waypoints_file': waypoints_file,
                           'robot_description': robot_desc,
                           'use_sim_time': 'False',

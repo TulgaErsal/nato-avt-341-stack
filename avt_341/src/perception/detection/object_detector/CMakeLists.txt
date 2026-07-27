@@ -9,13 +9,13 @@ if(GET_AVT341_DETECTION_MODELS)
   file(
     DOWNLOAD
     https://www.dropbox.com/scl/fi/9q395le8f3xu186tinpcl/yolov8n-cpu-640x640.torchscript?rlkey=93aok5puu4kxx7r0b4uc5r782&st=nsiph3ln&dl=1
-    "${PROJECT_SOURCE_DIR}/data/detection/models/yolov8n-cpu-640x640.torchscript"
+    "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/yolov8n-cpu-640x640.torchscript"
     EXPECTED_HASH
       SHA256=50751423d8d350559056bfe70272f009a5474d45bc15c767f49316d868aeee72)
   file(
     DOWNLOAD
     https://www.dropbox.com/scl/fi/7z1bpjty9iwlin5ky4fdz/yolov8n-cpu-640x640.names?rlkey=4u6vtcfr1vvutnrj25tmkxpk8&st=y2sju2xy&dl=1
-    "${PROJECT_SOURCE_DIR}/data/detection/models/yolov8n-cpu-640x640.names"
+    "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/yolov8n-cpu-640x640.names"
     EXPECTED_HASH
       SHA256=634a1132eb33f8091d60f2c346ababe8b905ae08387037aed883953b7329af84)
   # FED Alpha TorchScript traced models YOLOv8m GPU 640x640
@@ -23,13 +23,13 @@ if(GET_AVT341_DETECTION_MODELS)
   file(
     DOWNLOAD
     https://www.dropbox.com/scl/fi/8k6sari7lmhqh1tbznmjd/fedav8m-cuda-640x640.torchscript?rlkey=mrpjx2wbpsb0en4w09cht3dqt&st=3axcy84m&dl=1
-    "${PROJECT_SOURCE_DIR}/data/detection/models/fedav8m-cuda-640x640.torchscript"
+    "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/fedav8m-cuda-640x640.torchscript"
     EXPECTED_HASH
       SHA256=634b735eb0e91bf88df8bdca8e93b1310783a3c6d96f276a39a8dc9f78659600)
   file(
     DOWNLOAD
     https://www.dropbox.com/scl/fi/1r6q2q34ianpgpmjw1l0t/fedav8m-cuda-640x640.names?rlkey=ykmfd5iexasghuuw41ecwo6k3&st=1qvojmk4&dl=1
-    "${PROJECT_SOURCE_DIR}/data/detection/models/fedav8m-cuda-640x640.names"
+    "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/fedav8m-cuda-640x640.names"
     EXPECTED_HASH
       SHA256=9d9d7c04edb688ffb3bad0b6307945e7f86aa314c161b52dc58bb04699130f9b)
 
@@ -38,13 +38,13 @@ if(GET_AVT341_DETECTION_MODELS)
   file(
     DOWNLOAD
     https://www.dropbox.com/scl/fi/pfvht4borsie7oww93s3a/mrzrv8m-cuda-640x640.torchscript?rlkey=uhu81fg92g0r02u020cv6trcl&st=il7ex9l2&dl=1
-    "${PROJECT_SOURCE_DIR}/data/detection/models/mrzrv8m-cuda-640x640.torchscript"
+    "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/mrzrv8m-cuda-640x640.torchscript"
     EXPECTED_HASH
       SHA256=24ffb7663409865054450e5152de13e5411b210e5a7c421154b86ad34d00584b)
   file(
     DOWNLOAD
     https://www.dropbox.com/scl/fi/icljk1oidyyeo3oxcjcty/mrzrv8m-cuda-640x640.names?rlkey=ghs972f4hrpo2q6ch887zovq7&st=iuxv1xmn&dl=1
-    "${PROJECT_SOURCE_DIR}/data/detection/models/mrzrv8m-cuda-640x640.names"
+    "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/mrzrv8m-cuda-640x640.names"
     EXPECTED_HASH
       SHA256=f6ed0f280f9bc2166e5f5ab30de164516ac6f6bf6f440a0a47df302c7dfd07aa)
 endif() # if(GET_AVT341_DETECTION_MODELS)
@@ -52,9 +52,8 @@ endif() # if(GET_AVT341_DETECTION_MODELS)
 # Install the custom models
 message(STATUS "Installing custom models ...")
 install(
-  DIRECTORY "${PROJECT_SOURCE_DIR}/data/detection/models/"
-  DESTINATION
-    "${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/data/detection/models/"
+  DIRECTORY "${PROJECT_SOURCE_DIR}/ml_weights/detection/models/"
+  DESTINATION "share/${PROJECT_NAME}/ml_weights/detection/models/"
   FILES_MATCHING
   PATTERN "*.torchscript"
   PATTERN "*.names")

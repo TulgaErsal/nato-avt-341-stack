@@ -66,19 +66,19 @@ void ObjectDetectorNode::GetParameters() {
 }
 
 void ObjectDetectorNode::Initialize() {
-    try {
-        package_prefix_ = ament_index_cpp::get_package_prefix("avt_341");
-    } catch(const ament_index_cpp::PackageNotFoundError& exception) {
-        RCLCPP_ERROR(get_logger(), "Package not found - is your environment sourced correctly?");
-        rclcpp::shutdown();
-    }
-
     std::string model_path;
     if(!params_.model.external.empty()) {
         model_path = params_.model.external + params_.model.name;
     } else {
-        model_path = package_prefix_ +
-                     "/share/avt_341/data/detection/models/" +
+        try {
+            model_package_share_dir_ = ament_index_cpp::get_package_share_directory("avt_341");
+        } catch(const ament_index_cpp::PackageNotFoundError& exception) {
+            RCLCPP_ERROR(get_logger(), "Package not found - is your environment sourced correctly?");
+            rclcpp::shutdown();
+        }
+
+        model_path = model_package_share_dir_ +
+                     "/ml_weights/detection/models/" +
                      params_.model.name;
     }
 

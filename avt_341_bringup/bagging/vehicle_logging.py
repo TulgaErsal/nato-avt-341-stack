@@ -217,9 +217,9 @@ def str2bool(value: str) -> bool:
 
 def parse_args() -> Namespace:
 
-    default_base_bag_config = f"{os.path.join(get_package_share_directory('avt_341'), 'parameters/bag_config/base_bag_config.yaml')}"
+    default_base_bag_config = f"{os.path.join(get_package_share_directory('avt_341_bringup'), 'bagging/config/base_bag_config.yaml')}"
 
-    parser = ArgumentParser(prog="ros2 run avt_341 vehicle_logging.py",
+    parser = ArgumentParser(prog="ros2 run avt_341_bringup vehicle_logging.py",
                             description="Records configured topics in a rosbag data structured.")
 
     parser.add_argument('config_file', type=str, help="Path to the logging config file. Will be merged with base_config_file.")

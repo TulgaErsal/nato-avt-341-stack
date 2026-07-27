@@ -10,7 +10,7 @@ ros__parameters:
     external:
       type: string
       default_value: ''
-      description: "External model directory path prepended to the model name. If empty, models are loaded from the package share detection models directory."
+      description: "External model directory path prepended to the model name. If empty, models are loaded from the package share detection models directory (ml_weights/detection/models)."
     name:
       type: string
       default_value: 'yolov8m-cuda-640x640'

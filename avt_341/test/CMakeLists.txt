@@ -3,13 +3,11 @@ message(STATUS "Building Unit Tests")
 find_package(ament_cmake_gtest REQUIRED)
 find_package(ament_cmake_pytest REQUIRED)
 
-ament_add_gtest(null_test null_test.cpp)
-
 # MPC Planner Tests
 find_package(Julia 1.5.4 EXACT QUIET)
 if(Julia_FOUND)
   message(STATUS "Julia found, adding MPC planner unit tests")
-  ament_add_gtest(mpc_planner_test mpc_planner_test.cpp)
+  ament_add_gtest(mpc_planner_test local_planning/mpc_planner_test.cpp)
   target_include_directories(mpc_planner_test PUBLIC "${Julia_INCLUDE_DIRS}")
   target_link_libraries(mpc_planner_test "${Julia_LIBRARY}")
   
@@ -37,7 +35,7 @@ set(GLOBAL_PATH_PLANNER_SOURCES
 
 message(STATUS "Adding global path node unit tests")
 ament_add_gtest(global_path_node_test
-  global_path_node_test.cpp
+  global_planning/global_path_node_test.cpp
   ${GLOBAL_PATH_PLANNER_SOURCES}
 )
 

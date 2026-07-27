@@ -16,7 +16,7 @@ from launch_ros.actions import Node
 
 
 # Global Constants
-avt_341_dir = get_package_share_directory('avt_341')
+avt_341_bringup_dir = get_package_share_directory('avt_341_bringup')
 mrzr_tools_dir = get_package_share_directory('mrzr_tools')
 
 vehicle_namespaces = ['mrzr','mrzr2','feda']
@@ -182,10 +182,10 @@ def launch_setup(context, *args, **kwargs):
     # URDF per vehicle (aligned with vehicle_ids); simulation always uses the
     # UE urdf, matching the old krc_base behavior
     if simulation_mode.perform(context).strip().lower() in ('true', '1'):
-        robot_description_files = [f'{avt_341_dir}/config/MRZR_UE.urdf'] * len(vehicle_namespaces)
+        robot_description_files = [f'{avt_341_bringup_dir}/urdf/MRZR_UE.urdf'] * len(vehicle_namespaces)
     else:
-        robot_description_files = [f'{avt_341_dir}/config/MRZR.urdf',
-                                   f'{avt_341_dir}/config/MRZR_UE.urdf',
+        robot_description_files = [f'{avt_341_bringup_dir}/urdf/MRZR.urdf',
+                                   f'{avt_341_bringup_dir}/urdf/MRZR_UE.urdf',
                                    '']
 
     mrzr_nodes = [
@@ -258,16 +258,16 @@ def launch_setup(context, *args, **kwargs):
 
         # NATO AVT-341 Stack
         launch.actions.IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(avt_341_dir, 'launch', 'base.launch.py')),
+            PythonLaunchDescriptionSource(os.path.join(avt_341_bringup_dir, 'launch', 'base.launch.py')),
             launch_arguments={
                 "use_sim_time":                 use_sim_time.perform(context),
                 "auto_launch_rviz":             auto_launch_rviz.perform(context),
                 "robot_description_files":      str(robot_description_files),
                 "vehicle_ids":                  str(vehicle_namespaces),
                 "spawn_filter_vehicle_ids":     f"['{vehicle_name}']",
-                "ros_param_files":              f"['{avt_341_dir}/parameters/krc_mrzr/ros_params.yaml']",
-                "node_config_file":             f"{avt_341_dir}/parameters/krc_mrzr/node_config.yaml",
-                "rviz_config":                  f"{avt_341_dir}/rviz/avt_341_mrzr.rviz",
+                "ros_param_files":              f"['{avt_341_bringup_dir}/parameters/krc_ros_params.yaml']",
+                "node_config_file":             f"{avt_341_bringup_dir}/parameters/krc_node_config.yaml",
+                "rviz_config":                  f"{avt_341_bringup_dir}/rviz/avt_341_mrzr.rviz",
                 "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":         "mpc",
                 "enable_logging":               enable_logging.perform(context),

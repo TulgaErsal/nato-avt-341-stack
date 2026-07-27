@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<package format="3">
+  <name>avt_341_bringup</name>
+  <version>0.0.0</version>
+  <description>Launch files, parameter overrides and deployment data (urdf, rviz, mission data, detection models) for the AVT-341 autonomy stack</description>
+
+  <maintainer email="cgoodin@cavs.msstate.edu">Chris Goodin</maintainer>
+  <maintainer email="dsi@aarhusrobotics.com">Dario Sirangelo</maintainer>
+
+  <author email="cgoodin@cavs.msstate.edu">Chris Goodin</author>
+  <author email="dwc2@cavs.msstate.edu">Daniel Carruth</author>
+
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>avt_341</exec_depend>
+  <exec_depend>avt_341_msgs</exec_depend>
+  <exec_depend>avt_341_param_lib</exec_depend>
+  <exec_depend>avt_341_rviz_plugins</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>ros2bag</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

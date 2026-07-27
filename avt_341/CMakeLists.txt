@@ -20,9 +20,8 @@ if(SET_BIG_OBJ)
 endif(SET_BIG_OBJ)
 
 set(AVT341_SOURCE_FILES
-    "communication/comms_publisher"
-    "communication/communication"
-    "control/avt_bot_state_publisher"
+    "communication"
+    "control/odom_to_tf"
     "control/control"
     "control/speed_control"
     "control/speed_zones"
@@ -42,7 +41,7 @@ set(AVT341_SOURCE_FILES
     "perception/normal_segmentation_grid"
     "perception/segmentation_grid_processor"
     "perception/geotiff_map"
-    "planning/local/local_planner"
+    "planning/local/rcc"
     "planning/local/potential_field"
     "planning/local/dwa"
     "planning/local/goal_point_processor"
@@ -88,7 +87,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 
 # Generated parameter DTO and service libraries:
 # <stem>_params_dto and <stem>_params_service.
-avt_341_generate_cpp_parameters(parameters/templates)
+avt_341_generate_cpp_parameters(parameters)
 
 # Node proxy library
 # ------------------
@@ -141,15 +140,9 @@ install(
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")
 
-install(
-  PROGRAMS "launch/vehicle_logging.py" "launch/ros_param_dump.py" "launch/tf_to_odometry.py"
-            "test/global_path_test_driver.py"
-            "test/mpc_terminal_heading_test_driver.py"
-            "test/formation_distance_test_driver.py"
-            "test/formation_distance_two_follower_test_driver.py"
-  DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY launch config rviz parameters DESTINATION "share/${PROJECT_NAME}")
+# Launch files, rviz configurations, urdf models and deployment data live in
+# avt_341_bringup; the system level test drivers live in avt_341_system_tests.
+install(DIRECTORY config parameters DESTINATION "share/${PROJECT_NAME}")
 
 # Automated Tests
 # ===============
