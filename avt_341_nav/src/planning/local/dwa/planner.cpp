@@ -1,7 +1,7 @@
-#include <avt_341/planning/local/dwa/planner.hpp>
+#include <avt_341_nav/planning/local/dwa/planner.hpp>
 #include "nav_msgs/msg/path.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -429,4 +429,4 @@ int Planner::FindClosest(std::vector<double> const& v, int value) {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

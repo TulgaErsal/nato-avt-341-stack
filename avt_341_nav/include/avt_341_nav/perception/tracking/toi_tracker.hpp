@@ -15,9 +15,9 @@
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <avt_341/perception/tracking/object_tracker.hpp>
+#include <avt_341_nav/perception/tracking/object_tracker.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 /**
@@ -63,6 +63,6 @@ class ToiTracker : public ObjectTracker {
 };
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav
 
 #endif  // AVT_341_TOI_TRACKER_H

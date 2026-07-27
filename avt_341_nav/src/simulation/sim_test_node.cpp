@@ -5,9 +5,9 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/multi_array_dimension.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_utils.h"
+#include "avt_341_nav/node/node_utils.h"
 // point cloud includes
-#include "avt_341/perception/point_cloud_generator.h"
+#include "avt_341_nav/perception/point_cloud_generator.h"
 
 geometry_msgs::msg::Twist twist;
 void TwistCallback(const geometry_msgs::msg::Twist::SharedPtr rcv_msg){
@@ -48,17 +48,17 @@ int main(int argc, char **argv){
 
   // create and populate the point cloud message that will be published
   sensor_msgs::msg::PointCloud2 pc2;
-  std::vector<avt_341::utils::vec3> points {
-    avt_341::utils::vec3(50.0, 0.0, 0.0),
-    avt_341::utils::vec3(15.1, 7.8, 5.0),
-    avt_341::utils::vec3(15.1, 7.8, 1.0),
-    avt_341::utils::vec3(14.5, 8.5, 7.0),
-    avt_341::utils::vec3(14.5, 8.5, 1.0),
-    avt_341::utils::vec3(14.6, 8.2, 4.5),
-    avt_341::utils::vec3(14.6, 8.2, 1.5),
-    avt_341::utils::vec3(15.1, -7.8, 0.0),
-    avt_341::utils::vec3(14.5, -8.5, 0.0),
-    avt_341::utils::vec3(14.6, -8.2, 0.1)
+  std::vector<avt_341_nav::utils::vec3> points {
+    avt_341_nav::utils::vec3(50.0, 0.0, 0.0),
+    avt_341_nav::utils::vec3(15.1, 7.8, 5.0),
+    avt_341_nav::utils::vec3(15.1, 7.8, 1.0),
+    avt_341_nav::utils::vec3(14.5, 8.5, 7.0),
+    avt_341_nav::utils::vec3(14.5, 8.5, 1.0),
+    avt_341_nav::utils::vec3(14.6, 8.2, 4.5),
+    avt_341_nav::utils::vec3(14.6, 8.2, 1.5),
+    avt_341_nav::utils::vec3(15.1, -7.8, 0.0),
+    avt_341_nav::utils::vec3(14.5, -8.5, 0.0),
+    avt_341_nav::utils::vec3(14.6, -8.2, 0.1)
   };
     std::vector<int> seg_values = {
             0,
@@ -80,7 +80,7 @@ int main(int argc, char **argv){
   mpc_data_msg.layout.dim[0].stride = 1;
   mpc_data_msg.layout.dim[0].label = "x";
 
-  avt_341::perception::PointCloudGenerator::toROSMsg(points, seg_values,pc2);
+  avt_341_nav::perception::PointCloudGenerator::toROSMsg(points, seg_values,pc2);
   pc2.header.frame_id = "odom";
 
   //odometry published at 100 Hz, point clout at 10 Hz

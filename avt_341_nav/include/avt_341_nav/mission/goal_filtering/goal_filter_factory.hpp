@@ -1,9 +1,9 @@
 #ifndef FORMATION_GOAL_FILTER_FACTORY_H
 #define FORMATION_GOAL_FILTER_FACTORY_H
 
-#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
+#include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 struct GoalFilterMethod {
     static const std::string ObstacleAvoidance;
@@ -16,7 +16,7 @@ std::shared_ptr<GoalFilter> create_goal_filter(
     const std::string & vehicle_id,
     const std::string & method_id,
     const rclcpp::Node::SharedPtr & node,
-    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
+    const avt_341_nav::params::mission_manager::Params::FgfObsAvoid& filter_params,
     const std::string & publish_method = std::string()
     );
 

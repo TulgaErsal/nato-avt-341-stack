@@ -21,7 +21,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include "visualization_msgs/msg/marker_array.hpp"
-#include <avt_341/mpc_local_planner_params_dto.hpp>
+#include <avt_341_nav/mpc_local_planner_params_dto.hpp>
 
 // Julia header throws "No Target Architecture" error otherwise on Windows systems
 #ifdef _WIN64
@@ -57,7 +57,7 @@ rclcpp::Node::SharedPtr node;
 
 // Generated parameter snapshot shared by the existing callback/Julia FFI
 // structure.
-avt_341::params::mpc_local_planner::Params mpc_params;
+avt_341_nav::params::mpc_local_planner::Params mpc_params;
 
 // Globals
 // --------------

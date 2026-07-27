@@ -1,6 +1,6 @@
-#include <avt_341/planning/local/dwa/path.hpp>
+#include <avt_341_nav/planning/local/dwa/path.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -25,4 +25,4 @@ int Path::FindClosestDistance(double x, double y) const {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

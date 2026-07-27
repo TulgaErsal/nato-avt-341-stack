@@ -14,10 +14,10 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include <avt_341/node/occupancy_grid_subscriber.h>
+#include <avt_341_nav/node/occupancy_grid_subscriber.h>
 // avt_341 includes
-#include "avt_341/planning/local/pf_planner.h"
-#include <avt_341/pf_local_planner_params_service.hpp>
+#include "avt_341_nav/planning/local/pf_planner.h"
+#include <avt_341_nav/pf_local_planner_params_service.hpp>
 
 nav_msgs::msg::Odometry odom;
 nav_msgs::msg::OccupancyGrid grid;
@@ -55,21 +55,21 @@ int main(int argc, char *argv[]){
 
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_341_pf_planner_node");
-  avt_341::params::pf_local_planner::ParamsListener param_listener(n);
+  avt_341_nav::params::pf_local_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
   // Create publishers and subscribers
   auto path_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto grid_sub = avt_341::node::OccupancyGridSubscriber(
+  auto grid_sub = avt_341_nav::node::OccupancyGridSubscriber(
       n, params.grid_topic, 10, params.costmap.publish.method, GridCallback);
-  auto segmentation_grid_sub = avt_341::node::OccupancyGridSubscriber(
+  auto segmentation_grid_sub = avt_341_nav::node::OccupancyGridSubscriber(
       n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
       SegmentationGridCallback);
   auto path_sub = n->create_subscription<nav_msgs::msg::Path>("avt_341/global_path", 10, PathCallback);
   auto wp_sub = n->create_subscription<nav_msgs::msg::Path>("avt_341/waypoints", 10, WaypointCallback);
 
-  avt_341::planning::PfPlanner planner;
+  avt_341_nav::planning::PfPlanner planner;
   planner.SetEta(static_cast<float>(params.eta));
   planner.SetKp(static_cast<float>(params.kp));
   planner.SetCutoffDistance(static_cast<float>(params.cutoff_dist));

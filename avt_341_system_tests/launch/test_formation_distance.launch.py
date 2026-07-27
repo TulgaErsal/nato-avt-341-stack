@@ -25,18 +25,18 @@ Usage
 -----
 1. Build and source the workspace.
 2. Launch with defaults (column formation, straight leader, 3 m/s):
-       ros2 launch avt_341 test_formation_distance.launch.py
+       ros2 launch avt_341_system_tests test_formation_distance.launch.py
 
    Sine-wave leader:
-       ros2 launch avt_341 test_formation_distance.launch.py \\
+       ros2 launch avt_341_system_tests test_formation_distance.launch.py \\
            leader_motion:=sine sine_yaw_rate_amp:=0.15 sine_period:=10.0
 
    Wedge formation (adjust follower start to nominal formation position):
-       ros2 launch avt_341 test_formation_distance.launch.py \\
+       ros2 launch avt_341_system_tests test_formation_distance.launch.py \\
            formation:=wedge start_x_follow:=-5.0 start_y_follow:=5.0
 
    Straight then sine:
-       ros2 launch avt_341 test_formation_distance.launch.py \\
+       ros2 launch avt_341_system_tests test_formation_distance.launch.py \\
            leader_motion:=straight_then_sine straight_duration:=10.0
 
 Launch arguments
@@ -75,7 +75,7 @@ def load_params(path: str) -> dict:
 
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
 
     mpc_params = load_params(
         os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'mpc_local_planner.yaml'))
@@ -168,7 +168,7 @@ def generate_launch_description():
 
         # Vehicle converter: follower odometry -> avt_341/veh
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='veh_converter_node',
             name='avt_341_veh_converter_node',
             output='screen',
@@ -176,7 +176,7 @@ def generate_launch_description():
 
         # Obstacle processor: empty occupancy grid -> empty obstacle clusters
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='obstacle_processor_node',
             name='obstacle_processor_node',
             output='screen',
@@ -186,7 +186,7 @@ def generate_launch_description():
         # Goal point processor: formation global path + veh ->
         #   mpc_goalPoint, mpc_desiredHeading, mpc_final_heading
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='goal_point_processor_node',
             name='goal_point_processor_node',
             output='screen',
@@ -195,8 +195,8 @@ def generate_launch_description():
 
         # MPC local planner: requires libjulia.so.1 at runtime.
         Node(
-            package='avt_341',
-            executable='avt_341_mpc_planner_node',
+            package='avt_341_nav',
+            executable='avt_341_nav_mpc_planner_node',
             name='mpc_planner_node',
             output='screen',
             parameters=[mpc_params],

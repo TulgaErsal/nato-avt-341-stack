@@ -19,13 +19,13 @@
 #ifndef PURE_PURSUIT_CONTROLLER_H
 #define PURE_PURSUIT_CONTROLLER_H
 
-#include "avt_341/control/pid_controller.h"
+#include "avt_341_nav/control/pid_controller.h"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/avt_341_utils.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace control{
 
 class PurePursuitController {
@@ -202,6 +202,6 @@ private:
 };
 
 } // namespace control
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif

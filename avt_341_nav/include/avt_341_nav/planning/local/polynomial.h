@@ -12,7 +12,7 @@
 #include <vector>
 #include <algorithm>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 class Polynomial {
 public:
@@ -65,7 +65,7 @@ private:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 
 #endif

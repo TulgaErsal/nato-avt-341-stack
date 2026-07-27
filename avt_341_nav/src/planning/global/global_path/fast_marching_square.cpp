@@ -1,10 +1,10 @@
-#include "avt_341/planning/global/fast_marching_square.h"
+#include "avt_341_nav/planning/global/fast_marching_square.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
@@ -133,4 +133,4 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

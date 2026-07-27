@@ -68,14 +68,14 @@
 #include <vision_msgs/msg/label_info.hpp>
 #include <vision_msgs/msg/vision_info.hpp>
 #include <image_transport/image_transport.hpp>
-#include <avt_341/perception/detection/common/bounding_box_2d.hpp>
-#include <avt_341/perception/detection/common/detection_2d.hpp>
-#include <avt_341/perception/detection/common/hypothesis.hpp>
-#include <avt_341/perception/detection/common/object_visualizer.hpp>
-#include <avt_341/perception/detection/object_detector/object_detector.hpp>
-#include <avt_341/object_detector_params_service.hpp>
+#include <avt_341_nav/perception/detection/common/bounding_box_2d.hpp>
+#include <avt_341_nav/perception/detection/common/detection_2d.hpp>
+#include <avt_341_nav/perception/detection/common/hypothesis.hpp>
+#include <avt_341_nav/perception/detection/common/object_visualizer.hpp>
+#include <avt_341_nav/perception/detection/object_detector/object_detector.hpp>
+#include <avt_341_nav/object_detector_params_service.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 class ObjectDetectorNode : public rclcpp::Node {
@@ -129,8 +129,8 @@ class ObjectDetectorNode : public rclcpp::Node {
      */
     void DetectionCallback();
 
-    std::shared_ptr<avt_341::params::object_detector::ParamsListener> param_listener_;
-    avt_341::params::object_detector::Params params_;
+    std::shared_ptr<avt_341_nav::params::object_detector::ParamsListener> param_listener_;
+    avt_341_nav::params::object_detector::Params params_;
 
     // ROS package management
     // ----------------------
@@ -240,4 +240,4 @@ class ObjectDetectorNode : public rclcpp::Node {
 };
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

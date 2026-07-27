@@ -1,4 +1,4 @@
-#include "avt_341/core/compute_time_recorder.hpp"
+#include "avt_341_nav/core/compute_time_recorder.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -8,7 +8,7 @@
 #include "avt_341_msgs/msg/compute_time.hpp"
 #include "avt_341_msgs/msg/compute_time_array.hpp"
 
-namespace avt_341::core {
+namespace avt_341_nav::core {
 
 namespace {
 

@@ -7,10 +7,10 @@
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "avt_341/mission/formation_utils.h"
-#include "avt_341/mission/formation_definition.h"
+#include "avt_341_nav/mission/formation_utils.h"
+#include "avt_341_nav/mission/formation_definition.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 /// Class for formation control
@@ -18,7 +18,7 @@ class FormationPathGenerator{
 
   public:
 	/// Construct a formation controller
-  FormationPathGenerator(const avt_341::mission::FormationParameters & params);
+  FormationPathGenerator(const avt_341_nav::mission::FormationParameters & params);
 	
 	/// Update the controller based on the most recent leader odometry, vehicle odometry, and status message
   void Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, avt_341_msgs::msg::FollowerStatus status);
@@ -38,7 +38,7 @@ class FormationPathGenerator{
 	// outputs / messages published
 	nav_msgs::msg::Path desired_global_path_;
 	nav_msgs::msg::Path leader_path_history_;
-  const avt_341::mission::FormationParameters & params_;
+  const avt_341_nav::mission::FormationParameters & params_;
 
 	// tangent heading state
 	double prev_leader_x_;
@@ -53,6 +53,6 @@ class FormationPathGenerator{
 }; // class formation controller
 
 } // namespace mission
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif //AVT_341_FORMATION_PATH_GENERATOR_H

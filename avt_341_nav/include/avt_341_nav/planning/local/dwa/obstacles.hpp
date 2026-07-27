@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -26,4 +26,4 @@ class Obstacles {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

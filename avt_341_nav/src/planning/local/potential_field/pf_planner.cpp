@@ -1,5 +1,5 @@
 // class definition
-#include "avt_341/planning/local/pf_planner.h"
+#include "avt_341_nav/planning/local/pf_planner.h"
 // c++ includes
 #include <algorithm>
 #include <cmath>
@@ -11,7 +11,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 PfPlanner::PfPlanner() {
@@ -175,4 +175,4 @@ void PfPlanner::PotentialFieldPlanning(float minx, float miny, float reso, float
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

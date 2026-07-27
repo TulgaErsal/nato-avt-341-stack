@@ -1,4 +1,4 @@
-#include "avt_341/perception/layers/static_grid_layer.h"
+#include "avt_341_nav/perception/layers/static_grid_layer.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -6,14 +6,14 @@
 #include <filesystem>
 #include <stdexcept>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
     StaticGridLayer::StaticGridLayer(
         const rclcpp::Node::SharedPtr& node_ref,
         const PerceptionSettings& settings,
         const std::string& label,
         const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
-        const avt_341::params::perception::Params::StaticGridLayer& params
+        const avt_341_nav::params::perception::Params::StaticGridLayer& params
         )
         : CostmapLayer(
             node_ref, settings, label, compute_time_recorder,

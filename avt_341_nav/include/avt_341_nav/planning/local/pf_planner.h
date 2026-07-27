@@ -25,7 +25,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning{
 
 class PfPlanner {
@@ -96,6 +96,6 @@ private:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif

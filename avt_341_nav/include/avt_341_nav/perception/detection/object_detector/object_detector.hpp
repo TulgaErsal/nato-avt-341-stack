@@ -51,9 +51,9 @@
 #include <torch/script.h>
 #include <torch/torch.h>
 
-#include <avt_341/perception/detection/common/detection_2d.hpp>
+#include <avt_341_nav/perception/detection/common/detection_2d.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 class ObjectDetector {
@@ -242,4 +242,4 @@ class ObjectDetector {
 };
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

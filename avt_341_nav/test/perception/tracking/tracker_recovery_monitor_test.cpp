@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 
-#include <avt_341/perception/tracking/tracker_recovery_monitor.hpp>
+#include <avt_341_nav/perception/tracking/tracker_recovery_monitor.hpp>
 
 #include <chrono>
 #include <functional>
@@ -20,9 +20,9 @@
 
 using namespace std::chrono_literals;
 
-using avt_341::perception::RecoverySettings;
-using avt_341::perception::TrackerRecoveryMonitor;
-using avt_341::perception::TrackerState;
+using avt_341_nav::perception::RecoverySettings;
+using avt_341_nav::perception::TrackerRecoveryMonitor;
+using avt_341_nav::perception::TrackerState;
 
 class TrackerRecoveryMonitorTest : public ::testing::Test {
 protected:

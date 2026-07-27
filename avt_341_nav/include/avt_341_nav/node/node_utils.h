@@ -5,7 +5,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace node {
 
 // Declares the parameter if not yet declared, then reads it. Accepts legacy
@@ -21,6 +21,6 @@ void get_parameter(const rclcpp::Node::SharedPtr &node, const std::string &name,
 }
 
 } // namespace node
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif // AVT_341_NODE_UTILS_H

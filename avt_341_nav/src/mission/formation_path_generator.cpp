@@ -1,15 +1,15 @@
 // clas definition
-#include "avt_341/mission/formation_path_generator.h"
+#include "avt_341_nav/mission/formation_path_generator.h"
 // c++ includes
 #include <math.h>
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
-FormationPathGenerator::FormationPathGenerator(const avt_341::mission::FormationParameters & params)
+FormationPathGenerator::FormationPathGenerator(const avt_341_nav::mission::FormationParameters & params)
 : params_(params), prev_leader_x_(0.0), prev_leader_y_(0.0), tangent_heading_valid_(false){
   gpp2_ = params_.global_path_points_dist*params_.global_path_points_dist;
   tangent_vx_[0] = 0.0f; tangent_vx_[1] = 0.0f;
@@ -148,4 +148,4 @@ void FormationPathGenerator::Reset(){
 }
 
 } // namespace mission
-} // namespace avt_341
+} // namespace avt_341_nav

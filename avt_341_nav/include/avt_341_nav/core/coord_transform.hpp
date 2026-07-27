@@ -8,7 +8,7 @@
 #include <rclcpp/logger.hpp>
 #include <tf2_ros/buffer.h>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
 /**

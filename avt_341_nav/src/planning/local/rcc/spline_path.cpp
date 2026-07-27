@@ -1,6 +1,6 @@
-#include "avt_341/planning/local/spline_path.h"
+#include "avt_341_nav/planning/local/spline_path.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning{
 
 Path::Path() {
@@ -273,4 +273,4 @@ CurveInfo Path::GetCurvatureAndAngle(float s) {
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

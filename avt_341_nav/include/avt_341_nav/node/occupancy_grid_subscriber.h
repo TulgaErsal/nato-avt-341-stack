@@ -4,9 +4,9 @@
 #include "map_msgs/msg/occupancy_grid_update.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/core/grid_components.h"
+#include "avt_341_nav/core/grid_components.h"
 
-namespace avt_341::node {
+namespace avt_341_nav::node {
 
     class OccupancyGridSubscriber{
 

@@ -4,13 +4,13 @@
              See toi_tracker.hpp.
 */
 
-#include <avt_341/perception/tracking/toi_tracker.hpp>
+#include <avt_341_nav/perception/tracking/toi_tracker.hpp>
 
 #include <utility>
 
-#include <avt_341/core/eigen_dto_conversion.hpp>
+#include <avt_341_nav/core/eigen_dto_conversion.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 ToiTracker::ToiTracker(
@@ -68,4 +68,4 @@ void ToiTracker::MaybePublishContactUpdate() {
 }
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav

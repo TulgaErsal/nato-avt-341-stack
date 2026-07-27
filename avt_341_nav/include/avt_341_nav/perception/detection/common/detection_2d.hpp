@@ -45,10 +45,10 @@
 
 #include <vision_msgs/msg/detection2_d.hpp>
 
-#include <avt_341/perception/detection/common/bounding_box_2d.hpp>
-#include <avt_341/perception/detection/common/hypothesis.hpp>
+#include <avt_341_nav/perception/detection/common/bounding_box_2d.hpp>
+#include <avt_341_nav/perception/detection/common/hypothesis.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 /**
@@ -94,4 +94,4 @@ class Detection2D {
 };
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -1,12 +1,12 @@
 // clas definition
-#include "avt_341/mission/task.h"
+#include "avt_341_nav/mission/task.h"
 #include <fstream>
 #include <iostream>
 #include <math.h>
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
@@ -77,4 +77,4 @@ geometry_msgs::msg::PoseStamped Encircle::terminalPose() const{
 
 
 } // mission 
-} // avt_341
+} // avt_341_nav

@@ -1,11 +1,11 @@
-#include "avt_341/perception/layers/camera_layer.h"
+#include "avt_341_nav/perception/layers/camera_layer.h"
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_field.hpp"
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
     CameraLayer::CameraLayer(
         const rclcpp::Node::SharedPtr& node_ref,
@@ -13,7 +13,7 @@ namespace avt_341::perception
         const PerceptionSettings& settings,
         const std::string& label,
         const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
-        const avt_341::params::perception::Params::CameraLayer& params)
+        const avt_341_nav::params::perception::Params::CameraLayer& params)
             : PointCloudLayer(
                 node_ref, tf, settings, label, compute_time_recorder,
                 "", "", params.contribute_occupancy,
@@ -23,7 +23,7 @@ namespace avt_341::perception
     }
 
     void CameraLayer::SetupCameraSubscriptions(
-        const avt_341::params::perception::Params::CameraLayer& params)
+        const avt_341_nav::params::perception::Params::CameraLayer& params)
     {
         depth_img_topic_ = params.depth_topic;
         seg_img_topic_ = params.segmentation_topic;

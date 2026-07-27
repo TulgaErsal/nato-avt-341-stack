@@ -2,15 +2,15 @@
 #ifndef AVT_341_POINT_CLOUD_LAYER_H
 #define AVT_341_POINT_CLOUD_LAYER_H
 #include "costmap_layer.h"
-#include "avt_341/node/tf_interface.h"
-#include "avt_341/perception/point_cloud_filter.hpp"
-#include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
+#include "avt_341_nav/node/tf_interface.h"
+#include "avt_341_nav/perception/point_cloud_filter.hpp"
+#include "avt_341_nav/perception/clearing_methods/costmap_clearing_method.h"
 #include "geometry_msgs/msg/pose.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
 
     class PointCloudLayer : public CostmapLayer, public CellObstacleCalculator

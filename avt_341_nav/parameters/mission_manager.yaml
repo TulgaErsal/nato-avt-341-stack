@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/mission_manager
+code_namespace: avt_341_nav/params/mission_manager
 ros__parameters:
 
   __include_mixins: gis_mixin

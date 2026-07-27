@@ -1,8 +1,8 @@
-#include <avt_341/planning/local/dwa/state.hpp>
+#include <avt_341_nav/planning/local/dwa/state.hpp>
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "tf2/LinearMath/Quaternion.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -53,4 +53,4 @@ geometry_msgs::msg::PoseStamped State::ToRosPoseStamped() {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

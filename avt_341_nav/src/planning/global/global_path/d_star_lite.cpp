@@ -1,10 +1,10 @@
-#include "avt_341/planning/global/d_star_lite.h"
+#include "avt_341_nav/planning/global/d_star_lite.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 DStarLite::DStarLite(float w_distance,
@@ -259,4 +259,4 @@ bool DStarLite::ExtractPath() {
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

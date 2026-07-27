@@ -14,9 +14,9 @@
  * @author Evan Vandermate (evanderm@mtu.edu)
  *         Keweenaw Research Center (KRC)
  */
-#include <avt_341/planning/local/avt_341_mpc_planner_node.h>
-#include <avt_341/node/node_types.h>
-#include <avt_341/mpc_local_planner_params_service.hpp>
+#include <avt_341_nav/planning/local/avt_341_mpc_planner_node.h>
+#include <avt_341_nav/node/node_types.h>
+#include <avt_341_nav/mpc_local_planner_params_service.hpp>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
@@ -52,7 +52,7 @@ void CatchJuliaException()
 bool reset_called = false;
 
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg) {
-    if(msg->data.find(avt_341::node::NodeType::LocalPlanner) !=
+    if(msg->data.find(avt_341_nav::node::NodeType::LocalPlanner) !=
        std::string::npos) {
         reset_called = true;
        }
@@ -707,7 +707,7 @@ void InitialisePlanner()
 }
 
 void UpdateCostFnWeights(
-    const avt_341::params::mpc_local_planner::Params& params) {
+    const avt_341_nav::params::mpc_local_planner::Params& params) {
     mpc_params.w_distance_to_obstacles = params.w_distance_to_obstacles;
     mpc_params.w_distance_to_goal = params.w_distance_to_goal;
     mpc_params.w_deviation_in_yaw = params.w_deviation_in_yaw;
@@ -737,7 +737,7 @@ int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
     node = rclcpp::Node::make_shared("avt_341_mpc_wrapper_node");
-    avt_341::params::mpc_local_planner::ParamsListener param_listener(
+    avt_341_nav::params::mpc_local_planner::ParamsListener param_listener(
         node);
     mpc_params = param_listener.get_params();
 
@@ -823,7 +823,7 @@ int main(int argc, char *argv[])
             // Nothing to reset currently
             RCLCPP_INFO(node->get_logger(), "Resetting MPC local planner.");
             std_msgs::msg::String reset_ack_msg;
-            reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
+            reset_ack_msg.data = avt_341_nav::node::NodeType::LocalPlanner;
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }

@@ -11,9 +11,9 @@
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_utils.h"
-#include "avt_341/node/tf_interface.h"
-#include "avt_341/perception/geotiff_dataset.h"
+#include "avt_341_nav/node/node_utils.h"
+#include "avt_341_nav/node/tf_interface.h"
+#include "avt_341_nav/perception/geotiff_dataset.h"
 #include <fstream>
 #include <vector>
 #include <algorithm>
@@ -45,23 +45,23 @@ int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
     auto node = rclcpp::Node::make_shared("avt_341_geotiff_map_publisher_node");
-    auto tf = std::make_shared<avt_341::node::TfInterface>(node);
+    auto tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
 
     std::string tiff_path, map_frame, map_topic;
     int band;
     double map_origin_x, map_origin_y;
     float startup_delay;
-    avt_341::node::get_parameter(node, "~map_topic", map_topic, std::string("map"));
-    avt_341::node::get_parameter(node, "~tiff_path", tiff_path, std::string(""));
-    avt_341::node::get_parameter(node, "~map_frame", map_frame, std::string("geotiff"));
-    avt_341::node::get_parameter(node, "~band", band, 1);
-    avt_341::node::get_parameter(node, "~map_origin_x", map_origin_x, 0.0);
-    avt_341::node::get_parameter(node, "~map_origin_y", map_origin_y, 0.0);
-    avt_341::node::get_parameter(node, "~startup_delay", startup_delay, 5.0f);
+    avt_341_nav::node::get_parameter(node, "~map_topic", map_topic, std::string("map"));
+    avt_341_nav::node::get_parameter(node, "~tiff_path", tiff_path, std::string(""));
+    avt_341_nav::node::get_parameter(node, "~map_frame", map_frame, std::string("geotiff"));
+    avt_341_nav::node::get_parameter(node, "~band", band, 1);
+    avt_341_nav::node::get_parameter(node, "~map_origin_x", map_origin_x, 0.0);
+    avt_341_nav::node::get_parameter(node, "~map_origin_y", map_origin_y, 0.0);
+    avt_341_nav::node::get_parameter(node, "~startup_delay", startup_delay, 5.0f);
 
     auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(map_topic, 1);
 
-    avt_341::planning::Geotiff tiff(tiff_path);
+    avt_341_nav::planning::Geotiff tiff(tiff_path);
     tiff.PrintInfo();
     std::vector<double> costmap = tiff.GetRasterBand(1);
     if (costmap.size() > 0)

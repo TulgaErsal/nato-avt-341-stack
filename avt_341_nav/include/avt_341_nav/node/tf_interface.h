@@ -18,7 +18,7 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace node {
 
 class TfInterface {
@@ -49,6 +49,6 @@ private:
 };
 
 } // namespace node
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif // AVT_341_TF_INTERFACE_H

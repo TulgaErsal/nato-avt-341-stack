@@ -93,17 +93,17 @@
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
 
-#include <avt_341/core/coord_transform.hpp>
-#include <avt_341/perception/box.hpp>
-#include <avt_341/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
-#include <avt_341/perception/tracking/object_tracker.hpp>
-#include <avt_341/perception/tracking/tracker_params.hpp>
-#include <avt_341/object_tracking_params_service.hpp>
+#include <avt_341_nav/core/coord_transform.hpp>
+#include <avt_341_nav/perception/box.hpp>
+#include <avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
+#include <avt_341_nav/perception/tracking/object_tracker.hpp>
+#include <avt_341_nav/perception/tracking/tracker_params.hpp>
+#include <avt_341_nav/object_tracking_params_service.hpp>
 #include <avt_341_msgs/msg/mission_module_status.hpp>
 #include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 class ObjectTrackingNode : public rclcpp::Node {
@@ -148,7 +148,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     ObjectTrackerSettings params_;
 
     /** @brief Generated parameter declaration and validation listener. */
-    std::shared_ptr<avt_341::params::object_tracking::ParamsListener>
+    std::shared_ptr<avt_341_nav::params::object_tracking::ParamsListener>
         param_listener_;
 
     /** Apply a validated listener snapshot to the supported runtime subset. */
@@ -399,7 +399,7 @@ class ObjectTrackingNode : public rclcpp::Node {
     void PublishObstacleMarkers(const std_msgs::msg::Header& header);
 
     /** @brief The obstacle detector algorithm (filter / cluster / track). */
-    std::shared_ptr<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>
+    std::shared_ptr<avt_341_nav::perception::LidarObstacleDetector<pcl::PointXYZ>>
         obstacle_detector_;
 
     /** @brief Rolling counter used to assign unique IDs to new boxes. */
@@ -434,4 +434,4 @@ class ObjectTrackingNode : public rclcpp::Node {
 };
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav

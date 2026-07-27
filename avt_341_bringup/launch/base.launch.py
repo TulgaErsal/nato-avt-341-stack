@@ -14,9 +14,9 @@ from avt_341_param_lib.launch_params import (
 from avt_341_param_lib.launch_node_config import NodeConfigCollection
 from avt_341_param_lib.parse_runtime_yaml import resolve_params_files
 
-# Parameter templates ship with the avt_341 source package; the deployment
+# Parameter templates ship with the avt_341_nav source package; the deployment
 # assets (urdf, rviz, bagging configuration) ship with avt_341_bringup.
-AVT_341_DIR = get_package_share_directory('avt_341').replace('\\', '/')
+AVT_341_DIR = get_package_share_directory('avt_341_nav').replace('\\', '/')
 BRINGUP_DIR = get_package_share_directory('avt_341_bringup').replace('\\', '/')
 TEMPLATES_DIR = os.path.join(AVT_341_DIR, 'parameters')
 
@@ -66,32 +66,32 @@ class NodeSpec:
 NODES = {
 
     # Mission management
-    'mission_manager_node':             NodeSpec('avt_341_mission_manager_node',         _templates('mission_manager'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'comm_node':                        NodeSpec('avt_341_comm_node',                    _templates('socket_comms'),                                                          extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'speed_zones_node':                 NodeSpec('avt_341_speed_zones_node',             _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
+    'mission_manager_node':             NodeSpec('avt_341_nav_mission_manager_node',         _templates('mission_manager'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'comm_node':                        NodeSpec('avt_341_nav_comm_node',                    _templates('socket_comms'),                                                          extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'speed_zones_node':                 NodeSpec('avt_341_nav_speed_zones_node',             _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
 
     # Perception - Costmaps
-    'perception_local_node':            NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_global_node':           NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_node':                  NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
-    'perception_rms_node':              NodeSpec('avt_341_perception_node',              _templates('perception'),        condition=is_cfg('use_perception_rms')),
+    'perception_local_node':            NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_global_node':           NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_node':                  NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
+    'perception_rms_node':              NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_cfg('use_perception_rms')),
 
     # Perception - Terrain segmentation
     'uab_perception_node':              NodeSpec('uab_perception_node',                  _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),             extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
 
     # Perception - Object detection and tracking
-    'object_detector_node':             NodeSpec('avt_341_object_detector_node',         _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
-    'object_tracking_node':             NodeSpec('avt_341_object_tracking_node',         _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),             extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
-    'lidar_obstacle_detector_node':     NodeSpec('avt_341_lidar_obstacle_detector_node', _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
+    'object_detector_node':             NodeSpec('avt_341_nav_object_detector_node',         _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
+    'object_tracking_node':             NodeSpec('avt_341_nav_object_tracking_node',         _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),             extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
+    'lidar_obstacle_detector_node':     NodeSpec('avt_341_nav_lidar_obstacle_detector_node', _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
 
     # Global planners
-    'avt_341_global_path_node':         NodeSpec('avt_341_global_path_node',             _templates('global_planner')),
+    'avt_341_global_path_node':         NodeSpec('avt_341_nav_global_path_node',             _templates('global_planner')),
 
     # Local planners
-    'rcc_planner_node':                 NodeSpec('avt_341_rcc_planner_node',             _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
-    'local_dwa_planner_node':           NodeSpec('avt_341_dwa_planner_node',             _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
-    'local_pf_planner_node':            NodeSpec('avt_341_pf_planner_node',              _templates('pf_local_planner'),  condition=is_local_planner('pf')),
-    'mpc_planner_node':                 NodeSpec('avt_341_mpc_planner_node',             _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'rcc_planner_node':                 NodeSpec('avt_341_nav_rcc_planner_node',             _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
+    'local_dwa_planner_node':           NodeSpec('avt_341_nav_dwa_planner_node',             _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
+    'local_pf_planner_node':            NodeSpec('avt_341_nav_pf_planner_node',              _templates('pf_local_planner'),  condition=is_local_planner('pf')),
+    'mpc_planner_node':                 NodeSpec('avt_341_nav_mpc_planner_node',             _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
 
     # local planners - MPC supporting nodes
     'obstacle_processor_node':          NodeSpec('obstacle_processor_node',              _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
@@ -100,8 +100,8 @@ NODES = {
     'avt_341_veh_converter_node':       NodeSpec('veh_converter_node',                                                    condition=is_local_planner('mpc')),
 
     # Controllers (selected by local planner method)
-    'speed_control_node':               NodeSpec('avt_341_speed_control_node',           _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
-    'control_node':                     NodeSpec('avt_341_control_node',                 _templates('control'),           condition=is_local_planner('rcc', 'pf')),
+    'speed_control_node':               NodeSpec('avt_341_nav_speed_control_node',           _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
+    'control_node':                     NodeSpec('avt_341_nav_control_node',                 _templates('control'),           condition=is_local_planner('rcc', 'pf')),
 
     # State pre-processing
     'data_acquisition_node':            NodeSpec('data_acquisition_node',                _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                                output='log', autonomy=False),
@@ -127,7 +127,7 @@ def _make_node(name, spec, vid, vehicles, params_files, cli_overrides, node_conf
     node_remappings = node_config.get_remappings(fqn)
     node_additional_env = node_config.get_additional_env(fqn)
     node = Node(
-        package='avt_341',
+        package='avt_341_nav',
         executable=spec.executable,
         name=node_name,
         output=spec.output,

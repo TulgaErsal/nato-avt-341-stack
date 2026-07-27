@@ -1,8 +1,8 @@
-#include "avt_341/perception/normal_grid.h"
+#include "avt_341_nav/perception/normal_grid.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
 
-namespace avt_341{
+namespace avt_341_nav{
 namespace perception{
 
 NormalGrid::NormalGrid(){
@@ -22,7 +22,7 @@ NormalGrid::~NormalGrid(){
 void NormalGrid::ResizeGrid(){
   nx_ = (int)ceil(width_/res_);
   ny_ = (int)ceil(height_/res_);
-  NormalCell cell(res_, avt_341::utils::vec3(0.0, 0.0, 0.0), 0, thresh_, 100);
+  NormalCell cell(res_, avt_341_nav::utils::vec3(0.0, 0.0, 0.0), 0, thresh_, 100);
   cells_.clear();
   std::vector<NormalCell> row;
   row.resize(nx_,cell);
@@ -125,4 +125,4 @@ void NormalGrid::Reset(){
 }
 
 } // namespace perception
-} //namespace avt_341
+} //namespace avt_341_nav

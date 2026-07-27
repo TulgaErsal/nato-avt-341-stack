@@ -6,7 +6,7 @@
 #include <limits>
 #include <utility>
 
-namespace avt_341::core {
+namespace avt_341_nav::core {
 
 /**
  * Statistics configuration for a single tracked quantity.

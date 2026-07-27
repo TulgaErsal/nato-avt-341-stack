@@ -6,12 +6,12 @@
 #include <iostream>
 #include <algorithm>
 // project includes
-#include "avt_341/planning/global/astar.h"
-#include "avt_341/planning/global/astar_cell.h"
+#include "avt_341_nav/planning/global/astar.h"
+#include "avt_341_nav/planning/global/astar_cell.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 //#include "avt_341/planning/global/dubins_smoothing.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 Astar::Astar(float w_distance,
@@ -423,4 +423,4 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
 
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

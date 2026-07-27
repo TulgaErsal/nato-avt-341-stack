@@ -2,9 +2,9 @@
 #ifndef AVT_341_STATIC_GRID_LAYER_H
 #define AVT_341_STATIC_GRID_LAYER_H
 #include "costmap_layer.h"
-#include <avt_341/perception_params_dto.hpp>
+#include <avt_341_nav/perception_params_dto.hpp>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
     class StaticGridLayer: public CostmapLayer
     {
@@ -14,7 +14,7 @@ namespace avt_341::perception
             const PerceptionSettings& settings,
             const std::string& label,
             const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
-            const avt_341::params::perception::Params::StaticGridLayer& params
+            const avt_341_nav::params::perception::Params::StaticGridLayer& params
             );
 
         std::string ToString() const override;

@@ -47,7 +47,7 @@
 
 #include <Eigen/Dense>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 namespace filtering {
 
@@ -246,4 +246,4 @@ class KalmanFilter {
 
 } // namespace filtering
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

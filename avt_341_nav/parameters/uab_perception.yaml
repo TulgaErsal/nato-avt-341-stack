@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/uab_perception
+code_namespace: avt_341_nav/params/uab_perception
 ros__parameters:
 
   # Grid

@@ -1,7 +1,7 @@
-#include "avt_341/perception/clearing_methods/channel_clearing_method.h"
+#include "avt_341_nav/perception/clearing_methods/channel_clearing_method.h"
 #include "sensor_msgs/msg/point_cloud.hpp"
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 ChannelThresholdClearingMethod::ChannelThresholdClearingMethod(
     std::vector<std::vector<Cell>> &cells,

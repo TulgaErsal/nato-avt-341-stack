@@ -13,7 +13,7 @@
 #define PID_CONTROLLER_H
 #include <fstream>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace control{
 
 class AntiWindupMethod{
@@ -80,5 +80,5 @@ class PidController{
 };
 
 } // namespace control
-} // namespace avt_341
+} // namespace avt_341_nav
 #endif

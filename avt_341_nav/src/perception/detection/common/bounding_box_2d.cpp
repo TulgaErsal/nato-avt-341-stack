@@ -41,9 +41,9 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/bounding_box_2d.hpp>
+#include <avt_341_nav/perception/detection/common/bounding_box_2d.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 BoundingBox2D::BoundingBox2D() {}
@@ -93,4 +93,4 @@ int BoundingBox2D::GetYMax() { return y_max_; }
 int BoundingBox2D::GetYMin() { return y_min_; }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

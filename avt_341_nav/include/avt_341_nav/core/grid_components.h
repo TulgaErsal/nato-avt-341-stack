@@ -1,7 +1,7 @@
 #ifndef GRID_COMPONENTS_H
 #define GRID_COMPONENTS_H
 
-namespace avt_341::core{
+namespace avt_341_nav::core{
 
 struct GridRegion {
 

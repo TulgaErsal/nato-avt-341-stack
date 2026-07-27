@@ -5,7 +5,7 @@
 #include "std_msgs/msg/multi_array_dimension.hpp"
 #include <rclcpp/rclcpp.hpp>
 // point cloud includes
-#include "avt_341/perception/point_cloud_generator.h"
+#include "avt_341_nav/perception/point_cloud_generator.h"
 nav_msgs::msg::Odometry odom_msg;
 geometry_msgs::msg::Twist twist;
 bool odom_rcvd = false;

@@ -3,11 +3,11 @@
  * @brief Domain adapters for generated object-tracking parameters.
  */
 
-#include <avt_341/perception/tracking/tracker_params.hpp>
+#include <avt_341_nav/perception/tracking/tracker_params.hpp>
 
 #include <algorithm>
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 std::string ResolveFrameId(const ObjectTrackerSettings::Frames& frames,
                            const std::string& frame_id) {
@@ -84,4 +84,4 @@ bool ApplyRuntimeParameters(ObjectTrackerSettings& params,
     return changed;
 }
 
-}  // namespace avt_341::perception
+}  // namespace avt_341_nav::perception

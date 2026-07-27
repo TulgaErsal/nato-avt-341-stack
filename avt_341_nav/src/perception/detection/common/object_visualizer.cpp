@@ -41,9 +41,9 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/object_visualizer.hpp>
+#include <avt_341_nav/perception/detection/common/object_visualizer.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 ObjectVisualizer::ObjectVisualizer() {}
@@ -122,4 +122,4 @@ unsigned int ObjectVisualizer::GetIndex(const std::string& label) {
 }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -1,6 +1,6 @@
-#include "avt_341/communication/tcp_socket_proxy.h"
+#include "avt_341_nav/communication/tcp_socket_proxy.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace communication {
 
 #ifdef __linux__

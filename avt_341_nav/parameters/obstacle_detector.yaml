@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/obstacle_detector
+code_namespace: avt_341_nav/params/obstacle_detector
 ros__parameters:
 
   # Obstacle Detection

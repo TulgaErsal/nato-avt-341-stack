@@ -3,10 +3,10 @@
 
 #include <atomic>
 #include <vector>
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/avt_341_utils.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 typedef utils::vec2 Point;
@@ -293,6 +293,6 @@ protected:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif

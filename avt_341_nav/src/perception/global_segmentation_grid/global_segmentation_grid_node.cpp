@@ -1,6 +1,6 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_utils.h"
+#include "avt_341_nav/node/node_utils.h"
 #include <vector>
 #include <fstream>
 
@@ -70,13 +70,13 @@ int main(int argc, char *argv[])
 
     std::string globalGridCSVPath = "";
     std::string defaultPath = "";
-    avt_341::node::get_parameter(node, "~global_grid_csv_path", globalGridCSVPath, defaultPath);
+    avt_341_nav::node::get_parameter(node, "~global_grid_csv_path", globalGridCSVPath, defaultPath);
     float grid_llx;
-    avt_341::node::get_parameter(node, "~grid_llx", grid_llx, 0.0f);
+    avt_341_nav::node::get_parameter(node, "~grid_llx", grid_llx, 0.0f);
     float grid_lly;
-    avt_341::node::get_parameter(node, "~grid_lly", grid_lly, 0.0f);
+    avt_341_nav::node::get_parameter(node, "~grid_lly", grid_lly, 0.0f);
     float res;
-    avt_341::node::get_parameter(node, "~grid_res", res, 1.0f);
+    avt_341_nav::node::get_parameter(node, "~grid_res", res, 1.0f);
 
     std::vector<double> costmap = GetCostMapFromTif(globalGridCSVPath);
     if (costmap.size() > 0)

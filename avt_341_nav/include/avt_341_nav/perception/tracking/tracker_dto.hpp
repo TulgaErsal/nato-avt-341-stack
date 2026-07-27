@@ -13,7 +13,7 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
 
     /**

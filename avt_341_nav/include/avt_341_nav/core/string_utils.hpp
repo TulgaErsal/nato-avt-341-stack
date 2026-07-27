@@ -9,7 +9,7 @@
 #include <cctype>
 #include <string>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
 /** @brief Return a lowercase copy of the given string. */

@@ -5,11 +5,11 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_types.h"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/perception/costmap.h"
-#include "avt_341/perception/perception_settings.hpp"
-#include <avt_341/perception_params_service.hpp>
+#include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/perception/costmap.h"
+#include "avt_341_nav/perception/perception_settings.hpp"
+#include <avt_341_nav/perception_params_service.hpp>
 
 double start_time = 0.0;
 
@@ -25,23 +25,23 @@ rclcpp::Node::SharedPtr n = nullptr;
 
 bool reset_called = false;
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg) {
-	if (msg->data.find(avt_341::node::NodeType::Perception) != std::string::npos) {
+	if (msg->data.find(avt_341_nav::node::NodeType::Perception) != std::string::npos) {
 		reset_called = true;
 	}
 }
 
 void PublishGrid(
 	bool is_segmentation,
-	const avt_341::perception::PerceptionSettings& settings,
+	const avt_341_nav::perception::PerceptionSettings& settings,
 	double now_seconds,
 	const std::string & target_layer,
-	avt_341::perception::Costmap& grid
+	avt_341_nav::perception::Costmap& grid
 	) {
 
 	nav_msgs::msg::OccupancyGrid grid_msg;
 
 	if (settings.costmap.publish.method ==
-		avt_341::perception::GridPubMethod::Window) {
+		avt_341_nav::perception::GridPubMethod::Window) {
 		grid_msg = grid.GetGrid(
 			settings.costmap.publish.max_grid_width,
 			settings.costmap.publish.max_grid_height,
@@ -62,7 +62,7 @@ void PublishGrid(
 	    {
 	        is_full_update =
 				(settings.costmap.publish.method ==
-					avt_341::perception::GridPubMethod::Full)
+					avt_341_nav::perception::GridPubMethod::Full)
                         || (settings.costmap.publish.force_full_every > 0.0 &&
                             (now_seconds - last_full_grid_update[target_layer] >
 								settings.costmap.publish.force_full_every)
@@ -93,25 +93,25 @@ int main(int argc, char* argv[]) {
 
 	rclcpp::init(argc, argv);
 	n = rclcpp::Node::make_shared("avt_341_perception_node");
-	auto tf = std::make_shared<avt_341::node::TfInterface>(n);
-	avt_341::params::perception::ParamsListener param_listener(
+	auto tf = std::make_shared<avt_341_nav::node::TfInterface>(n);
+	avt_341_nav::params::perception::ParamsListener param_listener(
 		n);
-	avt_341::perception::PerceptionSettings settings(
+	avt_341_nav::perception::PerceptionSettings settings(
 		param_listener.get_params());
 
 	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
 	std::vector<std::string> publish_layers =
-		avt_341::utils::SplitByDelimiter(settings.costmap.publish.layers, ',');
+		avt_341_nav::utils::SplitByDelimiter(settings.costmap.publish.layers, ',');
 
-	if (!avt_341::perception::GridPubMethod::IsValid(
+	if (!avt_341_nav::perception::GridPubMethod::IsValid(
 			settings.costmap.publish.method)){
 		RCLCPP_ERROR(n->get_logger(), "Invalid costmap.publish.method: %hs", settings.costmap.publish.method.c_str());
 		return -1;
 	}
 
-	avt_341::perception::Costmap grid(n, tf, settings);
+	avt_341_nav::perception::Costmap grid(n, tf, settings);
 	param_listener.setUserCallback(
-		[&grid](const avt_341::params::perception::Params& updated_params) {
+		[&grid](const avt_341_nav::params::perception::Params& updated_params) {
 			grid.UpdateThresholds(
 				updated_params.costmap.thresholds.thresh,
 				updated_params.costmap.thresholds.thresh_max);
@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
 
 	const bool use_inc_updates =
 		settings.costmap.publish.method ==
-		avt_341::perception::GridPubMethod::Updates;
+		avt_341_nav::perception::GridPubMethod::Updates;
 
 	publish_layers.push_back(""); // add empty string to represent combined grid layer for publishing
 
@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
 			seg_last_full_grid_update.clear();
 			grid.Reset();
 			std_msgs::msg::String reset_ack_msg;
-			reset_ack_msg.data = avt_341::node::NodeType::Perception;
+			reset_ack_msg.data = avt_341_nav::node::NodeType::Perception;
 			reset_ack_pub->publish(reset_ack_msg);
 			reset_called = false;
 		}

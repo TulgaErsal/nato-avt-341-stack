@@ -1,10 +1,10 @@
-#include "avt_341/core/waypoint_file_parser.hpp"
+#include "avt_341_nav/core/waypoint_file_parser.hpp"
 
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
 namespace

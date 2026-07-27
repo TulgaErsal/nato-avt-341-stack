@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/speed_control
+code_namespace: avt_341_nav/params/speed_control
 ros__parameters:
 
   # Pure pursuit controller

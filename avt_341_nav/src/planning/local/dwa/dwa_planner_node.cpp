@@ -13,8 +13,8 @@
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_types.h"
-#include <avt_341/node/occupancy_grid_subscriber.h>
+#include "avt_341_nav/node/node_types.h"
+#include <avt_341_nav/node/occupancy_grid_subscriber.h>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "avt_341_msgs/msg/dwa_info.hpp"
 #include "avt_341_msgs/msg/nav_state.hpp"
@@ -27,8 +27,8 @@
 #include "std_msgs/msg/string.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
-#include <avt_341/dwa_local_planner_params_service.hpp>
-#include <avt_341/planning/local/dwa/planner.hpp>
+#include <avt_341_nav/dwa_local_planner_params_service.hpp>
+#include <avt_341_nav/planning/local/dwa/planner.hpp>
 
 // Initialise ROS messages.
 nav_msgs::msg::Odometry msg_odom;
@@ -96,7 +96,7 @@ void CallbackWaypoints(nav_msgs::msg::Path::SharedPtr msg_rcvd_path) {
 }
 
 void NavStateCallback(avt_341_msgs::msg::NavState::SharedPtr gp_nav_state) {
-    if (gp_nav_state->run_state != avt_341::utils::NavStackState::Active) {
+    if (gp_nav_state->run_state != avt_341_nav::utils::NavStackState::Active) {
         return;
     }
     msg_waypoint_pose = gp_nav_state->goal.pose;
@@ -113,7 +113,7 @@ void CallbackPath(nav_msgs::msg::Path::SharedPtr msg_rcvd_path) {
     rcvd_path = true;
 }
 
-void UpdateState(avt_341::planning::dwa::Planner& planner) {
+void UpdateState(avt_341_nav::planning::dwa::Planner& planner) {
     // Initialise the pose orientation quaternion.
     tf2::Quaternion orientation(msg_odom.pose.pose.orientation.x,
                                 msg_odom.pose.pose.orientation.y,
@@ -137,8 +137,8 @@ void UpdateState(avt_341::planning::dwa::Planner& planner) {
 }
 
 void UpdateGoal(
-    avt_341::planning::dwa::Planner& planner,
-    const avt_341::params::dwa_local_planner::Params& params) {
+    avt_341_nav::planning::dwa::Planner& planner,
+    const avt_341_nav::params::dwa_local_planner::Params& params) {
     double goal_x, goal_y;
 
     if(planner.GetUseGlobalPath()) {
@@ -167,7 +167,7 @@ void UpdateGoal(
 
         // Initialise a new global path in the planner and populate it with the
         // global path poses.
-        avt_341::planning::dwa::Path path;
+        avt_341_nav::planning::dwa::Path path;
         for(auto& pose : msg_path.poses) {
             path.Add(pose.pose.position.x, pose.pose.position.y);
         }
@@ -190,7 +190,7 @@ void UpdateGoal(
     planner.SetGoal(goal_x, goal_y);
 }
 
-void UpdateGrids(avt_341::planning::dwa::Planner& planner) {
+void UpdateGrids(avt_341_nav::planning::dwa::Planner& planner) {
     if(rcvd_grid_occ) {
         planner.SetOccupancyGridWidth(msg_grid_occ.info.width);
         planner.SetOccupancyGridHeight(msg_grid_occ.info.height);
@@ -208,7 +208,7 @@ void UpdateGrids(avt_341::planning::dwa::Planner& planner) {
 }
 
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg) {
-    if(msg->data.find(avt_341::node::NodeType::LocalPlanner) !=
+    if(msg->data.find(avt_341_nav::node::NodeType::LocalPlanner) !=
        std::string::npos) {
         reset_called = true;
     }
@@ -230,7 +230,7 @@ GetClearMarkersMessage(rclcpp::Node::SharedPtr node) {
 
 visualization_msgs::msg::MarkerArray
 GetTrajectoryMarkersMessage(rclcpp::Node::SharedPtr node,
-                            const avt_341::planning::dwa::Planner& planner) {
+                            const avt_341_nav::planning::dwa::Planner& planner) {
     auto trajectories = planner.GetTrajectories();
     visualization_msgs::msg::MarkerArray marker_array_message;
     for(size_t trajectory_index = 0; trajectory_index < trajectories.size();
@@ -282,7 +282,7 @@ GetTrajectoryMarkersMessage(rclcpp::Node::SharedPtr node,
 
 avt_341_msgs::msg::DwaInfo
 GetInfoMessage(rclcpp::Node::SharedPtr node,
-               avt_341::planning::dwa::Planner& planner) {
+               avt_341_nav::planning::dwa::Planner& planner) {
     avt_341_msgs::msg::DwaInfo info_message;
     info_message.header.frame_id = "dwa";
     info_message.header.stamp = node->now();
@@ -299,7 +299,7 @@ int main(int argc, char* argv[]) {
     // Initialize ROS node.
     rclcpp::init(argc, argv);
     auto node = rclcpp::Node::make_shared("avt_341_dwa_planner_node");
-    avt_341::params::dwa_local_planner::ParamsListener param_listener(
+    avt_341_nav::params::dwa_local_planner::ParamsListener param_listener(
         node);
     const auto params = param_listener.get_params();
 
@@ -314,12 +314,12 @@ int main(int argc, char* argv[]) {
         node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",
                                                           1,
                                                           CallbackOdometry);
-    avt_341::node::OccupancyGridSubscriber sub_grid_occ(node,
+    avt_341_nav::node::OccupancyGridSubscriber sub_grid_occ(node,
         params.map_topic,
         1,
         params.costmap.publish.method,
         CallbackGridOccupancy);
-    avt_341::node::OccupancyGridSubscriber sub_grid_seg(node,
+    avt_341_nav::node::OccupancyGridSubscriber sub_grid_seg(node,
         "avt_341/segmentation_grid",
         1,
         params.costmap.publish.method,
@@ -363,7 +363,7 @@ int main(int argc, char* argv[]) {
                                                           1);
 
     // Initialise and configure the dynamic window approach (DWA) planner.
-    avt_341::planning::dwa::Planner planner;
+    avt_341_nav::planning::dwa::Planner planner;
     planner.SetHorizon(params.horizon);
     planner.SetWindowLinearSpeedMin(params.speed_lin_min);
     planner.SetWindowLinearSpeedMax(params.speed_lin_max);
@@ -450,7 +450,7 @@ int main(int argc, char* argv[]) {
         if(reset_called) {
             planner.Reset();
             std_msgs::msg::String reset_ack_msg;
-            reset_ack_msg.data = avt_341::node::NodeType::LocalPlanner;
+            reset_ack_msg.data = avt_341_nav::node::NodeType::LocalPlanner;
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }

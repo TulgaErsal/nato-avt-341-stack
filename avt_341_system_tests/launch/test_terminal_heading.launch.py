@@ -17,9 +17,9 @@ Usage
 -----
 1. Build and source the workspace.
 2. Launch:
-       ros2 launch avt_341 test_terminal_heading.launch.py
+       ros2 launch avt_341_system_tests test_terminal_heading.launch.py
    Optionally add random obstacles:
-       ros2 launch avt_341 test_terminal_heading.launch.py \
+       ros2 launch avt_341_system_tests test_terminal_heading.launch.py \
            num_obstacles:=20 obstacle_min_size_m:=1.0 obstacle_max_size_m:=4.0 obstacle_seed:=42
 3. In RViz, use the "2D Goal Pose" tool (press G) to click a goal position and
    drag to set the desired final heading.  The vehicle will drive to the goal
@@ -62,7 +62,7 @@ def load_params(path):
 
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
 
     mpc_params = load_params(
         os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'mpc_local_planner.yaml'))
@@ -118,7 +118,7 @@ def generate_launch_description():
 
         # Vehicle converter: odometry → avt_341/veh
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='veh_converter_node',
             name='avt_341_veh_converter_node',
             output='screen',
@@ -126,7 +126,7 @@ def generate_launch_description():
 
         # Obstacle processor: occupancy grid → obstacle clusters for MPC
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='obstacle_processor_node',
             name='obstacle_processor_node',
             output='screen',
@@ -135,8 +135,8 @@ def generate_launch_description():
 
         # Global path planner: goal_pose → global_path
         Node(
-            package='avt_341',
-            executable='avt_341_global_path_node',
+            package='avt_341_nav',
+            executable='avt_341_nav_global_path_node',
             name='avt_341_global_path_node',
             output='screen',
             parameters=[global_planner_params],
@@ -144,7 +144,7 @@ def generate_launch_description():
 
         # Goal point processor: global_path + veh → mpc_goalPoint + mpc_final_heading
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='goal_point_processor_node',
             name='goal_point_processor_node',
             output='screen',
@@ -154,8 +154,8 @@ def generate_launch_description():
         # MPC planner: libjulia.so.1 must be visible at runtime.
         # JULIA_LIB_PATH is prepended to LD_LIBRARY_PATH for this process.
         Node(
-            package='avt_341',
-            executable='avt_341_mpc_planner_node',
+            package='avt_341_nav',
+            executable='avt_341_nav_mpc_planner_node',
             name='mpc_planner_node',
             output='screen',
             parameters=[mpc_params],

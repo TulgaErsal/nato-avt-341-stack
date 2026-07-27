@@ -8,13 +8,13 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/avt_341_utils.h"
-#include <avt_341/speed_zones_params_service.hpp>
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include <avt_341_nav/speed_zones_params_service.hpp>
+#include "avt_341_nav/node/tf_interface.h"
 
 
 rclcpp::Node::SharedPtr node;
-std::shared_ptr<avt_341::node::TfInterface> tf;
+std::shared_ptr<avt_341_nav::node::TfInterface> tf;
 nav_msgs::msg::Odometry odom;
 bool odom_rcvd = false;
 
@@ -129,9 +129,9 @@ bool TransformSpeedZone(SpeedZone& zone, std::string target_frame) {
 int main(int argc, char *argv[]){
     rclcpp::init(argc, argv);
     node = rclcpp::Node::make_shared("avt_341_speed_zones_node");
-    avt_341::params::speed_zones::ParamsListener param_listener(node);
+    avt_341_nav::params::speed_zones::ParamsListener param_listener(node);
     const auto params = param_listener.get_params();
-    tf = std::make_shared<avt_341::node::TfInterface>(node);
+    tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
 
     // Create subscribers/publishers
     auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>(

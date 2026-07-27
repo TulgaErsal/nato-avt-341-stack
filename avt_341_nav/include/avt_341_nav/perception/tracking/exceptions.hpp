@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 class TransformException : public std::runtime_error {
@@ -37,4 +37,4 @@ class PCAException : public std::runtime_error {
 };
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

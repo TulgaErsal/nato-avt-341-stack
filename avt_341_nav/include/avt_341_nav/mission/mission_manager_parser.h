@@ -2,7 +2,7 @@
 #define AVT_341_MISSION_MANAGER_PARSER_H
 
 #include "avt_341_msgs/msg/communication.hpp"
-#include "avt_341/mission/mission_manager_dto.h"
+#include "avt_341_nav/mission/mission_manager_dto.h"
 
 std::vector<std::string> tokenizeMsg(std::string input);
 

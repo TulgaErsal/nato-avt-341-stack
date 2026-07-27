@@ -7,11 +7,11 @@
 #include <optional>
 #include <string>
 
-#include "avt_341/core/running_stats.hpp"
+#include "avt_341_nav/core/running_stats.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_msgs/msg/compute_time_array.hpp"
 
-namespace avt_341::core {
+namespace avt_341_nav::core {
 
 class ComputeTimeRecorder;
 

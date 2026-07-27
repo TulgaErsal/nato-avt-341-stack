@@ -5,10 +5,10 @@
 #include <gtest/gtest.h>
 #include <string>
 
-#include "avt_341/perception/layers/static_grid_layer.h"
+#include "avt_341_nav/perception/layers/static_grid_layer.h"
 
-using avt_341::perception::StaticGridLayer;
-using avt_341::perception::CostmapSizeInfo;
+using avt_341_nav::perception::StaticGridLayer;
+using avt_341_nav::perception::CostmapSizeInfo;
 
 struct ParseSizeInfoTestParams
 {

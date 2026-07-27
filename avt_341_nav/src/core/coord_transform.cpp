@@ -1,4 +1,4 @@
-#include <avt_341/core/coord_transform.hpp>
+#include <avt_341_nav/core/coord_transform.hpp>
 
 #ifdef GTE_ROS_HUMBLE
 #include <tf2_eigen/tf2_eigen.hpp>
@@ -9,9 +9,9 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <rclcpp/logging.hpp>
 
-#include <avt_341/core/eigen_dto_conversion.hpp>
+#include <avt_341_nav/core/eigen_dto_conversion.hpp>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
 CoordTransformer::CoordTransformer(const tf2_ros::Buffer& buffer,

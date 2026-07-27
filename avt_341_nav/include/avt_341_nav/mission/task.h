@@ -17,11 +17,11 @@
 // local includes
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "avt_341/mission/mission_manager.h"
-#include "avt_341/mission/formation_definition.h"
-#include "avt_341/mission/formation_path_generator.h"
+#include "avt_341_nav/mission/mission_manager.h"
+#include "avt_341_nav/mission/formation_definition.h"
+#include "avt_341_nav/mission/formation_path_generator.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 class MissionManager;
@@ -154,7 +154,7 @@ public:
 private:
   bool terminate_on_leader_arrived_;
   bool terminate_on_all_arrived_;
-  avt_341::mission::FormationPathGenerator path_generator_;
+  avt_341_nav::mission::FormationPathGenerator path_generator_;
   double goal_threshold_;
   double yaw_threshold_;
 }; // class Follow
@@ -184,7 +184,7 @@ private:
 }; // class PathFollow
 
 } // namespace mission
-} // namespace avt_341
+} // namespace avt_341_nav
 
 
 #endif //AVT_341_TASK_H

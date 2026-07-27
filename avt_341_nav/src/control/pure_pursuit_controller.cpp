@@ -1,9 +1,9 @@
-#include "avt_341/control/pure_pursuit_controller.h"
+#include "avt_341_nav/control/pure_pursuit_controller.h"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace control{
 
 PurePursuitController::PurePursuitController() {
@@ -253,4 +253,4 @@ geometry_msgs::msg::Twist PurePursuitController::GetDcAckermann(double alpha, do
 } // GetDcAcerman
 
 } // namespace control
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -1,6 +1,6 @@
-#include <avt_341/planning/local/dwa/obstacles.hpp>
+#include <avt_341_nav/planning/local/dwa/obstacles.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -24,4 +24,4 @@ void Obstacles::Clear() {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

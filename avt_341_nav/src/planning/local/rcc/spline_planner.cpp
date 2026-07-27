@@ -1,9 +1,9 @@
-#include "avt_341/planning/local/spline_planner.h"
+#include "avt_341_nav/planning/local/spline_planner.h"
 #include <algorithm>
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning{
 Planner::Planner() {
 	// planner coefficients and tuneable parameters
@@ -274,4 +274,4 @@ float Planner::GetAngleAt(float s) {
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

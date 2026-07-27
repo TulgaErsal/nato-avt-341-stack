@@ -20,11 +20,11 @@
 #include <avt_341_msgs/srv/check_speed.hpp>
 #include <avt_341_msgs/srv/get_odometry.hpp>
 
-#include <avt_341/core/running_stats.hpp>
-#include <avt_341/perception/tracking/tracker_dto.hpp>
-#include <avt_341/perception/tracking/tracker_params.hpp>
+#include <avt_341_nav/core/running_stats.hpp>
+#include <avt_341_nav/perception/tracking/tracker_dto.hpp>
+#include <avt_341_nav/perception/tracking/tracker_params.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 /**
@@ -153,6 +153,6 @@ class TrackerRecoveryMonitor {
 };
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav
 
 #endif  // AVT_341_TRACKER_RECOVERY_MONITOR_H

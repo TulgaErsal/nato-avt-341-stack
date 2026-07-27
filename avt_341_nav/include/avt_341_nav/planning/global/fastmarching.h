@@ -6,10 +6,10 @@
 #include <memory>
 #include <string>
 
-#include "avt_341/planning/global/astar.h"
+#include "avt_341_nav/planning/global/astar.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 class FastMarching : public Astar {
@@ -109,6 +109,6 @@ private:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif // FASTMARCHING_H

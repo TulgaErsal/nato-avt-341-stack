@@ -1,9 +1,9 @@
 #include <iostream>
-#include "avt_341/mission/formation_definition.h"
+#include "avt_341_nav/mission/formation_definition.h"
 #include "avt_341_msgs/msg/follower_status.hpp"
 
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 FormationDefinition::FormationDefinition(

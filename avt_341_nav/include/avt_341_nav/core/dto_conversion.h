@@ -9,11 +9,11 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/avt_341_utils.h"
 #include <algorithm>
 #include <stdexcept>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
     inline auto ToVec2(const geometry_msgs::msg::Point & p)
     {

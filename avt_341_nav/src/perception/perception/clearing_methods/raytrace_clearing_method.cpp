@@ -1,4 +1,4 @@
-#include "avt_341/perception/clearing_methods/raytrace_clearing_method.h"
+#include "avt_341_nav/perception/clearing_methods/raytrace_clearing_method.h"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -8,7 +8,7 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 constexpr int RaytraceClearingMethod::N_VOXELS_PER_CELL;
 

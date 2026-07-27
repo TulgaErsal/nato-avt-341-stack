@@ -44,11 +44,11 @@
 
 #pragma once
 
-#include <avt_341/perception/filtering/kalman_filter.hpp>
-#include <avt_341/perception/filtering/kinematic_kalman_filter.hpp>
-#include <avt_341/perception/filtering/process_covariance.hpp>
+#include <avt_341_nav/perception/filtering/kalman_filter.hpp>
+#include <avt_341_nav/perception/filtering/kinematic_kalman_filter.hpp>
+#include <avt_341_nav/perception/filtering/process_covariance.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 namespace filtering {
 
@@ -137,7 +137,7 @@ class CAFilter : public KalmanFilter<state_size * 3, state_size> {
      *        Q scaling is process_variance^4.  Tune accordingly.
      */
     void InitializeProcessUncertainty(const double& time_step) {
-        auto Q = avt_341::perception::filtering::ProcessCovariance<state_size, kOrder>::GetDiscreteWhiteNoise(
+        auto Q = avt_341_nav::perception::filtering::ProcessCovariance<state_size, kOrder>::GetDiscreteWhiteNoise(
             time_step, std::pow(process_variance_, 2.0));
         Base::SetProcessUncertainty(Q);
     }
@@ -188,4 +188,4 @@ class CAFilter : public KalmanFilter<state_size * 3, state_size> {
 
 } // namespace filtering
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

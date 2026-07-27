@@ -1,12 +1,12 @@
 // ros includes
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_types.h"
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/node/tf_interface.h"
 // local includes
-#include "avt_341/mission/mission_manager.h"
-#include "avt_341/mission/mission_manager_parser.h"
+#include "avt_341_nav/mission/mission_manager.h"
+#include "avt_341_nav/mission/mission_manager_parser.h"
 #include <queue>
-#include <avt_341/core/dto_conversion.h>
+#include <avt_341_nav/core/dto_conversion.h>
 #include <optional>
 #include <set>
 #include <cmath>
@@ -14,9 +14,9 @@
 #include <avt_341_msgs/srv/set_nav_point_definitions.hpp>
 #include <avt_341_msgs/srv/check_speed.hpp>
 #include <avt_341_msgs/srv/get_odometry.hpp>
-#include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
-#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
-#include <avt_341/mission_manager_params_service.hpp>
+#include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter.hpp"
+#include <avt_341_nav/mission_manager_params_service.hpp>
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/nav_state.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -35,11 +35,11 @@ bool odom_rcvd = false;
 std::optional<int> nav_run_state;
 
 std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> leader_pub;
-std::shared_ptr<avt_341::mission::MissionManager> mgr;
+std::shared_ptr<avt_341_nav::mission::MissionManager> mgr;
 
 std::map<std::string, nav_msgs::msg::Odometry> formation_odoms;
 rclcpp::Node::SharedPtr nh = nullptr;
-std::shared_ptr<avt_341::node::TfInterface> tf = nullptr;
+std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 
 // Receive updates from comms
 void CommunicationCallback(avt_341_msgs::msg::Communication::SharedPtr msg) {
@@ -62,7 +62,7 @@ std::string toUpper(const std::string & str){
 void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
     // Ensure same case as leader_name
     std::string child_frame_id = msg->child_frame_id;
-    avt_341::mission::Task* current_task = mgr->currentTask();
+    avt_341_nav::mission::Task* current_task = mgr->currentTask();
 
     child_frame_id = toUpper(child_frame_id);
     std::string veh_name = child_frame_id.substr(0, child_frame_id.find('/'));
@@ -96,7 +96,7 @@ void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
 void TargetContactsCallback(nav_msgs::msg::Path::SharedPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
   // Handle detection of potential targets of interest
-  if(mgr->nav_state != avt_341::utils::NavStackState::NotInit) {       // avoid premature detection of contacts
+  if(mgr->nav_state != avt_341_nav::utils::NavStackState::NotInit) {       // avoid premature detection of contacts
     contacts.push(*msg);
   }
 }
@@ -105,22 +105,22 @@ bool current_goal_rcvd = false;
 geometry_msgs::msg::PoseStamped gp_goal_rcvd;
 void NavStateCallback(avt_341_msgs::msg::NavState::SharedPtr msg) {
     nav_run_state = msg->run_state;
-    if (avt_341::core::HasActiveGoal(msg))
+    if (avt_341_nav::core::HasActiveGoal(msg))
     {
-        gp_goal_rcvd = avt_341::core::ToPoseStamped(msg->goal);
+        gp_goal_rcvd = avt_341_nav::core::ToPoseStamped(msg->goal);
         current_goal_rcvd = true;
     }
 }
 
 bool reset_called = false;
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg){
-  if(msg->data.find(avt_341::node::NodeType::Mission) != std::string::npos){
+  if(msg->data.find(avt_341_nav::node::NodeType::Mission) != std::string::npos){
     reset_called = true;
   }
 }
 
 void GoalReachedCallback(avt_341_msgs::msg::NavState::SharedPtr msg){
-  reached_goals.push(avt_341::core::ToPoseStamped(msg->goal));
+  reached_goals.push(avt_341_nav::core::ToPoseStamped(msg->goal));
 }
 
 auto get_veh_odom_sub(const std::vector<std::string> & veh_namespaces, int target_idx,
@@ -189,7 +189,7 @@ void SetNavPointDefinitionsServiceImpl(
         return;
     }
 
-    std::vector<avt_341::mission::MissionPoint> mission_points;
+    std::vector<avt_341_nav::mission::MissionPoint> mission_points;
     mission_points.reserve(request->labels.size());
     std::set<std::string> seen_labels;
 
@@ -203,7 +203,7 @@ void SetNavPointDefinitionsServiceImpl(
             return;
         }
 
-        avt_341::mission::MissionPoint mission_point;
+        avt_341_nav::mission::MissionPoint mission_point;
         mission_point.name = label;
         mission_point.pos_x = pose.position.x;
         mission_point.pos_y = pose.position.y;
@@ -225,23 +225,23 @@ int main(int argc, char **argv) {
     // initialize the node
     rclcpp::init(argc, argv);
     nh = rclcpp::Node::make_shared("mission_manager");
-    tf = std::make_shared<avt_341::node::TfInterface>(nh);
-    avt_341::params::mission_manager::ParamsListener param_listener(nh);
+    tf = std::make_shared<avt_341_nav::node::TfInterface>(nh);
+    avt_341_nav::params::mission_manager::ParamsListener param_listener(nh);
     const auto params = param_listener.get_params();
     rclcpp::Rate loop_rate(10);
 
     const std::string my_name = toUpper(params.name);
 
-    std::shared_ptr<avt_341::mission::GoalFilter> goal_filter =
-        avt_341::mission::create_goal_filter(
+    std::shared_ptr<avt_341_nav::mission::GoalFilter> goal_filter =
+        avt_341_nav::mission::create_goal_filter(
             my_name, params.formation_goal_filter, nh,
             params.fgf_obs_avoid, params.costmap.publish.method);
 
-    mgr = std::make_shared<avt_341::mission::MissionManager>(
+    mgr = std::make_shared<avt_341_nav::mission::MissionManager>(
         params, my_name, nh, goal_filter);
 
-    std::shared_ptr<avt_341::mission::FormationSpeedController>
-        speedController = avt_341::mission::createFormationSpeedController(
+    std::shared_ptr<avt_341_nav::mission::FormationSpeedController>
+        speedController = avt_341_nav::mission::createFormationSpeedController(
             my_name, params.fsc, nh, tf);
 
     RCLCPP_INFO(nh->get_logger(), "Mission Manager Settings:\n  fsc.type=%s\n  formation.use_breadcrumbs=%d\n  formation.x_offset_on_path=%d\n  formation.prune_global_path=%d", params.fsc.type.c_str(), params.formation.use_breadcrumbs, params.formation.x_offset_on_path, params.formation.prune_global_path);
@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
           while(!reached_goals.empty()) reached_goals.pop();
           while(!contacts.empty()) contacts.pop();
           std_msgs::msg::String reset_ack_msg;
-          reset_ack_msg.data = avt_341::node::NodeType::Mission;
+          reset_ack_msg.data = avt_341_nav::node::NodeType::Mission;
           reset_ack_pub->publish(reset_ack_msg);
           reset_called = false;
         }
@@ -383,7 +383,7 @@ int main(int argc, char **argv) {
         // TODO: Can remove lead status and follower status messages. Use single MissionTaskStatus message.
         mgr->publishLeaderStatus();
 
-        avt_341::mission::Task* task = mgr->currentTask();
+        avt_341_nav::mission::Task* task = mgr->currentTask();
         if(task != nullptr){
             std_msgs::msg::Float64 speed_msg;
             speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_odoms, mgr->getSpeedSetpoint());

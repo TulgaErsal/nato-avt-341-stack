@@ -27,8 +27,8 @@
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include <rclcpp/rclcpp.hpp>
-#include <avt_341/data_acquisition_params_service.hpp>
-#include "avt_341/node/tf_interface.h"
+#include <avt_341_nav/data_acquisition_params_service.hpp>
+#include "avt_341_nav/node/tf_interface.h"
 
 
 geometry_msgs::msg::Twist cmd_vel;
@@ -50,9 +50,9 @@ int main(int argc, char *argv[]){
     // Init node
     rclcpp::init(argc, argv);
     auto n = rclcpp::Node::make_shared("data_acquisition_node");
-    avt_341::params::data_acquisition::ParamsListener param_listener(n);
+    avt_341_nav::params::data_acquisition::ParamsListener param_listener(n);
     const auto params = param_listener.get_params();
-    auto tf = std::make_shared<avt_341::node::TfInterface>(n);
+    auto tf = std::make_shared<avt_341_nav::node::TfInterface>(n);
 
     const int accel_samples =
         static_cast<int>(params.accel_averaging_samples);

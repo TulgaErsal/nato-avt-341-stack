@@ -1,11 +1,11 @@
 // clas definition
-#include "avt_341/mission/task.h"
+#include "avt_341_nav/mission/task.h"
 #include <fstream>
 #include <iostream>
-#include <avt_341/core/dto_conversion.h>
+#include <avt_341_nav/core/dto_conversion.h>
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 // Follow
@@ -22,7 +22,7 @@ Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDef
 }
 
 void Follow::init_() {
-    mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
+    mgr->publishNavStateCmd(avt_341_nav::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(path_generator_.useBreadcrumbs() ? 0 : 1);
 
     if(!formation_def_->formationAtGoal()){
@@ -88,4 +88,4 @@ std::string Follow::description() const {
 }
 
 } // mission 
-} // avt_341
+} // avt_341_nav

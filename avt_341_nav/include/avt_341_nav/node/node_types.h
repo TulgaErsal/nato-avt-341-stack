@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace node {
 
 class NodeType {
@@ -16,6 +16,6 @@ public:
 };
 
 } // namespace node
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif // AVT_341_NODE_TYPES_H

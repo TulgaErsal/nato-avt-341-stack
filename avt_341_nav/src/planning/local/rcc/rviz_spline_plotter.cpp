@@ -1,14 +1,14 @@
 #include <cmath>
 #include <limits>
-#include "avt_341/planning/local/rviz_spline_plotter.h"
-#include <avt_341/planning/local/spline_path.h>
+#include "avt_341_nav/planning/local/rviz_spline_plotter.h"
+#include <avt_341_nav/planning/local/spline_path.h>
 #include <sstream>
 #include "geometry_msgs/msg/point.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace planning{
 
     RVIZPlotter::RVIZPlotter(const std::string & cost_vis,
@@ -63,19 +63,19 @@ namespace avt_341 {
 
       float ds = pixdim_;
       Path wp_path(path_);
-      std::vector<avt_341::utils::vec2> paths_last_points;
+      std::vector<avt_341_nav::utils::vec2> paths_last_points;
 
       for (int i = 0; i < curves_.size(); i++) {
         float s0 = curves_[i].GetS0() + ds;
         float s_max = s0 + curves_[i].GetMaxLength() - ds;
         bool hits_obstacle = curves_[i].HitsObstacle();
-        avt_341::utils::vec2 pc1;
+        avt_341_nav::utils::vec2 pc1;
 
         while (s0 < s_max){
           float rho0 = curves_[i].At(s0- curves_[i].GetS0());
           float s1 = s0 + pixdim_;
           float rho1 = curves_[i].At(s1- curves_[i].GetS0());
-          avt_341::utils::vec2 pc0 = wp_path.ToCartesian(s0, rho0);
+          avt_341_nav::utils::vec2 pc0 = wp_path.ToCartesian(s0, rho0);
           pc1 = wp_path.ToCartesian(s1, rho1);
           if (std::isnan(pc0.x) || std::isnan(pc0.y) || std::isnan(pc1.x) || std::isnan(pc1.y)){
             break;
@@ -145,4 +145,4 @@ namespace avt_341 {
     }
 
   } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -7,14 +7,14 @@
 
 #include "goal_filter.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/occupancy_grid_subscriber.h"
-#include <avt_341/mission_manager_params_dto.hpp>
+#include "avt_341_nav/node/occupancy_grid_subscriber.h"
+#include <avt_341_nav/mission_manager_params_dto.hpp>
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 struct ObsAvoidGoalFilterParams {
 
@@ -43,8 +43,8 @@ public:
     explicit ObsAvoidGoalFilter(
         rclcpp::Node::SharedPtr node,
         const std::string& vehicle_id,
-        const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params =
-            avt_341::params::mission_manager::Params::FgfObsAvoid{},
+        const avt_341_nav::params::mission_manager::Params::FgfObsAvoid& filter_params =
+            avt_341_nav::params::mission_manager::Params::FgfObsAvoid{},
         const std::string& publish_method = std::string());
 
     geometry_msgs::msg::Pose Filter(const geometry_msgs::msg::Pose &candidate_goal, const geometry_msgs::msg::Pose &leader_pose) override;
@@ -95,7 +95,7 @@ private:
     bool            deadlock_;
 };
 
-} // namespace avt_341::mission
+} // namespace avt_341_nav::mission
 
 
 #endif // OBS_AVOIDANCE_GOAL_FILTER_HPP

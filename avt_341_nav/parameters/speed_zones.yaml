@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/speed_zones
+code_namespace: avt_341_nav/params/speed_zones
 ros__parameters:
 
   # Speed zones

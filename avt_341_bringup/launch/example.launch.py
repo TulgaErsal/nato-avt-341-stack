@@ -35,8 +35,8 @@ def generate_launch_description():
 
     launch_description = LaunchDescription([
         Node(
-            package='avt_341',
-            executable='avt_341_sim_test_node',
+            package='avt_341_nav',
+            executable='avt_341_nav_sim_test_node',
             name='sim_test_node',
             output='screen',
             parameters=[{'use_sim_time': False}],

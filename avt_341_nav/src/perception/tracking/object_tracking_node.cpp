@@ -48,17 +48,17 @@
   SOFTWARE.
 */
 
-#include <avt_341/perception/tracking/object_tracking_node.hpp>
-#include <avt_341/node/node_types.h>
+#include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
+#include <avt_341_nav/node/node_types.h>
 
 #include <algorithm>
 #include <regex>
 
-#include <avt_341/core/eigen_dto_conversion.hpp>
-#include <avt_341/perception/tracking/formation_vehicle_tracker.hpp>
-#include <avt_341/perception/tracking/toi_tracker.hpp>
+#include <avt_341_nav/core/eigen_dto_conversion.hpp>
+#include <avt_341_nav/perception/tracking/formation_vehicle_tracker.hpp>
+#include <avt_341_nav/perception/tracking/toi_tracker.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracking_node") {
@@ -77,7 +77,7 @@ ObjectTrackingNode::ObjectTrackingNode() : rclcpp::Node("object_tracking_node") 
 
 void ObjectTrackingNode::GetParameters() {
     param_listener_ =
-        std::make_shared<avt_341::params::object_tracking::ParamsListener>(
+        std::make_shared<avt_341_nav::params::object_tracking::ParamsListener>(
             get_node_parameters_interface(), get_logger());
     params_ = param_listener_->get_params();
     param_listener_->setUserCallback(
@@ -133,7 +133,7 @@ void ObjectTrackingNode::CreateSubscriptions() {
 
     // Initialize the integrated obstacle detector.
     obstacle_detector_ =
-        std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
+        std::make_shared<avt_341_nav::perception::LidarObstacleDetector<pcl::PointXYZ>>();
     obstacle_id_ = 0;
 }
 
@@ -411,7 +411,7 @@ void ObjectTrackingNode::TrackingTimerCallback() {
             tracker->Reset();
         }
         std_msgs::msg::String ack;
-        ack.data = avt_341::node::NodeType::Perception;
+        ack.data = avt_341_nav::node::NodeType::Perception;
         reset_ack_publisher_->publish(ack);
         reset_called_ = false;
         RCLCPP_INFO(get_logger(), "Reset complete.");
@@ -760,7 +760,7 @@ void ObjectTrackingNode::TaskChangedCallback(
 }
 
 void ObjectTrackingNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {
-    if (msg->data.find(avt_341::node::NodeType::Perception) == std::string::npos) return;
+    if (msg->data.find(avt_341_nav::node::NodeType::Perception) == std::string::npos) return;
     reset_called_ = true;
 }
 
@@ -803,4 +803,4 @@ void ObjectTrackingNode::SetTargetServiceCallback(
 }
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav

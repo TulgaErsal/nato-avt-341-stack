@@ -1,9 +1,9 @@
-#include "avt_341/perception/clearing_methods/time_clearing_method.h"
+#include "avt_341_nav/perception/clearing_methods/time_clearing_method.h"
 #include "geometry_msgs/msg/point.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 TimedClearingMethod::TimedClearingMethod(
     float max_point_age,

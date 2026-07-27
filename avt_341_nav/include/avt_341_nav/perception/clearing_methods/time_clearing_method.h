@@ -5,7 +5,7 @@
 #include "geometry_msgs/msg/point.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 
-namespace avt_341::perception{
+namespace avt_341_nav::perception{
 
 struct TimedNoObsData {
     double obs_time;

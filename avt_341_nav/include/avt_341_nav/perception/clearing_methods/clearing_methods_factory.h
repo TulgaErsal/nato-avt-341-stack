@@ -1,10 +1,10 @@
 #ifndef AVT_341_CLEARING_METHOD_FACTORY_H
 #define AVT_341_CLEARING_METHOD_FACTORY_H
 
-#include "avt_341/node/tf_interface.h"
-#include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
+#include "avt_341_nav/node/tf_interface.h"
+#include "avt_341_nav/perception/clearing_methods/costmap_clearing_method.h"
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 class ClearingMethodFactory {
 

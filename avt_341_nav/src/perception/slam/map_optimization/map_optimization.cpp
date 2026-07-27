@@ -1,4 +1,4 @@
-#include "avt_341/perception/slam/utility.h"
+#include "avt_341_nav/perception/slam/utility.h"
 // <!-- liorf_yjz_lucky_boy -->
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
@@ -159,12 +159,12 @@ public:
     ros::Subscriber subLoop;
     ros::Subscriber subAditionalOdom;
     
-    message_filters::Cache<avt_341::msg::Odometry> *cacheAdditionalOdom;
+    message_filters::Cache<avt_341_nav::msg::Odometry> *cacheAdditionalOdom;
 
     ros::ServiceServer srvSaveMap;
 
-    std::deque<avt_341::msg::Odometry> gpsQueue;
-    avt_341::msg::LiorfCloudInfo cloudInfo;
+    std::deque<avt_341_nav::msg::Odometry> gpsQueue;
+    avt_341_nav::msg::LiorfCloudInfo cloudInfo;
 
     vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
 
@@ -200,7 +200,7 @@ public:
 
     Eigen::Affine3f transIncre;
 
-    avt_341::msg::Time timeLaserInfoStamp;
+    avt_341_nav::msg::Time timeLaserInfoStamp;
     double timeLaserInfoCur;
 
     float transformTobeMapped[6];
@@ -221,9 +221,9 @@ public:
     vector<pair<int, int>> loopIndexQueue;
     vector<gtsam::Pose3> loopPoseQueue;
     vector<gtsam::noiseModel::Diagonal::shared_ptr> loopNoiseQueue;
-    deque<avt_341::msg::Float64MultiArray> loopInfoVec;
+    deque<avt_341_nav::msg::Float64MultiArray> loopInfoVec;
 
-    avt_341::msg::Path globalPath;
+    avt_341_nav::msg::Path globalPath;
 
     Eigen::Affine3f transPointAssociateToMap;
     Eigen::Affine3f incrementalOdometryAffineFront;
@@ -238,8 +238,8 @@ public:
     gtsam::Pose3 additionalOdometryIncrement;
 
     gtsam::Pose3 lastSavedAdditionalOdometry;
-    avt_341::msg::Time last_topic2_time;
-    std::deque<avt_341::msg::Odometry::ConstPtr> messages_from_topic2;
+    avt_341_nav::msg::Time last_topic2_time;
+    std::deque<avt_341_nav::msg::Odometry::ConstPtr> messages_from_topic2;
 
     ros::CallbackQueue additional_queue;
 
@@ -284,32 +284,32 @@ public:
         parameters.relinearizeSkip = 1;
         isam = new ISAM2(parameters);
 
-        pubKeyPoses = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/trajectory", 1);
-        pubLaserCloudSurround = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/map_global", 1);
-        pubLaserOdometryGlobal = nh.advertise<avt_341::msg::Odometry>("avt_341/slam/mapping/odometry", 1);
-        pubLaserOdometryIncremental = nh.advertise<avt_341::msg::Odometry>("avt_341/slam/mapping/odometry_incremental", 1);
-        pubPath = nh.advertise<avt_341::msg::Path>("avt_341/slam/mapping/path", 1);
+        pubKeyPoses = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/trajectory", 1);
+        pubLaserCloudSurround = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/map_global", 1);
+        pubLaserOdometryGlobal = nh.advertise<avt_341_nav::msg::Odometry>("avt_341/slam/mapping/odometry", 1);
+        pubLaserOdometryIncremental = nh.advertise<avt_341_nav::msg::Odometry>("avt_341/slam/mapping/odometry_incremental", 1);
+        pubPath = nh.advertise<avt_341_nav::msg::Path>("avt_341/slam/mapping/path", 1);
 
-        subCloud = nh.subscribe<avt_341::msg::LiorfCloudInfo>("avt_341/slam/deskew/cloud_info", 10, &mapOptimization::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
-        subGPS = nh.subscribe<avt_341::msg::NavSatFix>(gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
-        subLoop = nh.subscribe<avt_341::msg::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
+        subCloud = nh.subscribe<avt_341_nav::msg::LiorfCloudInfo>("avt_341/slam/deskew/cloud_info", 10, &mapOptimization::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
+        subGPS = nh.subscribe<avt_341_nav::msg::NavSatFix>(gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
+        subLoop = nh.subscribe<avt_341_nav::msg::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
         // subAditionalOdom = new message_filters::Subscriber<Odometry>(nh, "additional_odom", 10);
-        cacheAdditionalOdom = new message_filters::Cache<avt_341::msg::Odometry>(100);
+        cacheAdditionalOdom = new message_filters::Cache<avt_341_nav::msg::Odometry>(100);
 
         srvSaveMap = nh.advertiseService("avt_341/slam/save_map", &mapOptimization::saveMapService, this);
 
-        pubHistoryKeyFrames = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/icp_loop_closure_history_cloud", 1);
-        pubIcpKeyFrames = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/icp_loop_closure_corrected_cloud", 1);
-        pubLoopConstraintEdge = nh.advertise<avt_341::msg::MarkerArray>("/avt_341/slam/mapping/loop_closure_constraints", 1);
-        pubAdditionalUsage = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/additional_usage", 1);
-        pubAdditionalUsageTime = nh.advertise<avt_341::msg::Marker>("avt_341/slam/mapping/additional_usage_time", 1);
+        pubHistoryKeyFrames = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/icp_loop_closure_history_cloud", 1);
+        pubIcpKeyFrames = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/icp_loop_closure_corrected_cloud", 1);
+        pubLoopConstraintEdge = nh.advertise<avt_341_nav::msg::MarkerArray>("/avt_341/slam/mapping/loop_closure_constraints", 1);
+        pubAdditionalUsage = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/additional_usage", 1);
+        pubAdditionalUsageTime = nh.advertise<avt_341_nav::msg::Marker>("avt_341/slam/mapping/additional_usage_time", 1);
 
-        pubRecentKeyFrames = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/map_local", 1);
-        pubRecentKeyFrame = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/cloud_registered", 1);
-        pubCloudRegisteredRaw = nh.advertise<avt_341::msg::PointCloud2>("avt_341/slam/mapping/cloud_registered_raw", 1);
+        pubRecentKeyFrames = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/map_local", 1);
+        pubRecentKeyFrame = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/cloud_registered", 1);
+        pubCloudRegisteredRaw = nh.advertise<avt_341_nav::msg::PointCloud2>("avt_341/slam/mapping/cloud_registered_raw", 1);
 
-        pubSLAMInfo = nh.advertise<avt_341::msg::LiorfCloudInfo>("avt_341/slam/mapping/slam_info", 1);
-        pubGpsOdom = nh.advertise<avt_341::msg::Odometry>("avt_341/slam/mapping/gps_odom", 1);
+        pubSLAMInfo = nh.advertise<avt_341_nav::msg::LiorfCloudInfo>("avt_341/slam/mapping/slam_info", 1);
+        pubGpsOdom = nh.advertise<avt_341_nav::msg::Odometry>("avt_341/slam/mapping/gps_odom", 1);
 	pub_cg_x = nh.advertise<std_msgs::Float64>("chassis_cg_x", 10);
 	pub_cg_y = nh.advertise<std_msgs::Float64>("chassis_cg_y", 10);
 	pub_cg_z = nh.advertise<std_msgs::Float64>("chassis_cg_z", 10);
@@ -333,7 +333,7 @@ public:
 
         ros::NodeHandle nh2;
         nh2.setCallbackQueue(&additional_queue);
-        subAditionalOdom = nh2.subscribe<avt_341::msg::Odometry>(additionalOdomTopic, 1000, &mapOptimization::additionalOdomHandler, this);
+        subAditionalOdom = nh2.subscribe<avt_341_nav::msg::Odometry>(additionalOdomTopic, 1000, &mapOptimization::additionalOdomHandler, this);
 
         allocateMemory();
     }
@@ -374,13 +374,13 @@ public:
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
     }
 
-    avt_341::msg::Odometry::ConstPtr interpolate_odometry(avt_341::msg::OdometryPtr msg1,
-                                            avt_341::msg::OdometryPtr msg2,
-                                            const avt_341::msg::Time &t)
+    avt_341_nav::msg::Odometry::ConstPtr interpolate_odometry(avt_341_nav::msg::OdometryPtr msg1,
+                                            avt_341_nav::msg::OdometryPtr msg2,
+                                            const avt_341_nav::msg::Time &t)
     {
         if (!msg1 || !msg2)
         {
-            return avt_341::msg::Odometry::ConstPtr();
+            return avt_341_nav::msg::Odometry::ConstPtr();
         }
 
         // Compute the time difference between the two messages
@@ -396,13 +396,13 @@ public:
         const double factor = (t - msg1->header.stamp).toSec() / dt.toSec();
 
         // Interpolate the position using linear interpolation
-        avt_341::msg::Point pos;
+        avt_341_nav::msg::Point pos;
         pos.x = msg1->pose.pose.position.x + factor * (msg2->pose.pose.position.x - msg1->pose.pose.position.x);
         pos.y = msg1->pose.pose.position.y + factor * (msg2->pose.pose.position.y - msg1->pose.pose.position.y);
         pos.z = msg1->pose.pose.position.z + factor * (msg2->pose.pose.position.z - msg1->pose.pose.position.z);
 
         // Interpolate the orientation using spherical linear interpolation (slerp)
-        avt_341::msg::Quaternion quat;
+        avt_341_nav::msg::Quaternion quat;
         tf2::Quaternion q1, q2;
         q1.setValue(msg1->pose.pose.orientation.x, msg1->pose.pose.orientation.y,
                     msg1->pose.pose.orientation.z, msg1->pose.pose.orientation.w);
@@ -415,7 +415,7 @@ public:
         quat.w = q.w();
 
         // Create a new odometry message with the interpolated pose and header
-        avt_341::msg::Odometry::Ptr interp_odom(new avt_341::msg::Odometry);
+        avt_341_nav::msg::Odometry::Ptr interp_odom(new avt_341_nav::msg::Odometry);
 
         interp_odom->header.stamp = t;
         interp_odom->header.frame_id = msg1->header.frame_id;
@@ -427,15 +427,15 @@ public:
         return interp_odom;
     }
 
-    void laserCloudInfoHandler(avt_341::msg::LiorfCloudInfoPtr msgIn)
+    void laserCloudInfoHandler(avt_341_nav::msg::LiorfCloudInfoPtr msgIn)
     {
-        avt_341::msg::Time currentTime = avt_341::msg::Time::now(); // TODO: stop looking for additional odometry if it doesn't arrive in some time. An continue looking for it if it suddenly arrives
+        avt_341_nav::msg::Time currentTime = avt_341_nav::msg::Time::now(); // TODO: stop looking for additional odometry if it doesn't arrive in some time. An continue looking for it if it suddenly arrives
         double waitAdditionalOdomTimeout = 3;
         while ((msgIn->header.stamp - last_topic2_time > ros::Duration(0)) && additionalOdomArrived)
         {
             additional_queue.callAvailable();
             ros::Duration(0.01).sleep();
-            if (currentTime - avt_341::msg::Time::now() > ros::Duration(waitAdditionalOdomTimeout))
+            if (currentTime - avt_341_nav::msg::Time::now() > ros::Duration(waitAdditionalOdomTimeout))
             {
                 // ROS_ERROR("waited for additional odometry for more then %lf seconds, not using it!", waitAdditionalOdomTimeout);
                 additionalOdomArrived = false;
@@ -455,8 +455,8 @@ public:
             additionalOdomArrived = true;
         }
 
-        avt_341::msg::Odometry::ConstPtr prev_msg;
-        avt_341::msg::Odometry::ConstPtr msg_a;
+        avt_341_nav::msg::Odometry::ConstPtr prev_msg;
+        avt_341_nav::msg::Odometry::ConstPtr msg_a;
 
         if (additionalOdomArrived)
         {
@@ -559,7 +559,7 @@ public:
     }
 
     void
-    gpsHandler(avt_341::msg::NavSatFixPtr gpsMsg)
+    gpsHandler(avt_341_nav::msg::NavSatFixPtr gpsMsg)
     {
         if (gpsMsg->status.status != 0)
             return;
@@ -574,7 +574,7 @@ public:
 
         gps_trans_.Forward(gpsMsg->latitude, gpsMsg->longitude, gpsMsg->altitude, trans_local_[0], trans_local_[1], trans_local_[2]);
 
-        avt_341::msg::Odometry gps_odom;
+        avt_341_nav::msg::Odometry gps_odom;
         gps_odom.header = gpsMsg->header;
         gps_odom.header.frame_id = "map";
         
@@ -790,7 +790,7 @@ public:
         return thisPose6D;
     }
 
-    bool saveMapService(avt_341::msg::LiorfSaveMapRequest &req, avt_341::msg::LiorfSaveMapResponse &res)
+    bool saveMapService(avt_341_nav::msg::LiorfSaveMapRequest &req, avt_341_nav::msg::LiorfSaveMapResponse &res)
     {
         string saveMapDirectory;
 
@@ -862,8 +862,8 @@ public:
         if (savePCD == false)
             return;
 
-        avt_341::msg::LiorfSaveMapRequest req;
-        avt_341::msg::LiorfSaveMapResponse res;
+        avt_341_nav::msg::LiorfSaveMapRequest req;
+        avt_341_nav::msg::LiorfSaveMapResponse res;
 
         if (!saveMapService(req, res))
         {
@@ -928,7 +928,7 @@ public:
         publishCloud(pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp, odometryFrame);
     }
 
-    void additionalOdomHandler(avt_341::msg::OdometryPtr odomMsg)
+    void additionalOdomHandler(avt_341_nav::msg::OdometryPtr odomMsg)
     {
         last_topic2_time = odomMsg->header.stamp;
         messages_from_topic2.push_back(odomMsg);
@@ -937,7 +937,7 @@ public:
         cacheAdditionalOdom->add(odomMsg);
     }
 
-    void syncAdditionalOdomHandler(avt_341::msg::OdometryPtr odomMsg)
+    void syncAdditionalOdomHandler(avt_341_nav::msg::OdometryPtr odomMsg)
     {
         if (!odomMsg)
         {
@@ -988,7 +988,7 @@ public:
         }
     }
 
-    void loopInfoHandler(avt_341::msg::Float64MultiArrayPtr loopMsg)
+    void loopInfoHandler(avt_341_nav::msg::Float64MultiArrayPtr loopMsg)
     {
         std::lock_guard<std::mutex> lock(mtxLoopInfo);
         if (loopMsg->data.size() != 2)
@@ -1208,13 +1208,13 @@ public:
         if (loopIndexContainer.empty())
             return;
 
-        avt_341::msg::MarkerArray markerArray;
+        avt_341_nav::msg::MarkerArray markerArray;
         // loop nodes
-        avt_341::msg::Marker markerNode;
+        avt_341_nav::msg::Marker markerNode;
         markerNode.header.frame_id = odometryFrame;
         markerNode.header.stamp = timeLaserInfoStamp;
-        markerNode.action = avt_341::msg::Marker::ADD;
-        markerNode.type = avt_341::msg::Marker::SPHERE_LIST;
+        markerNode.action = avt_341_nav::msg::Marker::ADD;
+        markerNode.type = avt_341_nav::msg::Marker::SPHERE_LIST;
         markerNode.ns = "loop_nodes";
         markerNode.id = 0;
         markerNode.pose.orientation.w = 1;
@@ -1226,11 +1226,11 @@ public:
         markerNode.color.b = 1;
         markerNode.color.a = 1;
         // loop edges
-        avt_341::msg::Marker markerEdge;
+        avt_341_nav::msg::Marker markerEdge;
         markerEdge.header.frame_id = odometryFrame;
         markerEdge.header.stamp = timeLaserInfoStamp;
-        markerEdge.action = avt_341::msg::Marker::ADD;
-        markerEdge.type = avt_341::msg::Marker::LINE_LIST;
+        markerEdge.action = avt_341_nav::msg::Marker::ADD;
+        markerEdge.type = avt_341_nav::msg::Marker::LINE_LIST;
         markerEdge.ns = "loop_edges";
         markerEdge.id = 1;
         markerEdge.pose.orientation.w = 1;
@@ -1244,7 +1244,7 @@ public:
         {
             int key_cur = it->first;
             int key_pre = it->second;
-            avt_341::msg::Point p;
+            avt_341_nav::msg::Point p;
             p.x = copy_cloudKeyPoses6D->points[key_cur].x;
             p.y = copy_cloudKeyPoses6D->points[key_cur].y;
             p.z = copy_cloudKeyPoses6D->points[key_cur].z;
@@ -2116,7 +2116,7 @@ public:
                 thisPose3D.z = transformTobeMapped[5];
                 thisPose3D.intensity = (odomSource == "additional");
                 cloudAdditionalUsage->push_back(thisPose3D);
-                publishCloud(pubAdditionalUsage, cloudAdditionalUsage, avt_341::msg::Time::now(), odometryFrame);
+                publishCloud(pubAdditionalUsage, cloudAdditionalUsage, avt_341_nav::msg::Time::now(), odometryFrame);
                 publishTime(transformTobeMapped, time + startTime - rosbagStart);
             }
             else if ((dxyzAdditional.norm() > 0.05) && (!isDegenerate) && adjustAdditionalOdomScale)
@@ -2147,15 +2147,15 @@ public:
         }
         lastTime = time;
 
-        avt_341::msg::Marker marker;
+        avt_341_nav::msg::Marker marker;
         marker.header.frame_id = "map";
-        marker.header.stamp = avt_341::msg::Time();
+        marker.header.stamp = avt_341_nav::msg::Time();
         marker.ns = "text";
         marker.text = std::to_string(time);
         static int id_marker = 0;
         marker.id = id_marker;
-        marker.type = avt_341::msg::Marker::TEXT_VIEW_FACING;
-        marker.action = avt_341::msg::Marker::ADD;
+        marker.type = avt_341_nav::msg::Marker::TEXT_VIEW_FACING;
+        marker.action = avt_341_nav::msg::Marker::ADD;
         marker.pose.position.x = transform[3];
         marker.pose.position.y = transform[4];
         marker.pose.position.z = transform[5] + 0.5;
@@ -2352,7 +2352,7 @@ public:
             }
             else
             {
-                avt_341::msg::Odometry thisGPS = gpsQueue.front();
+                avt_341_nav::msg::Odometry thisGPS = gpsQueue.front();
                 gpsQueue.pop_front();
 
                 // GPS too noisy, skip
@@ -2541,8 +2541,8 @@ public:
 
     void updatePath(const PointTypePose &pose_in)
     {
-        avt_341::msg::PoseStamped pose_stamped;
-        pose_stamped.header.stamp = avt_341::msg::Time().fromSec(pose_in.time);
+        avt_341_nav::msg::PoseStamped pose_stamped;
+        pose_stamped.header.stamp = avt_341_nav::msg::Time().fromSec(pose_in.time);
         pose_stamped.header.frame_id = odometryFrame;
         pose_stamped.pose.position.x = pose_in.x;
         pose_stamped.pose.position.y = pose_in.y;
@@ -2559,7 +2559,7 @@ public:
     void publishOdometry()
     {
         // Publish odometry for ROS (global)
-        avt_341::msg::Odometry laserOdometryROS;
+        avt_341_nav::msg::Odometry laserOdometryROS;
         laserOdometryROS.header.stamp = timeLaserInfoStamp;
         laserOdometryROS.header.frame_id = odometryFrame;
         laserOdometryROS.child_frame_id = "odom_mapping";
@@ -2578,7 +2578,7 @@ public:
 
         // Publish odometry for ROS (incremental)
         static bool lastIncreOdomPubFlag = false;
-        static avt_341::msg::Odometry laserOdomIncremental; // incremental odometry msg
+        static avt_341_nav::msg::Odometry laserOdomIncremental; // incremental odometry msg
         static Eigen::Affine3f increOdomAffine;         // incremental odometry in affine
         if (lastIncreOdomPubFlag == false)
         {
@@ -2667,7 +2667,7 @@ public:
         {
             if (lastSLAMInfoPubSize != static_cast<int>(cloudKeyPoses6D->size()))
             {
-                avt_341::msg::LiorfCloudInfo slamInfo;
+                avt_341_nav::msg::LiorfCloudInfo slamInfo;
                 slamInfo.header.stamp = timeLaserInfoStamp;
                 pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
                 *cloudOut += *laserCloudSurfLastDS;

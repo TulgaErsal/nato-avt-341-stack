@@ -12,16 +12,16 @@
 
 // ros includes
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_types.h"
-#include <avt_341/node/occupancy_grid_subscriber.h>
+#include "avt_341_nav/node/node_types.h"
+#include <avt_341_nav/node/occupancy_grid_subscriber.h>
 #include <future>
 // local includes
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/core/waypoint_file_parser.hpp"
-#include "avt_341/planning/global/astar.h"
-#include "avt_341/planning/global/fastmarching.h"
-#include "avt_341/planning/global/d_star_lite.h"
-#include "avt_341/planning/global/fast_marching_square.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/waypoint_file_parser.hpp"
+#include "avt_341_nav/planning/global/astar.h"
+#include "avt_341_nav/planning/global/fastmarching.h"
+#include "avt_341_nav/planning/global/d_star_lite.h"
+#include "avt_341_nav/planning/global/fast_marching_square.h"
 #include "avt_341_msgs/msg/nav_goal.hpp"
 #include "avt_341_msgs/msg/nav_goal_sequence.hpp"
 #include "avt_341_msgs/msg/nav_state.hpp"
@@ -31,17 +31,17 @@
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "avt_341/core/dto_conversion.h"
-#include <avt_341/global_planner_params_service.hpp>
+#include "avt_341_nav/core/dto_conversion.h"
+#include <avt_341_nav/global_planner_params_service.hpp>
 #include <avt_341_msgs/srv/compute_global_path.hpp>
 #include <chrono>
 #include <stdexcept>
 
-using avt_341::utils::NavStackState;
-using avt_341::utils::IsGoalReached;
+using avt_341_nav::utils::NavStackState;
+using avt_341_nav::utils::IsGoalReached;
 
-using namespace avt_341::core;
-using avt_341::planning::Point;
+using namespace avt_341_nav::core;
+using avt_341_nav::planning::Point;
 
 nav_msgs::msg::Odometry odom;
 bool odom_rcvd = false;
@@ -63,10 +63,10 @@ double dft_yaw_threshold = 30.0f;
 double goal_start_time = 0.0;
 std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavState>> state_pub = nullptr;
 std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavState>> goal_reached_pub = nullptr;
-std::shared_ptr<avt_341::planning::Astar> path_planner = nullptr;
+std::shared_ptr<avt_341_nav::planning::Astar> path_planner = nullptr;
 
 // Async planning state
-std::future<std::vector<avt_341::planning::Point>> planning_future;
+std::future<std::vector<avt_341_nav::planning::Point>> planning_future;
 nav_msgs::msg::Path last_valid_ros_path;
 std::chrono::steady_clock::time_point plan_start;
 bool timeout_logged = false;
@@ -120,9 +120,9 @@ void WaypointCallback(avt_341_msgs::msg::NavGoalSequence::SharedPtr rcv_waypoint
 
 void PublishGoalReached(const avt_341_msgs::msg::NavState& msg)
 {
-  if (avt_341::utils::UseGoalOrientation(msg.goal))
+  if (avt_341_nav::utils::UseGoalOrientation(msg.goal))
   {
-    RCLCPP_INFO(n->get_logger(), "Goal reached (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f) after %.2f seconds", msg.goal.pose.position.x, msg.goal.pose.position.y, avt_341::utils::GetHeadingFromOrientation(msg.goal.pose.orientation)/M_PI*180.0, msg.goal.dist_threshold, msg.goal.yaw_threshold/M_PI*180.0, msg.goal_duration);
+    RCLCPP_INFO(n->get_logger(), "Goal reached (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f) after %.2f seconds", msg.goal.pose.position.x, msg.goal.pose.position.y, avt_341_nav::utils::GetHeadingFromOrientation(msg.goal.pose.orientation)/M_PI*180.0, msg.goal.dist_threshold, msg.goal.yaw_threshold/M_PI*180.0, msg.goal_duration);
   }
   else
   {
@@ -151,7 +151,7 @@ void NavCommandCallback(std_msgs::msg::Int32::SharedPtr rcv_navcommand)
 void GoalPoseCallback(geometry_msgs::msg::PoseStamped::SharedPtr rcv_goal_pose)
 {
   const auto nav_goal = ToNavGoal(*rcv_goal_pose, dft_dist_threshold, dft_yaw_threshold);
-  RCLCPP_INFO(n->get_logger(), "Setting goal (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f)", nav_goal.pose.position.x, nav_goal.pose.position.y, avt_341::utils::GetHeadingFromOrientation(nav_goal.pose.orientation)/M_PI*180.0, nav_goal.dist_threshold, nav_goal.yaw_threshold/M_PI*180.0);
+  RCLCPP_INFO(n->get_logger(), "Setting goal (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f)", nav_goal.pose.position.x, nav_goal.pose.position.y, avt_341_nav::utils::GetHeadingFromOrientation(nav_goal.pose.orientation)/M_PI*180.0, nav_goal.dist_threshold, nav_goal.yaw_threshold/M_PI*180.0);
   nav_goals.goals.clear();
   nav_goals.goals.push_back(nav_goal);
   waypoints_rcvd = true;
@@ -159,7 +159,7 @@ void GoalPoseCallback(geometry_msgs::msg::PoseStamped::SharedPtr rcv_goal_pose)
 
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg)
 {
-  if (msg->data.find(avt_341::node::NodeType::GlobalPlanner) != std::string::npos) {
+  if (msg->data.find(avt_341_nav::node::NodeType::GlobalPlanner) != std::string::npos) {
     reset_called = true;
   }
 }
@@ -182,12 +182,12 @@ void UpdateGoalState(const avt_341_msgs::msg::NavGoal& goal)
 
   if (state.run_state == NavStackState::Active) {
     const auto t_now = n->now().seconds();
-    if (avt_341::utils::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
+    if (avt_341_nav::utils::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
       goal_start_time = t_now;
     }
     state.goal = goal;
     double dist_diff, yaw_diff;
-    avt_341::utils::GetGoalError(odom.pose.pose, goal, dist_diff, yaw_diff);
+    avt_341_nav::utils::GetGoalError(odom.pose.pose, goal, dist_diff, yaw_diff);
     state.goal_distance = dist_diff;
     state.goal_yaw_difference = yaw_diff;
     state.goal_duration = t_now - goal_start_time;
@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
 {
   rclcpp::init(argc, argv);
   n = rclcpp::Node::make_shared("avt_341_global_path_node");
-  avt_341::params::global_planner::ParamsListener param_listener(n);
+  avt_341_nav::params::global_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
   dft_dist_threshold = params.goal_dist;
@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
 
   int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
 
-  if (!avt_341::utils::IsValidShutdownBehavior(shutdown_behavior)){
+  if (!avt_341_nav::utils::IsValidShutdownBehavior(shutdown_behavior)){
     const std::string error_msg = "Invalid shutdown behavior parameter: " + std::to_string(shutdown_behavior);
     RCLCPP_ERROR(n->get_logger(), "%s", error_msg.c_str());
     throw std::runtime_error(error_msg);
@@ -325,9 +325,9 @@ int main(int argc, char* argv[])
   goal_reached_pub = n->create_publisher<avt_341_msgs::msg::NavState>("avt_341/goal_reached", 10);
 
   auto odometry_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  auto map_sub = avt_341::node::OccupancyGridSubscriber(
+  auto map_sub = avt_341_nav::node::OccupancyGridSubscriber(
       n, params.map_topic, 10, params.costmap.publish.method, MapCallback);
-  auto segmentation_map_sub = avt_341::node::OccupancyGridSubscriber(
+  auto segmentation_map_sub = avt_341_nav::node::OccupancyGridSubscriber(
       n, params.seg_topic, 10, params.costmap.publish.method,
       [&params](nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
         SegmentationMapCallback(msg, params.use_segmentation);
@@ -361,7 +361,7 @@ int main(int argc, char* argv[])
   }
 
   if (params.planning_method == "fast_marching") {
-    path_planner = std::make_shared<avt_341::planning::FastMarching>(params.w_distance,
+    path_planner = std::make_shared<avt_341_nav::planning::FastMarching>(params.w_distance,
                                                        params.w_occupancy,
                                                        params.w_segmentation,
                                                        params.search_diagonals,
@@ -379,14 +379,14 @@ int main(int argc, char* argv[])
                                                        params.clipping_distance,
                                                        params.verbose_gp_log);
   } else if (params.planning_method == "d_star_lite") {
-    path_planner = std::make_shared<avt_341::planning::DStarLite>(params.w_distance,
+    path_planner = std::make_shared<avt_341_nav::planning::DStarLite>(params.w_distance,
                                                     params.w_occupancy,
                                                     params.w_segmentation,
                                                     params.search_diagonals,
                                                     static_cast<int>(params.los_max_iterations),
                                                     params.los_break_on_first);
   } else if (params.planning_method == "fast_marching_square") {
-    path_planner = std::make_shared<avt_341::planning::FastMarchingSquare>(params.w_distance,
+    path_planner = std::make_shared<avt_341_nav::planning::FastMarchingSquare>(params.w_distance,
                                                              params.w_occupancy,
                                                              params.w_segmentation,
                                                              params.search_diagonals,
@@ -404,7 +404,7 @@ int main(int argc, char* argv[])
                                                              params.clipping_distance,
                                                              params.verbose_gp_log);
   } else {
-    path_planner = std::make_shared<avt_341::planning::Astar>(params.w_distance,
+    path_planner = std::make_shared<avt_341_nav::planning::Astar>(params.w_distance,
                                                 params.w_occupancy,
                                                 params.w_segmentation,
                                                 params.search_diagonals,
@@ -447,7 +447,7 @@ int main(int argc, char* argv[])
       SetRunState(NavStackState::NotInit);
 
       std_msgs::msg::String reset_ack_msg;
-      reset_ack_msg.data = avt_341::node::NodeType::GlobalPlanner;
+      reset_ack_msg.data = avt_341_nav::node::NodeType::GlobalPlanner;
       reset_ack_pub->publish(reset_ack_msg);
 
       reset_called = false;
@@ -458,10 +458,10 @@ int main(int argc, char* argv[])
 
     // Handle Go command
     if (nav_command_rcvd) {
-      if (nav_command == avt_341::utils::NavStateCmd::GoActive && state.run_state != NavStackState::Active) {
+      if (nav_command == avt_341_nav::utils::NavStateCmd::GoActive && state.run_state != NavStackState::Active) {
         // startup/idling - go active
         SetRunState(NavStackState::Active);
-        nav_command = avt_341::utils::NavStateCmd::GoInactive;
+        nav_command = avt_341_nav::utils::NavStateCmd::GoInactive;
       }
       nav_command_rcvd = false;
     } else if (use_global_planner) {
@@ -539,12 +539,12 @@ int main(int argc, char* argv[])
               if (IsGoalReached(state, goal) || ros_path.poses.size() > 1) {
                 int cp = current_waypoint;
                 while (cp < static_cast<int>(nav_goals.goals.size()) - 1) {
-                  avt_341::utils::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
+                  avt_341_nav::utils::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
                                            static_cast<float>(nav_goals.goals[cp].pose.position.y));
-                  avt_341::utils::vec2 wp2(static_cast<float>(nav_goals.goals[cp + 1].pose.position.x),
+                  avt_341_nav::utils::vec2 wp2(static_cast<float>(nav_goals.goals[cp + 1].pose.position.x),
                                            static_cast<float>(nav_goals.goals[cp + 1].pose.position.y));
-                  avt_341::utils::vec2 wp_diff = wp2 - wp1;
-                  avt_341::utils::vec2 wp_diff_norm = wp_diff;
+                  avt_341_nav::utils::vec2 wp_diff = wp2 - wp1;
+                  avt_341_nav::utils::vec2 wp_diff_norm = wp_diff;
                   wp_diff_norm.normalize();
                   if (wp_diff.mag() > params.max_separation) {
                     for (double step = params.max_separation;

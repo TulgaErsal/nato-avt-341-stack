@@ -2,14 +2,14 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <avt_341/core/dto_conversion.h>
+#include <avt_341_nav/core/dto_conversion.h>
 
-#include "avt_341/mission/task.h"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/mission/formation_utils.h"
+#include "avt_341_nav/mission/task.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/mission/formation_utils.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 const std::string MoveTo::NONE = "NONE";
@@ -73,7 +73,7 @@ void MoveTo::init_() {
     target_pose = goal;
 
     mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_, yaw_threshold_));
-    mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
+    mgr->publishNavStateCmd(avt_341_nav::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 }
 
@@ -124,4 +124,4 @@ geometry_msgs::msg::PoseStamped MoveTo::terminalPose() const{
 }
 
 } // mission 
-} // avt_341
+} // avt_341_nav

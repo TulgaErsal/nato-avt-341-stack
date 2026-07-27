@@ -1,5 +1,5 @@
 // class definition
-#include <avt_341/planning/global/coord_conversions/coord_conversions.h>
+#include <avt_341_nav/planning/global/coord_conversions/coord_conversions.h>
 // c++ includes
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 
 //#include <mavs_core/math/constants.h>
 
-namespace avt_341{
+namespace avt_341_nav{
 namespace coordinate_system{
 
 static const double k2Pi = 6.283185307179586476925286766559;
@@ -397,4 +397,4 @@ coordinate_system::ENU CoordinateConverter::UTM2ENU(coordinate_system::UTM utm){
 }
 
 } //namespace environment
-} //namespace avt_341
+} //namespace avt_341_nav

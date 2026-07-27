@@ -7,18 +7,18 @@
              derived ToiTracker and FormationVehicleTracker classes.
 */
 
-#include <avt_341/perception/tracking/object_tracker.hpp>
+#include <avt_341_nav/perception/tracking/object_tracker.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <optional>
 #include <utility>
 
-#include <avt_341/core/coord_transform.hpp>
-#include <avt_341/core/eigen_dto_conversion.hpp>
-#include <avt_341/core/string_utils.hpp>
+#include <avt_341_nav/core/coord_transform.hpp>
+#include <avt_341_nav/core/eigen_dto_conversion.hpp>
+#include <avt_341_nav/core/string_utils.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 ObjectTracker::ObjectTracker(
@@ -37,7 +37,7 @@ ObjectTracker::ObjectTracker(
       leader_odom_publisher_(std::move(leader_odom_publisher))
     {
     // Initialize the IMM filter (CV + CTR + NM).
-    filter_ = std::make_shared<avt_341::perception::filtering::IMMFilter>(
+    filter_ = std::make_shared<avt_341_nav::perception::filtering::IMMFilter>(
         1.0 / params_.filter.estimator_rate,
         params_.filter.process_variance,
         params_.filter.measurement_variance,
@@ -819,4 +819,4 @@ void ObjectTracker::PublishDetection3D() {
 }
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav

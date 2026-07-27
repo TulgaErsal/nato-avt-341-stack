@@ -18,10 +18,10 @@
 #include <vector> 
 #include <string> 
 
-#include <avt_341/planning/global/coord_conversions/ellipsoid.h>
-#include <avt_341/planning/global/coord_conversions/matrix.h>
+#include <avt_341_nav/planning/global/coord_conversions/ellipsoid.h>
+#include <avt_341_nav/planning/global/coord_conversions/matrix.h>
 
-namespace avt_341{
+namespace avt_341_nav{
   
 namespace coordinate_system{
  
@@ -119,6 +119,6 @@ class CoordinateConverter{
 };
 
 } //namespace coordinate_system
-} //namespace avt_341
+} //namespace avt_341_nav
 
 #endif

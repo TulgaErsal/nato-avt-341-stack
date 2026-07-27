@@ -4,13 +4,13 @@
              See formation_vehicle_tracker.hpp.
 */
 
-#include <avt_341/perception/tracking/formation_vehicle_tracker.hpp>
+#include <avt_341_nav/perception/tracking/formation_vehicle_tracker.hpp>
 
 #include <utility>
 
-#include <avt_341/core/eigen_dto_conversion.hpp>
+#include <avt_341_nav/core/eigen_dto_conversion.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 FormationVehicleTracker::FormationVehicleTracker(
@@ -111,4 +111,4 @@ void FormationVehicleTracker::ApplyRecoveryOdometry(const nav_msgs::msg::Odometr
 }
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav

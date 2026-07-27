@@ -4,14 +4,14 @@
              vehicle targets. See tracker_recovery_monitor.hpp.
 */
 
-#include <avt_341/perception/tracking/tracker_recovery_monitor.hpp>
+#include <avt_341_nav/perception/tracking/tracker_recovery_monitor.hpp>
 
 #include <algorithm>
 #include <cmath>
 
-#include <avt_341/core/math_utils.hpp>
+#include <avt_341_nav/core/math_utils.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 TrackerRecoveryMonitor::TrackerRecoveryMonitor(
@@ -373,4 +373,4 @@ bool TrackerRecoveryMonitor::IsInNoMovementCheckState(
 }
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav

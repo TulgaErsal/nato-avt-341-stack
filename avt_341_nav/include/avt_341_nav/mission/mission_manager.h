@@ -32,16 +32,16 @@
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/mission/task.h"
-#include "avt_341/mission/formation_utils.h"
-#include "avt_341/mission/formation_definition.h"
-#include "avt_341/mission/formation_speed_control.h"
-#include "avt_341/mission/mission_manager_dto.h"
-#include "avt_341/mission/goal_filtering/goal_filter.hpp"
+#include "avt_341_nav/mission/task.h"
+#include "avt_341_nav/mission/formation_utils.h"
+#include "avt_341_nav/mission/formation_definition.h"
+#include "avt_341_nav/mission/formation_speed_control.h"
+#include "avt_341_nav/mission/mission_manager_dto.h"
+#include "avt_341_nav/mission/goal_filtering/goal_filter.hpp"
 #include <deque>
 
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 class Task;
@@ -179,7 +179,7 @@ class MissionManager{
 }; // class mission manager
 
 } // namespace mission
-} // namespace avt_341
+} // namespace avt_341_nav
 
 
 #endif //AVT_341_MISSION_MGR_H

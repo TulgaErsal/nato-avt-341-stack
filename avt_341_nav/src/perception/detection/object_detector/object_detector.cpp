@@ -41,9 +41,9 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/object_detector/object_detector.hpp>
+#include <avt_341_nav/perception/detection/object_detector/object_detector.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 ObjectDetector::ObjectDetector() {}
@@ -387,4 +387,4 @@ cv::Size ObjectDetector::GetModelSize(const std::string& size) {
 }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

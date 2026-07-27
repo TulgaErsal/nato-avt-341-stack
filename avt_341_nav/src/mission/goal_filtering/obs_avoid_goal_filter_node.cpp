@@ -2,7 +2,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
+#include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
 #define TOPIC_LEADER_POSE_IN            "avt_341/odometry"
 #define TOPIC_FOLLOWER_POSE_IN          "avt_341/candidate_follower_pose"
@@ -38,7 +38,7 @@ public:
 
     // Requires shared_from_this, so must run after construction via make_shared.
     void Init() {
-        goal_filter_ = std::make_shared<avt_341::mission::ObsAvoidGoalFilter>(shared_from_this(), vehicle_id_);  // streaming, no stored path
+        goal_filter_ = std::make_shared<avt_341_nav::mission::ObsAvoidGoalFilter>(shared_from_this(), vehicle_id_);  // streaming, no stored path
     }
 
 private:
@@ -49,7 +49,7 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr    candidate_pose_sub_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr       filtered_pose_pub_;
 
-    std::shared_ptr<avt_341::mission::ObsAvoidGoalFilter> goal_filter_;
+    std::shared_ptr<avt_341_nav::mission::ObsAvoidGoalFilter> goal_filter_;
     nav_msgs::msg::Odometry::SharedPtr last_leader_odom_;
 
     void LeaderOdomCallback(nav_msgs::msg::Odometry::SharedPtr msg) {

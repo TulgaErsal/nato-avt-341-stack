@@ -2,13 +2,13 @@
 #include <sstream>
 #include <iostream>
 
-#include "avt_341/mission/task.h"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/mission/formation_utils.h"
+#include "avt_341_nav/mission/task.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/mission/formation_utils.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 PathFollow::PathFollow(MissionManager* manager, const std::string & sender, int msg_id, FormationDefinition* formation_def, double desired_speed)
@@ -51,7 +51,7 @@ void PathFollow::init_() {
     target_pose = path.poses.back();
 
     mgr->publishGoalPath(path);
-    mgr->publishNavStateCmd(avt_341::utils::NavStateCmd::GoActive);
+    mgr->publishNavStateCmd(avt_341_nav::utils::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 }
 
@@ -96,4 +96,4 @@ geometry_msgs::msg::PoseStamped PathFollow::terminalPose() const{
 }
 
 } // mission 
-} // avt_341
+} // avt_341_nav

@@ -16,17 +16,17 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_utils.h"
-#include "avt_341/perception/normal_grid.h"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/node/node_utils.h"
+#include "avt_341_nav/perception/normal_grid.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/node/tf_interface.h"
 
 
 // Global variables
 rclcpp::Node::SharedPtr node;
-std::shared_ptr<avt_341::node::TfInterface> tf;
+std::shared_ptr<avt_341_nav::node::TfInterface> tf;
 std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>> seg_grid_pub;
-avt_341::perception::NormalGrid grid;
+avt_341_nav::perception::NormalGrid grid;
 nav_msgs::msg::Odometry current_pose;
 bool odom_rcvd = false;
 
@@ -64,19 +64,19 @@ void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom){
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
     node = rclcpp::Node::make_shared("normal_segmentation_map_node");
-    tf = std::make_shared<avt_341::node::TfInterface>(node);
+    tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
 
     // Load parameters
-    avt_341::node::get_parameter(node, "/grid_width", grid_width, 200.0f);
-    avt_341::node::get_parameter(node, "/grid_height", grid_height, 200.0f);
-    avt_341::node::get_parameter(node, "~grid_res", grid_res, 1.0f);
-    avt_341::node::get_parameter(node, "~grid_llx", grid_llx, -100.0f);
-    avt_341::node::get_parameter(node, "~grid_lly", grid_lly, -100.0f);
-    avt_341::node::get_parameter(node, "~limit_grid_size", limit_grid_size, false);
-    avt_341::node::get_parameter(node, "~max_grid_width", max_grid_width, 800.0f);
-    avt_341::node::get_parameter(node, "~max_grid_height", max_grid_height, 800.0f);
-    avt_341::node::get_parameter(node, "~normal_threshold", normal_threshold, 0.5f);
-    avt_341::node::get_parameter(node, "~points_topic", points_topic, std::string("avt_341/normals_cloud"));
+    avt_341_nav::node::get_parameter(node, "/grid_width", grid_width, 200.0f);
+    avt_341_nav::node::get_parameter(node, "/grid_height", grid_height, 200.0f);
+    avt_341_nav::node::get_parameter(node, "~grid_res", grid_res, 1.0f);
+    avt_341_nav::node::get_parameter(node, "~grid_llx", grid_llx, -100.0f);
+    avt_341_nav::node::get_parameter(node, "~grid_lly", grid_lly, -100.0f);
+    avt_341_nav::node::get_parameter(node, "~limit_grid_size", limit_grid_size, false);
+    avt_341_nav::node::get_parameter(node, "~max_grid_width", max_grid_width, 800.0f);
+    avt_341_nav::node::get_parameter(node, "~max_grid_height", max_grid_height, 800.0f);
+    avt_341_nav::node::get_parameter(node, "~normal_threshold", normal_threshold, 0.5f);
+    avt_341_nav::node::get_parameter(node, "~points_topic", points_topic, std::string("avt_341/normals_cloud"));
     
     // Create publishers and subscribers
     auto norm_cloud_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>("avt_341/normals_cloud", 1, CallbackNormCloud);

@@ -23,13 +23,13 @@
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_utils.h"
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/node/node_utils.h"
+#include "avt_341_nav/node/tf_interface.h"
 
 
 // Global variables
 rclcpp::Node::SharedPtr node;
-std::shared_ptr<avt_341::node::TfInterface> tf;
+std::shared_ptr<avt_341_nav::node::TfInterface> tf;
 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> cloud_pub;
 Eigen::Vector4f roi_max_point, roi_min_point, body_max_point, body_min_point;
 
@@ -136,25 +136,25 @@ void callback_cloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
     node = rclcpp::Node::make_shared("lidar_normal_estimation_node");
-    tf = std::make_shared<avt_341::node::TfInterface>(node);
+    tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
 
     // Load parameters
-    avt_341::node::get_parameter(node, "~pc_topic", pc_topic, std::string("avt_341/points"));
-    avt_341::node::get_parameter(node, "~robot_base_link", robot_base_link, std::string("mrzr/base_link"));
-    avt_341::node::get_parameter(node, "~fixed_frame", fixed_frame, std::string("map"));
-    avt_341::node::get_parameter(node, "~roi_max_x", roi_max_x, 70.0f);
-    avt_341::node::get_parameter(node, "~roi_max_y", roi_max_y, 30.0f);
-    avt_341::node::get_parameter(node, "~roi_max_z", roi_max_z, 3.0f);
-    avt_341::node::get_parameter(node, "~roi_min_x", roi_min_x, -5.0f);
-    avt_341::node::get_parameter(node, "~roi_min_y", roi_min_y, -30.0f);
-    avt_341::node::get_parameter(node, "~roi_min_z", roi_min_z, -2.5f);
-    avt_341::node::get_parameter(node, "~body_max_x", body_max_x, 0.3f);
-    avt_341::node::get_parameter(node, "~body_max_y", body_max_y, 0.8f);
-    avt_341::node::get_parameter(node, "~body_max_z", body_max_z, 2.0f);
-    avt_341::node::get_parameter(node, "~body_min_x", body_min_x, -2.2f);
-    avt_341::node::get_parameter(node, "~body_min_y", body_min_y, -0.8f);
-    avt_341::node::get_parameter(node, "~body_min_z", body_min_z, -0.3f);
-    avt_341::node::get_parameter(node, "~obstacle_scale", obstacle_scale, 1.0f);
+    avt_341_nav::node::get_parameter(node, "~pc_topic", pc_topic, std::string("avt_341/points"));
+    avt_341_nav::node::get_parameter(node, "~robot_base_link", robot_base_link, std::string("mrzr/base_link"));
+    avt_341_nav::node::get_parameter(node, "~fixed_frame", fixed_frame, std::string("map"));
+    avt_341_nav::node::get_parameter(node, "~roi_max_x", roi_max_x, 70.0f);
+    avt_341_nav::node::get_parameter(node, "~roi_max_y", roi_max_y, 30.0f);
+    avt_341_nav::node::get_parameter(node, "~roi_max_z", roi_max_z, 3.0f);
+    avt_341_nav::node::get_parameter(node, "~roi_min_x", roi_min_x, -5.0f);
+    avt_341_nav::node::get_parameter(node, "~roi_min_y", roi_min_y, -30.0f);
+    avt_341_nav::node::get_parameter(node, "~roi_min_z", roi_min_z, -2.5f);
+    avt_341_nav::node::get_parameter(node, "~body_max_x", body_max_x, 0.3f);
+    avt_341_nav::node::get_parameter(node, "~body_max_y", body_max_y, 0.8f);
+    avt_341_nav::node::get_parameter(node, "~body_max_z", body_max_z, 2.0f);
+    avt_341_nav::node::get_parameter(node, "~body_min_x", body_min_x, -2.2f);
+    avt_341_nav::node::get_parameter(node, "~body_min_y", body_min_y, -0.8f);
+    avt_341_nav::node::get_parameter(node, "~body_min_z", body_min_z, -0.3f);
+    avt_341_nav::node::get_parameter(node, "~obstacle_scale", obstacle_scale, 1.0f);
     roi_max_point = Eigen::Vector4f(roi_max_x, roi_max_y, roi_max_z, 1);
     roi_min_point = Eigen::Vector4f(roi_min_x, roi_min_y, roi_min_z, 1);
     body_max_point = Eigen::Vector4f(body_max_x, body_max_y, body_max_z, 1);

@@ -1,10 +1,10 @@
 #ifndef FAST_MARCHING_SQUARE_H
 #define FAST_MARCHING_SQUARE_H
 
-#include "avt_341/planning/global/fastmarching.h"
+#include "avt_341_nav/planning/global/fastmarching.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 /**
@@ -55,6 +55,6 @@ public:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif // FAST_MARCHING_SQUARE_H

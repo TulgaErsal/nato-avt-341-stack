@@ -1,7 +1,7 @@
 #ifndef AVT_341_CAMERA_LAYER_H
 #define AVT_341_CAMERA_LAYER_H
 
-#include "avt_341/perception/layers/point_cloud_layer.h"
+#include "avt_341_nav/perception/layers/point_cloud_layer.h"
 
 #ifdef GTE_ROS_JAZZY
 #include <image_geometry/pinhole_camera_model.hpp>
@@ -18,7 +18,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
     class CameraLayer : public PointCloudLayer
     {
@@ -29,7 +29,7 @@ namespace avt_341::perception
             const PerceptionSettings& settings,
             const std::string & label,
             const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
-            const avt_341::params::perception::Params::CameraLayer& params
+            const avt_341_nav::params::perception::Params::CameraLayer& params
             );
 
         std::string ToString() const override;
@@ -44,7 +44,7 @@ namespace avt_341::perception
             sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
 
         void SetupCameraSubscriptions(
-            const avt_341::params::perception::Params::CameraLayer& params);
+            const avt_341_nav::params::perception::Params::CameraLayer& params);
 
         void CameraInfoCallback(const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg);
 

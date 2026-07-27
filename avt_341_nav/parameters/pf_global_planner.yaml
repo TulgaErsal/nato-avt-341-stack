@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/pf_global_planner
+code_namespace: avt_341_nav/params/pf_global_planner
 ros__parameters:
 
   __include_mixins: gis_mixin

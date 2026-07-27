@@ -7,15 +7,15 @@
 #include <string>
 #include <utility>
 
-#include <avt_341/costmap_geometry_mixin_params_dto.hpp>
-#include <avt_341/perception_params_dto.hpp>
+#include <avt_341_nav/costmap_geometry_mixin_params_dto.hpp>
+#include <avt_341_nav/perception_params_dto.hpp>
 
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/avt_341_utils.h"
 #include "nav_msgs/msg/map_meta_data.hpp"
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
-using GeneratedPerceptionParams = avt_341::params::perception::Params;
+using GeneratedPerceptionParams = avt_341_nav::params::perception::Params;
 
 /**
  * Generated perception parameters extended with costmap-domain operations.
@@ -28,7 +28,7 @@ class PerceptionSettings final : public GeneratedPerceptionParams {
 public:
   using Base = GeneratedPerceptionParams;
   // shared costmap geometry class from the costmap_info mixin DTO
-  using SizeInfo = avt_341::params::core::Geometry;
+  using SizeInfo = avt_341_nav::params::core::Geometry;
 
   PerceptionSettings() = default;
   explicit PerceptionSettings(Base params) : Base(std::move(params)) {}
@@ -201,4 +201,4 @@ public:
 using CostmapSizeInfo = PerceptionSettings::SizeInfo;
 using ClearMethodSettings = GeneratedPerceptionParams::ClearMethod;
 
-}  // namespace avt_341::perception
+}  // namespace avt_341_nav::perception

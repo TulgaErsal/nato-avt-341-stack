@@ -5,7 +5,7 @@
 #include <tuple>
 #include <string>
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 // —————————————————————————————————————————————————————————————————————
 // Occupancy‐grid cell values

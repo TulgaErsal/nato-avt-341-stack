@@ -4,15 +4,15 @@
 
 #include <boost/algorithm/clamp.hpp>
 
-#include <avt_341/avt_341_utils.h>
+#include <avt_341_nav/avt_341_utils.h>
 #include "nav_msgs/msg/path.hpp"
-#include <avt_341/planning/local/dwa/dynamic_window.hpp>
-#include <avt_341/planning/local/dwa/obstacles.hpp>
-#include <avt_341/planning/local/dwa/path.hpp>
-#include <avt_341/planning/local/dwa/state.hpp>
-#include <avt_341/planning/local/dwa/trajectory.hpp>
+#include <avt_341_nav/planning/local/dwa/dynamic_window.hpp>
+#include <avt_341_nav/planning/local/dwa/obstacles.hpp>
+#include <avt_341_nav/planning/local/dwa/path.hpp>
+#include <avt_341_nav/planning/local/dwa/state.hpp>
+#include <avt_341_nav/planning/local/dwa/trajectory.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -220,4 +220,4 @@ class Planner {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -2,7 +2,7 @@
 #define FORMATION_GOAL_FILTER_H
 #include "geometry_msgs/msg/pose.hpp"
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 class GoalFilter {
 

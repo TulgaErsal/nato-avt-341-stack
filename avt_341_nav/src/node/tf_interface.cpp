@@ -1,4 +1,4 @@
-#include <avt_341/node/tf_interface.h>
+#include <avt_341_nav/node/tf_interface.h>
 
 #ifdef GTE_ROS_HUMBLE
 #include "tf2_sensor_msgs/tf2_sensor_msgs.hpp"
@@ -6,7 +6,7 @@
 #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
 #endif
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace node {
 
 TfInterface::TfInterface(const rclcpp::Node::SharedPtr &node) : node_(node) {
@@ -114,4 +114,4 @@ bool TfInterface::transform_pose(const geometry_msgs::msg::PoseStamped &in_pose,
 }
 
 } // namespace node
-} // namespace avt_341
+} // namespace avt_341_nav

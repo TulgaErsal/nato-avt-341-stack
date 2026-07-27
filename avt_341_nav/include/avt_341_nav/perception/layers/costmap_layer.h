@@ -1,14 +1,14 @@
 
 #ifndef AVT_341_COSTMAP_LAYER_H
 #define AVT_341_COSTMAP_LAYER_H
-#include "avt_341/core/compute_time_recorder.hpp"
-#include "avt_341/core/grid_components.h"
+#include "avt_341_nav/core/compute_time_recorder.hpp"
+#include "avt_341_nav/core/grid_components.h"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/perception/costmap_dtos.h"
-#include "avt_341/perception/perception_settings.hpp"
+#include "avt_341_nav/perception/costmap_dtos.h"
+#include "avt_341_nav/perception/perception_settings.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
 	class CostmapLayer
 	{

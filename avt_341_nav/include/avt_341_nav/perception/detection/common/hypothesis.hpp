@@ -47,7 +47,7 @@
 
 #include <vision_msgs/msg/object_hypothesis.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 /**
@@ -98,4 +98,4 @@ class Hypothesis {
 };
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

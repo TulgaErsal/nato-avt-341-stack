@@ -2,7 +2,7 @@
 
 import rclpy
 
-from avt_341.nodes import YoloGym
+from avt_341_nav.nodes import YoloGym
 
 def main(args=None):
     rclpy.init(args=args)

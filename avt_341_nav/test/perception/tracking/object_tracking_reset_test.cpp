@@ -8,8 +8,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
 
-#include <avt_341/node/node_types.h>
-#include <avt_341/perception/tracking/object_tracking_node.hpp>
+#include <avt_341_nav/node/node_types.h>
+#include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
 
 #include <chrono>
 #include <functional>
@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 class ObjectTrackingResetTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        tracking_node_ = std::make_shared<avt_341::perception::ObjectTrackingNode>();
+        tracking_node_ = std::make_shared<avt_341_nav::perception::ObjectTrackingNode>();
         helper_node_ = rclcpp::Node::make_shared("reset_test_helper");
 
         reset_pub_ = helper_node_->create_publisher<std_msgs::msg::String>(
@@ -29,7 +29,7 @@ protected:
         ack_sub_ = helper_node_->create_subscription<std_msgs::msg::String>(
             "avt_341/reset_ack", 10,
             [this](std_msgs::msg::String::SharedPtr msg) {
-                if (msg->data == avt_341::node::NodeType::Perception) {
+                if (msg->data == avt_341_nav::node::NodeType::Perception) {
                     ack_received_ = true;
                 }
             });
@@ -52,7 +52,7 @@ protected:
         }
     }
 
-    std::shared_ptr<avt_341::perception::ObjectTrackingNode> tracking_node_;
+    std::shared_ptr<avt_341_nav::perception::ObjectTrackingNode> tracking_node_;
     std::shared_ptr<rclcpp::Node> helper_node_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr reset_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr ack_sub_;
@@ -66,7 +66,7 @@ TEST_F(ObjectTrackingResetTest, PerceptionResetTriggersAck) {
     SpinUntil([] { return false; }, 100ms);
 
     std_msgs::msg::String msg;
-    msg.data = avt_341::node::NodeType::Perception;
+    msg.data = avt_341_nav::node::NodeType::Perception;
     reset_pub_->publish(msg);
 
     SpinUntil([this] { return ack_received_; }, 2000ms);
@@ -79,7 +79,7 @@ TEST_F(ObjectTrackingResetTest, NonPerceptionResetIsIgnored) {
     SpinUntil([] { return false; }, 100ms);
 
     std_msgs::msg::String msg;
-    msg.data = avt_341::node::NodeType::GlobalPlanner;
+    msg.data = avt_341_nav::node::NodeType::GlobalPlanner;
     reset_pub_->publish(msg);
 
     SpinUntil([] { return false; }, 500ms);
@@ -92,7 +92,7 @@ TEST_F(ObjectTrackingResetTest, RepeatedResetsAreAcknowledged) {
     SpinUntil([] { return false; }, 100ms);
 
     std_msgs::msg::String msg;
-    msg.data = avt_341::node::NodeType::Perception;
+    msg.data = avt_341_nav::node::NodeType::Perception;
 
     for (int i = 0; i < 3; ++i) {
         ack_received_ = false;

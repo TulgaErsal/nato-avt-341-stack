@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <climits>
 #include <tuple>
-#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
+#include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 using Eigen::MatrixXi;
 using Eigen::Vector2d;
@@ -303,4 +303,4 @@ avoidIntersection(const std::tuple<Eigen::MatrixXi, Eigen::Vector2d, Eigen::Vect
     return {out_pt, dir, new_idx, deadlock};
 }
 
-} // namespace avt_341::mission
+} // namespace avt_341_nav::mission

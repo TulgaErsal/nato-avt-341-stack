@@ -1,4 +1,4 @@
-#include "avt_341/perception/slam/utility.h"
+#include "avt_341_nav/perception/slam/utility.h"
 // <!-- liorf_localization_yjz_lucky_boy -->
 struct VelodynePointXYZIRT
 {
@@ -74,13 +74,13 @@ private:
     ros::Publisher pubLaserCloudInfo;
 
     ros::Subscriber subImu;
-    std::deque<avt_341::msg::Imu> imuQueue;
+    std::deque<avt_341_nav::msg::Imu> imuQueue;
 
     ros::Subscriber subOdom;
-    std::deque<avt_341::msg::Odometry> odomQueue;
+    std::deque<avt_341_nav::msg::Odometry> odomQueue;
 
-    std::deque<avt_341::msg::PointCloud2> cloudQueue;
-    avt_341::msg::PointCloud2 currentCloudMsg;
+    std::deque<avt_341_nav::msg::PointCloud2> cloudQueue;
+    avt_341_nav::msg::PointCloud2 currentCloudMsg;
 
     double *imuTime = new double[queueLength];
     double *imuRotX = new double[queueLength];
@@ -103,10 +103,10 @@ private:
     float odomIncreY;
     float odomIncreZ;
 
-    avt_341::msg::LiorfCloudInfo cloudInfo;
+    avt_341_nav::msg::LiorfCloudInfo cloudInfo;
     double timeScanCur;
     double timeScanEnd;
-    avt_341::msg::Header cloudHeader;
+    avt_341_nav::msg::Header cloudHeader;
 
     bool imuReceived{false};
     float initRoll{0}, initPitch{0};
@@ -121,12 +121,12 @@ public:
             imuReceived = false;
         }
 
-        subImu        = nh.subscribe<avt_341::msg::Imu>(imuTopic, 2000, &ImageProjection::imuHandler, this, ros::TransportHints().tcpNoDelay());
-        subOdom       = nh.subscribe<avt_341::msg::Odometry>(odomTopic+"_incremental", 2000, &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
-        subLaserCloud = nh.subscribe<avt_341::msg::PointCloud2>(pointCloudTopic, 5, &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
+        subImu        = nh.subscribe<avt_341_nav::msg::Imu>(imuTopic, 2000, &ImageProjection::imuHandler, this, ros::TransportHints().tcpNoDelay());
+        subOdom       = nh.subscribe<avt_341_nav::msg::Odometry>(odomTopic+"_incremental", 2000, &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
+        subLaserCloud = nh.subscribe<avt_341_nav::msg::PointCloud2>(pointCloudTopic, 5, &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
 
-        pubExtractedCloud = nh.advertise<avt_341::msg::PointCloud2> ("avt_341/slam/deskew/cloud_deskewed", 1);
-        pubLaserCloudInfo = nh.advertise<avt_341::msg::LiorfCloudInfo> ("avt_341/slam/deskew/cloud_info", 1);
+        pubExtractedCloud = nh.advertise<avt_341_nav::msg::PointCloud2> ("avt_341/slam/deskew/cloud_deskewed", 1);
+        pubLaserCloudInfo = nh.advertise<avt_341_nav::msg::LiorfCloudInfo> ("avt_341/slam/deskew/cloud_info", 1);
 
         ROS_INFO("useIMU: %d", useIMU);
 
@@ -167,9 +167,9 @@ public:
 
     ~ImageProjection(){}
 
-    void imuHandler(avt_341::msg::ImuPtr imuMsg)
+    void imuHandler(avt_341_nav::msg::ImuPtr imuMsg)
     {
-        avt_341::msg::Imu thisImu = imuConverter(*imuMsg);
+        avt_341_nav::msg::Imu thisImu = imuConverter(*imuMsg);
 
         // calculate initial roll and pitch angle using the first few IMU messages
         
@@ -201,7 +201,7 @@ public:
         }        
     }
 
-    void odometryHandler(avt_341::msg::OdometryPtr odometryMsg)
+    void odometryHandler(avt_341_nav::msg::OdometryPtr odometryMsg)
     {
         if (!imuReceived)
         {
@@ -213,7 +213,7 @@ public:
         odomQueue.push_back(*odometryMsg);
     }
 
-    void cloudHandler(avt_341::msg::PointCloud2Ptr laserCloudMsg)
+    void cloudHandler(avt_341_nav::msg::PointCloud2Ptr laserCloudMsg)
     {
         if (!imuReceived)
         {
@@ -240,7 +240,7 @@ public:
         resetParameters();
     }
 
-    bool cachePointCloud(avt_341::msg::PointCloud2Ptr laserCloudMsg)
+    bool cachePointCloud(avt_341_nav::msg::PointCloud2Ptr laserCloudMsg)
     {
         // cache point cloud
         cloudQueue.push_back(*laserCloudMsg);
@@ -404,7 +404,7 @@ public:
 
         for (int i = 0; i < (int)imuQueue.size(); ++i)
         {
-            avt_341::msg::Imu thisImuMsg = imuQueue[i];
+            avt_341_nav::msg::Imu thisImuMsg = imuQueue[i];
             double currentImuTime = thisImuMsg.header.stamp.toSec();
 
             if (imuType) {
@@ -476,7 +476,7 @@ public:
         }
 
         // get start odometry at the beinning of the scan
-        avt_341::msg::Odometry startOdomMsg;
+        avt_341_nav::msg::Odometry startOdomMsg;
 
         for (int i = 0; i < (int)odomQueue.size(); ++i)
         {
@@ -512,7 +512,7 @@ public:
             return;
         }
 
-        avt_341::msg::Odometry endOdomMsg;
+        avt_341_nav::msg::Odometry endOdomMsg;
 
         for (int i = 0; i < (int)odomQueue.size(); ++i)
         {

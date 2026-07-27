@@ -16,7 +16,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <exec_depend>avt_341</exec_depend>
+  <exec_depend>avt_341_nav</exec_depend>
   <exec_depend>avt_341_msgs</exec_depend>
   <exec_depend>avt_341_param_lib</exec_depend>
   <exec_depend>avt_341_rviz_plugins</exec_depend>

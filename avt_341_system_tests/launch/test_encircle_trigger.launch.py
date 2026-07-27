@@ -10,7 +10,7 @@ def launch_setup(context, *args, **kwargs):
     bag_file = LaunchConfiguration('bag_file').perform(context)
     bag_file = os.path.expanduser(bag_file)
 
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
     tracking_params_path = LaunchConfiguration('tracking_params').perform(context)
     rviz_config = LaunchConfiguration('rviz_config').perform(context)
     record = LaunchConfiguration('record').perform(context).lower() == 'true'
@@ -81,7 +81,7 @@ def launch_setup(context, *args, **kwargs):
 
     # 2. Derive vehicle odometry from TF (bag has no /mrzr/avt_341/odometry topic)
     tf_odometry_node = Node(
-        package='avt_341',
+        package='avt_341_nav',
         executable='tf_to_odometry.py',
         name='tf_to_odometry',
         output='screen',
@@ -96,8 +96,8 @@ def launch_setup(context, *args, **kwargs):
 
     # 3. Object Tracking Node (uses autostart to begin tracking immediately)
     tracking_node = Node(
-        package='avt_341',
-        executable='avt_341_object_tracking_node',
+        package='avt_341_nav',
+        executable='avt_341_nav_object_tracking_node',
         name='object_tracking_node',
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
@@ -114,8 +114,8 @@ def launch_setup(context, *args, **kwargs):
     # which is what MoveTo uses to detect task completion.
     global_planner_params = os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'global_planner.yaml')
     global_path_node = Node(
-        package='avt_341',
-        executable='avt_341_global_path_node',
+        package='avt_341_nav',
+        executable='avt_341_nav_global_path_node',
         name='global_path_node',
         output='screen',
         parameters=[global_planner_params, {'use_sim_time': True}],
@@ -128,8 +128,8 @@ def launch_setup(context, *args, **kwargs):
     # Subscribes to avt_341/target_contacts; when the tracker publishes a contact
     # the mission manager adds a MoveTo + Encircle task pair.
     mission_manager_node = Node(
-        package='avt_341',
-        executable='avt_341_mission_manager_node',
+        package='avt_341_nav',
+        executable='avt_341_nav_mission_manager_node',
         name='mission_manager',
         output='screen',
         parameters=[mission_manager_params, {'use_sim_time': True}],
@@ -184,7 +184,7 @@ def launch_setup(context, *args, **kwargs):
     return actions
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
     system_tests_dir = get_package_share_directory('avt_341_system_tests')
 
     return LaunchDescription([

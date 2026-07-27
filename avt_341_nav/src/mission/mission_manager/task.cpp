@@ -1,8 +1,8 @@
 // clas definition
-#include "avt_341/mission/task.h"
+#include "avt_341_nav/mission/task.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 Task::Task(MissionManager* manager, const std::string & sender, int id, FormationDefinition* formation_def)
@@ -35,4 +35,4 @@ geometry_msgs::msg::PoseStamped Task::terminalPose() const{
 
 
 } // mission 
-} // avt_341
+} // avt_341_nav

@@ -33,10 +33,10 @@
 
 #pragma once
 
-#include <avt_341/perception/filtering/kalman_filter.hpp>
-#include <avt_341/perception/filtering/kinematic_kalman_filter.hpp>
+#include <avt_341_nav/perception/filtering/kalman_filter.hpp>
+#include <avt_341_nav/perception/filtering/kinematic_kalman_filter.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 namespace filtering {
 
@@ -211,4 +211,4 @@ class CVFilter : public KalmanFilter<state_size * 2, state_size> {
 
 } // namespace filtering
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

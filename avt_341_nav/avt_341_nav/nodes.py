@@ -8,7 +8,7 @@ from typing import List, Optional
 from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 
-from avt_341.detection import YoloModel
+from avt_341_nav.detection import YoloModel
 
 
 class AvtNode(Node):
@@ -78,7 +78,7 @@ class YoloGym(AvtNode):
 
     def _get_model(self: YoloGym, model: str) -> Path:
 
-        return Path(get_package_share_directory('avt_341')) / Path(
+        return Path(get_package_share_directory('avt_341_nav')) / Path(
             f"ml_weights/detection/models/{model}.pt")
 
     def _oneshot_timer_callback(self: YoloGym) -> None:

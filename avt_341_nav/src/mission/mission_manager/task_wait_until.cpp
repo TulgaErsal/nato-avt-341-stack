@@ -1,9 +1,9 @@
 // clas definition
-#include "avt_341/mission/task.h"
+#include "avt_341_nav/mission/task.h"
 #include <fstream>
 #include <iostream>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 // MoveTo
@@ -31,4 +31,4 @@ std::string WaitUntilComplete::description() const{
 }
 
 } // mission 
-} // avt_341
+} // avt_341_nav

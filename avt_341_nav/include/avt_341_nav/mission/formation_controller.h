@@ -19,9 +19,9 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/float64.hpp"
-#include "avt_341/mission/formation_utils.h"
+#include "avt_341_nav/mission/formation_utils.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 // convenient shorthands for adapting TW's code
@@ -85,6 +85,6 @@ class FormationController{
 }; // class formation controller
 
 } // namespace mission
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif //AVT_341_FORMATION_CONTROLLER_H

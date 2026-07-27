@@ -1,9 +1,9 @@
-#include "avt_341/core/grid_components.h"
+#include "avt_341_nav/core/grid_components.h"
 #include <algorithm>
 #include <limits>
 #include <vector>
 
-namespace avt_341::core{
+namespace avt_341_nav::core{
 
 GridRegion::GridRegion(int x_min, int x_max, int y_min, int y_max)
     : x_min(x_min), x_max(x_max), y_min(y_min), y_max(y_max) {

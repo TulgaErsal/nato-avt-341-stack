@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "avt_341/core/waypoint_file_parser.hpp"
+#include "avt_341_nav/core/waypoint_file_parser.hpp"
 
-using avt_341::core::WaypointFileParser;
+using avt_341_nav::core::WaypointFileParser;
 
 namespace
 {

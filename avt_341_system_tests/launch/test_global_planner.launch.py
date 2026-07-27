@@ -5,7 +5,7 @@ from launch.actions import ExecuteProcess
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
     system_tests_dir = get_package_share_directory('avt_341_system_tests')
     rviz_config = os.path.join(system_tests_dir, 'rviz', 'test_global_planner.rviz')
 
@@ -20,8 +20,8 @@ def generate_launch_description():
     return LaunchDescription([
         # The Global Planner
         Node(
-            package='avt_341',
-            executable='avt_341_global_path_node',
+            package='avt_341_nav',
+            executable='avt_341_nav_global_path_node',
             name='global_path_node',
             output='screen',
             parameters=[global_planner_params]

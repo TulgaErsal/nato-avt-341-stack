@@ -38,11 +38,11 @@
 #include <optional>
 #include <Eigen/Dense>
 
-#include <avt_341/perception/filtering/cv_filter.hpp>
-#include <avt_341/perception/filtering/ctr_filter.hpp>
-#include <avt_341/perception/filtering/nm_filter.hpp>
+#include <avt_341_nav/perception/filtering/cv_filter.hpp>
+#include <avt_341_nav/perception/filtering/ctr_filter.hpp>
+#include <avt_341_nav/perception/filtering/nm_filter.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 namespace filtering {
 
@@ -645,4 +645,4 @@ class IMMFilter {
 
 } // namespace filtering
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

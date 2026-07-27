@@ -11,17 +11,17 @@
 #include "map_msgs/msg/occupancy_grid_update.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/node/tf_interface.h"
-#include "avt_341/perception/costmap_dtos.h"
-#include "avt_341/perception/perception_settings.hpp"
-#include "avt_341/core/compute_time_recorder.hpp"
-#include "avt_341/core/grid_components.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/node/tf_interface.h"
+#include "avt_341_nav/perception/costmap_dtos.h"
+#include "avt_341_nav/perception/perception_settings.hpp"
+#include "avt_341_nav/core/compute_time_recorder.hpp"
+#include "avt_341_nav/core/grid_components.h"
 #include "layers/costmap_layer.h"
 #include <deque>
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
 
 class Costmap {

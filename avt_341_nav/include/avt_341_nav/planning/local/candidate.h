@@ -11,9 +11,9 @@
 #ifndef SPLINE_CANDIDATE_H
 #define SPLINE_CANDIDATE_H
 #include <vector>
-#include "avt_341/planning/local/polynomial.h"
+#include "avt_341_nav/planning/local/polynomial.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning{
 
 class Candidate {
@@ -236,7 +236,7 @@ private:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 
 #endif

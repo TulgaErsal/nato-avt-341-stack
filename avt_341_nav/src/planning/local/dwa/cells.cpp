@@ -1,6 +1,6 @@
-#include <avt_341/planning/local/dwa/cells.hpp>
+#include <avt_341_nav/planning/local/dwa/cells.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -21,4 +21,4 @@ void Cells::Clear() {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -41,9 +41,9 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/detection_2d.hpp>
+#include <avt_341_nav/perception/detection/common/detection_2d.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 Detection2D::Detection2D(BoundingBox2D bounding_box, Hypothesis hypothesis)
@@ -66,4 +66,4 @@ vision_msgs::msg::Detection2D Detection2D::ToROSVisionMessage() {
 }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

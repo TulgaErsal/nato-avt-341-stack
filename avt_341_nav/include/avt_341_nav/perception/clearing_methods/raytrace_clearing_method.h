@@ -2,9 +2,9 @@
 #define AVT_341_RAYTRACE_CLEARING_METHOD_H
 
 #include "costmap_clearing_method.h"
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/node/tf_interface.h"
 #include <bitset>
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/avt_341_utils.h"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -15,7 +15,7 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 // RAYTRACE CLEARING SETTINGS
 // ==================================================================================================================

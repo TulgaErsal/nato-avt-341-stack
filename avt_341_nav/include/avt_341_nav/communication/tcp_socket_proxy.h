@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace communication {
 
     class TcpSocketClientBase{
@@ -40,7 +40,7 @@ namespace avt_341 {
 
 #endif
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace communication {
 
     class TcpSocketClient : public TcpSocketClientBase {

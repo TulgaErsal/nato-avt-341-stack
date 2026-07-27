@@ -2,7 +2,7 @@
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -44,4 +44,4 @@ class State {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

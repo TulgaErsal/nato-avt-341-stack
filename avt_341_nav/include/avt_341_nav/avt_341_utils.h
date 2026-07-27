@@ -23,7 +23,7 @@
 
 // TODO: Refactor to dto.h and utils.h under core
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace utils {
 
 enum NavStackState : int {
@@ -310,6 +310,6 @@ inline bool IsGoalReached(const avt_341_msgs::msg::NavState& state, const avt_34
 }
 
 } //namespace utils
-} //namespace avt_341
+} //namespace avt_341_nav
 
 #endif

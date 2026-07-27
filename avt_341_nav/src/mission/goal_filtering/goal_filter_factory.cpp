@@ -1,6 +1,6 @@
-#include "avt_341/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 const std::string GoalFilterMethod::ObstacleAvoidance = "obs_avoid";
 const std::string GoalFilterMethod::None = "none";
@@ -14,7 +14,7 @@ std::shared_ptr<GoalFilter> create_goal_filter(
     const std::string & vehicle_id,
     const std::string & method_id,
     const rclcpp::Node::SharedPtr & node,
-    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
+    const avt_341_nav::params::mission_manager::Params::FgfObsAvoid& filter_params,
     const std::string & publish_method
     ) {
 

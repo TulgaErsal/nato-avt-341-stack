@@ -17,9 +17,9 @@
 
 #include "avt_341_msgs/msg/communication.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/communication/tcp_socket_proxy.h"
-#include "avt_341/mission/mission_manager_parser.h"
-#include <avt_341/socket_comms_params_service.hpp>
+#include "avt_341_nav/communication/tcp_socket_proxy.h"
+#include "avt_341_nav/mission/mission_manager_parser.h"
+#include <avt_341_nav/socket_comms_params_service.hpp>
 
 std::queue<avt_341_msgs::msg::Communication> pending_msgs;
 char message[256] = { 0 };
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
     // Initialize the node
     rclcpp::init(argc, argv);
     nh = rclcpp::Node::make_shared("avt_341_comm_node");
-    avt_341::params::socket_comms::ParamsListener param_listener(nh);
+    avt_341_nav::params::socket_comms::ParamsListener param_listener(nh);
     const auto params = param_listener.get_params();
     rclcpp::Rate loop_rate(100.0);
 
@@ -74,11 +74,11 @@ int main(int argc, char* argv[])
     RCLCPP_INFO(nh->get_logger(), "Connecting to server: %s:%d, name: %s, disable_socket_comms: %d, broadcast_over_ros: %d, other_veh_pubs: %d", params.host.c_str(), port, params.name.c_str(), disable_socket_comms, params.broadcast_over_ros, other_veh_pubs.size());
 
     // Create the socket
-    std::shared_ptr<avt_341::communication::TcpSocketClientBase> client = nullptr;
+    std::shared_ptr<avt_341_nav::communication::TcpSocketClientBase> client = nullptr;
     if(disable_socket_comms){
-        client = std::make_shared<avt_341::communication::NullTcpSocketClient>();
+        client = std::make_shared<avt_341_nav::communication::NullTcpSocketClient>();
     }else{
-        client = std::make_shared<avt_341::communication::TcpSocketClient>(
+        client = std::make_shared<avt_341_nav::communication::TcpSocketClient>(
             params.host, port);
     }
 

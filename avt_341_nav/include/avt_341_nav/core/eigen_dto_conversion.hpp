@@ -14,7 +14,7 @@
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
 /** @brief Convert an Eigen vector to a geometry_msgs Point message. */

@@ -11,8 +11,8 @@
  * overridden at compile time via the GLOBAL_PLANNER_YAML_PATH macro.
  *
  * Build-system note: link this test against the same planners as
- * avt_341_global_path_node (astar.cpp, fastmarching.cpp, d_star_lite.cpp,
- * fast_marching_square.cpp) and the avt_341_proxy library.
+ * avt_341_nav_global_path_node (astar.cpp, fastmarching.cpp, d_star_lite.cpp,
+ * fast_marching_square.cpp) and the avt_341_nav_proxy library.
  */
 
 #include <gtest/gtest.h>
@@ -28,15 +28,15 @@
 #include <vector>
 
 // Planning algorithm headers
-#include "avt_341/planning/global/astar.h"
-#include "avt_341/planning/global/fastmarching.h"
-#include "avt_341/planning/global/d_star_lite.h"
-#include "avt_341/planning/global/fast_marching_square.h"
+#include "avt_341_nav/planning/global/astar.h"
+#include "avt_341_nav/planning/global/fastmarching.h"
+#include "avt_341_nav/planning/global/d_star_lite.h"
+#include "avt_341_nav/planning/global/fast_marching_square.h"
 
 // ROS message types (header-only abstractions)
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-using avt_341::planning::Point;
+using avt_341_nav::planning::Point;
 
 // ---------------------------------------------------------------------------
 // Compile-time default path; can be overridden by the build system.
@@ -266,10 +266,10 @@ static ScenarioGrids BuildScenario(const std::string& scenario,
 // ===========================================================================
 // Planner factory – creates the requested planner with global params
 // ===========================================================================
-static std::unique_ptr<avt_341::planning::Astar>
+static std::unique_ptr<avt_341_nav::planning::Astar>
 CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
   if (method == "fast_marching") {
-    return std::make_unique<avt_341::planning::FastMarching>(
+    return std::make_unique<avt_341_nav::planning::FastMarching>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
         p.safety_margin_global,
@@ -281,11 +281,11 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         p.clipping_distance,
         /*verbose=*/false);
   } else if (method == "d_star_lite") {
-    return std::make_unique<avt_341::planning::DStarLite>(
+    return std::make_unique<avt_341_nav::planning::DStarLite>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first);
   } else if (method == "fast_marching_square") {
-    return std::make_unique<avt_341::planning::FastMarchingSquare>(
+    return std::make_unique<avt_341_nav::planning::FastMarchingSquare>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
         p.safety_margin_global,
@@ -298,7 +298,7 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         /*verbose=*/false);
   } else {
     // Default: astar
-    return std::make_unique<avt_341::planning::Astar>(
+    return std::make_unique<avt_341_nav::planning::Astar>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first);
   }

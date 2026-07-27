@@ -1,10 +1,10 @@
-#include <avt_341/planning/local/dwa/trajectory.hpp>
+#include <avt_341_nav/planning/local/dwa/trajectory.hpp>
 #include "avt_341_msgs/msg/dwa_objective.hpp"
 #include "avt_341_msgs/msg/dwa_trajectory.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -187,4 +187,4 @@ avt_341_msgs::msg::DwaTrajectory Trajectory::GetROSTrajectoryMessage() const {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

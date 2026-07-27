@@ -29,9 +29,9 @@
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/common/transforms.h>
 
-#include "avt_341/perception/box.hpp"
+#include "avt_341_nav/perception/box.hpp"
 
-namespace avt_341{
+namespace avt_341_nav{
 namespace perception{
   
 template <typename PointT>
@@ -537,4 +537,4 @@ void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<Poin
 }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -15,7 +15,7 @@
 #include <vector>
 #include <string>
 
-namespace avt_341{
+namespace avt_341_nav{
 namespace coordinate_system{
 
 /**
@@ -80,6 +80,6 @@ class Ellipsoid{
 };
 
 } //namespace coordinate_system
-} //namespace avt_341
+} //namespace avt_341_nav
 
 #endif

@@ -13,9 +13,9 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_types.h"
-#include "avt_341/perception/lib_uab_perception_wrapper.h"
-#include <avt_341/uab_perception_params_service.hpp>
+#include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/perception/lib_uab_perception_wrapper.h"
+#include <avt_341_nav/uab_perception_params_service.hpp>
 #include "mclcppclass.h"
 #include "mclmcrrt.h"
 #include <string>
@@ -32,14 +32,14 @@
 #include <cv_bridge/cv_bridge.hpp>
 #else
 #include <cv_bridge/cv_bridge.h>
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/node/tf_interface.h"
 #endif
 
 const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
 rclcpp::Node::SharedPtr node;
-std::shared_ptr<avt_341::node::TfInterface> tf;
+std::shared_ptr<avt_341_nav::node::TfInterface> tf;
 geometry_msgs::msg::TransformStamped lidar_to_base_link_tf;
 geometry_msgs::msg::TransformStamped lidar_to_camera_tf;
 
@@ -545,7 +545,7 @@ nav_msgs::msg::OccupancyGrid ExtractGridWindow(const nav_msgs::msg::OccupancyGri
 bool reset_called = false;
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg)
 {
-    if (msg->data.find(avt_341::node::NodeType::Perception) != std::string::npos)
+    if (msg->data.find(avt_341_nav::node::NodeType::Perception) != std::string::npos)
     {
         reset_called = true;
     }
@@ -555,9 +555,9 @@ int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
     node = rclcpp::Node::make_shared("uab_perception_node");
-    tf = std::make_shared<avt_341::node::TfInterface>(node);
+    tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
 
-    avt_341::params::uab_perception::ParamsListener param_listener(node);
+    avt_341_nav::params::uab_perception::ParamsListener param_listener(node);
     const auto params = param_listener.get_params();
 
     auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
@@ -644,7 +644,7 @@ int main(int argc, char *argv[])
     {
         if(reset_called){
             std_msgs::msg::String reset_ack_msg;
-            reset_ack_msg.data = avt_341::node::NodeType::Perception;
+            reset_ack_msg.data = avt_341_nav::node::NodeType::Perception;
             reset_ack_pub->publish(reset_ack_msg);
             reset_called = false;
         }

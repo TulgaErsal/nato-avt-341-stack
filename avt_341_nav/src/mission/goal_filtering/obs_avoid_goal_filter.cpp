@@ -1,15 +1,15 @@
-#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter.hpp"
+#include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
-#include <avt_341/avt_341_utils.h>
+#include <avt_341_nav/avt_341_utils.h>
 
-#include "avt_341/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
-#include "avt_341/node/occupancy_grid_subscriber.h"
+#include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
+#include "avt_341_nav/node/occupancy_grid_subscriber.h"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341::mission {
+namespace avt_341_nav::mission {
 
 #define OCCUPANCY_GRID_TOPIC_NAME "avt_341/occupancy_grid"
 #define UNFILTERED_GOAL_TOPIC_NAME "avt_341/unfiltered_follower_pose"
@@ -18,7 +18,7 @@ namespace avt_341::mission {
 ObsAvoidGoalFilter::ObsAvoidGoalFilter(
     rclcpp::Node::SharedPtr node,
     const std::string& vehicle_id,
-    const avt_341::params::mission_manager::Params::FgfObsAvoid& filter_params,
+    const avt_341_nav::params::mission_manager::Params::FgfObsAvoid& filter_params,
     const std::string& publish_method)
     : node_(node),
     params_(vehicle_id),
@@ -298,4 +298,4 @@ Eigen::Vector2d ObsAvoidGoalFilter::ProcessSample(
     return point_new;
 }
 
-} // namespace avt_341::mission
+} // namespace avt_341_nav::mission

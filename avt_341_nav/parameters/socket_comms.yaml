@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/socket_comms
+code_namespace: avt_341_nav/params/socket_comms
 ros__parameters:
 
   # Communication node

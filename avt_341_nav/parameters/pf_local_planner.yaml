@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/pf_local_planner
+code_namespace: avt_341_nav/params/pf_local_planner
 ros__parameters:
 
   # Costmap transport (publish.method drives latching of grid subscriptions)

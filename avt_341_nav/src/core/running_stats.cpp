@@ -1,9 +1,9 @@
-#include "avt_341/core/running_stats.hpp"
+#include "avt_341_nav/core/running_stats.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-namespace avt_341::core {
+namespace avt_341_nav::core {
 
 // RunningStatsConfig
 // ---------------------------------------------------------------------------------------------------------------

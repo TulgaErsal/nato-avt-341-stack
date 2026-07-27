@@ -1,5 +1,5 @@
-#include "avt_341/planning/global/fastmarching.h"
-#include "avt_341/planning/global/astar_cell.h"
+#include "avt_341_nav/planning/global/fastmarching.h"
+#include "avt_341_nav/planning/global/astar_cell.h"
 
 #include <queue>
 #include <chrono>
@@ -8,7 +8,7 @@
 #include <algorithm>
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 
 float FastMarching::clearance_penalty(float d, float r, const std::string& option) {
@@ -640,4 +640,4 @@ Point FastMarching::GetShiftedPoint(int idx) const {
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

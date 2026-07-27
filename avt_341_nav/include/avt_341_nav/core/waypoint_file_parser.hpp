@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
     /// Waypoint coordinate lists read from a waypoint yaml file.

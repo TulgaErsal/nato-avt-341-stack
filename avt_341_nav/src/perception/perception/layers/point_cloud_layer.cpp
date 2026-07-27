@@ -1,5 +1,5 @@
-#include "avt_341/perception/layers/point_cloud_layer.h"
-#include "avt_341/perception/clearing_methods/clearing_methods_factory.h"
+#include "avt_341_nav/perception/layers/point_cloud_layer.h"
+#include "avt_341_nav/perception/clearing_methods/clearing_methods_factory.h"
 #include <chrono>
 #include <thread>
 
@@ -9,7 +9,7 @@
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
 PointCloudLayer::PointCloudLayer(
     const rclcpp::Node::SharedPtr& node_ref,

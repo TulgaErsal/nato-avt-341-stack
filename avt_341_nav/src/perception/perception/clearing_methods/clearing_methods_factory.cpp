@@ -1,10 +1,10 @@
-#include "avt_341/perception/clearing_methods/clearing_methods_factory.h"
+#include "avt_341_nav/perception/clearing_methods/clearing_methods_factory.h"
 
-#include <avt_341/perception/clearing_methods/channel_clearing_method.h>
-#include <avt_341/perception/clearing_methods/raytrace_clearing_method.h>
-#include <avt_341/perception/clearing_methods/time_clearing_method.h>
+#include <avt_341_nav/perception/clearing_methods/channel_clearing_method.h>
+#include <avt_341_nav/perception/clearing_methods/raytrace_clearing_method.h>
+#include <avt_341_nav/perception/clearing_methods/time_clearing_method.h>
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 
 std::shared_ptr<OccupancyClearingMethod> ClearingMethodFactory::CreateClearingMethod(

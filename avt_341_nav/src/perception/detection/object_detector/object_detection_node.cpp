@@ -41,14 +41,14 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/object_detector/object_detection_node.hpp>
+#include <avt_341_nav/perception/detection/object_detector/object_detection_node.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 ObjectDetectorNode::ObjectDetectorNode() : image_transport_(std::shared_ptr<ObjectDetectorNode>(this)), rclcpp::Node("object_detector") {
     param_listener_ =
-        std::make_shared<avt_341::params::object_detector::ParamsListener>(
+        std::make_shared<avt_341_nav::params::object_detector::ParamsListener>(
             get_node_parameters_interface(), get_logger());
     GetParameters();
     Initialize();
@@ -71,7 +71,7 @@ void ObjectDetectorNode::Initialize() {
         model_path = params_.model.external + params_.model.name;
     } else {
         try {
-            model_package_share_dir_ = ament_index_cpp::get_package_share_directory("avt_341");
+            model_package_share_dir_ = ament_index_cpp::get_package_share_directory("avt_341_nav");
         } catch(const ament_index_cpp::PackageNotFoundError& exception) {
             RCLCPP_ERROR(get_logger(), "Package not found - is your environment sourced correctly?");
             rclcpp::shutdown();
@@ -330,4 +330,4 @@ double ObjectDetectorNode::GetMeanDetectionTime(double last_detection_time) {
 }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

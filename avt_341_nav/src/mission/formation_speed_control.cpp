@@ -1,11 +1,11 @@
-#include "avt_341/mission/formation_speed_control.h"
+#include "avt_341_nav/mission/formation_speed_control.h"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace mission {
 
     FormationSpeedController::FormationSpeedController(const std::string & veh_name, const FormationSpeedControlParams &params)
@@ -102,7 +102,7 @@ namespace avt_341 {
     SlowLeaderFormationSpeedController::SlowLeaderFormationSpeedController(const std::string &my_name,
                                                                            const FormationSpeedControlParams &params,
                                                                            rclcpp::Node::SharedPtr node,
-                                                                           std::shared_ptr<avt_341::node::TfInterface> tf)
+                                                                           std::shared_ptr<avt_341_nav::node::TfInterface> tf)
         : FormationSpeedController(my_name, params), node_(node), tf_(tf) {
       if (fsc_params_.debug_visualize) {
         marker_pub_ = node_->create_publisher<visualization_msgs::msg::Marker>("avt_341/formation_visualize", 1);
@@ -332,7 +332,7 @@ namespace avt_341 {
     createFormationSpeedController(const std::string &veh_name,
                                    const FormationSpeedControlParams &params,
                                    rclcpp::Node::SharedPtr node,
-                                   std::shared_ptr<avt_341::node::TfInterface> tf) {
+                                   std::shared_ptr<avt_341_nav::node::TfInterface> tf) {
       if (params.type == FormationSpeedControlType::SLOW_DOWN_LEADER) {
         return std::make_shared<SlowLeaderFormationSpeedController>(veh_name, params, node, tf);
       }

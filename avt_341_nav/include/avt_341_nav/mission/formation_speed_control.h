@@ -7,12 +7,12 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/tf_interface.h"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/mission/formation_utils.h"
-#include "avt_341/mission/formation_definition.h"
+#include "avt_341_nav/node/tf_interface.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/mission/formation_utils.h"
+#include "avt_341_nav/mission/formation_definition.h"
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace mission {
 
     using FormationSpeedControlParams = MissionManagerParams::Fsc;
@@ -52,7 +52,7 @@ namespace avt_341 {
     public:
       SlowLeaderFormationSpeedController(const std::string &my_name, const FormationSpeedControlParams &params,
                                          rclcpp::Node::SharedPtr node,
-                                         std::shared_ptr<avt_341::node::TfInterface> tf);
+                                         std::shared_ptr<avt_341_nav::node::TfInterface> tf);
 
       double getSpeedFactor(const FormationDefinition *formation_def, const geometry_msgs::msg::PoseStamped &terminal_pose,
                             std::map<std::string, nav_msgs::msg::Odometry> &formation_poses, double speed_setpoint) override;
@@ -64,7 +64,7 @@ namespace avt_341 {
 
     private:
       rclcpp::Node::SharedPtr node_;
-      std::shared_ptr<avt_341::node::TfInterface> tf_;
+      std::shared_ptr<avt_341_nav::node::TfInterface> tf_;
       std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::Marker>> marker_pub_ = nullptr;
       bool has_visualized_ = false;
     };
@@ -82,7 +82,7 @@ namespace avt_341 {
     createFormationSpeedController(const std::string &veh_name,
                                    const FormationSpeedControlParams &params,
                                    rclcpp::Node::SharedPtr node,
-                                   std::shared_ptr<avt_341::node::TfInterface> tf);
+                                   std::shared_ptr<avt_341_nav::node::TfInterface> tf);
 
   }
 }

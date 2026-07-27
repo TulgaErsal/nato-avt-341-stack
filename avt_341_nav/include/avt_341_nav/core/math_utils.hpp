@@ -11,7 +11,7 @@
 
 #include <Eigen/Dense>
 
-namespace avt_341::core
+namespace avt_341_nav::core
 {
 
 /** @brief Standard deviation along the major axis of the uncertainty

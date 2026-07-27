@@ -14,7 +14,7 @@
 #include <vector>
 #include <iostream>
 
-namespace avt_341{
+namespace avt_341_nav{
 namespace math{
 
 class Matrix {
@@ -158,6 +158,6 @@ inline Matrix operator*(const Matrix& a, const Matrix& b) {
 //--- Done with operators-----------------------------------------//
 
 } //namespace math
-} //namespace avt_341
+} //namespace avt_341_nav
 
 #endif

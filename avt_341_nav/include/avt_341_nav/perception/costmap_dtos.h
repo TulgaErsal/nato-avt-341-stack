@@ -5,10 +5,10 @@
 #include <limits>
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include <string>
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/avt_341_utils.h"
 #include <optional>
 
-namespace avt_341::perception
+namespace avt_341_nav::perception
 {
   constexpr uint8_t GRID_MAX_VALUE = 100;
 

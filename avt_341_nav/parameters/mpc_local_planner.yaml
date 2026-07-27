@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/mpc_local_planner
+code_namespace: avt_341_nav/params/mpc_local_planner
 ros__parameters:
 
   # Costmap transport (publish.method drives latching of grid subscriptions)

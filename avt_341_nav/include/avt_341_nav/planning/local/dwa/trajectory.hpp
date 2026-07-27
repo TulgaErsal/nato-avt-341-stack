@@ -2,12 +2,12 @@
 
 #include "avt_341_msgs/msg/dwa_trajectory.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include <avt_341/planning/local/dwa/cells.hpp>
-#include <avt_341/planning/local/dwa/obstacles.hpp>
-#include <avt_341/planning/local/dwa/path.hpp>
-#include <avt_341/planning/local/dwa/state.hpp>
+#include <avt_341_nav/planning/local/dwa/cells.hpp>
+#include <avt_341_nav/planning/local/dwa/obstacles.hpp>
+#include <avt_341_nav/planning/local/dwa/path.hpp>
+#include <avt_341_nav/planning/local/dwa/state.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -96,4 +96,4 @@ class Trajectory {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

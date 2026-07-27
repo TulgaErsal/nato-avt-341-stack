@@ -20,8 +20,8 @@
 #include "std_msgs/msg/float64.hpp"
 #include <rclcpp/rclcpp.hpp>
 //avt_341 includes
-#include "avt_341/control/pure_pursuit_controller.h"
-#include <avt_341/control_params_service.hpp>
+#include "avt_341_nav/control/pure_pursuit_controller.h"
+#include <avt_341_nav/control_params_service.hpp>
 
 nav_msgs::msg::Path control_msg;
 nav_msgs::msg::Odometry state;
@@ -32,7 +32,7 @@ bool speedometer_rcvd = false;
 bool des_speed_rcvd = false;
 double desired_speed = 0.0;
 
-using avt_341::utils::NavStackState;
+using avt_341_nav::utils::NavStackState;
 
 void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_state) {
 	state = *rcv_state; 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]){
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_341_control_node");
 
-  avt_341::params::control::ParamsListener param_listener(n);
+  avt_341_nav::params::control::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
   auto dc_pub = n->create_publisher<geometry_msgs::msg::Twist>("avt_341/cmd_vel",1);
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]){
   auto desired_speed_sub = n->create_subscription<std_msgs::msg::Float64>("avt_341/desired_speed",1,DesiredSpeedCallback);
 
 
-  avt_341::control::PurePursuitController controller;
+  avt_341_nav::control::PurePursuitController controller;
 
   if (params.skid_steered){
     controller.IsSkidSteered(true);
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]){
   double current_brake_value = 0.0;
   double current_throttle_value = 0.0;
   rclcpp::Rate r(rate);
-  avt_341::utils::vec2 goal;
+  avt_341_nav::utils::vec2 goal;
   int nl = 0;
   while (rclcpp::ok()){
     geometry_msgs::msg::Twist dc;

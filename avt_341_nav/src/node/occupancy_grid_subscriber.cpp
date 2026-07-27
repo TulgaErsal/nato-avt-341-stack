@@ -1,10 +1,10 @@
-#include "avt_341/node/occupancy_grid_subscriber.h"
+#include "avt_341_nav/node/occupancy_grid_subscriber.h"
 
-#include "avt_341/perception/costmap_dtos.h"
+#include "avt_341_nav/perception/costmap_dtos.h"
 #include "map_msgs/msg/occupancy_grid_update.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
-namespace avt_341::node {
+namespace avt_341_nav::node {
 
 OccupancyGridSubscriber::OccupancyGridSubscriber(
     const rclcpp::Node::SharedPtr &node,

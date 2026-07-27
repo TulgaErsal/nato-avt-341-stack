@@ -48,7 +48,7 @@
 #include <sensor_msgs/msg/region_of_interest.hpp>
 #include <vision_msgs/msg/bounding_box2_d.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 /**
@@ -160,4 +160,4 @@ class BoundingBox2D {
 };
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

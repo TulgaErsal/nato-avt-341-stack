@@ -1,4 +1,4 @@
-code_namespace: avt_341/params/core
+code_namespace: avt_341_nav/params/core
 ros__parameters:
     geometry:
         width:

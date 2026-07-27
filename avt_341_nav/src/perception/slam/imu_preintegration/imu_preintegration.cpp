@@ -1,4 +1,4 @@
-#include "avt_341/perception/slam/utility.h"
+#include "avt_341_nav/perception/slam/utility.h"
 
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
@@ -73,7 +73,7 @@ public:
     bool lidar2Baselink_initialized{false};
 
     double lidarOdomTime = -1;
-    deque<avt_341::msg::Odometry> imuOdomQueue;
+    deque<avt_341_nav::msg::Odometry> imuOdomQueue;
 
     TransformFusion()
     {
@@ -104,11 +104,11 @@ public:
             lidar2Baselink_initialized = true;
         }
 
-        subLaserOdometry = nh.subscribe<avt_341::msg::Odometry>("avt_341/slam/mapping/odometry", 5, &TransformFusion::lidarOdometryHandler, this, ros::TransportHints().tcpNoDelay());
-        subImuOdometry = nh.subscribe<avt_341::msg::Odometry>(odomTopic + "_incremental", 2000, &TransformFusion::imuOdometryHandler, this, ros::TransportHints().tcpNoDelay());
+        subLaserOdometry = nh.subscribe<avt_341_nav::msg::Odometry>("avt_341/slam/mapping/odometry", 5, &TransformFusion::lidarOdometryHandler, this, ros::TransportHints().tcpNoDelay());
+        subImuOdometry = nh.subscribe<avt_341_nav::msg::Odometry>(odomTopic + "_incremental", 2000, &TransformFusion::imuOdometryHandler, this, ros::TransportHints().tcpNoDelay());
 
-        pubImuOdometry = nh.advertise<avt_341::msg::Odometry>(odomTopic, 2000);
-        pubImuPath = nh.advertise<avt_341::msg::Path>("avt_341/slam/imu/path", 1);
+        pubImuOdometry = nh.advertise<avt_341_nav::msg::Odometry>(odomTopic, 2000);
+        pubImuPath = nh.advertise<avt_341_nav::msg::Path>("avt_341/slam/imu/path", 1);
         pub_forward_accel = nh.advertise<std_msgs::Float64>("forward_acceleration", 10);
         pub_lateral_accel = nh.advertise<std_msgs::Float64>("lateral_acceleration", 10);
         pub_longitudinal_velocity = nh.advertise<std_msgs::Float64>("longitudinal_velocity", 10);
@@ -127,7 +127,7 @@ public:
         pub_actual_forward_speed = nh.advertise<std_msgs::Float64>("actual_forward_speed", 10);
     }
 
-    Eigen::Affine3f odom2affine(avt_341::msg::Odometry odom)
+    Eigen::Affine3f odom2affine(avt_341_nav::msg::Odometry odom)
     {
         double x, y, z, roll, pitch, yaw;
         x = odom.pose.pose.position.x;
@@ -153,7 +153,7 @@ public:
         return pcl::getTransformation(x, y, z, roll, pitch, yaw);
     }
 
-    void lidarOdometryHandler(avt_341::msg::OdometryPtr odomMsg)
+    void lidarOdometryHandler(avt_341_nav::msg::OdometryPtr odomMsg)
     {
         std::lock_guard<std::mutex> lock(mtx);
 
@@ -167,7 +167,7 @@ public:
         }
     }
 
-    void broadcastTransformation(avt_341::msg::Odometry odomMsg)
+    void broadcastTransformation(avt_341_nav::msg::Odometry odomMsg)
     {
         if (lidar2Baselink_initialized == false)
         {
@@ -182,7 +182,7 @@ public:
         tfBroadcaster.sendTransform(odom_2_baselink);
     }
 
-    void imuOdometryHandler(avt_341::msg::OdometryPtr odomMsg)
+    void imuOdometryHandler(avt_341_nav::msg::OdometryPtr odomMsg)
     {
         // static tf
         static tf::TransformBroadcaster tfMap2Odom;
@@ -211,7 +211,7 @@ public:
         pcl::getTranslationAndEulerAngles(imuOdomAffineLast, x, y, z, roll, pitch, yaw);
 
         // publish latest odometry
-        avt_341::msg::Odometry laserOdometry = imuOdomQueue.back();
+        avt_341_nav::msg::Odometry laserOdometry = imuOdomQueue.back();
         laserOdometry.pose.pose.position.x = x;
         laserOdometry.pose.pose.position.y = y;
         laserOdometry.pose.pose.position.z = z;
@@ -236,13 +236,13 @@ public:
         }
 
         // publish IMU path
-        static avt_341::msg::Path imuPath;
+        static avt_341_nav::msg::Path imuPath;
         static double last_path_time = -1;
         double imuTime = imuOdomQueue.back().header.stamp.toSec();
         if (imuTime - last_path_time > 0.1)
         {
             last_path_time = imuTime;
-            avt_341::msg::PoseStamped pose_stamped;
+            avt_341_nav::msg::PoseStamped pose_stamped;
             pose_stamped.header.stamp = imuOdomQueue.back().header.stamp;
             pose_stamped.header.frame_id = odometryFrame;
             pose_stamped.pose = laserOdometry.pose.pose;
@@ -280,8 +280,8 @@ public:
     gtsam::PreintegratedImuMeasurements *imuIntegratorOpt_;
     gtsam::PreintegratedImuMeasurements *imuIntegratorImu_;
 
-    std::deque<avt_341::msg::Imu> imuQueOpt;
-    std::deque<avt_341::msg::Imu> imuQueImu;
+    std::deque<avt_341_nav::msg::Imu> imuQueOpt;
+    std::deque<avt_341_nav::msg::Imu> imuQueImu;
 
     gtsam::Pose3 prevPose_;
     gtsam::Vector3 prevVel_;
@@ -311,10 +311,10 @@ public:
 
     IMUPreintegration()
     {
-        subImu = nh.subscribe<avt_341::msg::Imu>(imuTopic, 2000, &IMUPreintegration::imuHandler, this, ros::TransportHints().tcpNoDelay());
-        subOdometry = nh.subscribe<avt_341::msg::Odometry>("avt_341/slam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler, this, ros::TransportHints().tcpNoDelay());
+        subImu = nh.subscribe<avt_341_nav::msg::Imu>(imuTopic, 2000, &IMUPreintegration::imuHandler, this, ros::TransportHints().tcpNoDelay());
+        subOdometry = nh.subscribe<avt_341_nav::msg::Odometry>("avt_341/slam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler, this, ros::TransportHints().tcpNoDelay());
 
-        pubImuOdometry = nh.advertise<avt_341::msg::Odometry>(odomTopic + "_incremental", 2000);
+        pubImuOdometry = nh.advertise<avt_341_nav::msg::Odometry>(odomTopic + "_incremental", 2000);
 
         boost::shared_ptr<gtsam::PreintegrationParams> p = gtsam::PreintegrationParams::MakeSharedU(imuGravity);
         p->accelerometerCovariance = gtsam::Matrix33::Identity(3, 3) * pow(imuAccNoise, 2); // acc white noise in continuous
@@ -355,7 +355,7 @@ public:
         systemInitialized = false;
     }
 
-    void odometryHandler(avt_341::msg::OdometryPtr odomMsg)
+    void odometryHandler(avt_341_nav::msg::OdometryPtr odomMsg)
     {
         std::lock_guard<std::mutex> lock(mtx);
 
@@ -460,7 +460,7 @@ public:
         while (!imuQueOpt.empty())
         {
             // pop and integrate imu data that is between two optimizations
-            avt_341::msg::Imu *thisImu = &imuQueOpt.front();
+            avt_341_nav::msg::Imu *thisImu = &imuQueOpt.front();
             double imuTime = ROS_TIME(thisImu);
             if (imuTime < currentCorrectionTime - delta_t)
             {
@@ -543,7 +543,7 @@ public:
             // integrate imu message from the beginning of this optimization
             for (int i = 0; i < (int)imuQueImu.size(); ++i)
             {
-                avt_341::msg::Imu *thisImu = &imuQueImu[i];
+                avt_341_nav::msg::Imu *thisImu = &imuQueImu[i];
                 double imuTime = ROS_TIME(thisImu);
                 double dt = (lastImuQT < 0) ? (1.0 / imuRate) : (imuTime - lastImuQT);
                 if (dt <= 0)
@@ -583,11 +583,11 @@ public:
         return false;
     }
 
-    void imuHandler(avt_341::msg::ImuPtr imu_raw)
+    void imuHandler(avt_341_nav::msg::ImuPtr imu_raw)
     {
         std::lock_guard<std::mutex> lock(mtx);
 
-        avt_341::msg::Imu thisImu = imuConverter(*imu_raw);
+        avt_341_nav::msg::Imu thisImu = imuConverter(*imu_raw);
 
         imuQueOpt.push_back(thisImu);
         imuQueImu.push_back(thisImu);
@@ -644,7 +644,7 @@ public:
         gtsam::NavState currentState = imuIntegratorImu_->predict(prevStateOdom, prevBiasOdom);
 
         // publish odometry
-        avt_341::msg::Odometry odometry;
+        avt_341_nav::msg::Odometry odometry;
         
         //Yaw rate
         std_msgs::Float64 yaw_rate_msg;

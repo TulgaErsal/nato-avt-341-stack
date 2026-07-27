@@ -1,7 +1,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
-#include <avt_341/node/occupancy_grid_subscriber.h>
+#include <avt_341_nav/node/occupancy_grid_subscriber.h>
 
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -13,7 +13,7 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include <avt_341/mpc_local_planner_params_service.hpp>
+#include <avt_341_nav/mpc_local_planner_params_service.hpp>
 
 // Global variables
 rclcpp::Node::SharedPtr node;
@@ -22,7 +22,7 @@ double max_speed;
 
 double obstacle_size_meters = 0.0;
 
-avt_341::params::mpc_local_planner::Params node_params;
+avt_341_nav::params::mpc_local_planner::Params node_params;
 
 rclcpp::Time init_time;
 
@@ -284,14 +284,14 @@ int main(int argc, char* argv[]) {
     last_vehicle_odom_stamp = init_time;
 
     // Load parameters
-    avt_341::params::mpc_local_planner::ParamsListener param_listener(node);
+    avt_341_nav::params::mpc_local_planner::ParamsListener param_listener(node);
     node_params = param_listener.get_params();
     max_speed = node_params.max_speed;
 
     // Create publishers and subscribers
-    auto occupancy_grid_sub = avt_341::node::OccupancyGridSubscriber(
+    auto occupancy_grid_sub = avt_341_nav::node::OccupancyGridSubscriber(
         node, "avt_341/occupancy_grid", 10, node_params.costmap.publish.method, callback_obs);
-    auto seg_grid_sub = avt_341::node::OccupancyGridSubscriber(
+    auto seg_grid_sub = avt_341_nav::node::OccupancyGridSubscriber(
         node, "avt_341/segmentation_grid", 1, node_params.costmap.publish.method, callback_seg);
     auto odometry_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, callback_veh);
     auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", 1, callback_speed);

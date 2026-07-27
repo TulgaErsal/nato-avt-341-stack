@@ -48,11 +48,11 @@
 #include <Eigen/Dense>
 #include <boost/math/special_functions/factorials.hpp>
 
-#include <avt_341/perception/filtering/kalman_filter.hpp>
+#include <avt_341_nav/perception/filtering/kalman_filter.hpp>
 
-using avt_341::perception::filtering::KalmanFilter;
+using avt_341_nav::perception::filtering::KalmanFilter;
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 namespace filtering {
 
@@ -100,4 +100,4 @@ class KinematicKalmanFilter : public KalmanFilter<state_size*(order + 1), measur
 
 } // namespace filtering
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

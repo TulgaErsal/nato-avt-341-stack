@@ -3,7 +3,7 @@
 #include <cassert>
 #include <limits>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning {
 namespace dwa {
 
@@ -41,4 +41,4 @@ class DynamicWindow {
 
 } // namespace dwa
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

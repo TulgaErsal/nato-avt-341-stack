@@ -3,10 +3,10 @@
 
 #include "geometry_msgs/msg/point.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
-#include "avt_341/perception/costmap_dtos.h"
-#include "avt_341/perception/perception_settings.hpp"
+#include "avt_341_nav/perception/costmap_dtos.h"
+#include "avt_341_nav/perception/perception_settings.hpp"
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 struct CostmapClearMethodType {
 public:

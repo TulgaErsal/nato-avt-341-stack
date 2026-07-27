@@ -5,10 +5,10 @@
 */
 
 // project includes
-#include "avt_341/perception/geotiff_dataset.h"
+#include "avt_341_nav/perception/geotiff_dataset.h"
 #include <iostream>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning{
 
 Geotiff::Geotiff(std::string tiff_path) {
@@ -120,4 +120,4 @@ void Geotiff::PrintInfo() {
 }
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav

@@ -41,9 +41,9 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/detection/common/hypothesis.hpp>
+#include <avt_341_nav/perception/detection/common/hypothesis.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 Hypothesis::Hypothesis() {}
@@ -67,4 +67,4 @@ vision_msgs::msg::ObjectHypothesis Hypothesis::ToROSVisionHypothesisMessage() {
 }
 
 } // namespace perception
-} // namespace avt_341
+} // namespace avt_341_nav

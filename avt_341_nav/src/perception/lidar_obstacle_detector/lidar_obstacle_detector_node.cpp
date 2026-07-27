@@ -13,21 +13,21 @@
 #include "rclcpp/duration.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "std_msgs/msg/header.hpp"
-#include "avt_341/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp"
-#include <avt_341/obstacle_detector_params_service.hpp>
+#include "avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp"
+#include <avt_341_nav/obstacle_detector_params_service.hpp>
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-#include "avt_341/node/tf_interface.h"
+#include "avt_341_nav/node/tf_interface.h"
 
 
 size_t obstacle_id_;
 std::string bbox_source_frame_;
 std::vector<Box> prev_boxes_, curr_boxes_;
-std::shared_ptr<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>> obstacle_detector;
+std::shared_ptr<avt_341_nav::perception::LidarObstacleDetector<pcl::PointXYZ>> obstacle_detector;
 
-avt_341::params::obstacle_detector::Params node_params;
+avt_341_nav::params::obstacle_detector::Params node_params;
 
 // Eigen adapters for fixed-size pointcloud filtering parameters.
 Eigen::Vector4f roi_max_point, roi_min_point, body_max_point, body_min_point;
@@ -35,7 +35,7 @@ Eigen::Vector3f ground_normal;
 
 // Node handle
 rclcpp::Node::SharedPtr nh = nullptr;
-std::shared_ptr<avt_341::node::TfInterface> tf;
+std::shared_ptr<avt_341_nav::node::TfInterface> tf;
 
 // Publishers
 std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> pub_cloud_ground;
@@ -275,9 +275,9 @@ int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
   nh = rclcpp::Node::make_shared("obstacle_detector_node");
-  tf = std::make_shared<avt_341::node::TfInterface>(nh);
+  tf = std::make_shared<avt_341_nav::node::TfInterface>(nh);
 
-  avt_341::params::obstacle_detector::ParamsListener param_listener(nh);
+  avt_341_nav::params::obstacle_detector::ParamsListener param_listener(nh);
   node_params = param_listener.get_params();
 
   roi_max_point = Eigen::Vector4f(
@@ -308,7 +308,7 @@ int main(int argc, char** argv)
           node_params.bboxes_topic, 1);
 
   // Create point processor
-  obstacle_detector = std::make_shared<avt_341::perception::LidarObstacleDetector<pcl::PointXYZ>>();
+  obstacle_detector = std::make_shared<avt_341_nav::perception::LidarObstacleDetector<pcl::PointXYZ>>();
   obstacle_id_ = 0;
 
   rclcpp::spin(nh);

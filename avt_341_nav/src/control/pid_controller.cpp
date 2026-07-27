@@ -1,9 +1,9 @@
 
-#include "avt_341/control/pid_controller.h"
+#include "avt_341_nav/control/pid_controller.h"
 #include <ctime>
 #include <string>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace control{
 
 const std::string AntiWindupMethod::ResetOnSetpoint = "reset_on_setpoint";
@@ -104,4 +104,4 @@ double PidController::GetControlVariable(double measured_value, double dt){
 }
 
 } // namespace control
-} // namespace avt_341
+} // namespace avt_341_nav

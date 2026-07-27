@@ -6,14 +6,14 @@
 #include <string>
 #include <vector>
 
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/planning/local/candidate.h"
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/planning/local/candidate.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
   namespace planning{
 
     class RVIZPlotter {
@@ -63,6 +63,6 @@ namespace avt_341 {
       float w_t_;
     };
   } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif //AVT_341_RVIZ_SPLINE_PLOTTER_H

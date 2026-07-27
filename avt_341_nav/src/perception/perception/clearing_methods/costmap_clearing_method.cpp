@@ -1,8 +1,8 @@
-#include "avt_341/perception/clearing_methods/costmap_clearing_method.h"
+#include "avt_341_nav/perception/clearing_methods/costmap_clearing_method.h"
 #include "geometry_msgs/msg/point.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
 
-namespace avt_341::perception {
+namespace avt_341_nav::perception {
 
 // BASE CLASS
 // ==================================================================================================================

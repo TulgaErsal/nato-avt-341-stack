@@ -14,10 +14,10 @@ Expected correct behavior:
 
 Usage
 -----
-  ros2 launch avt_341 test_formation_wedge_two_followers.launch.py
-  ros2 launch avt_341 test_formation_wedge_two_followers.launch.py \\
+  ros2 launch avt_341_system_tests test_formation_wedge_two_followers.launch.py
+  ros2 launch avt_341_system_tests test_formation_wedge_two_followers.launch.py \\
       leader_motion:=sine sine_yaw_rate_amp:=0.15 sine_period:=10.0
-  ros2 launch avt_341 test_formation_wedge_two_followers.launch.py \\
+  ros2 launch avt_341_system_tests test_formation_wedge_two_followers.launch.py \\
       leader_motion:=sine sine_yaw_rate_amp:=0.15 sine_period:=10.0 sine_speed_amp:=1.5
 
 Launch arguments
@@ -52,14 +52,14 @@ def _follower_stack(ns: str, mpc_params: dict) -> list:
     """Return the four nodes that make up one follower's MPC stack."""
     return [
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='veh_converter_node',
             name='avt_341_veh_converter_node',
             namespace=ns,
             output='screen',
         ),
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='obstacle_processor_node',
             name='obstacle_processor_node',
             namespace=ns,
@@ -67,7 +67,7 @@ def _follower_stack(ns: str, mpc_params: dict) -> list:
             parameters=[mpc_params],
         ),
         Node(
-            package='avt_341',
+            package='avt_341_nav',
             executable='goal_point_processor_node',
             name='goal_point_processor_node',
             namespace=ns,
@@ -75,8 +75,8 @@ def _follower_stack(ns: str, mpc_params: dict) -> list:
             parameters=[mpc_params],
         ),
         Node(
-            package='avt_341',
-            executable='avt_341_mpc_planner_node',
+            package='avt_341_nav',
+            executable='avt_341_nav_mpc_planner_node',
             name='mpc_planner_node',
             namespace=ns,
             output='screen',
@@ -89,7 +89,7 @@ def _follower_stack(ns: str, mpc_params: dict) -> list:
 
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
 
     mpc_params  = load_params(
         os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'mpc_local_planner.yaml'))

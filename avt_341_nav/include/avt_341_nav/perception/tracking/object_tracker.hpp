@@ -24,12 +24,12 @@
 
 #include <avt_341_msgs/msg/tracker_status.hpp>
 
-#include <avt_341/core/coord_transform.hpp>
-#include <avt_341/perception/filtering/imm_filter.hpp>
-#include <avt_341/perception/tracking/tracker_params.hpp>
-#include <avt_341/perception/tracking/tracker_dto.hpp>
+#include <avt_341_nav/core/coord_transform.hpp>
+#include <avt_341_nav/perception/filtering/imm_filter.hpp>
+#include <avt_341_nav/perception/tracking/tracker_params.hpp>
+#include <avt_341_nav/perception/tracking/tracker_dto.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace perception {
 
 /**
@@ -214,7 +214,7 @@ class ObjectTracker {
     // Object state estimation (IMM: CV + CTR + NM)
     // -------------------------------------------------------------------------
 
-    std::shared_ptr<avt_341::perception::filtering::IMMFilter> filter_;
+    std::shared_ptr<avt_341_nav::perception::filtering::IMMFilter> filter_;
 
     bool filter_initialized_ = false;
 
@@ -310,6 +310,6 @@ class ObjectTracker {
 };
 
 }  // namespace perception
-}  // namespace avt_341
+}  // namespace avt_341_nav
 
 #endif  // AVT_341_OBJECT_TRACKER_H

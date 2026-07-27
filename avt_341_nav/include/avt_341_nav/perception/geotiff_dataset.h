@@ -14,7 +14,7 @@
 #include <iostream>
 
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace planning{
 
 /**
@@ -40,6 +40,6 @@ private:
 };
 
 } // namespace planning
-} // namespace avt_341
+} // namespace avt_341_nav
 
 #endif

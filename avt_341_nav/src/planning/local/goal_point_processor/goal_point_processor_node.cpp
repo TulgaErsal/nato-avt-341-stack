@@ -12,9 +12,9 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "avt_341/avt_341_utils.h"
-#include "avt_341/core/dto_conversion.h"
-#include <avt_341/mpc_local_planner_params_service.hpp>
+#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/dto_conversion.h"
+#include <avt_341_nav/mpc_local_planner_params_service.hpp>
 #include <memory>
 // Globals
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_steering_angle;
@@ -45,10 +45,10 @@ bool priorUseLeader, turningAround, goal_set;
 bool alwaysPubGoal;
 bool useAutoFinalHeading;
 int priorIndex, priorPathLength;
-avt_341::utils::vec2 goal;
+avt_341_nav::utils::vec2 goal;
 bool goal_is_end = false;
 
-avt_341::params::mpc_local_planner::Params params;
+avt_341_nav::params::mpc_local_planner::Params params;
 
 void callback_global_path(nav_msgs::msg::Path::SharedPtr global_path) {
     global_path_input = *global_path;
@@ -89,11 +89,11 @@ void callback_follower_status(avt_341_msgs::msg::FollowerStatus::SharedPtr follo
 
 void callback_gp_state(avt_341_msgs::msg::NavState::SharedPtr msg) {
 
-	if (!avt_341::core::HasActiveGoal(msg)) {
+	if (!avt_341_nav::core::HasActiveGoal(msg)) {
 		return;
 	}
-	finalHeading = avt_341::utils::GetHeadingFromOrientation(msg->goal.pose.orientation);
-    finalHeadingSet = avt_341::utils::UseGoalOrientation(msg->goal);
+	finalHeading = avt_341_nav::utils::GetHeadingFromOrientation(msg->goal.pose.orientation);
+    finalHeadingSet = avt_341_nav::utils::UseGoalOrientation(msg->goal);
 }
 
 void publishSteeringRate(double current_angle) {
@@ -144,8 +144,8 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
 	double yawrate = veh.data[7];
 	double longacc = veh.data[8];
 
-	avt_341::utils::vec2 vehiclePosition(x_veh, y_veh);
-	avt_341::utils::vec2 globalPoint(0.0, 0.0);
+	avt_341_nav::utils::vec2 vehiclePosition(x_veh, y_veh);
+	avt_341_nav::utils::vec2 globalPoint(0.0, 0.0);
 
     const double T =
         params.prediction_time_horizon + params.goal_lookahead_time_padding;
@@ -197,7 +197,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
             globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
             if (gp > closestIndex) {
-                avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
+                avt_341_nav::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
             lastIndexConsidered = gp;
@@ -237,7 +237,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
 			globalPoint.x = global_path.poses[gp].pose.position.x;
             globalPoint.y = global_path.poses[gp].pose.position.y;
 			if (gp > closestIndex) {
-                avt_341::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
+                avt_341_nav::utils::vec2 prevPoint(global_path.poses[gp-1].pose.position.x, global_path.poses[gp-1].pose.position.y);
                 pathLength += (globalPoint - prevPoint).mag();
             }
 			lastIndexConsidered = gp;
@@ -259,11 +259,11 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
         turningAround = false;
     }
 	else {
-		avt_341::utils::vec3 globalPointVector(globalPoint.x-x_veh, globalPoint.y-y_veh, 0);
-		avt_341::utils::vec3 leftBoundaryVector(cos(params.front_angle_goal)*cos(yaw) + sin(params.front_angle_goal)*-sin(yaw),
+		avt_341_nav::utils::vec3 globalPointVector(globalPoint.x-x_veh, globalPoint.y-y_veh, 0);
+		avt_341_nav::utils::vec3 leftBoundaryVector(cos(params.front_angle_goal)*cos(yaw) + sin(params.front_angle_goal)*-sin(yaw),
                                                 cos(params.front_angle_goal)*sin(yaw) + sin(params.front_angle_goal)*cos(yaw),
                                                 1.0f);
-		avt_341::utils::vec3 rightBoundaryVector(cos(params.front_angle_goal)*cos(yaw) - sin(params.front_angle_goal)*-sin(yaw),
+		avt_341_nav::utils::vec3 rightBoundaryVector(cos(params.front_angle_goal)*cos(yaw) - sin(params.front_angle_goal)*-sin(yaw),
                                                 cos(params.front_angle_goal)*sin(yaw) - sin(params.front_angle_goal)*cos(yaw),
                                                 1.0f);
 		if (cross(globalPointVector,leftBoundaryVector).z < 0 || cross(globalPointVector,rightBoundaryVector).z > 0) {
@@ -283,7 +283,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
 	float distanceToGoal = (globalPoint - vehiclePosition).mag();
 
 	goal = globalPoint;
-    avt_341::utils::vec2 heading;
+    avt_341_nav::utils::vec2 heading;
 	if (global_path.poses.size() > 1 && !priorUseLeader && pathStartIndex + 1 < (int)global_path.poses.size()) {
 		heading.x = global_path.poses[pathStartIndex+1].pose.position.x - global_path.poses[pathStartIndex].pose.position.x;
         heading.y = global_path.poses[pathStartIndex+1].pose.position.y - global_path.poses[pathStartIndex].pose.position.y;
@@ -320,7 +320,7 @@ int main(int argc, char* argv[]) {
     pub_goalPointIsEnd = n->create_publisher<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
     pub_finalHeading = n->create_publisher<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1);
  
-    avt_341::params::mpc_local_planner::ParamsListener param_listener(n);
+    avt_341_nav::params::mpc_local_planner::ParamsListener param_listener(n);
     params = param_listener.get_params();
 
     // Initialize variables

@@ -1,10 +1,10 @@
 // clas definition
-#include "avt_341/mission/mission_manager.h"
-#include "avt_341/node/node_types.h"
+#include "avt_341_nav/mission/mission_manager.h"
+#include "avt_341_nav/node/node_types.h"
 #include <fstream>
 #include <sstream>
 #include <utility>
-#include <avt_341/core/dto_conversion.h>
+#include <avt_341_nav/core/dto_conversion.h>
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/map_marker.hpp"
@@ -22,7 +22,7 @@
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 MissionManager::MissionManager(
@@ -35,7 +35,7 @@ MissionManager::MissionManager(
       goal_filter_(goal_filter) {
 
     my_name = manager_name;
-    nav_state = avt_341::utils::NavStackState::NotInit;
+    nav_state = avt_341_nav::utils::NavStackState::NotInit;
 
     arrival_announced = true;
 
@@ -494,7 +494,7 @@ void MissionManager::reset(){
   speed_setpoint_state = -1.0;
 
   std_msgs::msg::String reset_msg;
-  reset_msg.data = avt_341::node::NodeType::GlobalPlanner;
+  reset_msg.data = avt_341_nav::node::NodeType::GlobalPlanner;
   reset_pub->publish(reset_msg);
 }
 
@@ -769,4 +769,4 @@ bool MissionManager::hasArrival(const std::string & target_veh, const std::strin
 }
 
 } // namespace mission
-} // namespace avt_341
+} // namespace avt_341_nav

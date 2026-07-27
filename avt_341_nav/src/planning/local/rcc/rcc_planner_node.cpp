@@ -17,11 +17,11 @@
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/occupancy_grid_subscriber.h"
+#include "avt_341_nav/node/occupancy_grid_subscriber.h"
 // avt_341 includes
-#include "avt_341/planning/local/spline_planner.h"
-#include "avt_341/planning/local/rviz_spline_plotter.h"
-#include <avt_341/rcc_local_planner_params_service.hpp>
+#include "avt_341_nav/planning/local/spline_planner.h"
+#include "avt_341_nav/planning/local/rviz_spline_plotter.h"
+#include <avt_341_nav/rcc_local_planner_params_service.hpp>
 
 nav_msgs::msg::Odometry odom;
 nav_msgs::msg::OccupancyGrid grid;
@@ -67,10 +67,10 @@ int main(int argc, char *argv[]){
 
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_341_planner_node");
-  avt_341::params::rcc_local_planner::ParamsListener param_listener(n);
+  avt_341_nav::params::rcc_local_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
-  avt_341::planning::Planner planner;
+  avt_341_nav::planning::Planner planner;
   float path_look_ahead = static_cast<float>(params.path_look_ahead);
   float steer_angle_limit = static_cast<float>(params.steer_angle_limit);
   const int dilation_factor = static_cast<int>(params.dilation_factor);
@@ -78,9 +78,9 @@ int main(int argc, char *argv[]){
     // Create publishers and subscribers
   auto path_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/local_path", 10);
   auto odometry_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, OdometryCallback);
-  avt_341::node::OccupancyGridSubscriber grid_sub(
+  avt_341_nav::node::OccupancyGridSubscriber grid_sub(
       n, params.map_topic, 10, params.costmap.publish.method, GridCallback);
-  avt_341::node::OccupancyGridSubscriber segmentation_grid_sub(
+  avt_341_nav::node::OccupancyGridSubscriber segmentation_grid_sub(
       n, "avt_341/segmentation_grid", 10, params.costmap.publish.method,
       SegmentationGridCallback);
   auto path_sub = n->create_subscription<nav_msgs::msg::Path>("avt_341/global_path", 10, PathCallback);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]){
   planner.SetIgnoreCollBeforeDist(
       static_cast<float>(params.ignore_coll_before_dist));
 
-  auto plotter = std::make_shared<avt_341::planning::RVIZPlotter>(params.cost_vis, n,
+  auto plotter = std::make_shared<avt_341_nav::planning::RVIZPlotter>(params.cost_vis, n,
                                                                   planner.GetComfortabilityWeight(), planner.GetStaticSafetyWeight(),
                                                                   planner.GetPathAdherenceWeight(), planner.GetDynamicSafetyWeight(),
                                                                   planner.GetSegmentationWeight(), static_cast<float>(params.cost_vis_text_size));
@@ -111,21 +111,21 @@ int main(int argc, char *argv[]){
     double start_secs = n->now().seconds();
     if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
       //std::cout << ros::this_node::getName() << " Running Local planner " << global_path.poses.size() << std::endl;
-      std::vector<avt_341::utils::vec2> path_points;
+      std::vector<avt_341_nav::utils::vec2> path_points;
       if (params.use_global_path){
         for (int i = 0; i < global_path.poses.size(); i++){
-          avt_341::utils::vec2 point(global_path.poses[i].pose.position.x, global_path.poses[i].pose.position.y);
+          avt_341_nav::utils::vec2 point(global_path.poses[i].pose.position.x, global_path.poses[i].pose.position.y);
           path_points.push_back(point);
         }
       }
       else{
         for (int i = 0; i < waypoints.poses.size(); i++){
-          avt_341::utils::vec2 point(waypoints.poses[i].pose.position.x, waypoints.poses[i].pose.position.y);
+          avt_341_nav::utils::vec2 point(waypoints.poses[i].pose.position.x, waypoints.poses[i].pose.position.y);
           path_points.push_back(point);
         }
         
       }
-      avt_341::planning::Path path;
+      avt_341_nav::planning::Path path;
       if (params.use_dynamic_window && speedometer_rcvd) {
         // Calulate path look ahead
         path_look_ahead =
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]){
             static_cast<float>(params.min_steer_angle_limit));
       }
       if (params.trim_path && params.use_global_path ){
-        avt_341::utils::vec2 current_pos(odom.pose.pose.position.x, odom.pose.pose.position.y);
+        avt_341_nav::utils::vec2 current_pos(odom.pose.pose.position.x, odom.pose.pose.position.y);
         path.Init(path_points, current_pos, 1.5f * path_look_ahead);
       }
       else{
@@ -158,15 +158,15 @@ int main(int argc, char *argv[]){
 
       path.FixBeginning(odom.pose.pose.position.x, odom.pose.pose.position.y);
 
-      std::vector<avt_341::utils::vec2> culled_points = path.GetPoints();
+      std::vector<avt_341_nav::utils::vec2> culled_points = path.GetPoints();
       float s_max = path.GetTotalLength();
-      avt_341::utils::vec2 srho = path.ToSRho(odom.pose.pose.position.x, odom.pose.pose.position.y);
+      avt_341_nav::utils::vec2 srho = path.ToSRho(odom.pose.pose.position.x, odom.pose.pose.position.y);
       float s = srho.x;
       float rho_start = srho.y;
-      avt_341::utils::vec2 pconv = path.ToCartesian(s,rho_start);
+      avt_341_nav::utils::vec2 pconv = path.ToCartesian(s,rho_start);
       float s_lookahead = std::min(path_look_ahead, s_max - s);
-      float theta = avt_341::utils::GetHeadingFromOrientation(odom.pose.pose.orientation);
-      avt_341::planning::CurveInfo ci = path.GetCurvatureAndAngle(s);
+      float theta = avt_341_nav::utils::GetHeadingFromOrientation(odom.pose.pose.orientation);
+      avt_341_nav::planning::CurveInfo ci = path.GetCurvatureAndAngle(s);
 
       // Fix to bug in curvature when heading west
       float d_theta = theta - ci.theta;
@@ -214,19 +214,19 @@ int main(int argc, char *argv[]){
       bool path_found = planner.CalculateCandidateCosts(grid, segmentation_grid, odom);
       plotter->AddMap(grid);
       plotter->SetPath(culled_points);
-      std::vector<avt_341::planning::Candidate> paths = planner.GetCandidates();
+      std::vector<avt_341_nav::planning::Candidate> paths = planner.GetCandidates();
       plotter->AddCurves(paths);
       plotter->Display();
 
       if (path_found){
         const float ds = static_cast<float>(params.output_path_step);
         nav_msgs::msg::Path local_path;
-        avt_341::planning::Candidate best = planner.GetBestPath();
+        avt_341_nav::planning::Candidate best = planner.GetBestPath();
         float s0 = best.GetS0() + ds;
         float s_max = s0 + best.GetMaxLength() - ds;
         while (s0 < s_max){
           float rho0 = best.At(s0 - best.GetS0());
-          avt_341::utils::vec2 point = path.ToCartesian(s0, rho0);
+          avt_341_nav::utils::vec2 point = path.ToCartesian(s0, rho0);
           geometry_msgs::msg::PoseStamped pose;
           pose.pose.position.x = point.x;
           pose.pose.position.y = point.y;

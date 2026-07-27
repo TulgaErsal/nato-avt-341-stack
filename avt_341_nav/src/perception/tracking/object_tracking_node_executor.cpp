@@ -41,12 +41,12 @@
              THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <avt_341/perception/tracking/object_tracking_node.hpp>
+#include <avt_341_nav/perception/tracking/object_tracking_node.hpp>
 
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
 
-    auto node = std::make_shared<avt_341::perception::ObjectTrackingNode>();
+    auto node = std::make_shared<avt_341_nav::perception::ObjectTrackingNode>();
 
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node->get_node_base_interface());

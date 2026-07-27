@@ -18,14 +18,14 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_types.h"
-#include "avt_341/avt_341_utils.h"
+#include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/avt_341_utils.h"
 //avt_341 includes
-#include "avt_341/control/pid_controller.h"
-#include <avt_341/speed_control_params_service.hpp>
+#include "avt_341_nav/control/pid_controller.h"
+#include <avt_341_nav/speed_control_params_service.hpp>
 #include <algorithm>
 
-using avt_341::utils::NavStackState;
+using avt_341_nav::utils::NavStackState;
 
 nav_msgs::msg::Odometry state;
 int current_run_state = NavStackState::NotInit;   // startup state
@@ -62,7 +62,7 @@ void StateCallback(avt_341_msgs::msg::NavState::SharedPtr rcv_state){
 
 bool reset_called = false;
 void ResetCallback(const std_msgs::msg::String::SharedPtr msg){
-  if(msg->data.find(avt_341::node::NodeType::Control) != std::string::npos){
+  if(msg->data.find(avt_341_nav::node::NodeType::Control) != std::string::npos){
     reset_called = true;
   }
 }
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]){
   rclcpp::init(argc, argv);
   auto n = rclcpp::Node::make_shared("avt_341_speed_control_node");
 
-  avt_341::params::speed_control::ParamsListener param_listener(n);
+  avt_341_nav::params::speed_control::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
   auto dc_pub = n->create_publisher<geometry_msgs::msg::Twist>("avt_341/cmd_vel",1);
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]){
   const double max_steer_angle_rad =
       params.vehicle_max_steer_angle_degrees * M_PI / 180.0;
 
-  avt_341::control::PidController controller(
+  avt_341_nav::control::PidController controller(
       params.anti_windup_method, params.pid_output_min,
       params.pid_output_max);
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]){
     controller.SetForwardModelParams(params.ff_a0, params.ff_a1, params.ff_a2);
   }
   if (params.anti_windup_method ==
-      avt_341::control::AntiWindupMethod::IntegralClamping){
+      avt_341_nav::control::AntiWindupMethod::IntegralClamping){
     controller.SetIntegralAbsMax(params.integral_abs_max);
   }
 
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]){
       desired_speed = 0.0;
       current_run_state = NavStackState::NotInit;
       std_msgs::msg::String reset_ack_msg;
-      reset_ack_msg.data = avt_341::node::NodeType::Control;
+      reset_ack_msg.data = avt_341_nav::node::NodeType::Control;
       reset_ack_pub->publish(reset_ack_msg);
       reset_called = false;
     }

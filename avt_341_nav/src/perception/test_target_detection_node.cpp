@@ -11,7 +11,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341/node/node_utils.h"
+#include "avt_341_nav/node/node_utils.h"
 
 nav_msgs::msg::Odometry current_pose;
 bool odom_rcvd = false;
@@ -41,15 +41,15 @@ int main(int argc, char *argv[]) {
 
 	// handle parameters
 	double detection_range = 10.0f;
-	avt_341::node::get_parameter(n, "~detection_range", detection_range, 10.0);
+	avt_341_nav::node::get_parameter(n, "~detection_range", detection_range, 10.0);
 	double detection_range_squared = detection_range * detection_range;
 
 	std::vector<std::string> target_name;
 	std::vector<double> target_x;
 	std::vector<double> target_y;
-	avt_341::node::get_parameter(n, "/targets_name", target_name, std::vector<std::string>(0));                                                                 
-	avt_341::node::get_parameter(n, "/targets_x", target_x, std::vector<double>(0));                                                                 
-    avt_341::node::get_parameter(n, "/targets_y", target_y, std::vector<double>(0));
+	avt_341_nav::node::get_parameter(n, "/targets_name", target_name, std::vector<std::string>(0));                                                                 
+	avt_341_nav::node::get_parameter(n, "/targets_x", target_x, std::vector<double>(0));                                                                 
+    avt_341_nav::node::get_parameter(n, "/targets_y", target_y, std::vector<double>(0));
 
 	geometry_msgs::msg::Point32 target_pt;
 	nav_msgs::msg::Path targets_pt; 

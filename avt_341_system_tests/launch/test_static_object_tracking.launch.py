@@ -43,8 +43,8 @@ def launch_setup(context, *args, **kwargs):
 
     # 2. Object Tracking Node
     tracking_node = Node(
-        package='avt_341',
-        executable='avt_341_object_tracking_node',
+        package='avt_341_nav',
+        executable='avt_341_nav_object_tracking_node',
         name='object_tracking_node',
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
@@ -92,7 +92,7 @@ def launch_setup(context, *args, **kwargs):
     return actions
 
 def generate_launch_description():
-    avt_341_dir = get_package_share_directory('avt_341')
+    avt_341_dir = get_package_share_directory('avt_341_nav')
     system_tests_dir = get_package_share_directory('avt_341_system_tests')
 
     return LaunchDescription([

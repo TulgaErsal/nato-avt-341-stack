@@ -5,7 +5,7 @@
 // <!-- liorf_yjz_lucky_boy -->
 #include <ros/ros.h>
 
-#include "avt_341/node/ros_types.h"
+#include "avt_341_nav/node/ros_types.h"
 #include <common_lib.h>
 
 #include <pcl/point_cloud.h>
@@ -325,9 +325,9 @@ public:
         usleep(100);
     }
 
-    avt_341::msg::Imu imuConverter(const avt_341::msg::Imu &imu_in)
+    avt_341_nav::msg::Imu imuConverter(const avt_341_nav::msg::Imu &imu_in)
     {
-        avt_341::msg::Imu imu_out = imu_in;
+        avt_341_nav::msg::Imu imu_out = imu_in;
         // rotate acceleration
         Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y, imu_in.linear_acceleration.z);
         acc = extRot * acc;
@@ -367,9 +367,9 @@ public:
 };
 
 template <typename T>
-avt_341::msg::PointCloud2 publishCloud(const ros::Publisher &thisPub, const T &thisCloud, avt_341::msg::Time thisStamp, std::string thisFrame)
+avt_341_nav::msg::PointCloud2 publishCloud(const ros::Publisher &thisPub, const T &thisCloud, avt_341_nav::msg::Time thisStamp, std::string thisFrame)
 {
-    avt_341::msg::PointCloud2 tempCloud;
+    avt_341_nav::msg::PointCloud2 tempCloud;
     pcl::toROSMsg(*thisCloud, tempCloud);
     tempCloud.header.stamp = thisStamp;
     tempCloud.header.frame_id = thisFrame;
@@ -385,7 +385,7 @@ double ROS_TIME(T msg)
 }
 
 template <typename T>
-void imuAngular2rosAngular(avt_341::msg::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
+void imuAngular2rosAngular(avt_341_nav::msg::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
 {
     *angular_x = thisImuMsg->angular_velocity.x;
     *angular_y = thisImuMsg->angular_velocity.y;
@@ -393,7 +393,7 @@ void imuAngular2rosAngular(avt_341::msg::Imu *thisImuMsg, T *angular_x, T *angul
 }
 
 template <typename T>
-void imuAccel2rosAccel(avt_341::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
+void imuAccel2rosAccel(avt_341_nav::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
 {
     *acc_x = thisImuMsg->linear_acceleration.x;
     *acc_y = thisImuMsg->linear_acceleration.y;
@@ -401,7 +401,7 @@ void imuAccel2rosAccel(avt_341::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc
 }
 
 template <typename T>
-void imuRPY2rosRPY(avt_341::msg::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
+void imuRPY2rosRPY(avt_341_nav::msg::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
 {
     double imuRoll, imuPitch, imuYaw;
     tf::Quaternion orientation;

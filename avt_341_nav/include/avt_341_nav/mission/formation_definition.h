@@ -4,12 +4,12 @@
 #include "avt_341_msgs/msg/follower_status.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "avt_341/mission/mission_manager_dto.h"
-#include <avt_341/mission_manager_params_dto.hpp>
+#include "avt_341_nav/mission/mission_manager_dto.h"
+#include <avt_341_nav/mission_manager_params_dto.hpp>
 #include <map>
 #include <vector>
 
-namespace avt_341 {
+namespace avt_341_nav {
 namespace mission {
 
 struct FormationOffsets {
@@ -28,7 +28,7 @@ struct MissionPath {
   std::vector<MissionPoint> poses;
 };
 
-using MissionManagerParams = avt_341::params::mission_manager::Params;
+using MissionManagerParams = avt_341_nav::params::mission_manager::Params;
 using FormationParameters = MissionManagerParams::Formation;
 using ToiParameters = MissionManagerParams::Toi;
 
