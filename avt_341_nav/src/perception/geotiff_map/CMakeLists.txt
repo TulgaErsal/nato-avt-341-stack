@@ -9,7 +9,7 @@ if(GDAL_FOUND)
 
   message(STATUS "Building geotiff map node ...")
 
-  add_executable(avt_341_geotiff_map_publisher_node
+  add_executable(${PROJECT_NAME}_geotiff_map_publisher_node
           "avt_341_geotiff_map_publisher_node.cpp"
           "geotiff_dataset.cpp"
   )
