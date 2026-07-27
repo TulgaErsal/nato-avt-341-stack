@@ -43,18 +43,25 @@ endif()
 find_package(Matlab)
 find_package(cv_bridge REQUIRED)
 
-if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS))
-
-    if(NOT Matlab_MCLMCRRT_LIB)
-        if(WIN32)
-             set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-             set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
-        else()
-             set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2025b/runtime/glnxa64/libmwmclmcrrt.so)
-             set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2025b/extern/include)
-        endif()
-
+# Compute the Runtime-only fallback before the availability check below, not inside it.
+if(NOT Matlab_MCLMCRRT_LIB)
+    if(WIN32)
+         set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+         set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
+    else()
+         # MCR_ROOT matches krc_node_config.yaml / krc_mrzr.launch.py's runtime lookup.
+         if(DEFINED ENV{MCR_ROOT})
+             set(Matlab_RUNTIME_ROOT $ENV{MCR_ROOT})
+         else()
+             set(Matlab_RUNTIME_ROOT /usr/local/MATLAB/MATLAB_Runtime/R2025b)
+         endif()
+         set(Matlab_MCLMCRRT_LIB ${Matlab_RUNTIME_ROOT}/runtime/glnxa64/libmwmclmcrrt.so)
+         set(Matlab_INCLUDE_DIRS ${Matlab_RUNTIME_ROOT}/extern/include)
     endif()
+endif()
+
+# EXISTS check: fall through to the graceful skip below instead of a link failure.
+if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS AND EXISTS "${Matlab_MCLMCRRT_LIB}"))
 
     include_directories(
         include
