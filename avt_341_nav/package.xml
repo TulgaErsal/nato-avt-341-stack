@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 
 <package format="3">
-  <name>avt_341</name>
+  <name>avt_341_nav</name>
   <version>0.0.0</version>
   <description> AVT-341 autonomy stack</description>
 

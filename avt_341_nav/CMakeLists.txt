@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(avt_341)
+project(avt_341_nav)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -87,7 +87,12 @@ include_directories(${PROJECT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 
 # Generated parameter DTO and service libraries:
 # <stem>_params_dto and <stem>_params_service.
+# The generator derives the header include subdir (and install destination)
+# from PROJECT_NAME; shadow it so the generated headers keep the historical
+# avt_341 include root that the source #includes use.
+set(PROJECT_NAME avt_341)
 avt_341_generate_cpp_parameters(parameters)
+set(PROJECT_NAME avt_341_nav)
 
 # Node proxy library
 # ------------------
@@ -114,8 +119,8 @@ foreach(SOURCE_FILE ${AVT341_SOURCE_FILES})
   add_subdirectory(${SOURCE_FILE})
 endforeach()
 
-# Install the Python package
-ament_python_install_package(${PROJECT_NAME})
+# Install the Python package (module keeps the historical avt_341 name)
+ament_python_install_package(avt_341)
 
 # Simulation test node
 add_executable(
