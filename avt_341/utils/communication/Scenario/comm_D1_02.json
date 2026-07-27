@@ -1,9 +1,0 @@
-{
-    "documentation":"Instructions for Segment 1.02 Departure phase. Tells team to form a column at mission point B at 4 m/s",
-    "messages": [
-        {
-            "message": "CGV1,1,FORM,COLUMN,AGV1,CGV1,CGV2,AGV2,MissionPoint_B,4",
-            "delay": "1.0"
-        }
-    ]
-}
