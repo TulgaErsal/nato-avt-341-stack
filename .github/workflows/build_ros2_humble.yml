@@ -61,35 +61,14 @@ jobs:
           wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
           unzip libtorch-shared-with-deps-latest.zip
 
-      # Temporary debug changes for parameter library
-      - name: Build and Verify Parameter Library
-        run: |
-          source /opt/ros/humble/setup.bash
-          cd ros_ws
-          colcon build --packages-select avt_341_param_lib
-
-          echo "::group::Installed Python files"
-          find install/avt_341_param_lib -name '*.py' | head -30
-          echo "::endgroup::"
-
-          echo "::group::PYTHONPATH environment hooks"
-          cat install/avt_341_param_lib/share/avt_341_param_lib/environment/pythonpath.sh 2>/dev/null || echo "no ament pythonpath.sh hook"
-          cat install/avt_341_param_lib/share/avt_341_param_lib/hook/pythonpath.dsv 2>/dev/null || echo "no colcon pythonpath.dsv hook"
-          echo "::endgroup::"
-
-          source install/setup.bash
-          echo "PYTHONPATH=$PYTHONPATH"
-          python3 -c "import avt_341_param_lib as m; print('import OK:', m.__file__)"
-          python3 -m avt_341_param_lib.generate_cpp_mixin_header --help > /dev/null
-          echo "generator entry point OK"
-
       # Note: Environment variables do not seem to persist through job steps, need to call source here
       - name: Build repository
         run: |
           export Torch_DIR="$(pwd)/libtorch"
           source /opt/ros/humble/setup.bash
           cd ros_ws
-          # avt_341_param_lib was installed by the previous step. Source the workspace to add to python modules.
+          # Since no workspace installation exists beforehand, build avt_341_param_lib before so modules can be added to python path. 
+          colcon build --packages-select avt_341_param_lib
           source install/setup.bash
           colcon build --packages-up-to avt_341
           echo "BUILD_DONE=true" >> $GITHUB_ENV
