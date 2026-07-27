@@ -4,24 +4,24 @@ if(USING_CATKIN)
   # slam map optimization node
   if(BUILD_SLAM)
     add_executable(
-      ${PROJECT_NAME}_slam_map_optimization_node
+      slam_map_optimization_node
       "map_optimization.cpp"
       )
     add_dependencies(
-      ${PROJECT_NAME}_slam_map_optimization_node
+      slam_map_optimization_node
       ${catkin_EXPORTED_TARGETS}
       )
     target_compile_options(
-      ${PROJECT_NAME}_slam_map_optimization_node
+      slam_map_optimization_node
       PRIVATE ${OpenMP_CXX_FLAGS}
       )
     # Pre-built SLAM common library shipped alongside the reference code.
     target_include_directories(
-      ${PROJECT_NAME}_slam_map_optimization_node
+      slam_map_optimization_node
       PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../lib"
       )
     target_link_libraries(
-      ${PROJECT_NAME}_slam_map_optimization_node
+      slam_map_optimization_node
       Boost::timer
       "${CMAKE_CURRENT_LIST_DIR}/../lib/libCommonLib.so"
       ${catkin_LIBRARIES}
@@ -32,7 +32,7 @@ if(USING_CATKIN)
       gtsam
       )
     install(
-      TARGETS ${PROJECT_NAME}_slam_map_optimization_node
+      TARGETS slam_map_optimization_node
       RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
       LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}")
   else()

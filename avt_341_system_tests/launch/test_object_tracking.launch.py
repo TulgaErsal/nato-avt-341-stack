@@ -68,7 +68,7 @@ def launch_setup(context, *args, **kwargs):
     # 2. Object Tracking Node
     tracking_node = Node(
         package='avt_341_nav',
-        executable='avt_341_nav_object_tracking_node',
+        executable='object_tracking_node',
         name='object_tracking_node',
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],

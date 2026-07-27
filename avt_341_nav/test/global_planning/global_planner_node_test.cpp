@@ -1,5 +1,5 @@
 /**
- * \file global_path_node_test.cpp
+ * \file global_planner_node_test.cpp
  *
  * Unit tests for the global path node's planning algorithms.
  *
@@ -11,7 +11,7 @@
  * overridden at compile time via the GLOBAL_PLANNER_YAML_PATH macro.
  *
  * Build-system note: link this test against the same planners as
- * avt_341_nav_global_path_node (astar.cpp, fastmarching.cpp, d_star_lite.cpp,
+ * global_planner_node (astar.cpp, fastmarching.cpp, d_star_lite.cpp,
  * fast_marching_square.cpp) and the avt_341_nav_proxy library.
  */
 

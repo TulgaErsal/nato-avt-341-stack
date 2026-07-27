@@ -9,7 +9,7 @@ file keyed by fully-qualified node name, e.g.::
 
     /diagnostic_test_node:
       use_sim_time: false
-    /mrzr2/avt_341_global_path_node:
+    /mrzr2/global_planner_node:
       is_empty_waypoints: true
       map_origin_x: 0.0
       map_origin_y: 0.0

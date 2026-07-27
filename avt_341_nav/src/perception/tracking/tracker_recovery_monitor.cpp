@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include <avt_341_nav/core/math_utils.hpp>
+#include <avt_341_nav/core/eigen_utils.hpp>
 
 namespace avt_341_nav {
 namespace perception {

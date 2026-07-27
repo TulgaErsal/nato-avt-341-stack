@@ -76,7 +76,7 @@ def _follower_stack(ns: str, mpc_params: dict) -> list:
         ),
         Node(
             package='avt_341_nav',
-            executable='avt_341_nav_mpc_planner_node',
+            executable='mpc_planner_node',
             name='mpc_planner_node',
             namespace=ns,
             output='screen',

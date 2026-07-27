@@ -1,5 +1,5 @@
 /**
- * \file avt_341_global_path_node.cpp
+ * \file global_planner_node.cpp
  * 
  * ROS Node that publishes a user defined path as a global path.
  * 

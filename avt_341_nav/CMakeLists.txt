@@ -119,12 +119,12 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Simulation test node
 add_executable(
-  ${PROJECT_NAME}_sim_test_node
+  sim_test_node
   "src/perception/point_cloud_generator.cpp"
   "src/simulation/sim_test_node.cpp")
-target_link_libraries(${PROJECT_NAME}_sim_test_node ${PROJECT_NAME}_proxy)
+target_link_libraries(sim_test_node ${PROJECT_NAME}_proxy)
 install(
-  TARGETS ${PROJECT_NAME}_sim_test_node
+  TARGETS sim_test_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")
 

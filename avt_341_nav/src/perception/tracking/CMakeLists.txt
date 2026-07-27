@@ -24,7 +24,7 @@ if(PCL_FOUND)
   link_directories(${PCL_LIBRARY_DIRS})
 endif() # if(PCL_FOUND)
 
-add_executable(${PROJECT_NAME}_object_tracking_node
+add_executable(object_tracking_node
         "tracker_params.cpp"
         "tracker_recovery_monitor.cpp"
         "object_tracker.cpp"
@@ -33,12 +33,12 @@ add_executable(${PROJECT_NAME}_object_tracking_node
         "object_tracking_node.cpp"
         "object_tracking_node_executor.cpp")
 
-target_link_libraries(${PROJECT_NAME}_object_tracking_node
+target_link_libraries(object_tracking_node
   ${PROJECT_NAME}_proxy
 )
 
 ament_target_dependencies(
-  ${PROJECT_NAME}_object_tracking_node
+  object_tracking_node
   avt_341_msgs
   Eigen3
   cv_bridge
@@ -57,12 +57,12 @@ ament_target_dependencies(
   visualization_msgs)
 
 install(
-  TARGETS ${PROJECT_NAME}_object_tracking_node
+  TARGETS object_tracking_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")
 
 # Generated parameter library (avt_341_param_lib templates)
-if(TARGET ${PROJECT_NAME}_object_tracking_node)
+if(TARGET object_tracking_node)
   target_link_libraries(
-    ${PROJECT_NAME}_object_tracking_node object_tracking_params_service)
+    object_tracking_node object_tracking_params_service)
 endif()

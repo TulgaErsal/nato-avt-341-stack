@@ -23,7 +23,7 @@ import sys
 import tokenize
 
 DEFAULT_LAUNCH_FILE = os.path.normpath(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), '..', 'launch', 'base.launch.py'))
+    os.path.dirname(os.path.abspath(__file__)), '..', 'avt_341_bringup', 'launch', 'base.launch.py'))
 
 # Canonical column order per call; the leading names bind positional arguments.
 NODESPEC_COLUMNS = ('executable', 'template', 'condition', 'sub_ns',

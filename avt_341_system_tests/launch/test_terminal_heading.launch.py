@@ -136,7 +136,7 @@ def generate_launch_description():
         # Global path planner: goal_pose → global_path
         Node(
             package='avt_341_nav',
-            executable='avt_341_nav_global_path_node',
+            executable='global_planner_node',
             name='avt_341_global_path_node',
             output='screen',
             parameters=[global_planner_params],
@@ -155,7 +155,7 @@ def generate_launch_description():
         # JULIA_LIB_PATH is prepended to LD_LIBRARY_PATH for this process.
         Node(
             package='avt_341_nav',
-            executable='avt_341_nav_mpc_planner_node',
+            executable='mpc_planner_node',
             name='mpc_planner_node',
             output='screen',
             parameters=[mpc_params],

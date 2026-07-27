@@ -1,5 +1,5 @@
 /**
- * @file avt_341_mpc_planner_node.cpp
+ * @file mpc_planner_node.h
  *
  * @brief Header for the MPC planner wrapper.
  *

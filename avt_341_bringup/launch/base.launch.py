@@ -66,45 +66,45 @@ class NodeSpec:
 NODES = {
 
     # Mission management
-    'mission_manager_node':             NodeSpec('avt_341_nav_mission_manager_node',         _templates('mission_manager'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'comm_node':                        NodeSpec('avt_341_nav_comm_node',                    _templates('socket_comms'),                                                          extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'speed_zones_node':                 NodeSpec('avt_341_nav_speed_zones_node',             _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
+    'mission_manager_node':             NodeSpec('mission_manager_node',             _templates('mission_manager'),                                                    extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'comm_node':                        NodeSpec('comm_node',                        _templates('socket_comms'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
+    'speed_zones_node':                 NodeSpec('speed_zones_node',                 _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
 
     # Perception - Costmaps
-    'perception_local_node':            NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_global_node':           NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_node':                  NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
-    'perception_rms_node':              NodeSpec('avt_341_nav_perception_node',              _templates('perception'),        condition=is_cfg('use_perception_rms')),
+    'perception_local_node':            NodeSpec('perception_node',                  _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_global_node':           NodeSpec('perception_node',                  _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_node':                  NodeSpec('perception_node',                  _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
+    'perception_rms_node':              NodeSpec('perception_node',                  _templates('perception'),        condition=is_cfg('use_perception_rms')),
 
     # Perception - Terrain segmentation
-    'uab_perception_node':              NodeSpec('uab_perception_node',                  _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),             extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
+    'uab_perception_node':              NodeSpec('uab_perception_node',              _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),          extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
 
     # Perception - Object detection and tracking
-    'object_detector_node':             NodeSpec('avt_341_nav_object_detector_node',         _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
-    'object_tracking_node':             NodeSpec('avt_341_nav_object_tracking_node',         _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),             extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
-    'lidar_obstacle_detector_node':     NodeSpec('avt_341_nav_lidar_obstacle_detector_node', _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
+    'object_detector_node':             NodeSpec('object_detector_node',             _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
+    'object_tracking_node':             NodeSpec('object_tracking_node',             _templates('object_tracking'),   condition=is_cfg('use_object_tracker'),          extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
+    'lidar_obstacle_detector_node':     NodeSpec('lidar_obstacle_detector_node',     _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
 
     # Global planners
-    'avt_341_global_path_node':         NodeSpec('avt_341_nav_global_path_node',             _templates('global_planner')),
+    'global_planner_node':              NodeSpec('global_planner_node',              _templates('global_planner')),
 
     # Local planners
-    'rcc_planner_node':                 NodeSpec('avt_341_nav_rcc_planner_node',             _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
-    'local_dwa_planner_node':           NodeSpec('avt_341_nav_dwa_planner_node',             _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
-    'local_pf_planner_node':            NodeSpec('avt_341_nav_pf_planner_node',              _templates('pf_local_planner'),  condition=is_local_planner('pf')),
-    'mpc_planner_node':                 NodeSpec('avt_341_nav_mpc_planner_node',             _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'rcc_planner_node':                 NodeSpec('rcc_planner_node',                 _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
+    'local_dwa_planner_node':           NodeSpec('dwa_planner_node',                 _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
+    'local_pf_planner_node':            NodeSpec('pf_planner_node',                  _templates('pf_local_planner'),  condition=is_local_planner('pf')),
+    'mpc_planner_node':                 NodeSpec('mpc_planner_node',                 _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
 
     # local planners - MPC supporting nodes
-    'obstacle_processor_node':          NodeSpec('obstacle_processor_node',              _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
-    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node',     _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
-    'goal_point_processor_node':        NodeSpec('goal_point_processor_node',            _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
-    'avt_341_veh_converter_node':       NodeSpec('veh_converter_node',                                                    condition=is_local_planner('mpc')),
+    'obstacle_processor_node':          NodeSpec('obstacle_processor_node',          _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node', _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'goal_point_processor_node':        NodeSpec('goal_point_processor_node',        _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'veh_converter_node':               NodeSpec('veh_converter_node',                                                condition=is_local_planner('mpc')),
 
     # Controllers (selected by local planner method)
-    'speed_control_node':               NodeSpec('avt_341_nav_speed_control_node',           _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
-    'control_node':                     NodeSpec('avt_341_nav_control_node',                 _templates('control'),           condition=is_local_planner('rcc', 'pf')),
+    'speed_control_node':               NodeSpec('speed_control_node',               _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
+    'control_node':                     NodeSpec('control_node',                     _templates('control'),           condition=is_local_planner('rcc', 'pf')),
 
     # State pre-processing
-    'data_acquisition_node':            NodeSpec('data_acquisition_node',                _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                                output='log', autonomy=False),
+    'data_acquisition_node':            NodeSpec('data_acquisition_node',            _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                             output='log', autonomy=False),
 }
 
 pargs = ParameterCollection.from_node_templates(

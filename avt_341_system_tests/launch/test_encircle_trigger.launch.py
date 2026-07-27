@@ -97,7 +97,7 @@ def launch_setup(context, *args, **kwargs):
     # 3. Object Tracking Node (uses autostart to begin tracking immediately)
     tracking_node = Node(
         package='avt_341_nav',
-        executable='avt_341_nav_object_tracking_node',
+        executable='object_tracking_node',
         name='object_tracking_node',
         output='screen',
         parameters=[tracking_params, {'use_sim_time': True}],
@@ -115,7 +115,7 @@ def launch_setup(context, *args, **kwargs):
     global_planner_params = os.path.join(avt_341_dir, 'parameters', 'config_mrzr', 'global_planner.yaml')
     global_path_node = Node(
         package='avt_341_nav',
-        executable='avt_341_nav_global_path_node',
+        executable='global_planner_node',
         name='global_path_node',
         output='screen',
         parameters=[global_planner_params, {'use_sim_time': True}],
@@ -129,7 +129,7 @@ def launch_setup(context, *args, **kwargs):
     # the mission manager adds a MoveTo + Encircle task pair.
     mission_manager_node = Node(
         package='avt_341_nav',
-        executable='avt_341_nav_mission_manager_node',
+        executable='mission_manager_node',
         name='mission_manager',
         output='screen',
         parameters=[mission_manager_params, {'use_sim_time': True}],

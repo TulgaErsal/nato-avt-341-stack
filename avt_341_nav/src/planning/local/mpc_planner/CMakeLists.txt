@@ -14,24 +14,24 @@ endif() # if(${Julia_FOUND})
 
 if(BUILD_MPC)
 
-  add_executable(${PROJECT_NAME}_mpc_planner_node
-    "avt_341_mpc_planner_node.cpp")
-  ament_target_dependencies(${PROJECT_NAME}_mpc_planner_node
+  add_executable(mpc_planner_node
+    "mpc_planner_node.cpp")
+  ament_target_dependencies(mpc_planner_node
     ${dependencies})
-  target_include_directories(${PROJECT_NAME}_mpc_planner_node
+  target_include_directories(mpc_planner_node
     PUBLIC
       "$<BUILD_INTERFACE:${Julia_INCLUDE_DIRS}>")
-  target_link_libraries(${PROJECT_NAME}_mpc_planner_node
+  target_link_libraries(mpc_planner_node
       ${PROJECT_NAME}_proxy
       $<BUILD_INTERFACE:${Julia_LIBRARY}>)
-  target_compile_definitions(${PROJECT_NAME}_mpc_planner_node
+  target_compile_definitions(mpc_planner_node
     PUBLIC
       "MPC_PLANNER_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_commands.jl\""
       "MPC_PARAMETERS_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_parameters.jl\""
       "MPC_MODELS_MODULE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/mpc_models.jl\""
       "MPC_SYSIMAGE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/sysimage.so\""
       -DJULIA_ENABLE_THREADING)
-  install(TARGETS ${PROJECT_NAME}_mpc_planner_node
+  install(TARGETS mpc_planner_node
           EXPORT export_${PROJECT_NAME}
           DESTINATION lib/${PROJECT_NAME})
   # Try to generate a Julia sysimage (if not already present).
@@ -51,7 +51,7 @@ if(BUILD_MPC)
   endif() # if(NOT EXISTS "(...)/sysimage.so")
 endif() # if(BUILD_MPC)
 # Generated parameter library (avt_341_param_lib templates)
-if(TARGET ${PROJECT_NAME}_mpc_planner_node)
+if(TARGET mpc_planner_node)
   target_link_libraries(
-    ${PROJECT_NAME}_mpc_planner_node mpc_local_planner_params_service)
+    mpc_planner_node mpc_local_planner_params_service)
 endif()

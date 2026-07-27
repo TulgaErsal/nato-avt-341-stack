@@ -76,18 +76,18 @@ else()
 endif() # if(CMAKE_CUDA_COMPILER)
 
 add_executable(
-  ${PROJECT_NAME}_object_detector_node
+  object_detector_node
   "object_detection_node.cpp" "object_detection_node_executor.cpp"
   "object_detector.cpp")
 
-ament_target_dependencies(${PROJECT_NAME}_object_detector_node cv_bridge
+ament_target_dependencies(object_detector_node cv_bridge
                           OpenCV rclcpp sensor_msgs vision_msgs image_transport)
 
 target_include_directories(
-        ${PROJECT_NAME}_object_detector_node
+        object_detector_node
         PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>)
 
-target_link_libraries(${PROJECT_NAME}_object_detector_node
+target_link_libraries(object_detector_node
                       object_detector_params_service
                       ${PROJECT_NAME}_detection_library ${TORCH_LIBRARIES}
                       ament_index_cpp::ament_index_cpp)
@@ -95,10 +95,10 @@ target_link_libraries(${PROJECT_NAME}_object_detector_node
 # libtorch vendors its own fmt headers in its include directory, which shadow
 # the system fmt that fmt::fmt links against. Build fmt header-only here so the
 # generated params service resolves against the headers actually included.
-target_compile_definitions(${PROJECT_NAME}_object_detector_node
+target_compile_definitions(object_detector_node
                            PRIVATE FMT_HEADER_ONLY)
 
 install(
-  TARGETS ${PROJECT_NAME}_object_detector_node
+  TARGETS object_detector_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")

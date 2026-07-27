@@ -9,16 +9,16 @@ if(GDAL_FOUND)
 
   message(STATUS "Building geotiff map node ...")
 
-  add_executable(avt_341_geotiff_map_publisher_node
-          "avt_341_geotiff_map_publisher_node.cpp"
+  add_executable(geotiff_map_publisher_node
+          "geotiff_map_publisher_node.cpp"
           "geotiff_dataset.cpp"
   )
 
-  target_link_libraries(${PROJECT_NAME}_geotiff_map_publisher_node
+  target_link_libraries(geotiff_map_publisher_node
           ${PROJECT_NAME}_proxy
           GDAL::GDAL)
   install(
-          TARGETS ${PROJECT_NAME}_geotiff_map_publisher_node
+          TARGETS geotiff_map_publisher_node
           EXPORT export_${PROJECT_NAME}
           DESTINATION "lib/${PROJECT_NAME}")
 

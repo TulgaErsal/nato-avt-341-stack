@@ -4,20 +4,20 @@ if(USING_CATKIN)
   # slam imu preintegration node
   if(BUILD_SLAM)
     add_executable(
-      ${PROJECT_NAME}_slam_imu_preintegration_node
+      slam_imu_preintegration_node
       "imu_preintegration.cpp"
       )
     add_dependencies(
-      ${PROJECT_NAME}_slam_imu_preintegration_node
+      slam_imu_preintegration_node
       ${catkin_EXPORTED_TARGETS}
       )
     # Pre-built SLAM common library shipped alongside the reference code.
     target_include_directories(
-      ${PROJECT_NAME}_slam_imu_preintegration_node
+      slam_imu_preintegration_node
       PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../lib"
       )
     target_link_libraries(
-      ${PROJECT_NAME}_slam_imu_preintegration_node
+      slam_imu_preintegration_node
       Boost::timer
       "${CMAKE_CURRENT_LIST_DIR}/../lib/libCommonLib.so"
       ${catkin_LIBRARIES}
@@ -26,7 +26,7 @@ if(USING_CATKIN)
       gtsam
       )
     install(
-      TARGETS ${PROJECT_NAME}_slam_imu_preintegration_node
+      TARGETS slam_imu_preintegration_node
       RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
       LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}")
   else()

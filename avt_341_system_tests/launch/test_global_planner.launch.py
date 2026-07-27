@@ -21,7 +21,7 @@ def generate_launch_description():
         # The Global Planner
         Node(
             package='avt_341_nav',
-            executable='avt_341_nav_global_path_node',
+            executable='global_planner_node',
             name='global_path_node',
             output='screen',
             parameters=[global_planner_params]

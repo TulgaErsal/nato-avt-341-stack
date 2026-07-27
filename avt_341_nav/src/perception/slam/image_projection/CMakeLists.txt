@@ -4,27 +4,27 @@ if(USING_CATKIN)
   # slam image projection node
   if(BUILD_SLAM)
     add_executable(
-      ${PROJECT_NAME}_slam_image_projection_node
+      slam_image_projection_node
       "image_projection.cpp"
       )
     add_dependencies(
-      ${PROJECT_NAME}_slam_image_projection_node
+      slam_image_projection_node
       ${catkin_EXPORTED_TARGETS}
       )
     # Pre-built SLAM common library shipped alongside the reference code.
     target_include_directories(
-      ${PROJECT_NAME}_slam_image_projection_node
+      slam_image_projection_node
       PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../lib"
       )
     target_link_libraries(
-      ${PROJECT_NAME}_slam_image_projection_node
+      slam_image_projection_node
       "${CMAKE_CURRENT_LIST_DIR}/../lib/libCommonLib.so"
       ${catkin_LIBRARIES}
       ${PCL_LIBRARIES}
       ${OpenCV_LIBRARIES}
       )
     install(
-      TARGETS ${PROJECT_NAME}_slam_image_projection_node
+      TARGETS slam_image_projection_node
       RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
       LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}")
   else()

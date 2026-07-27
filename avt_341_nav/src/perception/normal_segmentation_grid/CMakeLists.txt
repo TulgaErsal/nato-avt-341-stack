@@ -6,21 +6,21 @@ find_package(tf2_eigen REQUIRED)
 
 add_definitions(${PCL_DEFINITIONS})
 
-add_executable(${PROJECT_NAME}_normal_segmentation_grid_node
+add_executable(normal_segmentation_grid_node
                "normal_grid.cpp" "normal_segmentation_grid_node.cpp")
 
 target_include_directories(
-  ${PROJECT_NAME}_normal_segmentation_grid_node
+  normal_segmentation_grid_node
   PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(${PROJECT_NAME}_normal_segmentation_grid_node
+target_link_libraries(normal_segmentation_grid_node
                       ${PROJECT_NAME}_proxy ${PCL_LIBRARIES})
 
-ament_target_dependencies(${PROJECT_NAME}_normal_segmentation_grid_node
+ament_target_dependencies(normal_segmentation_grid_node
                           pcl_conversions tf2_eigen)
 
 install(
-  TARGETS ${PROJECT_NAME}_normal_segmentation_grid_node
+  TARGETS normal_segmentation_grid_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")

@@ -196,7 +196,7 @@ def generate_launch_description():
         # MPC local planner: requires libjulia.so.1 at runtime.
         Node(
             package='avt_341_nav',
-            executable='avt_341_nav_mpc_planner_node',
+            executable='mpc_planner_node',
             name='mpc_planner_node',
             output='screen',
             parameters=[mpc_params],

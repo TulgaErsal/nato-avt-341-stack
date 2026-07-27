@@ -1,7 +1,7 @@
 message(STATUS "Building missiong manager node ...")
 
 add_executable(
-  ${PROJECT_NAME}_mission_manager_node
+  mission_manager_node
 
   "mission_manager.cpp"
   "mission_manager_dto.cpp"
@@ -25,15 +25,15 @@ add_executable(
   "../goal_filtering/obs_avoid_goal_filter_utils.cpp"
 )
 
-target_link_libraries(${PROJECT_NAME}_mission_manager_node
+target_link_libraries(mission_manager_node
                       ${PROJECT_NAME}_proxy)
 install(
-  TARGETS ${PROJECT_NAME}_mission_manager_node
+  TARGETS mission_manager_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")
 
 # Generated parameter library (avt_341_param_lib templates)
-if(TARGET ${PROJECT_NAME}_mission_manager_node)
+if(TARGET mission_manager_node)
   target_link_libraries(
-    ${PROJECT_NAME}_mission_manager_node mission_manager_params_service)
+    mission_manager_node mission_manager_params_service)
 endif()

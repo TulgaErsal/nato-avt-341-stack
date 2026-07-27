@@ -1,5 +1,5 @@
 /**
- * @file avt_341_mpc_planner_node.cpp
+ * @file mpc_planner_node.cpp
  *
  * @brief Plan a local trajectory using the model predictive control planner.
  *        This ROS node is a wrapper to the TulgaErsal/AVT-341-MPC planner
@@ -14,7 +14,7 @@
  * @author Evan Vandermate (evanderm@mtu.edu)
  *         Keweenaw Research Center (KRC)
  */
-#include <avt_341_nav/planning/local/avt_341_mpc_planner_node.h>
+#include <avt_341_nav/planning/local/mpc_planner_node.h>
 #include <avt_341_nav/node/node_types.h>
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"

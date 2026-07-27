@@ -1,7 +1,7 @@
 message(STATUS "Building perception node ...")
 
 add_executable(
-        ${PROJECT_NAME}_perception_node
+        perception_node
         "perception_node.cpp"
         "clearing_methods/costmap_clearing_method.cpp"
         "clearing_methods/clearing_methods_factory.cpp"
@@ -21,14 +21,14 @@ add_executable(
 find_package(image_geometry REQUIRED)
 find_package(message_filters REQUIRED)
 ament_target_dependencies(
-        ${PROJECT_NAME}_perception_node image_geometry message_filters)
-target_link_libraries(${PROJECT_NAME}_perception_node ${PROJECT_NAME}_proxy)
+        perception_node image_geometry message_filters)
+target_link_libraries(perception_node ${PROJECT_NAME}_proxy)
 install(
-  TARGETS ${PROJECT_NAME}_perception_node
+  TARGETS perception_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")
 
 # Generated parameter library (avt_341_param_lib templates)
-if(TARGET ${PROJECT_NAME}_perception_node)
-  target_link_libraries(${PROJECT_NAME}_perception_node perception_params_service)
+if(TARGET perception_node)
+  target_link_libraries(perception_node perception_params_service)
 endif()

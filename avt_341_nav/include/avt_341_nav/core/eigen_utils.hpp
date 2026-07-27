@@ -1,10 +1,10 @@
 /**
-* @file      math_utils.hpp
+* @file      eigen_utils.hpp
 * @brief     Small shared math helpers.
 */
 
-#ifndef AVT_341_CORE_MATH_UTILS_H
-#define AVT_341_CORE_MATH_UTILS_H
+#ifndef AVT_341_CORE_EIGEN_UTILS_H
+#define AVT_341_CORE_EIGEN_UTILS_H
 
 #include <algorithm>
 #include <cmath>
@@ -28,4 +28,4 @@ inline double MajorAxisStdDev2x2(const Eigen::Matrix2d& p) {
 
 }
 
-#endif  // AVT_341_CORE_MATH_UTILS_H
+#endif  // AVT_341_CORE_EIGEN_UTILS_H

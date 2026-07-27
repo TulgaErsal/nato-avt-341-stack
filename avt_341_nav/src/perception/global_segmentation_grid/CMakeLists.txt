@@ -8,11 +8,11 @@ file(
     SHA256=ee537193d028f54ffe08ce9ba78879ee2758fa129942a66f81001382c90fb588)
 
 message(STATUS "Building global segmentation grid node ...")
-add_executable(${PROJECT_NAME}_global_segmentation_grid_node
+add_executable(global_segmentation_grid_node
                "global_segmentation_grid_node.cpp")
-target_link_libraries(${PROJECT_NAME}_global_segmentation_grid_node
+target_link_libraries(global_segmentation_grid_node
                       ${PROJECT_NAME}_proxy)
 install(
-  TARGETS ${PROJECT_NAME}_global_segmentation_grid_node
+  TARGETS global_segmentation_grid_node
   EXPORT export_${PROJECT_NAME}
   DESTINATION "lib/${PROJECT_NAME}")

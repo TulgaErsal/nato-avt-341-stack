@@ -24,8 +24,8 @@ endif()
 
 # Global Path Node Tests
 # ----------------------
-# Source files shared with avt_341_global_path_node (planning algorithms only –
-# global_path_node.cpp is intentionally excluded because it contains main()).
+# Source files shared with global_planner_node (planning algorithms only –
+# global_planner_node.cpp is intentionally excluded because it contains main()).
 set(GLOBAL_PATH_PLANNER_SOURCES
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/planning/global/global_path/astar.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/planning/global/global_path/fastmarching.cpp"
@@ -34,21 +34,21 @@ set(GLOBAL_PATH_PLANNER_SOURCES
 )
 
 message(STATUS "Adding global path node unit tests")
-ament_add_gtest(global_path_node_test
-  global_planning/global_path_node_test.cpp
+ament_add_gtest(global_planner_node_test
+  global_planning/global_planner_node_test.cpp
   ${GLOBAL_PATH_PLANNER_SOURCES}
 )
 
-target_include_directories(global_path_node_test
+target_include_directories(global_planner_node_test
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../include"
 )
 
-target_link_libraries(global_path_node_test
+target_link_libraries(global_planner_node_test
   ${PROJECT_NAME}_proxy
 )
 
-ament_target_dependencies(global_path_node_test
+ament_target_dependencies(global_planner_node_test
   rclcpp
   nav_msgs
   std_msgs
@@ -56,7 +56,7 @@ ament_target_dependencies(global_path_node_test
 )
 
 # Inject the path to the YAML parameter file so the test can read real settings.
-target_compile_definitions(global_path_node_test
+target_compile_definitions(global_planner_node_test
   PRIVATE
     "GLOBAL_PLANNER_YAML_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../config/parameters/global_planner.yaml\""
 )
