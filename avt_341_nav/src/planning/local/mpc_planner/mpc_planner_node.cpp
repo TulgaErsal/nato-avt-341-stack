@@ -189,6 +189,8 @@ void GoalPointCallback(const geometry_msgs::msg::PointStamped::SharedPtr point_s
 
     jl_call2(j_set_goal_point, j_x, j_y);
     CATCH_JULIA_EXCEPTION;
+
+    recv_goal_point = true;
 }
 
 void GoalPointEndOfGlobalPathCallback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -412,7 +414,7 @@ std_msgs::msg::Bool GetSlopeLimited()
 }
 
 bool NewInputAvailable() {
-    return recv_veh_input;
+    return recv_veh_input && recv_goal_point;
 }
 
 void PublishPath() {}

@@ -64,6 +64,7 @@ avt_341_nav::params::mpc_local_planner::Params mpc_params;
 
 bool recv_veh_input = false;
 bool recv_seg_input = false;
+bool recv_goal_point = false;
 bool is_initialized = false;
 
 // Cached MPC path used for obstacle corridor culling (x, y pairs).
