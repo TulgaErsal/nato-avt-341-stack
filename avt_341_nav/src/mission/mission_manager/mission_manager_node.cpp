@@ -96,7 +96,7 @@ void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
 void TargetContactsCallback(nav_msgs::msg::Path::SharedPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
   // Handle detection of potential targets of interest
-  if(mgr->nav_state != avt_341_nav::utils::NavStackState::NotInit) {       // avoid premature detection of contacts
+  if(mgr->nav_state != avt_341_nav::core::NavStackState::NotInit) {       // avoid premature detection of contacts
     contacts.push(*msg);
   }
 }

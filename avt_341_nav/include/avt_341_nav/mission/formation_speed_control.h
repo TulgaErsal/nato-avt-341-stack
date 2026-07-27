@@ -8,7 +8,6 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_nav/node/tf_interface.h"
-#include "avt_341_nav/avt_341_utils.h"
 #include "avt_341_nav/mission/formation_utils.h"
 #include "avt_341_nav/mission/formation_definition.h"
 

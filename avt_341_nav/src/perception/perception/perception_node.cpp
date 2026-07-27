@@ -6,7 +6,7 @@
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_nav/node/node_types.h"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/string_utils.hpp"
 #include "avt_341_nav/perception/costmap.h"
 #include "avt_341_nav/perception/perception_settings.hpp"
 #include <avt_341_nav/perception_params_service.hpp>
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
 
 	// Layers to publish individually in addition to combined costmap layers. Assumed to be comma list in single string
 	std::vector<std::string> publish_layers =
-		avt_341_nav::utils::SplitByDelimiter(settings.costmap.publish.layers, ',');
+		avt_341_nav::core::SplitByDelimiter(settings.costmap.publish.layers, ',');
 
 	if (!avt_341_nav::perception::GridPubMethod::IsValid(
 			settings.costmap.publish.method)){

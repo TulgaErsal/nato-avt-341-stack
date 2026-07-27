@@ -4,7 +4,7 @@
 #include "costmap_clearing_method.h"
 #include "avt_341_nav/node/tf_interface.h"
 #include <bitset>
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -78,7 +78,7 @@ protected:
         int &x_N,
         int &y_N) const;
 
-    visualization_msgs::msg::Marker GetMarkerMsg(int type, int id, utils::vec3 color, float alpha = 1.0, double z_scale = 1.0) const;
+    visualization_msgs::msg::Marker GetMarkerMsg(int type, int id, core::vec3 color, float alpha = 1.0, double z_scale = 1.0) const;
 
     virtual void RaytraceLine(const geometry_msgs::msg::Point &start, const geometry_msgs::msg::Point32 &end);
 
@@ -135,7 +135,7 @@ protected:
     std::vector<std::vector<Cell>> &cells_without_clearing_;
     std::vector<std::vector<Cell>> cells_with_clearing_;
     std::vector<std::vector<bool>> occupancy_delta_;
-    utils::vec2 last_position_;
+    core::vec2 last_position_;
     std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>> occupancy_delta_publisher_;
 };
 

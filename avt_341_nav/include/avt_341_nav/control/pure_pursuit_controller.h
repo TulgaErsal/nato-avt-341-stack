@@ -23,7 +23,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 
 namespace avt_341_nav {
 namespace control{
@@ -39,7 +39,7 @@ public:
 	* vehicle state.
 	* \param traj The desired trajectory
 	*/
-	geometry_msgs::msg::Twist GetDcFromTraj(nav_msgs::msg::Path traj, utils::vec2 & goal);
+	geometry_msgs::msg::Twist GetDcFromTraj(nav_msgs::msg::Path traj, core::vec2 & goal);
 
 	/**
 	* Set the wheelbase of the vehicle in meters
@@ -167,7 +167,7 @@ public:
 
 private:
 	bool skid_steered_;
-	geometry_msgs::msg::Twist GetDcAckermann(double alpha, double lookahead, utils::vec2 curr_dir, double target_speed);
+	geometry_msgs::msg::Twist GetDcAckermann(double alpha, double lookahead, core::vec2 curr_dir, double target_speed);
 	geometry_msgs::msg::Twist GetDcSkid(double dx, double dy, double dtheta);
 
 	// steering parameters for the skid steered model

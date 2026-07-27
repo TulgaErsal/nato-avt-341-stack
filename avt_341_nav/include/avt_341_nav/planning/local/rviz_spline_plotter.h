@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 #include "avt_341_nav/planning/local/candidate.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "visualization_msgs/msg/marker.hpp"
@@ -25,7 +25,7 @@ namespace avt_341_nav {
        * Set the centerline to be plotted.
        * \param path List of points representing the centerline to be plotted.
        */
-      void SetPath(std::vector<utils::vec2> path);
+      void SetPath(std::vector<core::vec2> path);
 
       /**
        * Add the candidate paths to be plotted.
@@ -47,7 +47,7 @@ namespace avt_341_nav {
     private:
       visualization_msgs::msg::Marker get_marker_msg(int type, int id, bool is_blocked = false) const;
 
-      std::vector<utils::vec2> path_;
+      std::vector<core::vec2> path_;
       std::vector<Candidate> curves_;
       float pixdim_;
       bool map_set_;

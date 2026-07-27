@@ -73,7 +73,7 @@ public:
 	/**
 	 * Get a point along the optimal path at an arc length s_step from the current position. 
 	 */
-	utils::vec2 GetNextPoint(float s_step);
+	core::vec2 GetNextPoint(float s_step);
 
 	/**
 	 * Get the angle at arc length s along the optimal path. 

@@ -4,6 +4,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "visualization_msgs/msg/marker.hpp"
+#include "avt_341_nav/core/math_dto.hpp"
 
 namespace avt_341_nav {
   namespace mission {
@@ -230,14 +231,14 @@ namespace avt_341_nav {
       bool heading_filter_on = false;
       bool follower_dist_break_on = false;
       if (!is_leader && followed_vehicle != leader_name) {
-        utils::vec2 followed_dir;
+        core::vec2 followed_dir;
         auto followed_target_pos = target_poses[followed_vehicle].pose.position;
         auto followed_current_pos = formation_poses[followed_vehicle].pose.pose.position;
         followed_dir.x = static_cast<float>(followed_target_pos.x - followed_current_pos.x);
         followed_dir.y = static_cast<float>(followed_target_pos.y - followed_current_pos.y);
         followed_dir.normalize();
 
-        utils::vec2 my_dir;
+        core::vec2 my_dir;
         auto my_target_pos = target_poses[my_name_].pose.position;
         auto my_current_pos = formation_poses[my_name_].pose.pose.position;
         my_dir.x = static_cast<float>(my_target_pos.x - my_current_pos.x);
@@ -246,7 +247,7 @@ namespace avt_341_nav {
         my_dir.normalize();
 
         heading_filter_on = dir_mag < fsc_params_.follower_dot_range &&
-                            utils::dot(my_dir, followed_dir) < fsc_params_.follower_dot_threshold;
+                            core::dot(my_dir, followed_dir) < fsc_params_.follower_dot_threshold;
         follower_dist_break_on = dir_mag < fsc_params_.follower_dist_break;
         if (heading_filter_on || follower_dist_break_on) {
           speed_factor = 0.0;

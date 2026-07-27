@@ -85,7 +85,7 @@ namespace avt_341_nav::perception
 
         for (int i = 0; i < h; ++i) {
             for (int j = 0; j < w; ++j) {
-                const utils::vec2 p = settings_.to_world(j, i);
+                const core::vec2 p = settings_.to_world(j, i);
                 for (const auto& zone : zones_) {
                     if (IsInsidePolygon(zone.vertices, p.x, p.y)) {
                         cells_[i][j].high.val = zone.occ_value;

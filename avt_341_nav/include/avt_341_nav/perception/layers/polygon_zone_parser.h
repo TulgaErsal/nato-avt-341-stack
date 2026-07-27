@@ -39,7 +39,7 @@ private:
     // ---- structure parsers -----------------------------------------------
 
     /// Parse [[x, y], [x, y], ...].
-    std::vector<utils::vec2> ParseVertexArray();
+    std::vector<core::vec2> ParseVertexArray();
 
     /// Parse one zone object: { "name": "...", "vertices": [[...], ...] }.
     PolygonZone ParseZoneObject();

@@ -7,6 +7,8 @@
 #include "map_msgs/msg/occupancy_grid_update.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 
 namespace avt_341_nav::perception {
 
@@ -222,30 +224,30 @@ nav_msgs::msg::OccupancyGrid Costmap::GetGrid(double width, double height, bool 
 	return grid;
 }
 
-bool Costmap::IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle) {
-	utils::vec2 dir_to_point = test_point - p;
-	float dist = utils::length(dir_to_point);
+bool Costmap::IsPointInCone(const core::vec2& test_point, const core::vec2& p, const core::vec2& v, float r, float angle) {
+	core::vec2 dir_to_point = test_point - p;
+	float dist = core::length(dir_to_point);
 
 	if (dist > r) return false;
 
 	dir_to_point.normalize();
-	float dot_product = utils::dot(v, dir_to_point);
+	float dot_product = core::dot(v, dir_to_point);
 
 	float cos_angle = cosf(angle);
 	return dot_product >= cos_angle;
 }
 
 // CTG, 7/23/25
-std::vector<utils::ivec2> Costmap::GetCellsInFov() const{
+std::vector<core::ivec2> Costmap::GetCellsInFov() const{
 
-	float heading = utils::GetHeadingFromOrientation(current_odom_.pose.pose.orientation);
+	float heading = core::GetHeadingFromOrientation(current_odom_.pose.pose.orientation);
 	const float x = current_odom_.pose.pose.position.x;
 	const float y = current_odom_.pose.pose.position.y;
 
-	utils::vec2 p(x, y);
+	core::vec2 p(x, y);
 	float angle = 0.5F * settings_.costmap.terrain_rms.hfov;
-	utils::vec2 v(cosf(heading), sinf(heading));
-	std::vector<utils::ivec2> cells_in_fov;
+	core::vec2 v(cosf(heading), sinf(heading));
+	std::vector<core::ivec2> cells_in_fov;
 	const auto range = settings_.costmap.terrain_rms.range;
 
 	int xi0 = std::max(
@@ -260,10 +262,10 @@ std::vector<utils::ivec2> Costmap::GetCellsInFov() const{
 		static_cast<int>((y + range) / settings_.size_info().res));
 	for (int j = yi0; j < yi1; j++) {
 		for (int i = xi0; i < xi1; i++) {
-			utils::vec2 point = settings_.to_world(i, j);
+			core::vec2 point = settings_.to_world(i, j);
 			bool in_view = IsPointInCone(point, p, v, range, angle);
 			if (in_view) {
-				utils::ivec2 c(i, j);
+				core::ivec2 c(i, j);
 				cells_in_fov.push_back(c);
 			}
 		}
@@ -274,7 +276,7 @@ std::vector<utils::ivec2> Costmap::GetCellsInFov() const{
 // CTG, 7/23/25
 void Costmap::UpdateRmsAndSlope() {
 
-	std::vector<utils::ivec2> idxs = GetCellsInFov();
+	std::vector<core::ivec2> idxs = GetCellsInFov();
 	float slope = 0.0f;
 	float rms = 0.0f;
 

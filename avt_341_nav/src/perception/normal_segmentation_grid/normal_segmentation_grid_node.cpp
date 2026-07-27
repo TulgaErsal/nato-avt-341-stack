@@ -18,7 +18,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/perception/normal_grid.h"
-#include "avt_341_nav/avt_341_utils.h"
 #include "avt_341_nav/node/tf_interface.h"
 
 

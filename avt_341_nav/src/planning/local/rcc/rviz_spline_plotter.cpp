@@ -17,7 +17,7 @@ namespace avt_341_nav {
       candidate_paths_publisher = node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/candidate_paths", 1);
     }
 
-    void RVIZPlotter::SetPath(std::vector<utils::vec2> path){
+    void RVIZPlotter::SetPath(std::vector<core::vec2> path){
       path_ = path;
     }
 
@@ -63,19 +63,19 @@ namespace avt_341_nav {
 
       float ds = pixdim_;
       Path wp_path(path_);
-      std::vector<avt_341_nav::utils::vec2> paths_last_points;
+      std::vector<avt_341_nav::core::vec2> paths_last_points;
 
       for (int i = 0; i < curves_.size(); i++) {
         float s0 = curves_[i].GetS0() + ds;
         float s_max = s0 + curves_[i].GetMaxLength() - ds;
         bool hits_obstacle = curves_[i].HitsObstacle();
-        avt_341_nav::utils::vec2 pc1;
+        avt_341_nav::core::vec2 pc1;
 
         while (s0 < s_max){
           float rho0 = curves_[i].At(s0- curves_[i].GetS0());
           float s1 = s0 + pixdim_;
           float rho1 = curves_[i].At(s1- curves_[i].GetS0());
-          avt_341_nav::utils::vec2 pc0 = wp_path.ToCartesian(s0, rho0);
+          avt_341_nav::core::vec2 pc0 = wp_path.ToCartesian(s0, rho0);
           pc1 = wp_path.ToCartesian(s1, rho1);
           if (std::isnan(pc0.x) || std::isnan(pc0.y) || std::isnan(pc1.x) || std::isnan(pc1.y)){
             break;

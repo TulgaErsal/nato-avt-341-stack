@@ -11,7 +11,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include "nav_msgs/msg/occupancy_grid.hpp"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 
 
 namespace avt_341_nav{
@@ -28,7 +28,7 @@ public:
         threshold = 0.5f;
         default_val = 0;
     }
-    NormalCell(float size, avt_341_nav::utils::vec3 norm, int count, float thresh, uint8_t default_value){
+    NormalCell(float size, avt_341_nav::core::vec3 norm, int count, float thresh, uint8_t default_value){
         size_ = size;
         normal = norm;
         point_count = count;
@@ -64,11 +64,11 @@ public:
         return this->Value();
     }
 
-    inline avt_341_nav::utils::vec3 Normal() const { return normal; }
+    inline avt_341_nav::core::vec3 Normal() const { return normal; }
     inline bool filled() const { return point_count > 0; }
 
     float size_;
-    avt_341_nav::utils::vec3 normal;
+    avt_341_nav::core::vec3 normal;
     int point_count;
     float threshold;
     uint8_t default_val;

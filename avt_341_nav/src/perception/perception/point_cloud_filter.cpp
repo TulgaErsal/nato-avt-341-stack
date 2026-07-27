@@ -1,6 +1,6 @@
 #include "avt_341_nav/perception/point_cloud_filter.hpp"
 
-#include <avt_341_nav/avt_341_utils.h>
+#include <avt_341_nav/core/ros_msg_utils.hpp>
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "sensor_msgs/msg/point_cloud.hpp"
@@ -54,7 +54,7 @@ void PointCloudFilter::Filter(const sensor_msgs::msg::PointCloud &pc, const geom
     pc_out.header = pc.header;
     pc_out.channels.resize(pc.channels.size());
     std::vector<std::vector<float>> channel_values(pc.channels.size());
-    const double origin_heading = utils::GetHeadingFromOrientation(origin.orientation) * 180.0 / M_PI;
+    const double origin_heading = core::GetHeadingFromOrientation(origin.orientation) * 180.0 / M_PI;
 
     for (int i = 0; i < pc.points.size(); i++) {
         const geometry_msgs::msg::Point32& p = pc.points[i];

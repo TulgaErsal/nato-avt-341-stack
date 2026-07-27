@@ -8,7 +8,6 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341_nav/avt_341_utils.h"
 #include <avt_341_nav/speed_zones_params_service.hpp>
 #include "avt_341_nav/node/tf_interface.h"
 

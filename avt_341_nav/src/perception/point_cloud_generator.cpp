@@ -9,7 +9,7 @@ union dataUnion
   uint8_t b[sizeof(float)];
 };
 
-void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<avt_341_nav::utils::vec3> & points, sensor_msgs::msg::PointCloud2 & out_point_cloud) {
+void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<avt_341_nav::core::vec3> & points, sensor_msgs::msg::PointCloud2 & out_point_cloud) {
 
   int num_lidar_points = points.size();
   out_point_cloud.height = 1;
@@ -33,7 +33,7 @@ void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<av
   out_point_cloud.is_dense = true;
   std::vector<uint8_t> data;
   data.reserve(3 * num_lidar_points * sizeof(float));
-  for (const avt_341_nav::utils::vec3 & v : points)
+  for (const avt_341_nav::core::vec3 & v : points)
   {
     for(int i = 0; i < 3; i++){
       dataUnion u;
@@ -47,7 +47,7 @@ void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<av
   out_point_cloud.data = data;
 }
 
-void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<avt_341_nav::utils::vec3> & points, const std::vector<int> & seg_values, sensor_msgs::msg::PointCloud2 & out_point_cloud) {
+void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<avt_341_nav::core::vec3> & points, const std::vector<int> & seg_values, sensor_msgs::msg::PointCloud2 & out_point_cloud) {
     int num_lidar_points = points.size();
     out_point_cloud.height = 1;
     out_point_cloud.width = num_lidar_points;
@@ -73,7 +73,7 @@ void avt_341_nav::perception::PointCloudGenerator::toROSMsg(const std::vector<av
     data.reserve(4 * num_lidar_points * sizeof(float));
     for (int v_i = 0; v_i < points.size(); v_i++)
     {
-        avt_341_nav::utils::vec3 v = points[v_i];
+        avt_341_nav::core::vec3 v = points[v_i];
         float seg_value = (float)seg_values[v_i];
         for(int i = 0; i < 3; i++){
             dataUnion u;

@@ -3,14 +3,14 @@
 
 #include <atomic>
 #include <vector>
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341_nav {
 namespace planning {
 
-typedef utils::vec2 Point;
-typedef utils::vec2 Vec2;
+typedef core::vec2 Point;
+typedef core::vec2 Vec2;
 
 class Index {
 public:

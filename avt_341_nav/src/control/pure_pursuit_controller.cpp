@@ -2,6 +2,8 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 
 namespace avt_341_nav {
 namespace control{
@@ -45,7 +47,7 @@ void PurePursuitController::SetVehicleState(nav_msgs::msg::Odometry state){
 	vy_ = state.twist.twist.linear.y;
 	current_angular_velocity_ = state.twist.twist.angular.z;
 	veh_speed_ = sqrt(vx_*vx_ + vy_*vy_);
-	veh_heading_ = utils::GetHeadingFromOrientation(state.pose.pose.orientation);
+	veh_heading_ = core::GetHeadingFromOrientation(state.pose.pose.orientation);
 }
 
 void PurePursuitController::SetVehicleSpeed(double speed){
@@ -55,7 +57,7 @@ void PurePursuitController::SetVehicleSpeed(double speed){
 }
 
 
-geometry_msgs::msg::Twist PurePursuitController::GetDcFromTraj(nav_msgs::msg::Path traj, utils::vec2 & goal) {
+geometry_msgs::msg::Twist PurePursuitController::GetDcFromTraj(nav_msgs::msg::Path traj, core::vec2 & goal) {
 	//initialize the driving command
   	geometry_msgs::msg::Twist dc;
 
@@ -65,17 +67,17 @@ geometry_msgs::msg::Twist PurePursuitController::GetDcFromTraj(nav_msgs::msg::Pa
 	if (np < 2) return dc;
 
 	// extract the path that the vehicle needs to follow
-	std::vector<utils::vec2> path;
+	std::vector<core::vec2> path;
 
 	//populate the desired path
 	path.resize(np);
 	for (int i = 0; i < np; i++) {
-		path[i] = utils::vec2(traj.poses[i].pose.position.x, traj.poses[i].pose.position.y);
+		path[i] = core::vec2(traj.poses[i].pose.position.x, traj.poses[i].pose.position.y);
 	}
 
 	//calculate the lookahead distance based on current speed
-	utils::vec2 currpos(veh_x_, veh_y_);
-	double path_length = utils::length(path[np - 1] - currpos);
+	core::vec2 currpos(veh_x_, veh_y_);
+	double path_length = core::length(path[np - 1] - currpos);
 	double lookahead = k_ * veh_speed_;
 
 	if (lookahead > max_lookahead_)lookahead = max_lookahead_;
@@ -83,17 +85,17 @@ geometry_msgs::msg::Twist PurePursuitController::GetDcFromTraj(nav_msgs::msg::Pa
 	// if (lookahead > path_length)lookahead = path_length - 0.01;
 
 
-	utils::vec2 lookahead_pos(veh_x_ + lookahead*std::cos(veh_heading_), veh_y_ + lookahead*std::sin(veh_heading_));
-	utils::vec2 veh_pos(veh_x_, veh_y_);
+	core::vec2 lookahead_pos(veh_x_ + lookahead*std::cos(veh_heading_), veh_y_ + lookahead*std::sin(veh_heading_));
+	core::vec2 veh_pos(veh_x_, veh_y_);
 
 
 	double min_dist = 1.0E9;
 	int min_idx = 0;
 
-	utils::vec2 diff_vec;
+	core::vec2 diff_vec;
 	for (int i = 0; i < np - 2; i++) {
 		diff_vec = path[i] - lookahead_pos;
-		double d0 = std::sqrt(utils::dot(diff_vec, diff_vec));
+		double d0 = std::sqrt(core::dot(diff_vec, diff_vec));
 		if (d0 < min_dist) {
 			min_dist = d0;
 			min_idx = i;
@@ -104,19 +106,19 @@ geometry_msgs::msg::Twist PurePursuitController::GetDcFromTraj(nav_msgs::msg::Pa
 	double min_dist2 = 1.0E9;
 	int min_idx2 = 0;
 
-	utils::vec2 diff_vec2;
+	core::vec2 diff_vec2;
 	for (int i = 1; i < np - 2; i++) {
 		diff_vec2 = path[i] - veh_pos;
-		double d0 = std::sqrt(utils::dot(diff_vec2, diff_vec2));
+		double d0 = std::sqrt(core::dot(diff_vec2, diff_vec2));
 		if (d0 < min_dist2) {
 			min_dist2 = d0;
 			min_idx2 = i;
 		}
 	}
 
-	utils::vec2 dirc1;
+	core::vec2 dirc1;
 	dirc1 = path[min_idx2] - path[min_idx2 -1];
-	utils::vec2 dirc2;
+	core::vec2 dirc2;
 	dirc2 = path[min_idx2 + 1] - path[min_idx2];
 
 
@@ -124,14 +126,14 @@ geometry_msgs::msg::Twist PurePursuitController::GetDcFromTraj(nav_msgs::msg::Pa
 
 	double dpsi =
 	    std::asin((dirc1.x * dirc2.y - dirc1.y * dirc2.x) /
-	              (std::sqrt(utils::dot(dirc1, dirc1)) *
-	               std::sqrt(utils::dot(dirc2, dirc2))));
-	double dlength = std::sqrt(utils::dot(dirc2, dirc2));
+	              (std::sqrt(core::dot(dirc1, dirc1)) *
+	               std::sqrt(core::dot(dirc2, dirc2))));
+	double dlength = std::sqrt(core::dot(dirc2, dirc2));
 	double desired_sa = std::atan(2.5*(dpsi/dlength));
 
 
-	utils::vec2 p2l;
-	utils::vec2 p2p;
+	core::vec2 p2l;
+	core::vec2 p2p;
 
 	p2l = lookahead_pos - path[min_idx];
 	p2p = path[min_idx+1] - path[min_idx];
@@ -218,7 +220,7 @@ geometry_msgs::msg::Twist PurePursuitController::GetDcSkid(double dx, double dy,
 	return dc;
 }
 
-geometry_msgs::msg::Twist PurePursuitController::GetDcAckermann(double alpha, double lookahead, utils::vec2 curr_dir, double target_speed){
+geometry_msgs::msg::Twist PurePursuitController::GetDcAckermann(double alpha, double lookahead, core::vec2 curr_dir, double target_speed){
 	geometry_msgs::msg::Twist dc;
 	dc.linear.x = 0.0;
 	dc.angular.z = 0.0;

@@ -135,9 +135,9 @@ double PolygonZoneParser::ParseNumber()
 
 // ---- structure parsers -----------------------------------------------
 
-std::vector<utils::vec2> PolygonZoneParser::ParseVertexArray()
+std::vector<core::vec2> PolygonZoneParser::ParseVertexArray()
 {
-    std::vector<utils::vec2> result;
+    std::vector<core::vec2> result;
     Expect('[');
     while (Peek() != ']') {
         Expect('[');
@@ -145,7 +145,7 @@ std::vector<utils::vec2> PolygonZoneParser::ParseVertexArray()
         Expect(',');
         const double y = ParseNumber();
         Expect(']');
-        result.push_back(utils::vec2(x, y));
+        result.push_back(core::vec2(x, y));
         SkipComma();
     }
     Expect(']');

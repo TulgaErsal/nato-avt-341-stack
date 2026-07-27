@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "avt_341_nav/mission/task.h"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/mission/formation_utils.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -51,7 +51,7 @@ void PathFollow::init_() {
     target_pose = path.poses.back();
 
     mgr->publishGoalPath(path);
-    mgr->publishNavStateCmd(avt_341_nav::utils::NavStateCmd::GoActive);
+    mgr->publishNavStateCmd(avt_341_nav::core::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 }
 

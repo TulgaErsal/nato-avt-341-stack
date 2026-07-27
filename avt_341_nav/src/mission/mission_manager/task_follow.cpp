@@ -22,7 +22,7 @@ Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDef
 }
 
 void Follow::init_() {
-    mgr->publishNavStateCmd(avt_341_nav::utils::NavStateCmd::GoActive);
+    mgr->publishNavStateCmd(avt_341_nav::core::NavStateCmd::GoActive);
     mgr->publishGpToggle(path_generator_.useBreadcrumbs() ? 0 : 1);
 
     if(!formation_def_->formationAtGoal()){

@@ -13,20 +13,20 @@
 
 #include <vector>
 #include <cmath>
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 
 namespace avt_341_nav {
 namespace planning{
 	
 /// Info regarding a path segment.
 struct SegmentInfo {
-	utils::vec2 point;
+	core::vec2 point;
 	int id;
 };
 
 /// Distance from a point to a segment, and the closest point on the segment.
 struct PointSegDist {
-	utils::vec2 point;
+	core::vec2 point;
 	float dist;
 };
 
@@ -47,7 +47,7 @@ public:
 	 * Create a path and initialize it with a list of waypoints.
 	 * \param points List of waypoints in 2D ENU coordinates.
 	 */ 
-	Path(std::vector<utils::vec2> points);
+	Path(std::vector<core::vec2> points);
 
 	/**
 	 * Create a path and initialize it with a list of waypoints.
@@ -56,13 +56,13 @@ public:
 	 * \param position Current position in 2D ENU coordinates.
 	 * \param la The maximum distances ahead on the current position to keep.
 	 */ 
-	Path(std::vector<utils::vec2> points, utils::vec2 position, float la);
+	Path(std::vector<core::vec2> points, core::vec2 position, float la);
 
 	/**
 	 * Initialize a path with a list of waypoints.
 	 * \param points List of waypoints in 2D ENU coordinates.
 	 */ 
-	void Init(std::vector<utils::vec2> points);
+	void Init(std::vector<core::vec2> points);
 
 	/**
 	 * Initialize a path with a list of waypoints. 
@@ -71,7 +71,7 @@ public:
 	 * \param position Current position in 2D ENU coordinates.
 	 * \param la The maximum distances ahead on the current position to keep.
 	 */ 
-	void Init(std::vector<utils::vec2> points, utils::vec2 position, float la);
+	void Init(std::vector<core::vec2> points, core::vec2 position, float la);
 
 	/**
 	 * Get the total arc length of the path, from the first to the last waypoint.
@@ -83,14 +83,14 @@ public:
 	 * \param s The arc length parameter.
 	 * \param rho The offset parameter. 
 	 */
-	utils::vec2 ToCartesian(float s, float rho);
+	core::vec2 ToCartesian(float s, float rho);
 
 	/**
 	 * Convert a point from Cartesian coordinates to the s-rho system.
 	 * \param x The x-coordinate in local ENU.
 	 * \param y The y-coordinate in local ENU.
 	 */ 
-	utils::vec2 ToSRho(float x, float y);
+	core::vec2 ToSRho(float x, float y);
 
 	/**
 	 * Get the curvature and tangent angle at a given arc length along the path.
@@ -101,14 +101,14 @@ public:
 	/**
 	 * Get the last point on the path. 
 	 */
-	utils::vec2 GetLastPoint() { return points_[points_.size() - 1]; }
+	core::vec2 GetLastPoint() { return points_[points_.size() - 1]; }
 
 	/**
 	 * Get point of a given index.
 	 * \param index The index of the point to get. 
 	 */
-	utils::vec2 GetPoint(int index) {
-		utils::vec2 p(0.0f, 0.0f);
+	core::vec2 GetPoint(int index) {
+		core::vec2 p(0.0f, 0.0f);
 		if (index >= 0 && index < points_.size()) {
 			p = points_[index];
 		}
@@ -118,7 +118,7 @@ public:
 	/**
 	 * Return the list of points on the path.
 	 */ 
-	std::vector<utils::vec2> GetPoints(){
+	std::vector<core::vec2> GetPoints(){
 		return points_;
 	}
 
@@ -131,7 +131,7 @@ public:
 	void FixBeginning(float x, float y);
 
 private:
-	std::vector<utils::vec2> points_;
+	std::vector<core::vec2> points_;
 	std::vector<float> curvature_;
 	std::vector<float> theta_;
 	std::vector<float> arc_length_;
@@ -139,10 +139,10 @@ private:
 	float max_lookahead_;
 	void CalcAnglesAndCurvature();
 
-	float MengerCurvature(utils::vec2 p0, utils::vec2 p1, utils::vec2 p2);
-	float TriangleArea(utils::vec2 a, utils::vec2 b, utils::vec2 c);
+	float MengerCurvature(core::vec2 p0, core::vec2 p1, core::vec2 p2);
+	float TriangleArea(core::vec2 a, core::vec2 b, core::vec2 c);
 
-	PointSegDist PointToSegmentDistance(utils::vec2 P, utils::vec2 Q, utils::vec2 X);
+	PointSegDist PointToSegmentDistance(core::vec2 P, core::vec2 Q, core::vec2 X);
 	SegmentInfo FindSegment(float s);
 
 };

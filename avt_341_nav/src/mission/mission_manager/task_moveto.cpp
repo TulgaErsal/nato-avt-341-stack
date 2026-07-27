@@ -5,7 +5,7 @@
 #include <avt_341_nav/core/dto_conversion.h>
 
 #include "avt_341_nav/mission/task.h"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/mission/formation_utils.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
@@ -73,7 +73,7 @@ void MoveTo::init_() {
     target_pose = goal;
 
     mgr->publishGoal(core::ToNavGoal(target_pose, goal_threshold_, yaw_threshold_));
-    mgr->publishNavStateCmd(avt_341_nav::utils::NavStateCmd::GoActive);
+    mgr->publishNavStateCmd(avt_341_nav::core::NavStateCmd::GoActive);
     mgr->publishGpToggle(1);
 }
 
@@ -105,7 +105,7 @@ void MoveTo::onPreempt(){
 
 std::string MoveTo::description() const {
   std::ostringstream stream;
-  const double goal_yaw = utils::GetHeadingFromOrientation(goal.pose.orientation) * 180.0 / M_PI;
+  const double goal_yaw = core::GetHeadingFromOrientation(goal.pose.orientation) * 180.0 / M_PI;
   stream << "ID " << msg_id << " MOVE_TO: " << goal_type << " " << name << " (" << goal.pose.position.x << "," << goal.pose.position.y << ","
   << goal_yaw << ") " << "off=(" << x_offset_ << "," << y_offset_ << ")" << " d=" << goal_threshold_ << " yaw_thresh=" << yaw_threshold_;
   return stream.str();

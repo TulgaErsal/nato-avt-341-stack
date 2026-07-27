@@ -35,7 +35,7 @@ MissionManager::MissionManager(
       goal_filter_(goal_filter) {
 
     my_name = manager_name;
-    nav_state = avt_341_nav::utils::NavStackState::NotInit;
+    nav_state = avt_341_nav::core::NavStackState::NotInit;
 
     arrival_announced = true;
 

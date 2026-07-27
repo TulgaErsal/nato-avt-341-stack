@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_utils.hpp"
 
-using avt_341_nav::utils::DiffAngle;
+using avt_341_nav::core::DiffAngle;
 
 struct DiffAngleTestParams
 {

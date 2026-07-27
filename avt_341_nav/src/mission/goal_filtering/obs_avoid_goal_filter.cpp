@@ -1,6 +1,6 @@
 #include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 
-#include <avt_341_nav/avt_341_utils.h>
+#include <avt_341_nav/core/ros_msg_utils.hpp>
 
 #include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter_utils.hpp"
 #include "avt_341_nav/node/occupancy_grid_subscriber.h"
@@ -134,7 +134,7 @@ geometry_msgs::msg::Pose ObsAvoidGoalFilter::Filter(const geometry_msgs::msg::Po
     }
 
     Eigen::Vector2d pt_candidate = ToGridCoords(candidate_goal.position);
-    const double lateral_angle = std::fmod(utils::GetHeadingFromOrientation(candidate_goal.orientation) + M_PI_2, 2*M_PI);
+    const double lateral_angle = std::fmod(core::GetHeadingFromOrientation(candidate_goal.orientation) + M_PI_2, 2*M_PI);
     Eigen::Vector2d pt_leader = ToGridCoords(leader_pose.position);
     Eigen::Vector2d off = pt_candidate - pt_leader;
 

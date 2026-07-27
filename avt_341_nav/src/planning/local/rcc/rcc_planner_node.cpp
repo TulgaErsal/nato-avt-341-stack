@@ -22,6 +22,8 @@
 #include "avt_341_nav/planning/local/spline_planner.h"
 #include "avt_341_nav/planning/local/rviz_spline_plotter.h"
 #include <avt_341_nav/rcc_local_planner_params_service.hpp>
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 
 nav_msgs::msg::Odometry odom;
 nav_msgs::msg::OccupancyGrid grid;
@@ -111,16 +113,16 @@ int main(int argc, char *argv[]){
     double start_secs = n->now().seconds();
     if (global_path.poses.size() > 0 && odom_rcvd && grid.data.size() > 0){
       //std::cout << ros::this_node::getName() << " Running Local planner " << global_path.poses.size() << std::endl;
-      std::vector<avt_341_nav::utils::vec2> path_points;
+      std::vector<avt_341_nav::core::vec2> path_points;
       if (params.use_global_path){
         for (int i = 0; i < global_path.poses.size(); i++){
-          avt_341_nav::utils::vec2 point(global_path.poses[i].pose.position.x, global_path.poses[i].pose.position.y);
+          avt_341_nav::core::vec2 point(global_path.poses[i].pose.position.x, global_path.poses[i].pose.position.y);
           path_points.push_back(point);
         }
       }
       else{
         for (int i = 0; i < waypoints.poses.size(); i++){
-          avt_341_nav::utils::vec2 point(waypoints.poses[i].pose.position.x, waypoints.poses[i].pose.position.y);
+          avt_341_nav::core::vec2 point(waypoints.poses[i].pose.position.x, waypoints.poses[i].pose.position.y);
           path_points.push_back(point);
         }
         
@@ -149,7 +151,7 @@ int main(int argc, char *argv[]){
             static_cast<float>(params.min_steer_angle_limit));
       }
       if (params.trim_path && params.use_global_path ){
-        avt_341_nav::utils::vec2 current_pos(odom.pose.pose.position.x, odom.pose.pose.position.y);
+        avt_341_nav::core::vec2 current_pos(odom.pose.pose.position.x, odom.pose.pose.position.y);
         path.Init(path_points, current_pos, 1.5f * path_look_ahead);
       }
       else{
@@ -158,14 +160,14 @@ int main(int argc, char *argv[]){
 
       path.FixBeginning(odom.pose.pose.position.x, odom.pose.pose.position.y);
 
-      std::vector<avt_341_nav::utils::vec2> culled_points = path.GetPoints();
+      std::vector<avt_341_nav::core::vec2> culled_points = path.GetPoints();
       float s_max = path.GetTotalLength();
-      avt_341_nav::utils::vec2 srho = path.ToSRho(odom.pose.pose.position.x, odom.pose.pose.position.y);
+      avt_341_nav::core::vec2 srho = path.ToSRho(odom.pose.pose.position.x, odom.pose.pose.position.y);
       float s = srho.x;
       float rho_start = srho.y;
-      avt_341_nav::utils::vec2 pconv = path.ToCartesian(s,rho_start);
+      avt_341_nav::core::vec2 pconv = path.ToCartesian(s,rho_start);
       float s_lookahead = std::min(path_look_ahead, s_max - s);
-      float theta = avt_341_nav::utils::GetHeadingFromOrientation(odom.pose.pose.orientation);
+      float theta = avt_341_nav::core::GetHeadingFromOrientation(odom.pose.pose.orientation);
       avt_341_nav::planning::CurveInfo ci = path.GetCurvatureAndAngle(s);
 
       // Fix to bug in curvature when heading west
@@ -226,7 +228,7 @@ int main(int argc, char *argv[]){
         float s_max = s0 + best.GetMaxLength() - ds;
         while (s0 < s_max){
           float rho0 = best.At(s0 - best.GetS0());
-          avt_341_nav::utils::vec2 point = path.ToCartesian(s0, rho0);
+          avt_341_nav::core::vec2 point = path.ToCartesian(s0, rho0);
           geometry_msgs::msg::PoseStamped pose;
           pose.pose.position.x = point.x;
           pose.pose.position.y = point.y;

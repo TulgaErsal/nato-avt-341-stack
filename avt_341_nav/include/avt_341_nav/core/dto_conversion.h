@@ -9,7 +9,8 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -17,7 +18,7 @@ namespace avt_341_nav::core
 {
     inline auto ToVec2(const geometry_msgs::msg::Point & p)
     {
-        return utils::vec2{
+        return core::vec2{
             static_cast<float>(p.x),
             static_cast<float>(p.y)
         };
@@ -25,7 +26,7 @@ namespace avt_341_nav::core
 
     inline auto ToVec2(const geometry_msgs::msg::Pose & p)
     {
-        return utils::vec2{
+        return core::vec2{
             static_cast<float>(p.position.x),
             static_cast<float>(p.position.y)
         };
@@ -33,7 +34,7 @@ namespace avt_341_nav::core
 
     inline bool HasActiveGoal(const avt_341_msgs::msg::NavState::SharedPtr& msg)
     {
-        return msg->run_state == utils::NavStackState::Active;
+        return msg->run_state == core::NavStackState::Active;
     }
 
     inline geometry_msgs::msg::PoseStamped ToPoseStamped(const avt_341_msgs::msg::NavGoal & nav_goal)
@@ -133,7 +134,7 @@ namespace avt_341_nav::core
         return pose_msg;
     }
 
-    inline nav_msgs::msg::Path ToPath(const std::vector<utils::vec2>& path)
+    inline nav_msgs::msg::Path ToPath(const std::vector<core::vec2>& path)
     {
         nav_msgs::msg::Path ros_path;
         ros_path.header.frame_id = "map";
@@ -146,7 +147,7 @@ namespace avt_341_nav::core
     inline avt_341_msgs::msg::NavGoalSequence ToNavGoalSequence(
         const std::vector<double> & goals_x,
         const std::vector<double> & goals_y,
-        const utils::vec2 tx,
+        const core::vec2 tx,
         const double dist_threshold,
         const double yaw_threshold,
         const std::string& frame_id = "map"

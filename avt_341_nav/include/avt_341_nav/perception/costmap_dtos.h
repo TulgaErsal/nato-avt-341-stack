@@ -5,7 +5,7 @@
 #include <limits>
 #include "sensor_msgs/msg/point_cloud.hpp"
 #include <string>
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 #include <optional>
 
 namespace avt_341_nav::perception
@@ -129,7 +129,7 @@ namespace avt_341_nav::perception
   struct PolygonZone
   {
     std::string label;
-    std::vector<utils::vec2> vertices;
+    std::vector<core::vec2> vertices;
     double occ_value;
     int seg_value;
   };

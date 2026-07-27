@@ -16,7 +16,8 @@
 #include <avt_341_nav/node/occupancy_grid_subscriber.h>
 #include <future>
 // local includes
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/waypoint_file_parser.hpp"
 #include "avt_341_nav/planning/global/astar.h"
 #include "avt_341_nav/planning/global/fastmarching.h"
@@ -37,8 +38,8 @@
 #include <chrono>
 #include <stdexcept>
 
-using avt_341_nav::utils::NavStackState;
-using avt_341_nav::utils::IsGoalReached;
+using avt_341_nav::core::NavStackState;
+using avt_341_nav::core::IsGoalReached;
 
 using namespace avt_341_nav::core;
 using avt_341_nav::planning::Point;
@@ -120,9 +121,9 @@ void WaypointCallback(avt_341_msgs::msg::NavGoalSequence::SharedPtr rcv_waypoint
 
 void PublishGoalReached(const avt_341_msgs::msg::NavState& msg)
 {
-  if (avt_341_nav::utils::UseGoalOrientation(msg.goal))
+  if (avt_341_nav::core::UseGoalOrientation(msg.goal))
   {
-    RCLCPP_INFO(n->get_logger(), "Goal reached (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f) after %.2f seconds", msg.goal.pose.position.x, msg.goal.pose.position.y, avt_341_nav::utils::GetHeadingFromOrientation(msg.goal.pose.orientation)/M_PI*180.0, msg.goal.dist_threshold, msg.goal.yaw_threshold/M_PI*180.0, msg.goal_duration);
+    RCLCPP_INFO(n->get_logger(), "Goal reached (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f) after %.2f seconds", msg.goal.pose.position.x, msg.goal.pose.position.y, avt_341_nav::core::GetHeadingFromOrientation(msg.goal.pose.orientation)/M_PI*180.0, msg.goal.dist_threshold, msg.goal.yaw_threshold/M_PI*180.0, msg.goal_duration);
   }
   else
   {
@@ -151,7 +152,7 @@ void NavCommandCallback(std_msgs::msg::Int32::SharedPtr rcv_navcommand)
 void GoalPoseCallback(geometry_msgs::msg::PoseStamped::SharedPtr rcv_goal_pose)
 {
   const auto nav_goal = ToNavGoal(*rcv_goal_pose, dft_dist_threshold, dft_yaw_threshold);
-  RCLCPP_INFO(n->get_logger(), "Setting goal (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f)", nav_goal.pose.position.x, nav_goal.pose.position.y, avt_341_nav::utils::GetHeadingFromOrientation(nav_goal.pose.orientation)/M_PI*180.0, nav_goal.dist_threshold, nav_goal.yaw_threshold/M_PI*180.0);
+  RCLCPP_INFO(n->get_logger(), "Setting goal (%.2f, %.2f, %.2f) @ threshold (dist=%.2f, yaw=%.2f)", nav_goal.pose.position.x, nav_goal.pose.position.y, avt_341_nav::core::GetHeadingFromOrientation(nav_goal.pose.orientation)/M_PI*180.0, nav_goal.dist_threshold, nav_goal.yaw_threshold/M_PI*180.0);
   nav_goals.goals.clear();
   nav_goals.goals.push_back(nav_goal);
   waypoints_rcvd = true;
@@ -182,12 +183,12 @@ void UpdateGoalState(const avt_341_msgs::msg::NavGoal& goal)
 
   if (state.run_state == NavStackState::Active) {
     const auto t_now = n->now().seconds();
-    if (avt_341_nav::utils::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
+    if (avt_341_nav::core::GetDistance(goal.pose.position, state.goal.pose.position) > 1e-2) {
       goal_start_time = t_now;
     }
     state.goal = goal;
     double dist_diff, yaw_diff;
-    avt_341_nav::utils::GetGoalError(odom.pose.pose, goal, dist_diff, yaw_diff);
+    avt_341_nav::core::GetGoalError(odom.pose.pose, goal, dist_diff, yaw_diff);
     state.goal_distance = dist_diff;
     state.goal_yaw_difference = yaw_diff;
     state.goal_duration = t_now - goal_start_time;
@@ -312,7 +313,7 @@ int main(int argc, char* argv[])
 
   int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
 
-  if (!avt_341_nav::utils::IsValidShutdownBehavior(shutdown_behavior)){
+  if (!avt_341_nav::core::IsValidShutdownBehavior(shutdown_behavior)){
     const std::string error_msg = "Invalid shutdown behavior parameter: " + std::to_string(shutdown_behavior);
     RCLCPP_ERROR(n->get_logger(), "%s", error_msg.c_str());
     throw std::runtime_error(error_msg);
@@ -458,10 +459,10 @@ int main(int argc, char* argv[])
 
     // Handle Go command
     if (nav_command_rcvd) {
-      if (nav_command == avt_341_nav::utils::NavStateCmd::GoActive && state.run_state != NavStackState::Active) {
+      if (nav_command == avt_341_nav::core::NavStateCmd::GoActive && state.run_state != NavStackState::Active) {
         // startup/idling - go active
         SetRunState(NavStackState::Active);
-        nav_command = avt_341_nav::utils::NavStateCmd::GoInactive;
+        nav_command = avt_341_nav::core::NavStateCmd::GoInactive;
       }
       nav_command_rcvd = false;
     } else if (use_global_planner) {
@@ -539,12 +540,12 @@ int main(int argc, char* argv[])
               if (IsGoalReached(state, goal) || ros_path.poses.size() > 1) {
                 int cp = current_waypoint;
                 while (cp < static_cast<int>(nav_goals.goals.size()) - 1) {
-                  avt_341_nav::utils::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
+                  avt_341_nav::core::vec2 wp1(static_cast<float>(nav_goals.goals[cp].pose.position.x),
                                            static_cast<float>(nav_goals.goals[cp].pose.position.y));
-                  avt_341_nav::utils::vec2 wp2(static_cast<float>(nav_goals.goals[cp + 1].pose.position.x),
+                  avt_341_nav::core::vec2 wp2(static_cast<float>(nav_goals.goals[cp + 1].pose.position.x),
                                            static_cast<float>(nav_goals.goals[cp + 1].pose.position.y));
-                  avt_341_nav::utils::vec2 wp_diff = wp2 - wp1;
-                  avt_341_nav::utils::vec2 wp_diff_norm = wp_diff;
+                  avt_341_nav::core::vec2 wp_diff = wp2 - wp1;
+                  avt_341_nav::core::vec2 wp_diff_norm = wp_diff;
                   wp_diff_norm.normalize();
                   if (wp_diff.mag() > params.max_separation) {
                     for (double step = params.max_separation;

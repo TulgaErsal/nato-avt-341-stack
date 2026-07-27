@@ -158,7 +158,7 @@ void Planner::CalculateStaticSafetyAndSegCost(const nav_msgs::msg::OccupancyGrid
 		while (s < s_max_) {
 			float rho = candidates_[i].At(s);
 			if (fabs(rho) > rho_max_)candidates_[i].SetOutOfBounds(true);
-			utils::vec2 p = path_.ToCartesian(s_start_ + s, rho);
+			core::vec2 p = path_.ToCartesian(s_start_ + s, rho);
 			int ix = (int)floor((p.x - grid.info.origin.position.x) / grid.info.resolution);
 			int iy = (int)floor((p.y - grid.info.origin.position.y) / grid.info.resolution);
 			if (ix >= 0 && ix < (int)grid.info.width && iy >= 0 && iy < (int)grid.info.height) {
@@ -254,8 +254,8 @@ bool Planner::CalculateCandidateCosts(nav_msgs::msg::OccupancyGrid grid, nav_msg
 	return true;
 }
 
-utils::vec2 Planner::GetNextPoint(float s_step) {
-	utils::vec2 point(0.0f, 0.0f);
+core::vec2 Planner::GetNextPoint(float s_step) {
+	core::vec2 point(0.0f, 0.0f);
 	if (!first_iter_) {
 		float rho = last_selected_.At(s_step);
 		point = path_.ToCartesian(s_start_ + s_step, rho);

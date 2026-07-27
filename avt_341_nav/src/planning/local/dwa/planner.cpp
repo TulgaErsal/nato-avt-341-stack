@@ -1,5 +1,6 @@
 #include <avt_341_nav/planning/local/dwa/planner.hpp>
 #include "nav_msgs/msg/path.hpp"
+#include "avt_341_nav/core/math_dto.hpp"
 
 namespace avt_341_nav {
 namespace planning {
@@ -52,7 +53,7 @@ void Planner::Plan() {
 
     // Filter out trajectories which exceed the maximum lateral acceleration.
     bool not_ackermann = model_ != "ackermann";
-    std::vector<utils::ivec2> search_actions;
+    std::vector<core::ivec2> search_actions;
     for(int i = 0; i < (int)candidate_speeds.size(); ++i) {
         for(int j = 0; j < (int)candidate_steering_rates.size(); ++j) {
             // Compute the lateral acceleration for a kinematic bicycle
@@ -65,7 +66,7 @@ void Planner::Plan() {
                      (candidate_speeds[i] * candidate_speeds[i]) /
                      (wheelbase_ / std::tan(candidate_steering_rates[j]))) >
                  lat_accel_max_)) {
-                search_actions.push_back(utils::ivec2(i, j));
+                search_actions.push_back(core::ivec2(i, j));
             }
         }
     }

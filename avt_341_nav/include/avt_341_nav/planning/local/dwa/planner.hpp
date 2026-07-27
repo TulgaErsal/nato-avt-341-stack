@@ -4,7 +4,6 @@
 
 #include <boost/algorithm/clamp.hpp>
 
-#include <avt_341_nav/avt_341_utils.h>
 #include "nav_msgs/msg/path.hpp"
 #include <avt_341_nav/planning/local/dwa/dynamic_window.hpp>
 #include <avt_341_nav/planning/local/dwa/obstacles.hpp>

@@ -22,7 +22,8 @@
 #include "avt_341_nav/node/node_types.h"
 #include <avt_341_nav/node/occupancy_grid_subscriber.h>
 // local includes
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/waypoint_file_parser.hpp"
 #include "avt_341_nav/planning/local/pf_planner.h"
 #include <avt_341_nav/pf_global_planner_params_service.hpp>
@@ -115,7 +116,7 @@ int current_waypoint = 0;
 
 void Reset(){
   RCLCPP_INFO(n->get_logger(), "Resetting node");
-  state.data = avt_341_nav::utils::NavStackState::NotInit; // start up state
+  state.data = avt_341_nav::core::NavStackState::NotInit; // start up state
   current_waypoint = 0;
   odom_rcvd = false;
   shutdown_condition = false;
@@ -205,7 +206,7 @@ int main(int argc, char *argv[])
   // 2 - bring to a smooth stop and shut down
   // 3 - bring to an immediate stop (hard braking) and shut down
   auto state_pub = n->create_publisher<std_msgs::msg::Int32>("avt_341/state", 10);
-  state.data = avt_341_nav::utils::NavStackState::NotInit;
+  state.data = avt_341_nav::core::NavStackState::NotInit;
 
   const auto num_waypoints =
       std::min(initial_waypoints.x.size(), initial_waypoints.y.size());
@@ -233,7 +234,7 @@ int main(int argc, char *argv[])
       // Initialize goal to first waypoint
     goal[0] = initial_waypoints.x[0] - params.gis.origin_x;
     goal[1] = initial_waypoints.y[0] - params.gis.origin_y;
-    state.data = avt_341_nav::utils::NavStackState::Active; // go active
+    state.data = avt_341_nav::core::NavStackState::Active; // go active
     state_pub->publish(state);
   }
 
@@ -253,7 +254,7 @@ int main(int argc, char *argv[])
       ros_path.header.stamp = n->now();
       if (params.use_global_path)
         path_pub->publish(ros_path);
-      state.data = avt_341_nav::utils::NavStackState::NotInit;
+      state.data = avt_341_nav::core::NavStackState::NotInit;
       state_pub->publish(state);
 
       std_msgs::msg::String reset_ack_msg;
@@ -268,14 +269,14 @@ int main(int argc, char *argv[])
 
     // Handle Go command
     if(nav_command_rcvd) {
-	    if(nav_command == avt_341_nav::utils::NavStateCmd::GoActive
-      && (state.data == avt_341_nav::utils::NavStackState::NotInit) || state.data == avt_341_nav::utils::NavStackState::InactiveCoast) {
+	    if(nav_command == avt_341_nav::core::NavStateCmd::GoActive
+      && (state.data == avt_341_nav::core::NavStackState::NotInit) || state.data == avt_341_nav::core::NavStackState::InactiveCoast) {
         // startup/idling - go active
-        state.data = avt_341_nav::utils::NavStackState::Active;
+        state.data = avt_341_nav::core::NavStackState::Active;
         shutdown_condition = false;
         state_pub->publish(state);
         nav_command_rcvd = false;
-        nav_command = avt_341_nav::utils::NavStateCmd::GoInactive;
+        nav_command = avt_341_nav::core::NavStateCmd::GoInactive;
 		//RCLCPP_INFO(n->get_logger(), "Set state to %d and shutdown condition to %d", state.data, shutdown_condition);
 	    }
 	  } else if(use_global_planner){
@@ -296,12 +297,12 @@ int main(int argc, char *argv[])
         shutdown_condition = false;
         // Maintaining current state - if we're idle, we'll need an explicit GO command unless auto_active option
         if(params.auto_active_on_new_waypoint){
-          state.data = avt_341_nav::utils::NavStackState::Active;  // go active
+          state.data = avt_341_nav::core::NavStackState::Active;  // go active
           state_pub->publish(state);
         }
       }
 
-      if (odom_rcvd && state.data != avt_341_nav::utils::NavStackState::NotInit && current_waypoints.poses.size() > 0){ // data received and not in startup mode
+      if (odom_rcvd && state.data != avt_341_nav::core::NavStackState::NotInit && current_waypoints.poses.size() > 0){ // data received and not in startup mode
         std::vector<float> pos;
         pos.push_back(odom.pose.pose.position.x);
         pos.push_back(odom.pose.pose.position.y);
@@ -325,12 +326,12 @@ int main(int argc, char *argv[])
         if (d < params.goal_dist || ros_path.poses.size()>1) {
           int cp =current_waypoint;
           while (cp<current_waypoints.poses.size()-1){
-            avt_341_nav::utils::vec2 wp1(static_cast<float>(current_waypoints.poses[cp].pose.position.x),
+            avt_341_nav::core::vec2 wp1(static_cast<float>(current_waypoints.poses[cp].pose.position.x),
                                      static_cast<float>(current_waypoints.poses[cp].pose.position.y));
-            avt_341_nav::utils::vec2 wp2(static_cast<float>(current_waypoints.poses[cp+1].pose.position.x),
+            avt_341_nav::core::vec2 wp2(static_cast<float>(current_waypoints.poses[cp+1].pose.position.x),
                                      static_cast<float>(current_waypoints.poses[cp+1].pose.position.y));
-            avt_341_nav::utils::vec2 wp_diff = wp2-wp1;
-            avt_341_nav::utils::vec2 wp_diff_norm = wp_diff;
+            avt_341_nav::core::vec2 wp_diff = wp2-wp1;
+            avt_341_nav::core::vec2 wp_diff_norm = wp_diff;
             wp_diff_norm.normalize();
             if(wp_diff.mag() > params.max_separation) {
               // Add intermediate waypoints
@@ -392,7 +393,7 @@ int main(int argc, char *argv[])
             goal_reached_pub->publish(current_waypoints.poses[current_waypoint]);
 
 			      //std::cout << "Shutdown " << shutdown_behavior << std::endl;
-			      if(state.data != avt_341_nav::utils::NavStackState::InactiveCoast) {
+			      if(state.data != avt_341_nav::core::NavStackState::InactiveCoast) {
               shutdown_count++;
             	if (shutdown_count>10)
 				      {
@@ -410,10 +411,10 @@ int main(int argc, char *argv[])
             goal[0] = current_waypoints.poses[current_waypoint].pose.position.x;
             goal[1] = current_waypoints.poses[current_waypoint].pose.position.y;
           }
-		      if(state.data != avt_341_nav::utils::NavStackState::Active) {
+		      if(state.data != avt_341_nav::core::NavStackState::Active) {
 		  	    std::cout << "Why are we here? Current state: " << state.data << std::endl;
 		      }
-          state.data = avt_341_nav::utils::NavStackState::Active;         // request active behavior
+          state.data = avt_341_nav::core::NavStackState::Active;         // request active behavior
           state_pub->publish(state);
         }
       } // if odom_recvd
@@ -422,7 +423,7 @@ int main(int argc, char *argv[])
       //  state_pub->publish(state);
       //}
     }else{
-      state.data = avt_341_nav::utils::NavStackState::Active;
+      state.data = avt_341_nav::core::NavStackState::Active;
       state_pub->publish(state);
     }
 

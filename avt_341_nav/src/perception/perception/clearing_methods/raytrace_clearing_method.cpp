@@ -290,7 +290,7 @@ void RaytraceClearingMethod::RaytraceLine(const geometry_msgs::msg::Point &start
     }
 }
 
-visualization_msgs::msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, utils::vec3 color, float alpha,
+visualization_msgs::msg::Marker RaytraceClearingMethod::GetMarkerMsg(int type, int id, core::vec3 color, float alpha,
                                                           double z_scale) const {
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "map";
@@ -356,9 +356,9 @@ void RaytraceClearingMethod::Visualize() const {
     const float& vx_h_min = rt_config_.voxel_height_min;
 
     visualization_msgs::msg::MarkerArray marker_array;
-    visualization_msgs::msg::Marker mins_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 0, utils::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
-    visualization_msgs::msg::Marker maxes_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 1, utils::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
-    visualization_msgs::msg::Marker voxel_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 2, utils::vec3(0.8, 0.8, 0.8), 0.4f, vx_h_res);
+    visualization_msgs::msg::Marker mins_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 0, core::vec3(0.0, 0.0, 1.0), 1.0f, 0.2);
+    visualization_msgs::msg::Marker maxes_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 1, core::vec3(1.0, 0.0, 0.0), 1.0f, 0.2);
+    visualization_msgs::msg::Marker voxel_marker = GetMarkerMsg(visualization_msgs::msg::Marker::CUBE_LIST, 2, core::vec3(0.8, 0.8, 0.8), 0.4f, vx_h_res);
 
     const float max_value = std::numeric_limits<float>::max() - 1e-5f;
     geometry_msgs::msg::Point origin = GetSensorOrigin();
@@ -583,7 +583,7 @@ void RaytraceWithFilteringClearingMethod::Reset() {
         }
     }
 
-    last_position_ = utils::vec2(0.0, 0.0);
+    last_position_ = core::vec2(0.0, 0.0);
 }
 
 void RaytraceWithFilteringClearingMethod::ResetInternalCellState(int x, int y) {

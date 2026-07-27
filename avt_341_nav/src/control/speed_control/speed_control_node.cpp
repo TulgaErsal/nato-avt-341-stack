@@ -19,13 +19,13 @@
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_nav/node/node_types.h"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 //avt_341 includes
 #include "avt_341_nav/control/pid_controller.h"
 #include <avt_341_nav/speed_control_params_service.hpp>
 #include <algorithm>
 
-using avt_341_nav::utils::NavStackState;
+using avt_341_nav::core::NavStackState;
 
 nav_msgs::msg::Odometry state;
 int current_run_state = NavStackState::NotInit;   // startup state

@@ -22,6 +22,8 @@
 //avt_341 includes
 #include "avt_341_nav/control/pure_pursuit_controller.h"
 #include <avt_341_nav/control_params_service.hpp>
+#include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 
 nav_msgs::msg::Path control_msg;
 nav_msgs::msg::Odometry state;
@@ -32,7 +34,7 @@ bool speedometer_rcvd = false;
 bool des_speed_rcvd = false;
 double desired_speed = 0.0;
 
-using avt_341_nav::utils::NavStackState;
+using avt_341_nav::core::NavStackState;
 
 void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_state) {
 	state = *rcv_state; 
@@ -160,7 +162,7 @@ int main(int argc, char *argv[]){
   double current_brake_value = 0.0;
   double current_throttle_value = 0.0;
   rclcpp::Rate r(rate);
-  avt_341_nav::utils::vec2 goal;
+  avt_341_nav::core::vec2 goal;
   int nl = 0;
   while (rclcpp::ok()){
     geometry_msgs::msg::Twist dc;

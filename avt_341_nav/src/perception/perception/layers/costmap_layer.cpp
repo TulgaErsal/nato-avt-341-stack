@@ -35,12 +35,12 @@ void CostmapLayer::UpdateOdometry(const nav_msgs::msg::Odometry& odom_msg)
 
 float CostmapLayer::GetRmsAtCoordinate(float x, float y) const
 {
-	const utils::ivec2 idx = settings_.to_index(x, y);
+	const core::ivec2 idx = settings_.to_index(x, y);
 	return GetRmsAtCell(idx.x, idx.y);
 }
 
 float CostmapLayer::GetTerrainSlopeAtCoordinate(float x, float y) {
-	const utils::ivec2 idx = settings_.to_index(x, y);
+	const core::ivec2 idx = settings_.to_index(x, y);
 	return GetTerrainSlopeAtCell(idx.x, idx.y);
 }
 

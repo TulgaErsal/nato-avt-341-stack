@@ -29,6 +29,7 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <avt_341_nav/dwa_local_planner_params_service.hpp>
 #include <avt_341_nav/planning/local/dwa/planner.hpp>
+#include "avt_341_nav/core/ros_msg_utils.hpp"
 
 // Initialise ROS messages.
 nav_msgs::msg::Odometry msg_odom;
@@ -96,7 +97,7 @@ void CallbackWaypoints(nav_msgs::msg::Path::SharedPtr msg_rcvd_path) {
 }
 
 void NavStateCallback(avt_341_msgs::msg::NavState::SharedPtr gp_nav_state) {
-    if (gp_nav_state->run_state != avt_341_nav::utils::NavStackState::Active) {
+    if (gp_nav_state->run_state != avt_341_nav::core::NavStackState::Active) {
         return;
     }
     msg_waypoint_pose = gp_nav_state->goal.pose;

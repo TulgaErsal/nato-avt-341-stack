@@ -10,7 +10,7 @@
 #include <avt_341_nav/costmap_geometry_mixin_params_dto.hpp>
 #include <avt_341_nav/perception_params_dto.hpp>
 
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 #include "nav_msgs/msg/map_meta_data.hpp"
 
 namespace avt_341_nav::perception {
@@ -106,14 +106,14 @@ public:
     return to_y_index_int(size_info(), y);
   }
 
-  [[nodiscard]] utils::ivec2 to_index(
+  [[nodiscard]] core::ivec2 to_index(
       const float x, const float y) const {
-    return utils::ivec2(to_x_index(x), to_y_index(y));
+    return core::ivec2(to_x_index(x), to_y_index(y));
   }
 
-  [[nodiscard]] utils::vec2 to_world(
+  [[nodiscard]] core::vec2 to_world(
       const int x_index, const int y_index) const {
-    return utils::vec2(to_x_world(x_index), to_y_world(y_index));
+    return core::vec2(to_x_world(x_index), to_y_world(y_index));
   }
 
   [[nodiscard]] int dilation_x_cells() const {

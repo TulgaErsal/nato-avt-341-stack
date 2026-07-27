@@ -11,7 +11,7 @@
 #include "map_msgs/msg/occupancy_grid_update.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "avt_341_nav/avt_341_utils.h"
+#include "avt_341_nav/core/math_dto.hpp"
 #include "avt_341_nav/node/tf_interface.h"
 #include "avt_341_nav/perception/costmap_dtos.h"
 #include "avt_341_nav/perception/perception_settings.hpp"
@@ -47,9 +47,9 @@ public:
 	void PublishComputeTimes() const;
 	void UpdateThresholds(float slope_threshold, float slope_threshold_max);
 
-	static bool IsPointInCone(const utils::vec2& test_point, const utils::vec2& p, const utils::vec2& v, float r, float angle);
+	static bool IsPointInCone(const core::vec2& test_point, const core::vec2& p, const core::vec2& v, float r, float angle);
 	void UpdateRmsAndSlope();
-	std::vector<utils::ivec2> GetCellsInFov() const;
+	std::vector<core::ivec2> GetCellsInFov() const;
 	bool HasOdomData() const { return current_odom_.header.stamp.sec > 0; }
 	double GetCurrentRms() const {
 		if (rms_buffer_.empty()){
