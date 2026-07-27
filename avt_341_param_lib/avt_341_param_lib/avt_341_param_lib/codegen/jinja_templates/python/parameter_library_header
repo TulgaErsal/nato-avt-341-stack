@@ -11,7 +11,7 @@ from rclpy.time import Time
 import copy
 import rclpy
 import rclpy.parameter
-from avt_341_param_lib.python_validators import ParameterValidators
+from avt_341_param_lib.codegen.python_validators import ParameterValidators
 
 {% if user_validation_file|length -%}
 import {{user_validation_file}} as custom_validators

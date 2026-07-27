@@ -36,7 +36,7 @@ from jinja2 import Template
 from typeguard import typechecked
 import yaml
 
-from avt_341_param_lib.parse_yaml import (
+from avt_341_param_lib.codegen.parse_yaml import (
     GenerateCode,
     DeclareParameter,
     DeclareRuntimeParameter,

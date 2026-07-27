@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from ament_index_python.packages import PackageNotFoundError
 
-from avt_341_param_lib.generate_cpp_header import run as run_cpp
-from avt_341_param_lib.generate_cpp_mixin_header import run as run_mixin_cpp
-from avt_341_param_lib.launch_params import (
+from avt_341_param_lib.codegen.generate_cpp_header import run as run_cpp
+from avt_341_param_lib.codegen.generate_cpp_mixin_header import run as run_mixin_cpp
+from avt_341_param_lib.runtime.launch_params import (
     ParameterCollection,
     _normalize_selector,
     convert_cli_value,
@@ -678,7 +678,7 @@ def test_convert_typed_values():
 
 def test_convert_string_expands_pkg_path(monkeypatch):
     monkeypatch.setattr(
-        'avt_341_param_lib.launch_params.get_package_share_directory',
+        'avt_341_param_lib.runtime.launch_params.get_package_share_directory',
         lambda pkg: f'/opt/share/{pkg}')
     assert convert_cli_value(
         '$pkg_path{demo}/maps/a.csv', 'string', 'a') == '/opt/share/demo/maps/a.csv'
@@ -691,7 +691,7 @@ def test_convert_pkg_path_errors(monkeypatch):
     def raise_not_found(pkg):
         raise PackageNotFoundError(pkg)
     monkeypatch.setattr(
-        'avt_341_param_lib.launch_params.get_package_share_directory', raise_not_found)
+        'avt_341_param_lib.runtime.launch_params.get_package_share_directory', raise_not_found)
     with pytest.raises(ValueError, match=r"\$pkg_path\{nope\} in parameter override 'a'"):
         convert_cli_value('$pkg_path{nope}/f.csv', 'string', 'a')
     with pytest.raises(ValueError, match='no package name'):

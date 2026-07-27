@@ -4,7 +4,7 @@ import pytest
 import yaml
 from ament_index_python.packages import PackageNotFoundError
 
-from avt_341_param_lib.parse_runtime_yaml import (
+from avt_341_param_lib.runtime.parse_runtime_yaml import (
     _patterns_intersect,
     resolve_params_files,
 )
@@ -14,7 +14,7 @@ VEHICLES = ['veh1', 'veh2']
 
 def patch_share_dirs(monkeypatch):
     monkeypatch.setattr(
-        'avt_341_param_lib.launch_params.get_package_share_directory',
+        'avt_341_param_lib.runtime.launch_params.get_package_share_directory',
         lambda pkg: f'/opt/share/{pkg}')
 
 
@@ -78,7 +78,7 @@ def test_pkg_path_unknown_package_raises(tmp_path, monkeypatch):
     def raise_not_found(pkg):
         raise PackageNotFoundError(pkg)
     monkeypatch.setattr(
-        'avt_341_param_lib.launch_params.get_package_share_directory', raise_not_found)
+        'avt_341_param_lib.runtime.launch_params.get_package_share_directory', raise_not_found)
     path = write(tmp_path, 'a.yaml', '/**:\n  ros__parameters:\n    x: $pkg_path{nope}/f.csv\n')
     with pytest.raises(RuntimeError, match=r'\$pkg_path\{nope\}'):
         resolve_params_files([path], VEHICLES)

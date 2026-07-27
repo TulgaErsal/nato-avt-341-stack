@@ -5,7 +5,7 @@ import pytest
 from launch.substitutions import SubstitutionFailure
 from launch.utilities import normalize_to_list_of_substitutions, perform_substitutions
 
-from avt_341_param_lib.launch_node_config import NodeConfigCollection
+from avt_341_param_lib.runtime.launch_node_config import NodeConfigCollection
 
 
 def load(tmp_path: Path, text: str) -> NodeConfigCollection:

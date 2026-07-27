@@ -25,7 +25,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
-from avt_341_param_lib.launch_params import ParameterCollection
+from avt_341_param_lib.runtime.launch_params import ParameterCollection
 
 SHARE_DIR = get_package_share_directory('avt_341_param_lib_example').replace('\\', '/')
 PARAMS_DIR = os.path.join(SHARE_DIR, 'parameters')

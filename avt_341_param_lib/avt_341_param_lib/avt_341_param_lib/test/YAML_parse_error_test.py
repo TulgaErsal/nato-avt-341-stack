@@ -18,11 +18,11 @@ import sys
 import os
 import tempfile
 
-from avt_341_param_lib.generate_cpp_header import run as run_cpp
-from avt_341_param_lib.generate_python_module import run as run_python
-from avt_341_param_lib.generate_markdown import run as run_md
-from avt_341_param_lib.parse_yaml import YAMLSyntaxError
-from avt_341_param_lib.generate_cpp_header import parse_args
+from avt_341_param_lib.codegen.generate_cpp_header import run as run_cpp
+from avt_341_param_lib.codegen.generate_python_module import run as run_python
+from avt_341_param_lib.codegen.generate_markdown import run as run_md
+from avt_341_param_lib.common.template_yaml import YAMLSyntaxError
+from avt_341_param_lib.codegen.generate_cpp_header import parse_args
 
 # Test yaml files live next to this file, both in the source tree and when
 # installed into site-packages

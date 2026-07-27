@@ -3,7 +3,7 @@
 Applies only to the runtime override parameter yaml files a launch file layers
 onto its nodes (the ``params_files`` mechanism) -- never to the
 code-generation template yaml files consumed by
-:mod:`avt_341_param_lib.parse_yaml`; templating syntax in those files is not
+:mod:`avt_341_param_lib.codegen.parse_yaml`; templating syntax in those files is not
 interpreted.
 
 A ``$python{}``/``$ref{}`` template must be the entire scalar string value of
@@ -43,12 +43,12 @@ from typing import Any, List, Optional, Tuple
 import yaml
 from ament_index_python.packages import get_package_share_directory
 
-from avt_341_param_lib.launch_params import (
+from avt_341_param_lib.runtime.launch_params import (
     PKG_PATH_MARKER,
     _normalize_selector,
     expand_pkg_path,
 )
-from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY
+from avt_341_param_lib.common.template_yaml import PARAMETERS_ROOT_KEY
 
 _PYTHON_RE = re.compile(r'^\$python\{(?P<expr>.*)\}$', re.DOTALL)
 _REF_RE = re.compile(r'^\$ref\{(?P<target>[^{}]*)\}$')

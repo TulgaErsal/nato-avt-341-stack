@@ -21,7 +21,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, OpaqueFunction
 from launch_ros.actions import Node, PushRosNamespace
 
-from avt_341_param_lib.launch_params import (
+from avt_341_param_lib.runtime.launch_params import (
     ParameterCollection,
     perform_yaml,
     relevant_params_files,

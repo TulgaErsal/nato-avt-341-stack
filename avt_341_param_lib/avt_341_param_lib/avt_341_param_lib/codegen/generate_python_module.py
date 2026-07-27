@@ -32,49 +32,40 @@ import argparse
 import sys
 import os
 
-from avt_341_param_lib.parse_yaml import GenerateCode
+from avt_341_param_lib.codegen.parse_yaml import GenerateCode
 
 
-def run(dto_output_file, service_output_file, yaml_file, validate_header='',
-        mixin_include_prefix=''):
-    gen_param_struct = GenerateCode('cpp')
-    gen_param_struct.mixin_include_prefix = mixin_include_prefix
-    for output_file in (dto_output_file, service_output_file):
-        output_dir = os.path.dirname(output_file)
-        if output_dir and not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
+def run(output_file, yaml_file, validation_module=''):
+    print(f'Running {__file__} {output_file} {yaml_file} {validation_module}')
+    gen_param_struct = GenerateCode('python')
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
 
-    gen_param_struct.parse(yaml_file, validate_header)
+    gen_param_struct.parse(yaml_file, validation_module)
 
-    dto_header_include = os.path.basename(dto_output_file)
-    with open(dto_output_file, 'w') as f:
-        f.write(gen_param_struct.render_cpp_dto())
-    with open(service_output_file, 'w') as f:
-        f.write(gen_param_struct.render_cpp_service(dto_header_include))
+    code = str(gen_param_struct)
+    with open(output_file, 'w') as f:
+        f.write(code)
+
+    # Put an __init__.py file if one does not yet exist.
+    init_file = os.path.join(os.path.dirname(output_file), '__init__.py')
+    open(init_file, 'a').close()
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('output_cpp_dto_header_file')
-    parser.add_argument('output_cpp_service_header_file')
+    parser.add_argument('output_python_module_file')
     parser.add_argument('input_yaml_file')
-    parser.add_argument('validate_header', nargs='?', default='')
-    parser.add_argument(
-        '--mixin-include-prefix', default='',
-        help='Include sub-path used to reference generated mixin DTO headers, '
-             'e.g. "avt_341" for #include <avt_341/<stem>_params_dto.hpp>')
+    parser.add_argument('validate_file', nargs='?', default='')
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    dto_output_file = args.output_cpp_dto_header_file
-    service_output_file = args.output_cpp_service_header_file
+    output_file = args.output_python_module_file
     yaml_file = args.input_yaml_file
-    validate_header = args.validate_header
-
-    run(dto_output_file, service_output_file, yaml_file, validate_header,
-        args.mixin_include_prefix)
+    validate_file = args.validate_file
+    run(output_file, yaml_file, validate_file)
 
 
 if __name__ == '__main__':

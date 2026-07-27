@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from avt_341_param_lib.generate_cpp_header import run as run_cpp
-from avt_341_param_lib.generate_markdown import run as run_documentation
-from avt_341_param_lib.generate_python_module import run as run_python
-from avt_341_param_lib.parse_yaml import YAMLSyntaxError
+from avt_341_param_lib.codegen.generate_cpp_header import run as run_cpp
+from avt_341_param_lib.codegen.generate_markdown import run as run_documentation
+from avt_341_param_lib.codegen.generate_python_module import run as run_python
+from avt_341_param_lib.common.template_yaml import YAMLSyntaxError
 
 TEST_DIR = Path(__file__).resolve().parent
 FLOAT_TEMPLATE = TEST_DIR / 'float_parameters.yaml'

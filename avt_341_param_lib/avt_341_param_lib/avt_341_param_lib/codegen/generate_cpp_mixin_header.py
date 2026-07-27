@@ -11,7 +11,7 @@ import argparse
 import os
 import sys
 
-from avt_341_param_lib.parse_yaml import GenerateCode
+from avt_341_param_lib.codegen.parse_yaml import GenerateCode
 
 
 def run(dto_output_file, yaml_file):

@@ -59,8 +59,8 @@ from ament_index_python.packages import PackageNotFoundError, get_package_share_
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 
-from avt_341_param_lib.node_selectors import selector_matches
-from avt_341_param_lib.parse_yaml import PARAMETERS_ROOT_KEY, expand_mixins
+from avt_341_param_lib.runtime.node_selectors import selector_matches
+from avt_341_param_lib.common.template_yaml import PARAMETERS_ROOT_KEY, expand_mixins
 
 _ARRAY_SUFFIX = '_array'
 _MAP_PREFIX = '__map_'
@@ -135,7 +135,7 @@ def load_template_specs(path: str) -> Dict[str, ParameterSpec]:
     """Read a parameter template yaml file into launch-layer parameter specs.
 
     ``__include_mixins`` entries are expanded first (see
-    :func:`avt_341_param_lib.parse_yaml.expand_mixins`). Returns a mapping
+    :func:`avt_341_param_lib.common.template_yaml.expand_mixins`). Returns a mapping
     of the flattened (dot-nested) parameter name to its
     :class:`ParameterSpec`.
     """

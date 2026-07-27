@@ -1,5 +1,20 @@
 # AVT-341 Parameter Library
 
+## Package layout
+
+The Python package is split by *when* its modules run:
+
+| Sub-package | Runs at | Contents |
+| --- | --- | --- |
+| `avt_341_param_lib.codegen` | build time | The generators invoked by the CMake macros (`python -m avt_341_param_lib.codegen.generate_*`), the yaml-to-code engine `parse_yaml`, the C++/Python conversion tables, the jinja templates, and `python_validators` (which the generated Python modules import). |
+| `avt_341_param_lib.runtime` | launch time | The launch-file helpers: `launch_params`, `launch_node_config`, `parse_runtime_yaml`, `node_selectors`, `launch_expressions`. |
+| `avt_341_param_lib.common` | both | `template_yaml`, which owns the parameter template format itself -- the root elements (`ros__parameters`, `code_namespace`, `class_name`), the `__include_mixins` expansion and `YAMLSyntaxError`. |
+
+`common` deliberately depends on neither of the other two, and neither of the
+other two depends on the other. In particular the launch-time helpers do not
+import the code generator, so `ros2 launch` does not pull in jinja2 or the
+conversion tables.
+
 ## Generated C++ DTO and service headers
 
 Each C++ parameter template produces two headers and two CMake interface
@@ -78,12 +93,12 @@ are not supported in mixins.
 
 ## Launch node configuration
 
-`avt_341_param_lib.launch_node_config.NodeConfigCollection` loads one optional
+`avt_341_param_lib.runtime.launch_node_config.NodeConfigCollection` loads one optional
 launch-only YAML file and returns the topic remappings and additional process
 environment that apply to a node:
 
 ```python
-from avt_341_param_lib.launch_node_config import NodeConfigCollection
+from avt_341_param_lib.runtime.launch_node_config import NodeConfigCollection
 
 node_config = NodeConfigCollection('/path/to/node_config.yaml')
 tracker_remappings = node_config.get_remappings('/veh1/object_tracking_node')

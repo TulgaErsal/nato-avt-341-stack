@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 import yaml
 from launch.substitutions import EnvironmentVariable
 
-from avt_341_param_lib.node_selectors import selector_matches
+from avt_341_param_lib.runtime.node_selectors import selector_matches
 
 _REMAPPINGS_KEY = 'remappings'
 _ADDITIONAL_ENV_KEY = 'additional_env'

@@ -89,7 +89,7 @@ macro(avt_341_generate_cpp_parameter_file BASE_NAME YAML_FILE)
   add_custom_command(
     OUTPUT ${PARAM_GENERATION_STAMP}
     BYPRODUCTS ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE}
-    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_header
+    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_header
       ${DTO_HEADER_FILE} ${SERVICE_HEADER_FILE} ${YAML_FILE_PATH}
       ${VALIDATE_HEADER_FILENAME}
       --mixin-include-prefix ${LIB_INCLUDE_SUBDIR}
@@ -244,7 +244,7 @@ macro(avt_341_generate_cpp_mixin_file BASE_NAME YAML_FILE)
 
   add_custom_command(
     OUTPUT ${DTO_HEADER_FILE}
-    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_cpp_mixin_header
+    COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_cpp_mixin_header
       ${DTO_HEADER_FILE} ${YAML_FILE_PATH}
     DEPENDS ${YAML_FILE_PATH}
     COMMENT "Generating mixin DTO ${DTO_LIB_NAME}.hpp"
@@ -334,10 +334,10 @@ function(avt_341_generate_python_parameter_file LIB_NAME YAML_FILE)
   # Generate the module for Python
   add_custom_command(
           OUTPUT ${PARAM_HEADER_FILE}
-          COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}
+          COMMAND ${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}
           DEPENDS ${YAML_FILE} ${avt341_gp_mixin_files} ${VALIDATE_HEADER}
           COMMENT
-          "Running `${Python3_EXECUTABLE} -m avt_341_param_lib.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}`"
+          "Running `${Python3_EXECUTABLE} -m avt_341_param_lib.codegen.generate_python_module ${PARAM_HEADER_FILE} ${YAML_FILE} ${VALIDATE_HEADER_FILENAME}`"
           VERBATIM
   )
 

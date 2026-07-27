@@ -6,13 +6,13 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, O
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace, SetParameter
 
-from avt_341_param_lib.launch_params import (
+from avt_341_param_lib.runtime.launch_params import (
     ParameterCollection,
     perform_yaml,
     relevant_params_files,
 )
-from avt_341_param_lib.launch_node_config import NodeConfigCollection
-from avt_341_param_lib.parse_runtime_yaml import resolve_params_files
+from avt_341_param_lib.runtime.launch_node_config import NodeConfigCollection
+from avt_341_param_lib.runtime.parse_runtime_yaml import resolve_params_files
 
 # Parameter templates ship with the avt_341_nav source package; the deployment
 # assets (urdf, rviz, bagging configuration) ship with avt_341_bringup.

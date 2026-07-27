@@ -28,7 +28,7 @@
 
 import sys
 import os
-from avt_341_param_lib.generate_python_module import run
+from avt_341_param_lib.codegen.generate_python_module import run
 
 
 def generate_parameter_module(
