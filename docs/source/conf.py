@@ -24,12 +24,14 @@ extensions = [
 ]
 templates_path = ["_templates"]
 exclude_patterns = []
+numfig = True
 
 # HTML build
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "navigation_with_keys": False,
-    "show_nav_level": 2
+    "show_nav_level": 2,
+    "show_toc_level": 3
 }
 html_static_path = ["_static"]
 html_logo = "_static/img/logo.png"
