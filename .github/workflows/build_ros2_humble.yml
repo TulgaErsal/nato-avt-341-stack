@@ -124,6 +124,10 @@ jobs:
         if: always() && env.BUILD_DONE == 'true'
         run: |
           aws s3 cp ros_ws/build/avt_341_nav/test_results s3://${{ secrets.AWS_S3_BUCKET_NAME }}/test_results --recursive
-          aws s3 cp ros_ws/build/avt_341_nav/unit_test_badge.svg s3://${{ secrets.AWS_S3_BUCKET_NAME }}/unit_test_badge.svg --acl public-read
+          # Explicit cache headers since Github camo user content defaults to excessively long TTL cache without this
+          aws s3 cp ros_ws/build/avt_341_nav/unit_test_badge.svg s3://${{ secrets.AWS_S3_BUCKET_NAME }}/unit_test_badge.svg \
+            --acl public-read \
+            --content-type "image/svg+xml" \
+            --cache-control "no-cache, max-age=0, must-revalidate"
           aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/test_results/*"
           aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/unit_test_badge.svg"
