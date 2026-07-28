@@ -1,0 +1,91 @@
+# Manually-invoked workflow to force GitHub's camo image proxy to re-fetch a README badge.
+#
+# GitHub proxies externally-hosted README images through camo (camo.githubusercontent.com).
+# Camo is pull-based and applies a ~1 year default TTL when the origin sends no Cache-Control,
+# so a badge uploaded without cache headers stays frozen no matter how often it is regenerated
+# or how many times the CDN in front of it is invalidated.
+#
+# Once the origin serves short-lived cache headers, a single PURGE evicts the stale entry and
+# the forced re-fetch stores it under the new TTL. After that camo revalidates on every request
+# and this workflow should not be needed again unless the origin's headers regress.
+#
+# PURGE on camo is undocumented and unsupported by GitHub. A non-2xx response means "not
+# honored", not "misconfigured" - the badge still self-corrects once the old entry ages out.
+name: Purge Camo Badge Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      badge:
+        description: "Badge filename to purge, matched against the image URL in the rendered README"
+        required: true
+        default: unit_test_badge.svg
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    name: Purge Camo Cache
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Resolve badge URLs and purge camo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BADGE: ${{ inputs.badge }}
+        run: |
+          # Rendered README emits <img src="https://camo.../HASH" data-canonical-src="<origin url>">.
+          # Split on '>' so each tag lands on its own line, then isolate the tag for this badge.
+          # The '|| true' guards are required: steps run under 'set -eo pipefail', so a grep with
+          # no match would abort the step before the checks below can report anything useful.
+          TAG=$(curl -sL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github.html" \
+            "https://api.github.com/repos/${{ github.repository }}/readme" \
+            | tr '>' '\n' \
+            | grep -F "$BADGE" \
+            | grep -F 'camo.githubusercontent.com' \
+            | head -1 || true)
+
+          CAMO_URL=$(echo "$TAG" | grep -o 'https://camo\.githubusercontent\.com[^"]*' | head -1 || true)
+          ORIGIN_URL=$(echo "$TAG" | sed -n 's/.*data-canonical-src="\([^"]*\)".*/\1/p' | head -1 || true)
+
+          if [ -z "$CAMO_URL" ] || [ -z "$ORIGIN_URL" ]; then
+            echo "::error::No camo-proxied image matching '$BADGE' found in the rendered README. Note that github.com-hosted images (such as Actions status badges) are never proxied and cannot be purged."
+            exit 1
+          fi
+
+          echo "origin: $ORIGIN_URL"
+          echo "camo:   $CAMO_URL"
+
+          # Only purge once the origin sends short-lived cache headers. Purging while the origin
+          # still sends none would make camo re-fetch and re-pin for another year, which is
+          # strictly worse than leaving the stale entry to age out on its own.
+          CC=$(curl -sI "$ORIGIN_URL" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2- | head -1 || true)
+          MAX_AGE=$(echo "$CC" | grep -o 'max-age=[0-9]*' | head -1 | cut -d= -f2 || true)
+
+          SAFE=false
+          if echo "$CC" | grep -qiE 'no-cache|no-store'; then
+            SAFE=true
+          elif [ -n "$MAX_AGE" ] && [ "$MAX_AGE" -le 3600 ]; then
+            SAFE=true
+          fi
+
+          if [ "$SAFE" != "true" ]; then
+            echo "::error::${ORIGIN_URL} sends 'Cache-Control: ${CC:-<none>}'. Purging now would make camo re-cache it under a long TTL. Fix the origin's cache headers and re-run."
+            exit 1
+          fi
+
+          echo "origin cache-control: $CC"
+
+          echo "--- camo state before purge"
+          curl -sI "$CAMO_URL" | tr -d '\r' | grep -iE '^(cache-control|age|x-cache):' || true
+
+          curl -s -o /dev/null -w 'PURGE responded %{http_code}\n' -X PURGE "$CAMO_URL"
+          sleep 5
+
+          echo "--- camo state after purge"
+          curl -sI "$CAMO_URL" | tr -d '\r' | grep -iE '^(cache-control|age|x-cache):' || true
+
+          echo
+          echo "Purge succeeded if Cache-Control above now matches the origin's and Age reset to a low value."
