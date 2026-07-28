@@ -20,7 +20,7 @@ version = "main"
 release = get_git_revision_short_hash()
 extensions = [
     "breathe", "sphinx.ext.autodoc", "sphinx_autodoc_typehints",
-    "sphinx.ext.napoleon", "sphinx.ext.todo"
+    "sphinx.ext.napoleon", "sphinx.ext.todo", "sphinxcontrib.rsvgconverter"
 ]
 templates_path = ["_templates"]
 exclude_patterns = []

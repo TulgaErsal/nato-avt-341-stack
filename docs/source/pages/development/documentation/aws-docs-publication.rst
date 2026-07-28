@@ -226,7 +226,7 @@ Create a new workflow file under ``.github/workflows/<workflow_name>.yml`` with 
             run: |
               sudo apt update
               sudo apt install doxygen latexmk texlive-latex-extra
-              pip install -r requirements.txt
+              pip install -r docs/requirements.txt
 
           - name: Build HTML and PDF documentation
             run: cd docs && make html && make latexpdf

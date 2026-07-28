@@ -13,3 +13,33 @@
 .wy-table-responsive table th {
     white-space: inherit;
 }
+
+/* Widen the main content column.
+ *
+ * By default pydata-sphinx-theme caps the page at 88rem and then gives 25% of
+ * it to the primary sidebar and 17rem to the secondary one, which leaves the
+ * article body only about half the viewport on a wide screen.
+ *
+ * Scoped to the theme's own desktop breakpoint: below it both sidebars become
+ * fixed drawers sized at 75%, which these rules must not touch.
+ */
+@media (min-width: 960px) {
+    /* Outer whitespace on either side of the whole layout. The theme default is
+     * 88rem; raising it trades margin for body width. Above roughly 100rem the
+     * page simply fills the viewport and the margin disappears entirely. */
+    .bd-page-width {
+        max-width: 94rem;
+    }
+
+    .bd-sidebar-primary {
+        width: 18%;
+    }
+
+    :root {
+        --pst-sidebar-secondary: 15rem;
+    }
+
+    .bd-main .bd-content .bd-article-container {
+        max-width: 85em;
+    }
+}
