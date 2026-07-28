@@ -58,6 +58,8 @@ MissionManager::MissionManager(
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
+
+    publishTaskChange();
 }
 
 MissionManager::~MissionManager() {
@@ -244,6 +246,7 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
       task_list.push_back(task);
       RCLCPP_INFO(node_->get_logger(), "%s QUEUED %s", my_name.c_str(), task->description().c_str());
     }
+    publishTaskChange();
     return true;
 }
 
@@ -745,11 +748,13 @@ void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose)
 
 void MissionManager::handleCancelTask(const CancelMsg & msg){
   cancelTask(msg.target_msg_id, true);
+  publishTaskChange();
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
 void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
   resetTaskList(true);
+  publishTaskChange();
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 

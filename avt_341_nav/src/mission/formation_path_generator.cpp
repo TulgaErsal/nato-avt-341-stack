@@ -1,13 +1,19 @@
 // clas definition
 #include "avt_341_nav/mission/formation_path_generator.h"
 // c++ includes
+#include <cmath>
 #include <math.h>
 #include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_nav/core/eigen_dto_conversion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
 namespace avt_341_nav {
 namespace mission {
+
+namespace {
+constexpr char WORLD_TF_FRAME[] = "map";
+}
 
 FormationPathGenerator::FormationPathGenerator(const avt_341_nav::mission::FormationParameters & params)
 : params_(params), prev_leader_x_(0.0), prev_leader_y_(0.0), tangent_heading_valid_(false){
@@ -18,10 +24,12 @@ FormationPathGenerator::FormationPathGenerator(const avt_341_nav::mission::Forma
 
 /**
  * @brief Generate the global path for the vehicle
- * 
+ *
  * @param leader_odom Current odometry status of the lead vehicle
+ * @param odom Current odometry status of this vehicle
  * @param status Message containing desired offsets for this vehicle
- * @param leaderVy y (left) norm vector in coordiante frame of leader
+ * @param leaderVx x (forward) norm vector in coordinate frame of leader
+ * @param leaderVy y (right) norm vector in coordinate frame of leader
  */
 void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & leader_odom, const nav_msgs::msg::Odometry & odom,
                                              avt_341_msgs::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
@@ -29,11 +37,17 @@ void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & 
 
   double leaderYoffset = status.y_offset;
   double leaderXoffset = params_.x_offset_on_path ? 0.0 : status.x_offset;
+    
+  desired_global_path_.header.frame_id = WORLD_TF_FRAME;
+  leader_path_history_.header.frame_id = WORLD_TF_FRAME;
 
   geometry_msgs::msg::PoseStamped target_pose;
+  target_pose.header.frame_id = WORLD_TF_FRAME;
+  target_pose.header.stamp = leader_odom.header.stamp;
   target_pose.pose.position.x = leader_odom.pose.pose.position.x + leaderVy[0]*leaderYoffset + leaderVx[0]*leaderXoffset;
   target_pose.pose.position.y = leader_odom.pose.pose.position.y + leaderVy[1]*leaderYoffset + leaderVx[1]*leaderXoffset;
   target_pose.pose.position.z = leader_odom.pose.pose.position.z;
+  target_pose.pose.orientation = core::YawToQuaternionMsg(std::atan2(leaderVx[1], leaderVx[0]));
 
   // If x_offset_on_path, need to keep track of leader path history and only add to desired global path once past x_offset
   if(desired_global_path_.poses.empty()){

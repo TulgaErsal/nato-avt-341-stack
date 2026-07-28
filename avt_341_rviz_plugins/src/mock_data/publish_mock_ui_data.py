@@ -18,12 +18,13 @@ Run it (after sourcing the workspace so ``avt_341_msgs`` is importable) with::
 
 from __future__ import annotations
 
+import copy
 import math
 import random
 import string
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import rclpy
 from rclpy.node import Node
@@ -72,6 +73,10 @@ MARKER_RADIUS_M: float = 10.0
 
 # Number of goals carried in a mock NavGoalSequence.
 GOALS_PER_SEQUENCE: int = 3
+
+# Chance that a mock task change leaves the vehicle with no active task, so the
+# panel's "all tasks complete" rendering gets exercised regularly.
+IDLE_PROBABILITY: float = 0.3
 
 
 @dataclass(frozen=True)
@@ -129,6 +134,17 @@ class MockUiDataPublisher(Node):
         # tracker sub-groups in the UI stay put and only their values update.
         self._tracker_targets: Dict[str, List[str]] = {
             vehicle_id: self._build_tracker_targets(vehicle_id)
+            for vehicle_id in VEHICLE_IDS
+        }
+
+        # The active task per vehicle, rerolled only when a task change is
+        # published. The faster task-status stream refreshes this same task
+        # rather than inventing a new one, mirroring the real mission manager:
+        # the module status is the authority for *which* task is running and the
+        # status stream only carries live updates to it, so the two must agree
+        # on task_id or the panel will (correctly) discard the status messages.
+        self._active_tasks: Dict[str, MissionTaskStatus] = {
+            vehicle_id: self._make_active_task(vehicle_id)
             for vehicle_id in VEHICLE_IDS
         }
 
@@ -208,7 +224,11 @@ class MockUiDataPublisher(Node):
     def _on_tick(self) -> None:
         for job in self._jobs:
             if self._tick % job.decimation == 0:
-                job.publisher.publish(job.build())
+                # A factory returning None means "nothing to say this tick",
+                # which some topics use to mock a genuinely silent publisher.
+                msg = job.build()
+                if msg is not None:
+                    job.publisher.publish(msg)
         self._tick += 1
 
     # -------------------------------------------------------------- factories
@@ -232,34 +252,82 @@ class MockUiDataPublisher(Node):
         of the velocity row."""
         return Float64(data=random.uniform(0.0, 10.0))
 
-    def _make_task_status(self, vehicle_id: str) -> MissionTaskStatus:
+    def _make_active_task(self, vehicle_id: str) -> MissionTaskStatus:
+        """A newly started task, or the "no task running" sentinel.
+
+        The sentinel must match what MissionManager publishes once its queue
+        drains: task_id -1 with every other field left at its default. A -1 id
+        with a description means something different -- one of the internal
+        tasks the mission manager builds for itself (contact investigation,
+        overwatch) -- and the panel keeps showing those.
+        """
         msg = MissionTaskStatus()
         msg.header = self._header(MAP_FRAME_ID)
-        # -1 sentinel (no task) about a third of the time, else a real id.
-        msg.task_id = random.choice([-1, random.randint(0, 50)])
+        msg.task_id = -1
+        if random.random() < IDLE_PROBABILITY:
+            return msg
+
+        msg.task_id = random.randint(0, 50)
         msg.task_description = random.choice([
-            "Idle", "Move to goal", "Holding position", "Form wedge",
-            "Encircle target", "Follow leader"
+            "MOVE_TO", "HOLD_POSITION", "FORM_WEDGE", "ENCIRCLE", "FOLLOW"
         ])
         others = [v for v in VEHICLE_IDS if v != vehicle_id]
         # Empty tracked_vehicle => this vehicle is the leader / not following.
         msg.tracked_vehicle = random.choice([""] + others)
         msg.formation_type = random.choice(
             ["", "wedge", "column", "line", "encircle"])
-        msg.target_pose = self._random_pose()
         # A random subset of the other vehicles participate in the formation.
         msg.formation_vehicles = random.sample(others,
                                                random.randint(0, len(others)))
         return msg
 
+    def _emit_active_task(self, vehicle_id: str) -> MissionTaskStatus:
+        """The cached active task with its mid-task fields refreshed.
+
+        Only the target pose moves, and the description tracks it -- the real
+        MoveTo description embeds its goal position, which the mission manager
+        rewrites as a contact is refined. Everything identifying the task, above
+        all task_id, is left alone.
+        """
+        msg = copy.deepcopy(self._active_tasks[vehicle_id])
+        msg.header = self._header(MAP_FRAME_ID)
+        if not msg.task_description:
+            return msg
+
+        msg.target_pose = self._random_pose()
+        msg.task_description = (
+            f"ID {msg.task_id} {msg.task_description}: "
+            f"({msg.target_pose.position.x:.1f},{msg.target_pose.position.y:.1f})")
+        return msg
+
+    def _make_task_status(self, vehicle_id: str) -> Optional[MissionTaskStatus]:
+        """Live refresh of the active task, or nothing while the vehicle is idle.
+
+        Publishing nothing is the point: MissionManager::publishTaskStatus()
+        returns early when there is no active task, so the panel must not depend
+        on this topic to learn that a mission finished.
+        """
+        if not self._active_tasks[vehicle_id].task_description:
+            return None
+        return self._emit_active_task(vehicle_id)
+
     def _make_mission_module_status(self, vehicle_id: str) -> MissionModuleStatus:
-        """Module status: the active task plus 0-4 queued task descriptions."""
+        """Module status: the active task plus 0-4 queued task descriptions.
+
+        This topic mocks a task *change*, so it is where a new active task is
+        picked; the status stream then refreshes whatever is chosen here.
+        """
+        self._active_tasks[vehicle_id] = self._make_active_task(vehicle_id)
+
         msg = MissionModuleStatus()
-        msg.active_task = self._make_task_status(vehicle_id)
+        msg.active_task = self._emit_active_task(vehicle_id)
         msg.header = msg.active_task.header
-        queue_pool = ["Move to goal", "Form wedge", "Encircle target",
-                      "Follow leader", "Overwatch", "Wait for completion"]
-        msg.queued_tasks = random.sample(queue_pool, random.randint(0, 4))
+        # The queue is drawn from the task list behind the active one, so it can
+        # only be non-empty while something is running.
+        if msg.active_task.task_description:
+            queue_pool = ["Move to goal", "Form wedge", "Encircle target",
+                          "Follow leader", "Overwatch", "Wait for completion"]
+            msg.queued_tasks = random.sample(queue_pool, random.randint(0, 4))
         return msg
 
     def _make_nav_state(self, vehicle_id: str) -> NavState:

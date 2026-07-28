@@ -117,6 +117,10 @@ class MissionManager{
     void publishFormationStatus(avt_341_msgs::msg::FollowerStatus & status_msg);
     void publishLeaderStatus();
     void publishTaskStatus();
+    // Publishes the latched snapshot of the active and queued tasks. Call after
+    // any operation that mutates the task list outside of updateTasks(),
+    // otherwise the retained sample is served stale to late-joining subscribers.
+    void publishTaskChange();
     avt_341_msgs::msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
     void reset();
     void resetTaskList(bool send_completion_msg);
@@ -130,8 +134,6 @@ class MissionManager{
     double getSpeedSetpoint();
 
   private:
-
-    void publishTaskChange();
 
     MissionManagerParams params_;
     std::vector<MissionPoint> mission_data;
