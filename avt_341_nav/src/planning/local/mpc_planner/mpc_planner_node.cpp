@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
             compute_time_recorder->PublishSummary();
         }
 
-        if(reset_called && is_initialized) {
+        if(reset_called) {
             // Nothing to reset currently
             RCLCPP_INFO(node->get_logger(), "Resetting MPC local planner.");
             std_msgs::msg::String reset_ack_msg;
