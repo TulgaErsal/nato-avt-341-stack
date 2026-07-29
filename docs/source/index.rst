@@ -10,5 +10,6 @@ branch "|version|", commit "|release|".
    pages/overview/index.rst
    pages/getting-started/index.rst
    pages/modules/index.rst
+   pages/configuration/index.rst
    pages/testing/index.rst
    pages/development/index.rst

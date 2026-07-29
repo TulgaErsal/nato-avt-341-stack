@@ -15,8 +15,9 @@ namespace avt_341 {
 namespace rviz_plugins {
 
 /// A lightweight collapsible container ("accordion"). The header is a left-
-/// aligned, slightly enlarged title with a caret indicating the expanded /
-/// collapsed state, an underline beneath it, and the content below.
+/// aligned, slightly enlarged title with an optional right-aligned status badge
+/// and a caret indicating the expanded / collapsed state, an underline beneath
+/// it, and the content below.
 ///
 /// Unlike a QGroupBox it draws no surrounding box and adds no left/right padding,
 /// so embedded controls sit flush with the header. Clicking anywhere on the
@@ -40,6 +41,15 @@ public:
     // square; it is hidden by default.
     void setSwatchColor( const QColor& color );
 
+    // Shows a rounded "pill" badge with `text` on `color`, right-aligned in the
+    // header row just left of the caret (e.g. to tag a group with a short status
+    // such as "active"). An empty `text` hides the badge, as does an invalid
+    // `color`; the badge is hidden by default.
+    void setBadge( const QString& text, const QColor& color );
+
+    // Hides the badge, if one is shown.
+    void clearBadge();
+
 public Q_SLOTS:
     void toggle();
 
@@ -55,6 +65,7 @@ private:
     QWidget* header_;
     QLabel* swatch_label_;
     QLabel* title_label_;
+    QLabel* badge_label_;
     QLabel* caret_label_;
     QWidget* content_container_;
     QVBoxLayout* content_layout_;
@@ -63,6 +74,9 @@ private:
     // Pre-scaled caret pixmaps, loaded once for each state.
     QPixmap caret_expanded_pixmap_;
     QPixmap caret_collapsed_pixmap_;
+
+    // The badge's fixed height, which also sets its corner radius.
+    int badge_height_ = 0;
 
     bool expanded_ = true;
 

@@ -1,0 +1,246 @@
+code_namespace: avt_341_nav/params/mpc_local_planner
+ros__parameters:
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
+  # Julia module paths (avt_341_mpc_planner_node)
+  # ====================================================================================================================
+  sysimage_path:
+    type: string
+    default_value: ""
+    description: "Filepath to the Julia sysimage"
+  planner_module_path:
+    type: string
+    default_value: ""
+    description: "Filepath to the Julia MPC planner module"
+  parameters_module_path:
+    type: string
+    default_value: ""
+    description: "Filepath to the Julia MPC parameters module"
+  models_module_path:
+    type: string
+    default_value: ""
+    description: "Filepath to the Julia MPC models module"
+
+  # MPC planner
+  # ====================================================================================================================
+  rate:
+    type: double
+    default_value: 20.0
+    description: "Planner update rate"
+    validation:
+      gt<>: [ 0.0 ]
+  compute_time_publish_period:
+    type: double
+    default_value: 1.0
+    description: "Period in seconds for publishing planner compute-time summaries; <= 0 disables."
+  tire_model:
+    type: string
+    default_value: "P"
+    description: "L for linear, P for Pacejka, N for neural network for deformable terrain"
+    validation:
+      one_of<>: [ [ "L", "P", "N" ] ]
+  num_col_points:
+    type: int
+    default_value: 10
+    description: "number of collocation points to use in MPC"
+    validation:
+      gt<>: [ 0 ]
+  prediction_time_horizon:
+    type: double
+    default_value: 2.0
+    description: "MPC prediction time horizon [s]"
+  max_num_obs:
+    type: int
+    default_value: 500
+    description: "maximum number of obstacles allowed in MPC"
+    validation:
+      gt<>: [ 0 ]
+  max_num_seg:
+    type: int
+    default_value: 2000
+    description: "maximum number of segmentation cells allowed in MPC"
+    validation:
+      gt<>: [ 0 ]
+  min_speed:
+    type: double
+    default_value: 0.5
+    description: "minimum allowed vehicle speed [m/s]"
+  max_speed:
+    type: double
+    default_value: 4.0
+    description: "maximum allowed vehicle speed [m/s]"
+  use_hard_constraints:
+    type: bool
+    default_value: false
+    description: "whether to include obstacles as hard constraints in addition to soft constraints"
+  use_segmentation:
+    type: bool
+    default_value: false
+    description: "Whether to use segmentation data in the MPC planner."
+  segmentation_resolution:
+    type: double
+    default_value: 1.0
+    description: "Resolution [m] of the segmentation cells passed to the MPC planner."
+  linear_solver:
+    type: string
+    default_value: "ma27"
+    description: "See https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_linear_solver for list of linear solvers. Recommended: 'ma27'. Default: 'mumps'"
+
+  # Objective function weights
+  # ====================================================================================================================
+  w_distance_to_obstacles:
+    type: double
+    default_value: 50.0
+    description: "weight on distanceToObstacles in the objective function"
+  w_distance_to_goal:
+    type: double
+    default_value: 150.0
+    description: "weight on distanceToGoal in the objective function"
+  w_deviation_in_yaw:
+    type: double
+    default_value: 1.0
+    description: "weight on deviationInYaw in the objective function"
+  w_yaw_accel:
+    type: double
+    default_value: 0.8
+    description: "weight on yawAccel in the objective function"
+  w_traversability_cost:
+    type: double
+    default_value: 0.1
+    description: "weight on traversability cost in the objective function"
+  w_final_speed:
+    type: double
+    default_value: 200.0
+    description: "weight on deviationFromDesiredFinalSpeed in the objective function"
+  w_final_heading:
+    type: double
+    default_value: 100.0
+    description: "weight on the terminal heading cost; active only near the end of the global path"
+
+  safety_margin:
+    type: double
+    default_value: 0.0
+    description: "safety margin [m] around obstacles"
+  grid_resolution:
+    type: double
+    default_value: 0.25
+    description: "resolution of the occupancy grid [m]"
+
+  # Goal point processing (goal_point_processor_node)
+  # ====================================================================================================================
+  always_publish_goal:
+    type: bool
+    default_value: false
+    description: "always publish goal (overrides front_angle_goal)"
+  front_angle_goal:
+    type: double
+    default_value: 1.571
+    description: "the angle measured from the vehicle heading beyond which the goal point is considered not in front of the vehicle [rad]"
+  front_angle_obstacle:
+    type: double
+    default_value: 1.571
+    description: "the angle measured from the vehicle heading beyond which an obstacle is considered not in front of the vehicle [rad]"
+  front_angle_segmentation:
+    type: double
+    default_value: 1.571
+    description: "the angle measured from the vehicle heading beyond which segmentation data is considered not in front of the vehicle [rad]"
+  goal_lookahead_time_padding:
+    type: double
+    default_value: 0.5
+    description: "additional time padding added to the goal lookahead distance [s]"
+  use_goal_lookahead_maxspeed:
+    type: bool
+    default_value: false
+    description: "if true the max_speed will be used to select an intermediate waypoint at (planning_horizon+padding)*speed distance along the global path. Else, the current speed will be used."
+  use_auto_final_heading:
+    type: bool
+    default_value: true
+    description: "Auto-compute terminal heading from the last two global path waypoints when no manual heading has been set via goal_pose"
+
+  adaptive:
+    type: bool
+    default_value: false
+    description: "whether to use the terrain adaptive formulation or not"
+
+  vehicle_axle_distance_front:
+    type: double
+    default_value: 1.38599
+    description: "Distance from vehicle reference point to the front axle [m]."
+
+  # Obstacle / segmentation processing (obstacle_processor_node, segmentation_grid_processor_node)
+  # ====================================================================================================================
+  obstacles_vizualize:
+    type: bool
+    default_value: true
+    description: "Publish obstacle visualization messages"
+  traversability_threshold:
+    type: int
+    default_value: 40
+    description: "Segmentation grid value below which a cell is considered non-traversable when projecting segmentation onto the occupancy grid."
+    validation:
+      bounds<>: [ -1, 100 ]
+  project_segmentation_onto_occupancy_grid:
+    type: bool
+    default_value: true
+    description: "If true, non-traversable segmentation cells are projected onto the occupancy grid as obstacles."
+
+  # Terrain limits
+  # ====================================================================================================================
+  slope_threshold:
+    type: double
+    default_value: 0.2
+    description: "Terrain slope above which the speed is limited to speed_around_large_slopes_and_rms."
+  rms_threshold:
+    type: double
+    default_value: 0.05
+    description: "Terrain RMS above which the speed is limited to speed_around_large_slopes_and_rms."
+  speed_around_large_slopes_and_rms:
+    type: double
+    default_value: 4.0
+    description: "Speed limit [m/s] applied around large slopes and high RMS terrain."
+
+  # MPC constraints
+  # ====================================================================================================================
+  sa_min:
+    type: double
+    default_value: -0.628319
+    description: "Minimum steering angle constraint for MPC planner"
+  sa_max:
+    type: double
+    default_value: 0.628319
+    description: "Maximum steering angle constraint for MPC planner"
+  sr_min:
+    type: double
+    default_value: -0.523
+    description: "Minimum steering rate constraint for MPC planner"
+  sr_max:
+    type: double
+    default_value: 0.523
+    description: "Maximum steering rate constraint for MPC planner"
+  ax_max:
+    type: double
+    default_value: 10.0
+    description: "Maximum longitudinal acceleration constraint [m/s^2]; also used by goal_point_processor for kinematic lookahead"
+
+  # Obstacle corridor culling
+  # ====================================================================================================================
+  use_corridor_culling:
+    type: bool
+    default_value: false
+    description: "Filter obstacles to those within corridor_half_width of the previous MPC trajectory"
+  corridor_half_width:
+    type: double
+    default_value: 10.0
+    description: "Half-width of the trajectory corridor [m]; obstacles outside are dropped before the NLP"
+  visualize_culled_obstacles:
+    type: bool
+    default_value: true
+    description: "Publish culled obstacle clusters as red MarkerArray on avt_341/culled_obstacle_markers"
+
+  publish_steering_commands:
+    type: bool
+    default_value: true
+    description: "If true, the MPC planner publishes steering commands on avt_341/cmd_steer."

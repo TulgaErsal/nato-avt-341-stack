@@ -1,0 +1,315 @@
+code_namespace: avt_341_nav/params/object_tracker
+ros__parameters:
+  frames:
+    prefix:
+      type: string
+      default_value: ''
+      description: "Prefix prepended to the camera frame and robot base link frame ids."
+    camera_frame:
+      type: string
+      default_value: 'flir_optical'
+      description: "Camera optical frame id. frames.prefix is prepended at load time."
+    world_frame:
+      type: string
+      default_value: 'map'
+      description: "World frame id used for tracking."
+    odometry_child_frame:
+      type: string
+      default_value: 'odom'
+      description: "Fallback child frame id used in published odometry messages."
+
+  filter:
+    estimator_rate:
+      type: double
+      default_value: 20.0
+      description: "Kalman filter estimator update rate (Hz)."
+      validation:
+        gt<>: [ 0.0 ]
+    process_variance:
+      type: double
+      default_value: 0.01
+      description: "Kalman filter process noise variance."
+    measurement_variance:
+      type: double
+      default_value: 1.1
+      description: "Kalman filter measurement noise variance."
+    imm_cv_init_prob:
+      type: double
+      default_value: 0.33
+      description: "IMM initial probability for the constant velocity model."
+    imm_ctr_init_prob:
+      type: double
+      default_value: 0.33
+      description: "IMM initial probability for the constant turn-rate model."
+    imm_nm_init_prob:
+      type: double
+      default_value: 0.33
+      description: "IMM initial probability for the no-movement model."
+    imm_persistence_prob:
+      type: double
+      default_value: 0.9
+      description: "IMM Markov transition probability of staying in the current model."
+    roi_scale_factor:
+      type: double
+      default_value: 1.5
+      description: "Scale factor applied to the predicted region of interest."
+    use_manual_roi:
+      type: bool
+      default_value: true
+      description: "Use a manually sized region of interest instead of the scaled predicted one."
+    manual_roi_size:
+      type: double_array
+      default_value: [5.0, 5.0, 5.0]
+      description: "Manual region of interest size [m] as x, y, z extents."
+      validation:
+        fixed_size<>: [ 3 ]
+
+  camera:
+    target_height:
+      type: double
+      default_value: 1.9
+      description: "Known height of the tracked vehicle [m]."
+    bbox_pixel_sigma:
+      type: double
+      default_value: 4.0
+      description: "Bounding-box measurement uncertainty [px]."
+
+  sync:
+    enabled:
+      type: bool
+      default_value: true
+      description: "Enable camera/LiDAR measurement synchronization."
+    use_callback_time:
+      type: bool
+      default_value: false
+      description: "Use callback time instead of message stamps for synchronization."
+    max_detection_skew:
+      type: double
+      default_value: 0.1
+      description: "Maximum allowed detection time skew [s] for synchronization."
+
+  publish:
+    odometry:
+      type: bool
+      default_value: true
+      description: "Publish estimated target odometry."
+    detection_3d:
+      type: bool
+      default_value: true
+      description: "Publish 3D detection messages."
+    image:
+      type: bool
+      default_value: true
+      description: "Publish annotated tracking images."
+
+  tracking:
+    tracking_rate:
+      type: double
+      default_value: 10.0
+      description: "Tracking update rate (Hz)."
+      validation:
+        gt<>: [ 0.0 ]
+    info_rate:
+      type: double
+      default_value: 1.0
+      description: "Rate (Hz) at which tracker info messages are published."
+      validation:
+        gt<>: [ 0.0 ]
+    target_timeout:
+      type: double
+      default_value: 5.0
+      description: "Time [s] without a valid measurement before the target is considered timed out."
+    obstacle_association_max_dist:
+      type: double
+      default_value: 5.0
+      description: "Maximum scaled pixel distance used to associate a LiDAR marker with a camera detection."
+    lidar_reacquire_max_time:
+      type: double
+      default_value: 0.5
+      description: "Maximum elapsed time [s] to re-acquire a briefly lost obstacle by proximity."
+    lidar_reacquire_max_dist:
+      type: double
+      default_value: 3.0
+      description: "Maximum world-frame distance [m] for re-acquisition of a re-labeled obstacle."
+    heading_min_speed:
+      type: double
+      default_value: 0.5
+      description: "Speed [m/s] below which the heading estimate is frozen."
+    heading_resume_speed:
+      type: double
+      default_value: 1.0
+      description: "Speed [m/s] above which heading estimation resumes."
+
+  target_selection:
+    use_autostart:
+      type: bool
+      default_value: true
+      description: "Start tracking automatically on matching detections."
+    use_mission_manager:
+      type: bool
+      default_value: true
+      description: "Integrate with the mission manager for target selection."
+    autostart_target_classes:
+      type: string_array
+      default_value: ['car']
+      description: "Detection classes eligible for autostart tracking."
+    formation_vehicle_ids:
+      type: string_array
+      default_value: []
+      description: "Formation vehicle ids known to the tracker."
+    use_multi_tracking:
+      type: bool
+      default_value: false
+      description: "Track multiple targets simultaneously."
+    toi_regex:
+      type: string
+      default_value: '^TI_'
+      description: "Object ids matching this regex are considered targets of interest."
+    allow_generic:
+      type: bool
+      default_value: false
+      description: "Track generic targets that are neither formation vehicles nor TOI objects."
+
+  obstacle_detector:
+    robot_base_link:
+      type: string
+      default_value: 'mrzr/base_link'
+      description: "Ego-vehicle base frame. frames.prefix is prepended at load time."
+    use_pca_box:
+      type: bool
+      default_value: true
+      description: "Use PCA-aligned bounding boxes."
+    use_tracking:
+      type: bool
+      default_value: true
+      description: "Use tracking to assign bounding-box ids."
+    voxel_grid_size:
+      type: double
+      default_value: 0.2
+      description: "Voxel grid leaf size [m]."
+    roi_max_point:
+      type: double_array
+      default_value: [40.0, 30.0, 3.0]
+      description: "ROI maximum point [m] as x, y, z."
+      validation:
+        fixed_size<>: [ 3 ]
+    roi_min_point:
+      type: double_array
+      default_value: [-10.0, -30.0, -2.5]
+      description: "ROI minimum point [m] as x, y, z."
+      validation:
+        fixed_size<>: [ 3 ]
+    body_max_point:
+      type: double_array
+      default_value: [1.3, 1.0, 2.0]
+      description: "Ego-body exclusion box maximum point [m] as x, y, z."
+      validation:
+        fixed_size<>: [ 3 ]
+    body_min_point:
+      type: double_array
+      default_value: [-2.2, -1.0, -0.3]
+      description: "Ego-body exclusion box minimum point [m] as x, y, z."
+      validation:
+        fixed_size<>: [ 3 ]
+    ground_normal:
+      type: double_array
+      default_value: [0.0, 0.0, 1.0]
+      description: "Ground plane normal as x, y, z."
+      validation:
+        fixed_size<>: [ 3 ]
+    ground_normal_threshold:
+      type: double
+      default_value: 0.4
+      description: "Threshold for ground-point segmentation."
+    obstacle_scale:
+      type: double
+      default_value: 1.0
+      description: "Neighbor search scale [m]."
+    obstacle_min_neighbors:
+      type: int
+      default_value: 10
+      description: "Minimum neighboring obstacle points."
+      validation:
+        gt_eq<>: [ 0 ]
+    cluster_threshold:
+      type: double
+      default_value: 0.5
+      description: "Euclidean cluster separation distance [m]."
+    cluster_min_size:
+      type: int
+      default_value: 50
+      description: "Minimum cluster size [points]."
+      validation:
+        gt_eq<>: [ 0 ]
+    cluster_max_size:
+      type: int
+      default_value: 1000
+      description: "Maximum cluster size [points]."
+      validation:
+        gt_eq<>: [ 0 ]
+    displacement_threshold:
+      type: double
+      default_value: 1.0
+      description: "Maximum displacement between frames for bounding-box tracking [m]."
+    iou_threshold:
+      type: double
+      default_value: 1.0
+      description: "Intersection-over-union threshold for bounding-box tracking."
+    publish_cluster_cloud:
+      type: bool
+      default_value: true
+      description: "Publish the obstacle cluster point cloud."
+    publish_ground_cloud:
+      type: bool
+      default_value: false
+      description: "Publish the ground point cloud."
+
+  recovery:
+    no_movement_enabled:
+      type: bool
+      default_value: true
+      description: "Enable recovery triggered by erroneous no-movement detection."
+    no_movement_threshold:
+      type: double
+      default_value: 0.2
+      description: "Velocity threshold below which no movement is suspected."
+    no_movement_window_time:
+      type: double
+      default_value: 5.0
+      description: "Time window over which the no-movement running average is evaluated."
+    no_movement_check_in_states:
+      type: string_array
+      default_value: ['lidar_only', 'camera_only', 'full']
+      description: "Tracker states in which the no-movement check runs."
+      validation:
+        subset_of<>: [ ['uninitialized', 'inactive', 'no_detection', 'lidar_only', 'full', 'camera_only', 'lost'] ]
+    no_movement_backoff_time:
+      type: double
+      default_value: 5.0
+      description: "Time to wait before re-triggering the no-movement check."
+    timeout_enabled:
+      type: bool
+      default_value: true
+      description: "Enable recovery when measurements time out after active tracking."
+    timeout_allow_never_tracked:
+      type: bool
+      default_value: false
+      description: "Allow timeout recovery when the target was never acquired."
+    timeout_max_attempts:
+      type: int
+      default_value: 3
+      description: "Timeout-triggered recoveries allowed before giving up."
+      validation:
+        gt_eq<>: [ 0 ]
+    uncertainty_enabled:
+      type: bool
+      default_value: true
+      description: "Enable recovery triggered by high uncertainty."
+    uncertainty_threshold:
+      type: double
+      default_value: 5.0
+      description: "Maximum allowed position standard deviation [m]."
+    uncertainty_window_time:
+      type: double
+      default_value: 5.0
+      description: "Time window over which uncertainty is averaged."

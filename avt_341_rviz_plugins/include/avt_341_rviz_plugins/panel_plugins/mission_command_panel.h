@@ -73,6 +73,7 @@ protected:
     QLineEdit* y_offset_entry_;
     QLineEdit* distance_entry_;
     QLineEdit* target_msg_entry_;
+    QLineEdit* toi_regex_entry_;
 
     // QT Buttons
     QPushButton* send_msg_button_;

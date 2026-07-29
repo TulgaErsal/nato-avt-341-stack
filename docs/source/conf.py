@@ -20,16 +20,18 @@ version = "main"
 release = get_git_revision_short_hash()
 extensions = [
     "breathe", "sphinx.ext.autodoc", "sphinx_autodoc_typehints",
-    "sphinx.ext.napoleon", "sphinx.ext.todo"
+    "sphinx.ext.napoleon", "sphinx.ext.todo", "sphinxcontrib.rsvgconverter"
 ]
 templates_path = ["_templates"]
 exclude_patterns = []
+numfig = True
 
 # HTML build
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "navigation_with_keys": False,
-    "show_nav_level": 2
+    "show_nav_level": 2,
+    "show_toc_level": 3
 }
 html_static_path = ["_static"]
 html_logo = "_static/img/logo.png"

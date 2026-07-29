@@ -1,0 +1,61 @@
+/**/perception_local_node:
+  remappings:
+    avt_341/terrain_slope: avt_341/terrain_slope_local
+    avt_341/terrain_rms: avt_341/terrain_rms_local
+
+/**/perception_global_node:
+  remappings:
+    avt_341/terrain_slope: avt_341/terrain_slope_global
+    avt_341/terrain_rms: avt_341/terrain_rms_global
+    avt_341/occupancy_grid: avt_341/occupancy_grid_low_res
+    avt_341/occupancy_grid_updates: avt_341/occupancy_grid_low_res_updates
+
+/**/perception_rms_node:
+  remappings:
+    avt_341/occupancy_grid: avt_341/rms_perception/occupancy_grid
+    avt_341/segmentation_grid: avt_341/rms_perception/segmentation_grid
+
+/**/segmentation_grid_processor_node:
+  remappings:
+    avt_341/segmentation_grid: avt_341/normal_segmentation_grid
+
+/**/mission_manager_node:
+  remappings:
+    avt_341/comm_messages: /avt_341/comm_messages
+
+/**/speed_zones_node:
+  remappings:
+    avt_341/comm_messages: /avt_341/comm_messages
+
+/**/uab_perception_node:
+  remappings:
+    avt_341/points: /ouster/points
+    avt_341/camera/image_raw: /flir_camera/image_rect_color
+    avt_341/camera/camera_info: /flir_camera/camera_info
+    avt_341/odom: avt_341/odometry
+    avt_341/occupancy_grid: avt_341/terrain_seg/occupancy_grid
+    avt_341/segmentation_grid: avt_341/terrain_seg/segmentation_grid
+  additional_env:
+    LD_LIBRARY_PATH:
+      separator: ":"
+      values:
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/runtime/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/bin/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/sys/os/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/extern/bin/glnxa64"
+        - "$env_var{LD_LIBRARY_PATH:-}"
+
+/**/object_detector_node:
+  remappings:
+    image: /flir_camera/image_rect_color
+
+/**/object_tracker_node:
+  remappings:
+    camera_info: /flir_camera/camera_info
+    image: /flir_camera/image_rect_color
+    points/input: /ouster/points
+    detection_2d: detections/vision
+    avt_341/reset: avt_341/reset
+    task: avt_341/mission_task_state
+    avt_341/odometry/estimated/odom: odometry/estimated
+    avt_341/reset_ack: avt_341/reset_ack

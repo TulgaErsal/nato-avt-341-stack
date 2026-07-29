@@ -1,0 +1,1164 @@
+#!/usr/bin/env python3
+
+# Copyright 2023 PickNik Inc.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the PickNik Inc. nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+from jinja2 import Template, Environment
+from typeguard import typechecked
+
+# try to import TypeCheckError from typeguard. This was breaking and replaced TypeError in 3.0.0
+try:
+    from typeguard import TypeCheckError
+except ImportError as e:
+    # otherwise, use the old TypeError
+    TypeCheckError = TypeError
+
+from typing import Any, List, Union
+from yaml.parser import ParserError
+from yaml.scanner import ScannerError
+import os
+import yaml
+
+from avt_341_param_lib.codegen.cpp_conversions import CPPConversions
+from avt_341_param_lib.codegen.python_conversions import PythonConversions
+from avt_341_param_lib.codegen.string_filters_cpp import (
+    valid_string_cpp,
+    valid_string_python,
+)
+# The template yaml format itself is shared with the launch-time helpers; these
+# names are re-exported here so that existing `parse_yaml` importers keep working.
+from avt_341_param_lib.common.template_yaml import (
+    CLASS_NAME_ROOT_KEY,
+    CODE_NAMESPACE_ROOT_KEY,
+    DEFAULT_CLASS_NAME,
+    INCLUDE_MIXIN_KEY,
+    INHERIT_MIXIN_KEY,
+    KNOWN_ROOT_KEYS,
+    MIXINS_DIR_NAME,
+    MixinUsage,
+    PARAMETERS_ROOT_KEY,
+    YAMLSyntaxError,
+    compile_error,
+    expand_mixins,
+    is_mapped_parameter,
+    is_parameter_group,
+    parse_class_name,
+    parse_code_namespace_tokens,
+    read_mixin_file,
+)
+
+
+@typechecked
+def array_type(defined_type: str):
+    return defined_type.__contains__('array')
+
+
+@typechecked
+def pascal_case(string: str):
+    words = string.split('_')
+    return ''.join(w.title() for w in words)
+
+
+@typechecked
+def int_to_integer_str(value: str):
+    return value.replace('int', 'integer')
+
+
+def get_dynamic_parameter_field(yaml_parameter_name: str):
+    tmp = yaml_parameter_name.split('.')
+    num_nested = [i for i, val in enumerate(tmp) if is_mapped_parameter(val)]
+    field = tmp[(max(num_nested) + 1) :] if len(num_nested) else tmp[-1]
+    return '.'.join(field)
+
+
+def get_dynamic_mapped_parameter(yaml_parameter_name: str):
+    tmp = yaml_parameter_name.split('.')
+    mapped_params = [
+        val.replace('__map_', '') for val in tmp[:-1] if is_mapped_parameter(val)
+    ]
+    return mapped_params
+
+
+def get_dynamic_struct_name(yaml_parameter_name: str):
+    tmp = yaml_parameter_name.split('.')
+    num_nested = [i for i, val in enumerate(tmp) if is_mapped_parameter(val)]
+    struct_name = tmp[: (min(num_nested))] if len(num_nested) else ''
+    return '.'.join(struct_name)
+
+
+def get_dynamic_parameter_name(yaml_parameter_name: str):
+    struct_name = get_dynamic_struct_name(yaml_parameter_name)
+    parameter_field = get_dynamic_parameter_field(yaml_parameter_name)
+    parameter_name = [struct_name, parameter_field]
+    parameter_name = '.'.join(parameter_name)
+    return parameter_name
+
+
+def get_dynamic_parameter_map(yaml_parameter_name: str):
+    mapped_params = get_dynamic_mapped_parameter(yaml_parameter_name)
+    parameter_map = [val + '_map' for val in mapped_params]
+    parameter_map = '.'.join(parameter_map)
+    return parameter_map
+
+
+class CodeGenVariableBase:
+    @typechecked
+    def __init__(
+        self,
+        language: str,
+        name: str,
+        param_name: str,
+        defined_type: str,
+        default_value: Any,
+    ):
+        if language == 'cpp':
+            self.conversion = CPPConversions()
+        elif language == 'rst' or language == 'markdown':
+            # cpp is used here because it the desired style of the markdown,
+            # e.g. "false" for C++ instead of "False" for Python
+            self.conversion = CPPConversions()
+        elif language == 'python':
+            self.conversion = PythonConversions()
+        else:
+            raise compile_error(
+                'Invalid language, only c++ and python are currently supported.'
+            )
+
+        self.name = name
+        self.default_value = default_value
+        self.name = name
+        self.param_name = param_name
+        self.defined_type, template = self.process_type(defined_type)
+        self.array_type = array_type(self.defined_type)
+
+        if self.defined_type not in self.conversion.defined_type_to_lang_type:
+            allowed = ', '.join(
+                key for key in self.conversion.defined_type_to_lang_type
+            )
+            raise compile_error(
+                f'Invalid parameter type `{defined_type}` for parameter {param_name}. Allowed types are: '
+                + allowed
+            )
+        func = self.conversion.defined_type_to_lang_type[self.defined_type]
+        self.lang_type = func(self.defined_type, template)
+        tmp = defined_type.split('_')
+        self.defined_base_type = tmp[0]
+        func = self.conversion.defined_type_to_lang_type[self.defined_base_type]
+        self.lang_base_type = func(self.defined_base_type, template)
+        func = self.conversion.lang_str_value_func[self.defined_type]
+        try:
+            self.lang_str_value = func(default_value)
+        except TypeCheckError:
+            raise compile_error(
+                f'Parameter {param_name} has incorrect type. Expected: {defined_type}, got: {self.get_yaml_type_from_python(default_value)}'
+            )
+
+    def parameter_as_function_str(self):
+        if self.defined_type not in self.conversion.yaml_type_to_as_function:
+            raise compile_error('invalid yaml type: %s' % type(self.defined_type))
+        return self.conversion.yaml_type_to_as_function[self.defined_type]
+
+    def parameter_value_expression(self, parameter: str):
+        return self.conversion.parameter_value_expression(
+            self.defined_type, parameter)
+
+    def get_python_val_to_str_func(self, arg):
+        return self.conversion.python_val_to_str_func[str(type(arg))]
+
+    def get_yaml_type_from_python(self, arg):
+        if isinstance(arg, list):
+            return self.conversion.python_list_to_yaml_type[str(type(arg[0]))]
+        else:
+            return self.conversion.python_val_to_yaml_type[str(type(arg[0]))]
+
+    def process_type(self, defined_type):
+        raise NotImplemented()
+
+    def get_parameter_type(self):
+        raise NotImplemented()
+
+
+class CodeGenVariable(CodeGenVariableBase):
+    def process_type(self, defined_type):
+        return defined_type, None
+
+    def get_parameter_type(self):
+        ros_type = self.conversion.get_ros_type(self.defined_type)
+        return int_to_integer_str(ros_type).upper()
+
+
+# Each template has a corresponding class with the str filling in the template with jinja
+class VariableDeclaration:
+    @typechecked
+    def __init__(self, code_gen_variable: CodeGenVariableBase):
+        self.code_gen_variable = code_gen_variable
+
+    def __str__(self):
+        value = self.code_gen_variable.lang_str_value
+        data = {
+            'type': self.code_gen_variable.lang_type,
+            'name': self.code_gen_variable.name,
+            'value': value,
+        }
+
+        j2_template = Template(GenerateCode.templates['declare_variable'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class ExternalStructMember:
+    """Struct member whose type is defined in a shared mixin DTO header."""
+
+    @typechecked
+    def __init__(self, struct_name: str, namespace: str):
+        self.struct_name = struct_name
+        self.namespace = namespace  # C++ namespace, e.g. avt_341::params::core
+
+    def __str__(self):
+        return f'{self.namespace}::{pascal_case(self.struct_name)} {self.struct_name};\n'
+
+
+class MixinAggregateStruct:
+    """The inheritable class of a mixin.
+
+    Holds the mixin's root-level groups by value -- their types are the
+    type-only structs emitted above it in the same header -- plus the
+    root-level leaf parameters as fields. Templates using __inherit_mixins
+    derive their own class from this one.
+
+    Rendered through the declare_struct template rather than DeclareStruct
+    because the class name is already a class identifier (pascal_case would
+    mangle "TimingParams" into "Timingparams") and because an empty mixin must
+    still emit a valid, inheritable struct.
+    """
+
+    @typechecked
+    def __init__(self, class_name: str):
+        self.class_name = class_name
+        self.fields = []
+        self.group_names = []
+
+    @typechecked
+    def add_field(self, field: VariableDeclaration):
+        self.fields.append(field)
+
+    @typechecked
+    def add_group(self, group_name: str):
+        self.group_names.append(group_name)
+
+    def __str__(self):
+        data = {
+            'struct_name': self.class_name,
+            'struct_instance': '',
+            'struct_fields': ''.join(str(x) for x in self.fields),
+            'sub_structs': ''.join(
+                f'{pascal_case(name)} {name};\n' for name in self.group_names),
+            'map_value_type': '',
+            'map_name': '',
+        }
+
+        j2_template = Template(GenerateCode.templates['declare_struct'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class DeclareStruct:
+    @typechecked
+    def __init__(self, struct_name: str, fields: List[VariableDeclaration]):
+        self.struct_name = struct_name
+        self.fields = fields
+        self.sub_structs = []
+        self.struct_instance = ''
+        # render as a standalone type definition without a member instance
+        self.type_only = False
+
+    @typechecked
+    def add_field(self, field: VariableDeclaration):
+        self.fields.append(field)
+
+    def add_sub_struct(self, sub_struct):
+        self.sub_structs.append(sub_struct)
+
+    def field_content(self):
+        content = ''.join(str(x) for x in self.fields)
+        return str(content)
+
+    def sub_struct_content(self):
+        content = ''.join(str(x) for x in self.sub_structs)
+        return str(content)
+
+    def __str__(self):
+        sub_struct_str = ''.join(str(x) for x in self.sub_structs)
+        field_str = ''.join(str(x) for x in self.fields)
+        if field_str == '' and sub_struct_str == '':
+            return ''
+
+        if is_mapped_parameter(self.struct_name):
+            map_val_type = pascal_case(self.struct_name)
+            map_name = self.struct_name.replace('__map_', '') + '_map'
+            map_name = map_name.replace('.', '_')
+        else:
+            map_val_type = ''
+            map_name = ''
+            if not self.type_only:
+                self.struct_instance = self.struct_name
+
+        data = {
+            'struct_name': pascal_case(self.struct_name),
+            'struct_instance': self.struct_instance,
+            'struct_fields': str(field_str),
+            'sub_structs': str(sub_struct_str),
+            'map_value_type': map_val_type,
+            'map_name': map_name,
+        }
+
+        j2_template = Template(GenerateCode.templates['declare_struct'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class ValidationFunction:
+    @typechecked
+    def __init__(
+        self,
+        function_name: str,
+        arguments: Union[None, List[Any]],
+        code_gen_variable: CodeGenVariableBase,
+    ):
+        self.code_gen_variable = code_gen_variable
+        self.function_name = function_name
+        self.function_base_name = function_name.replace('<>', '')
+
+        if arguments is not None:
+            self.arguments = arguments
+        else:
+            self.arguments = []
+
+    def __str__(self):
+        function_name = self.code_gen_variable.conversion.get_func_signature(
+            self.function_name, self.code_gen_variable.lang_base_type
+        )
+        open_bracket = self.code_gen_variable.conversion.open_bracket
+        close_bracket = self.code_gen_variable.conversion.close_bracket
+
+        code = function_name + '(param'
+        for arg in self.arguments:
+            if isinstance(arg, list):
+                code += ', ' + open_bracket
+                for a in arg[:-1]:
+                    val_func = self.code_gen_variable.get_python_val_to_str_func(a)
+                    code += val_func(a) + ', '
+                val_func = self.code_gen_variable.get_python_val_to_str_func(arg[-1])
+                code += val_func(arg[-1])
+                code += close_bracket
+            else:
+                val_func = self.code_gen_variable.get_python_val_to_str_func(arg)
+                code += ', ' + val_func(arg)
+        code += ')'
+
+        return code
+
+
+class ParameterValidation:
+    @typechecked
+    def __init__(
+        self,
+        invalid_effect: str,
+        valid_effect: str,
+        validation_function: ValidationFunction,
+    ):
+        self.invalid_effect = invalid_effect
+        self.valid_effect = valid_effect
+        self.validation_function = validation_function
+
+    def __str__(self):
+        data = {
+            'validation_function': str(self.validation_function),
+            'valid_effect': self.valid_effect,
+            'invalid_effect': self.invalid_effect,
+        }
+
+        j2_template = Template(GenerateCode.templates['parameter_validation'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class UpdateParameterBase:
+    @typechecked
+    def __init__(self, parameter_name: str, code_gen_variable: CodeGenVariableBase):
+        self.parameter_name = parameter_name
+        self.parameter_as_function = code_gen_variable.parameter_as_function_str()
+        self.parameter_value_expression = (
+            code_gen_variable.parameter_value_expression('param'))
+        self.parameter_validations = []
+
+    @typechecked
+    def add_parameter_validation(self, parameter_validation: ParameterValidation):
+        self.parameter_validations.append(parameter_validation)
+
+
+class UpdateParameter(UpdateParameterBase):
+    def __str__(self):
+        parameter_validations_str = ''.join(str(x) for x in self.parameter_validations)
+
+        data = {
+            'parameter_name': self.parameter_name,
+            'parameter_validations': str(parameter_validations_str),
+            'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
+        }
+
+        j2_template = Template(GenerateCode.templates['update_parameter'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class UpdateRuntimeParameter(UpdateParameterBase):
+    def __str__(self):
+        parameter_validations_str = ''.join(str(x) for x in self.parameter_validations)
+        mapped_params = get_dynamic_mapped_parameter(self.parameter_name)
+        parameter_map = get_dynamic_parameter_map(self.parameter_name)
+        parameter_map = parameter_map.split('.')
+        struct_name = get_dynamic_struct_name(self.parameter_name)
+        parameter_field = get_dynamic_parameter_field(self.parameter_name)
+
+        data = {
+            'mapped_params': mapped_params,
+            'parameter_map': parameter_map,
+            'struct_name': struct_name,
+            'parameter_field': parameter_field,
+            'parameter_validations': str(parameter_validations_str),
+            'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
+        }
+
+        j2_template = Template(GenerateCode.templates['update_runtime_parameter'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class SetStackParams:
+    @typechecked
+    def __init__(self, parameter_name: str):
+        self.parameter_name = parameter_name
+
+    def __str__(self):
+        data = {'parameter_name': self.parameter_name}
+        j2_template = Template(GenerateCode.templates['set_stack_params'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class SetParameterBase:
+    @typechecked
+    def __init__(self, parameter_name: str, code_gen_variable: CodeGenVariableBase):
+        self.parameter_name = parameter_name
+        self.parameter_as_function = code_gen_variable.parameter_as_function_str()
+        self.parameter_value_expression = (
+            code_gen_variable.parameter_value_expression('param'))
+        self.parameter_validations = []
+
+    @typechecked
+    def add_parameter_validation(self, parameter_validation: ParameterValidation):
+        self.parameter_validations.append(parameter_validation)
+
+
+class SetParameter(SetParameterBase):
+    def __str__(self):
+        parameter_validations_str = ''.join(str(x) for x in self.parameter_validations)
+
+        data = {
+            'parameter_name': self.parameter_name,
+            'parameter_validations': str(parameter_validations_str),
+            'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
+        }
+
+        j2_template = Template(GenerateCode.templates['set_parameter'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class SetRuntimeParameter(SetParameterBase):
+    def __str__(self):
+        parameter_validations_str = ''.join(str(x) for x in self.parameter_validations)
+        parameter_field = get_dynamic_parameter_field(self.parameter_name)
+        data = {
+            'parameter_field': parameter_field,
+            'parameter_validations': str(parameter_validations_str),
+            'parameter_as_function': self.parameter_as_function,
+            'parameter_value_expression': self.parameter_value_expression,
+        }
+
+        j2_template = Template(GenerateCode.templates['set_runtime_parameter'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class DeclareParameterBase:
+    @typechecked
+    def __init__(
+        self,
+        code_gen_variable: CodeGenVariableBase,
+        parameter_description: str,
+        parameter_read_only: bool,
+        parameter_validations: list,
+        parameter_additional_constraints: str,
+    ):
+        self.parameter_name = code_gen_variable.param_name
+        self.parameter_description = parameter_description
+        self.parameter_read_only = parameter_read_only
+        self.parameter_validations = parameter_validations
+        self.code_gen_variable = code_gen_variable
+        self.parameter_additional_constraints = parameter_additional_constraints
+
+
+class DeclareParameter(DeclareParameterBase):
+    def __str__(self):
+        if len(self.code_gen_variable.lang_str_value) == 0:
+            self.parameter_value = ''
+        else:
+            self.parameter_value = self.parameter_name
+        bool_to_str = self.code_gen_variable.conversion.bool_to_str
+
+        parameter_validations = self.parameter_validations
+
+        data = {
+            'parameter_name': self.parameter_name,
+            'parameter_value': self.parameter_value,
+            'parameter_type': self.code_gen_variable.get_parameter_type(),
+            'parameter_description': self.parameter_description,
+            'parameter_read_only': bool_to_str(self.parameter_read_only),
+            'parameter_additional_constraints': self.parameter_additional_constraints,
+            'parameter_validations': parameter_validations,
+        }
+
+        # Create a Jinja2 environment to register the custom filter
+        env = Environment()
+        env.filters['valid_string_cpp'] = valid_string_cpp
+        env.filters['valid_string_python'] = valid_string_python
+        j2_template = env.from_string(GenerateCode.templates['declare_parameter'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class DeclareRuntimeParameter(DeclareParameterBase):
+    def __init__(
+        self,
+        code_gen_variable: CodeGenVariableBase,
+        parameter_description: str,
+        parameter_read_only: bool,
+        parameter_validations: list,
+        parameter_additional_constraints: str,
+    ):
+        super().__init__(
+            code_gen_variable,
+            parameter_description,
+            parameter_read_only,
+            parameter_validations,
+            parameter_additional_constraints,
+        )
+        self.set_runtime_parameter = None
+        self.param_struct_instance = 'updated_params'
+
+    @typechecked
+    def add_set_runtime_parameter(self, set_runtime_parameter: SetRuntimeParameter):
+        self.set_runtime_parameter = set_runtime_parameter
+
+    def __str__(self):
+        if self.set_runtime_parameter is None:
+            raise AssertionError(
+                'add_set_runtime_parameter was not called before str()'
+            )
+
+        if self.code_gen_variable.default_value is None:
+            default_value = ''
+        else:
+            default_value = 'non-empty'
+
+        bool_to_str = self.code_gen_variable.conversion.bool_to_str
+        parameter_field = get_dynamic_parameter_field(self.parameter_name)
+        mapped_params = get_dynamic_mapped_parameter(self.parameter_name)
+        parameter_map = get_dynamic_parameter_map(self.parameter_name)
+        struct_name = get_dynamic_struct_name(self.parameter_name)
+        parameter_map = parameter_map.split('.')
+
+        data = {
+            'struct_name': struct_name,
+            'parameter_type': self.code_gen_variable.get_parameter_type(),
+            'parameter_description': self.parameter_description,
+            'parameter_read_only': bool_to_str(self.parameter_read_only),
+            'parameter_as_function': self.code_gen_variable.parameter_as_function_str(),
+            'parameter_additional_constraints': self.parameter_additional_constraints,
+            'mapped_params': mapped_params,
+            'mapped_param_underscore': [val.replace('.', '_') for val in mapped_params],
+            'set_runtime_parameter': self.set_runtime_parameter,
+            'parameter_map': parameter_map,
+            'param_struct_instance': self.param_struct_instance,
+            'parameter_field': parameter_field,
+            'default_value': default_value,
+            'parameter_validations': self.parameter_validations,
+        }
+
+        # Create a Jinja2 environment to register the custom filter
+        env = Environment()
+        env.filters['valid_string_cpp'] = valid_string_cpp
+        env.filters['valid_string_python'] = valid_string_python
+        j2_template = env.from_string(
+            GenerateCode.templates['declare_runtime_parameter']
+        )
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+class RemoveRuntimeParameter:
+    @typechecked
+    def __init__(self, dynamic_declare_parameter: DeclareRuntimeParameter):
+        self.dynamic_declare_parameter = dynamic_declare_parameter
+
+    def __str__(self):
+        parameter_map = get_dynamic_parameter_map(
+            self.dynamic_declare_parameter.parameter_name
+        )
+        parameter_map = parameter_map.split('.')
+        struct_name = get_dynamic_struct_name(
+            self.dynamic_declare_parameter.parameter_name
+        )
+        parameter_field = get_dynamic_parameter_field(
+            self.dynamic_declare_parameter.parameter_name
+        )
+        mapped_params = get_dynamic_mapped_parameter(
+            self.dynamic_declare_parameter.parameter_name
+        )
+
+        data = {
+            'parameter_map': parameter_map,
+            'mapped_params': mapped_params,
+            'dynamic_declare_parameter': str(self.dynamic_declare_parameter),
+            'struct_name': struct_name,
+            'parameter_field': parameter_field,
+        }
+
+        j2_template = Template(GenerateCode.templates['remove_runtime_parameter'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
+
+
+def get_all_templates(language: str):
+    template_lang_path = os.path.join(
+        os.path.dirname(__file__), 'jinja_templates', language
+    )
+    if language == 'markdown':
+        template_markdown_path = os.path.join(
+            os.path.dirname(__file__), 'jinja_templates', 'markdown'
+        )
+        template_paths = [template_lang_path, template_markdown_path]
+    elif language == 'rst':
+        template_rst_path = os.path.join(
+            os.path.dirname(__file__), 'jinja_templates', 'rst'
+        )
+        template_paths = [template_lang_path, template_rst_path]
+    else:
+        template_paths = [template_lang_path]
+
+    template_map = {}
+    for template_path in template_paths:
+        for file_name in [
+            f
+            for f in os.listdir(template_path)
+            if os.path.isfile(os.path.join(template_path, f))
+        ]:
+            with open(os.path.join(template_path, file_name)) as file:
+                template_map[file_name] = file.read()
+
+    return template_map
+
+
+def preprocess_inputs(language, name, value, nested_name_list):
+    # define parameter name
+    param_name = ''.join(x + '.' for x in nested_name_list[1:]) + name
+
+    # required attributes
+    try:
+        defined_type = value['type']
+    except KeyError as e:
+        raise compile_error('No type defined for parameter %s' % param_name)
+
+    # check for invalid syntax
+    valid_keys = {
+        'default_value',
+        'description',
+        'read_only',
+        'additional_constraints',
+        'validation',
+        'type',
+    }
+    invalid_keys = value.keys() - valid_keys
+    if len(invalid_keys) > 0:
+        raise compile_error(
+            "Invalid syntax in parameter %s. '%s' is not valid syntax"
+            % (param_name, next(iter(invalid_keys)))
+        )
+
+    # optional attributes
+    default_value = value.get('default_value', None)
+    code_gen_variable = CodeGenVariable(
+        language, name, param_name, defined_type, default_value
+    )
+
+    description = value.get('description', '')
+    read_only = bool(value.get('read_only', False))
+    validations = []
+    additional_constraints = value.get('additional_constraints', '')
+    validations_dict = value.get('validation', {})
+
+    for func_name in validations_dict:
+        args = validations_dict[func_name]
+        if args is not None and not isinstance(args, list):
+            args = [args]
+        validations.append(ValidationFunction(func_name, args, code_gen_variable))
+
+    return (
+        code_gen_variable,
+        description,
+        read_only,
+        validations,
+        additional_constraints,
+    )
+
+
+# class used to generate c++ code from yaml file
+class GenerateCode:
+    templates = None
+
+    def __init__(self, language: str):
+        if language == 'cpp':
+            self.comments = '// auto-generated DO NOT EDIT'
+        elif language == 'rst':
+            self.comments = '.. auto-generated DO NOT EDIT'
+        elif language == 'markdown':
+            self.comments = '<!--- auto-generated DO NOT EDIT -->'
+        elif language == 'python' or language == 'markdown':
+            self.comments = '# auto-generated DO NOT EDIT'
+        else:
+            raise compile_error(
+                'Invalid language, only cpp, markdown, rst, and python are currently supported.'
+            )
+        GenerateCode.templates = get_all_templates(language)
+        self.language = language
+        self.namespace = ''
+        self.namespace_tokens = []
+        self.class_name = DEFAULT_CLASS_NAME
+        self.struct_tree = DeclareStruct('Params', [])
+        self.stack_struct_tree = DeclareStruct('StackParams', [])
+        self.update_parameters = []
+        self.declare_parameters = []
+        self.declare_dynamic_parameters = []
+        self.update_dynamic_parameters = []
+        self.update_declare_dynamic_parameter = []
+        self.remove_dynamic_parameter = []
+        self.declare_parameter_sets = []
+        self.set_stack_params = []
+        self.user_validation_file = ''
+        self.mixin_include_prefix = ''
+        self.mixin_usage = MixinUsage()
+        # root-level keys supplied by an inherited mixin: their members come
+        # from the base class, so the derived struct must not re-declare them
+        self.inherited_root_keys = set()
+        # set by parse_mixin() when generating a mixin's shared DTO header
+        self.mixin_aggregate = None
+
+    def parse(self, yaml_file, validate_header):
+        with open(yaml_file) as f:
+            try:
+                docs = yaml.load_all(f, Loader=yaml.Loader)
+                doc = list(docs)[0]
+            except ParserError as e:
+                raise compile_error(str(e))
+            except ScannerError as e:
+                raise compile_error(str(e))
+
+            if not isinstance(doc, dict):
+                raise compile_error(
+                    'The yaml definition must be a mapping of root elements. '
+                    f'Supported root elements are: {list(KNOWN_ROOT_KEYS)}'
+                )
+            unknown_keys = [key for key in doc if key not in KNOWN_ROOT_KEYS]
+            if unknown_keys:
+                raise compile_error(
+                    f'Unknown root element(s) {unknown_keys}. '
+                    f'Supported root elements are: {list(KNOWN_ROOT_KEYS)}'
+                )
+            if not isinstance(doc.get(CODE_NAMESPACE_ROOT_KEY), str):
+                raise compile_error(
+                    f'The yaml definition must have a {CODE_NAMESPACE_ROOT_KEY} '
+                    'root element holding a string'
+                )
+            parameters = doc.get(PARAMETERS_ROOT_KEY)
+            if not isinstance(parameters, dict) or not parameters:
+                raise compile_error(
+                    f'The yaml definition must have a {PARAMETERS_ROOT_KEY} root '
+                    'element holding a non-empty mapping of parameter definitions'
+                )
+            parameters = expand_mixins(parameters, yaml_file, self.mixin_usage)
+            self.class_name = parse_class_name(
+                doc.get(CLASS_NAME_ROOT_KEY, DEFAULT_CLASS_NAME), yaml_file)
+            self.namespace = doc[CODE_NAMESPACE_ROOT_KEY]
+            self.namespace_tokens = parse_code_namespace_tokens(self.namespace)
+            self._validate_mixin_usage(yaml_file)
+            self.inherited_root_keys = self.mixin_usage.inherited_root_keys()
+            self.user_validation_file = validate_header
+            self.parse_dict(PARAMETERS_ROOT_KEY, parameters, [])
+
+    def _validate_mixin_usage(self, yaml_file):
+        """Reject mixin combinations that would collide in the generated code.
+
+        Every referenced mixin's DTO header is pulled into the same
+        translation unit, so two mixins generating the same qualified class
+        would be a C++ redefinition. Catch it here with a legible message
+        instead.
+        """
+        own_class = '::'.join(self.namespace_tokens + [self.class_name])
+        for mixin in self.mixin_usage.inherited:
+            if mixin.qualified_name == own_class:
+                raise compile_error(
+                    f"Template '{yaml_file}' inherits mixin '{mixin.stem}', "
+                    f"which generates the same class '{own_class}' as the "
+                    f'template itself. Give the mixin or the template a '
+                    f'distinct {CLASS_NAME_ROOT_KEY} or '
+                    f'{CODE_NAMESPACE_ROOT_KEY}.'
+                )
+        seen = {}
+        for stem in self.mixin_usage.include_stems:
+            qualified = self.mixin_usage.classes[stem]
+            first = seen.setdefault(qualified, stem)
+            if first != stem:
+                raise compile_error(
+                    f"Mixins '{first}' and '{stem}' referenced by "
+                    f"'{yaml_file}' both generate the class '{qualified}'. "
+                    'Their DTO headers are both included by the generated '
+                    'header, so the two definitions would collide. Give at '
+                    f'least one of them a distinct {CLASS_NAME_ROOT_KEY} root '
+                    'element.'
+                )
+
+    def _is_inherited(self, name, nested_name) -> bool:
+        """Whether ``name`` is a root-level key supplied by an inherited mixin.
+
+        Such members are declared by the base class, so the derived struct
+        must not re-declare them. Inheritance is root-only, and parse_dict
+        appends the parent name before recursing, so direct children of
+        ros__parameters are exactly those with one entry in ``nested_name``.
+
+        C++ only: python has no per-mixin module to inherit from and flattens
+        inherited mixins the same way it already flattens included ones.
+        """
+        return (self.language == 'cpp'
+                and len(nested_name) == 1
+                and name in self.inherited_root_keys)
+
+    def parse_params(self, name, value, nested_name_list):
+        (
+            code_gen_variable,
+            description,
+            read_only,
+            validations,
+            additional_constraints,
+        ) = preprocess_inputs(self.language, name, value, nested_name_list)
+        # skip accepted params that do not generate code
+        if code_gen_variable.lang_type is None:
+            return
+
+        param_name = code_gen_variable.param_name
+        update_parameter_invalid = (
+            code_gen_variable.conversion.update_parameter_fail_validation()
+        )
+        update_parameter_valid = (
+            code_gen_variable.conversion.update_parameter_pass_validation()
+        )
+        declare_parameter_invalid = (
+            code_gen_variable.conversion.initialization_fail_validation(param_name)
+        )
+        declare_parameter_valid = (
+            code_gen_variable.conversion.initialization_pass_validation(param_name)
+        )
+
+        # add variable to struct
+        var = VariableDeclaration(code_gen_variable)
+
+        # check if runtime parameter
+        is_runtime_parameter = is_mapped_parameter(param_name)
+
+        if is_runtime_parameter:
+            declare_parameter_set = SetRuntimeParameter(param_name, code_gen_variable)
+            declare_parameter = DeclareRuntimeParameter(
+                code_gen_variable,
+                description,
+                read_only,
+                validations,
+                additional_constraints,
+            )
+            declare_parameter.add_set_runtime_parameter(declare_parameter_set)
+            update_parameter = UpdateRuntimeParameter(param_name, code_gen_variable)
+        else:
+            declare_parameter = DeclareParameter(
+                code_gen_variable,
+                description,
+                read_only,
+                validations,
+                additional_constraints,
+            )
+            declare_parameter_set = SetParameter(param_name, code_gen_variable)
+            update_parameter = UpdateParameter(param_name, code_gen_variable)
+
+        # set parameter
+        for validation_function in validations:
+            parameter_validation = ParameterValidation(
+                declare_parameter_invalid, declare_parameter_valid, validation_function
+            )
+            declare_parameter_set.add_parameter_validation(parameter_validation)
+
+        # update parameter
+        for validation_function in validations:
+            parameter_validation = ParameterValidation(
+                update_parameter_invalid, update_parameter_valid, validation_function
+            )
+            update_parameter.add_parameter_validation(parameter_validation)
+
+        # An inherited leaf is a member of the base class; re-declaring it here
+        # would shadow it. Every parameter fragment below is still emitted:
+        # declare/set/update all address it as `updated_params.<name>`, which
+        # resolves into the base. StackParams keeps inlining it, exactly as it
+        # already inlines included mixin groups.
+        if not self._is_inherited(name, nested_name_list):
+            self.struct_tree.add_field(var)
+        if not is_runtime_parameter and not (
+            code_gen_variable.array_type
+            or code_gen_variable.defined_type == 'string'
+        ):
+            self.stack_struct_tree.add_field(var)
+            self.set_stack_params.append(SetStackParams(code_gen_variable.param_name))
+        if is_runtime_parameter:
+            self.declare_dynamic_parameters.append(declare_parameter)
+            self.update_dynamic_parameters.append(update_parameter)
+            self.update_declare_dynamic_parameter.append(declare_parameter)
+            dynamic_update_parameter = RemoveRuntimeParameter(declare_parameter)
+            self.remove_dynamic_parameter.append(dynamic_update_parameter)
+        else:
+            self.declare_parameters.append(declare_parameter)
+            self.update_parameters.append(update_parameter)
+            self.declare_parameter_sets.append(declare_parameter_set)
+
+    def parse_dict(self, name, root_map, nested_name):
+        if isinstance(root_map, dict) and isinstance(
+            next(iter(root_map.values())), dict
+        ):
+            cur_struct_tree = self.struct_tree
+            cur_stack_struct_tree = self.stack_struct_tree
+
+            sub_struct = DeclareStruct(name, [])
+            sub_stack_struct = DeclareStruct(name, [])
+            mount_path = tuple(nested_name[1:] + [name])
+            external_namespace = (
+                self.mixin_usage.mounts.get(mount_path)
+                if self.language == 'cpp' else None)
+            if self._is_inherited(name, nested_name):
+                # inherited group: the base class already declares the member,
+                # so nothing is added here. sub_struct is a throwaway, exactly
+                # as in the mounted case below.
+                pass
+            elif external_namespace is not None:
+                # mixin-owned group: the member references the shared struct
+                # from the mixin DTO header instead of re-defining it inline;
+                # sub_struct becomes a throwaway so no inline definition is
+                # emitted while the parameter fragments are still generated
+                self.struct_tree.add_sub_struct(
+                    ExternalStructMember(name, external_namespace))
+            else:
+                self.struct_tree.add_sub_struct(sub_struct)
+            self.struct_tree = sub_struct
+            self.stack_struct_tree.add_sub_struct(sub_stack_struct)
+            self.stack_struct_tree = sub_stack_struct
+            for key in root_map:
+                if isinstance(root_map[key], dict):
+                    nested_name.append(name)
+                    self.parse_dict(key, root_map[key], nested_name)
+                    nested_name.pop()
+
+            self.struct_tree = cur_struct_tree
+            self.stack_struct_tree = cur_stack_struct_tree
+        else:
+            self.parse_params(name, root_map, nested_name)
+
+    def _render_data(self):
+        if self.language == 'cpp':
+            # slash-separated tokens become nested C++ namespaces
+            namespace = '::'.join(self.namespace_tokens)
+        elif self.language == 'python':
+            # python has no namespaces; tokens are joined into one class name
+            namespace = '_'.join(self.namespace_tokens)
+        else:
+            namespace = self.namespace
+
+        if self.language == 'cpp' and self.mixin_usage.include_stems:
+            include_format = (
+                f'#include <{self.mixin_include_prefix}/{{}}_params_dto.hpp>'
+                if self.mixin_include_prefix
+                else '#include "{}_params_dto.hpp"')
+            mixin_includes = '\n'.join(
+                include_format.format(stem)
+                for stem in self.mixin_usage.include_stems)
+        else:
+            mixin_includes = ''
+
+        return {
+            'user_validation_file': self.user_validation_file,
+            'comments': self.comments,
+            'namespace': namespace,
+            'mixin_includes': mixin_includes,
+            # 'public a::A, public b::B', or '' when nothing is inherited --
+            # in which case the rendered header is byte-identical to before
+            # __inherit_mixins existed
+            'base_classes': (self.mixin_usage.base_classes()
+                             if self.language == 'cpp' else ''),
+            'logger_name': '.'.join(self.namespace_tokens),
+            'class_name': self.class_name,
+            'stamp_class_name': self.class_name + 'Stamp',
+            'stack_class_name': 'Stack' + self.class_name,
+            'listener_class_name': self.class_name + 'Listener',
+            'field_content': self.struct_tree.sub_structs[0].field_content(),
+            'sub_struct_content': self.struct_tree.sub_structs[0].sub_struct_content(),
+            'stack_field_content': self.stack_struct_tree.sub_structs[
+                0
+            ].field_content(),
+            'stack_sub_struct_content': self.stack_struct_tree.sub_structs[
+                0
+            ].sub_struct_content(),
+            'update_params_set': '\n'.join([str(x) for x in self.update_parameters]),
+            'update_dynamic_parameters': '\n'.join(
+                [str(x) for x in self.update_dynamic_parameters]
+            ),
+            'declare_params': '\n'.join([str(x) for x in self.declare_parameters]),
+            'declare_params_set': '\n'.join(
+                [str(x) for x in self.declare_parameter_sets]
+            ),
+            'declare_set_dynamic_params': '\n'.join(
+                [str(x) for x in self.declare_dynamic_parameters]
+            ),
+            'update_declare_dynamic_parameters': '\n'.join(
+                [str(x) for x in self.update_declare_dynamic_parameter]
+            ),
+            'set_stack_params': '\n'.join([str(x) for x in self.set_stack_params]),
+            # TODO support removing runtime parameters
+            # "remove_dynamic_parameters": "\n".join(
+            #     [str(x) for x in self.remove_dynamic_parameter]
+            # ),
+        }
+
+    @typechecked
+    def render_cpp_dto(self) -> str:
+        if self.language != 'cpp':
+            raise AssertionError('render_cpp_dto() requires the cpp generator')
+        j2_template = Template(
+            GenerateCode.templates['parameter_dto_header'],
+            keep_trailing_newline=True,
+        )
+        return j2_template.render(self._render_data(), trim_blocks=True)
+
+    @typechecked
+    def render_cpp_service(self, dto_header_include: str) -> str:
+        if self.language != 'cpp':
+            raise AssertionError('render_cpp_service() requires the cpp generator')
+        data = self._render_data()
+        data['dto_header_include'] = dto_header_include
+        j2_template = Template(
+            GenerateCode.templates['parameter_service_header'],
+            keep_trailing_newline=True,
+        )
+        return j2_template.render(data, trim_blocks=True)
+
+    def parse_mixin(self, yaml_file):
+        """Parse a mixin template for shared DTO generation.
+
+        Each root-level parameter group of the mixin becomes one standalone
+        struct definition in the mixin's code_namespace, referenced by
+        templates that __include_mixins the file. On top of those, the whole
+        mixin is gathered into one aggregate class named by the mixin's
+        class_name, which templates that __inherit_mixins the file derive
+        from.
+        """
+        mixin = read_mixin_file(yaml_file)
+        self.namespace = mixin.code_namespace
+        self.namespace_tokens = parse_code_namespace_tokens(mixin.code_namespace)
+        self.class_name = mixin.class_name
+        self.mixin_aggregate = MixinAggregateStruct(mixin.class_name)
+        for key, value in mixin.parameters.items():
+            if is_parameter_group(value):
+                self.parse_dict(key, value, [])
+                self.struct_tree.sub_structs[-1].type_only = True
+                self.mixin_aggregate.add_group(key)
+            else:
+                # a root-level leaf has no shared struct of its own; it is a
+                # plain field of the aggregate. The parameter fragments this
+                # also collects are never rendered in mixin mode.
+                self.parse_params(key, value, [])
+        for field in self.struct_tree.fields:
+            self.mixin_aggregate.add_field(field)
+
+    @typechecked
+    def render_cpp_mixin_dto(self) -> str:
+        if self.language != 'cpp':
+            raise AssertionError('render_cpp_mixin_dto() requires the cpp generator')
+        if self.mixin_aggregate is None:
+            raise AssertionError('parse_mixin() was not called before rendering')
+        # the type-only group structs must precede the aggregate holding them
+        data = {
+            'comments': self.comments,
+            'namespace': '::'.join(self.namespace_tokens),
+            'struct_content': (
+                ''.join(str(s) for s in self.struct_tree.sub_structs)
+                + str(self.mixin_aggregate)),
+        }
+        j2_template = Template(
+            GenerateCode.templates['mixin_dto_header'],
+            keep_trailing_newline=True,
+        )
+        return j2_template.render(data, trim_blocks=True)
+
+    def __str__(self):
+        if self.language == 'cpp':
+            raise AssertionError(
+                'C++ generation produces DTO and service headers; call '
+                'render_cpp_dto() and render_cpp_service()'
+            )
+        j2_template = Template(
+            GenerateCode.templates['parameter_library_header'],
+            keep_trailing_newline=True,
+        )
+        code = j2_template.render(self._render_data(), trim_blocks=True)
+        return code

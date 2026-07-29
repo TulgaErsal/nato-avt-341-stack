@@ -118,6 +118,7 @@ private:
     rviz_common::properties::FloatProperty* y_offset_property_;
     rviz_common::properties::FloatProperty* distance_property_;
     rviz_common::properties::IntProperty* target_msg_id_property_;
+    rviz_common::properties::StringProperty* toi_regex_property_;
 };
 
 } // end namespace rviz_plugins

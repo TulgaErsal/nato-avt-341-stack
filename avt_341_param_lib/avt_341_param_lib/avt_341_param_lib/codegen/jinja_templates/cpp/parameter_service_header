@@ -1,0 +1,244 @@
+{{comments}}
+
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <builtin_interfaces/msg/time.hpp>
+#include <functional>
+#include <limits>
+#include <mutex>
+
+// Narrow rclcpp includes on purpose: ParamsListener only needs the parameter
+// interfaces, a clock and a logger. rclcpp/node.hpp and
+// rclcpp_lifecycle/lifecycle_node.hpp used to be included here but no symbol
+// from either was ever referenced, and each one costs roughly as much to parse
+// as everything else in this header combined.
+#include <rclcpp/clock.hpp>
+#include <rclcpp/exceptions/exceptions.hpp>
+#include <rclcpp/node_interfaces/node_parameters_interface.hpp>
+#include <rclcpp/parameter.hpp>
+#include <rclcpp/parameter_value.hpp>
+
+#include <rclcpp/logger.hpp>
+#include <rclcpp/logging.hpp>
+#include <set>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
+#include <avt_341_param_lib/parameter_validators.hpp>
+#include "{{dto_header_include}}"
+
+{% if user_validation_file|length -%}
+#include "{{user_validation_file}}"
+{% endif %}
+
+namespace {{namespace}} {
+
+// Import validator types and functions from avt_341_param_lib
+using avt_341_param_lib::ValidationResult;
+using avt_341_param_lib::to_parameter_result_msg;
+using avt_341_param_lib::unique;
+using avt_341_param_lib::subset_of;
+using avt_341_param_lib::fixed_size;
+using avt_341_param_lib::size_gt;
+using avt_341_param_lib::size_lt;
+using avt_341_param_lib::not_empty;
+using avt_341_param_lib::element_bounds;
+using avt_341_param_lib::lower_element_bounds;
+using avt_341_param_lib::upper_element_bounds;
+using avt_341_param_lib::bounds;
+using avt_341_param_lib::lt;
+using avt_341_param_lib::gt;
+using avt_341_param_lib::lt_eq;
+using avt_341_param_lib::gt_eq;
+using avt_341_param_lib::one_of;
+
+template <typename T>
+[[nodiscard]] auto to_parameter_value(T value) {
+    return rclcpp::ParameterValue(value);
+}
+
+  class {{listener_class_name}}{
+  public:
+    // throws rclcpp::exceptions::InvalidParameterValueException on initialization if invalid parameter are loaded
+    template <typename NodeT>
+    {{listener_class_name}}(NodeT node, std::string const& prefix = "")
+    : {{listener_class_name}}(node->get_node_parameters_interface(), node->get_logger(), prefix) {}
+
+    {{listener_class_name}}(const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface>& parameters_interface,
+                  std::string const& prefix = "")
+    : {{listener_class_name}}(parameters_interface, rclcpp::get_logger("{{logger_name}}"), prefix) {
+      RCLCPP_DEBUG(logger_, "ParameterListener: Not using node logger, recommend using other constructors to use a node logger");
+    }
+
+    {{listener_class_name}}(const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface>& parameters_interface,
+                  rclcpp::Logger logger, std::string const& prefix = "")
+    : prefix_{prefix},
+      logger_{std::move(logger)} {
+      if (!prefix_.empty() && prefix_.back() != '.') {
+        prefix_ += ".";
+      }
+
+      parameters_interface_ = parameters_interface;
+      declare_params();
+      auto update_param_cb = [this](const std::vector<rclcpp::Parameter> &parameters){return this->update(parameters);};
+      handle_ = parameters_interface_->add_on_set_parameters_callback(update_param_cb);
+      clock_ = rclcpp::Clock();
+    }
+
+    {{class_name}} get_params() const{
+      std::lock_guard<std::mutex> lock(mutex_);
+      return params_;
+    }
+
+    /**
+     * @brief Tries to update the parsed {{class_name}} object
+     * @param params_in The {{class_name}} object to update
+     * @return true if the {{class_name}} object was updated, false if it was already up to date or the mutex could not be locked
+     * @note This function tries to lock the mutex without blocking, so it can be used in a RT loop
+     */
+    bool try_update_params({{class_name}} & params_in) const {
+      std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+      if (lock.owns_lock()) {
+        if (const bool is_old = params_in.__stamp != params_.__stamp; is_old) {
+          params_in = params_;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /**
+     * @brief Tries to get the current {{class_name}} object
+     * @param params_in The {{class_name}} object to fill with the current parameters
+     * @return true if mutex can be locked, false if mutex could not be locked
+     * @note The parameters are only filled, when the mutex can be locked and the params timestamp is different
+     * @note This function tries to lock the mutex without blocking, so it can be used in a RT loop
+     */
+    bool try_get_params({{class_name}} & params_in) const {
+      if (mutex_.try_lock()) {
+        if (const bool is_old = params_in.__stamp != params_.__stamp; is_old) {
+          params_in = params_;
+        }
+        mutex_.unlock();
+        return true;
+      }
+      return false;
+    }
+
+    bool is_old({{class_name}} const& other) const {
+      std::lock_guard<std::mutex> lock(mutex_);
+      return params_.__stamp != other.__stamp;
+    }
+
+    {{stack_class_name}} get_stack_params() {
+      {{class_name}} params = get_params();
+      {{stack_class_name}} output;
+
+{%- filter indent(width=6) %}
+{{set_stack_params}}
+{%- endfilter %}
+
+      return output;
+    }
+
+    void refresh_dynamic_parameters() {
+      auto updated_params = get_params();
+      // TODO remove any destroyed dynamic parameters
+{%- filter indent(width=6) %}
+{{remove_dynamic_parameters}}
+{%- endfilter %}
+      // declare any new dynamic parameters
+      rclcpp::Parameter param;
+{%- filter indent(width=6) %}
+{{update_declare_dynamic_parameters}}
+{%- endfilter %}
+    }
+
+    rcl_interfaces::msg::SetParametersResult update(const std::vector<rclcpp::Parameter> &parameters) {
+      auto updated_params = get_params();
+
+      for (const auto &param: parameters) {
+{%- filter indent(width=8) %}
+{{update_params_set}}
+{%- endfilter %}
+      }
+{% if update_dynamic_parameters|length %}
+      // update dynamic parameters
+      for (const auto &param: parameters) {
+{%- filter indent(width=8) %}
+{{update_dynamic_parameters}}
+{%- endfilter %}
+      }
+{%- endif %}
+      updated_params.__stamp = current_stamp();
+      update_internal_params(updated_params);
+      if (user_callback_) {
+         user_callback_(updated_params);
+      }
+      return to_parameter_result_msg({});
+    }
+
+    void declare_params(){
+      auto updated_params = get_params();
+      // declare all parameters and give default values to non-required ones
+{%- filter indent(width=6) %}
+{{declare_params}}
+{%- endfilter %}
+      // get parameters and fill struct fields
+      rclcpp::Parameter param;
+
+{%- filter indent(width=6) %}
+{{declare_params_set}}
+{%- endfilter %}
+{% if declare_set_dynamic_params|length %}
+{% filter indent(width=6) %}
+// declare and set all dynamic parameters
+{{declare_set_dynamic_params}}
+{%- endfilter %}
+{%- endif %}
+
+      updated_params.__stamp = current_stamp();
+      update_internal_params(updated_params);
+    }
+
+    using userParameterUpdateCB = std::function<void(const {{class_name}}&)>;
+    void setUserCallback(const userParameterUpdateCB& callback){
+      user_callback_ = callback;
+    }
+
+    void clearUserCallback(){
+      user_callback_ = {};
+    }
+
+    private:
+      [[nodiscard]] {{stamp_class_name}} current_stamp() {
+        const builtin_interfaces::msg::Time now = clock_.now();
+        return {{stamp_class_name}}{now.sec, now.nanosec};
+      }
+
+      void update_internal_params({{class_name}} updated_params) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        params_ = std::move(updated_params);
+      }
+
+      std::string prefix_;
+      {{class_name}} params_;
+      rclcpp::Clock clock_;
+      std::shared_ptr<rclcpp::node_interfaces::OnSetParametersCallbackHandle> handle_;
+      std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> parameters_interface_;
+      userParameterUpdateCB user_callback_;
+
+      rclcpp::Logger logger_;
+      std::mutex mutable mutex_;
+  };
+
+} // namespace {{namespace}}

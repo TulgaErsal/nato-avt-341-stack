@@ -29,6 +29,21 @@ inline QString statusBadgeStyleSheet( const QColor& color, int h_padding = 8 )
         .arg( h_padding );
 }
 
+/// Stylesheet for a "pill" badge: like statusBadgeStyleSheet but with fully
+/// rounded ends. The radius is half of \p height, so the caller must give the
+/// label exactly that height (e.g. via setFixedHeight) for the ends to come out
+/// semicircular; the vertical padding is left at zero and the text is expected
+/// to be centered within that height.
+inline QString statusPillStyleSheet( const QColor& color, int height,
+                                     int h_padding = 8 )
+{
+    return QString( "background-color: %1; color: white; padding: 0px %2px; "
+                    "border-radius: %3px;" )
+        .arg( color.name() )
+        .arg( h_padding )
+        .arg( height / 2 );
+}
+
 } // end namespace rviz_plugins
 } // end namespace avt_341
 

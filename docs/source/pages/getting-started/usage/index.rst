@@ -6,5 +6,4 @@ Usage
 
     inputs-outputs.rst
     launch-files.rst
-    parameters.rst
 

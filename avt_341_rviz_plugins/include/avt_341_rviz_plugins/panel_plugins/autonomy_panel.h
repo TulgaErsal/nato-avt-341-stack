@@ -22,6 +22,7 @@
 namespace avt_341 {
 namespace rviz_plugins {
 
+class AccordionGroup;
 class SetupComponent;
 
 class AutonomyPanel: public rviz_common::Panel
@@ -52,14 +53,17 @@ protected:
     // per-vehicle group boxes is returned through out_content_layout.
     QWidget* createVehicleTab( QVBoxLayout*& out_content_layout );
 
-    // Clears and repopulates content_layout with one group box per vehicle,
-    // each wrapping the component produced by make_component( vehicle_id ).
-    void rebuildVehicleTab( QVBoxLayout* content_layout, const QStringList& vehicles,
-                            const std::function<QWidget*( const QString& )>& make_component );
+    // Clears and repopulates content_layout with one accordion group per
+    // vehicle, each wrapping the component produced by
+    // make_component( vehicle_id, group ). The group is passed along so a
+    // factory can also drive its header (e.g. tag it with a status badge).
+    void rebuildVehicleTab(
+        QVBoxLayout* content_layout, const QStringList& vehicles,
+        const std::function<QWidget*( const QString&, AccordionGroup* )>& make_component );
 
     // Per-vehicle component factories, each reading the live topic config.
     QWidget* makeNavStateComponent( const QString& vehicle_id );
-    QWidget* makeMissionComponent( const QString& vehicle_id );
+    QWidget* makeMissionComponent( const QString& vehicle_id, AccordionGroup* group );
     QWidget* makeTrackerComponent( const QString& vehicle_id );
     QWidget* makeComputeComponent( const QString& vehicle_id );
 

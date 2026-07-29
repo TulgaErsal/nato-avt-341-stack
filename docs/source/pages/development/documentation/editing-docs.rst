@@ -41,7 +41,7 @@ from the root of the repository:
 
     python -m venv docs/.nato-avt-341-docs-env
     source docs/.nato-avt-341-docs-env/bin/activate
-    pip install -r requirements.txt
+    pip install -r docs/requirements.txt
 
 Finally, run the build process by running `cd docs && make html`.
 

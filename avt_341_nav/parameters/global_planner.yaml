@@ -1,0 +1,162 @@
+code_namespace: avt_341_nav/params/global_planner
+ros__parameters:
+
+  __include_mixins: gis_mixin
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
+  # Global Parameters
+  # ====================================================================================================================
+  compute_time_publish_period:
+    type: double
+    default_value: 1.0
+    description: "Period in seconds for publishing planner compute-time summaries; <= 0 disables."
+  goal_dist:
+    type: double
+    default_value: 10.0
+    description: "Lookahead threshold within which next waypoint selected."
+  goal_yaw_threshold:
+    type: double
+    default_value: 360.0
+    description: "Default goal yaw threshold (in degrees) when orientation matching is not specified on goal. Set > 180.0 to disable orientation matching."
+  global_lookahead:
+    type: double
+    default_value: 75.0
+    description: "Global path lookahead"
+  initial_waypoints:
+    type: string
+    default_value: ""
+    description: "Path to a yaml file with the initial global waypoints (waypoints_x/waypoints_y lists) loaded at startup. Empty string disables initial waypoints."
+  debug_visualize:
+    type: bool
+    default_value: true
+    description: "Enables debug visualization of global planner."
+  w_distance:
+    type: double
+    default_value: 1.0
+    description: "Weight for distance cost."
+  w_occupancy:
+    type: double
+    default_value: 10.0
+    description: "Weight for occupancy cost."
+  w_segmentation:
+    type: double
+    default_value: 0.1
+    description: "Weight for segmentation cost."
+  search_diagonals:
+    type: bool
+    default_value: true
+    description: "If true, grid search includes adjacent cells that are diagonal. If not, only adjacent cells that are horizontal or vertical are considered."
+  los_max_iterations:
+    type: int
+    default_value: 1
+    description: "Number of iterations to apply line of sight post smoothing. Applying post smoothing multiple times can help remove excessive control points that are added due to jagged obstacle edges."
+    validation:
+      gt_eq<>: [ 0 ]
+  los_break_on_first:
+    type: bool
+    default_value: false
+    description: "If true, line of sight post-smoothing only considers first break on line of sight. If false, finds the last line of sight connection."
+  shutdown_behavior:
+    type: int
+    default_value: 1
+    description: "Behavior upon reaching goal (1 - go idle, 2 - stop w/ gradual brake, 3 - stop with hard brake)."
+    validation:
+      one_of<>: [ [ 1, 2, 3 ] ]
+  auto_active_on_new_waypoint:
+    type: bool
+    default_value: true
+    description: "Automatically set nav stack to active state on new goal received. If false, separate activate command must be sent in addition to target waypoint."
+  verbose_gp_log:
+    type: bool
+    default_value: false
+    description: "Activates verbose logging for global planner."
+  dilation_factor:
+    type: double
+    default_value: 0.0
+    description: "Dilation to costmap to apply during planning."
+  max_separation:
+    type: double
+    default_value: 1.0
+    description: "Maximum separation between waypoints [m]."
+  use_global_path:
+    type: bool
+    default_value: true
+    description: "Whether global planner is using A*(true) or waypoints(false)"
+  use_segmentation:
+    type: bool
+    default_value: true
+    description: "Whether to use segmentation grid data or not"
+  map_topic:
+    type: string
+    default_value: "avt_341/occupancy_grid"
+    description: "Occupancy grid topic"
+  seg_topic:
+    type: string
+    default_value: "avt_341/segmentation_grid"
+    description: "Segmentation grid topic"
+  planning_method:
+    type: string
+    default_value: "fast_marching"
+    description: "Global planning algorithm."
+    validation:
+      one_of<>: [ [ "astar", "fast_marching", "d_star_lite", "fast_marching_square" ] ]
+  obstacle_threshold:
+    type: double
+    default_value: 0.0
+    description: "Threshold above which cells are strictly impassable in EDT-based planners."
+
+  # Fast Marching Parameters
+  # ====================================================================================================================
+  safety_margin_global:
+    type: double
+    default_value: 0.25
+    description: "Safety margin from obstacles in meters (for EDT-based planners)."
+  path_extraction_method:
+    type: string
+    default_value: "hybrid"
+    description: "Path extraction method for EDT-based planners."
+    validation:
+      one_of<>: [ [ "discrete", "gradient_descent", "hybrid" ] ]
+  clearance_penalty_scale:
+    type: double
+    default_value: 40.0
+    description: "Scaling factor for the clearance penalty."
+  clearance_penalty_range:
+    type: double
+    default_value: 2.0
+    description: "Distance (m) at which clearance penalty becomes zero."
+  clearance_penalty_exponent:
+    type: double
+    default_value: 2.0
+    description: "Exponent factor for the 'exponential' clearance penalty."
+  gradient_descent_max_steps:
+    type: int
+    default_value: 2000
+    description: "Max steps for path extraction."
+    validation:
+      gt<>: [ 0 ]
+  gradient_descent_steps_per_point:
+    type: int
+    default_value: 10
+    description: "Interpolation resolution."
+    validation:
+      gt<>: [ 0 ]
+  clearance_penalty_type:
+    type: string
+    default_value: "linear"
+    description: "Clearance penalty type for fast_marching."
+    validation:
+      one_of<>: [ [ "none", "linear", "quadratic", "exponential", "repulsive_potential", "wall_hugging" ] ]
+  clipping_distance:
+    type: double
+    default_value: 2.0
+    description: "Distance (m) from start position at which to clip the beginning of the path."
+  planning_timeout_ms:
+    type: int
+    default_value: 1000
+    description: "Max milliseconds a single PlanPath call may run before it is cancelled and the previous path is re-published."
+    validation:
+      gt<>: [ 0 ]

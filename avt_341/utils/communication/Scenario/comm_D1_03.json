@@ -1,9 +1,0 @@
-{
-    "documentation":"Instructions for Segment 1.03 Departure phase. Tells AGV1 to move to Mission Point C at 4 m/s. The rest of the team will follow.",
-    "messages": [
-        {
-            "message": "CGV1,1,MOVETO,AGV1,MissionPoint_C,4",
-            "delay": "1.0"
-        }
-    ]
-}

@@ -1,0 +1,196 @@
+code_namespace: avt_341_nav/params/mission_manager
+ros__parameters:
+
+  __include_mixins: gis_mixin
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
+  name:
+    type: string
+    description: "Vehicle name / id of this mission manager instance. Supplied by the launch system as the uppercased vehicle id."
+  vehicle_namespaces:
+    type: string_array
+    description: "Namespaces of all vehicles in the formation, in formation order. Used to subscribe to per-vehicle odometry topics."
+  max_speed:
+    type: double
+    default_value: 4.0
+    description: "Default maximum vehicle speed (m/s). Single source for the mpc planner family and the mission manager."
+  mission_definition_file:
+    type: string
+    default_value: ''
+    description: "File describing mission reference points. The deployment override yaml supplies the actual path."
+  mission_paths_file:
+    type: string
+    default_value: ''
+    description: "File describing paths of mission points. The deployment override yaml supplies the actual path."
+
+  formation:
+    follow_scale_x:
+      type: double
+      default_value: 15.0
+      description: "X scale distance between vehicles in formation in vehicle coordinates."
+    follow_scale_y:
+      type: double
+      default_value: 10.0
+      description: "Y scale distance between vehicles in formation in vehicle coordinates."
+    global_path_points_dist:
+      type: double
+      default_value: 1.0
+      description: "Distance (m) between generated global path points."
+    use_breadcrumbs:
+      type: bool
+      default_value: false
+      description: "If true, follower vehicles use leader breadcrumbs as their global path. If false, followers use the global planner."
+    x_offset_on_path:
+      type: bool
+      default_value: true
+      description: "If true, follower x-offset is applied along leader path length. Otherwise it is applied from snapshot poses of the leader."
+    prune_global_path:
+      type: bool
+      default_value: true
+      description: "If true, prune the formation-controller follower path to its closest point."
+    use_tangent_heading:
+      type: bool
+      default_value: false
+      description: "If true, estimate leader heading from the position-history tangent instead of the odometry orientation."
+    follow_goal_threshold:
+      type: double
+      default_value: 10.0
+      description: "Terminal goal threshold for an ALL_ARRIVE follow task, checked after the followed vehicle arrives."
+    offsets_from_leader:
+      type: bool
+      default_value: true
+      description: "If true, calculate formation offsets from the lead vehicle. If false, calculate them from the next vehicle in a column."
+
+  fsc:
+    type:
+      type: string
+      default_value: 'speed_up_follower'
+      description: "Formation speed controller: 'speed_up_follower' | 'slow_down_leader' | 'none'."
+      validation:
+        one_of<>: [ [ 'speed_up_follower', 'slow_down_leader', 'none' ] ]
+    max_speed_factor:
+      type: double
+      default_value: 1.2
+      description: "Maximum speed factor the formation speed controller may command."
+    follower_obt_stop:
+      type: bool
+      default_value: false
+      description: "If true, stop the follower when the formation speed controller detects an obstruction."
+    debug_visualize:
+      type: bool
+      default_value: false
+      description: "Visualize formation speed-control diagnostics."
+    follower_dist_break:
+      type: double
+      default_value: 10.0
+      description: "If follower global-path distance is less than this amount, the follower waits."
+    follower_dot_threshold:
+      type: double
+      default_value: 0.0
+      description: "Heading dot-product threshold below which the follower waits."
+    follower_dot_range:
+      type: double
+      default_value: 100.0
+      description: "Range within which the heading dot-product filter is applied."
+    oof:
+      threshold:
+        type: double
+        default_value: 7.0
+        description: "Distance after which a vehicle is considered out of formation."
+      const_term:
+        type: double
+        default_value: 0.3
+        description: "Initial speed-factor subtraction after passing the out-of-formation threshold."
+      lin_slope:
+        type: double
+        default_value: 0.03
+        description: "Slope in the linear portion of out-of-formation speed control."
+      mult:
+        type: double
+        default_value: 0.14
+        description: "Multiplier applied to vehicles that are out of formation."
+
+  toi:
+    approach_dist:
+      type: double
+      default_value: 20.0
+      description: "Approach distance to a target of interest before encircling."
+    encircle_radius:
+      type: double
+      default_value: 10.0
+      description: "Encircle radius around a target of interest."
+    encircle_degrees:
+      type: double
+      default_value: 180.0
+      description: "Angular range to encircle around a target of interest."
+    encircle_cw:
+      type: bool
+      default_value: true
+      description: "If true, encircle the target of interest clockwise."
+    goal_threshold:
+      type: double
+      default_value: 5.0
+      description: "Distance at which the vehicle is considered to have approached the target of interest."
+    contact_trigger_delay:
+      type: double
+      default_value: 1.0
+      description: "Seconds a contact must persist before MoveTo and Encircle tasks are created (0 triggers immediately)."
+    same_object_distance_threshold:
+      type: double
+      default_value: 1.0
+      description: "Distance threshold for combining observations of the same target."
+    tracker_node_name:
+      type: string
+      default_value: 'object_tracker_node'
+      description: "Object tracking node whose target_selection.toi_regex is reconfigured when a formation command carries a toi_regex. Relative names resolve under this vehicle's namespace."
+
+  use_avt_tracker:
+    type: bool
+    default_value: true
+    description: "Use avt_341/odometry/estimated/<vehicle> instead of cross-namespace ground truth for other vehicles."
+  formation_goal_filter:
+    type: string
+    default_value: 'none'
+    description: "Formation goal filtering method: 'none' | 'obs_avoid'."
+    validation:
+      one_of<>: [ [ 'none', 'obs_avoid' ] ]
+  fgf_obs_avoid:
+    occ_threshold:
+      type: int
+      default_value: 0
+      description: "Threshold for occupancy cells to be considered an obstacle."
+    padding:
+      type: double
+      default_value: 1.0
+      description: "Additional obstacle padding (m) beyond perception-grid dilation."
+    pub_unfiltered_goal:
+      type: bool
+      default_value: false
+      description: "Publish the unfiltered formation goal for debugging while continuing to use the filtered goal."
+    patch_pad_width:
+      type: double
+      default_value: 20.0
+      description: "Occupancy-grid patch width (m) searched for free cells when the candidate goal is occupied."
+    min_obstacle_width:
+      type: double
+      default_value: 5.0
+      description: "Minimum obstacle width (m) considered by deadlock detection."
+    follower_divergence_threshold:
+      type: double
+      default_value: 30.0
+      description: "Distance (m) after which a processed follower goal is considered to diverge from the leader path."
+    reset_side_on_free_space:
+      type: bool
+      default_value: true
+      description: "Reset sidedness state when the candidate goal is in free space."
+    persist_state:
+      type: bool
+      default_value: true
+      description: "Persist goal-filter state between invocations."
+    ignore_deadlock:
+      type: bool
+      default_value: true
+      description: "Ignore deadlock and reset the internal filter state."

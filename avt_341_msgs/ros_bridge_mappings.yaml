@@ -1,5 +1,0 @@
--
-  ros1_package_name: 'avt_341_msgs'
-  ros1_message_name: 'Communication'
-  ros2_package_name: 'avt_341_msgs'
-  ros2_message_name: 'Communication'

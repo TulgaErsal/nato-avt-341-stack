@@ -1,7 +1,10 @@
 #include <avt_341_rviz_plugins/primitives/accordion_group.h>
 
+#include <algorithm>
+
 #include <QEvent>
 #include <QFont>
+#include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
@@ -10,6 +13,7 @@
 #include <QVBoxLayout>
 
 #include <avt_341_rviz_plugins/primitives/icon_utils.h>
+#include <avt_341_rviz_plugins/primitives/status_style.h>
 #include <avt_341_rviz_plugins/primitives/vehicle_palette.h>
 
 namespace
@@ -27,6 +31,22 @@ QWidget* makeUnderline()
     return line;
 }
 
+// `font` with its size scaled by `factor`; handles both point- and pixel-sized
+// fonts, and leaves a font with neither set alone.
+QFont scaledFont( QFont font, qreal factor )
+{
+    if ( font.pointSizeF() > 0.0 )
+    {
+        font.setPointSizeF( font.pointSizeF() * factor );
+    }
+    else if ( font.pixelSize() > 0 )
+    {
+        font.setPixelSize(
+            std::max( 1, static_cast<int>( font.pixelSize() * factor ) ) );
+    }
+    return font;
+}
+
 }  // namespace
 
 namespace avt_341::rviz_plugins
@@ -38,15 +58,7 @@ AccordionGroup::AccordionGroup( const QString& title, QWidget* parent )
     // Header text: left-aligned, slightly enlarged and bold so it reads as a
     // section heading.
     title_label_ = new QLabel( title );
-    QFont header_font = title_label_->font();
-    if ( header_font.pointSizeF() > 0.0 )
-    {
-        header_font.setPointSizeF( header_font.pointSizeF() * 1.15 );
-    }
-    else if ( header_font.pixelSize() > 0 )
-    {
-        header_font.setPixelSize( static_cast<int>( header_font.pixelSize() * 1.15 ) );
-    }
+    QFont header_font = scaledFont( title_label_->font(), 1.15 );
     header_font.setBold( true );
     title_label_->setFont( header_font );
 
@@ -56,6 +68,20 @@ AccordionGroup::AccordionGroup( const QString& title, QWidget* parent )
     const int swatch_size = scaledSize( 12, this );
     swatch_label_->setFixedSize( swatch_size, swatch_size );
     swatch_label_->setVisible( false );
+
+    // Optional status pill shown at the right end of the header row; hidden
+    // until text is supplied via setBadge(). Slightly smaller and bold so it
+    // reads as a tag rather than part of the title. Its height is fixed (and
+    // its text centered in it) because the pill's corner radius is derived from
+    // that height.
+    badge_label_ = new QLabel;
+    QFont badge_font = scaledFont( badge_label_->font(), 0.85 );
+    badge_font.setBold( true );
+    badge_label_->setFont( badge_font );
+    badge_height_ = QFontMetrics( badge_font ).height() + scaledSize( 4, this );
+    badge_label_->setFixedHeight( badge_height_ );
+    badge_label_->setAlignment( Qt::AlignCenter );
+    badge_label_->setVisible( false );
 
     caret_label_ = new QLabel;
 
@@ -71,16 +97,18 @@ AccordionGroup::AccordionGroup( const QString& title, QWidget* parent )
     // header row reaches header_ (and its event filter) rather than a child.
     swatch_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
     title_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
+    badge_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
     caret_label_->setAttribute( Qt::WA_TransparentForMouseEvents, true );
 
-    // Header row: title on the left, caret pushed to the right edge. No
-    // horizontal margins so the title aligns flush with the content below.
+    // Header row: title on the left, badge and caret pushed to the right edge.
+    // No horizontal margins so the title aligns flush with the content below.
     QHBoxLayout* header_layout = new QHBoxLayout;
     header_layout->setContentsMargins( 0, 4, 0, 4 );
     header_layout->setSpacing( 6 );
     header_layout->addWidget( swatch_label_ );
     header_layout->addWidget( title_label_ );
     header_layout->addStretch();
+    header_layout->addWidget( badge_label_ );
     header_layout->addWidget( caret_label_ );
 
     header_ = new QWidget;
@@ -133,6 +161,26 @@ void AccordionGroup::setSwatchColor( const QColor& color )
         swatch_label_->clear();
         swatch_label_->setVisible( false );
     }
+}
+
+void AccordionGroup::setBadge( const QString& text, const QColor& color )
+{
+    if ( text.isEmpty() || !color.isValid() )
+    {
+        clearBadge();
+        return;
+    }
+
+    badge_label_->setText( text );
+    badge_label_->setStyleSheet( statusPillStyleSheet( color, badge_height_ ) );
+    badge_label_->setVisible( true );
+}
+
+void AccordionGroup::clearBadge()
+{
+    badge_label_->clear();
+    badge_label_->setStyleSheet( QString() );
+    badge_label_->setVisible( false );
 }
 
 void AccordionGroup::setExpanded( bool expanded )

@@ -1,0 +1,16 @@
+class_name: GisParams
+code_namespace: avt_341_nav/params/core
+ros__parameters:
+    gis:
+        crs:
+            type: string
+            default_value: ''
+            description: "GIS coordinate reference system."
+        origin_x:
+            type: double
+            default_value: 0.0
+            description: "Local origin x offset in crs to where origin of the map frame is located."
+        origin_y:
+            type: double
+            default_value: 0.0
+            description: "Local origin y offset in crs to where origin of the map frame is located."

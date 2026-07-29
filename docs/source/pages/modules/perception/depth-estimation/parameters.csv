@@ -1,4 +1,4 @@
 Name, Type (Default value), Description
-"depth_estimation_model", "string ($(find avt_341)/src/ia/depth_estimation/Models/densedepth_krc_v2_29082023_225814/model.h5)", "Is the path to the *.h5 file of the model."
+"depth_estimation_model", "string ($(find avt_341)/src/ia/depth_estimation/Models/densedepth_krc_v2_29082023_225814/model.h5)", "Is the path to the \*.h5 file of the model."
 "input_image_topic", "string, (/airsim_node/tracer/front_center/Scene)", "The topic where the RGB images are published."
 "depth_map_topic", "string (/depth_map)", "The topic where the depth map is published."

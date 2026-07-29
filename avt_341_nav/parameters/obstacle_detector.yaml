@@ -1,0 +1,161 @@
+code_namespace: avt_341_nav/params/obstacle_detector
+ros__parameters:
+
+  # Obstacle Detection
+  # ====================================================================================================================
+  use_pca_box:
+    type: bool
+    default_value: true
+    description: "Use PCA Bounding box to align clusters."
+  use_tracking:
+    type: bool
+    default_value: true
+    description: "Use tracking to assign bbox ids."
+  voxel_grid_size:
+    type: double
+    default_value: 0.2
+    description: "Grid size for voxel grid filtering [m]."
+  roi_max_x:
+    type: double
+    default_value: 70.0
+    description: "Maximum x for obstacle detection [m]."
+  roi_max_y:
+    type: double
+    default_value: 30.0
+    description: "Maximum y for obstacle detection [m]."
+  roi_max_z:
+    type: double
+    default_value: 3.0
+    description: "Maximum z for obstacle detection [m]."
+  roi_min_x:
+    type: double
+    default_value: -5.0
+    description: "Minimum x for obstacle detection [m]."
+  roi_min_y:
+    type: double
+    default_value: -30.0
+    description: "Minimum y for obstacle detection [m]."
+  roi_min_z:
+    type: double
+    default_value: -2.5
+    description: "Minimum z for obstacle detection [m]."
+  body_max_x:
+    type: double
+    default_value: 1.3
+    description: "Maximum x for vehicle body bounding box, to exclude from obstacle detection [m]."
+  body_max_y:
+    type: double
+    default_value: 1.0
+    description: "Maximum y for vehicle body bounding box, to exclude from obstacle detection [m]."
+  body_max_z:
+    type: double
+    default_value: 2.0
+    description: "Maximum z for vehicle body bounding box, to exclude from obstacle detection [m]."
+  body_min_x:
+    type: double
+    default_value: -2.2
+    description: "Minimum x for vehicle body bounding box, to exclude from obstacle detection [m]."
+  body_min_y:
+    type: double
+    default_value: -1.0
+    description: "Minimum y for vehicle body bounding box, to exclude from obstacle detection [m]."
+  body_min_z:
+    type: double
+    default_value: -0.3
+    description: "Minimum z for vehicle body bounding box, to exclude from obstacle detection [m]."
+  ground_threshold:
+    type: double
+    default_value: 0.3
+    description: "[UNUSED] Ground plane segmentation threshold. Kept for legacy compatibility; the node reads it but no longer uses it."
+  cluster_threshold:
+    type: double
+    default_value: 0.5
+    description: "Threshold distance for separation distance between clusters [m]."
+  cluster_max_size:
+    type: int
+    default_value: 1000
+    description: "Maximum size of a cluster [points]."
+    validation:
+      gt_eq<>: [ 0 ]
+  cluster_min_size:
+    type: int
+    default_value: 50
+    description: "Minimum size of a cluster [points]."
+    validation:
+      gt_eq<>: [ 0 ]
+  displacement_threshold:
+    type: double
+    default_value: 1.0
+    description: "Maximum displacement between frames for object tracking [m]."
+  iou_threshold:
+    type: double
+    default_value: 1.0
+    description: "Intersection over union threshold for object tracking [m]."
+  ground_normal_x:
+    type: double
+    default_value: 0.0
+    description: "Normal vector for ground points segmentation - x component."
+  ground_normal_y:
+    type: double
+    default_value: 0.0
+    description: "Normal vector for ground points segmentation - y component."
+  ground_normal_z:
+    type: double
+    default_value: 1.0
+    description: "Normal vector for ground points segmentation - z component."
+  ground_normal_threshold:
+    type: double
+    default_value: 0.4
+    description: "Threshold for ground point segmentation."
+  obstacle_scale:
+    type: double
+    default_value: 1.0
+    description: "Scale to search for neighbor obstacle points [m]."
+  obstacle_min_neighbors:
+    type: int
+    default_value: 10
+    description: "Minimum neighboring obstacle points [points]."
+    validation:
+      gt_eq<>: [ 0 ]
+
+  # Frames
+  # ====================================================================================================================
+  bbox_target_frame:
+    type: string
+    default_value: 'base_link'
+    description: "Target frame for bounding boxes."
+  robot_base_link:
+    type: string
+    default_value: 'mrzr/base_link'
+    description: "Base link of the robot."
+  fixed_frame:
+    type: string
+    default_value: 'map'
+    description: "World-fixed frame used for normal filtering."
+
+  # Pointcloud Topics
+  # ====================================================================================================================
+  lidar_points_topic:
+    type: string
+    default_value: '/ouster/points'
+    description: "Input sensor point cloud topic."
+  cloud_ground_topic:
+    type: string
+    default_value: '/avt_341/lidar_detector/cloud_ground'
+    description: "Output ground points topic."
+  cloud_clusters_topic:
+    type: string
+    default_value: '/avt_341/lidar_detector/cloud_clusters'
+    description: "Output obstacle points topic."
+  bboxes_topic:
+    type: string
+    default_value: '/avt_341/lidar_detector/bboxes'
+    description: "Output cluster bounding boxes."
+  publish_seg_as_one:
+    type: bool
+    default_value: false
+    description: "If true publishes ground plane segmented pointcloud in single message with mask put in additional channel."
+  publish_seg_as_one_field:
+    type: string
+    default_value: 'gnd_seg'
+    description: "Channel name to use if publish_seg_as_one is true."

@@ -1,0 +1,163 @@
+code_namespace: avt_341_nav/params/dwa_local_planner
+ros__parameters:
+
+  # Costmap transport (publish.method drives latching of grid subscriptions)
+  costmap:
+    __include_mixins: costmap_publish_mixin
+
+  # Dynamic Window Approach
+  # ====================================================================================================================
+  model:
+    type: string
+    default_value: "ackermann"
+    description: "Motion model for the trajectory prediction - may be 'ackermann' for Ackermann-steered AGVs or 'synchro' for synchro drive robots."
+    validation:
+      one_of<>: [ [ "ackermann", "synchro" ] ]
+  wheelbase:
+    type: double
+    default_value: 2.019
+    description: "AGV wheelbase. Used for trajectory prediction for the Ackermann motion model."
+  speed_lin_min:
+    type: double
+    default_value: 0.5
+    description: "Minimum value for the linear variable (longitudinal speed for all models) in the prediction window."
+  speed_lin_max:
+    type: double
+    default_value: 3.0
+    description: "Maximum value for the linear variable (longitudinal speed for all models) in the prediction window."
+  speed_lin_steps:
+    type: int
+    default_value: 20
+    description: "Number of intervals to partition the linear variable range into. Higher values allow for finer control, but significantly impact performance."
+    validation:
+      gt<>: [ 0 ]
+  accel_max:
+    type: double
+    default_value: 3.0
+    description: "Maximum rate of change of the linear variable (longitudinal speed)."
+  speed_ang_min:
+    type: double
+    default_value: -0.3
+    description: "Minimum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window."
+  speed_ang_max:
+    type: double
+    default_value: 0.3
+    description: "Maximum value for the angular variable (yaw rate for synchro drive, steering angle for Ackermann) in the prediction window."
+  speed_ang_steps:
+    type: int
+    default_value: 40
+    description: "Number of intervals to partition the angular variable range into. Higher values allow for finer control, but significantly impact performance."
+    validation:
+      gt<>: [ 0 ]
+  ang_accel_max:
+    type: double
+    default_value: 2.0
+    description: "Maximum rate of change of the angular variable (yaw acceleration for synchro drive, steering rate for Ackermann)"
+  lat_accel_max:
+    type: double
+    default_value: 9.81
+    description: "Maximum lateral acceleration."
+  horizon:
+    type: string
+    default_value: "adaptive"
+    description: "Time prediction horizon - may be 'fixed' or 'adaptive' for prediction windows proportional to the longitudinal speed of the AGV."
+    validation:
+      one_of<>: [ [ "fixed", "adaptive" ] ]
+  time_span_min:
+    type: double
+    default_value: 1.5
+    description: "Minimum time span for the prediction window."
+  time_span_max:
+    type: double
+    default_value: 8.0
+    description: "Maximum time span for the prediction window."
+  time_span_var:
+    type: double
+    default_value: 2.5
+    description: "Size of the variable component of the prediction window."
+  time_span_gain:
+    type: double
+    default_value: 1.0
+    description: "Longitudinal speed proportionality constant for the variable prediction window."
+  time_step_min:
+    type: double
+    default_value: 0.2
+    description: "Minimum time step for motion prediction. Smaller values allow for finer control, but significantly impact performance."
+  w_cost_goal:
+    type: double
+    default_value: 0.0
+    description: "Objective function goal distance cost term weight. Higher values will promote planned trajectories with final pose closer to the goal pose."
+  w_cost_head:
+    type: double
+    default_value: 0.001
+    description: "Objective function heading deviation cost term weight. Higher values will promote planned trajectories with final pose oriented towards the goal."
+  thresh_obs:
+    type: int
+    default_value: 0
+    description: "Occupancy threshold above which a grid cell is considered an obstacle."
+    validation:
+      bounds<>: [ -1, 100 ]
+  collision_radius:
+    type: double
+    default_value: 2.25
+    description: "AGV radius used for collision detection (centered in the odometry message frame)."
+  obs_search:
+    type: string
+    default_value: "fixed"
+    description: "Obstacle search mode ['adaptive', 'fixed']"
+    validation:
+      one_of<>: [ [ "adaptive", "fixed" ] ]
+  search_radius:
+    type: double
+    default_value: 10.0
+    description: "Search radius for obstacles to be included in cost"
+  w_cost_obs:
+    type: double
+    default_value: 1.5
+    description: "Objective function obstacle distance cost term weight."
+  w_cost_speed:
+    type: double
+    default_value: 0.75
+    description: "Objective function terminal speed cost term weight. Higher values will promote planned trajectories with higher final velocity."
+  use_global_path:
+    type: bool
+    default_value: true
+    description: "Whether or not to use the global path when selecting the goal waypoint and to evaluate the AGV deviation from it."
+  w_cost_path:
+    type: double
+    default_value: 1.0
+    description: "Objective function global path deviation term weight. Higher values will promote planned trajectories closer to the global path."
+  use_segmentation:
+    type: bool
+    default_value: false
+    description: "Whether or not to inflate the obstacle cost with the segmentation cost."
+  w_cost_seg:
+    type: double
+    default_value: 0.0
+    description: "Objective function segmentation cost term weight. Higher values will promote planned trajectories which stay far from cells with higher cost."
+  w_cost_dev:
+    type: double
+    default_value: 0.75
+    description: "Objective function deviation term weight. Higher values will promote planned trajectories with smaller deviations from the current one."
+  print_summary:
+    type: bool
+    default_value: false
+    description: "Whether or not to print the results of each planner iteration to console. Has an impact on performance and should only be used for debugging purposes."
+  map_topic:
+    type: string
+    default_value: "avt_341/occupancy_grid"
+    description: "Occupancy grid topic"
+  use_current_waypoint:
+    type: bool
+    default_value: false
+    description: "If true, use the current global planner goal waypoint (from avt_341/state) as the DWA goal instead of a lookahead point."
+  global_path_lookahead:
+    type: double
+    default_value: 15.0
+    description: "Lookahead distance [m] along the global path used to select the goal pose."
+  thresh_seg:
+    type: int
+    default_value: 100
+    description: "Segmentation threshold above which a grid cell contributes to the segmentation cost."
+    validation:
+      bounds<>: [ -1, 100 ]

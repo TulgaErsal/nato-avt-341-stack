@@ -1,0 +1,29 @@
+# Mixin fixture for launch_params_test.py, included by launch_template_nested.yaml.
+#
+# OWNED BY THE TESTS -- not a deployment parameter template. See the header of
+# launch_template_nested.yaml. The code_namespace below is asserted verbatim as
+# the qualifier on the generated struct member, so do not rename it.
+
+code_namespace: fixture/params/shared
+
+ros__parameters:
+
+  # A root-level group of a mixin becomes a shared struct (Geometry) that the
+  # including template's DTO references rather than re-defining inline.
+  geometry:
+    res:
+      type: float
+      default_value: 0.25
+      description: "Fixture grid resolution."
+      validation:
+        gt<>: [ 0.0 ]
+    width:
+      type: float
+      default_value: 100.0
+      description: "Fixture grid width."
+
+  # A root-level leaf of a mixin splices in as a plain field instead.
+  frame_id:
+    type: string
+    default_value: "odom"
+    description: "Fixture frame name spliced in as a scalar field."

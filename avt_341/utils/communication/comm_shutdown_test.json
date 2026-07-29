@@ -1,8 +1,0 @@
-{
-    "messages": [
-        {
-            "message": "CGV1,1,SHUTDOWN,AGV1",
-            "delay": "1.0"
-        }
-    ]
-}

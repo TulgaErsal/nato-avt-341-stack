@@ -35,7 +35,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install doxygen latexmk texlive-latex-extra
-          pip install -r requirements.txt
+          pip install -r docs/requirements.txt
 
       - name: Build PDF documentation
         run: cd docs && make latexpdf

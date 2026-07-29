@@ -1,0 +1,315 @@
+/**
+* @file      object_tracker.hpp
+* @brief     Per-target core of the camera/LiDAR sensor fusion object
+             tracker: association state machine, IMM filter, timeout and
+             re-acquisition logic, and the per-target publishers. One
+             instance is replicated per tracked target class and ticked by
+             the owning node's timers.
+*/
+
+#ifndef AVT_341_OBJECT_TRACKER_H
+#define AVT_341_OBJECT_TRACKER_H
+
+#include <memory>
+#include <string>
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <vision_msgs/msg/detection2_d.hpp>
+#include <vision_msgs/msg/detection3_d.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
+#include <avt_341_msgs/msg/tracker_status.hpp>
+
+#include <avt_341_nav/core/coord_transform.hpp>
+#include <avt_341_nav/perception/filtering/imm_filter.hpp>
+#include <avt_341_nav/perception/tracking/tracker_params.hpp>
+#include <avt_341_nav/perception/tracking/tracker_dto.hpp>
+
+namespace avt_341_nav {
+namespace perception {
+
+/**
+ * @brief Per-target tracking core: camera/LiDAR association state machine,
+ * IMM filter, timeout/re-acquisition logic, and the per-target publishers.
+ *
+ * This base class is the "Generic" tracker type. Target-role-specific
+ * behavior lives in the derived classes: ToiTracker (targets of interest,
+ * contact publishing) and FormationVehicleTracker (formation vehicles,
+ * lost-detection/recovery). The owning node instantiates the concrete type
+ * per target and manages every tracker through this base interface.
+ *
+ * The target class is immutable for the lifetime of an instance; re-targeting
+ * an existing class is expressed as Reset() on the existing instance. Not
+ * thread safe: instances must only be touched from the owning node's
+ * callbacks (single-threaded executor).
+ */
+class ObjectTracker {
+   public:
+    ObjectTracker(rclcpp::Node* node,
+                  const std::string& target_class,
+                  const ObjectTrackerSettings& params,
+                  const core::CoordTransformer& coord_transformer,
+                  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
+                  );
+
+    virtual ~ObjectTracker() = default;
+
+    // Per-tick entry points (called from the owning node's timers)
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief Run one tracking state-machine tick: associate the cached
+     * camera detection with the obstacle detector markers, handle LiDAR-only
+     * re-acquisition and camera-only fallback, and update the timeout state.
+     *
+     * @param context Shared sensor context for this tick.
+     */
+    void TrackingTick(const TrackerSensorContext& context);
+
+    /**
+     * @brief Run one estimator tick: IMM filter predict/update with chi2
+     * gating, and publish the odometry/detection outputs.
+     */
+    virtual void EstimatorTick();
+
+    // Detection ingestion (called from the owning node's detections callback)
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief Cache one camera detection matching this tracker's target class.
+     *
+     * Rejects detections whose bounding box touches an image edge (a clipped
+     * bbox produces a biased centroid estimate). The rejection requires
+     * camera intrinsics and is skipped while @p camera_info is null.
+     *
+     * @param detection The matching vision_msgs/Detection2D.
+     * @param header_stamp Stamp of the enclosing Detection2DArray header.
+     * @param camera_info Latest camera intrinsics (may be null).
+     */
+    void IngestDetection(
+        const vision_msgs::msg::Detection2D& detection,
+        const rclcpp::Time& header_stamp,
+        const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info);
+
+    /** @brief No detection matching this tracker's target class was found in
+     *         the current frame. */
+    void MarkDetectionMiss();
+
+    // Lifecycle
+    // -------------------------------------------------------------------------
+
+    /**
+     * @brief Full state reset: filter zeroed, flags and counters cleared,
+     * state set to INACTIVE. Publishers are not recreated (the target class
+     * is immutable, so the topic names cannot change).
+     */
+    virtual void Reset();
+
+    /** @brief Replace the shared parameters (dynamic parameter propagation). */
+    virtual void UpdateSettings(const ObjectTrackerSettings& params);
+
+    // Accessors
+    // -------------------------------------------------------------------------
+
+    /** @brief Concrete tracker type of this instance ("Generic" for the base
+     *         class; overridden by the derived trackers). */
+    virtual ObjectTrackerType GetTrackerType() const {
+        return ObjectTrackerType::Generic;
+    }
+
+    TrackerState GetTrackerState() const { return state_; }
+
+    const std::string& GetTargetClass() const { return target_class_; }
+
+    /**
+     * @brief Snapshot this tracker's status as an avt_341_msgs/TrackerStatus,
+     * including the tracked object id (target class) and the last estimated
+     * target odometry (pose + covariance). Aggregated by the owning node into a
+     * TrackerModuleStatus.
+     */
+    avt_341_msgs::msg::TrackerStatus GetTrackerStatus() const;
+
+   protected:
+    void CreatePerTargetPublishers();
+
+    void CheckTargetTimeout();
+
+    /**
+     * @brief Clear the association/measurement state, seed the position
+     * outputs and LiDAR re-acquisition anchor at @p position, and restart
+     * the timeout clocks. Leaves the filter, filter_initialized_ and
+     * has_first_detection_ untouched — callers handle those.
+     */
+    void ResetTrackingState(const Eigen::Vector3d& position,
+                            TrackerState state);
+
+    /**
+     * @brief Hook invoked at the end of every non-early-returning tracking
+     * tick. No-op for the base ("Generic") tracker; ToiTracker overrides it
+     * to publish target contacts.
+     */
+    virtual void MaybePublishContactUpdate() {}
+
+    // JN addition
+    /** @brief Get coordinates from camera bounding box when the LiDAR
+     *         centroid is unavailable. */
+    void CameraCentroidEstimate();
+
+    // JN addition for camera detection only tracking
+    /** @brief Estimate range from bbox detection using pixel height vs
+     *         vehicle height and return point measurement of the bbox center
+     *         in 3D (right-down-front frame). */
+    Eigen::Vector3d ConvertBBoxCoordinatesToPoseCentroid_rdf(
+        const vision_msgs::msg::Detection2D& detections_message,
+        const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info_message);
+
+    void UpdateHeadingHold();
+
+    void PublishOdometry();
+
+    void PublishDetection3D();
+
+    // Wiring (non-owning except the publishers)
+    // -------------------------------------------------------------------------
+
+    rclcpp::Node* node_;
+
+    rclcpp::Logger logger_;
+
+    std::string target_class_;
+
+    /** @brief Sanitized topic/frame namespace for this target. */
+    std::string target_ns_;
+
+    /** @brief Child frame ID for the Odometry messages of this target. */
+    std::string odometry_child_frame_;
+
+    ObjectTrackerSettings params_;
+
+    /** @brief Shared coordinate transformer owned by the node. */
+    const core::CoordTransformer& coord_transformer_;
+
+    // TODO: Move to node
+    /** Single common odometry topic for tracked lead vehicle */
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
+
+    /** @brief Latest camera intrinsics, cached on each tracking tick. */
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info_;
+
+    // Per-target publishers (created once in the constructor)
+    // -------------------------------------------------------------------------
+
+    rclcpp::Publisher<vision_msgs::msg::Detection3D>::SharedPtr
+        detection_publisher_;
+
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_publisher_;
+
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr
+        tracked_target_odometry_publisher_;
+
+    // Object state estimation (IMM: CV + CTR + NM)
+    // -------------------------------------------------------------------------
+
+    std::shared_ptr<avt_341_nav::perception::filtering::IMMFilter> filter_;
+
+    bool filter_initialized_ = false;
+
+    bool has_new_measurement_ = false;
+
+    /** @brief True once the first successful LiDAR measurement has been
+     *         processed. Camera-only updates are suppressed until then to
+     *         prevent noisy range estimates from drifting the filter before
+     *         LiDAR confirms the target position. */
+    bool has_had_first_lidar_measurement_ = false;
+
+    TrackerState state_ = TrackerState::UNINITIALIZED;
+
+    // Detection cache
+    // -------------------------------------------------------------------------
+
+    vision_msgs::msg::Detection2D detections_message_;
+
+    double detection_score_ = 0.0;
+
+    /** @brief Whether or not there is a valid detection containing the target
+     *         within the synchronization window. */
+    bool has_detection_ = false;
+
+    /** @brief Whether or not the first valid detection containing the target
+     *         has been received since the tracker reset. */
+    bool has_first_detection_ = false;
+
+    /** @brief Time stamp of the last valid detection message containing the
+     *         target. */
+    rclcpp::Time last_valid_detection_time_;
+
+    rclcpp::Time last_valid_detection_callback_time_;
+
+    // Tracker timeout handling
+    // -------------------------------------------------------------------------
+
+    /** @brief Indicates whether or not a valid and recent tracked target
+     *         centroid is available. */
+    bool has_tracked_target_ = false;
+
+    /** @brief Time stamp of the last valid measurement from any source
+     *         (camera or LiDAR). CheckTargetTimeout() fires after
+     *         target_timeout seconds without an update from either sensor. */
+    rclcpp::Time last_valid_target_time_;
+
+    // LiDAR obstacle association and re-acquisition
+    // -------------------------------------------------------------------------
+
+    /** @brief ID of the obstacle detector marker associated with the tracked
+     *         target. Set to -1 when no association has been established. */
+    int tracked_obstacle_id_ = -1;
+
+    /** @brief Last known world-frame position of the tracked obstacle. Used
+     *         to re-acquire the obstacle if the LiDAR briefly loses it and
+     *         reassigns it a new ID. */
+    Eigen::Vector3d last_lidar_world_pos_ = Eigen::Vector3d::Zero();
+
+    /** @brief Time at which the tracked obstacle was last successfully
+     *         matched in a LiDAR tracking cycle. */
+    rclcpp::Time last_lidar_seen_time_;
+
+    // Heading hold
+    // -------------------------------------------------------------------------
+
+    double last_reliable_yaw_ = 0.0;
+
+    bool heading_held_ = false;
+
+    // Measurement state
+    // -------------------------------------------------------------------------
+
+    /** @brief Camera measurement covariance in the right-down-forward frame,
+     *         computed each tick from bbox pixel uncertainty and camera
+     *         intrinsics. */
+    Eigen::Matrix3d R_rdf_ = Eigen::Matrix3d::Identity();
+
+    Eigen::Vector3d bounding_box_centroid_ = Eigen::Vector3d::Zero();
+
+    Eigen::Vector3d bounding_box_centroid_global_ = Eigen::Vector3d::Zero();
+
+    Eigen::Vector3d bounding_box_centroid_filtered_ = Eigen::Vector3d::Zero();
+
+    /** @brief Last estimated tracked-target odometry (pose + covariance),
+     *         cached in PublishOdometry() and exposed via GetTrackerStatus(). */
+    nav_msgs::msg::Odometry last_tracked_odometry_;
+
+    Eigen::Vector3d bounding_box_size_ = Eigen::Vector3d::Zero();
+
+    Eigen::Vector3d object_size_ = Eigen::Vector3d::Zero();
+
+    Eigen::Quaterniond bounding_box_orientation_ = Eigen::Quaterniond::Identity();
+};
+
+}  // namespace perception
+}  // namespace avt_341_nav
+
+#endif  // AVT_341_OBJECT_TRACKER_H

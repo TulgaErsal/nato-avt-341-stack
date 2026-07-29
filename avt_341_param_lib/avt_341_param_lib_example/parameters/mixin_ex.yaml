@@ -1,0 +1,24 @@
+# Demonstrates both ways of reusing a mixin. Compare the two resulting
+# parameter names: `rate_hz` versus `region.extents.width`.
+class_name: Params
+code_namespace: mixin_ex
+
+ros__parameters:
+
+  # Inheritance. InheritedParams becomes a base class of mixin_ex::Params, so
+  # its members sit at the root of the class -- `params.rate_hz` in C++, and
+  # plain "rate_hz" as the ROS parameter name. Only allowed here, directly
+  # under ros__parameters, because inherited members carry no name prefix.
+  __inherit_mixins: inherited_mixin
+
+  region:
+
+    # Composition. The mixin's `extents` group becomes a member typed by the
+    # shared struct example_demo::mixins::Extents, mounted at this position:
+    # `params.region.extents.width`, named "region.extents.width".
+    __include_mixins: composed_mixin
+
+    label:
+      type: string
+      default_value: 'default'
+      description: "Name reported for this region."

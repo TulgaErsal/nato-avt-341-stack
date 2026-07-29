@@ -1,0 +1,16 @@
+{{comments}}
+
+#pragma once
+
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
+
+namespace {{namespace}} {
+
+{%- filter indent(width=4) %}
+{{struct_content-}}
+{% endfilter %}
+} // namespace {{namespace}}

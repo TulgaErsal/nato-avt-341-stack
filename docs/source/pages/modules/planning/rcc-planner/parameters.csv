@@ -8,7 +8,6 @@
 "path_integration_step", "double (0.35)", "The discretization step along the global path. Lower values will give more accurate calculations but be slower."
 "dilation_factor", "int (0)", "The number of cells to expand around each obstacle. Provides a safety buffer around obstacles."
 "trim_path", "bool (false)", "Reduce the length of the global path to only include points near the vehicle."
-"display", "bool (false)", "Display the map and calculated paths in an Xwindow."
 "rate", "double (50.0)", "The rate in Hz at which the calculation will run."
 "w_c", "double (0.2)", "The comfort weight for the path cost."
 "w_s", "double (0.2)", "The static safety weight for the path cost."

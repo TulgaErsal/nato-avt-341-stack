@@ -1,0 +1,20 @@
+# Mixin used by composition -- see parameters/mixin_ex.yaml.
+#
+# Its root-level group becomes the shared struct example_demo::mixins::Extents,
+# which including templates hold as a member instead of re-defining it.
+class_name: ComposedParams
+code_namespace: example_demo/mixins
+
+ros__parameters:
+
+  extents:
+    width:
+      type: double
+      default_value: 200.0
+      description: "Region width in meters."
+    res:
+      type: double
+      default_value: 0.25
+      description: "Region resolution in meters."
+      validation:
+        gt<>: [ 0.0 ]
