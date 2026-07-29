@@ -1,0 +1,22 @@
+# Mixin used by inheritance -- see parameters/mixin_ex.yaml.
+#
+# class_name names the class an inheriting template derives from. It defaults
+# to "Params", so mixins sharing a code_namespace (as this one and
+# composed_mixin.yaml do) each need a distinct one: a template referencing both
+# pulls both generated headers into a single translation unit.
+class_name: InheritedParams
+code_namespace: example_demo/mixins
+
+ros__parameters:
+
+  rate_hz:
+    type: double
+    default_value: 20.0
+    description: "Node update rate in Hz."
+    validation:
+      gt<>: [ 0.0 ]
+
+  warmup_time:
+    type: double
+    default_value: 1.0
+    description: "Delay before the node starts publishing, in seconds."

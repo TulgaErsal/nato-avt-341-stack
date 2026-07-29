@@ -97,7 +97,9 @@ Any other root key will result in a code-generation error.
       - Description
       - Default value
     * - ``class_name``
-      - C++ or Python class name of the generated parameter structure.
+      - C++ or Python class name of the generated parameter structure. In a
+        :ref:`mixin file <template-mixins>` it also names the class that
+        ``__inherit_mixins`` derives from.
       - ``Params``
     * - ``code_namespace``
       - C++ namespace for the generated code. Slash-separated tokens become nested namespaces.
@@ -110,9 +112,29 @@ Any other root key will result in a code-generation error.
 
 **Mixins**
 
-A mixin is a reusable fragment of parameter definitions which can be included in other template files.
-Use the ``__include_mixins: <mixin-list>`` syntax in any level of the  ``ros__parameters`` tree to include mixins.
-Each mixin's parameters are spliced into the mapping holding the ``__include_mixins`` key.
+A mixin is a reusable fragment of parameter definitions which can be reused by other template files.
+Currently a mixin may not itself reference other mixins.
+There are two ways to reference mixins, summarised in :numref:`tbl-param-mixin-keys`.
+
+.. list-table:: Mixin reuse keys.
+    :name: tbl-param-mixin-keys
+    :header-rows: 1
+    :widths: 18 20 26 18 18
+
+    * - Key
+      - Allowed at
+      - Generated Code
+    * - ``__include_mixins``
+      - any level of ``ros__parameters``
+      - members spliced inline
+    * - ``__inherit_mixins``
+      - directly under ``ros__parameters`` only
+      - the generated class derives from the mixin's class
+
+**Composing mixins**
+
+Use ``__include_mixins: <mixin-list>`` at any level of the ``ros__parameters`` tree.
+Each mixin's parameters are spliced into the mapping holding the key.
 
 :numref:`lst-param-mixin-file` defines a mixin, which is then included by the template file in
 :numref:`lst-param-template-mixin`.
@@ -149,6 +171,62 @@ Each mixin's parameters are spliced into the mapping holding the ``__include_mix
     Mixin parameters are addressed by their position in the including tree, giving a final parameter
     path of ``<parent_tree>.<mixin param>``. In the example above the mixin defines ``geometry.width``,
     which is included under ``costmap`` and is therefore addressed as ``costmap.geometry.width``.
+
+**Inheriting mixins**
+
+Use ``__inherit_mixins: <mixin-list>`` directly under ``ros__parameters``.
+The mixin's parameters splice in at the template root, and the generated class derives from the class
+the mixin file itself generates. Several mixins may be inherited at once.
+
+:numref:`lst-param-inherit-mixin-file` defines a mixin, inherited by the template file in
+:numref:`lst-param-template-inherit`, producing the C++ in :numref:`lst-param-inherit-generated`.
+
+.. code-block:: yaml
+    :name: lst-param-inherit-mixin-file
+    :caption: Mixin file ``mixins/timing_mixin.yaml``.
+
+    class_name: TimingParams
+    code_namespace: params/core
+    ros__parameters:
+      rate_hz:
+        type: double
+        default_value: 20.0
+        description: "Node update rate in Hz."
+
+.. code-block:: yaml
+    :name: lst-param-template-inherit
+    :caption: Template parameter file inheriting the mixin.
+
+    code_namespace: params/costmap
+    ros__parameters:
+
+      __inherit_mixins: timing_mixin
+
+      thresh:
+        type: double
+        default_value: 0.5
+        description: "Minimum cell slope that is considered occupied."
+
+.. code-block:: cpp
+    :name: lst-param-inherit-generated
+    :caption: Generated parameter structure.
+
+    namespace params::costmap {
+        struct Params : public params::core::TimingParams {
+            double thresh = 0.5;
+            ParamsStamp __stamp;
+        };
+    }
+
+The inherited parameter is declared as ``rate_hz``, read as ``params.rate_hz``, and the whole structure
+can be passed to code that only knows ``params::core::TimingParams``.
+
+.. note::
+
+    ``__inherit_mixins`` is only allowed directly under ``ros__parameters``. Inherited parameters become
+    members of the generated class itself, so they carry no name prefix; mounting them under a group
+    would make the C++ member path and the ROS parameter name disagree. Use ``__include_mixins`` to nest
+    a mixin.
 
 .. _cmake-and-in-code-usage:
 
@@ -212,6 +290,7 @@ The major configuration elements in the runtime step are:
 #. :ref:`Runtime parameter files <runtime-parameter-files>`
 #. :ref:`Node configuration file <node-configuration-file>`
 #. :ref:`Command line arguments <command-line-arguments>`
+#. :ref:`Regular expression node selectors <regex-node-selectors>`
 #. :ref:`Parameter expressions <parameter-expressions>`
 
 .. _runtime-parameter-files:
@@ -248,8 +327,9 @@ to named node instances to support possibly having several instances of the same
 
 Node selectors use the standard ROS2 parameter file convention: a slash-delimited path of namespace
 tokens ending in a node name, where ``**`` matches any number of tokens, ``*`` matches exactly one
-token, and any other token matches literally. The possible forms are given in
-:numref:`tbl-param-selectors`.
+token, and any other token matches literally. As a library extension, selector tokens may also be
+:ref:`regular expressions <regex-node-selectors>`, described in their own section. The possible
+forms are given in :numref:`tbl-param-selectors`.
 
 .. list-table:: Node selector forms and the nodes they match.
     :name: tbl-param-selectors
@@ -287,7 +367,8 @@ Node Configuration File
 The node configuration file includes additional settings per node.
 Currently topic remappings (``remappings`` key) and environment variables (``additional_env`` key) are supported.
 This is a novel configuration file type, not native to the ROS2 ecosystem.
-It uses the same selector syntax as runtime parameter files (:numref:`tbl-param-selectors`).
+It uses the same selector syntax as runtime parameter files (:numref:`tbl-param-selectors`),
+including :ref:`regular expression selector tokens <regex-node-selectors>`.
 :numref:`lst-param-node-config` shows an example file.
 
 .. code-block:: yaml
@@ -322,7 +403,9 @@ are intercepted before the nodes are launched and expanded using the same rules 
 
 Command line selectors may be abbreviated. The library completes them against the list of vehicle ids
 being launched, as summarized in :numref:`tbl-param-cli-expansions`. A first segment naming a vehicle
-scopes the override to that vehicle; any other first segment applies across all vehicles.
+scopes the override to that vehicle; any other first segment applies across all vehicles. The
+command-line specifics of :ref:`regular expression selector tokens <regex-node-selectors>` are
+described in their own section.
 
 .. list-table:: Command line selector expansions, for vehicle ids ``veh1`` and ``veh2``.
     :name: tbl-param-cli-expansions
@@ -353,6 +436,13 @@ scopes the override to that vehicle; any other first segment applies across all 
     * - ``/veh1/costmap_node/width:=400.0``
       - ``/veh1/costmap_node``
       - No expansion; vehicle, namespace, node and parameter are all given.
+    * - ``'(veh[12])/costmap_node/width:=400.0'``
+      - ``/(veh[12])/costmap_node``
+      - ``costmap_node`` of ``veh1`` and ``veh2``; the regex matches vehicle ids, so it anchors at
+        the vehicle position.
+    * - ``'(veh[12]):="{width: 400.0}"'``
+      - ``/(veh[12])/**``
+      - Every node of ``veh1`` and ``veh2``.
 
 .. _parameter-sub-maps:
 
@@ -373,6 +463,33 @@ is equivalent to the two scalar entries below.
         veh1/costmap_node/costmap.geometry.width:=400.0 \
         veh1/costmap_node/costmap.thresh:=0.75
 
+
+.. _regex-node-selectors:
+
+Regular Expression Node Selectors
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The glob wildcards can only express "exactly one" (``*``) or "any number of" (``**``) tokens. As a
+library extension, a selector token wrapped in parentheses is a Python regular expression, covering
+the selections in between -- for example two vehicles of a three vehicle formation. The parentheses
+are part of the pattern (they form an ordinary regex group), and the expression must fully match
+exactly one slash-delimited token, so a regex can never contain ``/``. Regex tokens compose freely
+with literal tokens and the glob wildcards. :numref:`tbl-param-regex-selectors` shows examples.
+
+.. list-table:: Regular expression node selector examples.
+    :name: tbl-param-regex-selectors
+    :header-rows: 1
+    :widths: 26 37 37
+
+    * - Selector
+      - Matches
+      - Does not match
+    * - ``/(veh[12])/costmap_node``
+      - ``/veh1/costmap_node``, ``/veh2/costmap_node``
+      - ``/veh3/costmap_node``
+    * - ``/**/(planner_[0-9]+)``
+      - ``/veh1/planner_1``, ``/veh1/nav/planner_2``
+      - ``/veh1/planner_x``
 
 .. _parameter-expressions:
 
@@ -418,7 +535,7 @@ This library also implements additional features in the code-generation step. Th
 **Code-Generation:**
 
 * Additional configuration provided by :ref:`root yaml keys <template-root-keys>`.
-* Support for :ref:`mixins <template-mixins>`.
+* Support for :ref:`mixins <template-mixins>` composition or inheritance.
 * Added float32 parameter type support.
 * Separated data transfer object (dto) and parameter listener service classes into separate files to reduce dependencies in referencing code.
 
@@ -429,4 +546,5 @@ This library also implements additional features in the code-generation step. Th
 * Added concept of :ref:`node configuration file <node-configuration-file>` for topic remappings and environment variables.
 * Command line support for :ref:`node selector syntax <cli-selector-syntax>`.
 * Command line support for :ref:`sub-map parameters <parameter-sub-maps>`.
+* :ref:`Regular expression support <regex-node-selectors>` for the node selector syntax.
 * :ref:`Parameter expressions <parameter-expressions>`.

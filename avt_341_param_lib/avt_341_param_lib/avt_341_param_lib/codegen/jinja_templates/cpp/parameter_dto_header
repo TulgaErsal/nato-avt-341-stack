@@ -30,7 +30,7 @@ struct {{stamp_class_name}} {
 };
 
 {%- filter indent(width=4) %}
-struct {{class_name}} {
+struct {{class_name}}{% if base_classes|length %} : {{base_classes}}{% endif %} {
 {%- filter indent(width=4) %}
 {{field_content-}}
 {{sub_struct_content-}}

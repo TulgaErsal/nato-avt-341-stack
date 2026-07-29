@@ -87,6 +87,29 @@ def test_one_wildcard_section_applies_to_multiple_vehicle_nodes(tmp_path):
     assert metadata.get_remappings('/veh2/object_tracking_node') == expected
 
 
+def test_regex_selector_tokens(tmp_path):
+    metadata = load(
+        tmp_path,
+        """
+/(veh[12])/planner:
+  remappings:
+    goal: selected_goal
+/**:
+  (nav.*):
+    remappings:
+      input: shared_input
+""")
+
+    goal_rule = [('goal', 'selected_goal')]
+    assert metadata.get_remappings('/veh1/planner') == goal_rule
+    assert metadata.get_remappings('/veh2/planner') == goal_rule
+    assert metadata.get_remappings('/veh3/planner') == []
+
+    assert metadata.get_remappings('/veh1/nav_node') == [
+        ('input', 'shared_input')]
+    assert metadata.get_remappings('/veh1/planner_node') == []
+
+
 def test_nested_selector_sections(tmp_path):
     metadata = load(
         tmp_path,
@@ -275,6 +298,8 @@ def test_missing_file_raises_file_not_found(tmp_path):
         '/node:\n  additional_env:\n    PATHS: "$env_var{BAD-NAME}"\n',
         '/bad//node:\n  remappings: {}\n',
         '/veh*/node:\n  remappings: {}\n',
+        '/(veh[12)/node:\n  remappings: {}\n',
+        '/(veh[12]/node:\n  remappings: {}\n',
         "'':\n  remappings: {}\n",
         '/node:\n  remappings:\n    1: output\n',
         "/node:\n  remappings:\n    '': output\n",

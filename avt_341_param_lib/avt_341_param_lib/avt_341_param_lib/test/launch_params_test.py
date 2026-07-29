@@ -7,6 +7,7 @@ from ament_index_python.packages import PackageNotFoundError
 
 from avt_341_param_lib.codegen.generate_cpp_header import run as run_cpp
 from avt_341_param_lib.codegen.generate_cpp_mixin_header import run as run_mixin_cpp
+from avt_341_param_lib.codegen.generate_python_module import run as run_python
 from avt_341_param_lib.runtime.launch_params import (
     ParameterCollection,
     _normalize_selector,
@@ -202,9 +203,14 @@ def test_nested_template_mixin_fragment_header(tmp_path):
     header = output.read_text()
 
     assert 'namespace fixture::params::shared' in header
+    # only groups become shared structs that including templates reference...
     assert 'struct Geometry' in header
-    # only groups become shared structs; root-level leaves are not emitted here
-    assert 'frame_id' not in header
+    # ...while the whole mixin is also gathered into the aggregate class that
+    # __inherit_mixins derives from, which holds groups by value and
+    # root-level leaves as plain fields
+    assert 'struct Params' in header
+    assert 'Geometry geometry;' in header
+    assert 'std::string frame_id = "odom";' in header
 
 
 def test_nested_template_launch_overrides_use_dotted_names():
@@ -280,11 +286,46 @@ ros__parameters:
 """
 
 
+# Inherited by TEMPLATE_WITH_INHERIT below. class_name is what the inheriting
+# template derives from; it also keeps this mixin from colliding with
+# MIXIN_TEXT's default Params in the same code_namespace.
+INHERIT_MIXIN_TEXT = """
+class_name: TimingParams
+code_namespace: avt_341/params/core
+ros__parameters:
+  rate_hz:
+    type: double
+    default_value: 20.0
+    description: "Update rate."
+  timing:
+    max_delay:
+      type: double
+      default_value: 0.5
+      description: "Maximum delay."
+"""
+
+TEMPLATE_WITH_INHERIT = """
+code_namespace: demo
+ros__parameters:
+  __inherit_mixins: timing_mixin
+  extra:
+    type: double
+    default_value: 1.0
+"""
+
+
 def write_template_with_mixin(tmp_path, template_text=TEMPLATE_WITH_MIXIN,
                               mixin_text=MIXIN_TEXT, stem='costmap_info_mixin'):
+    return write_template_with_mixins(
+        tmp_path, template_text, {stem: mixin_text})
+
+
+def write_template_with_mixins(tmp_path, template_text, mixins):
+    """Write ``template_text`` plus a mixins/ folder of {stem: text}."""
     mixins_dir = tmp_path / 'mixins'
     mixins_dir.mkdir(exist_ok=True)
-    (mixins_dir / f'{stem}.yaml').write_text(mixin_text)
+    for stem, text in mixins.items():
+        (mixins_dir / f'{stem}.yaml').write_text(text)
     template = tmp_path / 'node.yaml'
     template.write_text(template_text)
     return str(template)
@@ -366,13 +407,14 @@ def test_include_mixin_key_collision_raises(tmp_path):
         load_template_specs(write_template_with_mixin(tmp_path, template))
 
 
-def test_mixin_nested_include_mixin_raises(tmp_path):
+@pytest.mark.parametrize('nested_key', ['__include_mixins', '__inherit_mixins'])
+def test_mixin_nested_mixin_entry_raises(tmp_path, nested_key):
     nested_mixin = (
         'code_namespace: avt_341/params/core\n'
         'ros__parameters:\n'
-        '  __include_mixins: other\n'
+        f'  {nested_key}: other\n'
     )
-    with pytest.raises(Exception, match='cannot include other mixins'):
+    with pytest.raises(Exception, match='cannot include or inherit'):
         load_template_specs(
             write_template_with_mixin(tmp_path, mixin_text=nested_mixin))
 
@@ -409,7 +451,218 @@ def test_generated_mixin_fragment_header(tmp_path):
     assert 'float res = 0.25F;' in header
     # type-only definitions: no member instance, no listener baggage
     assert '} costmap_info;' not in header
+    # the inheritable aggregate holds the group by value. It carries no stamp:
+    # only the leaf template's own class does.
+    assert 'struct Params' in header
+    assert 'CostmapInfo costmap_info;' in header
     assert '__stamp' not in header
+
+
+# --- __inherit_mixins ------------------------------------------------------
+
+
+def test_load_template_specs_expands_inherited_mixins(tmp_path):
+    specs = load_template_specs(write_template_with_mixins(
+        tmp_path, TEMPLATE_WITH_INHERIT, {'timing_mixin': INHERIT_MIXIN_TEXT}))
+    # inheritance flattens exactly like a mixin written inline at the root, so
+    # the launch layer needs no notion of it at all
+    assert set(specs) == {'extra', 'rate_hz', 'timing.max_delay'}
+    assert specs['rate_hz'].param_type == 'double'
+    assert specs['rate_hz'].default_value == 20.0
+    assert specs['timing.max_delay'].default_value == 0.5
+
+
+def test_generated_cpp_inherits_mixin_class(tmp_path):
+    template = write_template_with_mixins(
+        tmp_path, TEMPLATE_WITH_INHERIT, {'timing_mixin': INHERIT_MIXIN_TEXT})
+    dto_output = tmp_path / 'node_params_dto.hpp'
+    service_output = tmp_path / 'node_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), template)
+    dto = dto_output.read_text()
+    service = service_output.read_text()
+
+    assert '#include "timing_mixin_params_dto.hpp"' in dto
+    assert ('struct Params : public avt_341::params::core::TimingParams {'
+            in dto)
+    # the inherited members come from the base, so Params must not re-declare
+    # them -- doing so would silently shadow the base member
+    params_dto = dto.split('struct StackParams')[0]
+    assert 'double rate_hz' not in params_dto
+    assert 'struct Timing' not in params_dto
+    assert 'double extra = 1.0;' in params_dto
+    # the parameter fragments are unaffected: the dotted name doubles as the
+    # member path and resolves into the base
+    assert '"rate_hz"' in service
+    assert '"timing.max_delay"' in service
+    assert 'updated_params.rate_hz = param.as_double();' in service
+
+
+def test_stack_params_inlines_inherited_members(tmp_path):
+    template = write_template_with_mixins(
+        tmp_path, TEMPLATE_WITH_INHERIT, {'timing_mixin': INHERIT_MIXIN_TEXT})
+    dto_output = tmp_path / 'node_params_dto.hpp'
+    service_output = tmp_path / 'node_params_service.hpp'
+    run_cpp(str(dto_output), str(service_output), template)
+
+    # StackParams is a flat value mirror and takes no base class, exactly as it
+    # already re-inlines included mixin groups
+    stack_dto = dto_output.read_text().split('struct StackParams')[1]
+    assert 'public' not in stack_dto.split('{')[0]
+    assert 'double rate_hz = 20.0;' in stack_dto
+    assert 'struct Timing' in stack_dto
+    service = service_output.read_text()
+    assert 'output.rate_hz = params.rate_hz;' in service
+
+
+def test_generated_cpp_inherits_and_includes_mixins(tmp_path):
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: timing_mixin\n'
+        '  costmap:\n'
+        '    __include_mixins: costmap_info_mixin\n'
+    )
+    path = write_template_with_mixins(tmp_path, template, {
+        'timing_mixin': INHERIT_MIXIN_TEXT,
+        'costmap_info_mixin': MIXIN_TEXT,
+    })
+    dto_output = tmp_path / 'node_params_dto.hpp'
+    run_cpp(str(dto_output), str(tmp_path / 'node_params_service.hpp'), path)
+    dto = dto_output.read_text()
+
+    assert '#include "timing_mixin_params_dto.hpp"' in dto
+    assert '#include "costmap_info_mixin_params_dto.hpp"' in dto
+    assert ('struct Params : public avt_341::params::core::TimingParams {'
+            in dto)
+    assert 'avt_341::params::core::CostmapInfo costmap_info;' in dto
+
+
+def test_fully_inherited_template_generates_stamp_only_struct(tmp_path):
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: timing_mixin\n'
+    )
+    path = write_template_with_mixins(
+        tmp_path, template, {'timing_mixin': INHERIT_MIXIN_TEXT})
+    dto_output = tmp_path / 'node_params_dto.hpp'
+    run_cpp(str(dto_output), str(tmp_path / 'node_params_service.hpp'), path)
+
+    # every member comes from the base; only the stamp is left
+    params_dto = dto_output.read_text().split('struct StackParams')[0]
+    assert ('struct Params : public avt_341::params::core::TimingParams {'
+            in params_dto)
+    assert 'ParamsStamp __stamp;' in params_dto
+
+
+def test_inherit_mixins_below_root_raises(tmp_path):
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  costmap:\n'
+        '    __inherit_mixins: timing_mixin\n'
+    )
+    with pytest.raises(Exception, match='only allowed directly under'):
+        load_template_specs(write_template_with_mixins(
+            tmp_path, template, {'timing_mixin': INHERIT_MIXIN_TEXT}))
+
+
+def test_inherit_mixin_key_collision_raises(tmp_path):
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: timing_mixin\n'
+        '  rate_hz:\n'
+        '    type: double\n'
+        '    default_value: 1.0\n'
+    )
+    with pytest.raises(Exception, match='already exists'):
+        load_template_specs(write_template_with_mixins(
+            tmp_path, template, {'timing_mixin': INHERIT_MIXIN_TEXT}))
+
+
+def test_inherit_and_include_same_mixin_raises(tmp_path):
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: timing_mixin\n'
+        '  __include_mixins: timing_mixin\n'
+    )
+    with pytest.raises(Exception, match='both inherited and included'):
+        load_template_specs(write_template_with_mixins(
+            tmp_path, template, {'timing_mixin': INHERIT_MIXIN_TEXT}))
+
+
+def test_duplicate_mixin_class_name_raises(tmp_path):
+    # MIXIN_TEXT declares no class_name, so it defaults to Params in the same
+    # code_namespace as this one -- both headers land in one translation unit
+    clashing = (
+        'code_namespace: avt_341/params/core\n'
+        'ros__parameters:\n'
+        '  rate_hz:\n'
+        '    type: double\n'
+        '    default_value: 20.0\n'
+    )
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: timing_mixin\n'
+        '  costmap:\n'
+        '    __include_mixins: costmap_info_mixin\n'
+    )
+    path = write_template_with_mixins(tmp_path, template, {
+        'timing_mixin': clashing,
+        'costmap_info_mixin': MIXIN_TEXT,
+    })
+    with pytest.raises(Exception, match='both generate the class'):
+        run_cpp(str(tmp_path / 'dto.hpp'), str(tmp_path / 'svc.hpp'), path)
+
+
+def test_inherited_mixin_matching_template_class_raises(tmp_path):
+    template = (
+        'class_name: TimingParams\n'
+        'code_namespace: avt_341/params/core\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: timing_mixin\n'
+    )
+    path = write_template_with_mixins(
+        tmp_path, template, {'timing_mixin': INHERIT_MIXIN_TEXT})
+    with pytest.raises(Exception, match='same class'):
+        run_cpp(str(tmp_path / 'dto.hpp'), str(tmp_path / 'svc.hpp'), path)
+
+
+def test_inherit_mixin_with_mapped_parameter_raises(tmp_path):
+    mapped_mixin = (
+        'code_namespace: avt_341/params/core\n'
+        'ros__parameters:\n'
+        '  __map_thing:\n'
+        '    value:\n'
+        '      type: double\n'
+        '      default_value: 1.0\n'
+    )
+    template = (
+        'code_namespace: demo\n'
+        'ros__parameters:\n'
+        '  __inherit_mixins: mapped_mixin\n'
+    )
+    with pytest.raises(Exception, match='mapped'):
+        load_template_specs(write_template_with_mixins(
+            tmp_path, template, {'mapped_mixin': mapped_mixin}))
+
+
+def test_python_generation_flattens_inherited_mixins(tmp_path):
+    template = write_template_with_mixins(
+        tmp_path, TEMPLATE_WITH_INHERIT, {'timing_mixin': INHERIT_MIXIN_TEXT})
+    output = tmp_path / 'node_parameters.py'
+    run_python(str(output), template)
+    module = output.read_text()
+
+    # python has no per-mixin module to inherit from, so inherited members are
+    # spliced inline just as included ones already are. Member access and the
+    # ROS parameter names match C++; only the class hierarchy differs.
+    assert 'class Params:' in module
+    assert 'rate_hz = 20.0' in module
+    assert 'class __Timing:' in module
 
 
 def test_metadata_rejects_non_template_file(tmp_path):
@@ -427,6 +680,26 @@ def test_argument_names():
     assert 'sensor/enabled' in names
     # none-typed and mapped parameters are not declared
     assert not any('unused_external' in name or '__map_' in name for name in names)
+
+
+def test_from_node_specs_keys_by_sub_ns_path():
+    class Spec:
+        def __init__(self, templates, sub_ns=None):
+            self.templates = templates
+            self.sub_ns = sub_ns
+
+    pargs = ParameterCollection.from_node_specs({
+        'planner': Spec([TEMPLATE_A], sub_ns='nav'),
+        'sensor': Spec([TEMPLATE_B]),
+        'helper': Spec([]),  # template-less: declares no override arguments
+    })
+    assert set(pargs.node_names) == {'nav/planner', 'sensor'}
+    assert 'nav/planner/cruise_speed' in pargs.argument_names()
+    # CLI overrides resolve against the sub_ns-qualified FQN
+    overrides = pargs.resolve(
+        OrderedDict([('nav/planner/cruise_speed', '2.5')]), VEHICLES)
+    assert overrides.for_node('/veh1/nav/planner') == {'cruise_speed': 2.5}
+    assert overrides.for_node('/veh1/planner') == {}
 
 
 def test_selector_matches():
@@ -455,6 +728,37 @@ def test_normalize_selector():
     # explicit wildcards and absolute selectors pass through
     assert _normalize_selector('**/planner', VEHICLES) == '/**/planner'
     assert _normalize_selector('/veh1/planner', VEHICLES) == '/veh1/planner'
+
+
+def test_selector_matches_regex_tokens():
+    assert selector_matches('/(veh[12])/planner', '/veh1/planner')
+    assert selector_matches('/(veh[12])/planner', '/veh2/planner')
+    assert not selector_matches('/(veh[12])/planner', '/veh3/planner')
+    # regex tokens compose with the glob wildcards
+    assert selector_matches('/**/(planner_[0-9]+)', '/a/b/planner_7')
+    assert not selector_matches('/**/(planner_[0-9]+)', '/a/b/planner_x')
+    assert selector_matches('/(veh[12])/**', '/veh2/nav/planner')
+    # a regex fully matches one token; no substring search
+    assert not selector_matches('/(eh1)/planner', '/veh1/planner')
+    # unbalanced parentheses are matched leniently as literal tokens
+    assert not selector_matches('/(veh[12]/planner', '/veh1/planner')
+    with pytest.raises(ValueError, match='Invalid regular expression'):
+        selector_matches('/(veh[12)/planner', '/veh1/planner')
+
+
+def test_normalize_selector_regex_tokens():
+    # a regex first token matching a vehicle id anchors at the vehicle position
+    assert _normalize_selector('(veh[12])/planner', VEHICLES) == '/(veh[12])/planner'
+    # a bare regex selector addressing vehicles targets all their nodes
+    assert _normalize_selector('(veh[12])', VEHICLES) == '/(veh[12])/**'
+    # a regex first token matching no vehicle addresses the node position
+    assert _normalize_selector('(planner|controller)', VEHICLES) == '/*/(planner|controller)'
+    # '*' inside a parenthesized token is regex syntax, not a wildcard
+    assert _normalize_selector('(veh.*)/planner', VEHICLES) == '/(veh.*)/planner'
+    with pytest.raises(RuntimeError, match='Invalid regular expression'):
+        _normalize_selector('(veh[12)/planner', VEHICLES)
+    with pytest.raises(RuntimeError, match='Unbalanced parentheses'):
+        _normalize_selector('(veh[12]/planner', VEHICLES)
 
 
 def test_resolve_global_scalar():
@@ -544,6 +848,50 @@ def test_resolve_converts_to_declared_types():
     assert overrides.for_node('/veh1/planner') == {'planner.mode': 'graph'}
 
 
+def test_resolve_regex_selector_scalar():
+    overrides = resolve(
+        [('(veh[12])/planner/cruise_speed', '3.0')], ['veh1', 'veh2', 'veh3'])
+    assert overrides.for_node('/veh1/planner') == {'cruise_speed': 3.0}
+    assert overrides.for_node('/veh2/planner') == {'cruise_speed': 3.0}
+    assert overrides.for_node('/veh3/planner') == {}
+    assert overrides.for_node('/veh1/controller') == {}
+
+
+def test_resolve_regex_selector_mapping():
+    overrides = resolve([('(veh[12])/planner', '{cruise_speed: 3.3}')])
+    assert overrides.for_node('/veh1/planner') == {'cruise_speed': 3.3}
+    assert overrides.for_node('/veh2/planner') == {'cruise_speed': 3.3}
+    assert overrides.for_node('/veh1/controller') == {}
+
+
+def test_resolve_bare_regex_vehicle_mapping():
+    overrides = resolve(
+        [('(veh[12])', '{cruise_speed: 3.25}')], ['veh1', 'veh2', 'veh3'])
+    assert overrides.for_node('/veh1/planner') == {'cruise_speed': 3.25}
+    assert overrides.for_node('/veh2/controller') == {'cruise_speed': 3.25}
+    assert overrides.for_node('/veh3/planner') == {}
+    # sensor does not declare cruise_speed: dormant, like a yaml file entry
+    assert overrides.for_node('/veh1/sensor') == {}
+
+
+def test_resolve_regex_node_position():
+    overrides = resolve([('(planner|controller)/cruise_speed', '2.0')])
+    assert overrides.for_node('/veh1/planner') == {'cruise_speed': 2.0}
+    assert overrides.for_node('/veh2/controller') == {'cruise_speed': 2.0}
+    assert overrides.for_node('/veh1/sensor') == {}
+
+
+def test_resolve_rejects_zero_match_regex():
+    with pytest.raises(RuntimeError, match='matches none'):
+        resolve([('(veh[45])/planner/cruise_speed', '1.0')])
+
+
+def test_resolve_rejects_regex_param_name():
+    # parameter names are never regular expressions
+    with pytest.raises(RuntimeError, match='Malformed'):
+        resolve([('**/(cruise_speed)', '1.0')])
+
+
 def test_resolve_rejects_unknown_parameter():
     with pytest.raises(RuntimeError, match='cruse_speed'):
         resolve([('planner/cruse_speed', '1.0')])
@@ -609,6 +957,18 @@ def test_resolve_cli_overrides_accepts_bare_parameter_names():
     assert overrides.for_node('/veh1/sensor') == {}
 
 
+def test_resolve_cli_overrides_accepts_regex_keys():
+    pargs = make_collection()
+    context = FakeContext(OrderedDict([
+        ('vehicle_ids', '[veh1, veh2]'),  # ordinary argument: ignored
+        ('(veh[12])', '{cruise_speed: 3.25}'),
+    ]))
+    pargs._snapshot_cmd_args(context)
+    overrides = pargs.resolve_cli_overrides(context, VEHICLES)
+    assert overrides.for_node('/veh1/planner') == {'cruise_speed': 3.25}
+    assert overrides.for_node('/veh2/controller') == {'cruise_speed': 3.25}
+
+
 def test_relevant_params_files(tmp_path):
     everyone = tmp_path / 'everyone.yaml'
     everyone.write_text('/**:\n  ros__parameters:\n    cruise_speed: 2.5\n')
@@ -621,6 +981,18 @@ def test_relevant_params_files(tmp_path):
     assert relevant_params_files(files, '/veh1/planner') == [str(everyone), str(nested_style)]
     assert relevant_params_files(files, '/veh2/planner') == [str(everyone), str(veh2_only)]
     assert relevant_params_files(files, '/veh2/sensor') == [str(everyone), str(veh2_only)]
+
+
+def test_relevant_params_files_regex_keys(tmp_path):
+    regex_file = tmp_path / 'regex.yaml'
+    regex_file.write_text(
+        '/(veh[12])/planner:\n  ros__parameters:\n    cruise_speed: 2.5\n')
+    files = [str(regex_file)]
+
+    assert relevant_params_files(files, '/veh1/planner') == [str(regex_file)]
+    assert relevant_params_files(files, '/veh2/planner') == [str(regex_file)]
+    assert relevant_params_files(files, '/veh3/planner') == []
+    assert relevant_params_files(files, '/veh1/controller') == []
 
 
 def test_convert_scalars():

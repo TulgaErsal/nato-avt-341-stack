@@ -24,8 +24,8 @@ def write(tmp_path, name, text):
     return str(path)
 
 
-def resolved_doc(paths, vehicles=VEHICLES, work_dir=None):
-    resolved = resolve_params_files(paths, vehicles, work_dir)
+def resolved_doc(paths, vehicles=VEHICLES, work_dir=None, node_fqns=None):
+    resolved = resolve_params_files(paths, vehicles, work_dir, node_fqns=node_fqns)
     with open(resolved[0]) as f:
         return yaml.safe_load(f)
 
@@ -276,6 +276,172 @@ def test_resolved_output_is_valid_params_yaml_without_residue(tmp_path, monkeypa
     assert '$python{' not in text and '$ref{' not in text and '$pkg_path{' not in text
     doc = yaml.safe_load(text)
     assert doc['/**']['ros__parameters']['plain'] == 'kept'
+
+
+# --- regex section-key expansion -------------------------------------------
+
+NODE_FQNS = ['/veh1/planner', '/veh1/controller', '/veh2/planner', '/veh2/controller']
+
+
+def test_regex_section_expands_to_concrete_keys(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/**:\n'
+        '  ros__parameters:\n'
+        '    shared: 1\n'
+        '/(veh[12])/planner:\n'
+        '  ros__parameters:\n'
+        '    cruise_speed: 2.5\n'
+    ))
+    doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    # untouched sections keep their position; the expansions replace the
+    # regex section in place, preserving document order
+    assert list(doc) == ['/**', '/veh1/planner', '/veh2/planner']
+    for key in ('/veh1/planner', '/veh2/planner'):
+        assert doc[key]['ros__parameters'] == {'cruise_speed': 2.5}
+
+
+def test_regex_file_without_value_templates_is_still_rewritten(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/(veh[12])/planner:\n  ros__parameters:\n    cruise_speed: 2.5\n'))
+    resolved = resolve_params_files([path], VEHICLES, node_fqns=NODE_FQNS)
+    assert resolved[0] != path  # regex keys alone mark the file templated
+
+
+def test_regex_nested_namespace_component(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '(veh[12]):\n'
+        '  planner:\n'
+        '    ros__parameters:\n'
+        '      cruise_speed: 4.5\n'
+    ))
+    doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    assert list(doc) == ['/veh1/planner', '/veh2/planner']
+    assert doc['/veh1/planner']['ros__parameters'] == {'cruise_speed': 4.5}
+
+
+def test_regex_mixed_subtree_keeps_literal_branches(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        'veh1:\n'
+        '  planner:\n'
+        '    ros__parameters:\n'
+        '      a: 1\n'
+        '  (controller|sensor):\n'
+        '    ros__parameters:\n'
+        '      b: 2\n'
+    ))
+    doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    # the all-literal branch stays nested under its original keys (rcl matches
+    # it natively); only the regex branch is hoisted to concrete flat keys
+    assert list(doc) == ['veh1', '/veh1/controller']
+    assert doc['veh1'] == {'planner': {'ros__parameters': {'a': 1}}}
+    assert doc['/veh1/controller']['ros__parameters'] == {'b': 2}
+
+
+def test_regex_relative_key_gets_implicit_any_namespace_prefix(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '(planner|controller):\n  ros__parameters:\n    x: 1\n'))
+    doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    assert list(doc) == NODE_FQNS
+
+
+def test_regex_composes_with_glob_wildcards(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/**/(planner_[0-9]+):\n  ros__parameters:\n    x: 1\n'))
+    doc = resolved_doc([path], node_fqns=['/veh1/planner_1', '/veh1/controller'])
+    assert list(doc) == ['/veh1/planner_1']
+
+
+def test_regex_expansion_bodies_resolve_independently(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/(veh[12])/planner:\n'
+        '  ros__parameters:\n'
+        '    computed: $python{2 + 3}\n'
+    ))
+    resolved = resolve_params_files([path], VEHICLES, node_fqns=NODE_FQNS)
+    text = open(resolved[0]).read()
+    assert '&id' not in text  # bodies are deep copies: no yaml anchors/aliases
+    doc = yaml.safe_load(text)
+    assert doc['/veh1/planner']['ros__parameters']['computed'] == 5
+    assert doc['/veh2/planner']['ros__parameters']['computed'] == 5
+
+
+def test_regex_expansion_merges_with_existing_section(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/veh1/planner:\n'
+        '  ros__parameters:\n'
+        '    a: 1\n'
+        '    b: 1\n'
+        '/(veh[1])/planner:\n'
+        '  ros__parameters:\n'
+        '    b: 2\n'
+    ))
+    doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    # sections landing on one key merge with later-wins per parameter
+    assert doc['/veh1/planner']['ros__parameters'] == {'a': 1, 'b': 2}
+
+
+def test_regex_zero_match_warns_and_drops(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/**:\n  ros__parameters:\n    kept: 1\n'
+        '/(veh[45])/planner:\n  ros__parameters:\n    x: 1\n'
+    ))
+    with pytest.warns(UserWarning, match='matches none'):
+        doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    assert list(doc) == ['/**']
+
+
+def test_regex_empty_node_fqns_warns_and_drops(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/(veh[12])/planner:\n  ros__parameters:\n    x: 1\n'))
+    with pytest.warns(UserWarning, match='matches none'):
+        doc = resolved_doc([path], node_fqns=[])
+    assert doc == {}
+
+
+def test_regex_without_node_fqns_raises(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/(veh[12])/planner:\n  ros__parameters:\n    x: 1\n'))
+    with pytest.raises(RuntimeError, match='node_fqns'):
+        resolve_params_files([path], VEHICLES)
+
+
+def test_ref_resolves_against_expanded_regex_section(tmp_path):
+    # regex keys are expanded before value resolution, so $ref{} lookups only
+    # ever see concrete or glob section keys
+    path = write(tmp_path, 'a.yaml', (
+        '/(veh[12])/planner:\n'
+        '  ros__parameters:\n'
+        '    cruise_speed: 3.3\n'
+        '/**:\n'
+        '  ros__parameters:\n'
+        '    copied: $ref{veh1/planner/cruise_speed}\n'
+    ))
+    doc = resolved_doc([path], node_fqns=NODE_FQNS)
+    assert doc['/**']['ros__parameters']['copied'] == 3.3
+
+
+def test_ref_rejects_regex_selector_tokens(tmp_path):
+    path = write(tmp_path, 'a.yaml', (
+        '/veh1/planner:\n'
+        '  ros__parameters:\n'
+        '    cruise_speed: 3.3\n'
+        '/**:\n'
+        '  ros__parameters:\n'
+        '    x: $ref{(veh[12])/planner/cruise_speed}\n'
+    ))
+    with pytest.raises(RuntimeError, match='not supported in'):
+        resolve_params_files([path], VEHICLES, node_fqns=NODE_FQNS)
+
+
+def test_invalid_regex_section_key_raises(tmp_path):
+    bad = write(tmp_path, 'bad.yaml', (
+        '/(veh[12)/planner:\n  ros__parameters:\n    x: 1\n'))
+    with pytest.raises(RuntimeError, match='bad.yaml'):
+        resolve_params_files([bad], VEHICLES, node_fqns=NODE_FQNS)
+    unbalanced = write(tmp_path, 'unbalanced.yaml', (
+        '/(veh[12]/planner:\n  ros__parameters:\n    x: 1\n'))
+    with pytest.raises(RuntimeError, match='Unbalanced'):
+        resolve_params_files([unbalanced], VEHICLES, node_fqns=NODE_FQNS)
 
 
 def test_patterns_intersect():

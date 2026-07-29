@@ -29,6 +29,10 @@ class IconButton;
 /// setVehicleComputeHealth() (the panel forwards them from each vehicle's
 /// Nav State and Compute components). Statuses are cached per vehicle so they
 /// survive table rebuilds (add / delete / rename / reorder).
+///
+/// One row is selectable at a time; clicking the selected row again clears the
+/// selection. Every button except add acts on the selected vehicle, so they are
+/// disabled while there is none.
 class VehicleTableComponent: public QWidget
 {
 
@@ -75,6 +79,13 @@ protected Q_SLOTS:
     void onEdit();
     void onMoveUp();
     void onMoveDown();
+
+    // Enables / disables the buttons that need a selected vehicle to act on.
+    void updateButtonStates();
+
+protected:
+    // Turns a click on the already-selected row into a de-selection.
+    bool eventFilter( QObject* watched, QEvent* event ) override;
 
 private:
     // Per-vehicle status, cached so the cells survive table rebuilds and a row

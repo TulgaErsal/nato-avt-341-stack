@@ -1,3 +1,4 @@
+class_name: GisParams
 code_namespace: avt_341_nav/params/core
 ros__parameters:
     gis:

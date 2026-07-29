@@ -12,6 +12,7 @@ from avt_341_param_lib.runtime.launch_params import (
     relevant_params_files,
 )
 from avt_341_param_lib.runtime.launch_node_config import NodeConfigCollection
+from avt_341_param_lib.runtime.launch_nodes import NodeSpec, candidate_node_fqns, node_fqn
 from avt_341_param_lib.runtime.parse_runtime_yaml import resolve_params_files
 
 # Parameter templates ship with the avt_341_nav source package; the deployment
@@ -47,75 +48,62 @@ def is_local_planner(*methods):
     return condition
 
 
-class NodeSpec:
-    """Static launch specification for one node replicated per vehicle."""
-
-    def __init__(self, executable, template=None, condition=None, sub_ns=None,
-                 extra_params=None, output='screen', autonomy=True):
-        self.executable = executable
-        # one template path or a list of paths (a node whose executable links
-        # several generated parameter services); normalized to a list
-        self.templates = [template] if isinstance(template, str) else list(template or [])
-        self.condition = condition          # callable(context) -> bool; None = always
-        self.sub_ns = sub_ns                # sub-namespace below the vehicle namespace
-        self.extra_params = extra_params    # callable(vid, vehicles) -> dict of launch-computed params
-        self.output = output
-        self.autonomy = autonomy            # autonomy nodes are skipped for manual_control_vehicles
+def autonomy_node(*args, **kwargs):
+    """Autonomy NodeSpec: not spawned on manually controlled vehicles."""
+    kwargs.setdefault('disallowed_vehicles_arg', 'manual_vehicle_ids')
+    return NodeSpec(*args, **kwargs)
 
 
 NODES = {
 
     # Mission management
-    'mission_manager_node':             NodeSpec('mission_manager_node',             _templates('mission_manager'),                                                    extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'comm_node':                        NodeSpec('comm_node',                        _templates('socket_comms'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)},               autonomy=False),
-    'speed_zones_node':                 NodeSpec('speed_zones_node',                 _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
+    'mission_manager_node':             NodeSpec('mission_manager_node',             _templates('mission_manager'),                                                    extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)}),
+    'comm_node':                        NodeSpec('comm_node',                        _templates('socket_comms'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)}),
+    'speed_zones_node':                 autonomy_node('speed_zones_node',            _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
 
     # Perception - Costmaps
-    'perception_local_node':            NodeSpec('perception_node',                  _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_global_node':           NodeSpec('perception_node',                  _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
-    'perception_node':                  NodeSpec('perception_node',                  _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
-    'perception_rms_node':              NodeSpec('perception_node',                  _templates('perception'),        condition=is_cfg('use_perception_rms')),
+    'perception_local_node':            autonomy_node('perception_node',             _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_global_node':           autonomy_node('perception_node',             _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
+    'perception_node':                  autonomy_node('perception_node',             _templates('perception'),        condition=is_not_cfg('use_dual_costmaps')),
+    'perception_rms_node':              autonomy_node('perception_node',             _templates('perception'),        condition=is_cfg('use_perception_rms')),
 
     # Perception - Terrain segmentation
-    'uab_perception_node':              NodeSpec('uab_perception_node',              _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),          extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
+    'uab_perception_node':              autonomy_node('uab_perception_node',         _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),          extra_params=lambda vid, vehicles: {'frame_prefix': f'{vid}/'}),
 
     # Perception - Object detection and tracking
-    'object_detector_node':             NodeSpec('object_detector_node',             _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
-    'object_tracker_node':             NodeSpec('object_tracker_node',             _templates('object_tracker'),   condition=is_cfg('use_object_tracker'),          extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
-    'lidar_obstacle_detector_node':     NodeSpec('lidar_obstacle_detector_node',     _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
+    'object_detector_node':             autonomy_node('object_detector_node',        _templates('object_detector'),   condition=is_cfg('use_obj_detector')),
+    'object_tracker_node':              autonomy_node('object_tracker_node',         _templates('object_tracker'),    condition=is_cfg('use_object_tracker'),          extra_params=lambda vid, vehicles: {'target_selection.formation_vehicle_ids': list(vehicles)}),
+    'lidar_obstacle_detector_node':     autonomy_node('lidar_obstacle_detector_node', _templates('obstacle_detector'), condition=is_cfg('use_lidar_obstacle_detector')),
 
     # Global planners
-    'global_planner_node':              NodeSpec('global_planner_node',              _templates('global_planner')),
+    'global_planner_node':              autonomy_node('global_planner_node',         _templates('global_planner')),
 
     # Local planners
-    'rcc_planner_node':                 NodeSpec('rcc_planner_node',                 _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
-    'local_dwa_planner_node':           NodeSpec('dwa_planner_node',                 _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
-    'local_pf_planner_node':            NodeSpec('pf_planner_node',                  _templates('pf_local_planner'),  condition=is_local_planner('pf')),
-    'mpc_planner_node':                 NodeSpec('mpc_planner_node',                 _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'rcc_planner_node':                 autonomy_node('rcc_planner_node',            _templates('rcc_local_planner'), condition=is_local_planner('rcc')),
+    'local_dwa_planner_node':           autonomy_node('dwa_planner_node',            _templates('dwa_local_planner'), condition=is_local_planner('dwa')),
+    'local_pf_planner_node':            autonomy_node('pf_planner_node',             _templates('pf_local_planner'),  condition=is_local_planner('pf')),
+    'mpc_planner_node':                 autonomy_node('mpc_planner_node',            _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
 
     # local planners - MPC supporting nodes
-    'obstacle_processor_node':          NodeSpec('obstacle_processor_node',          _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
-    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node', _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
-    'goal_point_processor_node':        NodeSpec('goal_point_processor_node',        _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
-    'veh_converter_node':               NodeSpec('veh_converter_node',                                                condition=is_local_planner('mpc')),
+    'obstacle_processor_node':          autonomy_node('obstacle_processor_node',     _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'segmentation_grid_processor_node': autonomy_node('segmentation_grid_processor_node', _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'goal_point_processor_node':        autonomy_node('goal_point_processor_node',   _templates('mpc_local_planner'), condition=is_local_planner('mpc')),
+    'veh_converter_node':               autonomy_node('veh_converter_node',                                           condition=is_local_planner('mpc')),
 
     # Controllers (selected by local planner method)
-    'speed_control_node':               NodeSpec('speed_control_node',               _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
-    'control_node':                     NodeSpec('control_node',                     _templates('control'),           condition=is_local_planner('rcc', 'pf')),
+    'speed_control_node':               autonomy_node('speed_control_node',          _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc')),
+    'control_node':                     autonomy_node('control_node',                _templates('control'),           condition=is_local_planner('rcc', 'pf')),
 
     # State pre-processing
-    'data_acquisition_node':            NodeSpec('data_acquisition_node',            _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                             output='log', autonomy=False),
+    'data_acquisition_node':            NodeSpec('data_acquisition_node',            _templates('data_acquisition'),  condition=is_cfg('use_data_acquisition'),                                                                                                             output='log'),
 }
 
-pargs = ParameterCollection.from_node_templates(
-    {name: spec.templates for name, spec in NODES.items() if spec.templates})
+pargs = ParameterCollection.from_node_specs(NODES)
+
 
 def _make_node(name, spec, vid, vehicles, params_files, cli_overrides, node_config):
     node_name = name.rsplit('/', 1)[-1]
-    namespace_parts = [str(vid).strip('/')]
-    if spec.sub_ns:
-        namespace_parts.extend(str(spec.sub_ns).strip('/').split('/'))
-    fqn = '/' + '/'.join([*namespace_parts, node_name])
+    fqn = node_fqn(name, vid, spec.sub_ns)
     layers = list(relevant_params_files(params_files, fqn))
     if spec.extra_params is not None:
         extra = spec.extra_params(vid, vehicles)
@@ -164,16 +152,14 @@ def _robot_state_publisher(vid, vehicle_index, context, node_config):
 def _spawn_vehicles(context, *args, **kwargs):
     vehicles = [str(vid).strip('/') for vid in perform_yaml(context, 'vehicle_ids')]
     params_files = resolve_params_files(
-        perform_yaml(context, 'ros_param_files') or [], vehicles)
+        perform_yaml(context, 'ros_param_files') or [], vehicles,
+        node_fqns=candidate_node_fqns(NODES, vehicles))
     node_config = NodeConfigCollection(
         LaunchConfiguration('node_config_file').perform(context))
     cli_overrides = pargs.resolve_cli_overrides(context, vehicles)
     spawn_filter = {
         str(vid).strip('/')
         for vid in perform_yaml(context, 'spawn_filter_vehicle_ids') or []}
-    manual_vehicles = {
-        str(vid).strip('/')
-        for vid in perform_yaml(context, 'manual_control_vehicles') or []}
     publish_urdf_to_tf = _is_true(
         LaunchConfiguration('publish_urdf_to_tf').perform(context))
 
@@ -185,7 +171,7 @@ def _spawn_vehicles(context, *args, **kwargs):
             continue
         group = [PushRosNamespace(vid)]
         for name, spec in NODES.items():
-            if spec.autonomy and vid in manual_vehicles:
+            if not spec.allows_vehicle(context, vid):
                 continue
             if spec.condition is not None and not spec.condition(context):
                 continue
@@ -229,7 +215,7 @@ def generate_launch_description():
         # Vehicle selection
         DeclareLaunchArgument('vehicle_ids',                                                                                      description='List of all vehicle ids in formation.'),
         DeclareLaunchArgument('spawn_filter_vehicle_ids',    default_value='[]',                                                  description='Subset of vehicle_ids to actually create nodes for. If empty, spawns all vehicles in vehicle_ids'),
-        DeclareLaunchArgument('manual_control_vehicles',     default_value='[]',                                                  description='List of vehicle ids under manual human control.'),
+        DeclareLaunchArgument('manual_vehicle_ids',          default_value='[]',                                                  description='List of vehicle ids under manual human control.'),
         DeclareLaunchArgument('robot_description_files',     default_value=f"['{BRINGUP_DIR}/urdf/MRZR.urdf']",                   description='List of URDF files, one per vehicle (first entry reused when fewer files than vehicles are given)'),
 
         # Parameter files

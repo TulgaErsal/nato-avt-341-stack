@@ -3,8 +3,11 @@
 Command line parameter overrides use the same node-selector convention as ROS 2
 parameter override yaml files: a selector addresses nodes by namespace and node
 name with ``/`` delimiters, where ``**`` matches any number of tokens and ``*``
-exactly one, and parameter names use ``.`` for nesting. Three argument forms
-are supported:
+exactly one, and parameter names use ``.`` for nesting. Additionally, a
+selector token wrapped in parentheses is a Python regular expression fully
+matching exactly one token, e.g. ``(veh[12])/planner/cruise_speed:=3.0``
+(shells parse ``()[]|`` -- quote such arguments). Parameter names are never
+regular expressions. Three argument forms are supported:
 
 * scalar form -- ``<selector>/<param.name>:=<value>``, e.g.
   ``**/cruise_speed:=9.0`` or ``veh1/planner/cruise_speed:=3.3``
@@ -33,7 +36,10 @@ vehicle id (``planner/... -> /*/planner/...``). Vehicle ids are assumed to be
 single namespace tokens; deeper relative paths address nested node namespaces
 below the vehicle (``nav/planner/... -> /*/nav/planner/...``). A selector
 ending at a bare vehicle namespace targets all of that vehicle's nodes
-(``veh1 -> /veh1/**``).
+(``veh1 -> /veh1/**``). A regex first token counts as naming a vehicle when it
+matches at least one vehicle id -- vehicle anchoring wins over the node-position
+reading (``(veh[12])/planner/... -> /(veh[12])/planner/...``,
+``(veh[12]) -> /(veh[12])/**``).
 
 Per-node override priority (later wins, per parameter):
 
@@ -59,7 +65,12 @@ from ament_index_python.packages import PackageNotFoundError, get_package_share_
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 
-from avt_341_param_lib.runtime.node_selectors import selector_matches
+from avt_341_param_lib.runtime.node_selectors import (
+    compile_token,
+    is_regex_token,
+    selector_matches,
+    validate_selector_token,
+)
 from avt_341_param_lib.common.template_yaml import PARAMETERS_ROOT_KEY, expand_mixins
 
 _ARRAY_SUFFIX = '_array'
@@ -221,6 +232,8 @@ def relevant_params_files(paths: Iterable[str], fqn: str) -> List[str]:
     start with ``/`` are also tried with an implicit leading ``/**`` so that
     relative section keys are never filtered out incorrectly; rcl still
     performs the exact matching when the file is loaded by the node.
+    Parenthesized regex selector tokens are matched natively (an invalid
+    regex in a section key raises ValueError instead of never matching).
     """
     result = []
     for path in paths:
@@ -233,6 +246,14 @@ def relevant_params_files(paths: Iterable[str], fqn: str) -> List[str]:
     return result
 
 
+def _addresses_vehicle(segment: str, vehicles: List[str]) -> bool:
+    """Whether a selector token names a vehicle (a regex token: matches one)."""
+    token = compile_token(segment)
+    if isinstance(token, re.Pattern):
+        return any(token.fullmatch(vid) for vid in vehicles)
+    return segment in vehicles
+
+
 def _normalize_selector(selector: str, vehicles: List[str]) -> str:
     """Expand a possibly relative node selector to an absolute one.
 
@@ -241,23 +262,23 @@ def _normalize_selector(selector: str, vehicles: List[str]) -> str:
     wildcard for the vehicle id (vehicle ids are single namespace tokens, so
     intermediate tokens of a relative selector always address nested node
     namespaces, never a vehicle). A selector that ends at a bare vehicle
-    namespace targets all of that vehicle's nodes.
+    namespace targets all of that vehicle's nodes. A regex first token counts
+    as naming a vehicle when it matches at least one vehicle id.
     """
     text = selector.strip().rstrip('/')
     if not text or text.startswith('//'):
         raise RuntimeError(f"Invalid node selector '{selector}' in parameter override")
+    for token in text.split('/'):
+        problem = validate_selector_token(token)
+        if problem:
+            raise RuntimeError(f"{problem} (in node selector '{selector}')")
     if text.startswith('**'):
         text = '/' + text
     elif not text.startswith('/'):
         first_segment = text.split('/', 1)[0]
-        text = f'/{text}' if first_segment in vehicles else f'/*/{text}'
-    for token in text.split('/'):
-        if '*' in token and token not in ('', '*', '**'):
-            raise RuntimeError(
-                f"Unsupported wildcard token '{token}' in node selector '{selector}'; "
-                "only whole-token '*' and '**' wildcards are supported"
-            )
-    if text.strip('/') in vehicles:
+        text = f'/{text}' if _addresses_vehicle(first_segment, vehicles) else f'/*/{text}'
+    bare = text.strip('/')
+    if '/' not in bare and _addresses_vehicle(bare, vehicles):
         text += '/**'
     return text
 
@@ -347,6 +368,29 @@ class ParameterCollection:
             node_specs[node_name] = merged_by_paths[paths]
         return cls(node_specs)
 
+    @classmethod
+    def from_node_specs(cls, node_specs) -> 'ParameterCollection':
+        """Build a collection from a node-name -> node-spec mapping.
+
+        Accepts any specs exposing ``templates`` (list of template yaml paths)
+        and ``sub_ns`` (sub-namespace below the vehicle, or None), e.g.
+        :class:`~avt_341_param_lib.runtime.launch_nodes.NodeSpec`. Template-less
+        nodes are skipped: they declare no override arguments. Nodes are keyed
+        by their below-vehicle path (``sub_ns/node_name`` when a sub-namespace
+        is set), so declared argument names and CLI selector matching agree
+        with the node's real fully qualified name.
+        """
+        def node_path(name, spec):
+            node_name = str(name).rsplit('/', 1)[-1]
+            if spec.sub_ns:
+                return f"{str(spec.sub_ns).strip('/')}/{node_name}"
+            return node_name
+
+        return cls.from_node_templates({
+            node_path(name, spec): spec.templates
+            for name, spec in node_specs.items() if spec.templates
+        })
+
     @property
     def node_names(self) -> List[str]:
         return list(self._node_specs.keys())
@@ -382,7 +426,8 @@ class ParameterCollection:
 
         Scans the pre-declaration snapshot for override-shaped arguments (any
         name containing ``/``, starting with ``**``, equal to a vehicle id or
-        node name, or naming a parameter declared in one of the node
+        node name, forming a parenthesized regex token, or naming a parameter
+        declared in one of the node
         templates), expands them against the vehicle id list and validates
         them against the node templates. Raises RuntimeError for overrides
         that match no launched node or name no parameter declared by any
@@ -400,6 +445,9 @@ class ParameterCollection:
             '/' in key or key.startswith('**')
             or key.strip('/') in vehicles or key in self._node_specs
             or self._is_declared_param(key)
+            # a parenthesized token can never be an ordinary launch argument,
+            # so claim it as an override and let resolution report any problem
+            or is_regex_token(key.strip('/'))
         )
 
     def _is_declared_param(self, name: str) -> bool:
@@ -469,7 +517,8 @@ class ParameterCollection:
             return '/**', {key: raw_value}, True
         # scalar form: the last slash segment is the (possibly dotted) parameter name
         selector_text, sep, param_name = key.rpartition('/')
-        if not sep or not selector_text or not param_name or '*' in param_name:
+        if (not sep or not selector_text or not param_name
+                or any(c in param_name for c in '*()')):
             raise RuntimeError(
                 f"Malformed parameter override '{key}:={raw_value}': expected "
                 "'<node-selector>/<param.name>:=<value>' or '<node-selector>:=<yaml mapping>'"

@@ -8,6 +8,7 @@ runtime parameter yaml files. Examples:
   veh1/planner/cruise_speed:=7.0           planner node of one agent
   veh1:='{cruise_speed: 3.3}'              all nodes of one agent (mapping form)
   /veh1/planner:='{planner_mode: graph}'   absolute selector, mapping form
+  '(veh[12])/planner/cruise_speed:=6.0'    regex selector token (quote for the shell)
 
 Per-node override priority (later wins, per parameter):
   1. runtime yaml files given via ``params_files``, in list order
@@ -26,6 +27,7 @@ from avt_341_param_lib.runtime.launch_params import (
     perform_yaml,
     relevant_params_files,
 )
+from avt_341_param_lib.runtime.parse_runtime_yaml import resolve_params_files
 
 SHARE_DIR = get_package_share_directory('avt_341_param_lib_example').replace('\\', '/')
 PARAMS_DIR = os.path.join(SHARE_DIR, 'parameters')
@@ -36,6 +38,10 @@ NODES = {
     'planner': ('planner_node', os.path.join(PARAMS_DIR, 'nav.yaml')),
     'controller': ('controller_node', os.path.join(PARAMS_DIR, 'nav.yaml')),
     'sensor': ('sensor_node', os.path.join(PARAMS_DIR, 'sensor.yaml')),
+    # mixin demo: inherited parameters produce ordinary launch arguments
+    # (mixin_ex/rate_hz) just like composed ones
+    # (mixin_ex/region.extents.width)
+    'mixin_ex': ('mixin_ex_node', os.path.join(PARAMS_DIR, 'mixin_ex.yaml')),
 }
 
 pargs = ParameterCollection.from_node_templates(
@@ -44,7 +50,10 @@ pargs = ParameterCollection.from_node_templates(
 
 def _spawn_vehicles(context, *args, **kwargs):
     vehicles = perform_yaml(context, 'vehicle_ids')
-    params_files = perform_yaml(context, 'params_files')
+    params_files = resolve_params_files(
+        perform_yaml(context, 'params_files'), vehicles,
+        node_fqns=[
+            f"/{str(vid).strip('/')}/{name}" for vid in vehicles for name in NODES])
     overrides = pargs.resolve_cli_overrides(context, vehicles)
 
     actions = []

@@ -5,13 +5,18 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
+#include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QModelIndex>
+#include <QMouseEvent>
+#include <QPalette>
 #include <QPixmap>
 #include <QSize>
 #include <QStackedLayout>
@@ -47,6 +52,16 @@ QPixmap computePixmap( bool healthy )
 
 // Side length of the color square shown beside a vehicle id.
 constexpr int kSwatchSize = 12;
+
+// Makes `row` both the current row -- what the buttons act on -- and the
+// selected one, which is what the user sees highlighted. The selection flags are
+// passed explicitly because the two-argument setCurrentCell() moves the current
+// cell without touching the selection.
+void selectTableRow( QTableWidget* table, int row )
+{
+    table->setCurrentCell( row, kVehicleIdColumn,
+                           QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows );
+}
 
 // Modal dialog to enter a vehicle name and pick a label color from the palette.
 // Returns true if accepted, writing the entered name and the chosen palette
@@ -128,11 +143,24 @@ VehicleTableComponent::VehicleTableComponent( QWidget* parent )
     table_ = new QTableWidget( 0, kColumnCount );
     table_->setHorizontalHeaderLabels( { "Vehicle Id", "Nav State", "Compute" } );
     table_->setEditTriggers( QAbstractItemView::NoEditTriggers );
-    // Read-only status view: items are not selectable (no selection highlight). A
-    // row is still made "current" on click so the add/delete/edit/move buttons
-    // have a target.
-    table_->setSelectionMode( QAbstractItemView::NoSelection );
+    // Read-only, but clicking a row selects it -- whole rows, one at a time --
+    // so the highlight shows which vehicle the delete / edit / move buttons will
+    // act on. Clicking the selected row again clears the selection; see
+    // eventFilter().
+    table_->setSelectionMode( QAbstractItemView::SingleSelection );
+    table_->setSelectionBehavior( QAbstractItemView::SelectRows );
     table_->setFocusPolicy( Qt::NoFocus );
+    table_->viewport()->installEventFilter( this );
+
+    // The table never takes focus, so Qt would paint the selection with the
+    // washed-out "inactive" highlight. Mirror the active brushes onto the
+    // inactive group so a selected row reads the same either way.
+    QPalette table_palette = table_->palette();
+    table_palette.setBrush( QPalette::Inactive, QPalette::Highlight,
+                            table_palette.brush( QPalette::Active, QPalette::Highlight ) );
+    table_palette.setBrush( QPalette::Inactive, QPalette::HighlightedText,
+                            table_palette.brush( QPalette::Active, QPalette::HighlightedText ) );
+    table_->setPalette( table_palette );
     // Size the cell icons to the vehicle-id color swatch (scaled to the display
     // DPI) so it renders crisply.
     const int swatch_size = scaledSize( kSwatchSize, table_ );
@@ -182,7 +210,45 @@ VehicleTableComponent::VehicleTableComponent( QWidget* parent )
     connect( up_button_, SIGNAL( clicked() ), this, SLOT( onMoveUp() ) );
     connect( down_button_, SIGNAL( clicked() ), this, SLOT( onMoveDown() ) );
 
+    // Keep the selection-dependent buttons in step with the current row, however
+    // it changes: a click, a button that re-selects a row, or a table rebuild
+    // that leaves nothing current.
+    connect( table_, SIGNAL( currentCellChanged( int, int, int, int ) ),
+             this, SLOT( updateButtonStates() ) );
+
     renderTable();
+    updateButtonStates();
+}
+
+bool VehicleTableComponent::eventFilter( QObject* watched, QEvent* event )
+{
+    // Clicking the selected row again clears the selection. With one row
+    // selectable at a time and no keyboard focus, this is the only way back to
+    // "no vehicle selected".
+    if ( watched == table_->viewport() && event->type() == QEvent::MouseButtonPress )
+    {
+        const QMouseEvent* mouse_event = static_cast<QMouseEvent*>( event );
+        const QModelIndex index = table_->indexAt( mouse_event->pos() );
+        if ( mouse_event->button() == Qt::LeftButton && index.isValid() &&
+             table_->selectionModel()->isRowSelected( index.row(), QModelIndex() ) )
+        {
+            table_->clearSelection();
+            table_->selectionModel()->clearCurrentIndex();
+            return true;
+        }
+    }
+    return QWidget::eventFilter( watched, event );
+}
+
+void VehicleTableComponent::updateButtonStates()
+{
+    // Delete, edit and the two move buttons all act on the selected vehicle, so
+    // they stay disabled until there is one. Add always applies.
+    const bool has_selection = table_->currentRow() >= 0;
+    delete_button_->setEnabled( has_selection );
+    edit_button_->setEnabled( has_selection );
+    up_button_->setEnabled( has_selection );
+    down_button_->setEnabled( has_selection );
 }
 
 QStringList VehicleTableComponent::items() const
@@ -356,7 +422,7 @@ void VehicleTableComponent::onAdd()
     vehicle_ids_.append( trimmed );
     status_.insert( trimmed, status );
     renderTable();
-    table_->setCurrentCell( vehicle_ids_.size() - 1, kVehicleIdColumn );
+    selectTableRow( table_, vehicle_ids_.size() - 1 );
     Q_EMIT itemsChanged( vehicle_ids_ );
 }
 
@@ -428,7 +494,7 @@ void VehicleTableComponent::onEdit()
     }
     status_.insert( vehicle_ids_.at( row ), status );
     renderTable();
-    table_->setCurrentCell( row, kVehicleIdColumn );
+    selectTableRow( table_, row );
     Q_EMIT itemsChanged( vehicle_ids_ );
 }
 
@@ -442,7 +508,7 @@ void VehicleTableComponent::onMoveUp()
 
     vehicle_ids_.move( row, row - 1 );
     renderTable();
-    table_->setCurrentCell( row - 1, kVehicleIdColumn );
+    selectTableRow( table_, row - 1 );
     Q_EMIT itemsChanged( vehicle_ids_ );
 }
 
@@ -456,7 +522,7 @@ void VehicleTableComponent::onMoveDown()
 
     vehicle_ids_.move( row, row + 1 );
     renderTable();
-    table_->setCurrentCell( row + 1, kVehicleIdColumn );
+    selectTableRow( table_, row + 1 );
     Q_EMIT itemsChanged( vehicle_ids_ );
 }
 

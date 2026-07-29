@@ -1,4 +1,9 @@
-"""Load launch-only node metadata selected by ROS 2-style node paths."""
+"""Load launch-only node metadata selected by ROS 2-style node paths.
+
+Selectors follow the shared node-selector convention: ``**`` matches any
+number of tokens, ``*`` exactly one, and a parenthesized token is a regular
+expression fully matching exactly one token.
+"""
 
 import os
 import re
@@ -8,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 import yaml
 from launch.substitutions import EnvironmentVariable
 
-from avt_341_param_lib.runtime.node_selectors import selector_matches
+from avt_341_param_lib.runtime.node_selectors import selector_matches, validate_selector_token
 
 _REMAPPINGS_KEY = 'remappings'
 _ADDITIONAL_ENV_KEY = 'additional_env'
@@ -36,13 +41,9 @@ def _join_selector(path: str, prefix: str, key) -> str:
         raise _config_error(path, f"invalid node selector component '{key}'", prefix or None)
 
     for token in stripped.split('/'):
-        if '*' in token and token not in ('*', '**'):
-            raise _config_error(
-                path,
-                f"unsupported wildcard token '{token}'; only whole-token '*' and '**' "
-                'wildcards are supported',
-                prefix or '/' + stripped,
-            )
+        problem = validate_selector_token(token)
+        if problem:
+            raise _config_error(path, problem, prefix or '/' + stripped)
 
     if prefix:
         return prefix.rstrip('/') + '/' + stripped
@@ -233,6 +234,8 @@ def _validate_node_fqn(node_fqn: str) -> None:
         or node_fqn.endswith('/')
         or '//' in node_fqn
         or '*' in node_fqn
+        or '(' in node_fqn
+        or ')' in node_fqn
     ):
         raise ValueError(
             f"Expected an absolute fully qualified node name, got {node_fqn!r}")

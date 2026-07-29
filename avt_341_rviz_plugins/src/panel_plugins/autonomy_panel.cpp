@@ -16,9 +16,23 @@
 #include <avt_341_rviz_plugins/components/compute_component.h>
 
 #include <avt_341_rviz_plugins/primitives/message_label.h>
+#include <avt_341_rviz_plugins/primitives/status_style.h>
 
 namespace avt_341::rviz_plugins
 {
+
+namespace
+{
+
+// Header badge for a vehicle's Mission accordion: a green "active" tag while it
+// is running a task, a gray "no tasks" one otherwise.
+void setMissionBadge( AccordionGroup* group, bool active )
+{
+    group->setBadge( active ? "active" : "no tasks",
+                     active ? status_colors::kGreen : status_colors::kGray );
+}
+
+}  // namespace
 
 AutonomyPanel::AutonomyPanel( QWidget* parent )
     : rviz_common::Panel( parent )
@@ -212,7 +226,7 @@ QWidget* AutonomyPanel::createVehicleTab( QVBoxLayout*& out_content_layout )
 
 void AutonomyPanel::rebuildVehicleTab(
     QVBoxLayout* content_layout, const QStringList& vehicles,
-    const std::function<QWidget*( const QString& )>& make_component )
+    const std::function<QWidget*( const QString&, AccordionGroup* )>& make_component )
 {
     // Remove existing accordion groups (and any trailing stretch).
     QLayoutItem* item;
@@ -244,7 +258,7 @@ void AutonomyPanel::rebuildVehicleTab(
         // Tag the group header with the vehicle's label color so it matches the
         // swatch shown for the same vehicle in the Setup table.
         group->setSwatchColor( setup_component_->vehicleColor( vehicle_id ) );
-        group->setContentWidget( make_component( vehicle_id ) );
+        group->setContentWidget( make_component( vehicle_id, group ) );
         content_layout->addWidget( group );
     }
 
@@ -257,13 +271,17 @@ void AutonomyPanel::onVehiclesChanged( const QStringList& vehicles )
     current_vehicles_ = vehicles;
 
     rebuildVehicleTab( nav_state_layout_, vehicles,
-                       [this]( const QString& id ) { return makeNavStateComponent( id ); } );
+                       [this]( const QString& id, AccordionGroup* )
+                       { return makeNavStateComponent( id ); } );
     rebuildVehicleTab( mission_layout_, vehicles,
-                       [this]( const QString& id ) { return makeMissionComponent( id ); } );
+                       [this]( const QString& id, AccordionGroup* group )
+                       { return makeMissionComponent( id, group ); } );
     rebuildVehicleTab( tracker_layout_, vehicles,
-                       [this]( const QString& id ) { return makeTrackerComponent( id ); } );
+                       [this]( const QString& id, AccordionGroup* )
+                       { return makeTrackerComponent( id ); } );
     rebuildVehicleTab( compute_layout_, vehicles,
-                       [this]( const QString& id ) { return makeComputeComponent( id ); } );
+                       [this]( const QString& id, AccordionGroup* )
+                       { return makeComputeComponent( id ); } );
 }
 
 void AutonomyPanel::onTopicConfigChanged( TopicGroup group )
@@ -274,15 +292,18 @@ void AutonomyPanel::onTopicConfigChanged( TopicGroup group )
     {
         case TopicGroup::NavState:
             rebuildVehicleTab( nav_state_layout_, current_vehicles_,
-                               [this]( const QString& id ) { return makeNavStateComponent( id ); } );
+                               [this]( const QString& id, AccordionGroup* )
+                               { return makeNavStateComponent( id ); } );
             break;
         case TopicGroup::Mission:
             rebuildVehicleTab( mission_layout_, current_vehicles_,
-                               [this]( const QString& id ) { return makeMissionComponent( id ); } );
+                               [this]( const QString& id, AccordionGroup* group )
+                               { return makeMissionComponent( id, group ); } );
             break;
         case TopicGroup::Tracker:
             rebuildVehicleTab( tracker_layout_, current_vehicles_,
-                               [this]( const QString& id ) { return makeTrackerComponent( id ); } );
+                               [this]( const QString& id, AccordionGroup* )
+                               { return makeTrackerComponent( id ); } );
             break;
     }
 }
@@ -300,9 +321,20 @@ QWidget* AutonomyPanel::makeNavStateComponent( const QString& vehicle_id )
     return component;
 }
 
-QWidget* AutonomyPanel::makeMissionComponent( const QString& vehicle_id )
+QWidget* AutonomyPanel::makeMissionComponent( const QString& vehicle_id,
+                                              AccordionGroup* group )
 {
-    return new MissionComponent( vehicle_id, node_, setup_component_->topicConfig() );
+    MissionComponent* component =
+        new MissionComponent( vehicle_id, node_, setup_component_->topicConfig() );
+
+    // Tag the vehicle's accordion header with whether it is running a task.
+    // Nothing has been received yet, so start out idle. The group is the
+    // connection's context, so the badge is never touched after it is gone.
+    setMissionBadge( group, false );
+    connect( component, &MissionComponent::taskActiveChanged, group,
+             [group]( bool active ) { setMissionBadge( group, active ); } );
+
+    return component;
 }
 
 QWidget* AutonomyPanel::makeTrackerComponent( const QString& vehicle_id )

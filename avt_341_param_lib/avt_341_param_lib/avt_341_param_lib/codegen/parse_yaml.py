@@ -42,7 +42,6 @@ from typing import Any, List, Union
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
 import os
-import re
 import yaml
 
 from avt_341_param_lib.codegen.cpp_conversions import CPPConversions
@@ -58,14 +57,17 @@ from avt_341_param_lib.common.template_yaml import (
     CODE_NAMESPACE_ROOT_KEY,
     DEFAULT_CLASS_NAME,
     INCLUDE_MIXIN_KEY,
+    INHERIT_MIXIN_KEY,
     KNOWN_ROOT_KEYS,
     MIXINS_DIR_NAME,
+    MixinUsage,
     PARAMETERS_ROOT_KEY,
     YAMLSyntaxError,
     compile_error,
     expand_mixins,
     is_mapped_parameter,
     is_parameter_group,
+    parse_class_name,
     parse_code_namespace_tokens,
     read_mixin_file,
 )
@@ -239,6 +241,50 @@ class ExternalStructMember:
 
     def __str__(self):
         return f'{self.namespace}::{pascal_case(self.struct_name)} {self.struct_name};\n'
+
+
+class MixinAggregateStruct:
+    """The inheritable class of a mixin.
+
+    Holds the mixin's root-level groups by value -- their types are the
+    type-only structs emitted above it in the same header -- plus the
+    root-level leaf parameters as fields. Templates using __inherit_mixins
+    derive their own class from this one.
+
+    Rendered through the declare_struct template rather than DeclareStruct
+    because the class name is already a class identifier (pascal_case would
+    mangle "TimingParams" into "Timingparams") and because an empty mixin must
+    still emit a valid, inheritable struct.
+    """
+
+    @typechecked
+    def __init__(self, class_name: str):
+        self.class_name = class_name
+        self.fields = []
+        self.group_names = []
+
+    @typechecked
+    def add_field(self, field: VariableDeclaration):
+        self.fields.append(field)
+
+    @typechecked
+    def add_group(self, group_name: str):
+        self.group_names.append(group_name)
+
+    def __str__(self):
+        data = {
+            'struct_name': self.class_name,
+            'struct_instance': '',
+            'struct_fields': ''.join(str(x) for x in self.fields),
+            'sub_structs': ''.join(
+                f'{pascal_case(name)} {name};\n' for name in self.group_names),
+            'map_value_type': '',
+            'map_name': '',
+        }
+
+        j2_template = Template(GenerateCode.templates['declare_struct'])
+        code = j2_template.render(data, trim_blocks=True)
+        return code
 
 
 class DeclareStruct:
@@ -740,8 +786,12 @@ class GenerateCode:
         self.set_stack_params = []
         self.user_validation_file = ''
         self.mixin_include_prefix = ''
-        self.mixin_mounts = {}
-        self.mixin_include_stems = []
+        self.mixin_usage = MixinUsage()
+        # root-level keys supplied by an inherited mixin: their members come
+        # from the base class, so the derived struct must not re-declare them
+        self.inherited_root_keys = set()
+        # set by parse_mixin() when generating a mixin's shared DTO header
+        self.mixin_aggregate = None
 
     def parse(self, yaml_file, validate_header):
         with open(yaml_file) as f:
@@ -775,21 +825,62 @@ class GenerateCode:
                     f'The yaml definition must have a {PARAMETERS_ROOT_KEY} root '
                     'element holding a non-empty mapping of parameter definitions'
                 )
-            parameters = expand_mixins(
-                parameters, yaml_file, self.mixin_mounts, self.mixin_include_stems)
-            class_name = doc.get(CLASS_NAME_ROOT_KEY, DEFAULT_CLASS_NAME)
-            if not isinstance(class_name, str) or not re.match(
-                r'^[A-Za-z_][A-Za-z0-9_]*$', class_name
-            ):
-                raise compile_error(
-                    f"Invalid {CLASS_NAME_ROOT_KEY} '{class_name}'. Expected a "
-                    'valid class identifier, e.g. "Params"'
-                )
-            self.class_name = class_name
+            parameters = expand_mixins(parameters, yaml_file, self.mixin_usage)
+            self.class_name = parse_class_name(
+                doc.get(CLASS_NAME_ROOT_KEY, DEFAULT_CLASS_NAME), yaml_file)
             self.namespace = doc[CODE_NAMESPACE_ROOT_KEY]
             self.namespace_tokens = parse_code_namespace_tokens(self.namespace)
+            self._validate_mixin_usage(yaml_file)
+            self.inherited_root_keys = self.mixin_usage.inherited_root_keys()
             self.user_validation_file = validate_header
             self.parse_dict(PARAMETERS_ROOT_KEY, parameters, [])
+
+    def _validate_mixin_usage(self, yaml_file):
+        """Reject mixin combinations that would collide in the generated code.
+
+        Every referenced mixin's DTO header is pulled into the same
+        translation unit, so two mixins generating the same qualified class
+        would be a C++ redefinition. Catch it here with a legible message
+        instead.
+        """
+        own_class = '::'.join(self.namespace_tokens + [self.class_name])
+        for mixin in self.mixin_usage.inherited:
+            if mixin.qualified_name == own_class:
+                raise compile_error(
+                    f"Template '{yaml_file}' inherits mixin '{mixin.stem}', "
+                    f"which generates the same class '{own_class}' as the "
+                    f'template itself. Give the mixin or the template a '
+                    f'distinct {CLASS_NAME_ROOT_KEY} or '
+                    f'{CODE_NAMESPACE_ROOT_KEY}.'
+                )
+        seen = {}
+        for stem in self.mixin_usage.include_stems:
+            qualified = self.mixin_usage.classes[stem]
+            first = seen.setdefault(qualified, stem)
+            if first != stem:
+                raise compile_error(
+                    f"Mixins '{first}' and '{stem}' referenced by "
+                    f"'{yaml_file}' both generate the class '{qualified}'. "
+                    'Their DTO headers are both included by the generated '
+                    'header, so the two definitions would collide. Give at '
+                    f'least one of them a distinct {CLASS_NAME_ROOT_KEY} root '
+                    'element.'
+                )
+
+    def _is_inherited(self, name, nested_name) -> bool:
+        """Whether ``name`` is a root-level key supplied by an inherited mixin.
+
+        Such members are declared by the base class, so the derived struct
+        must not re-declare them. Inheritance is root-only, and parse_dict
+        appends the parent name before recursing, so direct children of
+        ros__parameters are exactly those with one entry in ``nested_name``.
+
+        C++ only: python has no per-mixin module to inherit from and flattens
+        inherited mixins the same way it already flattens included ones.
+        """
+        return (self.language == 'cpp'
+                and len(nested_name) == 1
+                and name in self.inherited_root_keys)
 
     def parse_params(self, name, value, nested_name_list):
         (
@@ -859,7 +950,13 @@ class GenerateCode:
             )
             update_parameter.add_parameter_validation(parameter_validation)
 
-        self.struct_tree.add_field(var)
+        # An inherited leaf is a member of the base class; re-declaring it here
+        # would shadow it. Every parameter fragment below is still emitted:
+        # declare/set/update all address it as `updated_params.<name>`, which
+        # resolves into the base. StackParams keeps inlining it, exactly as it
+        # already inlines included mixin groups.
+        if not self._is_inherited(name, nested_name_list):
+            self.struct_tree.add_field(var)
         if not is_runtime_parameter and not (
             code_gen_variable.array_type
             or code_gen_variable.defined_type == 'string'
@@ -888,9 +985,14 @@ class GenerateCode:
             sub_stack_struct = DeclareStruct(name, [])
             mount_path = tuple(nested_name[1:] + [name])
             external_namespace = (
-                self.mixin_mounts.get(mount_path)
+                self.mixin_usage.mounts.get(mount_path)
                 if self.language == 'cpp' else None)
-            if external_namespace is not None:
+            if self._is_inherited(name, nested_name):
+                # inherited group: the base class already declares the member,
+                # so nothing is added here. sub_struct is a throwaway, exactly
+                # as in the mounted case below.
+                pass
+            elif external_namespace is not None:
                 # mixin-owned group: the member references the shared struct
                 # from the mixin DTO header instead of re-defining it inline;
                 # sub_struct becomes a throwaway so no inline definition is
@@ -923,13 +1025,14 @@ class GenerateCode:
         else:
             namespace = self.namespace
 
-        if self.language == 'cpp' and self.mixin_include_stems:
+        if self.language == 'cpp' and self.mixin_usage.include_stems:
             include_format = (
                 f'#include <{self.mixin_include_prefix}/{{}}_params_dto.hpp>'
                 if self.mixin_include_prefix
                 else '#include "{}_params_dto.hpp"')
             mixin_includes = '\n'.join(
-                include_format.format(stem) for stem in self.mixin_include_stems)
+                include_format.format(stem)
+                for stem in self.mixin_usage.include_stems)
         else:
             mixin_includes = ''
 
@@ -938,6 +1041,11 @@ class GenerateCode:
             'comments': self.comments,
             'namespace': namespace,
             'mixin_includes': mixin_includes,
+            # 'public a::A, public b::B', or '' when nothing is inherited --
+            # in which case the rendered header is byte-identical to before
+            # __inherit_mixins existed
+            'base_classes': (self.mixin_usage.base_classes()
+                             if self.language == 'cpp' else ''),
             'logger_name': '.'.join(self.namespace_tokens),
             'class_name': self.class_name,
             'stamp_class_name': self.class_name + 'Stamp',
@@ -995,29 +1103,46 @@ class GenerateCode:
         return j2_template.render(data, trim_blocks=True)
 
     def parse_mixin(self, yaml_file):
-        """Parse a mixin template for shared fragment DTO generation.
+        """Parse a mixin template for shared DTO generation.
 
         Each root-level parameter group of the mixin becomes one standalone
-        struct definition in the mixin's code_namespace. Root-level leaf
-        parameters produce no code here; they only exist spliced into
-        including templates.
+        struct definition in the mixin's code_namespace, referenced by
+        templates that __include_mixins the file. On top of those, the whole
+        mixin is gathered into one aggregate class named by the mixin's
+        class_name, which templates that __inherit_mixins the file derive
+        from.
         """
-        parameters, code_namespace = read_mixin_file(yaml_file)
-        self.namespace = code_namespace
-        self.namespace_tokens = parse_code_namespace_tokens(code_namespace)
-        for key, value in parameters.items():
+        mixin = read_mixin_file(yaml_file)
+        self.namespace = mixin.code_namespace
+        self.namespace_tokens = parse_code_namespace_tokens(mixin.code_namespace)
+        self.class_name = mixin.class_name
+        self.mixin_aggregate = MixinAggregateStruct(mixin.class_name)
+        for key, value in mixin.parameters.items():
             if is_parameter_group(value):
                 self.parse_dict(key, value, [])
                 self.struct_tree.sub_structs[-1].type_only = True
+                self.mixin_aggregate.add_group(key)
+            else:
+                # a root-level leaf has no shared struct of its own; it is a
+                # plain field of the aggregate. The parameter fragments this
+                # also collects are never rendered in mixin mode.
+                self.parse_params(key, value, [])
+        for field in self.struct_tree.fields:
+            self.mixin_aggregate.add_field(field)
 
     @typechecked
     def render_cpp_mixin_dto(self) -> str:
         if self.language != 'cpp':
             raise AssertionError('render_cpp_mixin_dto() requires the cpp generator')
+        if self.mixin_aggregate is None:
+            raise AssertionError('parse_mixin() was not called before rendering')
+        # the type-only group structs must precede the aggregate holding them
         data = {
             'comments': self.comments,
             'namespace': '::'.join(self.namespace_tokens),
-            'struct_content': ''.join(str(s) for s in self.struct_tree.sub_structs),
+            'struct_content': (
+                ''.join(str(s) for s in self.struct_tree.sub_structs)
+                + str(self.mixin_aggregate)),
         }
         j2_template = Template(
             GenerateCode.templates['mixin_dto_header'],

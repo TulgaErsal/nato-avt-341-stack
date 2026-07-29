@@ -11,6 +11,8 @@ find_package(rclcpp REQUIRED)
 
 # Generates DTO and service parameter libraries per yaml file:
 # nav.yaml -> nav_params_dto and nav_params_service.
+# Mixin templates in parameters/mixins/ are picked up automatically and each
+# gets its own shared DTO header, linked into every template DTO library.
 avt_341_generate_cpp_parameters(parameters)
 # Equivalent explicit per-file form:
 # avt_341_generate_cpp_parameter_file(nav parameters/nav.yaml)
@@ -25,6 +27,11 @@ target_link_libraries(controller_node PUBLIC nav_params_service)
 add_executable(sensor_node src/sensor_node.cpp)
 target_link_libraries(sensor_node PUBLIC sensor_params_service)
 
+# Demonstrates both mixin mechanisms: mixin_ex.yaml inherits inherited_mixin
+# and composes composed_mixin.
+add_executable(mixin_ex_node src/mixin_ex_node.cpp)
+target_link_libraries(mixin_ex_node PUBLIC mixin_ex_params_service)
+
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
 
@@ -35,7 +42,7 @@ if(BUILD_TESTING)
   target_link_libraries(float_parameters_test float_demo_params_service)
 endif()
 
-install(TARGETS planner_node controller_node sensor_node
+install(TARGETS planner_node controller_node sensor_node mixin_ex_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
