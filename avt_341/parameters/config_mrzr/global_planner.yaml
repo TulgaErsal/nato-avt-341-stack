@@ -18,6 +18,10 @@ auto_active_on_new_waypoint: True             # Automatically set nav stack to a
 verbose_gp_log: False                         # Activates verbose logging for global planner.
 dilation_factor: 0.0                          # Dilation to costmap to apply during planning.
 max_separation: 1.0                           # Maximum separation between waypoints [m].
+# Gap-penalty parameters (planning_method 'astar_gap' only)
+vehicle_width: 0.0                            # Vehicle width [m] for the soft gap penalty. 0 disables it.
+w_clearance: 0.0                              # Weight for the soft gap penalty. 0 disables it.
+clearance_range: 0.0                          # Clearance [m] beyond which the gap penalty is zero. <= half vehicle width falls back to one vehicle width.
 use_global_path: True                         # Whether global planner is using A*(true) or waypoints(false)
 use_segmentation: True                        # Whether to use segmentation grid data or not
 map_topic: avt_341/occupancy_grid_low_res     # Occupancy grid topic
@@ -27,7 +31,8 @@ obstacle_threshold: 0.0                       # Threshold above which cells are 
 
 # Fast Marching Parameters
 # ==================================================================================================================
-safety_margin_global: 0.25                    # Safety margin from obstacles in meters (for EDT-based planners).
+safety_margin_global: 0.75                    # Hard safety margin from obstacles in meters. Cells within this distance from obstacles are considered impassable.
+safety_margin_soft: 0.75                      # Soft safety margin from obstacles in meters. This is the soft safety margin used for clearance penalty calculations.
 path_extraction_method: hybrid                # 'discrete', 'gradient_descent', 'hybrid'
 clearance_penalty_scale: 40.0                 # Scaling factor for the clearance penalty.
 clearance_penalty_range: 2.0                  # Distance (m) at which clearance penalty becomes zero.

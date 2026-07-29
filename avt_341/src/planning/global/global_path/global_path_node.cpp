@@ -17,6 +17,7 @@
 // local includes
 #include "avt_341/avt_341_utils.h"
 #include "avt_341/planning/global/astar.h"
+#include "avt_341/planning/global/astar_gap.h"
 #include "avt_341/planning/global/fastmarching.h"
 #include "avt_341/planning/global/d_star_lite.h"
 #include "avt_341/planning/global/fast_marching_square.h"
@@ -314,7 +315,8 @@ int main(int argc, char* argv[])
   bool debug_visualize, search_diagonals, los_break_on_first, auto_active_on_new_waypoint, use_global_path;
   int los_max_iterations;
   float dilation_factor, max_separation;
-  float safety_margin_global, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
+  float vehicle_width, w_clearance, clearance_range;
+  float safety_margin_global, safety_margin_soft, obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, clearance_penalty_exponent;
   int gradient_descent_max_steps, gradient_descent_steps_per_point;
   float clipping_distance;
   std::string map_topic, seg_topic;
@@ -343,6 +345,9 @@ int main(int argc, char* argv[])
   n->get_parameter("~auto_active_on_new_waypoint", auto_active_on_new_waypoint, false);
   n->get_parameter("~verbose_gp_log", verbose_gp_log, true);
   n->get_parameter("~dilation_factor", dilation_factor, 0.0f);
+  n->get_parameter("~vehicle_width", vehicle_width, 0.0f);
+  n->get_parameter("~w_clearance", w_clearance, 0.0f);
+  n->get_parameter("~clearance_range", clearance_range, 0.0f);  
   n->get_parameter("~max_separation", max_separation, 1.0f);
   n->get_parameter("~use_global_path", use_global_path, true);
   n->get_parameter("~use_segmentation", use_segmentation, true);
@@ -350,6 +355,7 @@ int main(int argc, char* argv[])
   n->get_parameter("~seg_topic", seg_topic, std::string("avt_341/normal_segmentation_grid"));
   n->get_parameter("~planning_method", planning_method, std::string("astar"));
   n->get_parameter("~safety_margin_global", safety_margin_global, 0.5f);
+  n->get_parameter("~safety_margin_soft", safety_margin_soft, safety_margin_global);
   n->get_parameter("~clearance_penalty_type", clearance_penalty_type, std::string("repulsive_potential"));
   n->get_parameter("~path_extraction_method", path_extraction_method, std::string("gradient_descent"));
   n->get_parameter("~obstacle_threshold", obstacle_threshold, 0.0f);
@@ -421,6 +427,7 @@ int main(int argc, char* argv[])
                                                        los_max_iterations,
                                                        los_break_on_first,
                                                        safety_margin_global,
+                                                       safety_margin_soft,
                                                        clearance_penalty_type,
                                                        path_extraction_method,
                                                        obstacle_threshold,
@@ -448,6 +455,7 @@ int main(int argc, char* argv[])
                                                              los_max_iterations,
                                                              los_break_on_first,
                                                              safety_margin_global,
+                                                             safety_margin_soft,
                                                              clearance_penalty_type,
                                                              path_extraction_method,
                                                              obstacle_threshold,
@@ -458,6 +466,17 @@ int main(int argc, char* argv[])
                                                              gradient_descent_steps_per_point,
                                                              clipping_distance,
                                                              verbose_gp_log);
+  } else if (planning_method == "astar_gap") {
+    path_planner = std::make_shared<avt_341::planning::AstarGap>(visualizer,
+                                                w_distance,
+                                                w_occupancy,
+                                                w_segmentation,
+                                                search_diagonals,
+                                                los_max_iterations,
+                                                los_break_on_first,
+                                                vehicle_width,
+                                                w_clearance,
+                                                clearance_range);                                                             
   } else {
     path_planner = std::make_shared<avt_341::planning::Astar>(visualizer,
                                                 w_distance,

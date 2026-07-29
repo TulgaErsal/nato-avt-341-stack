@@ -5,6 +5,7 @@ if(USING_CATKIN)
     ${PROJECT_NAME}_global_path_node
     "global_path_node.cpp"
     "astar.cpp"
+    "astar_gap.cpp"
     "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp"
     fastmarching.cpp
     d_star_lite.cpp
@@ -24,6 +25,7 @@ if(USING_AMENT)
     ${PROJECT_NAME}_global_path_node
     "global_path_node.cpp"
     "astar.cpp"
+    "astar_gap.cpp"
     "${PROJECT_SOURCE_DIR}/src/visualization/image_visualizer.cpp"
     fastmarching.cpp
     d_star_lite.cpp

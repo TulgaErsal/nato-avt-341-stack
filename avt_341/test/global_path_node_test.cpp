@@ -131,6 +131,7 @@ struct GlobalPlannerParams {
 
   // Fast-marching specific
   float safety_margin_global            = 0.75f;
+  float safety_margin_soft              = 0.75f;
   std::string path_extraction_method   = "hybrid";
   std::string clearance_penalty_type   = "linear";
   float obstacle_threshold             = 0.0f;
@@ -161,6 +162,7 @@ static GlobalPlannerParams LoadParams(const std::string& yaml_path) {
   p.los_break_on_first           = y.get_bool("los_break_on_first",     p.los_break_on_first);
   p.dilation_factor              = y.get_float("dilation_factor",       p.dilation_factor);
   p.safety_margin_global         = y.get_float("safety_margin_global",  p.safety_margin_global);
+  p.safety_margin_soft           = y.get_float("safety_margin_soft",    p.safety_margin_soft);
   p.path_extraction_method       = y.get_str("path_extraction_method",  p.path_extraction_method);
   p.clearance_penalty_type       = y.get_str("clearance_penalty_type",  p.clearance_penalty_type);
   p.obstacle_threshold           = y.get_float("obstacle_threshold",    p.obstacle_threshold);
@@ -276,7 +278,7 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         vis,
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
-        p.safety_margin_global,
+        p.safety_margin_global, p.safety_margin_soft,
         p.clearance_penalty_type, p.path_extraction_method,
         p.obstacle_threshold,
         p.clearance_penalty_scale, p.clearance_penalty_range,
@@ -294,7 +296,7 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         vis,
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
-        p.safety_margin_global,
+        p.safety_margin_global, p.safety_margin_soft,
         p.clearance_penalty_type, p.path_extraction_method,
         p.obstacle_threshold,
         p.clearance_penalty_scale, p.clearance_penalty_range,
@@ -463,6 +465,7 @@ TEST(GlobalPlannerParamTest, ParamsWithinRange) {
   EXPECT_GE(g_params.w_segmentation, 0.0f) << "w_segmentation must be non-negative";
   EXPECT_GE(g_params.los_max_iterations, 0) << "los_max_iterations must be >= 0";
   EXPECT_GE(g_params.safety_margin_global, 0.0f);
+  EXPECT_GE(g_params.safety_margin_soft, 0.0f);
   EXPECT_GE(g_params.clearance_penalty_scale, 0.0f);
   EXPECT_GE(g_params.clearance_penalty_range, 0.0f);
   EXPECT_GE(g_params.gradient_descent_max_steps, 1);
@@ -537,6 +540,7 @@ int main(int argc, char** argv) {
             << "  los_max_iterations           = " << g_params.los_max_iterations << "\n"
             << "  los_break_on_first           = " << g_params.los_break_on_first << "\n"
             << "  safety_margin_global         = " << g_params.safety_margin_global << "\n"
+            << "  safety_margin_soft           = " << g_params.safety_margin_soft << "\n"
             << "  path_extraction_method       = " << g_params.path_extraction_method << "\n"
             << "  clearance_penalty_type       = " << g_params.clearance_penalty_type << "\n"
             << "  clearance_penalty_scale      = " << g_params.clearance_penalty_scale << "\n"
