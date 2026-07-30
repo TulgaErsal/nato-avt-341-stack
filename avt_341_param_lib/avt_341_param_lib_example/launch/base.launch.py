@@ -11,7 +11,9 @@ runtime parameter yaml files. Examples:
   '(veh[12])/planner/cruise_speed:=6.0'    regex selector token (quote for the shell)
 
 Per-node override priority (later wins, per parameter):
-  1. runtime yaml files given via ``params_files``, in list order
+  1. runtime yaml files given via ``params_files``, in their effective order:
+     the list as given, with each file's ``__overrides`` targets ordered ahead
+     of it (see parameters_override/experiment_params.yaml)
   2. command line overrides, in command line order
 """
 

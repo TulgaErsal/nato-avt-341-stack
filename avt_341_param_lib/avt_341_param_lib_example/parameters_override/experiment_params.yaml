@@ -1,0 +1,41 @@
+# Experiment-specific runtime parameters, layered on top of the agent defaults.
+#
+# This file names its base with __overrides, so passing it alone is enough:
+#
+#   ros2 launch avt_341_param_lib_example client.launch.py \
+#     params_files:="[<share>/parameters_override/experiment_params.yaml]"
+#
+# pulls in agent_params.yaml, which in turn pulls in global_params.yaml, and the
+# three are handed to the nodes base-first so that this file wins.
+#
+# The target is written as a $pkg_path{} expansion rather than the plain
+# relative 'agent_params.yaml' that agent_params.yaml itself uses, to show the
+# form that reaches across packages: $pkg_path{<pkg>} becomes that package's
+# share directory, so a deployment package can name a base file shipped by
+# another package.
+__overrides: $pkg_path{avt_341_param_lib_example}/parameters_override/agent_params.yaml
+
+# Note the sections below deliberately reuse the selectors of the files they
+# override. File order decides between sections addressing the SAME selector,
+# which is what __overrides guarantees. It cannot make a broad section beat a
+# narrower one: ROS 2 applies matching sections from least to most specific
+# (/** first, then /veh2/**, then /veh2/planner) whatever file each came from,
+# so a /** section here would not override agent_params.yaml's /veh2/planner.
+
+# Same selector as global_params.yaml's /** section, and this file is applied
+# later, so 'grid' replaces its 'graph' for every node of every agent.
+/**:
+  ros__parameters:
+    planner_mode: grid
+
+# Same selector as agent_params.yaml's /veh2/planner section, so this value wins
+# for that node.
+/veh2/planner:
+  ros__parameters:
+    cruise_speed: 99.0
+
+# Single node type across all agents. global_params.yaml sets rate at /**, which
+# is less specific, so this applies to both agents' sensor nodes.
+/**/sensor:
+  ros__parameters:
+    rate: 50.0

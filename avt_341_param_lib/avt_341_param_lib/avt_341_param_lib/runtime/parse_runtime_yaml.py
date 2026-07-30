@@ -34,6 +34,17 @@ a parameter; ``$pkg_path{}`` substitutes in place within a string value:
 
       zones_filepath: $pkg_path{avt_341}/config/zones.csv
 
+A top-level ``__overrides`` key names the files a file overrides -- one path or a
+yaml list, each absolute, a ``$pkg_path{}`` expansion or relative to the
+declaring file::
+
+    __overrides: base_params.yaml
+
+Named files are applied before the declaring file (later list entries winning),
+joining the corpus if the caller did not pass them and moving ahead of their
+declarer if it did. Declarations chain; cycles are an error. rcl rejects a value
+under a top-level key, so a declaring file is always rewritten without it.
+
 Section keys holding parenthesized regex selector tokens (e.g.
 ``/(veh[12])/planner:``) are additionally expanded into concrete per-node
 sections before the file is written back out, since rcl's own yaml loader
@@ -70,6 +81,14 @@ _REF_RE = re.compile(r'^\$ref\{(?P<target>[^{}]*)\}$')
 _FULL_VALUE_MARKERS = ('$python{', '$ref{')
 _TEMPLATE_MARKERS = _FULL_VALUE_MARKERS + (PKG_PATH_MARKER,)
 
+# Top-level key naming the files a runtime override file overrides, i.e. the
+# ones to hand the node first. The '__' prefix mirrors the reserved template
+# keys (__include_mixins/__inherit_mixins) and, like those, the entry is popped
+# before the document is used: rcl reads top-level keys as node selectors and
+# rejects a value there ('Cannot have a value before ros__parameters' for a
+# scalar, 'Sequences can only be values and not keys in params' for a list).
+OVERRIDES_KEY = '__overrides'
+
 _PYTHON_EVAL_NAMESPACE = {
     'os': os,
     'math': math,
@@ -83,10 +102,12 @@ def resolve_params_files(
 ) -> List[str]:
     """Resolve ``$python{}``/``$ref{}``/``$pkg_path{}`` templates in runtime parameter yaml files.
 
-    Returns one path per input, in order: files containing no templating
-    syntax pass through with their original path; templated files are resolved
-    and written to ``work_dir`` (a session temp directory is created when not
-    given). Later files may reference values in earlier ones and vice versa.
+    Returns the files in the order rcl must apply them, later overriding earlier.
+    Files with neither templating syntax nor an ``__overrides`` entry pass through
+    with their original path; the rest are resolved and written to ``work_dir`` (a
+    session temp directory is created when not given). ``__overrides`` means this
+    is not one path per input: the corpus is reordered, may gain files the caller
+    never listed, and collapses paths naming the same file.
 
     Section keys holding parenthesized regex selector tokens are expanded into
     concrete per-node sections; ``node_fqns`` must then list the fully
@@ -97,7 +118,7 @@ def resolve_params_files(
 
     result = []
     for index, entry in enumerate(resolver.files):
-        if not entry.templated:
+        if not (entry.templated or entry.has_overrides):
             result.append(entry.path)
             continue
         if work_dir is None:
@@ -105,9 +126,16 @@ def resolve_params_files(
         out_path = os.path.join(
             work_dir, '%02d_%s' % (index, os.path.basename(entry.path)))
         with open(out_path, 'w') as f:
-            yaml.safe_dump(entry.doc, f, sort_keys=False)
+            yaml.dump(entry.doc, f, sort_keys=False, Dumper=_NoAliasDumper)
         result.append(out_path)
     return result
+
+
+class _NoAliasDumper(yaml.SafeDumper):
+    """Repeats shared nodes instead of anchoring them; rcl rejects yaml aliases."""
+
+    def ignore_aliases(self, data):
+        return True
 
 
 class _ParamsFile:
@@ -116,22 +144,160 @@ class _ParamsFile:
         self.path = path
         with open(path) as f:
             text = f.read()
-        self.doc = yaml.safe_load(text)
+        try:
+            self.doc = yaml.safe_load(text)
+        except yaml.YAMLError as error:
+            # an __overrides target may be a file the caller never listed, so
+            # the document has to name itself
+            raise RuntimeError(f"Error parsing parameter yaml file '{path}': {error}") from error
         if not isinstance(self.doc, dict):
             raise RuntimeError(
                 f"'{path}' is not a parameter yaml file: expected a mapping of node sections")
+        # popped before anything else inspects the document: _expand_regex_sections
+        # copies non-section entries through verbatim, so a lingering directive
+        # would reach rcl. Targets load later, in _load_ordered_files, which is
+        # safe: nothing is written until every one of them has loaded.
+        self.has_overrides, self.override_targets = _pop_override_targets(self.doc, path)
+        _check_no_nested_overrides(self.doc, path)
         # regex section keys cannot be found with a raw-text marker scan
         # (parentheses appear in ordinary values), so scan the parsed keys
         self.has_regex_sections = _doc_has_regex_sections(self.doc, path)
+        # separate from has_overrides, which needs no value resolution
         self.templated = (
             any(marker in text for marker in _TEMPLATE_MARKERS) or self.has_regex_sections)
+
+
+def _pop_override_targets(doc: dict, path: str) -> Tuple[bool, List[str]]:
+    """Pop the top-level ``__overrides`` entry and resolve it to params file paths.
+
+    Presence is returned separately from the targets so that an empty list still
+    forces the rewrite which drops the key.
+    """
+    if OVERRIDES_KEY not in doc:
+        return False, []
+    value = doc.pop(OVERRIDES_KEY)
+    entries = value if isinstance(value, list) else [value]
+    targets = []
+    for entry in entries:
+        if not isinstance(entry, str) or not entry.strip():
+            raise RuntimeError(
+                f'Invalid {OVERRIDES_KEY} value {value!r} in {path!r}: expected a parameter '
+                'file path or a yaml list of paths, e.g. '
+                f"'{OVERRIDES_KEY}: global_params.yaml'"
+            )
+        targets.append(_resolve_override_path(entry.strip(), path))
+    return True, targets
+
+
+def _resolve_override_path(text: str, path: str) -> str:
+    """Resolve one ``__overrides`` entry to an existing parameter file path.
+
+    Full-value templates are rejected: the entry addresses a file, and it resolves
+    while the corpus is still being assembled.
+    """
+    if any(marker in text for marker in _FULL_VALUE_MARKERS):
+        raise RuntimeError(
+            f"Invalid {OVERRIDES_KEY} value '{text}' in '{path}': $python{{}}/$ref{{}} "
+            f'templates are not supported in an {OVERRIDES_KEY} path; use $pkg_path{{}} '
+            'or a path relative to the declaring file'
+        )
+    try:
+        expanded = expand_pkg_path(text, f"'{path}'")
+    except ValueError as error:
+        raise RuntimeError(str(error)) from error
+    # note os.path.isabs('/base.yaml') is True on Windows (drive-relative), so
+    # such an entry is taken as absolute rather than relative to the declarer
+    if not os.path.isabs(expanded):
+        expanded = os.path.join(os.path.dirname(os.path.abspath(path)), expanded)
+    resolved = os.path.normpath(expanded)
+    if not os.path.isfile(resolved):
+        raise RuntimeError(
+            f"{OVERRIDES_KEY} entry '{text}' in '{path}' not found at '{resolved}'")
+    return resolved
+
+
+def _check_no_nested_overrides(doc: dict, path: str, prefix: str = ''):
+    """Reject ``__overrides`` entries below the document root.
+
+    Checked before the ``ros__parameters`` stop, so a directive sitting beside a
+    section body is caught too.
+    """
+    for key, value in doc.items():
+        if not isinstance(value, dict):
+            continue
+        selector = f"{prefix}/{str(key).strip('/')}"
+        if OVERRIDES_KEY in value:
+            raise RuntimeError(
+                f"{OVERRIDES_KEY} entry under section '{selector}' in '{path}': "
+                f'{OVERRIDES_KEY} is only allowed as a top-level key of a runtime '
+                'parameter file'
+            )
+        if isinstance(value.get(PARAMETERS_ROOT_KEY), dict):
+            continue
+        _check_no_nested_overrides(value, path, selector)
+
+
+def _path_key(path: str) -> str:
+    """Identity of a params file path, so one file named two ways is one entry.
+
+    Normalizes case and separators (Windows) and resolves symlinks (a colcon
+    --symlink-install share tree). Only the key: entries keep the path as given.
+    """
+    return os.path.normcase(os.path.realpath(path))
+
+
+def _load_ordered_files(paths: List[str]) -> List[_ParamsFile]:
+    """Load the params files, ordering ``__overrides`` targets before their declarer.
+
+    Depth-first post-order walk of the ``__overrides`` graph rooted at the input
+    list: targets precede their declarer, unconstrained files keep their list
+    order. Paths naming the same file collapse to one entry -- what lets an already
+    listed target move ahead of its declarer, since a second copy would just
+    re-apply afterwards.
+    """
+    by_key = {}
+    roots = []
+    # caller paths first, so a file also named by a directive keeps their spelling
+    for path in paths:
+        key = _path_key(path)
+        if key in by_key:
+            continue
+        by_key[key] = _ParamsFile(path)
+        roots.append(key)
+
+    files: List[_ParamsFile] = []
+    emitted = set()
+    # a list rather than a set so a cycle can be reported as its path chain
+    chain: List[str] = []
+
+    def visit(key: str):
+        if key in emitted:
+            return
+        if key in chain:
+            cycle = chain[chain.index(key):] + [key]
+            raise RuntimeError(
+                f'Circular {OVERRIDES_KEY} chain detected: '
+                + ' -> '.join(f"'{by_key[step].path}'" for step in cycle))
+        chain.append(key)
+        for target in by_key[key].override_targets:
+            target_key = _path_key(target)
+            if target_key not in by_key:
+                by_key[target_key] = _ParamsFile(target)
+            visit(target_key)
+        chain.pop()
+        emitted.add(key)
+        files.append(by_key[key])
+
+    for key in roots:
+        visit(key)
+    return files
 
 
 class _Resolver:
 
     def __init__(self, paths: List[str], vehicles: List[str],
                  node_fqns: Optional[List[str]] = None):
-        self.files = [_ParamsFile(path) for path in paths]
+        self.files = _load_ordered_files(paths)
         self._vehicles = [str(vid).strip('/') for vid in vehicles]
         self._node_fqns = None if node_fqns is None else [str(fqn) for fqn in node_fqns]
         # (section body id, param key) pairs currently being resolved, for cycle detection

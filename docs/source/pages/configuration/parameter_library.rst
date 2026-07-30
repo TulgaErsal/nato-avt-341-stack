@@ -355,9 +355,47 @@ forms are given in :numref:`tbl-param-selectors`.
       - Only ``/veh1/costmap_node``.
       - ``/veh2/costmap_node``, ``/veh1/nav/costmap_node``
 
-Entries which a matched node does not declare stay dormant. Sections are applied in document order and
-then file order, with later entries winning. ROS2 has no specificity based precedence, so broader
-sections must be placed before more specific ones.
+**Selector Precedence**
+
+ROS2 applies selector precedence based on two axes of selector specificity and parameter file ordering.
+File ordering only takes precedent for the exact same node selector (before wildcard matching). Beyond this, more
+specific node selectors take precedence. Examples of the two axes are summarized in :numref:`tbl-param-precedence`.
+
+.. list-table:: Resolution of sections competing for one parameter of one node.
+    :name: tbl-param-precedence
+    :header-rows: 1
+    :widths: 28 28 44
+
+    * - Axis
+      - Example
+      - Decided by
+    * - Different selectors matching the node
+      - ``/**`` against ``/veh1/costmap_node``
+      - Specificity: the broadest section is applied first, so the narrowest one wins. File order is
+        irrelevant.
+    * - One selector repeated
+      - ``/**`` against ``/**``
+      - Document order and then file order, with the later entry winning.
+
+.. _runtime-file-overrides:
+
+**Override Declaration**
+
+In order to avoid ambiguity in parameter file ordering, a file may declare override precedence to another file
+using the top-level ``__overrides`` key of :numref:`lst-param-runtime-overrides`. Files specified under the ``__overrides``
+key will also be automatically loaded and do not need to be passed to the launch file.
+This is a library extension with no ROS2 counterpart.
+
+.. code-block:: yaml
+    :name: lst-param-runtime-overrides
+    :caption: Runtime parameter file declaring the file it overrides.
+
+    __overrides: global_params.yaml
+
+    /**/costmap_node:
+      ros__parameters:
+        costmap:
+          thresh: 0.9
 
 .. _node-configuration-file:
 
@@ -520,8 +558,13 @@ The available expressions are given in :numref:`tbl-param-expressions`.
       - ``$pkg_path{avt_341_bringup}/env_data``
 
 ``$ref{}`` and ``$python{}`` are resolved in runtime parameter files. ``$pkg_path{}`` is additionally
-expanded in string valued command line overrides. Template parameter files are never scanned for
-expressions.
+expanded in string valued command line overrides and in
+:ref:`file level override target paths <runtime-file-overrides>`, where the other two are not
+accepted. Template parameter files are never scanned for expressions.
+
+The first match ``$ref{}`` resolves to follows the effective file order, so a
+:ref:`file level override declaration <runtime-file-overrides>` which moves a file ahead of another
+also moves it ahead for reference lookups.
 
 .. _comparison-to-generate-parameter-library:
 
@@ -543,6 +586,7 @@ This library also implements additional features in the code-generation step. Th
 
 * Hierarchical override system merging :ref:`1) code-gen template parameter files <template-parameter-files>`,
   :ref:`2) runtime parameter files <runtime-parameter-files>`, and :ref:`3) command line arguments <command-line-arguments>`. Listed in increasing priority.
+* :ref:`Parameter file override declarations <runtime-file-overrides>`.
 * Added concept of :ref:`node configuration file <node-configuration-file>` for topic remappings and environment variables.
 * Command line support for :ref:`node selector syntax <cli-selector-syntax>`.
 * Command line support for :ref:`sub-map parameters <parameter-sub-maps>`.

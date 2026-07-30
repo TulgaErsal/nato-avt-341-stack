@@ -1,7 +1,15 @@
-# Agent-specific runtime parameters: the namespace wildcard limits the section
-# to the nodes of one agent. This file is passed after global_params.yaml, so
-# its values win for that agent (precedence is file order, then document order;
-# there is no specificity-based precedence in ROS 2).
+# This file overrides global_params.yaml, so that file is handed to the nodes
+# first and the values below win. Declaring it here rather than relying on the
+# caller's ordering means the pair cannot be passed in the wrong order: a
+# global_params.yaml already in the params_files list is moved ahead of this
+# file rather than loaded twice, and if it is absent it is loaded as well.
+# The path is relative to this file; an absolute path or a $pkg_path{<pkg>}
+# expansion (for a file in another package's share tree) also work.
+__overrides: global_params.yaml
+
+# Agent-specific runtime parameters: the namespace wildcard limits the section to
+# the nodes of one agent, and is narrower than global_params.yaml's /**, so it is
+# applied after it. File order decides only between sections sharing a selector.
 /veh2/**:
   ros__parameters:
     cruise_speed: 0.5

@@ -1,9 +1,9 @@
 # Global runtime parameters: the wildcard section applies to every node of
 # every agent. Entries a given node does not declare stay dormant.
 #
-# Precedence is document order (last matching section wins) and then file
-# order; there is no specificity-based precedence in ROS 2. More specific
-# sections therefore go BELOW the broader ones.
+# ROS 2 applies matching sections broadest first, so this /** section is applied
+# before any narrower selector no matter which file that one is in. Document
+# order and then file order decide only between sections sharing one selector.
 /**:
   ros__parameters:
     cruise_speed: 2.5

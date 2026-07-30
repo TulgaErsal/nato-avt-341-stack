@@ -43,7 +43,9 @@ reading (``(veh[12])/planner/... -> /(veh[12])/planner/...``,
 
 Per-node override priority (later wins, per parameter):
 
-1. runtime parameter yaml files, in the order given
+1. runtime parameter yaml files, in their effective order: the list as given,
+   with each file's ``__overrides`` targets ordered ahead of it (see
+   :mod:`avt_341_param_lib.runtime.parse_runtime_yaml`)
 2. command line overrides, in command line order
 
 Explicitness of launch arguments is detected with a snapshot of the launch
