@@ -126,7 +126,8 @@ std::vector<std::shared_ptr<CostmapLayer>> Costmap::GetTargetLayers(const std::s
     return layers;
 }
 
-void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation, std::string target_layer) const {
+void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegion region, bool is_segmentation,
+    const int out_width, const std::string& target_layer) const {
 
 	// TODO: Temporary change related to https://github.com/TulgaErsal/nato-avt-341-stack/issues/246
 	//data.resize(region.Width()*region.Height());
@@ -140,9 +141,17 @@ void Costmap::FillGridMsgCells(std::vector<int8_t> & data, const core::GridRegio
 		      is_segmentation ? thresholds.replace_seg_unknown_with
 		                      : thresholds.replace_occ_unknown_with);
 
+    bool is_continuous = out_width == region.Width();
+
 	int c = 0;
 	for (int i = region.y_min; i < region.y_max; i++) {
 		for (int j = region.x_min; j < region.x_max; j++) {
+
+		    if (!is_continuous)
+		    {
+		        c = (i - region.y_min) * out_width + (j - region.x_min);
+		    }
+
 			const int layer_val = GetCombinedLayerValue<int>(layers, [i, j, is_segmentation](const std::shared_ptr<CostmapLayer>& layer){
 				return is_segmentation ? layer->GetSegValue(i, j) : layer->GetOccValue(i, j);
 			}, unknown_value);
@@ -175,7 +184,7 @@ map_msgs::msg::OccupancyGridUpdate Costmap::GetGridUpdate(
 	grid_update_msg.height = dilated_region.Height();
 	grid_update_msg.data.resize(dilated_region.Width()*dilated_region.Height());
 
-	FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation, target_layer);
+	FillGridMsgCells(grid_update_msg.data, dilated_region, is_segmentation, static_cast<int>(grid_update_msg.width), target_layer);
 	return grid_update_msg;
 }
 
@@ -196,7 +205,7 @@ nav_msgs::msg::OccupancyGrid Costmap::GetGrid(
 	grid.data.resize(grid.info.width  * grid.info.height);
 	const auto update_region = core::GridRegion(0, grid.info.width, 0, grid.info.height);
 
-	FillGridMsgCells(grid.data, update_region, is_segmentation, target_layer);
+	FillGridMsgCells(grid.data, update_region, is_segmentation, static_cast<int>(grid.info.width), target_layer);
 	return grid;
 }
 
@@ -220,7 +229,7 @@ nav_msgs::msg::OccupancyGrid Costmap::GetGrid(double width, double height, bool 
 	grid.info.origin.position.y = settings_.to_y_world(yi_min);
 	grid.data.resize(local_nx * local_ny);
 
-	FillGridMsgCells(grid.data, core::GridRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation);
+	FillGridMsgCells(grid.data, core::GridRegion(xi_min, xi_max, yi_min, yi_max), is_segmentation, local_nx);
 	return grid;
 }
 

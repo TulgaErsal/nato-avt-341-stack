@@ -18,16 +18,6 @@ namespace avt_341_nav::perception {
 using ObjectTrackerSettings = avt_341_nav::params::object_tracker::Params;
 using RecoverySettings = ObjectTrackerSettings::Recovery;
 
-/** Resolve a frame id using the configured tracker frame prefix. */
-std::string ResolveFrameId(const ObjectTrackerSettings::Frames& frames,
-                           const std::string& frame_id);
-
-/** Resolve the configured camera frame id. */
-std::string ResolveCameraFrame(const ObjectTrackerSettings& params);
-
-/** Resolve the configured obstacle-detector base frame id. */
-std::string ResolveRobotBaseLink(const ObjectTrackerSettings& params);
-
 /** Convert a validated xyz parameter array to an Eigen vector. */
 Eigen::Vector3f ToEigenVector3f(const std::vector<double>& values);
 

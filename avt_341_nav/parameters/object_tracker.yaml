@@ -1,22 +1,7 @@
 code_namespace: avt_341_nav/params/object_tracker
 ros__parameters:
-  frames:
-    prefix:
-      type: string
-      default_value: ''
-      description: "Prefix prepended to the camera frame and robot base link frame ids."
-    camera_frame:
-      type: string
-      default_value: 'flir_optical'
-      description: "Camera optical frame id. frames.prefix is prepended at load time."
-    world_frame:
-      type: string
-      default_value: 'map'
-      description: "World frame id used for tracking."
-    odometry_child_frame:
-      type: string
-      default_value: 'odom'
-      description: "Fallback child frame id used in published odometry messages."
+
+  __include_mixins: coordinate_frames_mixin
 
   filter:
     estimator_rate:
@@ -171,10 +156,6 @@ ros__parameters:
       description: "Track generic targets that are neither formation vehicles nor TOI objects."
 
   obstacle_detector:
-    robot_base_link:
-      type: string
-      default_value: 'mrzr/base_link'
-      description: "Ego-vehicle base frame. frames.prefix is prepended at load time."
     use_pca_box:
       type: bool
       default_value: true

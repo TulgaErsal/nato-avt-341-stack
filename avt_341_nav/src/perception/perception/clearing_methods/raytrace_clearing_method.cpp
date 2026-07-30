@@ -1,4 +1,6 @@
 #include "avt_341_nav/perception/clearing_methods/raytrace_clearing_method.h"
+#include "avt_341_nav/core/string_utils.hpp"
+#include "avt_341_nav/node/node_utils.h"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -67,10 +69,7 @@ void RaytraceClearingMethod::SetLidarFrame() {
         lidar_frame_in = "lidar";
     }
 
-    // Remove leading slash + add slash at end (/)
-    auto node_ns = std::string(node_->get_namespace());
-    node_ns = node_ns.empty() || node_ns == "/" ? "" : (node_ns.substr(1, node_ns.size() - 1) + "/");
-    lidar_frame_ = node_ns + lidar_frame_in;
+    lidar_frame_ = core::CombineTfParts(node::GetLeadingNodeNamespace(node_), lidar_frame_in);
 }
 
 RaytraceClearingMethod::~RaytraceClearingMethod() {

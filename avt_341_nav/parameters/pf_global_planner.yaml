@@ -1,7 +1,7 @@
 code_namespace: avt_341_nav/params/pf_global_planner
 ros__parameters:
 
-  __include_mixins: gis_mixin
+  __include_mixins: coordinate_frames_mixin
 
   # Costmap transport (publish.method drives latching of grid subscriptions)
   costmap:

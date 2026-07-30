@@ -105,20 +105,20 @@ std::string toUpper(const std::string & str){
 
 // Publishes the static transform placing the map frame origin at
 // (gis.origin_x, gis.origin_y) within the GIS crs frame.
-void PublishGisStaticTransform(const avt_341_nav::params::mission_manager::Params & params) {
-  if (params.gis.crs.empty()) {
+void PublishGisStaticTransform(const avt_341_nav::params::core::Frames & frames) {
+  if (frames.gis.crs.empty()) {
     RCLCPP_INFO(nh->get_logger(), "No GIS crs configured, skipping map georeference static transform.");
     return;
   }
 
-  const std::string crs_frame = avt_341_nav::core::CrsToFrameId(params.gis.crs);
+  const std::string crs_frame = avt_341_nav::core::CrsToFrameId(frames.gis.crs);
   geometry_msgs::msg::PoseStamped map_origin;
-  map_origin.pose.position.x = params.gis.origin_x;
-  map_origin.pose.position.y = params.gis.origin_y;
+  map_origin.pose.position.x = frames.gis.origin_x;
+  map_origin.pose.position.y = frames.gis.origin_y;
   map_origin.pose.orientation.w = 1.0;
-  tf->publish_static_tf(crs_frame, "map", map_origin);
-  RCLCPP_INFO(nh->get_logger(), "Published static transform %s -> map at (%.3f, %.3f).",
-      crs_frame.c_str(), params.gis.origin_x, params.gis.origin_y);
+  tf->publish_static_tf(crs_frame, frames.map, map_origin);
+  RCLCPP_INFO(nh->get_logger(), "Published static transform %s -> %s at (%.3f, %.3f).",
+      crs_frame.c_str(), frames.map.c_str(), frames.gis.origin_x, frames.gis.origin_y);
 }
 
 // Receive updated odometry information
@@ -295,7 +295,7 @@ int main(int argc, char **argv) {
 
     const std::string my_name = toUpper(params.name);
 
-    PublishGisStaticTransform(params);
+    PublishGisStaticTransform(params.frames);
 
     tracker_param_client = std::make_shared<rclcpp::AsyncParametersClient>(nh, params.toi.tracker_node_name);
 

@@ -8,6 +8,20 @@
 namespace avt_341_nav {
 namespace node {
 
+/// First slash-separated token of the node namespace, e.g. "/veh1/perception"
+/// -> "veh1". Empty string for the root namespace.
+inline std::string GetLeadingNodeNamespace(const std::string &node_ns) {
+  const auto begin = node_ns.find_first_not_of('/');
+  if (begin == std::string::npos) {
+    return "";
+  }
+  return node_ns.substr(begin, node_ns.find('/', begin) - begin);
+}
+
+inline std::string GetLeadingNodeNamespace(const rclcpp::Node::SharedPtr &node) {
+  return GetLeadingNodeNamespace(std::string(node->get_namespace()));
+}
+
 // Declares the parameter if not yet declared, then reads it. Accepts legacy
 // "~"-prefixed private parameter names.
 template <typename ParameterT>

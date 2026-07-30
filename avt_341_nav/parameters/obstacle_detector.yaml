@@ -1,6 +1,8 @@
 code_namespace: avt_341_nav/params/obstacle_detector
 ros__parameters:
 
+  __include_mixins: coordinate_frames_mixin
+
   # Obstacle Detection
   # ====================================================================================================================
   use_pca_box:
@@ -117,21 +119,6 @@ ros__parameters:
     description: "Minimum neighboring obstacle points [points]."
     validation:
       gt_eq<>: [ 0 ]
-
-  # Frames
-  # ====================================================================================================================
-  bbox_target_frame:
-    type: string
-    default_value: 'base_link'
-    description: "Target frame for bounding boxes."
-  robot_base_link:
-    type: string
-    default_value: 'mrzr/base_link'
-    description: "Base link of the robot."
-  fixed_frame:
-    type: string
-    default_value: 'map'
-    description: "World-fixed frame used for normal filtering."
 
   # Pointcloud Topics
   # ====================================================================================================================

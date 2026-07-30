@@ -210,15 +210,15 @@ int main(int argc, char *argv[])
   {
     for (const auto & waypoint : initial_waypoints.poses){
       geometry_msgs::msg::PoseStamped pose;
-      pose.pose.position.x = waypoint.pose.position.x - params.gis.origin_x;
-      pose.pose.position.y = waypoint.pose.position.y - params.gis.origin_y;
+      pose.pose.position.x = waypoint.pose.position.x - params.frames.gis.origin_x;
+      pose.pose.position.y = waypoint.pose.position.y - params.frames.gis.origin_y;
       pose.pose.position.z = 0.0;
       pose.pose.orientation.w = 1.0;
       current_waypoints.poses.push_back(pose);
     }
       // Initialize goal to first waypoint
-    goal[0] = initial_waypoints.poses[0].pose.position.x - params.gis.origin_x;
-    goal[1] = initial_waypoints.poses[0].pose.position.y - params.gis.origin_y;
+    goal[0] = initial_waypoints.poses[0].pose.position.x - params.frames.gis.origin_x;
+    goal[1] = initial_waypoints.poses[0].pose.position.y - params.frames.gis.origin_y;
     state.data = avt_341_nav::core::NavStackState::Active; // go active
     state_pub->publish(state);
   }

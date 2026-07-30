@@ -1,7 +1,7 @@
 code_namespace: avt_341_nav/params/data_acquisition
 ros__parameters:
 
-  __include_mixins: gis_mixin
+  __include_mixins: coordinate_frames_mixin
 
   # Data Acquisition
   # ====================================================================================================================
@@ -11,18 +11,6 @@ ros__parameters:
     description: "Data acquisition rate [Hz]."
     validation:
       gt<>: [ 0.0 ]
-  world_frame:
-    type: string
-    default_value: 'nad83'
-    description: "World coordinate system reference frame."
-  map_frame:
-    type: string
-    default_value: 'map'
-    description: "Global map reference frame."
-  vehicle_cg_frame:
-    type: string
-    default_value: 'mrzr/vbox_link'
-    description: "Vehicle center-of-gravity reference frame."
   velocity_averaging_window:
     type: double
     default_value: 0.5

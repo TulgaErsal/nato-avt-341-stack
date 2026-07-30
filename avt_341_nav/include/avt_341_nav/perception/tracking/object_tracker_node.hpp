@@ -95,6 +95,7 @@
 
 #include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/core/coord_transform.hpp>
+#include <avt_341_nav/core/frame_id_collection.hpp>
 #include <avt_341_nav/perception/box.hpp>
 #include <avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
 #include <avt_341_nav/perception/tracking/object_tracker.hpp>
@@ -150,6 +151,9 @@ class ObjectTrackerNode : public rclcpp::Node {
 
     /** @brief Generated parameters shared by the node and tracker instances. */
     ObjectTrackerSettings params_;
+
+    /** @brief Resolved tf frame ids, computed once at startup. */
+    std::unique_ptr<core::FrameIdCollection> frame_ids_;
 
     /** @brief Generated parameter declaration and validation listener. */
     std::shared_ptr<avt_341_nav::params::object_tracker::ParamsListener>

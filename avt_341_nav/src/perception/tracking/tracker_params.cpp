@@ -9,20 +9,6 @@
 
 namespace avt_341_nav::perception {
 
-std::string ResolveFrameId(const ObjectTrackerSettings::Frames& frames,
-                           const std::string& frame_id) {
-    return frames.prefix + frame_id;
-}
-
-std::string ResolveCameraFrame(const ObjectTrackerSettings& params) {
-    return ResolveFrameId(params.frames, params.frames.camera_frame);
-}
-
-std::string ResolveRobotBaseLink(const ObjectTrackerSettings& params) {
-    return ResolveFrameId(params.frames,
-                          params.obstacle_detector.robot_base_link);
-}
-
 Eigen::Vector3f ToEigenVector3f(const std::vector<double>& values) {
     return Eigen::Vector3f(static_cast<float>(values.at(0)),
                            static_cast<float>(values.at(1)),
@@ -54,10 +40,6 @@ bool ApplyRuntimeParameters(ObjectTrackerSettings& params,
         }
     };
 
-    assign_if_changed(params.frames.camera_frame,
-                      updated_params.frames.camera_frame);
-    assign_if_changed(params.frames.world_frame,
-                      updated_params.frames.world_frame);
     assign_if_changed(params.filter.roi_scale_factor,
                       updated_params.filter.roi_scale_factor);
     assign_if_changed(params.filter.estimator_rate,

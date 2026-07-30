@@ -25,6 +25,7 @@
 #include <avt_341_msgs/msg/tracker_status.hpp>
 
 #include <avt_341_nav/core/coord_transform.hpp>
+#include <avt_341_nav/core/frame_id_collection.hpp>
 #include <avt_341_nav/perception/filtering/imm_filter.hpp>
 #include <avt_341_nav/perception/tracking/tracker_params.hpp>
 #include <avt_341_nav/perception/tracking/tracker_dto.hpp>
@@ -185,10 +186,10 @@ class ObjectTracker {
     /** @brief Sanitized topic/frame namespace for this target. */
     std::string target_ns_;
 
-    /** @brief Child frame ID for the Odometry messages of this target. */
-    std::string odometry_child_frame_;
-
     ObjectTrackerSettings params_;
+
+    /** @brief Resolved tf frame ids, computed once at construction. */
+    core::FrameIdCollection frame_ids_;
 
     /** @brief Shared coordinate transformer owned by the node. */
     const core::CoordTransformer& coord_transformer_;

@@ -17,6 +17,7 @@
 #include <avt_341_nav/core/coord_transform.hpp>
 #include <avt_341_nav/core/eigen_dto_conversion.hpp>
 #include <avt_341_nav/core/string_utils.hpp>
+#include <avt_341_nav/node/node_utils.h>
 
 namespace avt_341_nav {
 namespace perception {
@@ -31,8 +32,8 @@ ObjectTracker::ObjectTracker(
       logger_(node->get_logger().get_child(core::SanitizeIdentifier(target_class))),
       target_class_(target_class),
       target_ns_(core::SanitizeIdentifier(target_class)),
-      odometry_child_frame_(core::SanitizeIdentifier(target_class) + "/odom"),
       params_(params),
+      frame_ids_(params.frames, node::GetLeadingNodeNamespace(node->get_namespace())),
       coord_transformer_(coord_transformer),
       leader_odom_publisher_(std::move(leader_odom_publisher))
     {
@@ -170,7 +171,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             // so that the EstimatorTick can handle it uniformly.
             const Eigen::Vector3d marker_pos = core::ToEigen(marker.pose.position);
             bounding_box_centroid_ = coord_transformer_.Transform(
-                marker.header.frame_id, ResolveCameraFrame(params_),
+                marker.header.frame_id, frame_ids_.Camera(),
                 marker_pos);
 
             bounding_box_size_ = core::ToEigen(marker.scale);
@@ -186,7 +187,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             // drop-out: if the obstacle disappears and reappears with a new
             // ID within lidar_reacquire_max_time, we match it by proximity.
             last_lidar_world_pos_ = coord_transformer_.Transform(
-                marker.header.frame_id, params_.frames.world_frame,
+                marker.header.frame_id, frame_ids_.Map(),
                 marker_pos);
             found = true;
 
@@ -226,13 +227,13 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                         continue;  // already checked above, not present
                     const Eigen::Vector3d mpos = core::ToEigen(m.pose.position);
                     const Eigen::Vector3d mpos_world = coord_transformer_.Transform(
-                        m.header.frame_id, params_.frames.world_frame, mpos);
+                        m.header.frame_id, frame_ids_.Map(), mpos);
                     const double d = (mpos_world - last_lidar_world_pos_).norm();
                     if (d < best_dist) {
                         best_dist = d;
                         reacquire_id = m.id;
                         best_cam_pos = coord_transformer_.Transform(
-                            m.header.frame_id, ResolveCameraFrame(params_),
+                            m.header.frame_id, frame_ids_.Camera(),
                             mpos);
                         best_size = core::ToEigen(m.scale);
                         best_quat = core::ToEigen(m.pose.orientation);
@@ -256,8 +257,8 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                     last_valid_target_time_ = node_->get_clock()->now();
                     last_lidar_seen_time_ = last_valid_target_time_;
                     last_lidar_world_pos_ = coord_transformer_.Transform(
-                        ResolveCameraFrame(params_),
-                        params_.frames.world_frame, best_cam_pos);
+                        frame_ids_.Camera(),
+                        frame_ids_.Map(), best_cam_pos);
                     // Skip further processing — measurement is ready.
                 } else {
                     RCLCPP_WARN(logger_,
@@ -334,7 +335,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             // Transform marker position to camera frame.
             const Eigen::Vector3d pos = core::ToEigen(marker.pose.position);
             const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
-                marker.header.frame_id, ResolveCameraFrame(params_), pos);
+                marker.header.frame_id, frame_ids_.Camera(), pos);
 
             // Skip markers behind the camera.
             if (pos_cam.z() <= 0.0) continue;
@@ -412,7 +413,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         last_valid_target_time_ = node_->get_clock()->now();
         last_lidar_seen_time_ = last_valid_target_time_;
         last_lidar_world_pos_ = coord_transformer_.Transform(
-            ResolveCameraFrame(params_), params_.frames.world_frame,
+            frame_ids_.Camera(), frame_ids_.Map(),
             best_pos_cam);
 
         RCLCPP_DEBUG(logger_,
@@ -469,7 +470,7 @@ void ObjectTracker::EstimatorTick() {
 
     if (!filter_initialized_) {
         filter_->SetInitialPosition(coord_transformer_.Transform(
-            ResolveCameraFrame(params_), params_.frames.world_frame,
+            frame_ids_.Camera(), frame_ids_.Map(),
             bounding_box_centroid_));
         filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
         filter_->ResetCovariance();
@@ -510,7 +511,7 @@ void ObjectTracker::EstimatorTick() {
     // matching measurement vector z_n.
     if (has_new_measurement_) {
         bounding_box_centroid_global_ = coord_transformer_.Transform(
-            ResolveCameraFrame(params_), params_.frames.world_frame,
+            frame_ids_.Camera(), frame_ids_.Map(),
             bounding_box_centroid_);
 
         // The IMM measurement vector is 3D [x, y, z].  Velocity and
@@ -522,8 +523,8 @@ void ObjectTracker::EstimatorTick() {
         if (state_ == TrackerState::CAMERA_ONLY_TRACKING) {
             const std::optional<Eigen::Quaterniond> camera_to_world_rotation =
                 coord_transformer_.LookupRotation(
-                    ResolveCameraFrame(params_),
-                    params_.frames.world_frame);
+                    frame_ids_.Camera(),
+                    frame_ids_.Map());
             if (camera_to_world_rotation) {
                 Eigen::Matrix3d RotMatrix =
                     camera_to_world_rotation->toRotationMatrix();
@@ -750,8 +751,8 @@ void ObjectTracker::PublishOdometry() {
 
     nav_msgs::msg::Odometry odometry_message;
     odometry_message.header.stamp = node_->get_clock()->now();
-    odometry_message.header.frame_id = params_.frames.world_frame;
-    odometry_message.child_frame_id = odometry_child_frame_;
+    odometry_message.header.frame_id = frame_ids_.Map();
+    odometry_message.child_frame_id = frame_ids_.BaseLink();
     odometry_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_global_);
     odometry_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
 
@@ -759,8 +760,8 @@ void ObjectTracker::PublishOdometry() {
 
     nav_msgs::msg::Odometry tracked_target_message;
     tracked_target_message.header.stamp = node_->get_clock()->now();
-    tracked_target_message.header.frame_id = params_.frames.world_frame;
-    tracked_target_message.child_frame_id = odometry_child_frame_;
+    tracked_target_message.header.frame_id = frame_ids_.Map();
+    tracked_target_message.child_frame_id = frame_ids_.BaseLink();
     tracked_target_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
     tracked_target_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
 
@@ -807,7 +808,7 @@ void ObjectTracker::PublishDetection3D() {
     vision_msgs::msg::Detection3D detection_message;
 
     detection_message.header.stamp = node_->get_clock()->now();
-    detection_message.header.frame_id = ResolveCameraFrame(params_);
+    detection_message.header.frame_id = frame_ids_.Camera();
 
     detection_message.results.push_back(object_hypothesis_message);
 

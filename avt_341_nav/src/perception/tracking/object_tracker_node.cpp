@@ -51,6 +51,7 @@
 #include <avt_341_nav/perception/tracking/object_tracker_node.hpp>
 #include <avt_341_nav/object_tracker_params_service.hpp>
 #include <avt_341_nav/node/node_types.h>
+#include <avt_341_nav/node/node_utils.h>
 
 #include <algorithm>
 #include <regex>
@@ -95,6 +96,8 @@ void ObjectTrackerNode::GetParameters() {
         std::make_shared<avt_341_nav::params::object_tracker::ParamsListener>(
             get_node_parameters_interface(), get_logger());
     params_ = param_listener_->get_params();
+    frame_ids_ = std::make_unique<core::FrameIdCollection>(
+        params_.frames, node::GetLeadingNodeNamespace(get_namespace()));
     param_listener_->setUserCallback(
         [this](const ObjectTrackerSettings& updated_params) {
             ApplyUpdatedParameters(updated_params);
@@ -335,14 +338,7 @@ bool ObjectTrackerNode::IsEgoVehicle(const std::string& target_class) const {
     // The node runs under the ego vehicle's namespace (e.g. "/agv1") and
     // target ids are the bare vehicle namespaces (e.g. "agv1"): compare the
     // top-level namespace token against the target id.
-    std::string ego = get_namespace();
-    if (!ego.empty() && ego.front() == '/') {
-        ego.erase(0, 1);
-    }
-    const std::size_t slash = ego.find('/');
-    if (slash != std::string::npos) {
-        ego = ego.substr(0, slash);
-    }
+    const std::string ego = node::GetLeadingNodeNamespace(get_namespace());
     return !ego.empty() && ego == target_class;
 }
 
@@ -417,7 +413,7 @@ void ObjectTrackerNode::TrackerInfoCallback() {
     // least one tracker exists.
     avt_341_msgs::msg::TrackerModuleStatus module_status;
     module_status.header.stamp = get_clock()->now();
-    module_status.header.frame_id = params_.frames.world_frame;
+    module_status.header.frame_id = frame_ids_->Map();
 
     if (trackers_.empty()) {
         module_status.module_state =
@@ -534,7 +530,7 @@ void ObjectTrackerNode::RunObstacleDetection(
     auto detection_recording = Recorder()->RecordScope(OBSTACLE_DETECTION_SECTION_ID);
 
     const auto& od = params_.obstacle_detector;
-    const std::string robot_base_link = ResolveRobotBaseLink(params_);
+    const std::string robot_base_link = frame_ids_->BaseLink();
     const Eigen::Vector4f roi_min_point = ToEigenPoint4f(od.roi_min_point);
     const Eigen::Vector4f roi_max_point = ToEigenPoint4f(od.roi_max_point);
     const Eigen::Vector4f body_min_point = ToEigenPoint4f(od.body_min_point);
@@ -592,7 +588,7 @@ void ObjectTrackerNode::RunObstacleDetection(
     geometry_msgs::msg::TransformStamped fixed_tf;
     try {
         fixed_tf = transform_buffer_->lookupTransform(
-            params_.frames.world_frame, robot_base_link,
+            frame_ids_->Map(), robot_base_link,
             cloud_msg->header.stamp, tf2::durationFromSec(0.2));
     } catch (tf2::TransformException& ex) {
         RCLCPP_WARN(get_logger(),
@@ -782,7 +778,7 @@ void ObjectTrackerNode::PublishImage() {
     // Publish the detection image
     cv_bridge::CvImage cv_image;
     cv_image.header.stamp = get_clock()->now();
-    cv_image.header.frame_id = ResolveCameraFrame(params_);
+    cv_image.header.frame_id = frame_ids_->Camera();
     cv_image.encoding = "bgr8";
     cv_image.image = image_copy;
     image_publisher_->publish(*cv_image.toImageMsg());

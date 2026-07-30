@@ -13,7 +13,9 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <rclcpp/rclcpp.hpp>
+#include "avt_341_nav/core/frame_id_collection.hpp"
 #include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/perception/lib_uab_perception_wrapper.h"
 #include <avt_341_nav/uab_perception_params_service.hpp>
 #include "mclcppclass.h"
@@ -574,17 +576,11 @@ int main(int argc, char *argv[])
     tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
-    std::string lidar_frame_id, odom_frame_id, camera_frame_id;
-    lidar_frame_id = params.lidar_frame_id;
-    odom_frame_id = params.odom_frame_id;
-    camera_frame_id = params.camera_frame_id;
-
-    for (auto f : {&lidar_frame_id, &odom_frame_id, &camera_frame_id})
-    {
-        *f = params.frame_prefix.empty()
-            ? *f
-            : params.frame_prefix + "/" + *f;
-    }
+    const avt_341_nav::core::FrameIdCollection frame_ids(
+        params.frames, avt_341_nav::node::GetLeadingNodeNamespace(node));
+    const std::string lidar_frame_id = frame_ids.Lidar();
+    const std::string odom_frame_id = frame_ids.BaseLink();
+    const std::string camera_frame_id = frame_ids.Camera();
 
     //debug segmentation visualization topics, derived from the camera topic by
     //replacing its final path segment (e.g. flir_camera/image_raw ->

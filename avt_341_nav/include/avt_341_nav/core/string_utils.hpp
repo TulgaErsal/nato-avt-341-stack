@@ -91,6 +91,22 @@ inline std::vector<std::string> SplitByDelimiter(
     return tokens;
 }
 
+/// Joins two tf frame parts with single '/' separators, collapsing duplicate
+/// slashes. The result never starts with a slash, e.g. ("/part1", "/part2")
+/// -> "part1/part2".
+inline std::string CombineTfParts(const std::string& part1, const std::string& part2) {
+    std::string combined;
+    for (const auto& part : {part1, part2}) {
+        for (const auto& token : SplitByDelimiter(part, '/', false)) {
+            if (token.empty()) {
+                continue;
+            }
+            combined += combined.empty() ? token : "/" + token;
+        }
+    }
+    return combined;
+}
+
 }
 
 #endif  // AVT_341_STRING_UTILS_H

@@ -13,6 +13,8 @@
 #include "rclcpp/duration.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "avt_341_nav/core/frame_id_collection.hpp"
+#include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp"
 #include <avt_341_nav/obstacle_detector_params_service.hpp>
 
@@ -28,6 +30,10 @@ std::vector<Box> prev_boxes_, curr_boxes_;
 std::shared_ptr<avt_341_nav::perception::LidarObstacleDetector<pcl::PointXYZ>> obstacle_detector;
 
 avt_341_nav::params::obstacle_detector::Params node_params;
+
+// Resolved at startup from the coordinate frames parameters.
+std::string robot_base_link_frame;
+std::string fixed_frame;
 
 // Eigen adapters for fixed-size pointcloud filtering parameters.
 Eigen::Vector4f roi_max_point, roi_min_point, body_max_point, body_min_point;
@@ -174,12 +180,12 @@ void lidarPointsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr lidar_po
 {
   // Transform point cloud
 	sensor_msgs::msg::PointCloud2 lidar_points_transformed;
-  if(lidar_points->header.frame_id != node_params.robot_base_link)
+  if(lidar_points->header.frame_id != robot_base_link_frame)
   {
     if (!tf->transform_cloud(
             *lidar_points, lidar_points_transformed,
-            node_params.robot_base_link)) {
-      RCLCPP_WARN(nh->get_logger(), "Unable to transform pointcloud from %s -> %s", lidar_points->header.frame_id.c_str(), node_params.robot_base_link.c_str());
+            robot_base_link_frame)) {
+      RCLCPP_WARN(nh->get_logger(), "Unable to transform pointcloud from %s -> %s", lidar_points->header.frame_id.c_str(), robot_base_link_frame.c_str());
       publishDeleteAll(lidar_points->header);
       return;
     }
@@ -208,7 +214,7 @@ void lidarPointsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr lidar_po
   // Transform pointcloud to fixed frame (rotation only)
   pcl::PointCloud<pcl::PointXYZ>::Ptr fixed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   geometry_msgs::msg::TransformStamped fixed_tf = tf->lookup_transform(
-      node_params.fixed_frame, node_params.robot_base_link);
+      fixed_frame, robot_base_link_frame);
   Eigen::Quaternionf q(fixed_tf.transform.rotation.w, fixed_tf.transform.rotation.x, fixed_tf.transform.rotation.y, fixed_tf.transform.rotation.z);
   // Guard against a degenerate quaternion (all zeros) returned when TF is
   // not yet available. A zero quaternion produces a NaN rotation matrix and
@@ -279,6 +285,11 @@ int main(int argc, char** argv)
 
   avt_341_nav::params::obstacle_detector::ParamsListener param_listener(nh);
   node_params = param_listener.get_params();
+
+  const avt_341_nav::core::FrameIdCollection frame_ids(
+      node_params.frames, avt_341_nav::node::GetLeadingNodeNamespace(nh));
+  robot_base_link_frame = frame_ids.BaseLink();
+  fixed_frame = frame_ids.Map();
 
   roi_max_point = Eigen::Vector4f(
       node_params.roi_max_x, node_params.roi_max_y,

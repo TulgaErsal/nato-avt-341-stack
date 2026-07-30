@@ -1,10 +1,18 @@
 /**:
   ros__parameters:
     max_speed: 4.0    # single source for the mpc planner family and the mission manager
-    gis:
-      crs: 'EPSG:6495'
-      origin_x: 7885314.3400268555
-      origin_y: 264132.3708496094
+    # KRC tf tree mixes prefixed and unprefixed frame names, so the automatic
+    # vehicle prefix is disabled and full frame names are given instead.
+    frames:
+      use_vehicle_prefix: false
+      camera: 'flir_optical'
+      lidar: 'os_sensor'
+      base_link: 'mrzr/base_link'
+      cg: 'mrzr/vbox_link'
+      gis:
+        crs: 'EPSG:6495'
+        origin_x: 7885314.3400268555
+        origin_y: 264132.3708496094
     costmap:
       geometry:
         width: 2955.0

@@ -41,7 +41,8 @@ public:
 	nav_msgs::msg::OccupancyGrid GetGrid(double width, double height, bool is_segmentation = false) const;
 	map_msgs::msg::OccupancyGridUpdate GetGridUpdate(bool is_segmentation, const std::string& target_layer = "") const;
 
-	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation, std::string target_layer = "") const;
+	void FillGridMsgCells(std::vector<int8_t> & data, core::GridRegion region, bool is_segmentation,
+	    int out_width, const std::string& target_layer = "") const;
 	void Reset() const;
 	void Visualize() const;
 	void PublishComputeTimes() const;

@@ -28,6 +28,8 @@
 #include "tf2/LinearMath/Quaternion.h"
 #include <rclcpp/rclcpp.hpp>
 #include <avt_341_nav/data_acquisition_params_service.hpp>
+#include "avt_341_nav/core/frame_id_collection.hpp"
+#include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/node/tf_interface.h"
 
 
@@ -52,6 +54,8 @@ int main(int argc, char *argv[]){
     auto n = rclcpp::Node::make_shared("data_acquisition_node");
     avt_341_nav::params::data_acquisition::ParamsListener param_listener(n);
     const auto params = param_listener.get_params();
+    const avt_341_nav::core::FrameIdCollection frame_ids(
+        params.frames, avt_341_nav::node::GetLeadingNodeNamespace(n));
     auto tf = std::make_shared<avt_341_nav::node::TfInterface>(n);
 
     const int accel_samples =
@@ -107,7 +111,7 @@ int main(int argc, char *argv[]){
 
         // Get CG transform
         geometry_msgs::msg::TransformStamped tfs_ref =
-            tf->lookup_transform(params.world_frame, params.vehicle_cg_frame);
+            tf->lookup_transform(frame_ids.GisFrame(), frame_ids.Cg());
 
         // Calculate CG dynamics
         if (rclcpp::Time(tfs_ref.header.stamp).seconds() > 1e-3f)
@@ -124,8 +128,8 @@ int main(int argc, char *argv[]){
             // Lookup old tf
             rclcpp::Time old_stamp = rclcpp::Time(tfs_ref.header.stamp) - vel_duration;
             geometry_msgs::msg::TransformStamped tfs_old = tf->lookup_transform(
-                params.vehicle_cg_frame, old_stamp, params.vehicle_cg_frame,
-                tfs_ref.header.stamp, params.map_frame);
+                frame_ids.Cg(), old_stamp, frame_ids.Cg(),
+                tfs_ref.header.stamp, frame_ids.Map());
             
             // Calculate twist
             const double dt_window = 1.0 / params.velocity_averaging_window;
@@ -139,7 +143,7 @@ int main(int argc, char *argv[]){
             // Publish CG velocity
             geometry_msgs::msg::TwistStamped cg_vel;
             cg_vel.header = tfs_ref.header;
-            cg_vel.header.frame_id = params.vehicle_cg_frame;
+            cg_vel.header.frame_id = frame_ids.Cg();
             cg_vel.twist.linear.x = trans.x * dt_window;
             cg_vel.twist.linear.y = trans.y * dt_window;
             cg_vel.twist.linear.z = trans.z * dt_window;
@@ -194,7 +198,7 @@ int main(int argc, char *argv[]){
                 // Publish averaged acceleration
                 geometry_msgs::msg::AccelStamped cg_accel;
                 cg_accel.header = tfs_ref.header;
-                cg_accel.header.frame_id = params.vehicle_cg_frame;
+                cg_accel.header.frame_id = frame_ids.Cg();
                 cg_accel.accel.linear.x = accel_frame[0];
                 cg_accel.accel.linear.y = accel_frame[1];
                 cg_accel.accel.linear.z = accel_frame[2];
