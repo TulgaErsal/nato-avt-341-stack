@@ -1,0 +1,28 @@
+# Parameter overrides for the minimal simulated example (example.launch.py).
+
+# The example world is centered on the origin (vehicle starts at x=-55,
+# waypoints span x=-50..50), so anchor the costmap to cover [-100, 100].
+/**:
+  ros__parameters:
+    costmap:
+      geometry:
+        llx: -100.0
+        lly: -100.0
+
+/**/comm_node:
+  ros__parameters:
+    broadcast_over_ros: true    # no external socket server in the example
+
+/**/perception_node:
+  ros__parameters:
+    point_cloud_layer:
+      topic: 'avt_341/points'   # simulated lidar cloud from sim_test_node
+
+/**/global_planner_node:
+  ros__parameters:
+    initial_waypoints: $pkg_path{avt_341_bringup}/env_data/example/example_waypoints.yaml
+    goal_dist: 5.0
+
+/**/rcc_planner_node:
+  ros__parameters:
+    path_look_ahead: 30.0

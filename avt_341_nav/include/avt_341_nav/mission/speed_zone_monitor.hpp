@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include "nav_msgs/msg/odometry.hpp"
@@ -31,6 +32,14 @@ public:
     /// Checks which speed zone the odometry position falls in and commands a
     /// mission manager speed change when a new zone is entered.
     void UpdateOdometry(const nav_msgs::msg::Odometry& odom);
+
+    /// Updates the max speed of the zones with the given ids (labels); the
+    /// update is all-or-nothing. Returns false and sets error_message on
+    /// validation failure.
+    bool SetZoneMaxSpeeds(
+        const std::vector<std::string>& zone_ids,
+        const std::vector<double>& max_speeds,
+        std::string& error_message);
 
 private:
     void LoadZones(const std::string& speed_zones_file);

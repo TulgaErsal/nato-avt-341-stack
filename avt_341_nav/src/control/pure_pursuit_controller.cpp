@@ -8,7 +8,8 @@
 namespace avt_341_nav {
 namespace control{
 
-PurePursuitController::PurePursuitController() {
+PurePursuitController::PurePursuitController()
+	: speed_controller_(AntiWindupMethod::ResetOnSetpoint, -1.0, 1.0) {
 	skid_steered_ = false;
 
 	//default wheelbase and steer angle

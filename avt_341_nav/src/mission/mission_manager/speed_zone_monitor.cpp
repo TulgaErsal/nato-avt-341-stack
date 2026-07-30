@@ -1,5 +1,9 @@
 #include "avt_341_nav/mission/speed_zone_monitor.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <utility>
+
 #include "avt_341_nav/core/coord_transform.hpp"
 #include "avt_341_nav/core/eigen_utils.hpp"
 #include "avt_341_nav/core/geometry/polygon_zone_parser.hpp"
@@ -89,6 +93,59 @@ namespace avt_341_nav::mission
         mission_manager_->handleSetSpeedMsg(SetSpeedMsg(
             mission_manager_->my_name, 0, mission_manager_->my_name,
             zone.max_speed, PriorityType::PREEMPT));
+    }
+
+    bool SpeedZoneMonitor::SetZoneMaxSpeeds(
+        const std::vector<std::string>& zone_ids,
+        const std::vector<double>& max_speeds,
+        std::string& error_message)
+    {
+        if (zone_ids.size() != max_speeds.size()) {
+            error_message = "zone_ids size (" + std::to_string(zone_ids.size())
+                + ") does not match max_speeds size (" + std::to_string(max_speeds.size()) + ").";
+            return false;
+        }
+
+        // Validate the full request before applying so the update is all-or-nothing.
+        std::vector<std::pair<std::size_t, double>> updates;
+        for (std::size_t i = 0; i < zone_ids.size(); ++i) {
+            const std::string& zone_id = zone_ids[i];
+            const double max_speed = max_speeds[i];
+
+            if (!std::isfinite(max_speed) || max_speed < 0.0) {
+                error_message = "max speed " + std::to_string(max_speed) + " for zone '"
+                    + zone_id + "' must be a finite non-negative value.";
+                return false;
+            }
+
+            bool found = false;
+            for (std::size_t z = 0; z < zone_collection_.zones.size(); ++z) {
+                if (zone_collection_.zones[z].label == zone_id) {
+                    updates.emplace_back(z, max_speed);
+                    found = true;
+                }
+            }
+            if (!found) {
+                error_message = "no speed zone with id '" + zone_id + "'.";
+                return false;
+            }
+        }
+
+        for (const auto& [zone_index, max_speed] : updates) {
+            core::PolygonZone& zone = zone_collection_.zones[zone_index];
+            RCLCPP_INFO(node_->get_logger(), "Speed zone '%s' max speed updated from %.2f to %.2f m/s.",
+                zone.label.c_str(), zone.max_speed, max_speed);
+            zone.max_speed = max_speed;
+        }
+
+        // If the vehicle is inside an updated zone, force re-evaluation so the
+        // new max speed is commanded on the next odometry update.
+        if (last_zone_ >= 0 && std::any_of(updates.begin(), updates.end(),
+                [this](const auto& update) { return static_cast<int>(update.first) == last_zone_; })) {
+            last_zone_ = -1;
+        }
+
+        return true;
     }
 
     void SpeedZoneMonitor::PublishMarkers() const

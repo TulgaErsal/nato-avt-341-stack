@@ -1,0 +1,6 @@
+# Set speed zone max speed values for the specified names
+string[] zone_ids
+float64[] max_speeds
+---
+bool success
+string message

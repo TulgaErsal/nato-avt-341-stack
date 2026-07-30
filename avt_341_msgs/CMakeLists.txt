@@ -42,6 +42,7 @@ set(SERVICE_DEFINITIONS
     "SetNavPointDefinitions"
     "CheckSpeed"
     "GetOdometry"
+    "SetSpeedZoneValues"
 )
 
 # Append the ".msg" extension for both builds and preprend the "msg/" prefix to

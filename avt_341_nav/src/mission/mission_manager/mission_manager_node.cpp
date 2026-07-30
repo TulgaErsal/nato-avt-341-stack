@@ -18,6 +18,7 @@
 #include <avt_341_msgs/srv/set_nav_point_definitions.hpp>
 #include <avt_341_msgs/srv/check_speed.hpp>
 #include <avt_341_msgs/srv/get_odometry.hpp>
+#include <avt_341_msgs/srv/set_speed_zone_values.hpp>
 #include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341_nav/mission/goal_filtering/obs_avoid_goal_filter.hpp"
 #include <avt_341_nav/mission_manager_params_service.hpp>
@@ -40,6 +41,7 @@ std::optional<int> nav_run_state;
 
 std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> leader_pub;
 std::shared_ptr<avt_341_nav::mission::MissionManager> mgr;
+std::shared_ptr<avt_341_nav::mission::SpeedZoneMonitor> speed_zone_monitor = nullptr;
 
 std::map<std::string, nav_msgs::msg::Odometry> formation_odoms;
 rclcpp::Node::SharedPtr nh = nullptr;
@@ -283,6 +285,29 @@ void SetNavPointDefinitionsServiceImpl(
     response->message = "Set " + std::to_string(mission_points.size()) + " nav point definitions.";
 }
 
+void SetSpeedZoneValuesServiceImpl(
+    const std::shared_ptr<avt_341_msgs::srv::SetSpeedZoneValues::Request> request,
+    std::shared_ptr<avt_341_msgs::srv::SetSpeedZoneValues::Response> response)
+{
+    if (speed_zone_monitor == nullptr) {
+        response->success = false;
+        response->message = "Speed zones are disabled (use_speed_zones is false).";
+        RCLCPP_WARN(nh->get_logger(), "SetSpeedZoneValues rejected: %s", response->message.c_str());
+        return;
+    }
+
+    std::string error_message;
+    if (!speed_zone_monitor->SetZoneMaxSpeeds(request->zone_ids, request->max_speeds, error_message)) {
+        response->success = false;
+        response->message = error_message;
+        RCLCPP_WARN(nh->get_logger(), "SetSpeedZoneValues rejected: %s", error_message.c_str());
+        return;
+    }
+
+    response->success = true;
+    response->message = "Updated " + std::to_string(request->zone_ids.size()) + " speed zone max speed value(s).";
+}
+
 int main(int argc, char **argv) {
 
     // initialize the node
@@ -311,7 +336,6 @@ int main(int argc, char **argv) {
         speedController = avt_341_nav::mission::createFormationSpeedController(
             my_name, params.fsc, nh, tf);
 
-    std::shared_ptr<avt_341_nav::mission::SpeedZoneMonitor> speed_zone_monitor = nullptr;
     if (params.use_speed_zones) {
         speed_zone_monitor = std::make_shared<avt_341_nav::mission::SpeedZoneMonitor>(
             nh, tf, mgr, params.speed_zones_file);
@@ -360,6 +384,10 @@ int main(int argc, char **argv) {
     auto get_odometry_srv =
         nh->create_service<avt_341_msgs::srv::GetOdometry>(
             "avt_341/get_odometry", &GetOdometryServiceImpl);
+
+    auto set_speed_zone_values_srv =
+        nh->create_service<avt_341_msgs::srv::SetSpeedZoneValues>(
+            "avt_341/set_speed_zone_values", &SetSpeedZoneValuesServiceImpl);
 
     // start the loop
     while(rclcpp::ok()){

@@ -1,8 +1,6 @@
 /**:
   ros__parameters:
-    max_speed: 4.0    # single source for the mpc planner family and the mission manager
-    # KRC tf tree mixes prefixed and unprefixed frame names, so the automatic
-    # vehicle prefix is disabled and full frame names are given instead.
+    max_speed: 4.0
     frames:
       use_vehicle_prefix: false
       camera: 'flir_optical'
