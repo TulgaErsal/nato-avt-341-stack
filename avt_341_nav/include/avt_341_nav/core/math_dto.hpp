@@ -7,7 +7,6 @@
 #define AVT_341_CORE_MATH_DTO_H
 
 #include <cmath>
-#include <vector>
 
 namespace avt_341_nav::core
 {
@@ -150,23 +149,6 @@ inline float PointToSegmentDistance(vec2 ep1, vec2 ep2, vec2 p) {
     }
     float d0 = PointLineDistance(ep1, ep2, p);
     return d0;
-}
-
-/// Ray-casting point-in-polygon test (works for non-convex polygons).
-/// https://en.wikipedia.org/wiki/Point_in_polygon
-inline bool IsInsidePolygon(const std::vector<vec2>& poly, double px, double py)
-{
-    bool inside = false;
-    const int n = static_cast<int>(poly.size());
-    for (int i = 0, j = n - 1; i < n; j = i++) {
-        const double xi = poly[i].x, yi = poly[i].y;
-        const double xj = poly[j].x, yj = poly[j].y;
-        if (((yi > py) != (yj > py)) &&
-            (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
-            inside = !inside;
-            }
-    }
-    return inside;
 }
 
 }

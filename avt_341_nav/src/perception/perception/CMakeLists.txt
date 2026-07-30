@@ -8,7 +8,6 @@ add_executable(
         "clearing_methods/channel_clearing_method.cpp"
         "clearing_methods/raytrace_clearing_method.cpp"
         "clearing_methods/time_clearing_method.cpp"
-        "layers/polygon_zone_parser.cpp"
         "layers/costmap_layer.cpp"
         "layers/point_cloud_layer.cpp"
         "layers/camera_layer.cpp"

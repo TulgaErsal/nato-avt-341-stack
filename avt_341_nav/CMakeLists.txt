@@ -24,7 +24,6 @@ set(AVT341_SOURCE_FILES
     "control/odom_to_tf"
     "control/control"
     "control/speed_control"
-    "control/speed_zones"
     "daq/data_acquisition"
     "mission/goal_filtering"
     "mission/mission_manager"
@@ -99,6 +98,7 @@ add_library(${PROJECT_NAME}_proxy
         "src/core/compute_time_recorder.cpp"
         "src/core/coord_transform.cpp"
         "src/core/waypoint_file_parser.cpp"
+        "src/core/geometry/polygon_zone_parser.cpp"
 )
 
 target_include_directories(

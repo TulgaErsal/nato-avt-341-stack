@@ -8,11 +8,29 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 #include <Eigen/Dense>
 
 namespace avt_341_nav::core
 {
+
+/** @brief Ray-casting point-in-polygon test (works for non-convex polygons).
+ *         https://en.wikipedia.org/wiki/Point_in_polygon */
+inline bool IsInsidePolygon(const std::vector<Eigen::Vector2d>& poly, double px, double py)
+{
+    bool inside = false;
+    const int n = static_cast<int>(poly.size());
+    for (int i = 0, j = n - 1; i < n; j = i++) {
+        const double xi = poly[i].x(), yi = poly[i].y();
+        const double xj = poly[j].x(), yj = poly[j].y();
+        if (((yi > py) != (yj > py)) &&
+            (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+            }
+    }
+    return inside;
+}
 
 /** @brief Standard deviation along the major axis of the uncertainty
  *         ellipse of a symmetric 2x2 covariance: sqrt of the largest

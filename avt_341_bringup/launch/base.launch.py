@@ -59,7 +59,6 @@ NODES = {
     # Mission management
     'mission_manager_node':             NodeSpec('mission_manager_node',             _templates('mission_manager'),                                                    extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)}),
     'comm_node':                        NodeSpec('comm_node',                        _templates('socket_comms'),                                                       extra_params=lambda vid, vehicles: {'name': str(vid).upper(), 'vehicle_namespaces': list(vehicles)}),
-    'speed_zones_node':                 autonomy_node('speed_zones_node',            _templates('speed_zones'),       condition=is_cfg('use_speed_zones')),
 
     # Perception - Costmaps
     'perception_local_node':            autonomy_node('perception_node',             _templates('perception'),        condition=is_cfg('use_dual_costmaps')),
@@ -229,7 +228,6 @@ def generate_launch_description():
         DeclareLaunchArgument('use_lidar_obstacle_detector', default_value='False',                                               description='Enable lidar obstacle segmentation'),
         DeclareLaunchArgument('use_dual_costmaps',           default_value='True',                                                description='Spawn the dual global and local costmap perception nodes; when false a single perception_node is spawned instead'),
         DeclareLaunchArgument('use_perception_rms',          default_value='True',                                                description='Enable the RMS perception node'),
-        DeclareLaunchArgument('use_speed_zones',             default_value='True',                                                description='Enable speed zones'),
         DeclareLaunchArgument('use_uab_perception',          default_value='True',                                                description='Enable the UAB terrain segmentation perception node'),
         DeclareLaunchArgument('use_obj_detector',            default_value='True',                                                description='Enable 2d bounding box detection of static objects using deep neural network inference'),
         DeclareLaunchArgument('use_object_tracker',          default_value='True',                                                description='Enable the object tracking node'),

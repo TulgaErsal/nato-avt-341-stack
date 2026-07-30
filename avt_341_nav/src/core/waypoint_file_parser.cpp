@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace avt_341_nav::core
 {
@@ -63,11 +64,14 @@ namespace
 
 } // namespace
 
-WaypointLists WaypointFileParser::Parse(const std::string & file_path)
+nav_msgs::msg::Path WaypointFileParser::Parse(const std::string & file_path)
 {
+    nav_msgs::msg::Path path;
+    path.header.frame_id = "map";
+
     if (file_path.empty())
     {
-        return WaypointLists{};
+        return path;
     }
 
     std::ifstream file(file_path);
@@ -75,7 +79,7 @@ WaypointLists WaypointFileParser::Parse(const std::string & file_path)
     {
         throw std::runtime_error("Could not open waypoint file '" + file_path + "'");
     }
-    WaypointLists waypoints;
+    std::vector<double> xs, ys;
     std::string line;
     while (std::getline(file, line))
     {
@@ -87,14 +91,41 @@ WaypointLists WaypointFileParser::Parse(const std::string & file_path)
         line = Trim(line);
         if (line.rfind("waypoints_x:", 0) == 0)
         {
-            waypoints.x = ParseList(line, "waypoints_x", file_path);
+            xs = ParseList(line, "waypoints_x", file_path);
         }
         else if (line.rfind("waypoints_y:", 0) == 0)
         {
-            waypoints.y = ParseList(line, "waypoints_y", file_path);
+            ys = ParseList(line, "waypoints_y", file_path);
+        }
+        else if (line.rfind("frame:", 0) == 0)
+        {
+            const std::string frame = Trim(line.substr(std::string("frame:").size()));
+            if (!frame.empty())
+            {
+                path.header.frame_id = frame;
+            }
         }
     }
-    return waypoints;
+
+    if (xs.size() != ys.size())
+    {
+        throw std::runtime_error(
+            "Waypoint file '" + file_path + "': waypoints_x size ("
+            + std::to_string(xs.size()) + ") does not match waypoints_y size ("
+            + std::to_string(ys.size()) + ")");
+    }
+
+    path.poses.reserve(xs.size());
+    for (std::size_t i = 0; i < xs.size(); ++i)
+    {
+        geometry_msgs::msg::PoseStamped pose;
+        pose.header.frame_id = path.header.frame_id;
+        pose.pose.position.x = xs[i];
+        pose.pose.position.y = ys[i];
+        pose.pose.orientation.w = 1.0;
+        path.poses.push_back(pose);
+    }
+    return path;
 }
 
 }

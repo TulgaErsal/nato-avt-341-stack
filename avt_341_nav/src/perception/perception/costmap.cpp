@@ -36,7 +36,7 @@ Costmap::Costmap(
 			node_ref, tf, settings, "camera_layer", compute_time_recorder_,
 			settings.camera_layer),
 		std::make_shared<PolygonLayer>(
-			node_ref, settings, "polygon_layer", compute_time_recorder_,
+			node_ref, tf, settings, "polygon_layer", compute_time_recorder_,
 			settings.polygon_layer),
 	};
 

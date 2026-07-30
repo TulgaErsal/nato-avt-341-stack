@@ -7,6 +7,7 @@ add_executable(
   "mission_manager_dto.cpp"
   "mission_manager_node.cpp"
   "mission_manager_parser.cpp"
+  "speed_zone_monitor.cpp"
 
   "task.cpp"
   "task_encircle.cpp"

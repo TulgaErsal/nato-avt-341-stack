@@ -1,14 +1,16 @@
 #include "avt_341_nav/perception/layers/polygon_layer.h"
-#include "avt_341_nav/perception/layers/polygon_zone_parser.h"
-#include <fstream>
-#include "geometry_msgs/msg/point.hpp"
-#include "visualization_msgs/msg/marker.hpp"
+#include "avt_341_nav/core/geometry/polygon_zone_parser.hpp"
+#include "avt_341_nav/core/coord_transform.hpp"
+#include "avt_341_nav/core/eigen_utils.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 
 namespace avt_341_nav::perception
 {
+    constexpr const char* MAP_FRAME = "map";
+
     PolygonLayer::PolygonLayer(
         const rclcpp::Node::SharedPtr& node_ref,
+        const std::shared_ptr<node::TfInterface>& tf,
         const PerceptionSettings& settings,
         const std::string& label,
         const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -16,11 +18,13 @@ namespace avt_341_nav::perception
         )
         : CostmapLayer(
             node_ref, settings, label, compute_time_recorder,
-            params.contribute_occupancy, params.contribute_segmentation)
+            params.contribute_occupancy, params.contribute_segmentation),
+        tf_(tf)
     {
         input_file_ = params.data_file;
         visualize_ = params.visualize;
-        marker_pub_ = node_ref_->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/" + label + "/markers", 1);
+        marker_pub_ = node_ref_->create_publisher<visualization_msgs::msg::MarkerArray>(
+            "avt_341/" + label + "/markers", rclcpp::QoS(1).transient_local());
 
         LoadZones();
         RebuildCellCache(false);
@@ -29,7 +33,7 @@ namespace avt_341_nav::perception
 
     void PolygonLayer::LoadZones()
     {
-        zones_.clear();
+        zone_collection_ = core::PolygonZoneCollection();
 
         if (input_file_.empty())
         {
@@ -38,31 +42,20 @@ namespace avt_341_nav::perception
         }
 
         try {
-
             RCLCPP_INFO(node_ref_->get_logger(), "Attempting to read polygon zones file: %hs", input_file_.c_str());
 
-            std::ifstream file(input_file_);
-            if (!file.is_open()) {
-                throw std::invalid_argument("Cannot open input file " + input_file_);
-            }
+            core::PolygonZoneCollection collection = core::PolygonZoneParser::ParseFile(input_file_);
+            const std::string source_frame = collection.frame.empty() ? MAP_FRAME : collection.frame;
 
-            const std::string text(
-                (std::istreambuf_iterator<char>(file)),
-                std::istreambuf_iterator<char>());
+            const core::CoordTransformer coord_transformer(tf_->get_buffer(), node_ref_->get_logger());
+            coord_transformer.TransformZones(collection, MAP_FRAME);
+            zone_collection_ = std::move(collection);
 
-            PolygonZoneParser parser(text);
-            for (const PolygonZone& zone : parser.Parse()) {
-                if (zone.vertices.size() >= 3) {
-                    zones_.push_back(zone);
-                } else {
-                    RCLCPP_WARN(node_ref_->get_logger(), "Zone '%s' has fewer than 3 vertices — skipping.", zone.label.c_str());
-                }
-            }
-
-            RCLCPP_INFO(node_ref_->get_logger(), "Loaded %zu zone(s) from %s", zones_.size(), input_file_.c_str());
+            RCLCPP_INFO(node_ref_->get_logger(), "Loaded %zu zone(s) from %s (frame: %s)",
+                zone_collection_.zones.size(), input_file_.c_str(), source_frame.c_str());
 
         } catch (const std::exception& e) {
-            RCLCPP_ERROR(node_ref_->get_logger(), "Failed to polygon zones: %s", e.what());
+            RCLCPP_ERROR(node_ref_->get_logger(), "Failed to load polygon zones: %s", e.what());
             is_enabled_ = false;
         }
     }
@@ -74,20 +67,21 @@ namespace avt_341_nav::perception
             Clear();
         }
 
-        if (zones_.empty()) {
+        if (zone_collection_.zones.empty()) {
             return;
         }
 
         const int    w   = settings_.nx();
         const int    h   = settings_.ny();
         int marked_cells = 0;
-        has_segmentation_ = std::any_of(zones_.begin(), zones_.end(), [](const auto& zone) { return zone.seg_value >= 0; });
+        has_segmentation_ = std::any_of(zone_collection_.zones.begin(), zone_collection_.zones.end(),
+            [](const auto& zone) { return zone.seg_value >= 0; });
 
         for (int i = 0; i < h; ++i) {
             for (int j = 0; j < w; ++j) {
                 const core::vec2 p = settings_.to_world(j, i);
-                for (const auto& zone : zones_) {
-                    if (IsInsidePolygon(zone.vertices, p.x, p.y)) {
+                for (const auto& zone : zone_collection_.zones) {
+                    if (core::IsInsidePolygon(zone.vertices, p.x, p.y)) {
                         cells_[i][j].high.val = zone.occ_value;
                         // Even though only high.val used when use_elevation = true. Cell thinks it is in unfilled stae when low.val has default value
                         cells_[i][j].low.val = zone.occ_value - 1.0;
@@ -104,87 +98,29 @@ namespace avt_341_nav::perception
 
     void PolygonLayer::Visualize()
     {
-        if (visualize_)
+        if (!visualize_ || markers_published_)
         {
-            PublishMarkers();
+            return;
         }
+        PublishMarkers();
+        markers_published_ = true;
     }
 
     void PolygonLayer::PublishMarkers() const
     {
-        if (zones_.empty()) {
+        if (zone_collection_.zones.empty()) {
             return;
         }
 
-        visualization_msgs::msg::MarkerArray ma;
-        int marker_id = 0;
-
-        for (const auto& zone : zones_) {
-            // Polygon outline.
-            visualization_msgs::msg::Marker outline;
-            outline.header.frame_id = "map";
-            outline.header.stamp    = node_ref_->now();
-            outline.ns              = "no_go_zones";
-            outline.id              = marker_id++;
-            outline.type            = visualization_msgs::msg::Marker::LINE_STRIP;
-            outline.action          = visualization_msgs::msg::Marker::ADD;
-            outline.scale.x         = 0.3; // line width in metres
-            outline.color.r         = 1.0f;
-            outline.color.g         = 0.0f;
-            outline.color.b         = 0.0f;
-            outline.color.a         = 1.0f;
-
-            for (const auto& v : zone.vertices) {
-                geometry_msgs::msg::Point p;
-                p.x = v.x;
-                p.y = v.y;
-                p.z = 0.0;
-                outline.points.push_back(p);
-            }
-            // Close the ring.
-            if (!zone.vertices.empty()) {
-                geometry_msgs::msg::Point p;
-                p.x = zone.vertices.front().x;
-                p.y = zone.vertices.front().y;
-                p.z = 0.0;
-                outline.points.push_back(p);
-            }
-
-            ma.markers.push_back(outline);
-
-            // Text label at the polygon centroid.
-            double cx = 0.0, cy = 0.0;
-            for (const auto& v : zone.vertices) { cx += v.x; cy += v.y; }
-            cx /= static_cast<double>(zone.vertices.size());
-            cy /= static_cast<double>(zone.vertices.size());
-
-            visualization_msgs::msg::Marker label;
-            label.header          = outline.header;
-            label.ns              = "no_go_zones_labels";
-            label.id              = marker_id++;
-            label.type            = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
-            label.action          = visualization_msgs::msg::Marker::ADD;
-            label.scale.z         = 1.5; // text height in metres
-            label.color.r         = 1.0f;
-            label.color.g         = 1.0f;
-            label.color.b         = 0.0f;
-            label.color.a         = 1.0f;
-            label.pose.position.x = cx;
-            label.pose.position.y = cy;
-            label.pose.position.z = 1.0;
-            label.text            = zone.label;
-
-            ma.markers.push_back(label);
-        }
-
-        marker_pub_->publish(ma);
+        marker_pub_->publish(core::CreateVisualization(
+            zone_collection_, node_ref_->now(), MAP_FRAME, "no_go_zones"));
     }
 
     std::string PolygonLayer::ToString() const
     {
         return "[PolygonLayer] id: " + label_
             + ", file: " + input_file_
-            + ", zones: " + std::to_string(zones_.size());
+            + ", zones: " + std::to_string(zone_collection_.zones.size());
     }
 
     void PolygonLayer::Clear()

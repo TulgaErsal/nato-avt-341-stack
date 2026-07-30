@@ -3,6 +3,8 @@
 
 #include "costmap_layer.h"
 #include <avt_341_nav/perception_params_dto.hpp>
+#include "avt_341_nav/core/geometry/geometry_dto.hpp"
+#include "avt_341_nav/node/tf_interface.h"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <rclcpp/rclcpp.hpp>
 
@@ -13,6 +15,7 @@ namespace avt_341_nav::perception
     public:
         PolygonLayer(
             const rclcpp::Node::SharedPtr& node_ref,
+            const std::shared_ptr<node::TfInterface>& tf,
             const PerceptionSettings& settings,
             const std::string& label,
             const std::shared_ptr<core::ComputeTimeRecorder>& compute_time_recorder,
@@ -30,7 +33,9 @@ namespace avt_341_nav::perception
 
         std::string input_file_;
         bool visualize_;
-        std::vector<PolygonZone> zones_;
+        bool markers_published_ = false;
+        core::PolygonZoneCollection zone_collection_;
+        std::shared_ptr<node::TfInterface> tf_;
         std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> marker_pub_;
 
     };

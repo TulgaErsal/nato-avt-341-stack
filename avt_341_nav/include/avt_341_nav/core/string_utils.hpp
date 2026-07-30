@@ -42,6 +42,11 @@ inline std::string SanitizeIdentifier(const std::string& value,
     return sanitized;
 }
 
+/** @brief GIS crs identifier to tf frame id, e.g. "EPSG:6495" -> "epsg_6495". */
+inline std::string CrsToFrameId(const std::string& crs) {
+    return SanitizeIdentifier(crs);
+}
+
 /// Convert an integer to a string with zero padding
 inline std::string IntToString(int x, int zero_padding){
   std::stringstream ss;

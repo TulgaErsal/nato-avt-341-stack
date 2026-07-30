@@ -15,11 +15,8 @@
 /**/mission_manager_node:
   ros__parameters:
     mission_definition_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_mission_points.csv
-    mission_paths_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_paths - NAD83_m.csv
-
-/**/speed_zones_node:
-  ros__parameters:
-    zones_filepath: $pkg_path{avt_341_bringup}/env_data/krc/krc_speed_zones - NAD83_m.csv
+    mission_paths_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_paths.csv
+    speed_zones_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_speed_zones.json
 
 # perception_local_node runs on the template defaults (donor: legacy perception_local.yaml)
 
@@ -46,6 +43,10 @@
     clear_method:
       voxel_height_res: 1.0
       obj_range_filter: 0.5
+
+/**/lidar_obstacle_detector_node:
+  ros__parameters:
+    lidar_points_topic: '/ouster/points'
 
 /**/perception_rms_node:
   ros__parameters:

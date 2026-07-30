@@ -14,9 +14,11 @@
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_nav/node/node_types.h"
 #include <avt_341_nav/node/occupancy_grid_subscriber.h>
+#include "avt_341_nav/node/tf_interface.h"
 #include <future>
 // local includes
 #include "avt_341_nav/core/compute_time_recorder.hpp"
+#include "avt_341_nav/core/coord_transform.hpp"
 #include "avt_341_nav/core/math_dto.hpp"
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/waypoint_file_parser.hpp"
@@ -62,6 +64,8 @@ bool reset_called = false;
 double dft_dist_threshold = 0.0f;
 double dft_yaw_threshold = 30.0f;
 
+constexpr double WAYPOINT_TRANSFORM_TIMEOUT_S = 5.0;
+
 double goal_start_time = 0.0;
 std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavState>> state_pub = nullptr;
 std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavState>> goal_reached_pub = nullptr;
@@ -70,7 +74,6 @@ std::shared_ptr<avt_341_nav::core::ComputeTimeRecorder> compute_time_recorder = 
 
 // Async planning state
 std::future<std::vector<avt_341_nav::planning::Point>> planning_future;
-nav_msgs::msg::Path last_valid_ros_path;
 std::chrono::steady_clock::time_point plan_start;
 bool timeout_logged = false;
 
@@ -297,6 +300,7 @@ int main(int argc, char* argv[])
 {
   rclcpp::init(argc, argv);
   n = rclcpp::Node::make_shared("avt_341_global_path_node");
+  auto tf = std::make_shared<avt_341_nav::node::TfInterface>(n);
   avt_341_nav::params::global_planner::ParamsListener param_listener(n);
   const auto params = param_listener.get_params();
 
@@ -365,14 +369,16 @@ int main(int argc, char* argv[])
 
   state_pub = n->create_publisher<avt_341_msgs::msg::NavState>("avt_341/state", 10);
   state.run_state = NavStackState::NotInit;
+  nav_msgs::msg::Path last_valid_ros_path;
+  last_valid_ros_path.header.frame_id = "map";
 
   Reset();
 
-    // Initialize current waypoints from the initial waypoints file, if given
-    const auto waypoints = WaypointFileParser::Parse(params.initial_waypoints);
-    const auto map_origin = Point{static_cast<float>(params.gis.origin_x), static_cast<float>(params.gis.origin_y)};
-    nav_goals = ToNavGoalSequence(waypoints.x, waypoints.y, map_origin,
-        dft_dist_threshold, dft_yaw_threshold, "map");
+
+    nav_msgs::msg::Path waypoints = WaypointFileParser::Parse(params.initial_waypoints);
+    const CoordTransformer coord_transformer(tf->get_buffer(), n->get_logger());
+    coord_transformer.TransformPath(waypoints, "map", tf2::durationFromSec(WAYPOINT_TRANSFORM_TIMEOUT_S));
+    nav_goals = ToNavGoalSequence(waypoints, dft_dist_threshold, dft_yaw_threshold);
 
   if (!nav_goals.goals.empty()) {
     UpdateGoalState(nav_goals.goals[0]);
@@ -457,15 +463,12 @@ int main(int argc, char* argv[])
         planning_future.get();
         path_planner->ClearCancel();
       }
-      last_valid_ros_path = nav_msgs::msg::Path{};
       Reset();
 
-      nav_msgs::msg::Path ros_path;
-      ros_path.poses.clear();
-      ros_path.header.frame_id = "map";
-      ros_path.header.stamp = n->now();
+      last_valid_ros_path.poses.clear();
+      last_valid_ros_path.header.stamp = n->now();
       if (params.use_global_path)
-        path_pub->publish(ros_path);
+        path_pub->publish(last_valid_ros_path);
       SetRunState(NavStackState::NotInit);
 
       std_msgs::msg::String reset_ack_msg;

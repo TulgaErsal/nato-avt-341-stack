@@ -25,6 +25,14 @@ ros__parameters:
     type: string
     default_value: ''
     description: "File describing paths of mission points. The deployment override yaml supplies the actual path."
+  use_speed_zones:
+    type: bool
+    default_value: true
+    description: "Enable the speed zone monitor, which sets the speed setpoint from the zone the vehicle is in."
+  speed_zones_file:
+    type: string
+    default_value: ''
+    description: "Polygon zone json file defining speed zones (max_speed per zone). Empty disables speed zone monitoring. The deployment override yaml supplies the actual path."
 
   formation:
     follow_scale_x:

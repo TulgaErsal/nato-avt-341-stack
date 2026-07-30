@@ -144,28 +144,6 @@ namespace avt_341_nav::core
         return ros_path;
     }
 
-    inline avt_341_msgs::msg::NavGoalSequence ToNavGoalSequence(
-        const std::vector<double> & goals_x,
-        const std::vector<double> & goals_y,
-        const core::vec2 tx,
-        const double dist_threshold,
-        const double yaw_threshold,
-        const std::string& frame_id = "map"
-    ) {
-        avt_341_msgs::msg::NavGoalSequence nav_goals;
-        nav_goals.header.frame_id = frame_id;
-
-        if (goals_x.size() != goals_y.size()) {
-            throw std::runtime_error("goals_x and goals_y must have the same size");
-        }
-
-        for (size_t i = 0; i < goals_x.size(); i++) {
-            const auto nav_goal = ToNavGoal(goals_x[i] - tx.x, goals_y[i] - tx.y, dist_threshold, yaw_threshold, frame_id);
-            nav_goals.goals.push_back(nav_goal);
-        }
-        return nav_goals;
-    }
-
 }
 
 #endif //AVT_341_DTO_CONVERSION_H

@@ -1,32 +1,58 @@
-#include "avt_341_nav/perception/layers/polygon_zone_parser.h"
+#include "avt_341_nav/core/geometry/polygon_zone_parser.hpp"
 
 #include <cctype>
+#include <fstream>
 #include <sstream>
 #include <stdexcept>
 
-namespace avt_341_nav::perception
+namespace avt_341_nav::core
 {
 
 PolygonZoneParser::PolygonZoneParser(const std::string& text)
     : s_(text), pos_(0)
 {}
 
-std::vector<PolygonZone> PolygonZoneParser::Parse()
+PolygonZoneCollection PolygonZoneParser::ParseFile(const std::string& file_path)
 {
-    std::vector<PolygonZone> zones;
+    std::ifstream file(file_path);
+    if (!file.is_open()) {
+        throw std::invalid_argument("Cannot open input file " + file_path);
+    }
+
+    const std::string text(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    PolygonZoneParser parser(text);
+    PolygonZoneCollection collection = parser.Parse();
+
+    for (const PolygonZone& zone : collection.zones) {
+        if (zone.vertices.size() < 3) {
+            throw std::runtime_error("Zone '" + zone.label + "' has fewer than 3 vertices.");
+        }
+    }
+
+    return collection;
+}
+
+PolygonZoneCollection PolygonZoneParser::Parse()
+{
+    PolygonZoneCollection collection;
     Expect('{');
     while (Peek() != '}') {
         const std::string key = ParseString();
         Expect(':');
         if (key == "zones") {
-            zones = ParseZoneArray();
+            collection.zones = ParseZoneArray();
+        } else if (key == "frame") {
+            collection.frame = ParseString();
         } else {
             SkipValue();
         }
         SkipComma();
     }
     Expect('}');
-    return zones;
+    return collection;
 }
 
 // ---- low-level helpers -----------------------------------------------
@@ -135,9 +161,9 @@ double PolygonZoneParser::ParseNumber()
 
 // ---- structure parsers -----------------------------------------------
 
-std::vector<core::vec2> PolygonZoneParser::ParseVertexArray()
+std::vector<Eigen::Vector2d> PolygonZoneParser::ParseVertexArray()
 {
-    std::vector<core::vec2> result;
+    std::vector<Eigen::Vector2d> result;
     Expect('[');
     while (Peek() != ']') {
         Expect('[');
@@ -145,7 +171,7 @@ std::vector<core::vec2> PolygonZoneParser::ParseVertexArray()
         Expect(',');
         const double y = ParseNumber();
         Expect(']');
-        result.push_back(core::vec2(x, y));
+        result.emplace_back(x, y);
         SkipComma();
     }
     Expect(']');
@@ -155,7 +181,6 @@ std::vector<core::vec2> PolygonZoneParser::ParseVertexArray()
 PolygonZone PolygonZoneParser::ParseZoneObject()
 {
     PolygonZone zone;
-    zone.seg_value = -1; // default to -1 if not specified
 
     Expect('{');
     while (Peek() != '}') {
@@ -167,6 +192,8 @@ PolygonZone PolygonZoneParser::ParseZoneObject()
             zone.vertices = ParseVertexArray();
         } else if (key == "occupancy") {
             zone.occ_value = ParseNumber();
+        } else if (key == "max_speed") {
+            zone.max_speed = ParseNumber();
         } else if (key == "segmentation") {
             zone.seg_value = static_cast<int>(ParseNumber());
         } else {

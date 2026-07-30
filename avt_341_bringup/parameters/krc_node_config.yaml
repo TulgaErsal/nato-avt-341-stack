@@ -23,10 +23,6 @@
   remappings:
     avt_341/comm_messages: /avt_341/comm_messages
 
-/**/speed_zones_node:
-  remappings:
-    avt_341/comm_messages: /avt_341/comm_messages
-
 /**/uab_perception_node:
   remappings:
     avt_341/points: /ouster/points

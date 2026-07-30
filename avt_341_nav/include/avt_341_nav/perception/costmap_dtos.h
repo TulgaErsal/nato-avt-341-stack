@@ -126,15 +126,6 @@ namespace avt_341_nav::perception
 
   };
 
-  struct PolygonZone
-  {
-    std::string label;
-    std::vector<core::vec2> vertices;
-    double occ_value;
-    int seg_value;
-  };
-
-
 }
 
 #endif //AVT_341_COSTMAP_CELL_H

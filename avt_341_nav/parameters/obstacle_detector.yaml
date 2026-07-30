@@ -137,7 +137,7 @@ ros__parameters:
   # ====================================================================================================================
   lidar_points_topic:
     type: string
-    default_value: '/ouster/points'
+    default_value: '/avt_341/points'
     description: "Input sensor point cloud topic."
   cloud_ground_topic:
     type: string

@@ -40,6 +40,8 @@ public:
 
   bool transform_pose(const geometry_msgs::msg::PoseStamped &in_pose, geometry_msgs::msg::PoseStamped &out_pose, const std::string &target_frame, float duration = 0.2);
 
+  const tf2_ros::Buffer &get_buffer() const { return *tf_buffer_; }
+
 private:
   rclcpp::Node::SharedPtr node_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;

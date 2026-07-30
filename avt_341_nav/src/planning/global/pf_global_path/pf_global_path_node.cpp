@@ -143,19 +143,12 @@ int main(int argc, char *argv[])
   int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
   if (shutdown_behavior>3 || shutdown_behavior<1)shutdown_behavior = 1;
 
-  avt_341_nav::core::WaypointLists initial_waypoints;
+  nav_msgs::msg::Path initial_waypoints;
   if (!params.initial_waypoints.empty())
   {
     initial_waypoints =
         avt_341_nav::core::WaypointFileParser::Parse(params.initial_waypoints);
-    if (initial_waypoints.x.size() != initial_waypoints.y.size())
-    {
-      std::cerr << "WARNING: " << initial_waypoints.x.size()
-                << " X COORDINATES WERE PROVIDED FOR "
-                << initial_waypoints.y.size() << " Y COORDINATES IN "
-                << params.initial_waypoints << std::endl;
-    }
-    if (initial_waypoints.x.empty() || initial_waypoints.y.empty())
+    if (initial_waypoints.poses.empty())
     {
       std::cerr << "WARNING: NO WAYPOINTS WERE LISTED IN "
                 << params.initial_waypoints << std::endl;
@@ -208,32 +201,24 @@ int main(int argc, char *argv[])
   auto state_pub = n->create_publisher<std_msgs::msg::Int32>("avt_341/state", 10);
   state.data = avt_341_nav::core::NavStackState::NotInit;
 
-  const auto num_waypoints =
-      std::min(initial_waypoints.x.size(), initial_waypoints.y.size());
   Reset();
 
   // Initialize current waypoints with the data from the waypoint yaml params
   current_waypoints.poses.clear();
   current_waypoints.header.frame_id = "map";
-  if (num_waypoints > 0)
+  if (!initial_waypoints.poses.empty())
   {
-    //nav_msgs::Path loaded_waypoints;
-    for (int32_t i=0;i<num_waypoints;i++){
+    for (const auto & waypoint : initial_waypoints.poses){
       geometry_msgs::msg::PoseStamped pose;
-      pose.pose.position.x =
-          static_cast<float>(initial_waypoints.x[i] - params.gis.origin_x);
-      pose.pose.position.y =
-          static_cast<float>(initial_waypoints.y[i] - params.gis.origin_y);
-      pose.pose.position.z = 0.0f;
-      pose.pose.orientation.w = 1.0f;
-      pose.pose.orientation.x = 0.0f;
-      pose.pose.orientation.y = 0.0f;
-      pose.pose.orientation.z = 0.0f;
+      pose.pose.position.x = waypoint.pose.position.x - params.gis.origin_x;
+      pose.pose.position.y = waypoint.pose.position.y - params.gis.origin_y;
+      pose.pose.position.z = 0.0;
+      pose.pose.orientation.w = 1.0;
       current_waypoints.poses.push_back(pose);
     }
       // Initialize goal to first waypoint
-    goal[0] = initial_waypoints.x[0] - params.gis.origin_x;
-    goal[1] = initial_waypoints.y[0] - params.gis.origin_y;
+    goal[0] = initial_waypoints.poses[0].pose.position.x - params.gis.origin_x;
+    goal[1] = initial_waypoints.poses[0].pose.position.y - params.gis.origin_y;
     state.data = avt_341_nav::core::NavStackState::Active; // go active
     state_pub->publish(state);
   }

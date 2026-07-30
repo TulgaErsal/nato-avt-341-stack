@@ -6,6 +6,8 @@
 // local includes
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/mission/mission_manager_parser.h"
+#include "avt_341_nav/mission/speed_zone_monitor.hpp"
+#include "avt_341_nav/core/string_utils.hpp"
 #include <queue>
 #include <avt_341_nav/core/dto_conversion.h>
 #include <optional>
@@ -99,6 +101,24 @@ std::string toUpper(const std::string & str){
   std::string str_upper = str;
   std::transform(str.begin(), str.end(), str_upper.begin(), [](unsigned char c){ return std::toupper(c); });
   return str_upper;
+}
+
+// Publishes the static transform placing the map frame origin at
+// (gis.origin_x, gis.origin_y) within the GIS crs frame.
+void PublishGisStaticTransform(const avt_341_nav::params::mission_manager::Params & params) {
+  if (params.gis.crs.empty()) {
+    RCLCPP_INFO(nh->get_logger(), "No GIS crs configured, skipping map georeference static transform.");
+    return;
+  }
+
+  const std::string crs_frame = avt_341_nav::core::CrsToFrameId(params.gis.crs);
+  geometry_msgs::msg::PoseStamped map_origin;
+  map_origin.pose.position.x = params.gis.origin_x;
+  map_origin.pose.position.y = params.gis.origin_y;
+  map_origin.pose.orientation.w = 1.0;
+  tf->publish_static_tf(crs_frame, "map", map_origin);
+  RCLCPP_INFO(nh->get_logger(), "Published static transform %s -> map at (%.3f, %.3f).",
+      crs_frame.c_str(), params.gis.origin_x, params.gis.origin_y);
 }
 
 // Receive updated odometry information
@@ -275,6 +295,8 @@ int main(int argc, char **argv) {
 
     const std::string my_name = toUpper(params.name);
 
+    PublishGisStaticTransform(params);
+
     tracker_param_client = std::make_shared<rclcpp::AsyncParametersClient>(nh, params.toi.tracker_node_name);
 
     std::shared_ptr<avt_341_nav::mission::GoalFilter> goal_filter =
@@ -288,6 +310,12 @@ int main(int argc, char **argv) {
     std::shared_ptr<avt_341_nav::mission::FormationSpeedController>
         speedController = avt_341_nav::mission::createFormationSpeedController(
             my_name, params.fsc, nh, tf);
+
+    std::shared_ptr<avt_341_nav::mission::SpeedZoneMonitor> speed_zone_monitor = nullptr;
+    if (params.use_speed_zones) {
+        speed_zone_monitor = std::make_shared<avt_341_nav::mission::SpeedZoneMonitor>(
+            nh, tf, mgr, params.speed_zones_file);
+    }
 
     RCLCPP_INFO(nh->get_logger(), "Mission Manager Settings:\n  fsc.type=%s\n  formation.use_breadcrumbs=%d\n  formation.x_offset_on_path=%d\n  formation.prune_global_path=%d", params.fsc.type.c_str(), params.formation.use_breadcrumbs, params.formation.x_offset_on_path, params.formation.prune_global_path);
     RCLCPP_INFO(nh->get_logger(), "%s loading definition file %s", mgr->my_name.c_str(), params.mission_definition_file.c_str());
@@ -419,6 +447,9 @@ int main(int argc, char **argv) {
         if(odom_rcvd) {
             //std::cout << "Updated own odometry" << std::endl;
             mgr->odometry = odom;
+            if (speed_zone_monitor != nullptr) {
+                speed_zone_monitor->UpdateOdometry(odom);
+            }
             odom_rcvd = false;
         }
 

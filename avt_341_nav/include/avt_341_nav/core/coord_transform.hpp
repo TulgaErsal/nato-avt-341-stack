@@ -3,62 +3,77 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <Eigen/Dense>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <rclcpp/logger.hpp>
 #include <tf2_ros/buffer.h>
+
+#include "avt_341_nav/core/geometry/geometry_dto.hpp"
 
 namespace avt_341_nav::core
 {
 
 /**
- * @brief Coordinate transformer bound to a TF buffer and a logger, so that
- * callers do not need to thread both through every transform call.
- *
- * Holds a non-owning reference to the TF buffer: the buffer must outlive
- * this object.
+ * @brief Coordinate transformer bound to a TF buffer and a logger. Holds a
+ * non-owning reference to the buffer, which must outlive this object.
  */
 class CoordTransformer {
    public:
-    /**
-     * @param buffer Transform buffer to look transforms up in (non-owning).
-     * @param logger Logger used to report TF lookup failures.
-     */
     CoordTransformer(const tf2_ros::Buffer& buffer,
                      const rclcpp::Logger& logger);
 
     /**
-     * @brief Transform a three-dimensional point between TF frames using the
-     * latest available transform (tf2::TimePointZero).
-     *
-     * On a TF lookup failure the error is logged and the input point is
-     * returned unchanged.
-     *
-     * @param source_frame Frame ID the point is currently expressed in.
-     * @param target_frame Frame ID to transform the point into.
-     * @param point Point to be transformed.
-     * @return Eigen::Vector3d Transformed point.
+     * @brief Transforms a point between TF frames. On TF lookup failure the
+     * error is logged and the input point is returned unchanged.
      */
     Eigen::Vector3d Transform(const std::string& source_frame,
                               const std::string& target_frame,
                               const Eigen::Vector3d& point) const;
 
     /**
-     * @brief Look up the rotation from @p source_frame to @p target_frame
-     * using the latest available transform (tf2::TimePointZero).
-     *
-     * On a TF lookup failure the error is logged and std::nullopt is
-     * returned.
-     *
-     * @param source_frame Frame ID the rotation is from.
-     * @param target_frame Frame ID the rotation is into.
-     * @return The rotation quaternion, or std::nullopt on lookup failure.
+     * @brief Looks up the rotation from the source to the target frame. On TF
+     * lookup failure the error is logged and std::nullopt is returned.
      */
     std::optional<Eigen::Quaterniond> LookupRotation(
         const std::string& source_frame,
         const std::string& target_frame) const;
 
+    /**
+     * @brief Transforms the polygon zones to the target frame, waiting up to
+     * @p timeout for the transform to become available. Exception will be
+     * thrown if TF lookup fails.
+     */
+    void TransformZones(PolygonZoneCollection& zone_collection,
+                        const std::string& target_frame,
+                        tf2::Duration timeout = tf2::Duration::zero()) const;
+
+    /**
+     * @brief Transforms the points from the source to the target frame in
+     * place, waiting up to @p timeout for the transform to become available.
+     * Exception will be thrown if TF lookup fails.
+     */
+    void TransformPoints(std::vector<Eigen::Vector2d>& points,
+                         const std::string& source_frame,
+                         const std::string& target_frame,
+                         tf2::Duration timeout = tf2::Duration::zero()) const;
+
+    /**
+     * @brief Transforms the path poses from the path's frame to the target
+     * frame in place, waiting up to @p timeout for the transform to become
+     * available. Exception will be thrown if TF lookup fails.
+     */
+    void TransformPath(nav_msgs::msg::Path& path,
+                       const std::string& target_frame,
+                       tf2::Duration timeout = tf2::Duration::zero()) const;
+
    private:
+    geometry_msgs::msg::TransformStamped LookupTransform(
+        const std::string& source_frame, const std::string& target_frame,
+        tf2::Duration timeout) const;
+
     const tf2_ros::Buffer& buffer_;
     rclcpp::Logger logger_;
 };

@@ -1,11 +1,11 @@
-#ifndef AVT_341_POLYGON_ZONE_PARSER_H
-#define AVT_341_POLYGON_ZONE_PARSER_H
+#ifndef AVT_341_CORE_GEOMETRY_POLYGON_ZONE_PARSER_HPP
+#define AVT_341_CORE_GEOMETRY_POLYGON_ZONE_PARSER_HPP
 #include <string>
 #include <vector>
 
-#include "avt_341_nav/perception/costmap_dtos.h"
+#include "avt_341_nav/core/geometry/geometry_dto.hpp"
 
-namespace avt_341_nav::perception
+namespace avt_341_nav::core
 {
 
 class PolygonZoneParser
@@ -13,8 +13,12 @@ class PolygonZoneParser
 public:
     explicit PolygonZoneParser(const std::string& text);
 
+    /// Load and parse a polygon zone json file. Throws if the file cannot be
+    /// opened or parsed.
+    static PolygonZoneCollection ParseFile(const std::string& file_path);
+
     /// Parse the document and return the extracted zones.
-    std::vector<PolygonZone> Parse();
+    PolygonZoneCollection Parse();
 
 private:
     // ---- low-level helpers -----------------------------------------------
@@ -39,7 +43,7 @@ private:
     // ---- structure parsers -----------------------------------------------
 
     /// Parse [[x, y], [x, y], ...].
-    std::vector<core::vec2> ParseVertexArray();
+    std::vector<Eigen::Vector2d> ParseVertexArray();
 
     /// Parse one zone object: { "name": "...", "vertices": [[...], ...] }.
     PolygonZone ParseZoneObject();
@@ -53,4 +57,4 @@ private:
 
 }
 
-#endif //AVT_341_POLYGON_ZONE_PARSER_H
+#endif // AVT_341_CORE_GEOMETRY_POLYGON_ZONE_PARSER_HPP
