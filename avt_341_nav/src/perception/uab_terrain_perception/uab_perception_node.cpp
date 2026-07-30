@@ -736,17 +736,24 @@ int main(int argc, char *argv[])
                 );
 
 
-            //update the terrain grid with the new cell values
+            //update the terrain grid with the new cell values. MATLAB's sub2ind (GridBuilder.m)
+            //returns 1-based linear indices; convert to 0-based before indexing.
             int c = 0;
             for (auto i : terrain_sub_grid_idxs)
             {
-                terrain_grid.data[i] = terrain_sub_grid[c++];
+                const double idx0 = i - 1;
+                if (idx0 >= 0 && idx0 < static_cast<double>(terrain_grid.data.size()))
+                {
+                    terrain_grid.data[static_cast<size_t>(idx0)] = terrain_sub_grid[c];
+                }
+                c++;
             }
 
 
             if (params.publish_uab_occupancy_grid)
             {
-                //update the obstacle grid with the new cell values
+                //update the obstacle grid with the new cell values. MATLAB's sub2ind (GridBuilder.m)
+                //returns 1-based linear indices; convert to 0-based before indexing.
                 c = 0;
                 for (auto i : obstacle_sub_grid_idxs)
                 {
@@ -755,9 +762,11 @@ int main(int argc, char *argv[])
                     //will be marked as occupied in the published occupancy grid
                     double obstacle_probability_threshold = 95.0;
                     double obstacle_probability_at_cell = obstacle_sub_grid[c++];
-                    if (obstacle_probability_at_cell >= obstacle_probability_threshold)
+                    const double idx0 = i - 1;
+                    if (obstacle_probability_at_cell >= obstacle_probability_threshold &&
+                        idx0 >= 0 && idx0 < static_cast<double>(obstacle_grid.data.size()))
                     {
-                        obstacle_grid.data[i] = obstacle_probability_at_cell;
+                        obstacle_grid.data[static_cast<size_t>(idx0)] = obstacle_probability_at_cell;
                     }
                 }
             }
