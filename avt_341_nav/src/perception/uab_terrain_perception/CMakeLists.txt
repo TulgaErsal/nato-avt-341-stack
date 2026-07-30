@@ -19,41 +19,41 @@ function(DownloadLinuxSharedLibrary)
     file(DOWNLOAD
     "https://www.dropbox.com/scl/fi/3wypl4ru1f3fgqd6vshil/lib_uab_perception_wrapper.so?rlkey=g33m7iqe1jd2zy9w1heob7cj2&st=yphem7z6&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=ce1f3ed3869ca506fcf365610c212ee15dc028efac55c26b88aa06b0c72f4e65
+    EXPECTED_HASH SHA256=a07fdd016a6030873b666f4c1f5838aee8a168be3282a3eeb569603fa66a5b7c
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
 # Manually set MATLAB paths (optional, only needed if "find_package(Matlab)" fails)
-# These should point to the installation location of MATLAB Runtime 2025b
+# These should point to the installation location of MATLAB Runtime 2023a
 #
 # ex: Windows Runtime
-# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
+# set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+# set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
 #
 # ex: Windows Full Installation
-set(Matlab_WIN_FULL_EXTERN_DIR "C:/Program Files/MATLAB/R2025b/extern")
+set(Matlab_WIN_FULL_EXTERN_DIR "C:/Program Files/MATLAB/R2023a/extern")
 if(WIN32 AND EXISTS "${Matlab_WIN_FULL_EXTERN_DIR}")
     set(Matlab_MCLMCRRT_LIB "${Matlab_WIN_FULL_EXTERN_DIR}/lib/win64/microsoft/mclmcrrt.lib")
     set(Matlab_INCLUDE_DIRS "${Matlab_WIN_FULL_EXTERN_DIR}/include")
 endif()
 #
 # ex. Linux Runtime
-# set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2025b/runtime/glnxa64/libmwmclmcrrt.so)
-# set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2025b/extern/include)
+# set(Matlab_MCLMCRRT_LIB /usr/local/MATLAB/MATLAB_Runtime/R2023a/runtime/glnxa64/libmwmclmcrrt.so)
+# set(Matlab_INCLUDE_DIRS /usr/local/MATLAB/MATLAB_Runtime/R2023a/extern/include)
 find_package(Matlab)
 find_package(cv_bridge REQUIRED)
 
 # Compute the Runtime-only fallback before the availability check below, not inside it.
 if(NOT Matlab_MCLMCRRT_LIB)
     if(WIN32)
-         set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
-         set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2025b\\extern\\include")
+         set(Matlab_MCLMCRRT_LIB "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\lib\\win64\\microsoft\\mclmcrrt.lib")
+         set(Matlab_INCLUDE_DIRS "C:\\Program Files\\MATLAB\\MATLAB Runtime\\R2023a\\extern\\include")
     else()
          # MCR_ROOT matches krc_node_config.yaml / krc_mrzr.launch.py's runtime lookup.
          if(DEFINED ENV{MCR_ROOT})
              set(Matlab_RUNTIME_ROOT $ENV{MCR_ROOT})
          else()
-             set(Matlab_RUNTIME_ROOT /usr/local/MATLAB/MATLAB_Runtime/R2025b)
+             set(Matlab_RUNTIME_ROOT /usr/local/MATLAB/MATLAB_Runtime/R2023a)
          endif()
          set(Matlab_MCLMCRRT_LIB ${Matlab_RUNTIME_ROOT}/runtime/glnxa64/libmwmclmcrrt.so)
          set(Matlab_INCLUDE_DIRS ${Matlab_RUNTIME_ROOT}/extern/include)
@@ -97,7 +97,7 @@ if(Matlab_FOUND OR (Matlab_MCLMCRRT_LIB AND Matlab_INCLUDE_DIRS AND EXISTS "${Ma
 else()
     message(
         WARNING
-        "Unable to build UAB Terrain Perception node. Failed to find MATLAB R2025b."
+        "Unable to build UAB Terrain Perception node. Failed to find MATLAB R2023a."
     )
 endif()
 

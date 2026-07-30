@@ -35,10 +35,10 @@
     LD_LIBRARY_PATH:
       separator: ":"
       values:
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/runtime/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/bin/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/sys/os/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/extern/bin/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/runtime/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/bin/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/sys/os/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/extern/bin/glnxa64"
         - "$env_var{LD_LIBRARY_PATH:-}"
 
 /**/object_detector_node:
