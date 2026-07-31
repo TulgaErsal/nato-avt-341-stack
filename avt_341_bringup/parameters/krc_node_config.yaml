@@ -45,6 +45,7 @@
   remappings:
     avt_341/camera/image_raw: /flir_camera/image_rect_color
     avt_341/camera/segmentation: /flir_camera/segmentation
+    avt_341/camera/segmentation_overlay: /flir_camera/segmentation_overlay
 
 /**/object_detector_node:
   remappings:
