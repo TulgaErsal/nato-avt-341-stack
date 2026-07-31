@@ -97,9 +97,8 @@ class SaeNetNode(Node):
         self.pub.publish(out)
 
         if self.overlay_pub is not None:
-            brightened = np.clip(img.astype(np.int16) + int(round(self.brightness)), 0, 255).astype(np.uint8)
             a = OVERLAY_ALPHA
-            overlay = ((1 - a) * brightened.astype(np.float64) + a * mask.astype(np.float64)).astype(np.uint8)
+            overlay = ((1 - a) * img.astype(np.float64) + a * mask.astype(np.float64)).astype(np.uint8)
             overlay_msg = self.bridge.cv2_to_imgmsg(overlay, encoding="rgb8")
             overlay_msg.header = msg.header
             self.overlay_pub.publish(overlay_msg)
