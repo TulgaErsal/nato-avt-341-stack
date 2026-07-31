@@ -64,7 +64,7 @@ NODES = {
 
     # Perception - Terrain segmentation
     'uab_perception_node':              NodeSpec('uab_perception_node',              _templates('uab_perception'),    condition=is_cfg('use_uab_perception'),                                                                                                                             disallowed_vehicles_arg='manual_vehicle_ids'),
-    'sae_net_node':                     NodeSpec('sae_net_node',                     _templates('uab_perception_py'), condition=is_cfg('use_uab_perception_py'),                                                                                                                          disallowed_vehicles_arg='manual_vehicle_ids'),
+    'sae_net_node':                     NodeSpec('sae_net_node.py',                  _templates('uab_perception_py'), condition=is_cfg('use_uab_perception_py'),                                                                                                                          disallowed_vehicles_arg='manual_vehicle_ids'),
 
     # Perception - Object detection and tracking
     'object_detector_node':             NodeSpec('object_detector_node',             _templates('object_detector'),   condition=is_cfg('use_obj_detector'),                                                                                                                               disallowed_vehicles_arg='manual_vehicle_ids'),
@@ -118,6 +118,9 @@ def _make_node(name, spec, vid, vehicles, params_files, cli_overrides, node_conf
         parameters=layers or None,
         remappings=node_remappings or None,
         additional_env=node_additional_env or None,
+        # Windows cannot exec a .py script directly (no shebang support), so
+        # python node scripts must be run through the interpreter.
+        prefix='python' if os.name == 'nt' and spec.executable.endswith('.py') else None,
     )
     if spec.sub_ns:
         return GroupAction([PushRosNamespace(spec.sub_ns), node])

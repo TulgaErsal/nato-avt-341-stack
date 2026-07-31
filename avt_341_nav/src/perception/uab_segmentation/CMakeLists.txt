@@ -6,7 +6,6 @@ avt_341_generate_python_parameters(${PROJECT_SOURCE_DIR}/parameters/uab_percepti
 
 install(
   PROGRAMS ${PROJECT_SOURCE_DIR}/avt_341_nav/uab_segmentation/sae_net_node.py
-  RENAME sae_net_node
   DESTINATION "lib/${PROJECT_NAME}")
 
 # Download the SAE segmentation network weights, skipped if already present.
