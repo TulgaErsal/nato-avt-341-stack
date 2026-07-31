@@ -1,0 +1,16 @@
+classNames:
+  - high
+  - medium
+  - low
+  - zero
+  - sky
+labelIDs:
+  - [0, 255, 0]
+  - [255, 255, 0]
+  - [255, 165, 0]
+  - [255, 0, 0]
+  - [0, 255, 255]
+inputSize: [544, 688, 3]
+numClasses: 5
+normalization: zerocenter
+inputMean: [105.42755126953125, 106.27496337890625, 105.25541687011719]

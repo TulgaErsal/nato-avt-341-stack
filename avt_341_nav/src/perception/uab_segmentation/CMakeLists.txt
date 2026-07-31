@@ -1,0 +1,44 @@
+message(STATUS "Building UAB SAE segmentation python node ...")
+
+# Generated python parameter module uab_perception_py_parameters.py, installed
+# into the avt_341_nav python package.
+avt_341_generate_python_parameters(${PROJECT_SOURCE_DIR}/parameters/uab_perception_py.yaml)
+
+install(
+  PROGRAMS ${PROJECT_SOURCE_DIR}/avt_341_nav/uab_segmentation/sae_net_node.py
+  RENAME sae_net_node
+  DESTINATION "lib/${PROJECT_NAME}")
+
+# Download the SAE segmentation network weights, skipped if already present.
+# Best-effort: on failure (e.g. no internet) the build proceeds without the
+# weights.
+set(SAE_WEIGHTS_FILE
+    "${PROJECT_SOURCE_DIR}/ml_weights/uab_segmentation/sae_net_5class_RUGD_GOD_544_688.pt")
+if(NOT EXISTS "${SAE_WEIGHTS_FILE}")
+  message(STATUS "Downloading SAE segmentation network weights ...")
+  file(
+    DOWNLOAD
+    https://www.dropbox.com/scl/fi/xxs1fpjf7lglj9zp5kh4q/sae_net_5class_RUGD_GOD_544_688.pt?rlkey=maxpvar3kctukndosovgxzses&st=blng12z4&dl=1
+    "${SAE_WEIGHTS_FILE}"
+    STATUS SAE_DOWNLOAD_STATUS)
+  list(GET SAE_DOWNLOAD_STATUS 0 SAE_DOWNLOAD_ERROR)
+  if(SAE_DOWNLOAD_ERROR EQUAL 0)
+    file(SHA256 "${SAE_WEIGHTS_FILE}" SAE_WEIGHTS_HASH)
+    if(NOT SAE_WEIGHTS_HASH STREQUAL
+       "0fe30b66b287bbbe65fc9ede19f3037f378752cb29070754c8dfda8f919079a2")
+      message(WARNING "SAE segmentation network weights download hash mismatch "
+                      "(got ${SAE_WEIGHTS_HASH}); delete the file to re-download.")
+    endif()
+  else()
+    list(GET SAE_DOWNLOAD_STATUS 1 SAE_DOWNLOAD_MESSAGE)
+    message(WARNING "SAE segmentation network weights download failed "
+                    "(${SAE_DOWNLOAD_MESSAGE}); delete the file to retry.")
+  endif()
+endif()
+
+install(
+  DIRECTORY "${PROJECT_SOURCE_DIR}/ml_weights/uab_segmentation/"
+  DESTINATION "share/${PROJECT_NAME}/ml_weights/uab_segmentation"
+  FILES_MATCHING
+  PATTERN "*.pt"
+  PATTERN "*.yaml")

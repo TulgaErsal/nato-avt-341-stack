@@ -8,7 +8,7 @@ from typing import List, Optional
 from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 
-from avt_341_nav.detection import YoloModel
+from avt_341_nav.detection.detection import YoloModel
 
 
 class AvtNode(Node):

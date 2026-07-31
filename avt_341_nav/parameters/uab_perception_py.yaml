@@ -1,0 +1,27 @@
+code_namespace: avt_341_nav/params/uab_perception_py
+ros__parameters:
+
+  # Model
+  # ====================================================================================================================
+  weights_file:
+    type: string
+    default_value: 'sae_net_5class_RUGD_GOD_544_688.pt'
+    description: "SAE segmentation network weights file name, loaded from the package share ml_weights/uab_segmentation
+      directory. The export metadata file <weights stem>_meta.yaml is loaded from the same directory."
+  device:
+    type: string
+    default_value: 'cuda'
+    description: "Torch device used for inference (e.g. 'cuda' or 'cpu'). Falls back to 'cpu' if CUDA is unavailable
+      in the installed torch build."
+
+  # Segmentation
+  # ====================================================================================================================
+  brightness_offset:
+    type: double
+    default_value: 75.0
+    description: "Brightness offset applied to the camera image."
+  use_matlab_resize:
+    type: bool
+    default_value: true
+    description: "If true, resizes images with the MATLAB-faithful bicubic/nearest implementations. If false, uses the
+      closest cv2 approximations (INTER_CUBIC/INTER_NEAREST)."

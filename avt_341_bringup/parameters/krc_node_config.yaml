@@ -41,6 +41,11 @@
         - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/extern/bin/glnxa64"
         - "$env_var{LD_LIBRARY_PATH:-}"
 
+/**/sae_net_node:
+  remappings:
+    avt_341/camera/image_raw: /flir_camera/image_rect_color
+    avt_341/camera/segmentation: /flir_camera/segmentation
+
 /**/object_detector_node:
   remappings:
     image: /flir_camera/image_rect_color

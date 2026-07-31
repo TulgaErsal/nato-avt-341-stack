@@ -34,6 +34,7 @@ set(AVT341_SOURCE_FILES
     "perception/global_segmentation_grid"
     "perception/lidar_obstacle_detector"
     "perception/perception"
+    "perception/uab_segmentation"
     "perception/uab_terrain_perception"
     "perception/obstacles_processor"
     "perception/lidar_normal_estimation"
