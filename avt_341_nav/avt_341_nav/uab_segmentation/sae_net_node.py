@@ -26,6 +26,9 @@ from avt_341_nav.uab_segmentation.sae_net import SaeNet
 # Model weights and export metadata install location below the package share directory
 WEIGHTS_SHARE_SUBDIR = "ml_weights/uab_segmentation"
 
+# Blend factor of the segmentation mask in the overlay image
+OVERLAY_ALPHA = 0.3
+
 
 class SaeNetNode(Node):
     def __init__(self):
@@ -58,6 +61,8 @@ class SaeNetNode(Node):
 
         self.bridge = CvBridge()
         self.pub = self.create_publisher(Image, "avt_341/camera/segmentation", 1)
+        self.overlay_pub = (self.create_publisher(Image, "avt_341/camera/segmentation_overlay", 1)
+                            if bool(params.publish_overlay) else None)
         self.sub = self.create_subscription(Image, "avt_341/camera/image_raw", self.on_image, qos_profile_sensor_data)
         self.get_logger().info(f"ready: weights={weights_path}, device={self.device}, "f"brightness=+{self.brightness:g}")
 
@@ -90,6 +95,14 @@ class SaeNetNode(Node):
         out = self.bridge.cv2_to_imgmsg(mask, encoding="rgb8")
         out.header = msg.header
         self.pub.publish(out)
+
+        if self.overlay_pub is not None:
+            brightened = np.clip(img.astype(np.int16) + int(round(self.brightness)), 0, 255).astype(np.uint8)
+            a = OVERLAY_ALPHA
+            overlay = ((1 - a) * brightened.astype(np.float64) + a * mask.astype(np.float64)).astype(np.uint8)
+            overlay_msg = self.bridge.cv2_to_imgmsg(overlay, encoding="rgb8")
+            overlay_msg.header = msg.header
+            self.overlay_pub.publish(overlay_msg)
 
 
 def main() -> None:

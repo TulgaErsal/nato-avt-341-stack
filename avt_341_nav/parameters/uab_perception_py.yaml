@@ -25,3 +25,8 @@ ros__parameters:
     default_value: true
     description: "If true, resizes images with the MATLAB-faithful bicubic/nearest implementations. If false, uses the
       closest cv2 approximations (INTER_CUBIC/INTER_NEAREST)."
+  publish_overlay:
+    type: bool
+    default_value: true
+    description: "If true, also publishes the segmentation mask alpha-blended onto the brightened camera image on
+      avt_341/camera/segmentation_overlay."
