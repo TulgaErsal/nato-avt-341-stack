@@ -2,7 +2,7 @@
 # ROS bag configuration (BASE)
 #
 # Base template inherited by the concrete configs (rw_bag_config.yaml, sim_bag_config.yaml) and expanded by
-# launch/vehicle_logging.py. On merge, a derived config overrides scalar/dict keys wholesale, while
+# bagging/record_bag.py. On merge, a derived config overrides scalar/dict keys wholesale, while
 # 'log_topics' is unioned by the unique 'name' field (derived wins per name). Major keys:
 #
 #   symbols          Template variables expanded into concrete 'log_topics' entries. A '{key}' reference in

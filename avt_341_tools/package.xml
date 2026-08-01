@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<package format="3">
+  <name>avt_341_tools</name>
+  <version>0.0.0</version>
+  <description>Development and analysis tools for the AVT-341 autonomy stack, such as offline compute-time plotting</description>
+
+  <maintainer email="cgoodin@cavs.msstate.edu">Chris Goodin</maintainer>
+  <maintainer email="dsi@aarhusrobotics.com">Dario Sirangelo</maintainer>
+
+  <author email="cgoodin@cavs.msstate.edu">Chris Goodin</author>
+  <author email="dwc2@cavs.msstate.edu">Daniel Carruth</author>
+
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <exec_depend>avt_341_msgs</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>rosbag2_py</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

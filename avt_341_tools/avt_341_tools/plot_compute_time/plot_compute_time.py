@@ -10,19 +10,19 @@ from typing import Optional, Sequence
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from tools.plot_compute_time.bag_reader import (  # noqa: E402
+from avt_341_tools.plot_compute_time.bag_reader import (  # noqa: E402
     inspect_bag,
     load_ros_dependencies,
     read_compute_samples,
     validate_bag_path,
 )
-from tools.plot_compute_time.models import (  # noqa: E402
+from avt_341_tools.plot_compute_time.models import (  # noqa: E402
     PlotComputeTimeError,
     default_output_directory,
     format_vehicle_inventory,
     select_compute_topics,
 )
-from tools.plot_compute_time.plotting import render_plots  # noqa: E402
+from avt_341_tools.plot_compute_time.plotting import render_plots  # noqa: E402
 
 
 def build_argument_parser() -> argparse.ArgumentParser:

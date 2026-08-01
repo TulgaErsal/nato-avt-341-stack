@@ -35,6 +35,8 @@ The repository is a ROS workspace source folder holding the following packages:
    * - ``avt_341_system_tests``
      - | System level tests typically requiring multiple nodes to run.
        | Refer to :doc:`/pages/testing/index` for more details.
+   * - ``avt_341_tools``
+     - Development and analysis tools, such as offline compute-time plotting.
 
 Every package builds with ``ament_cmake``. Each one lives in the
 similarly named folder at the root of the repository, except
@@ -47,5 +49,5 @@ They are empty until the submodules are initialized and are not part of the
 default build.
 
 Outside the ROS packages, the repository also carries the ``docs/`` sources for
-this documentation, ``docker/`` build and compose files for the containerized
-setups, and ``tools/`` development scripts.
+this documentation and ``docker/`` build and compose files for the containerized
+setups.

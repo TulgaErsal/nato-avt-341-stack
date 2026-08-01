@@ -198,7 +198,7 @@ def _spawn_vehicles(context, *args, **kwargs):
     if _is_true(LaunchConfiguration('enable_logging').perform(context)):
         actions.append(ExecuteProcess(
             cmd=[
-                'ros2', 'run', 'avt_341_bringup', 'vehicle_logging.py',
+                'ros2', 'run', 'avt_341_bringup', 'record_bag.py',
                 f'{BRINGUP_DIR}/bagging/config/rw_bag_config.yaml',
                 LaunchConfiguration('logging_path').perform(context),
                 '--bag_format', 'mcap',

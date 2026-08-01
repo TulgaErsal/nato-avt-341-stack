@@ -219,7 +219,7 @@ def parse_args() -> Namespace:
 
     default_base_bag_config = f"{os.path.join(get_package_share_directory('avt_341_bringup'), 'bagging/config/base_bag_config.yaml')}"
 
-    parser = ArgumentParser(prog="ros2 run avt_341_bringup vehicle_logging.py",
+    parser = ArgumentParser(prog="ros2 run avt_341_bringup record_bag.py",
                             description="Records configured topics in a rosbag data structured.")
 
     parser.add_argument('config_file', type=str, help="Path to the logging config file. Will be merged with base_config_file.")
@@ -303,7 +303,7 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 raise
             except BaseException as e:
-                print(f"[vehicle_logging] ROS parameter dump failed: {e}", file=sys.stderr)
+                print(f"[record_bag] ROS parameter dump failed: {e}", file=sys.stderr)
 
         # Wait for logging to complete
         process.wait()

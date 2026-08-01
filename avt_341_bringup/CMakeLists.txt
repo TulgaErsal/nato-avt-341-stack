@@ -6,10 +6,10 @@ find_package(ament_cmake REQUIRED)
 
 # Bagging helper scripts
 # ======================
-# vehicle_logging.py imports ros_param_dump as a sibling module, so both have
+# record_bag.py imports ros_param_dump as a sibling module, so both have
 # to be installed into the same directory.
 install(
-  PROGRAMS "bagging/vehicle_logging.py" "bagging/ros_param_dump.py"
+  PROGRAMS "bagging/record_bag.py" "bagging/ros_param_dump.py"
   DESTINATION "lib/${PROJECT_NAME}")
 
 install(DIRECTORY "bagging/config" DESTINATION "share/${PROJECT_NAME}/bagging")

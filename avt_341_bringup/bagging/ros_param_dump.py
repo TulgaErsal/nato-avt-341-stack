@@ -44,7 +44,7 @@ DEFAULT_SERVICE_TIMEOUT_S = 5.0
 # - transform_listener_impl: tf2 spins up throw-away hidden listener nodes that
 #   are noise here (matched anywhere in the name).
 # - /rosbag2_recorder: the recorder node created by `ros2 bag record` (present
-#   when this dump runs alongside vehicle_logging); its params aren't user config.
+#   when this dump runs alongside record_bag); its params aren't user config.
 DEFAULT_NODE_IGNORE_REGEX = r"transform_listener_impl|^/rosbag2_recorder$"
 # Parameters whose name matches this regex are not fetched. QoS override params
 # are per-topic implementation detail rather than user-facing configuration.
@@ -226,7 +226,7 @@ def parse_arguments(
     """Parse the param-dump options.
 
     ``prefix`` is prepended to every optional's flag (but not to its ``dest``),
-    so a caller like ``vehicle_logging.py`` can pass ``prefix="param_dump_"`` to
+    so a caller like ``record_bag.py`` can pass ``prefix="param_dump_"`` to
     expose ``--param_dump_discovery_wait`` etc. on its own command line while
     downstream code still reads the stable ``args.discovery_wait`` attribute.
 
@@ -288,7 +288,7 @@ def dump_ros_params(
     ``out_file``.
 
     This is the shared core used by both the standalone CLI (:func:`main`) and
-    external callers such as ``vehicle_logging.py`` (via
+    external callers such as ``record_bag.py`` (via
     :func:`dump_ros_params_from_argv`).
     """
     rclpy.init(args=sys.argv)
@@ -314,7 +314,7 @@ def dump_ros_params_from_argv(
     prefix: str = "param_dump_",
 ) -> int:
     """Entry point for callers that supply ``out_file`` themselves rather than
-    via ``--out_file`` (e.g. ``vehicle_logging.py`` points it at the rosbag
+    via ``--out_file`` (e.g. ``record_bag.py`` points it at the rosbag
     output directory).
 
     The remaining tunables are parsed from ``argv`` under ``prefix`` so that,
