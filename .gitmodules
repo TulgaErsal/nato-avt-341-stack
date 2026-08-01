@@ -1,9 +1,9 @@
 [submodule "avt_341_depth"]
-	path = avt_341_depth
+	path = avt_341_innervycs_perception/avt_341_depth
 	url = https://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@github.com/Innervycs/avt_341_depth.git
 [submodule "avt_341_segmentation"]
-	path = avt_341_segmentation
+	path = avt_341_innervycs_perception/avt_341_segmentation
 	url = https://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@github.com/Innervycs/avt_341_segmentation.git
 [submodule "avt_341_lidar_seg_fusion"]
-	path = avt_341_lidar_seg_fusion
+	path = avt_341_innervycs_perception/avt_341_lidar_seg_fusion
 	url = https://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@github.com/Innervycs/avt_341_lidar_seg_fusion.git

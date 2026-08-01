@@ -3,6 +3,7 @@
 #include "avt_341_nav/perception/layers/polygon_layer.h"
 #include "avt_341_nav/perception/layers/static_grid_layer.h"
 #include "avt_341_nav/perception/layers/camera_layer.h"
+#include "avt_341_nav/perception/layers/camera_seg_pc_layer.hpp"
 #include <algorithm>
 #include "map_msgs/msg/occupancy_grid_update.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
@@ -35,6 +36,9 @@ Costmap::Costmap(
 		std::make_shared<CameraLayer>(
 			node_ref, tf, settings, "camera_layer", compute_time_recorder_,
 			settings.camera_layer),
+		std::make_shared<CameraSegPcLayer>(
+			node_ref, tf, settings, "camera_seg_pc_layer", compute_time_recorder_,
+			settings.camera_seg_pc_layer),
 		std::make_shared<PolygonLayer>(
 			node_ref, tf, settings, "polygon_layer", compute_time_recorder_,
 			settings.polygon_layer),

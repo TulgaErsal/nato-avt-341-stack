@@ -17,6 +17,10 @@
         height: 2290.0
       publish:
         method: 'window'
+    point_cloud_layer:
+      topic: '/avt_341/lidar_detector/cloud_clusters'
+    camera_seg_pc_layer:
+      point_cloud_topic: '/avt_341/lidar_detector/cloud_clusters'
 
 /**/mission_manager_node:
   ros__parameters:

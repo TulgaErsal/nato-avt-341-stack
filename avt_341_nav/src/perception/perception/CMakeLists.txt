@@ -11,6 +11,7 @@ add_executable(
         "layers/costmap_layer.cpp"
         "layers/point_cloud_layer.cpp"
         "layers/camera_layer.cpp"
+        "layers/camera_seg_pc_layer.cpp"
         "layers/polygon_layer.cpp"
         "layers/static_grid_layer.cpp"
         "point_cloud_filter.cpp"

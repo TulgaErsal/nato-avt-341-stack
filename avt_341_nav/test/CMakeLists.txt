@@ -2,6 +2,7 @@ message(STATUS "Building Unit Tests")
 
 find_package(ament_cmake_gtest REQUIRED)
 find_package(ament_cmake_pytest REQUIRED)
+find_package(image_geometry REQUIRED)
 
 # MPC Planner Tests
 find_package(Julia 1.5.4 EXACT QUIET)
@@ -119,6 +120,27 @@ ament_target_dependencies(static_grid_layer_test
   nav_msgs
   std_msgs
   geometry_msgs
+)
+
+# Camera Projection Utility Tests
+# -------------------------------
+message(STATUS "Adding camera projection utility tests")
+ament_add_gtest(camera_projection_utils_test
+  perception/layers/camera_projection_utils_test.cpp
+)
+
+target_include_directories(camera_projection_utils_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(camera_projection_utils_test
+  perception_params_dto
+)
+
+ament_target_dependencies(camera_projection_utils_test
+  image_geometry
+  sensor_msgs
 )
 
 # Object Tracking Reset Tests

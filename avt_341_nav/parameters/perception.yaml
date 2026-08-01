@@ -93,7 +93,7 @@ ros__parameters:
   point_cloud_layer:
     topic:
       type: string
-      default_value: '/avt_341/lidar_detector/cloud_clusters'
+      default_value: 'avt_341/points'
       description: "Primary point-cloud input topic."
     clear_topic:
       type: string
@@ -252,6 +252,40 @@ ros__parameters:
     contribute_occupancy:
       type: bool
       default_value: true
+      description: "Whether the layer contributes occupancy values."
+    contribute_segmentation:
+      type: bool
+      default_value: true
+      description: "Whether the layer contributes segmentation values."
+
+  camera_seg_pc_layer:
+    point_cloud_topic:
+      type: string
+      default_value: 'avt_341/points'
+      description: "Lidar point-cloud topic projected into the segmentation image."
+    segmentation_topic:
+      type: string
+      default_value: ''
+      description: "Raw mono8 segmentation-image topic."
+    info_topic:
+      type: string
+      default_value: ''
+      description: "Camera-info topic for the segmentation camera."
+    use_N_last_scans:
+      type: int
+      default_value: 1
+      description: "Maximum number of spatially separated lidar scans projected into each segmentation image."
+      validation:
+        gt<>: [ 0 ]
+    pc_move_threshold:
+      type: double
+      default_value: 0.25
+      description: "Minimum planar lidar motion between retained scans; zero disables spatial filtering."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    contribute_occupancy:
+      type: bool
+      default_value: false
       description: "Whether the layer contributes occupancy values."
     contribute_segmentation:
       type: bool
