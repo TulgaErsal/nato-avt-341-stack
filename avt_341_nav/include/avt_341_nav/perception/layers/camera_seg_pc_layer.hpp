@@ -42,6 +42,8 @@ namespace avt_341_nav::perception
     private:
         static constexpr double THROTTLE_LOG_PERIOD = 2.0;
         static constexpr std::string_view EXPECTED_SEG_FORMAT = "mono8";
+        /// Scans up to this much newer than the segmentation image may still be projected.
+        static constexpr double SCAN_STAMP_MARGIN_SEC = 0.1;
 
         /// Subscribe when all required input topics are configured.
         void SetupSubscriptions(

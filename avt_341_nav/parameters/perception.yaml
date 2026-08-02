@@ -271,7 +271,7 @@ ros__parameters:
       type: string
       default_value: ''
       description: "Camera-info topic for the segmentation camera."
-    use_N_last_scans:
+    use_n_last_scans:
       type: int
       default_value: 1
       description: "Maximum number of spatially separated lidar scans projected into each segmentation image."

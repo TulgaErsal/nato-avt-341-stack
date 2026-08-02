@@ -51,7 +51,7 @@ TEST(CameraSegPcLayerParameters, DefaultsMatchPublicContract)
         "avt_341/points");
     EXPECT_TRUE(params.camera_seg_pc_layer.segmentation_topic.empty());
     EXPECT_TRUE(params.camera_seg_pc_layer.info_topic.empty());
-    EXPECT_EQ(params.camera_seg_pc_layer.use_N_last_scans, 1);
+    EXPECT_EQ(params.camera_seg_pc_layer.use_n_last_scans, 1);
     EXPECT_DOUBLE_EQ(params.camera_seg_pc_layer.pc_move_threshold, 0.25);
 }
 

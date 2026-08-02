@@ -4,7 +4,6 @@
 #include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/perception/layers/camera_projection_utils.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -31,19 +30,6 @@ namespace avt_341_nav::perception
             float segmentation = 0.0F;
         };
 
-        bool HasFloat32Field(
-            const sensor_msgs::msg::PointCloud2& cloud,
-            const std::string& field_name)
-        {
-            return std::any_of(
-                cloud.fields.begin(), cloud.fields.end(),
-                [&field_name](const sensor_msgs::msg::PointField& field)
-                {
-                    return field.name == field_name
-                        && field.datatype == sensor_msgs::msg::PointField::FLOAT32
-                        && field.count == 1;
-                });
-        }
     }
 
     CameraSegPcLayer::CameraSegPcLayer(
@@ -58,7 +44,7 @@ namespace avt_341_nav::perception
                 "", "", params.contribute_occupancy,
                 params.contribute_segmentation, false),
               projection_tf_(tf),
-              use_n_last_scans_(static_cast<std::size_t>(params.use_N_last_scans)),
+              use_n_last_scans_(static_cast<std::size_t>(params.use_n_last_scans)),
               pc_move_threshold_(params.pc_move_threshold)
     {
         const std::string lidar_frame_in = settings.clear_method.lidar_frame.empty()
@@ -130,18 +116,9 @@ namespace avt_341_nav::perception
     bool CameraSegPcLayer::AddLidarScan(
         const sensor_msgs::msg::PointCloud2::ConstSharedPtr& cloud_msg)
     {
-        if (cloud_msg == nullptr || cloud_msg->header.frame_id.empty())
-        {
-            RCLCPP_WARN_THROTTLE(
-                node_ref_->get_logger(), *node_ref_->get_clock(),
-                THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: lidar scan has no source frame, skipping.");
-            return false;
-        }
 
         const rclcpp::Time scan_stamp(cloud_msg->header.stamp);
-        if (!retained_scans_.empty()
-            && scan_stamp <= rclcpp::Time(retained_scans_.back()->header.stamp))
+        if (!retained_scans_.empty() && scan_stamp <= rclcpp::Time(retained_scans_.back()->header.stamp))
         {
             RCLCPP_WARN_THROTTLE(
                 node_ref_->get_logger(), *node_ref_->get_clock(),
@@ -159,13 +136,7 @@ namespace avt_341_nav::perception
 
         if (pc_move_threshold_ > 0.0)
         {
-            const auto lidar_pose = projection_tf_->lookup_transform(
-                "map", lidar_frame_, scan_stamp);
-            if (lidar_pose.header.frame_id.empty())
-            {
-                return false;
-            }
-
+            const auto lidar_pose = projection_tf_->lookup_transform("map", lidar_frame_, scan_stamp);
             const double lidar_x = lidar_pose.transform.translation.x;
             const double lidar_y = lidar_pose.transform.translation.y;
             if (has_last_retained_lidar_position_
@@ -231,25 +202,8 @@ namespace avt_341_nav::perception
                 width, height, cached_camera_info_.width, cached_camera_info_.height);
             return;
         }
-        if (seg_msg->step < width
-            || seg_msg->data.size() < static_cast<std::size_t>(seg_msg->step) * height)
-        {
-            RCLCPP_WARN_THROTTLE(
-                node_ref_->get_logger(), *node_ref_->get_clock(),
-                THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: segmentation image data is shorter than its dimensions require, skipping.");
-            return;
-        }
 
         const std::string& camera_frame = cached_camera_info_.header.frame_id;
-        if (camera_frame.empty())
-        {
-            RCLCPP_WARN_THROTTLE(
-                node_ref_->get_logger(), *node_ref_->get_clock(),
-                THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: CameraInfo has no optical frame, skipping lidar projection.");
-            return;
-        }
         if (!seg_msg->header.frame_id.empty()
             && seg_msg->header.frame_id != camera_frame)
         {
@@ -278,11 +232,13 @@ namespace avt_341_nav::perception
         }
 
         const rclcpp::Time image_stamp(seg_msg->header.stamp);
+        const rclcpp::Time max_scan_stamp =
+            image_stamp + rclcpp::Duration::from_seconds(SCAN_STAMP_MARGIN_SEC);
         std::vector<sensor_msgs::msg::PointCloud2::ConstSharedPtr> eligible_scans;
         eligible_scans.reserve(retained_scans_.size());
         for (const auto& scan : retained_scans_)
         {
-            if (rclcpp::Time(scan->header.stamp) <= image_stamp)
+            if (rclcpp::Time(scan->header.stamp) <= max_scan_stamp)
             {
                 eligible_scans.push_back(scan);
             }
@@ -304,17 +260,6 @@ namespace avt_341_nav::perception
 
         for (const auto& scan : eligible_scans)
         {
-            if (!HasFloat32Field(*scan, "x")
-                || !HasFloat32Field(*scan, "y")
-                || !HasFloat32Field(*scan, "z"))
-            {
-                RCLCPP_WARN_THROTTLE(
-                    node_ref_->get_logger(), *node_ref_->get_clock(),
-                    THROTTLE_LOG_PERIOD * 1000.0,
-                    "CameraSegPcLayer: lidar cloud must contain scalar FLOAT32 x, y, and z fields, skipping scan.");
-                continue;
-            }
-
             const auto scan_to_camera = projection_tf_->lookup_transform(
                 camera_frame, image_stamp,
                 scan->header.frame_id, rclcpp::Time(scan->header.stamp),
