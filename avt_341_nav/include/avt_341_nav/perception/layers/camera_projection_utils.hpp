@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <string>
 
 #ifdef GTE_ROS_JAZZY
 #include <image_geometry/pinhole_camera_model.hpp>
@@ -32,6 +34,27 @@ inline bool MeetsPlanarScanDistance(
     const double dy = current_y - reference_y;
     return dx * dx + dy * dy
         >= distance_threshold * distance_threshold;
+}
+
+/// Probes the distortion model on the image center pixel; throws
+/// std::runtime_error when the model cannot be used.
+inline void ValidateDistortionModel(
+    const image_geometry::PinholeCameraModel& camera_model,
+    const uint32_t image_width,
+    const uint32_t image_height)
+{
+    try
+    {
+        camera_model.unrectifyPoint(cv::Point2d(
+            0.5 * static_cast<double>(image_width - 1),
+            0.5 * static_cast<double>(image_height - 1)));
+    }
+    catch (const std::exception& exception)
+    {
+        throw std::runtime_error(
+            std::string("camera distortion model cannot be used: ")
+            + exception.what());
+    }
 }
 
 /// Project a camera-frame point to its nearest in-bounds raw image pixel.

@@ -66,7 +66,7 @@ namespace avt_341_nav::perception
             const sensor_msgs::msg::PointCloud2::ConstSharedPtr& cloud_msg);
 
         /// Build and forward a segmented lidar point cloud.
-        void ProcessLidarToPointCloud(
+        void ProcessSegmentation(
             const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg);
 
         image_geometry::PinholeCameraModel camera_model_;

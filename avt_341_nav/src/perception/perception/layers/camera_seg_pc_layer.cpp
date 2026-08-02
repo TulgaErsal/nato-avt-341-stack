@@ -1,5 +1,6 @@
 #include "avt_341_nav/perception/layers/camera_seg_pc_layer.hpp"
 
+#include "avt_341_nav/core/ros_msg_validation.hpp"
 #include "avt_341_nav/core/string_utils.hpp"
 #include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/perception/layers/camera_projection_utils.hpp"
@@ -95,14 +96,23 @@ namespace avt_341_nav::perception
     void CameraSegPcLayer::CameraInfoCallback(
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg)
     {
-        const bool params_changed = camera_model_.fromCameraInfo(msg);
-        if (!camera_info_received_ || params_changed)
+        camera_model_.fromCameraInfo(msg);
+
+        try
         {
-            RCLCPP_INFO(
-                node_ref_->get_logger(),
-                "CameraSegPcLayer: camera model updated (%ux%u)",
-                msg->width, msg->height);
+            camera_projection::ValidateDistortionModel(camera_model_, msg->width, msg->height);
         }
+        catch (const std::exception& exception)
+        {
+            RCLCPP_WARN_THROTTLE(
+                node_ref_->get_logger(), *node_ref_->get_clock(),
+                THROTTLE_LOG_PERIOD * 1000.0,
+                "CameraSegPcLayer: %s Ignoring camera info.",
+                exception.what());
+            camera_info_received_ = false;
+            return;
+        }
+
         cached_camera_info_ = *msg;
         camera_info_received_ = true;
     }
@@ -164,10 +174,10 @@ namespace avt_341_nav::perception
     void CameraSegPcLayer::SegmentationCallback(
         const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg)
     {
-        ProcessLidarToPointCloud(seg_msg);
+        ProcessSegmentation(seg_msg);
     }
 
-    void CameraSegPcLayer::ProcessLidarToPointCloud(
+    void CameraSegPcLayer::ProcessSegmentation(
         const sensor_msgs::msg::Image::ConstSharedPtr& seg_msg)
     {
         if (!camera_info_received_)
@@ -178,59 +188,24 @@ namespace avt_341_nav::perception
                 "CameraSegPcLayer: segmentation image received but no CameraInfo yet, skipping.");
             return;
         }
-        if (seg_msg == nullptr || seg_msg->encoding != EXPECTED_SEG_FORMAT)
-        {
-            const std::string encoding = seg_msg == nullptr ? "none" : seg_msg->encoding;
-            RCLCPP_WARN_THROTTLE(
-                node_ref_->get_logger(), *node_ref_->get_clock(),
-                THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: unsupported segmentation encoding '%s', expected %s.",
-                encoding.c_str(), std::string(EXPECTED_SEG_FORMAT).c_str());
-            return;
-        }
-
-        const uint32_t width = seg_msg->width;
-        const uint32_t height = seg_msg->height;
-        if (width == 0 || height == 0
-            || width != cached_camera_info_.width
-            || height != cached_camera_info_.height)
-        {
-            RCLCPP_WARN_THROTTLE(
-                node_ref_->get_logger(), *node_ref_->get_clock(),
-                THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: segmentation image size (%ux%u) does not match CameraInfo (%ux%u), skipping.",
-                width, height, cached_camera_info_.width, cached_camera_info_.height);
-            return;
-        }
-
-        const std::string& camera_frame = cached_camera_info_.header.frame_id;
-        if (!seg_msg->header.frame_id.empty()
-            && seg_msg->header.frame_id != camera_frame)
-        {
-            RCLCPP_WARN_THROTTLE(
-                node_ref_->get_logger(), *node_ref_->get_clock(),
-                THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: segmentation frame '%s' does not match CameraInfo frame '%s', skipping.",
-                seg_msg->header.frame_id.c_str(), camera_frame.c_str());
-            return;
-        }
 
         try
         {
-            camera_model_.unrectifyPoint(cv::Point2d(
-                0.5 * static_cast<double>(width - 1),
-                0.5 * static_cast<double>(height - 1)));
+            core::ValidateImageWithCameraInfo(seg_msg, cached_camera_info_, EXPECTED_SEG_FORMAT);
         }
         catch (const std::exception& exception)
         {
             RCLCPP_WARN_THROTTLE(
                 node_ref_->get_logger(), *node_ref_->get_clock(),
                 THROTTLE_LOG_PERIOD * 1000.0,
-                "CameraSegPcLayer: camera distortion model cannot be used: %s",
+                "CameraSegPcLayer: %s Skipping segmentation image.",
                 exception.what());
             return;
         }
 
+        const uint32_t width = seg_msg->width;
+        const uint32_t height = seg_msg->height;
+        const std::string& camera_frame = cached_camera_info_.header.frame_id;
         const rclcpp::Time image_stamp(seg_msg->header.stamp);
         const rclcpp::Time max_scan_stamp =
             image_stamp + rclcpp::Duration::from_seconds(SCAN_STAMP_MARGIN_SEC);
