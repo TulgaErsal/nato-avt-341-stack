@@ -154,7 +154,7 @@ def _short_hash(value: str) -> str:
 def safe_path_component(value: str, fallback: str) -> str:
     """Create a readable cross-platform path component from a ROS identifier."""
 
-    safe = value.strip().replace("/", "__").replace("\\", "__")
+    safe = value.strip().replace("/", ".").replace("\\", ".")
     safe = _UNSAFE_PATH_CHARACTERS.sub("_", safe)
     safe = re.sub(r"\s+", "_", safe).strip(" ._")
     if not safe:
@@ -186,7 +186,7 @@ def unique_safe_names(values: Iterable[str], fallback: str) -> Dict[str, str]:
 
 
 def default_output_directory(bag_path: Path) -> Path:
-    """Return the deterministic output directory beside a bag file or directory."""
+    """Return the deterministic output directory inside the bag directory."""
 
-    bag_name = bag_path.name if bag_path.is_dir() else bag_path.stem
-    return bag_path.parent / "{}_compute_times".format(bag_name)
+    bag_directory = bag_path if bag_path.is_dir() else bag_path.parent
+    return bag_directory / "compute_times"

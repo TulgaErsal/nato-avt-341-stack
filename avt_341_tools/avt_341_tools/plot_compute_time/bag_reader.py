@@ -1,9 +1,10 @@
 """ROS 2 metadata discovery and ComputeTimeArray bag deserialization."""
 
+import datetime
 import math
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Sequence, Tuple
 
 from .models import (
     COMPUTE_TIME_ARRAY_TYPE,
@@ -137,6 +138,21 @@ def inspect_bag(bag_path: Path, dependencies: RosDependencies) -> Tuple[Any, Lis
     return metadata, topics
 
 
+def bag_start_nanoseconds(metadata: Any) -> int:
+    """Return the bag recording start time from metadata as epoch nanoseconds."""
+
+    starting_time = getattr(metadata, "starting_time", None)
+    nanoseconds = getattr(starting_time, "nanoseconds", None)
+    if nanoseconds is not None:
+        return int(nanoseconds)
+    if isinstance(starting_time, datetime.datetime):
+        return int(starting_time.timestamp() * 1e9)
+    raise PlotComputeTimeError(
+        "Unable to determine the bag start time from metadata "
+        "(starting_time={!r}).".format(starting_time)
+    )
+
+
 def _default_warning(message: str) -> None:
     print("warning: {}".format(message), file=sys.stderr)
 
@@ -145,9 +161,13 @@ def read_compute_samples(
     bag_path: Path,
     selected_topics: Sequence[ComputeTopic],
     dependencies: RosDependencies,
+    start_timestamp_ns: int,
     warning: Callable[[str], None] = _default_warning,
 ) -> GroupedSamples:
-    """Read, deserialize, validate, and group selected compute-time messages."""
+    """Read, deserialize, validate, and group selected compute-time messages.
+
+    Sample times are reported relative to start_timestamp_ns (the bag start).
+    """
 
     rosbag2_py = dependencies.rosbag2_py
     try:
@@ -167,7 +187,6 @@ def read_compute_samples(
 
     vehicle_by_topic = {topic.topic_name: topic.vehicle_id for topic in selected_topics}
     grouped: GroupedSamples = {}
-    origin_timestamp_ns: Optional[int] = None
     messages_seen = {topic_name: 0 for topic_name in vehicle_by_topic}
     valid_samples_seen = {topic_name: 0 for topic_name in vehicle_by_topic}
     groups_seen: Dict[Tuple[str, str], int] = {}
@@ -183,8 +202,6 @@ def read_compute_samples(
         if topic_name not in vehicle_by_topic:
             continue
         messages_seen[topic_name] += 1
-        if origin_timestamp_ns is None:
-            origin_timestamp_ns = int(bag_timestamp_ns)
 
         try:
             message = dependencies.deserialize_message(
@@ -201,7 +218,7 @@ def read_compute_samples(
         tag = str(message.tag)
         group_key = (vehicle_id, tag)
         groups_seen.setdefault(group_key, 0)
-        relative_time_seconds = (int(bag_timestamp_ns) - origin_timestamp_ns) * 1e-9
+        relative_time_seconds = (int(bag_timestamp_ns) - start_timestamp_ns) * 1e-9
 
         for compute_time in message.compute_times:
             section_id = str(compute_time.section_id)
@@ -247,7 +264,7 @@ def read_compute_samples(
             valid_samples_seen[topic_name] += 1
             groups_seen[group_key] += 1
 
-    if origin_timestamp_ns is None:
+    if not any(messages_seen.values()):
         raise PlotComputeTimeError(
             "The selected compute-time topics contain no messages: {}".format(
                 ", ".join(vehicle_by_topic)

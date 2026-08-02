@@ -11,6 +11,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from avt_341_tools.plot_compute_time.bag_reader import (  # noqa: E402
+    bag_start_nanoseconds,
     inspect_bag,
     load_ros_dependencies,
     read_compute_samples,
@@ -41,7 +42,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "-o",
         "--output-dir",
         type=Path,
-        help="Output root; defaults to <bag-name>_compute_times beside the bag",
+        help="Output root; defaults to a compute_times folder inside the bag directory",
     )
     parser.add_argument(
         "--vehicle-id",
@@ -69,7 +70,10 @@ def run(arguments: argparse.Namespace) -> int:
         return 0
 
     selected_topics = select_compute_topics(available_topics, arguments.vehicle_ids)
-    grouped = read_compute_samples(bag_path, selected_topics, dependencies)
+    start_timestamp_ns = bag_start_nanoseconds(metadata)
+    grouped = read_compute_samples(
+        bag_path, selected_topics, dependencies, start_timestamp_ns
+    )
     output_root = (
         arguments.output_dir.expanduser().resolve()
         if arguments.output_dir is not None
