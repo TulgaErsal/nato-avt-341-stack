@@ -201,6 +201,18 @@ void GoalPointCallback(const geometry_msgs::msg::PointStamped::SharedPtr point_s
     recv_goal_point = true;
 }
 
+void PathWindowCallback(std_msgs::msg::Float64MultiArray::SharedPtr path_msg)
+{
+    if (!is_initialized) return;
+
+    jl_value_t* path_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
+    double* path_arr = const_cast<double*>(path_msg->data.data());
+    jl_array_t *path_arg = jl_ptr_to_array_1d(path_type, path_arr, path_msg->data.size(), 0);
+
+    jl_call1(j_set_path_points, (jl_value_t*)path_arg);
+    CATCH_JULIA_EXCEPTION;
+}
+
 void GoalPointEndOfGlobalPathCallback(const std_msgs::msg::Bool::SharedPtr msg)
 {
     bool flag = msg->data;
@@ -552,6 +564,8 @@ void InitialiseJuliaAPI()
     j_set_state = jl_get_function(mpc_module, "SetState");
     j_set_obstacles = jl_get_function(mpc_module, "SetObstacles");
     j_set_goal_point = jl_get_function(mpc_module, "SetGoalPoint");
+    j_set_path_points = jl_get_function(mpc_module, "SetPathPoints");
+    j_set_path_tracking_mode = jl_get_function(mpc_module, "SetPathTrackingMode");
     j_set_heading = jl_get_function(mpc_module, "SetHeading");
     j_set_speed = jl_get_function(mpc_module, "SetSpeedSetpoint");
     j_set_sinkage = jl_get_function(mpc_module, "SetSinkage");
@@ -579,6 +593,9 @@ void InitialiseJuliaAPI()
     j_set_prediction_time_horizon = jl_get_function(mpc_module, "SetPredictionTimeHorizon");
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
     j_set_max_num_seg = jl_get_function(mpc_module, "SetMaxNumSeg");
+    j_set_max_num_path_pts = jl_get_function(mpc_module, "SetMaxNumPathPts");
+    j_set_path_tracking_sigma = jl_get_function(mpc_module, "SetPathTrackingSigma");
+    j_set_w_path_tracking = jl_get_function(mpc_module, "SetWPathTracking");
     j_set_sigma = jl_get_function(mpc_module, "SetSigma");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
     j_set_max_speed = jl_get_function(mpc_module, "SetMaxSpeed");
@@ -618,6 +635,12 @@ void InitialiseJuliaAPI()
         jl_box_int32(static_cast<int32_t>(mpc_params.max_num_obs));
     jl_value_t *j_max_num_seg =
         jl_box_int32(static_cast<int32_t>(mpc_params.max_num_seg));
+    jl_value_t *j_max_num_path_pts =
+        jl_box_int32(static_cast<int32_t>(mpc_params.max_num_path_pts));
+    jl_value_t *j_path_tracking_sigma =
+        jl_box_float64(mpc_params.path_tracking_sigma);
+    jl_value_t *j_w_path_tracking =
+        jl_box_float64(mpc_params.w_path_tracking);
     jl_value_t *j_sigma =
         jl_box_float64(1.414214 * mpc_params.grid_resolution);
     jl_value_t *j_min_speed = jl_box_float64(mpc_params.min_speed);
@@ -671,6 +694,9 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_prediction_time_horizon, j_prediction_time_horizon);
     jl_call1(j_set_max_num_obs, j_max_num_obs);
     jl_call1(j_set_max_num_seg, j_max_num_seg);
+    jl_call1(j_set_max_num_path_pts, j_max_num_path_pts);
+    jl_call1(j_set_path_tracking_sigma, j_path_tracking_sigma);
+    jl_call1(j_set_w_path_tracking, j_w_path_tracking);
     jl_call1(j_set_sigma, j_sigma);
     jl_call1(j_set_min_speed, j_min_speed);
     jl_call1(j_set_max_speed, j_max_speed);
@@ -725,6 +751,8 @@ void UpdateCostFnWeights(
     mpc_params.w_traversability_cost = params.w_traversability_cost;
     mpc_params.w_final_speed = params.w_final_speed;
     mpc_params.w_final_heading = params.w_final_heading;
+    mpc_params.w_path_tracking = params.w_path_tracking;
+    mpc_params.path_tracking_mode = params.path_tracking_mode;
 
     jl_call1(j_set_w_distance_to_obstacles,
              jl_box_float64(mpc_params.w_distance_to_obstacles));
@@ -740,6 +768,10 @@ void UpdateCostFnWeights(
              jl_box_float64(mpc_params.w_final_speed));
     jl_call1(j_set_w_final_heading,
              jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_w_path_tracking,
+             jl_box_float64(mpc_params.w_path_tracking));
+    jl_call1(j_set_path_tracking_mode,
+             jl_box_bool(mpc_params.path_tracking_mode));
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -772,6 +804,7 @@ int main(int argc, char *argv[])
     auto veh_state_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/veh",1,VehicleStateCallback);
     auto obs_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/obstacle_clusters",1,ObstaclesCallback);
     auto goal_pt_sub = node->create_subscription<geometry_msgs::msg::PointStamped>("avt_341/mpc_goalPoint",1,GoalPointCallback);
+    auto path_window_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/mpc_path_window",1,PathWindowCallback);
     auto goal_end_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
     auto head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
     auto final_head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);

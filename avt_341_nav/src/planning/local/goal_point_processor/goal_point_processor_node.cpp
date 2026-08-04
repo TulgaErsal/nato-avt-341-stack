@@ -16,7 +16,9 @@
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/dto_conversion.h"
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
+#include <algorithm>
 #include <memory>
+#include <vector>
 // Globals
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_steering_angle;
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_steering_rate;
@@ -28,6 +30,7 @@ std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PointStamped>> pub_goalPoi
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_desiredHeading;
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> pub_goalPointIsEnd;
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_finalHeading;
+std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> pub_pathWindow;
 rclcpp::Node::SharedPtr n;
 nav_msgs::msg::Path global_path_input;
 std_msgs::msg::Float64MultiArray veh_input;
@@ -48,6 +51,20 @@ bool useAutoFinalHeading;
 int priorIndex, priorPathLength;
 avt_341_nav::core::vec2 goal;
 bool goal_is_end = false;
+std::vector<double> path_window_points;
+
+// Flat [x0,y0,x1,y1,...] subsample of global_path[start_index..end_index], capped at max_pts.
+std::vector<double> ExtractPathWindow(const nav_msgs::msg::Path& path, int start_index, int end_index, int max_pts) {
+    std::vector<double> window;
+    if (path.poses.empty() || end_index < start_index || max_pts <= 0) return window;
+    int count = end_index - start_index + 1;
+    int stride = std::max(1, (count + max_pts - 1) / max_pts);
+    for (int gp = start_index; gp <= end_index; gp += stride) {
+        window.push_back(path.poses[gp].pose.position.x);
+        window.push_back(path.poses[gp].pose.position.y);
+    }
+    return window;
+}
 
 avt_341_nav::params::mpc_local_planner::Params params;
 
@@ -212,6 +229,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
         } else {
             goal_is_end = false;
         }
+        path_window_points = ExtractPathWindow(global_path, closestIndex, lastIndexConsidered, params.max_num_path_pts);
     }
     else {
 		if (priorUseLeader) { //was follower, now starting to be independent
@@ -252,6 +270,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
 		} else {
 			goal_is_end = false;
 		}
+        path_window_points = ExtractPathWindow(global_path, closestIndex, lastIndexConsidered, params.max_num_path_pts);
     }
 
 	if (!goal_set || params.always_publish_goal) {
@@ -320,7 +339,8 @@ int main(int argc, char* argv[]) {
     pub_desiredHeading = n->create_publisher<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1);
     pub_goalPointIsEnd = n->create_publisher<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path",1);
     pub_finalHeading = n->create_publisher<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1);
- 
+    pub_pathWindow = n->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/mpc_path_window",1);
+
     avt_341_nav::params::mpc_local_planner::ParamsListener param_listener(n);
     params = param_listener.get_params();
 
@@ -355,6 +375,9 @@ int main(int argc, char* argv[]) {
             std_msgs::msg::Float64 ros_desiredHeading;
             ros_desiredHeading.data = desiredHeading;
             pub_desiredHeading->publish(ros_desiredHeading);
+            std_msgs::msg::Float64MultiArray ros_pathWindow;
+            ros_pathWindow.data = path_window_points;
+            pub_pathWindow->publish(ros_pathWindow);
             if (goal_is_end) {
                 float headingToPublish = 0.0f;
                 bool shouldPublish = false;

@@ -102,6 +102,12 @@ jl_function_t* j_set_obstacles = NULL;
 /** @brief Pointer to the Julia function to set the planner goal point. */
 jl_function_t* j_set_goal_point = NULL;
 
+/** @brief Pointer to the Julia function to set the path-tracking window points. */
+jl_function_t* j_set_path_points = NULL;
+
+/** @brief Pointer to the Julia function to toggle goal-tracking vs. path-tracking mode. */
+jl_function_t* j_set_path_tracking_mode = NULL;
+
 /** @brief Pointer to the Julia function to set the planner desired heading. */
 jl_function_t* j_set_heading = NULL;
 
@@ -141,6 +147,9 @@ jl_function_t* j_set_num_col_points = NULL;
 jl_function_t* j_set_prediction_time_horizon = NULL;
 jl_function_t* j_set_max_num_obs = NULL;
 jl_function_t* j_set_max_num_seg = NULL;
+jl_function_t* j_set_max_num_path_pts = NULL;
+jl_function_t* j_set_path_tracking_sigma = NULL;
+jl_function_t* j_set_w_path_tracking = NULL;
 jl_function_t* j_set_sigma = NULL;
 jl_function_t* j_set_min_speed = NULL;
 jl_function_t* j_set_max_speed = NULL;

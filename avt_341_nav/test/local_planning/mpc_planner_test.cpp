@@ -94,6 +94,9 @@ void SetDefaultMPCParameters(jl_module_t* mpc_module) {
     set_float("SetPredictionTimeHorizon", 2.0);
     set_int("SetMaxNumObs", 50);
     set_int("SetMaxNumSeg", 50);
+    set_int("SetMaxNumPathPts", 30);
+    set_float("SetPathTrackingSigma", 2.0);
+    set_float("SetWPathTracking", 50.0);
     set_float("SetSigma", 0.35);
     set_float("SetMinSpeed", 0.5);
     set_float("SetMaxSpeed", 5.0);

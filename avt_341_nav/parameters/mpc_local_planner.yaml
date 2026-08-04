@@ -64,6 +64,22 @@ ros__parameters:
     description: "maximum number of segmentation cells allowed in MPC"
     validation:
       gt<>: [ 0 ]
+  max_num_path_pts:
+    type: int
+    default_value: 30
+    description: "maximum number of global-path window points allowed in MPC (path-tracking mode)"
+    validation:
+      gt<>: [ 0 ]
+  path_tracking_sigma:
+    type: double
+    default_value: 2.0
+    description: "corridor half-width length scale [m] for the path-tracking proximity cost"
+    validation:
+      gt<>: [ 0.0 ]
+  path_tracking_mode:
+    type: bool
+    default_value: false
+    description: "if true, MPC follows the global-path window (path-tracking) instead of the single receding goal point (goal-tracking); runtime-switchable"
   min_speed:
     type: double
     default_value: 0.5
@@ -119,6 +135,10 @@ ros__parameters:
     type: double
     default_value: 100.0
     description: "weight on the terminal heading cost; active only near the end of the global path"
+  w_path_tracking:
+    type: double
+    default_value: 50.0
+    description: "weight on the path-tracking proximity cost in the objective function when path_tracking_mode is enabled"
 
   safety_margin:
     type: double

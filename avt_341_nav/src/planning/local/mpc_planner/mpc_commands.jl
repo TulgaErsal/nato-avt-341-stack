@@ -38,6 +38,9 @@ global est_sink = 0.0
 global new_sinkage_available = false
 global linearSolverId = "ma27"
 global goalPointIsEndOfGlobalPath = false
+global pathTrackingMode = false
+global numPathPts = 0
+global pathPoints = Float64[]
 
 global n=0
 global XL=0
@@ -138,6 +141,16 @@ function SetMaxNumSeg(num_seg::Int32)
 	global maxNumSeg = num_seg
 end
 
+function SetMaxNumPathPts(num_pts::Int32)
+	global maxNumPathPts = num_pts
+	global Xpath = fill(1000.0, maxNumPathPts)
+	global Ypath = fill(0.0, maxNumPathPts)
+end
+
+function SetPathTrackingSigma(sigma_in::Float64)
+	global pathTrackingSigma = sigma_in
+end
+
 function SetSigma(sig::Float64)
 	global sigma = sig
 end
@@ -180,6 +193,10 @@ end
 
 function SetWFinalSpeed(w_final_speed::Float64)
 	global w_finalSpeed = w_final_speed
+end
+
+function SetWPathTracking(w_path_tracking::Float64)
+	global w_pathTrackingCost = w_path_tracking
 end
 
 function SetSafetyMargin(marigin::Float64)
@@ -279,6 +296,26 @@ function SetGoalPoint(x::Float64, y::Float64)
 	global goal = [x, y]
 end
 
+# path: flat [x0,y0,x1,y1,...] window of global-path points ahead of the vehicle
+function SetPathPoints(path::Vector{Float64})
+	global pathPoints = path
+	global numPathPts = Int(length(pathPoints)/2)
+
+	if numPathPts > maxNumPathPts
+		println("Number of path points exceeds limit. Consider increasing maxNumPathPts.")
+	end
+
+	n_fill = min(numPathPts, maxNumPathPts)
+	for i=1:n_fill
+		JuMP.setValue(Xpath_0[i], pathPoints[2*i-1])
+		JuMP.setValue(Ypath_0[i], pathPoints[2*i])
+	end
+	for i=n_fill+1:maxNumPathPts
+		JuMP.setValue(Xpath_0[i], Xpath[i])
+		JuMP.setValue(Ypath_0[i], Ypath[i])
+	end
+end
+
 function SetHeading(theta::Float64)
 	global desiredHeading = theta
 end
@@ -327,6 +364,10 @@ end
 
 function SetGoalPointIsEndOfGlobalPath(flag::Bool)
     global goalPointIsEndOfGlobalPath = flag
+end
+
+function SetPathTrackingMode(flag::Bool)
+    global pathTrackingMode = flag
 end
 
 function GetPath()
@@ -381,6 +422,10 @@ function Setup()
 	global w_yawAccel
 	global w_traversability
 	global w_finalSpeed
+	global maxNumPathPts
+	global pathTrackingSigma
+	global w_pathTrackingCost
+	global pathTrackingCost
 	global cmdLeaderSpeed
 	global distanceToGoal
 	global distanceToObstacles
@@ -407,6 +452,7 @@ function Setup()
 	global obs_radius = 1.414*obstacle_size_meters/2.0
 
 	global n, obs_r, Xobs_0, Yobs_0, cellX, cellY, cellZ, g1, g2, desiredYaw, n_f, n_r
+	global Xpath_0, Ypath_0, w_pathTracking_param
 
 	XL = [NaN, NaN, NaN, NaN, psi_min, sa_min, minSpeed, ax_min]
 	XU = [NaN, NaN, NaN, NaN, psi_max, sa_max, maxSpeed, ax_max]
@@ -452,6 +498,10 @@ function Setup()
 	@NLparameter(n.ocp.mdl, obs_r[i=1:maxNumObs] == Robs[i]);
 	@NLparameter(n.ocp.mdl, Xobs_0[i=1:maxNumObs] == Xobs[i]);
 	@NLparameter(n.ocp.mdl, Yobs_0[i=1:maxNumObs] == Yobs[i]);
+	global Xpath = fill(1000.0, maxNumPathPts)
+	global Ypath = fill(0.0, maxNumPathPts)
+	@NLparameter(n.ocp.mdl, Xpath_0[i=1:maxNumPathPts] == Xpath[i]);
+	@NLparameter(n.ocp.mdl, Ypath_0[i=1:maxNumPathPts] == Ypath[i]);
 	if useSegmentation
 		global cellX0 = 0.
 		global cellY0 = 0.
@@ -483,6 +533,12 @@ function Setup()
 	
 	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((ux[j] / maxSpeed) * (exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2))) for i=1:maxNumObs for j=2:n.ocp.state.pts))
 
+	# Path-tracking corridor cost: soft-min proximity of the trajectory to the path window; progress still comes from the receding-goal endpoint cost
+	@NLparameter(n.ocp.mdl, w_pathTracking_param == 0.0)
+	pathTrackingCost = @NLexpression(n.ocp.mdl,
+		-sum(exp(-((x[j]-Xpath_0[i])^2 + (y[j]-Ypath_0[i])^2)/pathTrackingSigma^2) for i=1:maxNumPathPts for j=2:n.ocp.state.pts)
+	)
+
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
 	deviationFromDesiredFinalSpeed = @NLexpression(n.ocp.mdl, (ux[end] - leader_speed)^2)
@@ -503,11 +559,11 @@ function Setup()
 	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
 
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + w_pathTracking_param*pathTrackingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + w_pathTracking_param*pathTrackingCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + w_pathTracking_param*pathTrackingCost)
 	end
 	n.s.ocp.save = false
 
@@ -573,6 +629,8 @@ function Plan()
 	global final_heading_param
 	global final_heading_w_param
 	global deviation_in_yaw_w_param
+	global pathTrackingMode
+	global w_pathTrackingCost
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -635,6 +693,7 @@ function Plan()
 			JuMP.setValue(final_heading_param, leaderYaw)
 			JuMP.setValue(final_heading_w_param, 0.0)
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			JuMP.setValue(w_pathTracking_param, 0.0)
 			# Speed cap: drive formation error to zero over the prediction horizon
 			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset + sin(leaderYaw) * formationYOffset
 			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset - cos(leaderYaw) * formationYOffset
@@ -686,6 +745,12 @@ function Plan()
 			else
 				JuMP.setValue(final_heading_w_param, 0.0)
 				JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			end
+			# Path-tracking mode toggle: runtime-switchable, no NLP rebuild required
+			if pathTrackingMode
+				JuMP.setValue(w_pathTracking_param, w_pathTrackingCost)
+			else
+				JuMP.setValue(w_pathTracking_param, 0.0)
 			end
 		end
 
