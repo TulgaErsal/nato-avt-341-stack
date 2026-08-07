@@ -101,13 +101,18 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
     }
 
     float adjusted_safety_margin = safety_margin_global_ + (map_res_ * 0.5f);
+    // The soft margin is the radius from which the clearance-penalty cost ramp starts. It is
+    // independent of the hard margin so the two can be tuned separately (e.g. shrink the hard
+    // margin to permit tighter passages while keeping a wide/strong soft-cost ramp).
+    float adjusted_safety_margin_soft = std::max(safety_margin_soft_, safety_margin_global_) + (map_res_ * 0.5f);
     {
         auto recording = RecordSection(planner_sections::EDT);
         ComputeEDT();
     }
 
     if (verbose_) {
-        std::cout << "[FastMarching] Safety margin (input/adjusted): " << safety_margin_global_ << "/" << adjusted_safety_margin << "m" << std::endl;
+        std::cout << "[FastMarching] Safety margin hard (input/adjusted): " << safety_margin_global_ << "/" << adjusted_safety_margin
+                   << "m, soft (input/adjusted): " << safety_margin_soft_ << "/" << adjusted_safety_margin_soft << "m" << std::endl;
     }
 
     shifts_.assign(n_cells, {0.0f, 0.0f});
@@ -149,7 +154,7 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
             if (base_w >= INF) {
                 weights_[i] = INF;
             } else {
-                weights_[i] = base_w + w_distance_ * clearance_penalty(std::max(d, adjusted_safety_margin), adjusted_safety_margin, clearance_penalty_type_);
+                weights_[i] = base_w + w_distance_ * clearance_penalty(std::max(d, adjusted_safety_margin_soft), adjusted_safety_margin_soft, clearance_penalty_type_);
             }
         }
     }
