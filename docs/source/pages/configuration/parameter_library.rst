@@ -456,6 +456,9 @@ described in their own section.
     * - ``width:=400.0``
       - ``/**``
       - Every node declaring ``width``. Only recognized for a parameter name declared by a template.
+    * - ``costmap.geometry:="{width: 400.0, height: 400.0}"``
+      - ``/**``
+      - Every node declaring ``costmap.geometry.width/height``. A mapping attached to a declared parameter-group prefix is flattened below that prefix.
     * - ``**/width:=400.0``
       - ``/**``
       - Every node declaring ``width``.
@@ -500,6 +503,27 @@ is equivalent to the two scalar entries below.
     ros2 launch avt_341_bringup krc.launch.py \
         veh1/costmap_node/costmap.geometry.width:=400.0 \
         veh1/costmap_node/costmap.thresh:=0.75
+
+A bare parameter-group prefix applies the sub-map to every matching node, just
+like the bare scalar parameter shorthand applies a complete parameter name to
+``/**``. For example:
+
+.. code-block:: bash
+
+    ros2 launch avt_341_bringup krc.launch.py \
+        costmap.geometry:="{width: 400.0, height: 300.0}"
+
+is equivalent to:
+
+.. code-block:: bash
+
+    ros2 launch avt_341_bringup krc.launch.py \
+        costmap.geometry.width:=400.0 \
+        costmap.geometry.height:=300.0
+
+If a bare mapping key is also a vehicle id or node name, its selector meaning
+takes precedence. Use an explicit ``**`` selector mapping when that distinction
+would otherwise be ambiguous.
 
 
 .. _regex-node-selectors:

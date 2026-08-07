@@ -7,13 +7,16 @@ exactly one, and parameter names use ``.`` for nesting. Additionally, a
 selector token wrapped in parentheses is a Python regular expression fully
 matching exactly one token, e.g. ``(veh[12])/planner/cruise_speed:=3.0``
 (shells parse ``()[]|`` -- quote such arguments). Parameter names are never
-regular expressions. Three argument forms are supported:
+regular expressions. Four argument forms are supported:
 
 * scalar form -- ``<selector>/<param.name>:=<value>``, e.g.
   ``**/cruise_speed:=9.0`` or ``veh1/planner/cruise_speed:=3.3``
 * mapping form -- ``<selector>:=<yaml mapping>``, e.g.
   ``/veh1/planner:='{cruise_speed: 3.3}'``; the mapping is the selector
   section's ``ros__parameters`` body (nested mappings express parameter groups)
+* bare sub-map form -- ``<param.group>:=<yaml mapping>``, e.g.
+  ``costmap.geometry:='{width: 400.0}'``; shorthand for applying the flattened
+  descendants below that parameter prefix to ``/**``
 * bare form -- ``<param.name>:=<value>`` where the (possibly dotted) name is a
   parameter declared in at least one node template; shorthand for
   ``**/<param.name>:=<value>``, applying to every node that declares the
@@ -22,7 +25,9 @@ regular expressions. Three argument forms are supported:
 
 ROS 2 parameters can never hold mappings, so a mapping value always means
 "section body" and a scalar/list value always means "single parameter"; the two
-forms are unambiguous.
+forms are unambiguous. For a bare mapping key, a known vehicle or node name
+retains its selector meaning; otherwise, a declared parameter-group prefix uses
+the bare sub-map form.
 
 String-typed override values may embed ``$pkg_path{<pkg_name>}`` anywhere in
 the text; each occurrence is replaced with the package's share directory (see
@@ -429,7 +434,7 @@ class ParameterCollection:
         Scans the pre-declaration snapshot for override-shaped arguments (any
         name containing ``/``, starting with ``**``, equal to a vehicle id or
         node name, forming a parenthesized regex token, or naming a parameter
-        declared in one of the node
+        or parameter-group prefix declared in one of the node
         templates), expands them against the vehicle id list and validates
         them against the node templates. Raises RuntimeError for overrides
         that match no launched node or name no parameter declared by any
@@ -447,6 +452,7 @@ class ParameterCollection:
             '/' in key or key.startswith('**')
             or key.strip('/') in vehicles or key in self._node_specs
             or self._is_declared_param(key)
+            or self._is_declared_param_prefix(key)
             # a parenthesized token can never be an ordinary launch argument,
             # so claim it as an override and let resolution report any problem
             or is_regex_token(key.strip('/'))
@@ -455,6 +461,31 @@ class ParameterCollection:
     def _is_declared_param(self, name: str) -> bool:
         """Whether at least one node template declares the (dot-nested) parameter."""
         return any(name in specs for specs in self._node_specs.values())
+
+    def _is_declared_param_prefix(self, prefix: str) -> bool:
+        """Whether a dotted prefix contains a parameter declared by a template."""
+        stem = prefix + '.'
+        return bool(prefix) and any(
+            name.startswith(stem)
+            for specs in self._node_specs.values()
+            for name in specs
+        )
+
+    def _is_bare_param_prefix(self, key: str, vehicles: List[str]) -> bool:
+        """Whether a mapping key is an implicit-global parameter group.
+
+        Known vehicle and node names retain their existing selector meaning.
+        An explicit selector (a slash, wildcard or regex token) is likewise
+        never reinterpreted as a parameter prefix.
+        """
+        return (
+            '/' not in key
+            and '*' not in key
+            and key.strip('/') not in vehicles
+            and key not in self._node_specs
+            and not is_regex_token(key.strip('/'))
+            and self._is_declared_param_prefix(key)
+        )
 
     def resolve(self, cli_args: 'OrderedDict[str, str]', vehicle_ids: List[str]) -> ResolvedOverrides:
         """Pure resolution core of :meth:`resolve_cli_overrides` (testable without a context)."""
@@ -508,6 +539,12 @@ class ParameterCollection:
         except yaml.YAMLError:
             value = None  # not yaml: can only be a verbatim string parameter value
         if isinstance(value, dict):
+            # A bare declared group is a parameter-prefix sub-map applying to
+            # every node. Prefixing occurs before validation, so each flattened
+            # descendant is still checked against the matched node templates.
+            if self._is_bare_param_prefix(key, vehicles):
+                return '/**', _flatten_value_mapping(
+                    value, key, prefix=key + '.'), False
             # mapping form: the whole key is the node selector
             if set(value) == {PARAMETERS_ROOT_KEY}:
                 value = value[PARAMETERS_ROOT_KEY]
@@ -523,7 +560,9 @@ class ParameterCollection:
                 or any(c in param_name for c in '*()')):
             raise RuntimeError(
                 f"Malformed parameter override '{key}:={raw_value}': expected "
-                "'<node-selector>/<param.name>:=<value>' or '<node-selector>:=<yaml mapping>'"
+                "'<node-selector>/<param.name>:=<value>', "
+                "'<node-selector>:=<yaml mapping>', or "
+                "'<param.group>:=<yaml mapping>'"
             )
         selector = _normalize_selector(selector_text, vehicles)
         return selector, {param_name: raw_value}, True

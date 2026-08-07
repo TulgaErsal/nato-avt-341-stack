@@ -88,6 +88,10 @@ ros2 launch avt_341_param_lib_example client.launch.py **/cruise_speed:=9.0 veh1
 # Mapping form: the selector's ros__parameters body as a yaml mapping
 ros2 launch avt_341_param_lib_example client.launch.py veh1:="{cruise_speed: 3.3, planner_mode: graph}"
 
+# Bare parameter-group sub-map: flatten below region.extents and apply to all
+# nodes; only mixin_ex declares these parameters, so the others stay unchanged
+ros2 launch avt_341_param_lib_example client.launch.py region.extents:="{width: 50.0, res: 0.5}"
+
 # List the available override arguments (each name is valid override syntax)
 ros2 launch avt_341_param_lib_example client.launch.py -s
 ```

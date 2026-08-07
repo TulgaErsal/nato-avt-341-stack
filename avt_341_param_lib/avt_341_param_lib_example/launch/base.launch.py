@@ -8,6 +8,7 @@ runtime parameter yaml files. Examples:
   veh1/planner/cruise_speed:=7.0           planner node of one agent
   veh1:='{cruise_speed: 3.3}'              all nodes of one agent (mapping form)
   /veh1/planner:='{planner_mode: graph}'   absolute selector, mapping form
+  region.extents:='{width: 50.0, res: 0.5}' bare parameter-group sub-map, all agents
   '(veh[12])/planner/cruise_speed:=6.0'    regex selector token (quote for the shell)
 
 Per-node override priority (later wins, per parameter):

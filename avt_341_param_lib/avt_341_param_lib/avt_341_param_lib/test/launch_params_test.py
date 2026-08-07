@@ -240,6 +240,32 @@ def test_nested_template_launch_overrides_use_dotted_names():
     assert overrides.for_node('/veh2/nested_node') == expected
 
 
+def test_nested_template_bare_parameter_prefix_mapping_applies_globally():
+    collection = ParameterCollection.from_node_templates({
+        'nested_node': TEMPLATE_NESTED,
+    })
+    overrides = collection.resolve(OrderedDict([
+        ('costmap.geometry', '{res: 0.5, width: 252.0}'),
+    ]), VEHICLES)
+
+    expected = {
+        'costmap.geometry.res': 0.5,
+        'costmap.geometry.width': 252.0,
+    }
+    assert overrides.for_node('/veh1/nested_node') == expected
+    assert overrides.for_node('/veh2/nested_node') == expected
+
+
+def test_nested_template_bare_parameter_prefix_mapping_rejects_unknown_leaf():
+    collection = ParameterCollection.from_node_templates({
+        'nested_node': TEMPLATE_NESTED,
+    })
+    with pytest.raises(RuntimeError, match='costmap.geometry.depth'):
+        collection.resolve(OrderedDict([
+            ('costmap.geometry', '{depth: 10.0}'),
+        ]), VEHICLES)
+
+
 @pytest.mark.parametrize(
     'bad_name',
     [
@@ -955,6 +981,25 @@ def test_resolve_cli_overrides_accepts_bare_parameter_names():
     assert overrides.for_node('/veh1/planner') == {'cruise_speed': 4.5}
     assert overrides.for_node('/veh2/controller') == {'cruise_speed': 4.5}
     assert overrides.for_node('/veh1/sensor') == {}
+
+
+def test_resolve_cli_overrides_accepts_bare_parameter_prefix_mapping():
+    pargs = ParameterCollection.from_node_templates({
+        'nested_node': TEMPLATE_NESTED,
+    })
+    context = FakeContext(OrderedDict([
+        ('vehicle_ids', '[veh1, veh2]'),
+        ('costmap.geometry', '{res: 0.5, width: 252.0}'),
+    ]))
+    pargs._snapshot_cmd_args(context)
+    overrides = pargs.resolve_cli_overrides(context, VEHICLES)
+
+    expected = {
+        'costmap.geometry.res': 0.5,
+        'costmap.geometry.width': 252.0,
+    }
+    assert overrides.for_node('/veh1/nested_node') == expected
+    assert overrides.for_node('/veh2/nested_node') == expected
 
 
 def test_resolve_cli_overrides_accepts_regex_keys():

@@ -35,6 +35,7 @@ pargs = ParameterCollection.from_node_templates({
     'planner': os.path.join(PARAMS_DIR, 'nav.yaml'),
     'controller': os.path.join(PARAMS_DIR, 'nav.yaml'),
     'sensor': os.path.join(PARAMS_DIR, 'sensor.yaml'),
+    'mixin_ex': os.path.join(PARAMS_DIR, 'mixin_ex.yaml'),
 })
 
 
