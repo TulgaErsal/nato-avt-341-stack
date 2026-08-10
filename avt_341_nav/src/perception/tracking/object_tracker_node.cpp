@@ -64,7 +64,6 @@ namespace avt_341_nav {
 namespace perception {
 TrackerSensorContext context_;
 namespace {
-
 // Compute time section ids. Obstacle detection is recorded as a real parent rather than being
 // synthesized from its children, so that the work not covered by a child (transforming the incoming
 // cloud, fromROSMsg, the transform to the fixed frame) shows up as parent minus children.
@@ -452,6 +451,8 @@ void ObjectTrackerNode::TrackingTimerCallback() {
         RCLCPP_INFO(get_logger(), "Reset complete.");
     }
 
+    context_.obstacle_markers = &latest_obstacle_markers_;
+    context_.has_obstacle_markers = has_obstacle_markers_;
     context_.obstacle_markers = &latest_obstacle_markers_;
     context_.has_obstacle_markers = has_obstacle_markers_;
     context_.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;

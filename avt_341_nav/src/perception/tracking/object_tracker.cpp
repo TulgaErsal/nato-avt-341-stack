@@ -266,6 +266,63 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                 last_lidar_world_pos_ = coord_transformer_.Transform(
                     marker_frame,
                     settings_.frames.world_frame, marker_pos);
+            if (current_yaw_info_ > (0.11)) // try improved pose (0.1 was 1 / (3.14*3.14 / 142))
+            {
+                const auto q_w2b = coord_transformer_.LookupRotation(
+                    marker_frame, settings_.frames.world_frame);
+                Eigen::Vector3d euler = q_w2b->toRotationMatrix().eulerAngles(0, 1, 2);
+                float cloud_yaw = euler(2);
+                pcl::CropBox<pcl::PointXYZ> cropboxFilter(true);
+                Eigen::Vector4f min_pt(-bounding_box_size_.x()/2.0, -bounding_box_size_.y() / 2.0, -bounding_box_size_.z() / 2.0, 1.0);
+                Eigen::Vector4f max_pt(bounding_box_size_.x() / 2.0, bounding_box_size_.y() / 2.0, bounding_box_size_.z() / 2.0, 1.0);
+
+                Eigen::Vector3d translation_d = coord_transformer_.Transform(
+                    settings_.frames.camera_frame, settings_.frames.world_frame, bounding_box_centroid_);
+                Eigen::Vector3f translation = marker_pos.cast<float>(); // translation_d.
+                cropboxFilter.setInputCloud(context.current_cluster);
+
+                cropboxFilter.setTranslation(translation);
+				Eigen::Vector3d bbox_eulerd = bounding_box_orientation_.toRotationMatrix().eulerAngles(0, 1, 2);
+				Eigen::Vector3f bbox_euler = bbox_eulerd.cast<float>();
+				cropboxFilter.setRotation(bbox_euler);
+                cropboxFilter.setMin(min_pt);
+                cropboxFilter.setMax(max_pt);
+                pcl::PointCloud<pcl::PointXYZ>::Ptr best_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+                cropboxFilter.filter(*best_cluster);
+                Eigen::Vector3d bounding_box_lidar = coord_transformer_.Transform(
+                    settings_.frames.camera_frame, 
+                    marker_frame, bounding_box_centroid_); //let ImprovePoseMeasurement work in marker-space
+                Eigen::Vector3d improved_centroid;
+                double improved_yaw(old_yaw);
+                Eigen::Matrix3d R_improved;
+                R_improved = ObjectTracker::ImprovePoseMeasurement(best_cluster,
+                    bounding_box_lidar,
+					marker_frame, settings_.frames.camera_frame, old_yaw, cloud_yaw, improved_yaw);
+
+                bounding_box_orientation_ = Eigen::Quaterniond(
+                    cos(improved_yaw / 2), 0.0,
+                    0.0, sin(improved_yaw / 2));
+                yaw_info_ = current_yaw_info_ + 100.0 / R_improved(2, 2);
+                last_reliable_yaw_ = (100.0 / R_improved(2, 2) * improved_yaw + current_yaw_info_ * old_yaw) /
+                    (yaw_info_);
+                last_lidar_world_pos_ = coord_transformer_.Transform(
+                    marker_frame,
+                    settings_.frames.world_frame, bounding_box_centroid_);// improved_centroid);
+                RCLCPP_INFO(logger_,
+                    "LIDAR_ONLY: improved position  "
+                    "(%.2f, %.2f, %.2f) camera-frame.",
+                    bounding_box_centroid_.x(),
+                    bounding_box_centroid_.y(),
+                    bounding_box_centroid_.z());
+            }
+            else {
+                last_lidar_world_pos_ = coord_transformer_.Transform(
+                    marker_frame,
+                    settings_.frames.world_frame, marker_pos);
+                RCLCPP_INFO(logger_,
+                    "LIDAR_ONLY: not improved because current_yaw_info_ =  %.2f not > %.2f ", current_yaw_info_, (1 / (3.14 * 3.14 / 142)));
+            }
+            // <-- JN Improve 
                 RCLCPP_INFO(logger_,
                     "LIDAR_ONLY: not improved because current_yaw_info_ =  %.2f not > %.2f ", current_yaw_info_, (1 / (3.14 * 3.14 / 142)));
             }
@@ -1064,6 +1121,128 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
     // pcl::transformPointCloud(*cloud, *transformed, transformation);
 
 }
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_f(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*object_cluster, *inliers_f, *cloud_f);
+
+        pcl::compute3DCentroid(*cloud_f, centroid_f);
+        pcl::computeCovarianceMatrix(*object_cluster, *inliers_f, centroid_f, covariance_matrix_f);
+        has_flank_plane_ = true;
+
+    }
+    else {
+
+        has_flank_plane_ = false;
+    }
+    if (has_end_plane_) {
+
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver(covariance_matrix_e);
+        Eigen::Matrix3d eigenVectors = eigen_solver.eigenvectors();
+        eigenVectors.col(2) = eigenVectors.col(0).cross(eigenVectors.col(1));  // ensure right hand matrix
+        Eigen::Vector3d eigenValues = eigen_solver.eigenvalues();
+        int r_d, c_d;
+        double plane_deviation2_e = eigenValues.minCoeff(&r_d, &c_d);    // [s, i] = min(R(:)); [r, c] = ind2sub(size(R), i);
+        Eigen::Vector3d n_hat = eigenVectors.col(c_d); // plane normal
+        n_hat(2) = 0.0; //vertical plane
+
+        n_hat.normalize();
+        Eigen::Vector3d z_hat(0.0, 0.0, 1.0);
+        Eigen::Vector3d heading_direction3d = heading_direction.cast <double>();
+        double direction_test = n_hat.dot(heading_direction3d); //n_hat mostly in heading_direction
+        if (direction_test < 0) n_hat = -n_hat;
+        // TODO sanity check on direction_test size not just sign
+        Eigen::Vector3d y_hat = z_hat.cross(n_hat);
+
+        Eigen::Vector4d delta(measured_centroid.x() - centroid_e.x(),
+            measured_centroid.y() - centroid_e.y(),
+            measured_centroid.z() - centroid_e.z(), 1.0);
+
+        double plane_deviation2_f;
+        if (has_flank_plane_) // can improve n_hat
+        {
+ 
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver_f(covariance_matrix_f);
+            Eigen::Matrix3d eigenVectors_f = eigen_solver_f.eigenvectors();
+            eigenVectors_f.col(2) = eigenVectors_f.col(0).cross(eigenVectors_f.col(1));  // ensure right hand matrix
+            Eigen::Vector3d eigenValues_f = eigen_solver_f.eigenvalues();
+            int r_f, c_f;
+            plane_deviation2_f = eigenValues_f.minCoeff(&r_f, &c_f);    // [s, i] = min(R(:)); [r, c] = ind2sub(size(R), i);
+            Eigen::Vector3d y_hat = eigenVectors_f.col(c_f); // flank plane normal new y_hat
+            y_hat(2) = 0.0; //vertical plane
+            y_hat.normalize();
+            Eigen::Vector3d z_hat(0.0, 0.0, 1.0);
+            Eigen::Vector3d n_hat = y_hat.cross(z_hat);
+            double direction_test = n_hat.dot(heading_direction3d); //n_hat mostly in heading_direction
+            if (direction_test < 0) {
+                n_hat = -n_hat;
+                y_hat = -y_hat;
+            }        }
+        Eigen::Matrix4d endTransform(Eigen::Matrix4d::Identity());
+        endTransform.block(0, 0, 1, 3) = n_hat;
+        endTransform.block(1, 0, 1, 3) = y_hat;
+        endTransform.block(2, 0, 1, 3) = z_hat;
+
+        Eigen::Vector4d delta_b = endTransform.inverse() * delta; // delta in body coordinates
+        double rear_to_wheel = 0.0;// 1.5;
+        double car_length = 0.0;
+        Eigen::Vector3d plane_center(centroid_e.x(), centroid_e.y(), centroid_e.z());
+        if (delta_b(0) > 0.0) // rear end since pointcloud centroid in front of plane 
+            improved_centroid = plane_center; // +rear_to_wheel * n_hat;
+        else //front measured
+            improved_centroid = plane_center; // -(car_length - rear_to_wheel) * n_hat;
+        improved_yaw = atan2(n_hat(1), n_hat(0));
+
+        // setup clouds for information calculation
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr transformed(new pcl::PointCloud<pcl::PointXYZ>);
+        double info_plane = 0;
+
+        Eigen::Vector4d centroid; //local centroid
+        if (has_flank_plane_) {
+            pcl::copyPointCloud(*object_cluster, *inliers_f, *cloud);
+            pcl::transformPointCloud(*cloud, *transformed, endTransform);
+            pcl::compute3DCentroid(*transformed, centroid);
+            double s2 = plane_deviation2_f; // estimated sigma of plane points
+            for (std::size_t idx = 0; idx < transformed->points.size(); idx++) {
+                info_plane += (transformed->points[idx].x - centroid.x()) * 1 / s2 *
+                    (transformed->points[idx].x - centroid.x()); //flank plane along local x-direction 
+            }
+        }
+        else {
+            pcl::copyPointCloud(*object_cluster, *inliers_e, *cloud);
+            pcl::transformPointCloud(*cloud, *transformed, endTransform);
+            pcl::compute3DCentroid(*transformed, centroid);
+            double s2 = plane_deviation2_e; // estimated sigma of plane points
+            for (std::size_t idx = 0; idx < transformed->points.size(); idx++) {
+                info_plane += (transformed->points[idx].y - centroid.y()) * 1 / s2 *
+                    (transformed->points[idx].y - centroid.y()); //end plane along local y-direction 
+            }
+        }
+        Eigen::Matrix4d R_b(Eigen::Matrix4d::Identity());
+        R_b(0, 0) = 0.2 * 0.2;
+        R_b(1, 1) = 0.5 * 0.5;
+        improved_yaw = -platform_yaw + improved_yaw;
+        if (info_plane > 0) {
+            R_b(2, 2) = 1 / info_plane;
+            // ugly sideeffect on global because Eigen referencing is beyond me right now
+			 bounding_box_centroid_ = coord_transformer_.Transform(
+				source_frame,
+				target_frame, improved_centroid);
+        }
+		else {
+			R_b(2, 2) = 30 * 30;
+		}
+       
+        Eigen::Matrix4d R4 = endTransform.inverse() * R_b * endTransform;
+        R = R4.block(0, 0, 3, 3);
+
+    }
+    return R;
+
+    //pcl::PCDWriter::writeASCII(file_name, object_cluster,
+    //		origin = Eigen::Vector4f::Zero(), orientation = Eigen::Quaternionf::Identity(), 8)
+    // pcl::transformPointCloud(*cloud, *transformed, transformation);
+
+}
 void ObjectTracker::PublishOdometry() {
     UpdateHeadingHold();
 
@@ -1136,6 +1315,10 @@ void ObjectTracker::PublishDetection3D() {
     detection_publisher_->publish(detection_message);
 }
 
+	// JN suggestion for tracker input given acces to filter_ and a function getMu in filter_
+	//  mu = filter_.getMu();
+	//  P = filter_.getPoseCovariance();
+	// if  (mu[2]>0.5 & P(0,0)<2.0 & P(1,1)<2.0) //2.0 and 0.5 should be parameters
 	// JN suggestion for tracker input given acces to filter_ and a function getMu in filter_
 	//  mu = filter_.getMu();
 	//  P = filter_.getPoseCovariance();
