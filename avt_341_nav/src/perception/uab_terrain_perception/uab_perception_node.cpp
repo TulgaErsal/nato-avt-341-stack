@@ -27,6 +27,8 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -471,13 +473,14 @@ void GetCostmapFromMatlab(float width_cells,
     mwArray mw_debug_vis_segmentation(static_cast<double>(debug_vis_segmentation));
 
     std::atomic<bool> call_finished{false};
-    std::thread watchdog([&call_finished]()
+    std::mutex watchdog_mutex;
+    std::condition_variable watchdog_cv;
+    std::thread watchdog([&]()
     {
+        std::unique_lock<std::mutex> lock(watchdog_mutex);
         int waited = 0;
-        while (!call_finished.load())
+        while (!watchdog_cv.wait_for(lock, std::chrono::seconds(5), [&] { return call_finished.load(); }))
         {
-            std::this_thread::sleep_for(std::chrono::seconds(5));
-            if (call_finished.load()) break;
             waited += 5;
             std::cerr << "perception_wrapper has not returned after " << waited << "s" << std::endl;
         }
@@ -545,7 +548,11 @@ void GetCostmapFromMatlab(float width_cells,
         std::cerr << "Failed to decode debug segmentation mask. " << e.what() << std::endl;
         seg_img = cv::Mat();
     }
-    call_finished = true;
+    {
+        std::lock_guard<std::mutex> lock(watchdog_mutex);
+        call_finished = true;
+    }
+    watchdog_cv.notify_one();
     watchdog.join();
 }
 
@@ -787,7 +794,6 @@ int main(int argc, char *argv[])
                 seg_img
                 );
 
-
             //update the terrain grid with the new cell values. MATLAB's sub2ind (GridBuilder.m)
             //returns 1-based linear indices; convert to 0-based before indexing.
             int c = 0;
@@ -889,7 +895,6 @@ int main(int argc, char *argv[])
                     std::cerr << "OpenCV failed to build debug segmentation image: " << e.what() << std::endl;
                 }
             }
-
         }
 
         try
