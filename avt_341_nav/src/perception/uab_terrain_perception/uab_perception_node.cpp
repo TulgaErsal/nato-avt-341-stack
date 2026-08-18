@@ -24,6 +24,9 @@
 #include <vector>
 #include <array>
 #include <math.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -381,7 +384,8 @@ void GetCostmapFromMatlab(float width_cells,
     };
 
     bool received_tform = false;
-    while (!received_tform)
+    auto last_wait_log = std::chrono::steady_clock::now();
+    while (!received_tform && rclcpp::ok())
     {
         try
         {
@@ -405,11 +409,25 @@ void GetCostmapFromMatlab(float width_cells,
                                   "(non-finite or non-unit-norm rotation); retrying." << std::endl;
                 }
             }
+            else
+            {
+                auto now = std::chrono::steady_clock::now();
+                if (std::chrono::duration<double>(now - last_wait_log).count() >= 5.0)
+                {
+                    std::cerr << "Still waiting on transform " << lidar_frame_id << " -> " << odom_frame_id
+                              << " and " << lidar_frame_id << " -> " << camera_frame_id << std::endl;
+                    last_wait_log = now;
+                }
+            }
         }
         catch (const tf2::TransformException &ex)
         {
             std::cout << "TF lookup failed: " << ex.what() << std::endl;
         }
+    }
+    if (!rclcpp::ok())
+    {
+        return;
     }
 
     //odometry
@@ -451,6 +469,19 @@ void GetCostmapFromMatlab(float width_cells,
 
     //when set, the wrapper returns the (small) segmentation image for debug visualization
     mwArray mw_debug_vis_segmentation(static_cast<double>(debug_vis_segmentation));
+
+    std::atomic<bool> call_finished{false};
+    std::thread watchdog([&call_finished]()
+    {
+        int waited = 0;
+        while (!call_finished.load())
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            if (call_finished.load()) break;
+            waited += 5;
+            std::cerr << "perception_wrapper has not returned after " << waited << "s" << std::endl;
+        }
+    });
 
     try
     {
@@ -514,6 +545,8 @@ void GetCostmapFromMatlab(float width_cells,
         std::cerr << "Failed to decode debug segmentation mask. " << e.what() << std::endl;
         seg_img = cv::Mat();
     }
+    call_finished = true;
+    watchdog.join();
 }
 
 void BuildOccupancyGrid(nav_msgs::msg::OccupancyGrid &grid,
@@ -601,8 +634,41 @@ void ResetCallback(const std_msgs::msg::String::SharedPtr msg)
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    node = rclcpp::Node::make_shared("uab_perception_node");
-    tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
+
+    rclcpp::on_shutdown([]()
+    {
+        std::thread([]()
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cerr << "uab_perception_node: still running 5s after shutdown was requested "
+                         "(likely blocked in the Matlab perception call); forcing exit." << std::endl;
+            std::_Exit(1);
+        }).detach();
+    });
+
+    if (!mclInitializeApplication(NULL, 0))
+    {
+        std::cerr << "Failed to initialize Matlab Runtime" << std::endl;
+        return -1;
+    }
+
+    if (!lib_uab_perception_wrapperInitialize())
+    {
+        std::cerr << "Failed to initialize perception_wrapper package" << std::endl;
+        return -1;
+    }
+
+    try
+    {
+        node = rclcpp::Node::make_shared("uab_perception_node");
+        tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "uab_perception_node: node construction failed (likely shutdown racing "
+                     "startup): " << e.what() << std::endl;
+        return rclcpp::ok() ? -1 : 0;
+    }
 
     avt_341_nav::params::uab_perception::ParamsListener param_listener(node);
     const auto params = param_listener.get_params();
@@ -641,20 +707,6 @@ int main(int argc, char *argv[])
         seg_overlay_pub = node->create_publisher<sensor_msgs::msg::Image>(seg_overlay_topic, 1);
         std::cout << "debug_vis_segmentation enabled. Publishing debug topics: "
                   << seg_topic << ", " << seg_overlay_topic << std::endl;
-    }
-
-    //initialize matlab runtime
-    if (!mclInitializeApplication(NULL, 0))
-    {
-        std::cerr << "Failed to initialize Matlab Runtime" << std::endl;
-        return -1;
-    }
-
-    //initialize uab matlab perception model
-    if(!lib_uab_perception_wrapperInitialize())
-    {
-        std::cerr << "Failed to initialize perception_wrapper package" << std::endl;
-        return -1;
     }
 
     const int width_cells =
@@ -839,9 +891,22 @@ int main(int argc, char *argv[])
             }
 
         }
-        rclcpp::spin_some(node);
+
+        try
+        {
+            if (rclcpp::ok())
+            {
+                rclcpp::spin_some(node);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Ignoring exception from spin_some during shutdown: " << e.what() << std::endl;
+        }
         rate.sleep();
     }
+
+    tf.reset();
 
     tf_listener.reset();
     tf_buffer.reset();
