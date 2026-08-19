@@ -48,8 +48,8 @@
         x: 0.5
         y: 0.5
       publish:
-        max_grid_width: 800.0
-        max_grid_height: 800.0
+        max_grid_width: 400.0
+        max_grid_height: 400.0
     clear_method:
       voxel_height_res: 1.0
       obj_range_filter: 0.5

@@ -37,9 +37,12 @@
       values:
         - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/runtime/glnxa64"
         - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/bin/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/sys/os/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/extern/bin/glnxa64"
         - "$env_var{LD_LIBRARY_PATH:-}"
+    LD_PRELOAD:
+      separator: ":"
+      values:
+        - "/usr/lib/x86_64-linux-gnu/libxml2.so.2"
+        - "/usr/lib/x86_64-linux-gnu/libtiff.so.5"
 
 /**/sae_net_node:
   remappings:
