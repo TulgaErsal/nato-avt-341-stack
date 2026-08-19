@@ -19,7 +19,7 @@ function(DownloadLinuxSharedLibrary)
     file(DOWNLOAD
     "https://www.dropbox.com/scl/fi/j30v2t7kcnoqyqlgeukeg/lib_uab_perception_wrapper.so?rlkey=rj94pxbfr0d37xj07kdkadsxb&st=vcsa723v&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.so"
-    EXPECTED_HASH SHA256=a07fdd016a6030873b666f4c1f5838aee8a168be3282a3eeb569603fa66a5b7c
+    EXPECTED_HASH SHA256=55ff07bd22f4b121e01c8018c1152ce4f82bfa7a9912c09563bf1a199dd8a8bd
     SHOW_PROGRESS)
 endfunction(DownloadLinuxSharedLibrary)
 
