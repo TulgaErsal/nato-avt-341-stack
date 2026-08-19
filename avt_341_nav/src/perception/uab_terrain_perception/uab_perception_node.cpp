@@ -24,6 +24,11 @@
 #include <vector>
 #include <array>
 #include <math.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -293,10 +298,22 @@ static mwArray tfToMwArray(const geometry_msgs::msg::TransformStamped &tf)
 static cv::Mat segMaskToMat(mwArray &mw_mask)
 {
     mwArray dims = mw_mask.GetDimensions();
+    if (dims.NumberOfElements() != 3)
+    {
+        throw cv::Exception(0, "expected a 3-D HxWx3 segmentation mask",
+                             "segMaskToMat", __FILE__, __LINE__);
+    }
     mwArray height_arr = dims(1, 1);
     mwArray width_arr = dims(1, 2);
+    mwArray channels_arr = dims(1, 3);
     const int height = height_arr;
     const int width = width_arr;
+    const int num_channels = channels_arr;
+    if (num_channels != 3 || height <= 0 || width <= 0)
+    {
+        throw cv::Exception(0, "expected a 3-D HxWx3 segmentation mask",
+                             "segMaskToMat", __FILE__, __LINE__);
+    }
     const int num_pixels = height * width;
 
     std::vector<uint8_t> buf(static_cast<size_t>(num_pixels) * 3);
@@ -354,22 +371,65 @@ void GetCostmapFromMatlab(float width_cells,
                             bool debug_vis_segmentation,
                             cv::Mat &seg_img)
 {
+    auto isValidTransform = [](const geometry_msgs::msg::TransformStamped &tf) -> bool
+    {
+        const auto &t = tf.transform.translation;
+        const auto &q = tf.transform.rotation;
+        if (!std::isfinite(t.x) || !std::isfinite(t.y) || !std::isfinite(t.z) ||
+            !std::isfinite(q.x) || !std::isfinite(q.y) || !std::isfinite(q.z) || !std::isfinite(q.w))
+        {
+            return false;
+        }
+        const double norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+        //unit-norm quaternion expected; e.g. 0 from a default-constructed transform is invalid
+        return std::abs(norm - 1.0) < 0.05;
+    };
+
     bool received_tform = false;
-    while (!received_tform)
+    auto last_wait_log = std::chrono::steady_clock::now();
+    while (!received_tform && rclcpp::ok())
     {
         try
         {
-            if (tf_buffer->canTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)))
+            if (tf_buffer->canTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)) &&
+                tf_buffer->canTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero, tf2::durationFromSec(1.0)))
             {
-                lidar_to_base_link_tf = tf_buffer->lookupTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero);
-                lidar_to_camera_tf = tf_buffer->lookupTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero);
-                received_tform = true;
+                geometry_msgs::msg::TransformStamped new_lidar_to_base_link_tf =
+                    tf_buffer->lookupTransform(odom_frame_id, lidar_frame_id, tf2::TimePointZero);
+                geometry_msgs::msg::TransformStamped new_lidar_to_camera_tf =
+                    tf_buffer->lookupTransform(camera_frame_id, lidar_frame_id, tf2::TimePointZero);
+
+                if (isValidTransform(new_lidar_to_base_link_tf) && isValidTransform(new_lidar_to_camera_tf))
+                {
+                    lidar_to_base_link_tf = new_lidar_to_base_link_tf;
+                    lidar_to_camera_tf = new_lidar_to_camera_tf;
+                    received_tform = true;
+                }
+                else
+                {
+                    std::cerr << "Rejected degenerate lidar_to_base_link/lidar_to_camera transform "
+                                  "(non-finite or non-unit-norm rotation); retrying." << std::endl;
+                }
+            }
+            else
+            {
+                auto now = std::chrono::steady_clock::now();
+                if (std::chrono::duration<double>(now - last_wait_log).count() >= 5.0)
+                {
+                    std::cerr << "Still waiting on transform " << lidar_frame_id << " -> " << odom_frame_id
+                              << " and " << lidar_frame_id << " -> " << camera_frame_id << std::endl;
+                    last_wait_log = now;
+                }
             }
         }
         catch (const tf2::TransformException &ex)
         {
             std::cout << "TF lookup failed: " << ex.what() << std::endl;
         }
+    }
+    if (!rclcpp::ok())
+    {
+        return;
     }
 
     //odometry
@@ -411,6 +471,20 @@ void GetCostmapFromMatlab(float width_cells,
 
     //when set, the wrapper returns the (small) segmentation image for debug visualization
     mwArray mw_debug_vis_segmentation(static_cast<double>(debug_vis_segmentation));
+
+    std::atomic<bool> call_finished{false};
+    std::mutex watchdog_mutex;
+    std::condition_variable watchdog_cv;
+    std::thread watchdog([&]()
+    {
+        std::unique_lock<std::mutex> lock(watchdog_mutex);
+        int waited = 0;
+        while (!watchdog_cv.wait_for(lock, std::chrono::seconds(5), [&] { return call_finished.load(); }))
+        {
+            waited += 5;
+            std::cerr << "perception_wrapper has not returned after " << waited << "s" << std::endl;
+        }
+    });
 
     try
     {
@@ -469,6 +543,17 @@ void GetCostmapFromMatlab(float width_cells,
     {
         std::cerr << "Failed to execute Matlab perception_wrapper. " << e.what() << std::endl;
     }
+    catch(const cv::Exception& e)
+    {
+        std::cerr << "Failed to decode debug segmentation mask. " << e.what() << std::endl;
+        seg_img = cv::Mat();
+    }
+    {
+        std::lock_guard<std::mutex> lock(watchdog_mutex);
+        call_finished = true;
+    }
+    watchdog_cv.notify_one();
+    watchdog.join();
 }
 
 void BuildOccupancyGrid(nav_msgs::msg::OccupancyGrid &grid,
@@ -556,8 +641,41 @@ void ResetCallback(const std_msgs::msg::String::SharedPtr msg)
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    node = rclcpp::Node::make_shared("uab_perception_node");
-    tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
+
+    rclcpp::on_shutdown([]()
+    {
+        std::thread([]()
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cerr << "uab_perception_node: still running 5s after shutdown was requested "
+                         "(likely blocked in the Matlab perception call); forcing exit." << std::endl;
+            std::_Exit(1);
+        }).detach();
+    });
+
+    if (!mclInitializeApplication(NULL, 0))
+    {
+        std::cerr << "Failed to initialize Matlab Runtime" << std::endl;
+        return -1;
+    }
+
+    if (!lib_uab_perception_wrapperInitialize())
+    {
+        std::cerr << "Failed to initialize perception_wrapper package" << std::endl;
+        return -1;
+    }
+
+    try
+    {
+        node = rclcpp::Node::make_shared("uab_perception_node");
+        tf = std::make_shared<avt_341_nav::node::TfInterface>(node);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "uab_perception_node: node construction failed (likely shutdown racing "
+                     "startup): " << e.what() << std::endl;
+        return rclcpp::ok() ? -1 : 0;
+    }
 
     avt_341_nav::params::uab_perception::ParamsListener param_listener(node);
     const auto params = param_listener.get_params();
@@ -596,20 +714,6 @@ int main(int argc, char *argv[])
         seg_overlay_pub = node->create_publisher<sensor_msgs::msg::Image>(seg_overlay_topic, 1);
         std::cout << "debug_vis_segmentation enabled. Publishing debug topics: "
                   << seg_topic << ", " << seg_overlay_topic << std::endl;
-    }
-
-    //initialize matlab runtime
-    if (!mclInitializeApplication(NULL, 0))
-    {
-        std::cerr << "Failed to initialize Matlab Runtime" << std::endl;
-        return -1;
-    }
-
-    //initialize uab matlab perception model
-    if(!lib_uab_perception_wrapperInitialize())
-    {
-        std::cerr << "Failed to initialize perception_wrapper package" << std::endl;
-        return -1;
     }
 
     const int width_cells =
@@ -690,18 +794,24 @@ int main(int argc, char *argv[])
                 seg_img
                 );
 
-
-            //update the terrain grid with the new cell values
+            //update the terrain grid with the new cell values. MATLAB's sub2ind (GridBuilder.m)
+            //returns 1-based linear indices; convert to 0-based before indexing.
             int c = 0;
             for (auto i : terrain_sub_grid_idxs)
             {
-                terrain_grid.data[i] = terrain_sub_grid[c++];
+                const double idx0 = i - 1;
+                if (idx0 >= 0 && idx0 < static_cast<double>(terrain_grid.data.size()))
+                {
+                    terrain_grid.data[static_cast<size_t>(idx0)] = terrain_sub_grid[c];
+                }
+                c++;
             }
 
 
             if (params.publish_uab_occupancy_grid)
             {
-                //update the obstacle grid with the new cell values
+                //update the obstacle grid with the new cell values. MATLAB's sub2ind (GridBuilder.m)
+                //returns 1-based linear indices; convert to 0-based before indexing.
                 c = 0;
                 for (auto i : obstacle_sub_grid_idxs)
                 {
@@ -710,9 +820,11 @@ int main(int argc, char *argv[])
                     //will be marked as occupied in the published occupancy grid
                     double obstacle_probability_threshold = 95.0;
                     double obstacle_probability_at_cell = obstacle_sub_grid[c++];
-                    if (obstacle_probability_at_cell >= obstacle_probability_threshold)
+                    const double idx0 = i - 1;
+                    if (obstacle_probability_at_cell >= obstacle_probability_threshold &&
+                        idx0 >= 0 && idx0 < static_cast<double>(obstacle_grid.data.size()))
                     {
-                        obstacle_grid.data[i] = obstacle_probability_at_cell;
+                        obstacle_grid.data[static_cast<size_t>(idx0)] = obstacle_probability_at_cell;
                     }
                 }
             }
@@ -778,12 +890,28 @@ int main(int argc, char *argv[])
                 {
                     std::cerr << "cv_bridge failed to convert debug segmentation image: " << e.what() << std::endl;
                 }
+                catch (const cv::Exception &e)
+                {
+                    std::cerr << "OpenCV failed to build debug segmentation image: " << e.what() << std::endl;
+                }
             }
-
         }
-        rclcpp::spin_some(node);
+
+        try
+        {
+            if (rclcpp::ok())
+            {
+                rclcpp::spin_some(node);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Ignoring exception from spin_some during shutdown: " << e.what() << std::endl;
+        }
         rate.sleep();
     }
+
+    tf.reset();
 
     tf_listener.reset();
     tf_buffer.reset();
