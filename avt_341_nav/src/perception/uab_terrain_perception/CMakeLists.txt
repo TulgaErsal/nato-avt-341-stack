@@ -7,9 +7,9 @@ function(DownloadWindowsDll)
     # Download the Windows DLL
     message("Downloading Windows DLL for UAB terrain perception node...")
     file(DOWNLOAD
-    "https://www.dropbox.com/scl/fi/5qonis63wjqlxfe4wzza9/lib_uab_perception_wrapper.dll?rlkey=b61advoh669vxgp96kjvzo8c0&st=7tpsauq6&dl=1"
+    "https://www.dropbox.com/scl/fi/ba8ahpkrd59xfl9lz2jwr/lib_uab_perception_wrapper.dll?rlkey=6dg2a04oikpiwnoygmk5yjlud&st=0jw15a0l&dl=1"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib_uab_perception_wrapper.dll"
-    EXPECTED_HASH SHA256=2061e9823b1372e3a1741731ca249603b70ad45a86bcba427d60186ad5b90d6b
+    EXPECTED_HASH SHA256=abfa2e56568921a219f65c91e0c1a736869945dc949634fd915c9f6bbcfcfe10
     SHOW_PROGRESS)
 endfunction(DownloadWindowsDll)
 
