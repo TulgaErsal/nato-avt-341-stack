@@ -58,3 +58,4 @@ config/KRC_CP*.csv
 build
 install
 log
+*.xml

@@ -18,6 +18,8 @@
 
 #include <iostream>
 #include <mutex>
+#include <utility>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -65,11 +67,16 @@ avt_341_nav::params::mpc_local_planner::Params mpc_params;
 bool recv_veh_input = false;
 bool recv_seg_input = false;
 bool recv_goal_point = false;
+bool recv_path_window = false;
 bool is_initialized = false;
 
 // Cached MPC path used for obstacle corridor culling (x, y pairs).
 // Populated each planning cycle from GetMPCPath().
 std::vector<std::pair<double, double>> mpc_path_cache;
+
+// Latest global-path window from goal_point_processor. Cached because the
+// Julia path parameters do not exist until Setup() has built the NLP.
+std::vector<double> path_window_cache;
 
 // Optional publisher for the corridor-culled obstacle MarkerArray.
 // Null when visualize_culled_obstacles is false.
