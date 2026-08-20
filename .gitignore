@@ -60,3 +60,4 @@ install
 log
 
 reports
+*.xml

@@ -201,16 +201,24 @@ void GoalPointCallback(const geometry_msgs::msg::PointStamped::SharedPtr point_s
     recv_goal_point = true;
 }
 
-void PathWindowCallback(std_msgs::msg::Float64MultiArray::SharedPtr path_msg)
+void SendPathWindowToJulia(const std::vector<double>& path_points)
 {
-    if (!is_initialized) return;
-
     jl_value_t* path_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    double* path_arr = const_cast<double*>(path_msg->data.data());
-    jl_array_t *path_arg = jl_ptr_to_array_1d(path_type, path_arr, path_msg->data.size(), 0);
+    double* path_arr = const_cast<double*>(path_points.data());
+    jl_array_t *path_arg = jl_ptr_to_array_1d(path_type, path_arr, path_points.size(), 0);
 
     jl_call1(j_set_path_points, (jl_value_t*)path_arg);
     CATCH_JULIA_EXCEPTION;
+}
+
+void PathWindowCallback(std_msgs::msg::Float64MultiArray::SharedPtr path_msg)
+{
+    path_window_cache = path_msg->data;
+    recv_path_window = path_window_cache.size() >= 2 && path_window_cache.size() % 2 == 0;
+
+    if (!is_initialized || !recv_path_window) return;
+
+    SendPathWindowToJulia(path_window_cache);
 }
 
 void GoalPointEndOfGlobalPathCallback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -434,7 +442,8 @@ std_msgs::msg::Bool GetSlopeLimited()
 }
 
 bool NewInputAvailable() {
-    return recv_veh_input && recv_goal_point;
+    const bool path_ready = !mpc_params.path_tracking_mode || recv_path_window;
+    return recv_veh_input && recv_goal_point && path_ready;
 }
 
 void PublishPath() {}
@@ -641,6 +650,8 @@ void InitialiseJuliaAPI()
         jl_box_float64(mpc_params.path_tracking_sigma);
     jl_value_t *j_w_path_tracking =
         jl_box_float64(mpc_params.w_path_tracking);
+    jl_value_t *j_path_tracking_mode =
+        jl_box_bool(mpc_params.path_tracking_mode);
     jl_value_t *j_sigma =
         jl_box_float64(1.414214 * mpc_params.grid_resolution);
     jl_value_t *j_min_speed = jl_box_float64(mpc_params.min_speed);
@@ -697,6 +708,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_max_num_path_pts, j_max_num_path_pts);
     jl_call1(j_set_path_tracking_sigma, j_path_tracking_sigma);
     jl_call1(j_set_w_path_tracking, j_w_path_tracking);
+    jl_call1(j_set_path_tracking_mode, j_path_tracking_mode);
     jl_call1(j_set_sigma, j_sigma);
     jl_call1(j_set_min_speed, j_min_speed);
     jl_call1(j_set_max_speed, j_max_speed);
@@ -737,6 +749,10 @@ void InitialisePlanner()
     jl_call0(j_setup);
     CATCH_JULIA_EXCEPTION;
     // ----------------------
+
+    if (recv_path_window) {
+        SendPathWindowToJulia(path_window_cache);
+    }
 
     is_initialized = true;
     RCLCPP_INFO(node->get_logger(), "MPC planner initialized.");
@@ -841,6 +857,7 @@ int main(int argc, char *argv[])
     RCLCPP_INFO(node->get_logger(), "Number of collocation points: %lld.", static_cast<long long>(mpc_params.num_col_points));
 
     RCLCPP_INFO(node->get_logger(), "Prediction time horizon: %.1f.", mpc_params.prediction_time_horizon);
+    RCLCPP_INFO(node->get_logger(), "Path tracking mode: %s.", mpc_params.path_tracking_mode ? "true" : "false");
 
     rclcpp::Rate node_rate(mpc_params.rate);
     double last_compute_time_pub = 0.0;
