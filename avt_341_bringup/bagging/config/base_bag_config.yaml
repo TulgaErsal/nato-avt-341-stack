@@ -231,6 +231,24 @@ log_topics:
     field: ''
     units: ''
 
+  # Segmentation Grid
+  - name: '{vehicles}_segmentation_grid'
+    topic: '/{vehicles}/avt_341/segmentation_grid'
+    field: 'data'
+    units: ''
+
+  # Segmentation Grid Origin x,y
+  - name: '{vehicles}_segmentation_grid_origin_{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/segmentation_grid'
+    field: 'info.origin.position.{position_keys[:2]}'
+    units: 'm'
+
+  # Segmentation Grid Updates
+  - name: '{vehicles}_segmentation_grid_updates'
+    topic: '/{vehicles}/avt_341/segmentation_grid_updates'
+    field: ''
+    units: ''
+
   # ==========================================================================================================
   # FORMATIONS
   # ==========================================================================================================
