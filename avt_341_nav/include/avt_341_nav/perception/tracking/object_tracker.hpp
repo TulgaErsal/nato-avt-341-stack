@@ -23,20 +23,17 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <avt_341_msgs/msg/tracker_status.hpp>
-#include <pcl/common/transforms.h>
-#include <pcl/filters/crop_box.h>
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/sac_model_parallel_plane.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl_conversions/pcl_conversions.h>
-// #include <opencv2/opencv.hpp>
-
 
 #include <avt_341_nav/core/coord_transform.hpp>
 #include <avt_341_nav/core/frame_id_collection.hpp>
 #include <avt_341_nav/perception/filtering/imm_filter.hpp>
 #include <avt_341_nav/perception/tracking/tracker_params.hpp>
 #include <avt_341_nav/perception/tracking/tracker_dto.hpp>
+
+// Improve detections use RANSAC and cropbox to segment planes
+#include <pcl/sample_consensus/sac_model_parallel_plane.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/crop_box.h>
 
 namespace avt_341_nav {
 namespace perception {
@@ -62,9 +59,8 @@ class ObjectTracker {
                   const std::string& target_class,
                   const ObjectTrackerSettings& params,
                   const core::CoordTransformer& coord_transformer,
-		rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
-		rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
-	);
+                  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher
+                  );
 
     virtual ~ObjectTracker() = default;
 
@@ -176,18 +172,19 @@ class ObjectTracker {
     Eigen::Vector3d ConvertBBoxCoordinatesToPoseCentroid_rdf(
         const vision_msgs::msg::Detection2D& detections_message,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info_message);
-   
-    // JN addition for better pose measurement
-     /** @brief Improve detection by fitting planes to point cloude end and flank given current yaw 
-     *         Input: pcl cluster object_cluster from obstacle detector, current yaw is read from global variable (last_reliable_yaw_)
-     *        return covariance matirix and improved_centroid and improved_yaw */
-    Eigen::Matrix3d ImprovePoseMeasurement(pcl::PointCloud<pcl::PointXYZ>::Ptr object_cluster,
-        Eigen::Vector3d measured_centroid, const std::string& source_frame,
-        const std::string& target_frame, double current_yaw, double platform_yaw, double& improved_yaw);
-    double current_yaw_; //keep track of yaw from ImprovePoseMeasurement
-    double current_yaw_info_; //keep track of yaw information for fusion using informationfilter
-    double yaw_info_;
-    pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
+
+	// JN addition for better pose measurement
+	/** @brief Improve detection by fitting planes to point cloude end and flank given current yaw
+	*         Input: pcl cluster object_cluster from obstacle detector, current yaw is read from global variable (last_reliable_yaw_)
+	*        return covariance matirix and improved_centroid and improved_yaw */
+	Eigen::Matrix3d ImprovePoseMeasurement(pcl::PointCloud<pcl::PointXYZ>::Ptr object_cluster,
+		Eigen::Vector3d measured_centroid, const std::string& source_frame,
+		const std::string& target_frame, double current_yaw, double platform_yaw, double& improved_yaw);
+	double current_yaw_; //keep track of yaw from ImprovePoseMeasurement
+	double current_yaw_info_; //keep track of yaw information for fusion using informationfilter
+	double yaw_info_;
+	pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
+
     void UpdateHeadingHold();
 
     void PublishOdometry();
@@ -213,10 +210,11 @@ class ObjectTracker {
 
     /** @brief Shared coordinate transformer owned by the node. */
     const core::CoordTransformer& coord_transformer_;
-	// TODO: Move to node
-	// TODO: Move to node
-	/** Single common odometry topic for tracked lead vehicle */
-	rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
+
+    // TODO: Move to node
+    /** Single common odometry topic for tracked lead vehicle */
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
+
     /** @brief Latest camera intrinsics, cached on each tracking tick. */
     sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info_;
 
