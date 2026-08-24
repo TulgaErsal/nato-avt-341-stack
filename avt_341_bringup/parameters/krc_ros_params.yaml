@@ -87,6 +87,12 @@
     map_topic: 'avt_341/occupancy_grid_low_res'
     seg_topic: 'avt_341/terrain_seg/segmentation_grid'
 
+/**/comm_node:
+  ros__parameters:
+    name: 'MRZR'
+    broadcast_over_ros: true
+    vehicle_namespaces: ['mrzr', 'mrzr2', 'feda']
+
 # object_detector_node / object_tracker_node run on the template defaults
 
 #/**/object_detector_node:

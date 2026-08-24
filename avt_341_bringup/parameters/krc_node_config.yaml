@@ -19,10 +19,6 @@
   remappings:
     avt_341/segmentation_grid: avt_341/normal_segmentation_grid
 
-/**/mission_manager_node:
-  remappings:
-    avt_341/comm_messages: /avt_341/comm_messages
-
 /**/uab_perception_node:
   remappings:
     avt_341/points: /ouster/points
