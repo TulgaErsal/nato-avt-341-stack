@@ -125,6 +125,7 @@ struct GlobalPlannerParams {
   float w_distance             = 1.0f;
   float w_occupancy            = 10.0f;
   float w_segmentation         = 0.1f;
+  float no_segmentation_data_cost = 50.0f;
   bool  search_diagonals       = true;
   int   los_max_iterations     = 1;
   bool  los_break_on_first     = false;
@@ -158,6 +159,7 @@ static GlobalPlannerParams LoadParams(const std::string& yaml_path) {
   p.w_distance                   = y.get_float("w_distance",            p.w_distance);
   p.w_occupancy                  = y.get_float("w_occupancy",           p.w_occupancy);
   p.w_segmentation               = y.get_float("w_segmentation",        p.w_segmentation);
+  p.no_segmentation_data_cost    = y.get_float("no_segmentation_data_cost", p.no_segmentation_data_cost);
   p.search_diagonals             = y.get_bool("search_diagonals",       p.search_diagonals);
   p.los_max_iterations           = y.get_int("los_max_iterations",      p.los_max_iterations);
   p.los_break_on_first           = y.get_bool("los_break_on_first",     p.los_break_on_first);
@@ -283,11 +285,13 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         p.clearance_penalty_exponent,
         p.gradient_descent_max_steps, p.gradient_descent_steps_per_point,
         p.clipping_distance,
-        /*verbose=*/false);
+        /*verbose=*/false,
+        p.no_segmentation_data_cost);
   } else if (method == "d_star_lite") {
     return std::make_unique<avt_341_nav::planning::DStarLite>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
-        p.search_diagonals, p.los_max_iterations, p.los_break_on_first);
+        p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
+        p.no_segmentation_data_cost);
   } else if (method == "fast_marching_square") {
     return std::make_unique<avt_341_nav::planning::FastMarchingSquare>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
@@ -299,12 +303,14 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         p.clearance_penalty_exponent,
         p.gradient_descent_max_steps, p.gradient_descent_steps_per_point,
         p.clipping_distance,
-        /*verbose=*/false);
+        /*verbose=*/false,
+        p.no_segmentation_data_cost);
   } else {
     // Default: astar
     return std::make_unique<avt_341_nav::planning::Astar>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
-        p.search_diagonals, p.los_max_iterations, p.los_break_on_first);
+        p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
+        p.no_segmentation_data_cost);
   }
 }
 

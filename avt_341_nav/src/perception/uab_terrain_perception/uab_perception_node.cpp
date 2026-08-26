@@ -42,7 +42,6 @@
 #include "avt_341_nav/node/tf_interface.h"
 #endif
 
-const uint8_t TERRAIN_GRID_DEFAULT_VAL = 50;
 const uint8_t OBSTACLE_GRID_DEFAULT_VAL = 0;
 
 rclcpp::Node::SharedPtr node;
@@ -679,6 +678,13 @@ int main(int argc, char *argv[])
 
     avt_341_nav::params::uab_perception::ParamsListener param_listener(node);
     const auto params = param_listener.get_params();
+    if (params.default_terrain_cost < 0 || params.default_terrain_cost > 100) {
+        const std::string error_msg = "default_terrain_cost must be in [0, 100], got "
+            + std::to_string(params.default_terrain_cost);
+        std::cerr << error_msg << std::endl;
+        return -1;
+    }
+    const uint8_t terrain_grid_default_val = static_cast<uint8_t>(params.default_terrain_cost);
 
     auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odom", 10, OdometryCallback);
     auto pc_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>("avt_341/points", 2, PointCloudCallback);
@@ -727,7 +733,7 @@ int main(int argc, char *argv[])
         terrain_grid, width_cells, height_cells,
         static_cast<float>(params.costmap.geometry.llx),
         static_cast<float>(params.costmap.geometry.lly),
-        static_cast<float>(params.costmap.geometry.res), TERRAIN_GRID_DEFAULT_VAL);
+        static_cast<float>(params.costmap.geometry.res), terrain_grid_default_val);
 
     //initialize obstacle grid with default cell values
     nav_msgs::msg::OccupancyGrid obstacle_grid;
@@ -839,7 +845,7 @@ int main(int argc, char *argv[])
                                                         current_pose.pose.pose.position.y,
                                                         params.costmap.publish.max_grid_width,
                                                         params.costmap.publish.max_grid_height,
-                                                        TERRAIN_GRID_DEFAULT_VAL);
+                                                        terrain_grid_default_val);
                 obstacle_grid_window = ExtractGridWindow(obstacle_grid,
                                                          current_pose.pose.pose.position.x,
                                                          current_pose.pose.pose.position.y,

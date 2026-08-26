@@ -19,13 +19,15 @@ Astar::Astar(float w_distance,
              float w_segmentation,
              bool search_diagonals,
              int los_max_iterations,
-             bool los_break_on_first)//, bool dubins_smoothing, float dubins_radius)
+             bool los_break_on_first,
+             float no_segmentation_data_cost)
   : w_distance_(w_distance),
     w_occupancy_(w_occupancy),
     w_segmentation_(w_segmentation),
+    no_segmentation_data_cost_(no_segmentation_data_cost),
     search_diagonals_(search_diagonals),
     los_max_iterations_(los_max_iterations),
-    los_break_on_first_(los_break_on_first) {//,dubins_smoothing_(dubins_smoothing), dubins_radius_(dubins_radius) {
+    los_break_on_first_(los_break_on_first) {
   dfac_ = 0;
   width_ = 0;
   height_ = 0;
@@ -334,9 +336,8 @@ bool Astar::ExtractPath() {
   return true;
 }
 
-int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) {
-  constexpr int kNoSegmentationDataCost = 50;
-  int seg_val = kNoSegmentationDataCost;
+int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) const {
+  int seg_val = static_cast<int>(no_segmentation_data_cost_);
   if (x >= grid->info.origin.position.x && x < grid->info.origin.position.x + grid->info.width * grid->info.resolution
     && y >= grid->info.origin.position.y
     && y < grid->info.origin.position.y + grid->info.height * grid->info.resolution) {

@@ -53,7 +53,8 @@ public:
         float w_segmentation,
         bool search_diagonals,
         int los_max_iterations,
-        bool los_break_on_first);//, bool dubins_smoothing, float dubins_radius);
+        bool los_break_on_first,
+        float no_segmentation_data_cost);
 
   /// Destructor
   virtual ~Astar();
@@ -87,8 +88,9 @@ public:
   /// Inherited from planner base class. Returns the number of vertical cells.
   int GetGridHeight() { return height_; }
 
-  /// Get grid value at coordinates
-  static int GetGridValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y);
+  /// Get grid value at coordinates. Returns no_segmentation_data_cost_ if the
+  /// coordinate falls outside segmentation_grid's published extent.
+  int GetGridValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y) const;
 
   /// Inherited from planner base class.
   virtual std::vector<Point> PlanPath(nav_msgs::msg::OccupancyGrid* grid,
@@ -299,6 +301,7 @@ protected:
   float w_distance_;
   float w_occupancy_;
   float w_segmentation_;
+  float no_segmentation_data_cost_;
   bool search_diagonals_;
   int los_max_iterations_;
   bool los_break_on_first_;

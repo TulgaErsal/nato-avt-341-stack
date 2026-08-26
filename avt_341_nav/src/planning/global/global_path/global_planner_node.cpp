@@ -493,14 +493,16 @@ int main(int argc, char* argv[])
                                                        static_cast<int>(params.gradient_descent_max_steps),
                                                        static_cast<int>(params.gradient_descent_steps_per_point),
                                                        params.clipping_distance,
-                                                       params.verbose_gp_log);
+                                                       params.verbose_gp_log,
+                                                       params.no_segmentation_data_cost);
   } else if (params.planning_method == "d_star_lite") {
     path_planner = std::make_shared<avt_341_nav::planning::DStarLite>(params.w_distance,
                                                     params.w_occupancy,
                                                     params.w_segmentation,
                                                     params.search_diagonals,
                                                     static_cast<int>(params.los_max_iterations),
-                                                    params.los_break_on_first);
+                                                    params.los_break_on_first,
+                                                    params.no_segmentation_data_cost);
   } else if (params.planning_method == "fast_marching_square") {
     path_planner = std::make_shared<avt_341_nav::planning::FastMarchingSquare>(params.w_distance,
                                                              params.w_occupancy,
@@ -519,14 +521,16 @@ int main(int argc, char* argv[])
                                                              static_cast<int>(params.gradient_descent_max_steps),
                                                              static_cast<int>(params.gradient_descent_steps_per_point),
                                                              params.clipping_distance,
-                                                             params.verbose_gp_log);
+                                                             params.verbose_gp_log,
+                                                             params.no_segmentation_data_cost);
   } else {
     path_planner = std::make_shared<avt_341_nav::planning::Astar>(params.w_distance,
                                                 params.w_occupancy,
                                                 params.w_segmentation,
                                                 params.search_diagonals,
                                                 static_cast<int>(params.los_max_iterations),
-                                                params.los_break_on_first);
+                                                params.los_break_on_first,
+                                                params.no_segmentation_data_cost);
   }
 
   if (params.dilation_factor > 0.0) {

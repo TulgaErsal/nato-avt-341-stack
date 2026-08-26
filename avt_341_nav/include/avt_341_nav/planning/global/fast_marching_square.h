@@ -36,13 +36,15 @@ public:
                      int gradient_descent_max_steps,
                      int gradient_descent_steps_per_point,
                      float clipping_distance,
-                     bool verbose)
+                     bool verbose,
+                     float no_segmentation_data_cost)
       : FastMarching(w_distance, w_occupancy, w_segmentation,
                      search_diagonals, los_max_iterations, los_break_on_first,
                      safety_margin, safety_margin_soft, clearance_penalty_type, path_extraction_method,
                      obstacle_threshold, clearance_penalty_scale, clearance_penalty_range,
                      clearance_penalty_exponent, gradient_descent_max_steps,
-                     gradient_descent_steps_per_point, clipping_distance, verbose) {}
+                     gradient_descent_steps_per_point, clipping_distance, verbose,
+                     no_segmentation_data_cost) {}
 
   virtual ~FastMarchingSquare() = default;
 

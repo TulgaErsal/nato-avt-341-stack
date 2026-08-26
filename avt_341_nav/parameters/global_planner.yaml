@@ -45,6 +45,10 @@ ros__parameters:
     type: double
     default_value: 0.1
     description: "Weight for segmentation cost."
+  no_segmentation_data_cost:
+    type: double
+    default_value: 50.0
+    description: "Segmentation cost assumed for a map cell with no segmentation data at all (outside the segmentation grid's published extent). Independent of uab_perception_node's default cost for cells inside its published extent that just haven't been classified yet."
   search_diagonals:
     type: bool
     default_value: true

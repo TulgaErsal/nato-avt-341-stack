@@ -39,7 +39,8 @@ public:
             float w_segmentation,
             bool search_diagonals,
             int los_max_iterations,
-            bool los_break_on_first);
+            bool los_break_on_first,
+            float no_segmentation_data_cost);
 
   virtual ~DStarLite();
 

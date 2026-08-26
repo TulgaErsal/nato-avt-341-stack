@@ -12,8 +12,9 @@ DStarLite::DStarLite(float w_distance,
                      float w_segmentation,
                      bool search_diagonals,
                      int los_max_iterations,
-                     bool los_break_on_first)
-  : Astar(w_distance, w_occupancy, w_segmentation, search_diagonals, los_max_iterations, los_break_on_first) {
+                     bool los_break_on_first,
+                     float no_segmentation_data_cost)
+  : Astar(w_distance, w_occupancy, w_segmentation, search_diagonals, los_max_iterations, los_break_on_first, no_segmentation_data_cost) {
   km_ = 0.0f;
   s_start_ = -1;
   s_goal_ = -1;
