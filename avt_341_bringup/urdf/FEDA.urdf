@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<robot name="FEDA">
+	
+    <link name="base_link" />
+
+	<link name="vbox_link" />
+	
+    <joint name="vbox_to_base" type="fixed">  
+        <parent link="base_link" />  
+        <child link="vbox_link" />  
+    </joint>
+
+</robot>
