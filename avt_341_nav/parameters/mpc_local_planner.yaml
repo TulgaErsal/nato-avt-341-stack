@@ -93,7 +93,7 @@ ros__parameters:
   # ====================================================================================================================
   w_distance_to_obstacles:
     type: double
-    default_value: 50.0
+    default_value: 100.0
     description: "weight on distanceToObstacles in the objective function"
   w_distance_to_goal:
     type: double
@@ -122,8 +122,12 @@ ros__parameters:
 
   safety_margin:
     type: double
-    default_value: 0.0
+    default_value: 0.75
     description: "safety margin [m] around obstacles"
+  obstacle_cost_speed_floor:
+    type: double
+    default_value: 2.5
+    description: "m/s; obstacle cost can't be bought down by idling below this speed"
   grid_resolution:
     type: double
     default_value: 0.25

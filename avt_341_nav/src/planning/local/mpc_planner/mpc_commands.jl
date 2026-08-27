@@ -186,6 +186,10 @@ function SetSafetyMargin(marigin::Float64)
 	global safetyMargin = marigin
 end
 
+function SetObstacleCostSpeedFloor(floor::Float64)
+	global obstacleCostSpeedFloor = floor
+end
+
 function SetGridResolution(res::Float64)
 	global grid_resolution = res
 end
@@ -367,8 +371,25 @@ function GetObjectiveValue()
 	return n.r.ocp.objVal
 end
 
+function GetSolveStatusCode()
+	return Int32(n.r.ocp.status == :Optimal ? 1 : 0)
+end
+
+function GetSolveTimeMs()
+	return 1000.0 * n.r.ocp.tSolve
+end
+
+function GetEffectiveTf()
+	if n.s.ocp.finalTimeDV
+		return getvalue(n.ocp.tf)
+	else
+		return convert(Float64, n.ocp.tf)
+	end
+end
+
 function Setup()
 	global safetyMargin
+	global obstacleCostSpeedFloor
 	global useSegmentation
 	global maxNumSeg
 	global maxNumObs
@@ -481,7 +502,12 @@ function Setup()
 		-sum(exp(-beta * ((x[j]-g1)^2 + (y[j]-g2)^2)) for j=1:n.ocp.state.pts)
 	)
 	
-	distanceToObstacles = @NLexpression(n.ocp.mdl,sum((ux[j] / maxSpeed) * (exp(-((x[j] - Xobs_0[i])^2/(obs_r[i] + safetyMargin)^2 +(y[j] - Yobs_0[i])^2/(obs_r[i] + safetyMargin)^2))) for i=1:maxNumObs for j=2:n.ocp.state.pts))
+	speedFloorEps = 0.05 # m/s
+	@NLexpression(n.ocp.mdl, obsBumpSum[j=2:n.ocp.state.pts],
+		sum(exp(-((x[j] - Xobs_0[i])^2 + (y[j] - Yobs_0[i])^2) / (obs_r[i] + safetyMargin)^2) for i=1:maxNumObs))
+	distanceToObstacles = @NLexpression(n.ocp.mdl,
+		sum((obstacleCostSpeedFloor + ((ux[j] - obstacleCostSpeedFloor) + sqrt((ux[j] - obstacleCostSpeedFloor)^2 + speedFloorEps^2)) / 2.0) / maxSpeed
+			* (1.0 - exp(-obsBumpSum[j])) for j=2:n.ocp.state.pts))
 
 	deviationInYaw = @NLexpression(n.ocp.mdl, (cos(psi[2])-cos(desiredYaw))^2+(sin(psi[2])-sin(desiredYaw))^2)
 	yawAccel = @NLexpression(n.ocp.mdl, sum((ux[i] * sr[i])^2 for i=2:n.ocp.state.pts))
@@ -554,6 +580,58 @@ function Setup()
 		acceptable_compl_inf_tol = 0.01
 	))
 
+end
+
+# min(dist to obstacle center - effective radius) over a solved state trajectory
+function ClosestObstacleClearance(Xmat)
+	minClear = Inf
+	for i in 2:size(Xmat,1), k in 1:numobs
+		r = 1.414*obstacles[3*k]/2.0 + safetyMargin
+		d = sqrt((Xmat[i,1]-obstacles[3*k-2])^2 + (Xmat[i,2]-obstacles[3*k-1])^2) - r
+		minClear = min(minClear, d)
+	end
+	return minClear
+end
+
+# Some state/control slots are NLexpressions (derived), not free Variables. Seeding
+# those is meaningless (and errors), so just skip them.
+function SafeSetValue!(var, val)
+	try
+		JuMP.setvalue(var, val)
+	catch
+	end
+end
+
+# Warm-starts the solver from X1/U1 reflected about the line through (x0,y0) at
+# heading yaw0. Explores the mirror-image steering decision.
+function MirroredWarmStart!(n, x0, y0, yaw0, X1, U1)
+	cy = cos(yaw0); sy = sin(yaw0)
+	for i in 2:size(X1,1)
+		dx = X1[i,1] - x0; dy = X1[i,2] - y0
+		along = dx*cy + dy*sy
+		perp = -dx*sy + dy*cy
+		SafeSetValue!(n.r.ocp.x[i,1], x0 + along*cy + perp*sy)
+		SafeSetValue!(n.r.ocp.x[i,2], y0 + along*sy - perp*cy)
+		SafeSetValue!(n.r.ocp.x[i,3], -X1[i,3]) # v
+		SafeSetValue!(n.r.ocp.x[i,4], -X1[i,4]) # yaw rate
+		SafeSetValue!(n.r.ocp.x[i,5], 2*yaw0 - X1[i,5]) # psi
+		SafeSetValue!(n.r.ocp.x[i,6], -X1[i,6]) # steering angle
+		SafeSetValue!(n.r.ocp.x[i,7], X1[i,7]) # ux unchanged
+		SafeSetValue!(n.r.ocp.x[i,8], X1[i,8]) # ax unchanged
+	end
+	for i in 1:size(U1,1)
+		SafeSetValue!(n.r.ocp.u[i,1], U1[i,1]) # jx unchanged
+		SafeSetValue!(n.r.ocp.u[i,2], -U1[i,2]) # steering rate
+	end
+end
+
+function RestoreWarmStart!(n, X1, U1)
+	for i in 2:size(X1,1), k in 1:size(X1,2)
+		SafeSetValue!(n.r.ocp.x[i,k], X1[i,k])
+	end
+	for i in 1:size(U1,1), k in 1:size(U1,2)
+		SafeSetValue!(n.r.ocp.u[i,k], U1[i,k])
+	end
 end
 
 function Plan()
@@ -704,6 +782,28 @@ function Plan()
 		end
 
 		optimize!(n)
+
+		# Reactive fallback: an Optimal solve can still land in a
+		# colliding local minimum. Retry when that's actually detected, from a mirrored warm-start
+		if n.r.ocp.status == :Optimal
+			status1 = n.r.ocp.status; tSolve1 = n.r.ocp.tSolve
+			X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
+			clear1 = ClosestObstacleClearance(X1)
+			if clear1 < 0.0
+				println("MPC fallback: primary solve collides (clearance=", round(clear1;digits=3), "m), trying mirrored warm start...")
+				MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
+				optimize!(n)
+				clear2 = n.r.ocp.status == :Optimal ? ClosestObstacleClearance(n.r.ocp.X) : -Inf
+				if clear2 > clear1
+					println("MPC fallback: mirrored solve is better (clearance=", round(clear2;digits=3), "m), using it.")
+				else
+					println("MPC fallback: mirrored solve did not help (clearance=", round(clear2;digits=3), "m), keeping primary solve.")
+					n.r.ocp.X = X1; n.r.ocp.U = U1; n.r.ocp.status = status1
+					RestoreWarmStart!(n, X1, U1)
+				end
+				n.r.ocp.tSolve = tSolve1 + n.r.ocp.tSolve
+			end
+		end
 
 		# println(n.r.ocp.status," (",round(1000*n.r.ocp.tSolve; digits = 1)," ms)")
 		if n.r.ocp.status == :Optimal
