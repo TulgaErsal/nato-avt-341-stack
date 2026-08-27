@@ -231,7 +231,7 @@ function SetState(veh_data::Vector{Float64})
 end
 
 function SetObstacles(obs::Vector{Float64})
-	global obstacles = obs
+	global obstacles = copy(obs)
 	global numobs = Int(length(obstacles)/3)
 
 	if numobs > maxNumObs
