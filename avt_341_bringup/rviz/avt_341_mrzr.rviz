@@ -7,14 +7,18 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Tree1
-      Splitter Ratio: 0.3382137715816498
-    Tree Height: 901
+        - /Navigation1/Global Planner1
+        - /Overlays1/Mission Points1
+      Splitter Ratio: 0.5353535413742065
+    Tree Height: 340
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
     Expanded:
       - /2D Goal Pose1
       - /Publish Point1
+      - /Set Nav Goal1
+      - /Set Formation1
     Name: Tool Properties
     Splitter Ratio: 0.5886790156364441
   - Class: rviz_common/Views
@@ -22,27 +26,35 @@ Panels:
       - /Current View1
     Name: Views
     Splitter Ratio: 0.5
-  - Class: mrzr_tools/MissionCommand
-    DesiredSpeed: 5.0
-    Distance: 0.0
-    Follower1Name: ""
-    Follower2Name: ""
-    Follower3Name: ""
-    Formation: ""
-    LeaderName: MRZR
-    MessageID: 0
-    MessageType: 10
-    Name: MissionCommand
-    Objective: ""
-    PriorityType: 0
-    ReceiverName: MRZR
-    SenderName: MRZR
-    TargetMessageID: 0
-    TerminationMethod: 0
-    XOffset: 0.0
-    XScale: 1.0
-    YOffset: 0.0
-    YScale: 1.0
+  - Class: avt_341_rviz_plugins/Mission Command
+    Name: Mission Command
+  - Class: avt_341_rviz_plugins/AVT-341 Autonomy Stack
+    Name: AVT-341 Autonomy Stack
+    compute_threshold: 0.800000011920929
+    compute_topics:
+      - expected_hz: 30
+        topic: avt_341/odometry
+    topic_config:
+      Command Velocity: avt_341/cmd_vel
+      Desired Speed: avt_341/desired_speed
+      Nav State: avt_341/state
+      Odometry: avt_341/odometry
+      Task Change: avt_341/task_change
+      Tracker State: avt_341/tracker/state
+    vehicle_colors:
+      - color: 2
+        id: feda
+      - color: 0
+        id: mrzr
+      - color: 1
+        id: mrzr2
+    vehicles:
+      - mrzr
+      - mrzr2
+      - feda
+  - Class: avt_341_rviz_plugins/Map Markers
+    Name: Map Markers
+    Topic: /avt_341/map_markers_change
 Visualization Manager:
   Class: ""
   Displays:
@@ -64,76 +76,8 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: false
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz_default_plugins/PointCloud2
-      Color: 0; 255; 0
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: Obstacle Points
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 4
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /avt_341/lidar_detector/cloud_clusters
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: z
-      Class: rviz_default_plugins/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 27.665468215942383
-      Min Color: 0; 0; 0
-      Min Intensity: -26.889726638793945
-      Name: Lidar
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 1.5
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Best Effort
-        Value: /ouster/points
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
     - Class: rviz_default_plugins/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: true
@@ -145,262 +89,346 @@ Visualization Manager:
       Tree:
         {}
       Update Interval: 0
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: CandidatePaths
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/candidate_paths
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 25; 255; 0
-      Enabled: true
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.5
-      Name: SelectedLocalPath
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0.10000000149011612
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/local_path
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 255; 170; 0
-      Enabled: true
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.5
-      Name: GlobalPath
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/global_path
-      Value: true
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: true
-      Name: OccupancyGridLocal
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/occupancy_grid
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/occupancy_grid_updates
-      Use Timestamp: false
-      Value: true
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: true
-      Name: OccupancyGridGlobal
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/occupancy_grid_low_res
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/occupancy_grid_low_res_updates
-      Use Timestamp: false
-      Value: true
-    - Alpha: 0.5
-      Class: rviz_default_plugins/GridCells
-      Color: 0; 0; 255
-      Enabled: false
-      Name: OccupiedCells
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/occupied_cells_markers
       Value: false
-    - Alpha: 0
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 255; 255; 255
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 1
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 10
+                Min Value: -10
+                Value: true
+              Axis: Z
+              Channel Name: z
+              Class: rviz_default_plugins/PointCloud2
+              Color: 255; 255; 255
+              Color Transformer: FlatColor
+              Decay Time: 0
+              Enabled: true
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Max Intensity: 27.665468215942383
+              Min Color: 0; 0; 0
+              Min Intensity: -26.889726638793945
+              Name: Ouster Points
+              Position Transformer: XYZ
+              Selectable: true
+              Size (Pixels): 1.5
+              Size (m): 0.009999999776482582
+              Style: Points
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Best Effort
+                Value: /ouster/points
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: true
+            - Alpha: 1
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 10
+                Min Value: -10
+                Value: true
+              Axis: Z
+              Channel Name: intensity
+              Class: rviz_default_plugins/PointCloud2
+              Color: 0; 255; 0
+              Color Transformer: FlatColor
+              Decay Time: 0
+              Enabled: true
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Max Intensity: 4096
+              Min Color: 0; 0; 0
+              Min Intensity: 0
+              Name: Obstacle Points
+              Position Transformer: XYZ
+              Selectable: true
+              Size (Pixels): 4
+              Size (m): 0.009999999776482582
+              Style: Points
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /avt_341/lidar_detector/cloud_clusters
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: true
+          Enabled: true
+          Name: Lidar
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 0.699999988079071
+              Class: rviz_default_plugins/Map
+              Color Scheme: map
+              Draw Behind: false
+              Enabled: true
+              Name: Local Grid
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/occupancy_grid
+              Update Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/occupancy_grid_updates
+              Use Timestamp: false
+              Value: true
+            - Alpha: 0.699999988079071
+              Class: rviz_default_plugins/Map
+              Color Scheme: map
+              Draw Behind: false
+              Enabled: true
+              Name: Global Grid
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/occupancy_grid_low_res
+              Update Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/occupancy_grid_low_res_updates
+              Use Timestamp: false
+              Value: true
+          Enabled: true
+          Name: Mapping
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 0.699999988079071
+              Class: rviz_default_plugins/Map
+              Color Scheme: map
+              Draw Behind: false
+              Enabled: false
+              Name: Segmentation Grid
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/local_grid
+              Update Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/local_grid_updates
+              Use Timestamp: false
+              Value: false
+          Enabled: true
+          Name: Terrain Segmentation
       Enabled: true
-      Head Diameter: 0
-      Head Length: 2
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.0010000000474974513
-      Name: Waypoints
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 255; 255
-      Pose Style: Arrows
-      Radius: 0.029999999329447746
-      Shaft Diameter: 2
-      Shaft Length: 2
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/waypoints
-      Value: true
-    - Alpha: 0.6000000238418579
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 85; 255; 255
-      Enabled: false
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.5
-      Name: GlobalPathPreSmooth
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/global_path_pre_smooth
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 255; 0; 4
-      Enabled: false
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.009999999776482582
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.10000000149011612
-      Name: GlobalPathPreFill
-      Offset:
-        X: 0
-        Y: 0
-        Z: 1
-      Pose Color: 255; 0; 0
-      Pose Style: Arrows
-      Radius: 0.029999999329447746
-      Shaft Diameter: 1
-      Shaft Length: 0.800000011920929
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/global_path_pre_fill
-      Value: false
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: false
-      Name: Map
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/local_grid
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/local_grid_updates
-      Use Timestamp: false
-      Value: false
-    - Alpha: 1
-      Class: rviz_default_plugins/PointStamped
-      Color: 204; 41; 204
+      Name: Perception
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 1
+              Buffer Length: 1
+              Class: rviz_default_plugins/Path
+              Color: 25; 255; 0
+              Enabled: true
+              Head Diameter: 0.30000001192092896
+              Head Length: 0.20000000298023224
+              Length: 0.30000001192092896
+              Line Style: Billboards
+              Line Width: 0.5
+              Name: Planned Path
+              Offset:
+                X: 0
+                Y: 0
+                Z: 0.10000000149011612
+              Pose Color: 255; 85; 255
+              Pose Style: None
+              Radius: 0.029999999329447746
+              Shaft Diameter: 0.10000000149011612
+              Shaft Length: 0.10000000149011612
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/local_path
+              Value: true
+            - Class: rviz_default_plugins/MarkerArray
+              Enabled: true
+              Name: Obstacle Clusters
+              Namespaces:
+                {}
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/obstacle_markers
+              Value: true
+            - Alpha: 1
+              Class: rviz_default_plugins/PointStamped
+              Color: 204; 41; 204
+              Enabled: true
+              History Length: 1
+              Name: Goal
+              Radius: 1
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/mpc_goalPoint
+              Value: true
+          Enabled: true
+          Name: MPC
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 1
+              Buffer Length: 1
+              Class: rviz_default_plugins/Path
+              Color: 255; 170; 0
+              Enabled: true
+              Head Diameter: 0.30000001192092896
+              Head Length: 0.20000000298023224
+              Length: 0.30000001192092896
+              Line Style: Billboards
+              Line Width: 0.5
+              Name: Global Path
+              Offset:
+                X: 0
+                Y: 0
+                Z: 0
+              Pose Color: 255; 85; 255
+              Pose Style: None
+              Radius: 0.029999999329447746
+              Shaft Diameter: 0.10000000149011612
+              Shaft Length: 0.10000000149011612
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/global_path
+              Value: true
+            - Alpha: 0
+              Buffer Length: 1
+              Class: rviz_default_plugins/Path
+              Color: 255; 255; 255
+              Enabled: false
+              Head Diameter: 0
+              Head Length: 2
+              Length: 0.30000001192092896
+              Line Style: Billboards
+              Line Width: 0.0010000000474974513
+              Name: Waypoints
+              Offset:
+                X: 0
+                Y: 0
+                Z: 0
+              Pose Color: 255; 255; 255
+              Pose Style: Arrows
+              Radius: 0.029999999329447746
+              Shaft Diameter: 2
+              Shaft Length: 2
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/waypoints
+              Value: false
+            - Class: avt_341_rviz_plugins/NavGoalSequence
+              Enabled: true
+              Name: NavGoalSequence
+              Pose Arrow:
+                Alpha: 1
+                Color: 255; 255; 255
+                Head Length: 0.5
+                Head Radius: 1
+                Shaft Length: 1
+                Shaft Radius: 0.5
+              Threshold Region:
+                Circle Color: 255; 255; 255
+                Circle Segments: 64
+                Circle Thickness: 0.10000000149011612
+                Fill Alpha: 0.10000000149011612
+                Fill Color: 0; 204; 0
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /mrzr/avt_341/new_waypoints
+              Value: true
+          Enabled: true
+          Name: Global Planner
       Enabled: true
-      History Length: 1
-      Name: MPC Goal
-      Radius: 1
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/mpc_goalPoint
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
+      Name: Navigation
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_default_plugins/Axes
+          Enabled: true
+          Length: 3
+          Name: Robot Frame
+          Radius: 0.30000001192092896
+          Reference Frame: mrzr/base_link
+          Value: true
       Enabled: true
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /mrzr/avt_341/obstacle_markers
-      Value: true
+      Name: Localization
+    - Class: rviz_common/Group
+      Displays:
+        - Alpha: 1
+          Circle Segments: 64
+          Circle Thickness: 0.30000001192092896
+          Class: avt_341_rviz_plugins/MapMarkerList
+          Color: 0; 0; 0
+          Enabled: true
+          Name: Mission Points
+          Radius: 2
+          Text Scale: 1
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /avt_341/map_markers_change
+          Value: true
+        - Alpha: 1
+          Class: avt_341_rviz_plugins/StaticMapImage
+          Draw Behind: true
+          Enabled: true
+          Frame: map
+          Image File: package://mrzr_avt_341_integration/config/NATO_Area_0025m.png
+          Interpolation: Linear
+          Name: Satellite Basemap
+          Origin X: 238.45997619628906
+          Origin Y: 643.0291748046875
+          Origin Yaw: 0
+          Resolution: 0.25
+          Value: true
+      Enabled: true
+      Name: Overlays
   Enabled: true
   Global Options:
     Background Color: 206; 206; 206
@@ -440,6 +468,40 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /clicked_point
+    - Class: avt_341_rviz_plugins/Set Nav Goal
+      Distance Threshold: -1
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: avt_341/new_waypoints
+      Vehicle ID: mrzr2
+      Yaw Threshold: -1
+    - Class: avt_341_rviz_plugins/Set Formation
+      Command Topic: avt_341/comm_messages
+      Formation Message:
+        Desired Speed: 5
+        Distance: 0
+        Follower 1 Name: ""
+        Follower 2 Name: ""
+        Follower 3 Name: ""
+        Formation: ""
+        Leader Name: MRZR
+        Priority Type: QUEUE
+        Receiver Name: MRZR
+        Sender Name: MRZR
+        TOI Regex: ^TI_
+        Target Message ID: 0
+        Termination Method: LEADER_ARRIVED
+        X Offset: 0
+        X Scale: 1
+        Y Offset: 0
+        Y Scale: 1
+      Markers:
+        MapMarker Topic: avt_341/map_marker
+        MapMarkerList Topic: /avt_341/map_markers_change
+        Pick Tolerance: 2
   Transformation:
     Current:
       Class: rviz_default_plugins/TF
@@ -463,20 +525,24 @@ Visualization Manager:
       Y: 0
     Saved: ~
 Window Geometry:
+  AVT-341 Autonomy Stack:
+    collapsed: false
   Displays:
     collapsed: false
-  Height: 1127
+  Height: 946
   Hide Left Dock: false
   Hide Right Dock: false
-  MissionCommand:
+  Map Markers:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000024500000411fc020000000cfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb00000010004d00520041004b0053007400610074010000003b000001390000000000000000fb000000240056006500630074006f0072006e00610076005300740061007400500061006e0065006c010000003b000001a70000000000000000fb0000001a00560042006f0078005300740061007400500061006e0065006c010000016c0000012a0000000000000000fb000000100044006900730070006c006100790073010000003b00000411000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d006100670065010000034b000000940000000000000000000000010000014f00000411fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fc0000003b00000411000000bb0100001afa000000000100000002fb0000001c004d0069007300730069006f006e0043006f006d006d0061006e00640100000000ffffffff0000009f00fffffffb0000000a0056006900650077007301000005f90000017b0000010000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000003d40000041100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Mission Command:
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd0000000400000000000001970000035cfc020000000cfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb00000010004d00520041004b0053007400610074010000003b000001390000000000000000fb000000240056006500630074006f0072006e00610076005300740061007400500061006e0065006c010000003b000001a70000000000000000fb0000001a00560042006f0078005300740061007400500061006e0065006c010000016c0000012a0000000000000000fc0000003b0000035c000002240100001afa000000010100000003fb00000016004d006100700020004d00610072006b0065007200730100000000ffffffff000000ad00fffffffb0000002c004100560054002d0033003400310020004100750074006f006e006f006d007900200053007400610063006b0100000000ffffffff0000012d00fffffffb000000100044006900730070006c0061007900730100000000000002450000015600fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d006100670065010000034b000000940000000000000000000000010000011c0000035cfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fc0000003b0000035c000002bb0100001afa000000000100000003fb0000001e004d0069007300730069006f006e00200043006f006d006d0061006e00640100000000ffffffff0000011c00fffffffb0000001c004d0069007300730069006f006e0043006f006d006d0061006e00640000000000ffffffff0000000000000000fb0000000a0056006900650077007301000005f90000017b0000010000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000004c10000035c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Tool Properties:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1908
-  X: 1168
-  Y: 606
+  Width: 1920
+  X: 0
+  Y: 27
