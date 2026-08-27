@@ -1,23 +1,11 @@
+__overrides: $pkg_path{avt_341_bringup}/parameters/krc_ros_params.yaml
+
 /**:
   ros__parameters:
-    max_speed: 4.0
     frames:
-      use_vehicle_prefix: false
       base_link: 'base_link'
       cg: 'base_link'
-      gis:
-        crs: 'EPSG:6495'
-        origin_x: 7885314.3400268555
-        origin_y: 264132.3708496094
-
-/**/mission_manager_node:
-  ros__parameters:
-    mission_definition_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_mission_points.csv
-    mission_paths_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_paths.csv
-    speed_zones_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_speed_zones.json
 
 /**/comm_node:
   ros__parameters:
     name: 'FEDA'
-    broadcast_over_ros: true
-    vehicle_namespaces: ['mrzr', 'mrzr2', 'feda']
