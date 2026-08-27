@@ -14,6 +14,7 @@ add_executable(
   "task_follow.cpp"
   "task_moveto.cpp"
   "task_wait_until.cpp"
+  "task_wait_for_duration.cpp"
   "task_pathfollow.cpp"
 
   "../formation_definition.cpp"

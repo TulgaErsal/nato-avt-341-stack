@@ -238,6 +238,18 @@ Visualization Manager:
         Value: /avt_341/segmentation_grid_low_res_updates
       Use Timestamp: false
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: CostmapCropBox
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /avt_341/costmap_crop_box
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 36; 31; 49

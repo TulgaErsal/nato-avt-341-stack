@@ -59,9 +59,12 @@ void Astar::AllocateMap(int h, int w, int init_val) {
     }
   }
 
-  std::vector<float> column;
-  column.resize(height_, 0.0f);
-  map_.resize(width_, column);
+  // resize(width_, column) would leave pre-existing columns at their old height, which
+  // writes out of bounds when the grid dimensions change between calls (e.g. costmap crop)
+  map_.resize(width_);
+  for (auto& column : map_) {
+    column.assign(height_, 0.0f);
+  }
 }
 
 void Astar::SetMapValue(const Index& index, int val_height, int val_seg) {

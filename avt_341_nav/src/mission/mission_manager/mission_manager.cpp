@@ -1,6 +1,7 @@
 // clas definition
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/node/node_types.h"
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <utility>
@@ -410,6 +411,10 @@ Task* MissionManager::currentTask(){
   return task_list.empty() ? nullptr : task_list.front();
 }
 
+double MissionManager::nowSeconds() const {
+  return node_->now().seconds();
+}
+
 // Contact Management
 bool MissionManager::hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
 	std::vector<Contact>::iterator it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
@@ -495,6 +500,7 @@ void MissionManager::reset(){
   arrivals_.clear();
   goal_filter_->Reset();
   speed_setpoint_state = -1.0;
+  last_command_signature_ = FormationSignature();
 
   std_msgs::msg::String reset_msg;
   reset_msg.data = avt_341_nav::node::NodeType::GlobalPlanner;
@@ -611,6 +617,8 @@ void MissionManager::handleOverwatch(const OverwatchMsg & msg){
   if(!mp.name.empty()){
     RCLCPP_INFO(node_->get_logger(), "Moving to overwatch %s at (%.2f, %.2f)", mp.name.c_str(), mp.pos_x, mp.pos_y);
 
+    last_command_signature_.record(MissionMsgType::Overwatch);
+
     auto overwatchTask = new MoveTo(this, my_name, -1);
     overwatchTask->setGoalByMissionPoint(mp.name);
     overwatchTask->is_preemptable = false;
@@ -666,17 +674,56 @@ void MissionManager::handleFormationRequest(FormationMsg msg) {
     msg.receiver_name = my_name;
     auto formation_def =
         new FormationDefinition(msg, mp, params_.formation, my_name);
+
+    const FormationSignature new_signature(MissionMsgType::Formation, formation_def);
+    const bool is_formation_change = new_signature != last_command_signature_;
+
+    Task* formation_task = nullptr;
     if(formation_def->isLeader() || formation_def->formationAtGoal()){
         // handle objective, additional x_offset and y_offset needed if formationAtGoal() set
-        handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
+        formation_task = handleMoveTo(msg, formation_def->formation_status.x_offset, formation_def->formation_status.y_offset, formation_def, msg.desired_speed);
     } else if(formation_def->isFollowing()) {
         Follow* followTask = new Follow(this, msg.sender_name, msg.msg_id, formation_def,
             msg.desired_speed, msg.dist_threshold, msg.yaw_threshold);
         addTask(followTask, msg.priority_type);
+        formation_task = followTask;
+    }
+
+    if(formation_task != nullptr) {
+        insertFormationChangeDelay(formation_task, *formation_def, is_formation_change);
+        last_command_signature_ = new_signature;
     }
 
     // handle set speed
     //handleSetSpeed(msg.speedMsg());
+}
+
+void MissionManager::insertFormationChangeDelay(Task* formation_task, const FormationDefinition & formation_def, bool is_formation_change) {
+    if(!params_.formation_change_delay.is_enabled || !is_formation_change){
+      return;
+    }
+
+    // Delay scales with the vehicle's position in the formation order; the lead vehicle (index 0)
+    // changes formation immediately.
+    const auto vehicles = formation_def.orderedVehicles();
+    const auto veh_it = std::find(vehicles.begin(), vehicles.end(), my_name);
+    if(veh_it == vehicles.end()){
+      return;
+    }
+    const double wait_s = static_cast<double>(std::distance(vehicles.begin(), veh_it)) *
+                          params_.formation_change_delay.delay;
+    if(wait_s <= 0.0){
+      return;
+    }
+
+    auto task_it = std::find(task_list.begin(), task_list.end(), formation_task);
+    if(task_it == task_list.end()){
+      return;
+    }
+    Task* waitTask = new WaitForDuration(this, formation_task->sender_name, -1, wait_s);
+    task_list.insert(task_it, waitTask);
+    RCLCPP_INFO(node_->get_logger(), "%s formation change detected, waiting %.1f s before %s", my_name.c_str(), wait_s, formation_task->description().c_str());
+    publishTaskChange();
 }
 
 void MissionManager::handleAcknowledge(const AcknowledgeMsg & msg) {
@@ -701,16 +748,21 @@ void MissionManager::handleTaskComplete(const TaskCompleteMsg & msg) {
     task_completions_.push_back(msg);
 }
 
-void MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def, double desired_speed) {
+Task* MissionManager::handleMoveTo(const MoveToMsg & msg, double x_offset, double y_offset, FormationDefinition* formation_def, double desired_speed) {
     // only applies if I'm the leader, otherwise decline
     if(msg.receiver_name == my_name) {
         MoveTo* moveTask = new MoveTo(this, msg.sender_name, msg.msg_id, formation_def, x_offset+msg.goal_x_offset,
             y_offset + msg.goal_y_offset, msg.dist_threshold, msg.yaw_threshold, desired_speed);
         moveTask->setGoalByMissionPoint(msg.objective_name);
+        // Raw MoveTo only: a formation-driven MoveTo is recorded by handleFormationRequest.
+        if(formation_def == nullptr) {
+            last_command_signature_.record(MissionMsgType::MoveTo);
+        }
         addTask(moveTask, msg.priority_type);
-    } else {
-        RCLCPP_INFO(node_->get_logger(), "Ignoring MoveTo (not for me)");
+        return moveTask;
     }
+    RCLCPP_INFO(node_->get_logger(), "Ignoring MoveTo (not for me)");
+    return nullptr;
 }
 
 void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinition* formation_def) {
@@ -718,6 +770,9 @@ void MissionManager::handlePathFollow(const PathFollowMsg& msg, FormationDefinit
     if(msg.receiver_name == my_name) {
         PathFollow* pathTask = new PathFollow(this, msg.sender_name, msg.msg_id, formation_def, msg.desired_speed);
         pathTask->setPathByDef(msg.objective_name);
+        if(formation_def == nullptr) {
+            last_command_signature_.record(MissionMsgType::PathFollow);
+        }
         addTask(pathTask, msg.priority_type);
     } else {
         RCLCPP_INFO(node_->get_logger(), "Ignoring PathFollow (not for me)");

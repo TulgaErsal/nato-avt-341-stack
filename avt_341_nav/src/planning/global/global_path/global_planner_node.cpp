@@ -20,6 +20,7 @@
 #include "avt_341_nav/core/compute_time_recorder.hpp"
 #include "avt_341_nav/core/coord_transform.hpp"
 #include "avt_341_nav/core/math_dto.hpp"
+#include "avt_341_nav/core/occupancy_grid_utils.hpp"
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/waypoint_file_parser.hpp"
 #include "avt_341_nav/planning/global/astar.h"
@@ -35,10 +36,13 @@
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 #include "avt_341_nav/core/dto_conversion.h"
 #include <avt_341_nav/global_planner_params_service.hpp>
 #include <avt_341_msgs/srv/compute_global_path.hpp>
 #include <chrono>
+#include <optional>
 #include <stdexcept>
 
 using avt_341_nav::core::NavStackState;
@@ -64,6 +68,9 @@ bool reset_called = false;
 double dft_dist_threshold = 0.0f;
 double dft_yaw_threshold = 30.0f;
 
+bool costmap_crop_enabled = false;
+double costmap_crop_padding = 0.0;
+
 constexpr double WAYPOINT_TRANSFORM_TIMEOUT_S = 5.0;
 
 double goal_start_time = 0.0;
@@ -76,6 +83,10 @@ std::shared_ptr<avt_341_nav::core::ComputeTimeRecorder> compute_time_recorder = 
 std::future<std::vector<avt_341_nav::planning::Point>> planning_future;
 std::chrono::steady_clock::time_point plan_start;
 bool timeout_logged = false;
+// Metadata of the (possibly cropped) grid the in-flight plan runs on; single plan in
+// flight at a time, guarded by planning_future.valid()
+nav_msgs::msg::MapMetaData plan_grid_info;
+std::string plan_grid_frame_id = "map";
 
 void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom)
 {
@@ -239,6 +250,65 @@ static std::vector<Point> TrimPathEnd(const std::vector<Point>& path, double tri
   return std::vector<Point>{ path.front() };
 }
 
+// Snapshots the given grid, cropped to the padded bounding box when cropping is enabled.
+// Falls back to a full copy when the box misses the grid entirely.
+static nav_msgs::msg::OccupancyGrid SnapshotGrid(
+    const nav_msgs::msg::OccupancyGrid& src,
+    const avt_341_nav::core::WorldAabb& box)
+{
+  if (costmap_crop_enabled) {
+    auto cropped = avt_341_nav::core::CropGridToWorldAabb(src, box);
+    if (cropped) {
+      return std::move(*cropped);
+    }
+  }
+  return src;
+}
+
+// Builds a line-strip marker outlining the extent of the costmap used for planning.
+static visualization_msgs::msg::MarkerArray BuildCropBoxMarker(
+    const nav_msgs::msg::MapMetaData& info,
+    const std::string& frame_id,
+    const builtin_interfaces::msg::Time& stamp)
+{
+  visualization_msgs::msg::Marker box;
+  box.header.frame_id = frame_id;
+  box.header.stamp = stamp;
+  box.ns = "costmap_crop";
+  box.id = 0;
+  box.type = visualization_msgs::msg::Marker::LINE_STRIP;
+  box.action = visualization_msgs::msg::Marker::ADD;
+  box.pose.orientation.w = 1.0;
+  box.scale.x = 0.3;
+  box.color.r = 1.0f;
+  box.color.g = 1.0f;
+  box.color.b = 0.0f;
+  box.color.a = 1.0f;
+
+  const double llx = info.origin.position.x;
+  const double lly = info.origin.position.y;
+  const double urx = llx + info.width * info.resolution;
+  const double ury = lly + info.height * info.resolution;
+  //slightly above ground to avoid z-fighting with grid map displays
+  const double box_z = 0.2;
+  auto add_corner = [&box, box_z](double x, double y) {
+    geometry_msgs::msg::Point p;
+    p.x = x;
+    p.y = y;
+    p.z = box_z;
+    box.points.push_back(p);
+  };
+  add_corner(llx, lly);
+  add_corner(urx, lly);
+  add_corner(urx, ury);
+  add_corner(llx, ury);
+  add_corner(llx, lly);
+
+  visualization_msgs::msg::MarkerArray marker_array;
+  marker_array.markers.push_back(box);
+  return marker_array;
+}
+
 void ComputeGlobalPathServiceCallback(
     const std::shared_ptr<avt_341_msgs::srv::ComputeGlobalPath::Request> request,
     std::shared_ptr<avt_341_msgs::srv::ComputeGlobalPath::Response> response)
@@ -267,8 +337,20 @@ void ComputeGlobalPathServiceCallback(
     const auto dist_threshold = goal.dist_threshold < 0.0 ? dft_dist_threshold : goal.dist_threshold;
     const Point goal_pt = ToVec2(goal.pose);
 
+    nav_msgs::msg::OccupancyGrid* grid_ptr = &current_grid;
+    nav_msgs::msg::OccupancyGrid* seg_ptr = &segmentation_grid;
+    nav_msgs::msg::OccupancyGrid grid_crop, seg_crop;
+    if (costmap_crop_enabled) {
+      const auto crop_box = avt_341_nav::core::MakePaddedAabb(
+        segment_start.x, segment_start.y, goal_pt.x, goal_pt.y, costmap_crop_padding);
+      grid_crop = SnapshotGrid(current_grid, crop_box);
+      seg_crop = SnapshotGrid(segmentation_grid, crop_box);
+      grid_ptr = &grid_crop;
+      seg_ptr = &seg_crop;
+    }
+
     std::vector<Point> segment = path_planner->PlanPath(
-      &current_grid, &segmentation_grid, goal_pt, segment_start);
+      grid_ptr, seg_ptr, goal_pt, segment_start);
 
     if (segment.empty()) {
       RCLCPP_WARN(n->get_logger(), "ComputeGlobalPath: planner returned empty segment for goal %zu (%.2f, %.2f)", i, goal_pt.x, goal_pt.y);
@@ -324,6 +406,9 @@ int main(int argc, char* argv[])
   dft_yaw_threshold = params.goal_yaw_threshold;    // Set value > 180.0 degrees to disable
   dft_yaw_threshold *= M_PI / 180.0;
 
+  costmap_crop_enabled = params.costmap_crop.is_enabled;
+  costmap_crop_padding = params.costmap_crop.padding;
+
   int planning_timeout_ms = static_cast<int>(params.planning_timeout_ms);
 
   std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Path>> global_path_pre_smooth_pub = nullptr;
@@ -331,6 +416,11 @@ int main(int argc, char* argv[])
   if(params.debug_visualize){
     global_path_pre_smooth_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/global_path_pre_smooth", 10);
     global_path_pre_fill_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/global_path_pre_fill", 10);
+  }
+
+  std::shared_ptr<rclcpp::Publisher<visualization_msgs::msg::MarkerArray>> crop_box_pub = nullptr;
+  if (costmap_crop_enabled) {
+    crop_box_pub = n->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/global_planner/costmap_crop", 1);
   }
 
   int shutdown_behavior = static_cast<int>(params.shutdown_behavior);
@@ -529,8 +619,12 @@ int main(int argc, char* argv[])
             if (!new_path.empty()) {
               if (params.planning_method == "fast_marching") {
                 nav_msgs::msg::OccupancyGrid fast_marching_grid;
-                fast_marching_grid.header = current_grid.header;
-                fast_marching_grid.info = current_grid.info;
+                //use the metadata of the (possibly cropped) grid the plan actually ran on,
+                //which always agrees with the planner dims below; current_grid may have
+                //changed since the planning snapshot was taken
+                fast_marching_grid.header.frame_id = plan_grid_frame_id;
+                fast_marching_grid.header.stamp = n->now();
+                fast_marching_grid.info = plan_grid_info;
                 int height = path_planner->GetGridHeight();
                 int width = path_planner->GetGridWidth();
                 fast_marching_grid.data.resize(height * width);
@@ -599,10 +693,19 @@ int main(int argc, char* argv[])
 
         if (!planning_future.valid()) {
           path_planner->ClearCancel();
-          auto grid_snap = current_grid;
-          auto seg_snap = segmentation_grid;
           auto goal_pt = ToVec2(goal.pose.position);
           auto pos_snap = position;
+          const auto crop_box = avt_341_nav::core::MakePaddedAabb(
+              pos_snap.x, pos_snap.y, goal_pt.x, goal_pt.y, costmap_crop_padding);
+          auto grid_snap = SnapshotGrid(current_grid, crop_box);
+          auto seg_snap = SnapshotGrid(segmentation_grid, crop_box);
+
+          plan_grid_info = grid_snap.info;
+          plan_grid_frame_id = grid_snap.header.frame_id.empty() ? "map" : grid_snap.header.frame_id;
+          if (crop_box_pub) {
+            crop_box_pub->publish(BuildCropBoxMarker(plan_grid_info, plan_grid_frame_id, n->now()));
+          }
+
           plan_start = std::chrono::steady_clock::now();
           planning_future = std::async(std::launch::async,
               [grid_snap, seg_snap, goal_pt, pos_snap]() mutable -> std::vector<Point> {

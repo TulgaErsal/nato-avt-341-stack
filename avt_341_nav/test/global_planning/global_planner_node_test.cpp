@@ -33,6 +33,8 @@
 #include "avt_341_nav/planning/global/d_star_lite.h"
 #include "avt_341_nav/planning/global/fast_marching_square.h"
 
+#include "avt_341_nav/core/occupancy_grid_utils.hpp"
+
 // ROS message types (header-only abstractions)
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
@@ -444,6 +446,170 @@ TEST_P(GlobalPathNodeTest, PathAvoidsObstacles) {
         << "(method=" << tc.planning_method
         << ", scenario=" << tc.scenario << ")";
   }
+}
+
+// ---------------------------------------------------------------------------
+// Varying-dims regression: successive PlanPath calls with different grid
+// dimensions must not corrupt planner state (costmap crop produces a
+// different-sized grid every planning cycle). The 100x100 -> 60x120 sequence
+// (narrower + taller) previously wrote out of bounds in Astar::AllocateMap.
+// ---------------------------------------------------------------------------
+TEST(GlobalPathVaryingDimsTest, PlanPathHandlesChangingGridDims) {
+  const std::vector<std::string> methods = {
+      "astar", "fast_marching", "d_star_lite", "fast_marching_square"};
+  struct DimCase {
+    int width;
+    int height;
+    Point start;
+    Point goal;
+  };
+  const std::vector<DimCase> dim_cases = {
+      {100, 100, {10.f, 10.f}, {90.f, 90.f}},
+      {60, 120, {5.f, 5.f}, {55.f, 115.f}},
+      {120, 60, {5.f, 5.f}, {115.f, 55.f}}};
+
+  for (const auto& method : methods) {
+    auto planner = CreatePlanner(method, g_params);
+    ASSERT_NE(planner, nullptr);
+
+    for (const auto& dc : dim_cases) {
+      const int total = dc.width * dc.height;
+      auto occ = MakeGrid(std::vector<int8_t>(total, 0), dc.width, dc.height, 1.0f);
+      auto seg = MakeGrid(std::vector<int8_t>(total, 100), dc.width, dc.height, 1.0f);
+
+      std::vector<Point> path = planner->PlanPath(&occ, &seg, dc.goal, dc.start);
+
+      EXPECT_GT(path.size(), 0u)
+          << "Empty path for method '" << method << "' on "
+          << dc.width << "x" << dc.height << " grid";
+      if (!path.empty()) {
+        float dx = path.back().x - dc.goal.x;
+        float dy = path.back().y - dc.goal.y;
+        EXPECT_LT(std::sqrt(dx * dx + dy * dy), 10.0f)
+            << "Path end far from goal for method '" << method << "' on "
+            << dc.width << "x" << dc.height << " grid";
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Crop equivalence: planning on a costmap cropped around start/goal + padding
+// must still route through the scenario obstacles and reach the goal.
+// ---------------------------------------------------------------------------
+TEST(CostmapCropTest, CroppedPlanReachesGoalAndAvoidsObstacles) {
+  ScenarioGrids grids = BuildScenario("gate");
+  // Start/goal chosen so the padded box is meaningfully smaller than the map
+  // while the gate opening (x 45-55, y 40-60) stays inside the box.
+  const Point start{40.f, 20.f};
+  const Point goal{60.f, 80.f};
+  const double padding = 20.0;
+
+  const auto box = avt_341_nav::core::MakePaddedAabb(
+      start.x, start.y, goal.x, goal.y, padding);
+  auto occ_crop = avt_341_nav::core::CropGridToWorldAabb(grids.occupancy, box);
+  auto seg_crop = avt_341_nav::core::CropGridToWorldAabb(grids.segmentation, box);
+  ASSERT_TRUE(occ_crop.has_value());
+  ASSERT_TRUE(seg_crop.has_value());
+  EXPECT_LT(occ_crop->info.width, grids.occupancy.info.width);
+
+  const std::vector<std::string> methods = {
+      "astar", "fast_marching", "d_star_lite", "fast_marching_square"};
+  for (const auto& method : methods) {
+    auto planner = CreatePlanner(method, g_params);
+    ASSERT_NE(planner, nullptr);
+
+    std::vector<Point> path = planner->PlanPath(&*occ_crop, &*seg_crop, goal, start);
+    ASSERT_GT(path.size(), 0u) << "Empty cropped-grid path for method '" << method << "'";
+
+    float dx = path.back().x - goal.x;
+    float dy = path.back().y - goal.y;
+    EXPECT_LT(std::sqrt(dx * dx + dy * dy), 10.0f)
+        << "Cropped-grid path end far from goal for method '" << method << "'";
+
+    // Waypoints must not land on fully-occupied cells of the source grid.
+    const int width = static_cast<int>(grids.occupancy.info.width);
+    const float res = grids.occupancy.info.resolution;
+    int violations = 0;
+    for (const auto& wp : path) {
+      int cx = static_cast<int>(wp.x / res);
+      int cy = static_cast<int>(wp.y / res);
+      if (cx < 0 || cy < 0 || cx >= width ||
+          cy >= static_cast<int>(grids.occupancy.info.height)) {
+        continue;
+      }
+      if (grids.occupancy.data[cy * width + cx] >= 100) {
+        ++violations;
+      }
+    }
+    EXPECT_EQ(violations, 0)
+        << violations << " cropped-grid waypoint(s) on occupied cells (method='"
+        << method << "')";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Crop helper unit tests
+// ---------------------------------------------------------------------------
+TEST(OccupancyGridUtilsTest, PaddedAabbOrdersPoints) {
+  const auto box = avt_341_nav::core::MakePaddedAabb(9.0, 8.0, 1.0, 2.0, 3.0);
+  EXPECT_DOUBLE_EQ(box.x_min, -2.0);
+  EXPECT_DOUBLE_EQ(box.y_min, -1.0);
+  EXPECT_DOUBLE_EQ(box.x_max, 12.0);
+  EXPECT_DOUBLE_EQ(box.y_max, 11.0);
+}
+
+TEST(OccupancyGridUtilsTest, CropSnapsOriginToCellBoundaries) {
+  // Source: 100x100 cells, res 0.5, origin (5.0, 3.0); cell value = column index
+  const int size = 100;
+  std::vector<int8_t> data(size * size);
+  for (int r = 0; r < size; r++) {
+    for (int c = 0; c < size; c++) {
+      data[r * size + c] = static_cast<int8_t>(c % 100);
+    }
+  }
+  auto src = MakeGrid(data, size, size, 0.5f);
+  src.info.origin.position.x = 5.0;
+  src.info.origin.position.y = 3.0;
+
+  const avt_341_nav::core::WorldAabb box{7.3, 4.2, 12.1, 9.9};
+  const auto crop = avt_341_nav::core::CropGridToWorldAabb(src, box);
+  ASSERT_TRUE(crop.has_value());
+
+  // start_col = floor((7.3-5)/0.5) = 4 -> origin.x = 5 + 4*0.5 = 7.0
+  // end_col = ceil((12.1-5)/0.5) = 15 -> width 11; rows: floor(2.4)=2, ceil(13.8)=14
+  EXPECT_DOUBLE_EQ(crop->info.origin.position.x, 7.0);
+  EXPECT_DOUBLE_EQ(crop->info.origin.position.y, 4.0);
+  EXPECT_EQ(crop->info.width, 11u);
+  EXPECT_EQ(crop->info.height, 12u);
+  EXPECT_EQ(crop->data.size(), 11u * 12u);
+  // First cropped cell corresponds to source column 4
+  EXPECT_EQ(crop->data[0], 4);
+  // Last cell of the first cropped row corresponds to source column 14
+  EXPECT_EQ(crop->data[10], 14);
+}
+
+TEST(OccupancyGridUtilsTest, CropClampsToSourceExtent) {
+  auto src = MakeGrid(std::vector<int8_t>(50 * 40, 7), 50, 40, 1.0f);
+  const avt_341_nav::core::WorldAabb box{-100.0, -100.0, 100.0, 100.0};
+  const auto crop = avt_341_nav::core::CropGridToWorldAabb(src, box);
+  ASSERT_TRUE(crop.has_value());
+  EXPECT_EQ(crop->info.width, 50u);
+  EXPECT_EQ(crop->info.height, 40u);
+  EXPECT_DOUBLE_EQ(crop->info.origin.position.x, 0.0);
+  EXPECT_EQ(crop->data, src.data);
+}
+
+TEST(OccupancyGridUtilsTest, CropReturnsNulloptWhenBoxMissesGrid) {
+  auto src = MakeGrid(std::vector<int8_t>(50 * 40, 0), 50, 40, 1.0f);
+  const avt_341_nav::core::WorldAabb box{200.0, 200.0, 300.0, 300.0};
+  EXPECT_FALSE(avt_341_nav::core::CropGridToWorldAabb(src, box).has_value());
+}
+
+TEST(OccupancyGridUtilsTest, CropReturnsNulloptOnEmptySource) {
+  nav_msgs::msg::OccupancyGrid empty;
+  const avt_341_nav::core::WorldAabb box{0.0, 0.0, 10.0, 10.0};
+  EXPECT_FALSE(avt_341_nav::core::CropGridToWorldAabb(empty, box).has_value());
 }
 
 // ---------------------------------------------------------------------------

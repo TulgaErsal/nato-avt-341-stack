@@ -56,6 +56,37 @@ struct Contact {
     bool is_new;       // true until MoveTo+Encircle tasks are created
     double first_seen_sec;
 };
+
+// Signature of a task-creating mission command, used to detect formation changes
+struct FormationSignature {
+    std::string command_type;
+    std::string formation_type;
+    bool formation_at_goal = false;
+    std::vector<std::string> formation_vehicles;
+
+    FormationSignature() = default;
+    explicit FormationSignature(const std::string & command_type_in, const FormationDefinition * formation_def = nullptr)
+        : command_type(command_type_in) {
+        if (formation_def != nullptr) {
+            formation_type = formation_def->getFormationType();
+            formation_at_goal = formation_def->formationAtGoal();
+            formation_vehicles = formation_def->orderedVehicles();
+        }
+    }
+
+    // record the latest task-creating mission command
+    void record(const std::string & command_type_in, const FormationDefinition * formation_def = nullptr) {
+        *this = FormationSignature(command_type_in, formation_def);
+    }
+
+    bool operator==(const FormationSignature & other) const {
+        return command_type == other.command_type &&
+               formation_type == other.formation_type &&
+               formation_at_goal == other.formation_at_goal &&
+               formation_vehicles == other.formation_vehicles;
+    }
+    bool operator!=(const FormationSignature & other) const { return !(*this == other); }
+};
     
 /// Class for formation control
 class MissionManager{
@@ -84,7 +115,8 @@ class MissionManager{
     void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
 
     // external messages
-    void handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr, double desired_speed = 0.0);
+    // Returns the created task, or nullptr if the message was not for this vehicle.
+    Task* handleMoveTo(const MoveToMsg & msg, double x_offset=0.0, double y_offset=0.0, FormationDefinition* formation_def = nullptr, double desired_speed = 0.0);
     void handlePathFollow(const PathFollowMsg& msg, FormationDefinition* formation_def = nullptr);
     void handleFormationRequest(FormationMsg msg);
     void handleAcknowledge(const AcknowledgeMsg &);
@@ -132,6 +164,7 @@ class MissionManager{
     Task* currentTask();
     geometry_msgs::msg::PoseStamped current_gp_goal;
     double getSpeedSetpoint();
+    double nowSeconds() const;
 
   private:
 
@@ -148,6 +181,8 @@ class MissionManager{
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
+
+    FormationSignature last_command_signature_;
 
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavGoalSequence>> waypoint_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::String>> reset_pub = nullptr;
@@ -173,6 +208,7 @@ class MissionManager{
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();
+    void insertFormationChangeDelay(Task* formation_task, const FormationDefinition & formation_def, bool is_formation_change);
 
     // Publishes the current mission points as a latched MapMarkerList. Called
     // whenever the mission point list changes (CSV load or service call).

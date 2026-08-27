@@ -72,6 +72,8 @@ ros__parameters:
       default_value: true
       description: "If true, calculate formation offsets from the lead vehicle. If false, calculate them from the next vehicle in a column."
 
+  # Formation Speed Control Settings
+  # ====================================================================================
   fsc:
     type:
       type: string
@@ -103,6 +105,9 @@ ros__parameters:
       type: double
       default_value: 100.0
       description: "Range within which the heading dot-product filter is applied."
+
+    # FSC/Out-of-Formation Settings
+    # ====================================================================================
     oof:
       threshold:
         type: double
@@ -121,6 +126,8 @@ ros__parameters:
         default_value: 0.14
         description: "Multiplier applied to vehicles that are out of formation."
 
+  # Target of Interest Settings
+  # ====================================================================================
   toi:
     approach_dist:
       type: double
@@ -165,6 +172,8 @@ ros__parameters:
     description: "Formation goal filtering method: 'none' | 'obs_avoid'."
     validation:
       one_of<>: [ [ 'none', 'obs_avoid' ] ]
+
+  # Formation Goal Filter - Obstacle Avoidance Settings
   fgf_obs_avoid:
     occ_threshold:
       type: int
@@ -202,3 +211,13 @@ ros__parameters:
       type: bool
       default_value: true
       description: "Ignore deadlock and reset the internal filter state."
+
+  formation_change_delay:
+    is_enabled:
+      type: bool
+      default_value: false
+      description: "If true, i-th vehicle in formation will wait for i*delay seconds before changing formation."
+    delay:
+      type: double
+      default_value: 5.0
+      description: "Delay (s) between formation changes for ith vehicle."

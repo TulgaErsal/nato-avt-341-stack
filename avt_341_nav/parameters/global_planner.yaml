@@ -160,3 +160,15 @@ ros__parameters:
     description: "Max milliseconds a single PlanPath call may run before it is cancelled and the previous path is re-published."
     validation:
       gt<>: [ 0 ]
+
+  costmap_crop:
+    is_enabled:
+      type: bool
+      default_value: false
+      description: "If true, costmap processed by planner will be limited to an axis-aligned bounding box + padding encompassing ego-vehicle and target goal."
+    padding:
+      type: double
+      default_value: 30.0
+      description: "Padding applied to costmap bounding box."
+      validation:
+        gt_eq<>: [ 0.0 ]
