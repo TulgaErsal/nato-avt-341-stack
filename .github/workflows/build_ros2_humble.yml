@@ -58,8 +58,8 @@ jobs:
         run: |
           sudo apt install -y ros-humble-pcl-ros ros-humble-ackermann-msgs ros-humble-vision-msgs libqt5svg5-dev unzip
           sudo apt install -y python3-jinja2 python3-typeguard python3-yaml
-          wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
-          unzip libtorch-shared-with-deps-latest.zip
+          wget https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.4.1%2Bcpu.zip -O libtorch-shared-with-deps.zip
+          unzip libtorch-shared-with-deps.zip
 
       # Note: Environment variables do not seem to persist through job steps, need to call source here
       - name: Build repository
