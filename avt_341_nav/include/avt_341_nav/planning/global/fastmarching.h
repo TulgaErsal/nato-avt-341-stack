@@ -20,15 +20,16 @@ public:
                bool search_diagonals,
                int los_max_iterations,
                bool los_break_on_first,
-                float safety_margin_global,
+               float safety_margin_global,
+               float safety_margin_soft,
                std::string clearance_penalty_type,
                std::string path_extraction_method,
                float obstacle_threshold,
                float clearance_penalty_scale,
-                float clearance_penalty_range,
+               float clearance_penalty_range,
                float clearance_penalty_exponent,
                int gradient_descent_max_steps,
-                int gradient_descent_steps_per_point,
+               int gradient_descent_steps_per_point,
                float clipping_distance,
                bool verbose) : Astar(w_distance,
                                             w_occupancy,
@@ -37,6 +38,7 @@ public:
                                             los_max_iterations,
                                             los_break_on_first),
                                       safety_margin_global_(safety_margin_global),
+                                      safety_margin_soft_(safety_margin_soft),
                                       clearance_penalty_type_(clearance_penalty_type),
                                       verbose_(verbose),
                                       path_extraction_method_(path_extraction_method),
@@ -69,6 +71,7 @@ protected:
   
   std::string path_extraction_method_;
   float safety_margin_global_;
+  float safety_margin_soft_;
   std::string clearance_penalty_type_;
   float obstacle_threshold_;
   float clearance_penalty_scale_;

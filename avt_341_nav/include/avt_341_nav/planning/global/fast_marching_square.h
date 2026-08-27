@@ -26,6 +26,7 @@ public:
                      int los_max_iterations,
                      bool los_break_on_first,
                      float safety_margin,
+                     float safety_margin_soft,
                      std::string clearance_penalty_type,
                      std::string path_extraction_method,
                      float obstacle_threshold,
@@ -38,9 +39,9 @@ public:
                      bool verbose)
       : FastMarching(w_distance, w_occupancy, w_segmentation,
                      search_diagonals, los_max_iterations, los_break_on_first,
-                     safety_margin, clearance_penalty_type, path_extraction_method, 
-                     obstacle_threshold, clearance_penalty_scale, clearance_penalty_range, 
-                     clearance_penalty_exponent, gradient_descent_max_steps, 
+                     safety_margin, safety_margin_soft, clearance_penalty_type, path_extraction_method,
+                     obstacle_threshold, clearance_penalty_scale, clearance_penalty_range,
+                     clearance_penalty_exponent, gradient_descent_max_steps,
                      gradient_descent_steps_per_point, clipping_distance, verbose) {}
 
   virtual ~FastMarchingSquare() = default;
