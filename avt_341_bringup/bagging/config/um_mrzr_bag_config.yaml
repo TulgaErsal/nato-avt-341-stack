@@ -1,0 +1,87 @@
+# ==========================================================================================================
+# Concrete ROS bag configuration for UM MRZR real-world trials.
+# Inherits from base_bag_config.yaml
+# Uses OXTS INS sensor topics instead of vectornav.
+# ==========================================================================================================
+
+log_topics:
+
+  # ==========================================================================================================
+  # VEHICLE POSITION + INERTIAL STATE
+  # ==========================================================================================================
+
+  # Orientation (roll, pitch, yaw) from OXTS INS
+  - name: '{vehicles}_roll'
+    topic: '/oxts/ins/roll'
+    field: 'data'
+    units: 'deg'
+
+  - name: '{vehicles}_pitch'
+    topic: '/oxts/ins/pitch'
+    field: 'data'
+    units: 'deg'
+
+  - name: '{vehicles}_yaw'
+    topic: '/oxts/ins/yaw'
+    field: 'data'
+    units: 'deg'
+
+  # Linear Acceleration from OXTS INS
+  - name: '{vehicles}_forward_accel'
+    topic: '/oxts/ins/forwardaccel'
+    field: 'data'
+    units: 'g'
+
+  - name: '{vehicles}_lateral_accel'
+    topic: '/oxts/ins/lateralaccel'
+    field: 'data'
+    units: 'g'
+
+  - name: '{vehicles}_vertical_accel'
+    topic: '/oxts/ins/verticalaccel'
+    field: 'data'
+    units: 'g'
+
+  # ==========================================================================================================
+  # VEHICLE ACTUATED THROTTLE, BRAKE, STEERING
+  # ==========================================================================================================
+
+  # Steering Angle Position
+  - name: '{vehicles}_steering_angle'
+    topic: '/steering_position'
+    field: 'data'
+    units: 'deg'
+
+  # Throttle Position
+  - name: '{vehicles}_throttle'
+    topic: '/throttle_position'
+    field: 'data'
+    units: '%'
+
+  # Brake Position
+  - name: '{vehicles}_brake'
+    topic: '/brake_position'
+    field: 'data'
+    units: '%'
+
+  # ==========================================================================================================
+  # VEHICLE DESIRED/COMMANDED STATE
+  # ==========================================================================================================
+
+  # Desired Throttle Position
+  - name: '{vehicles}_desired_throttle'
+    topic: '/throttle_command'
+    field: 'data'
+    units: '%'
+
+  # Desired Brake Pressure or Pedal Position
+  - name: '{vehicles}_desired_brake'
+    topic: '/brake_command'
+    field: 'data'
+    units: '%'
+
+  # Desired Steering Angle (Front Wheel)
+  - name: '{vehicles}_desired_steering_angle'
+    topic: '/avt_341/cmd_vel'
+    field: 'angular.z'
+    units: 'rad'
