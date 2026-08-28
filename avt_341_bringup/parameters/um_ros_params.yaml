@@ -1,0 +1,84 @@
+/**:
+  ros__parameters:
+    frames:
+      use_vehicle_prefix: false
+      camera: 'flir_camera'
+      lidar: 'os_sensor'
+      base_link: 'cg_link'
+      gis:
+        crs: 'EPSG:6495'
+        origin_x: 7885314.3400268555
+        origin_y: 264132.3708496094
+    costmap:
+      geometry:
+        width: 2955.0
+        height: 2290.0
+      publish:
+        method: 'window'
+    point_cloud_layer:
+      topic: '/avt_341/lidar_detector/cloud_clusters'
+    camera_seg_pc_layer:
+      point_cloud_topic: '/avt_341/lidar_detector/cloud_clusters'
+
+/**/mission_manager_node:
+  ros__parameters:
+    mission_definition_file: $pkg_path{avt_341_bringup}/env_data/um/um_mission_points.csv
+    mission_paths_file: $pkg_path{avt_341_bringup}/env_data/um/um_paths.csv
+    # speed_zones_file intentionally left unset.
+    toi:
+      approach_dist: 15.0
+
+/**/uab_perception_node:
+  ros__parameters:
+    costmap:
+      geometry:
+        res: 0.5
+      publish:
+        max_grid_width: 200.0
+        max_grid_height: 200.0
+
+/**/perception_local_node:
+  ros__parameters:
+    runtime:
+      rate: 20.0
+    costmap:
+      dilation:
+        enabled: true
+
+/**/perception_global_node:
+  ros__parameters:
+    runtime:
+      rate: 20.0
+    costmap:
+      geometry:
+        res: 1.0
+      dilation:
+        enabled: true
+
+/**/perception_rms_node:
+  ros__parameters:
+    runtime:
+      rate: 20.0
+
+/**/lidar_obstacle_detector_node:
+  ros__parameters:
+    lidar_points_topic: '/ouster/points'
+
+/**/global_planner_node:
+  ros__parameters:
+    safety_margin_global: 0.75
+
+/**/mpc_planner_node:
+  ros__parameters:
+    segmentation_resolution: 0.5
+
+/**/comm_node:
+  ros__parameters:
+    name: 'MRZR2'
+    broadcast_over_ros: true
+    vehicle_namespaces: ['mrzr2', 'mrzr', 'feda']
+
+/**/veh_converter_node:
+  ros__parameters:
+    steering_scale: -0.0034906585  # 0.2 * -3.1415/180.0, reproducing um-mrzr's calibration verbatim.
+    steering_offset: 0.0
