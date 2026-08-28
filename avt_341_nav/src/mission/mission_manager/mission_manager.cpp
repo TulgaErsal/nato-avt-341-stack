@@ -7,7 +7,6 @@
 #include <utility>
 #include <avt_341_nav/core/dto_conversion.h>
 #include "avt_341_msgs/msg/communication.hpp"
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/map_marker.hpp"
 #include "avt_341_msgs/msg/map_marker_list.hpp"
 #include "avt_341_msgs/msg/mission_module_status.hpp"
@@ -17,7 +16,6 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -54,8 +52,6 @@ MissionManager::MissionManager(
     communication_pub = node_->create_publisher<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/speed_setpoint", 10);
-    follower_status_pub = node_->create_publisher<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status", 10);
-    leader_status_pub = node_->create_publisher<std_msgs::msg::Bool>("avt_341/leader_status", 10);
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
@@ -302,30 +298,6 @@ void MissionManager::publishTaskCompletion(Task * task){
   publishTaskCompletion(task->sender_name, task->msg_id);
 }
 
-void MissionManager::publishFormationStatus(avt_341_msgs::msg::FollowerStatus & status_msg){
-  follower_status_pub->publish(status_msg);
-}
-
-void MissionManager::publishLeaderStatus(){
-  bool is_leader = true;
-  // Check if there is a leader
-  Task* active_task = currentTask();
-  if (active_task) {
-    FormationDefinition* formatiom_def = active_task->getFormationDef();
-    if (formatiom_def) {
-      const std::string leader_name = formatiom_def->followedVehicle();
-      // Check if I am leader
-      if (!leader_name.empty() && my_name != leader_name) {
-        is_leader = false;
-      }
-    }
-  }
-  // Publish follower status
-  std_msgs::msg::Bool status_msg;
-  status_msg.data = is_leader;
-  leader_status_pub->publish(status_msg);
-}
-
 void MissionManager::publishTaskStatus() {
     const auto task = currentTask();
     if (task == nullptr) {
@@ -357,6 +329,8 @@ avt_341_msgs::msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const T
         status_msg.tracked_vehicle = tracked_veh;
         std::transform(tracked_veh.begin(), tracked_veh.end(), status_msg.tracked_vehicle.begin(),
             [](unsigned char c){ return std::tolower(c); });
+        status_msg.formation_x_offset = formation_def->formation_status.x_offset;
+        status_msg.formation_y_offset = formation_def->formation_status.y_offset;
     }
 
     return status_msg;

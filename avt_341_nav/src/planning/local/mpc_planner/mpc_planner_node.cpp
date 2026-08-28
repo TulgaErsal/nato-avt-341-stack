@@ -19,7 +19,7 @@
 #include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
-#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -309,18 +309,15 @@ void LeaderOdomCallback(nav_msgs::msg::Odometry::SharedPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void FollowerStatusCallback(avt_341_msgs::msg::FollowerStatus::SharedPtr msg)
+void TaskChangeCallback(avt_341_msgs::msg::MissionModuleStatus::SharedPtr msg)
 {
-    jl_value_t *j_xo = jl_box_float64(msg->x_offset);
-    jl_value_t *j_yo = jl_box_float64(msg->y_offset);
+    jl_value_t *j_xo = jl_box_float64(msg->active_task.formation_x_offset);
+    jl_value_t *j_yo = jl_box_float64(msg->active_task.formation_y_offset);
     jl_call2(j_set_formation_offset, j_xo, j_yo);
     CATCH_JULIA_EXCEPTION;
-}
 
-void LeaderStatusCallback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-    bool status = !(msg->data);
-    jl_value_t *j_status = jl_box_bool(status);
+    bool following = !msg->active_task.tracked_vehicle.empty();
+    jl_value_t *j_status = jl_box_bool(following);
     jl_call1(j_set_follower_status, j_status);
     CATCH_JULIA_EXCEPTION;
 }
@@ -804,8 +801,8 @@ int main(int argc, char *argv[])
     auto terrain_slope_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
     auto terrain_rms_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
     auto leader_odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
-    auto leader_status_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
-    auto follower_status_sub = node->create_subscription<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
+    auto task_change_sub = node->create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
+        "avt_341/task_change", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(), TaskChangeCallback);
 
     // Register publishers
     // -------------------.

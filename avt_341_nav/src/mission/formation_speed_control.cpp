@@ -1,5 +1,4 @@
 #include "avt_341_nav/mission/formation_speed_control.h"
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -15,7 +14,7 @@ namespace avt_341_nav {
 
     geometry_msgs::msg::PoseStamped
     FormationSpeedController::getFollowerTargetPose(nav_msgs::msg::Odometry leader_odom,
-                                                    avt_341_msgs::msg::FollowerStatus status) {
+                                                    FollowerStatus status) {
       Vec2d leaderVx, leaderVy;
       PoseToForwardRightVectors(leader_odom.pose.pose, leaderVx, leaderVy);
       double leaderYoffset = status.y_offset;

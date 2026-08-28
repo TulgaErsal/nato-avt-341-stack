@@ -1,7 +1,6 @@
 #ifndef AVT_341_FORMATION_SPEED_CONTROL_H
 #define AVT_341_FORMATION_SPEED_CONTROL_H
 
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -35,7 +34,7 @@ namespace avt_341_nav {
       std::string my_name_;
 
       geometry_msgs::msg::PoseStamped
-      getFollowerTargetPose(nav_msgs::msg::Odometry leader_odom, avt_341_msgs::msg::FollowerStatus status);
+      getFollowerTargetPose(nav_msgs::msg::Odometry leader_odom, FollowerStatus status);
     };
 
     class NullFormationSpeedController : public FormationSpeedController {

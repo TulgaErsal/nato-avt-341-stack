@@ -18,7 +18,6 @@
 #include <map>
 // local includes
 #include "avt_341_msgs/msg/communication.hpp"
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_msgs/msg/map_marker_list.hpp"
 #include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_msgs/msg/mission_task_status.hpp"
@@ -27,7 +26,6 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -146,8 +144,6 @@ class MissionManager{
     void publishNavStateCmd(int state);
     void publishGpToggle(int state);
     void publishArrival(const std::string & sender_name, const std::string & objective);
-    void publishFormationStatus(avt_341_msgs::msg::FollowerStatus & status_msg);
-    void publishLeaderStatus();
     void publishTaskStatus();
     // Publishes the latched snapshot of the active and queued tasks. Call after
     // any operation that mutates the task list outside of updateTasks(),
@@ -191,8 +187,6 @@ class MissionManager{
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Int32>> gp_toggle_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::Communication>> communication_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> speed_pub = nullptr;
-    std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::FollowerStatus>> follower_status_pub = nullptr;
-    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>> leader_status_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionTaskStatus>> task_status_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionModuleStatus>> task_change_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MapMarkerList>> map_markers_pub = nullptr;

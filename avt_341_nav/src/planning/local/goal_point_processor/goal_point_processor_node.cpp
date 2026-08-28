@@ -2,7 +2,7 @@
  C++ implementation of the goal_point_processor.jl found in the MPC planner stack.
 */
 #include <rclcpp/rclcpp.hpp>
-#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_msgs/msg/nav_state.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -33,7 +33,7 @@ nav_msgs::msg::Path global_path_input;
 std_msgs::msg::Float64MultiArray veh_input;
 std_msgs::msg::Float64 speedSetpoint_input;
 rclcpp::Time veh_input_stamp, last_veh_stamp, init_time;
-avt_341_msgs::msg::FollowerStatus follower_status_input;
+bool use_leader_input = false;
 double last_steer_angle = 0.0;
 rclcpp::Time last_steer_time;
 bool steer_initialized = false;
@@ -84,8 +84,8 @@ void callback_speedSetpoint(std_msgs::msg::Float64::SharedPtr ss) {
     speedSetpoint_input = *ss;
 }
 
-void callback_follower_status(avt_341_msgs::msg::FollowerStatus::SharedPtr follower_status) {
-    follower_status_input = *follower_status;
+void callback_task_change(avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_change) {
+    use_leader_input = !task_change->active_task.tracked_vehicle.empty();
 }
 
 void callback_gp_state(avt_341_msgs::msg::NavState::SharedPtr msg) {
@@ -174,7 +174,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
     }
 
     int pathStartIndex = 0;
-    if (follower_status_input.use_leader) { //asked to follow a leader
+    if (use_leader_input) { //asked to follow a leader
 		if (!priorUseLeader){
             priorUseLeader = true;
         }
@@ -307,7 +307,8 @@ int main(int argc, char* argv[]) {
     auto sub_path = n->create_subscription<nav_msgs::msg::Path>("avt_341/global_path",1,callback_global_path);
     auto sub_veh = n->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
     auto sub_speed = n->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
-    auto sub_follow = n->create_subscription<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status",1,callback_follower_status);
+    auto sub_task_change = n->create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
+        "avt_341/task_change", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(), callback_task_change);
     auto sub_goal_pose = n->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state",1,callback_gp_state);
 
     pub_time_gap = n->create_publisher<std_msgs::msg::Float64>("time_gap",10);

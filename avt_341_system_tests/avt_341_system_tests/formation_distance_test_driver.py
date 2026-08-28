@@ -37,8 +37,7 @@ Published topics:
   avt_341/occupancy_grid_low_res -- empty occupancy grid (for any planner nodes)
   avt_341/nav_command_state     -- NavStackState Active (0)
   avt_341/speed_setpoint        -- leader speed [m/s]
-  avt_341/leader_status         -- Bool True (leader is present)
-  avt_341/follower_status       -- formation offsets for goal_point_processor
+  avt_341/task_change           -- latched MissionModuleStatus (formation state + offsets)
   avt_341/steering_angle        -- follower steering angle (for veh_converter)
   avt_341/lead_speed_text       -- Marker: leader speed label
   avt_341/follow_speed_text     -- Marker: follower speed label
@@ -65,13 +64,22 @@ import collections
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
+                       QoSReliabilityPolicy)
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from geometry_msgs.msg import PoseStamped, Quaternion, TransformStamped
-from std_msgs.msg import Float64, Int32, Bool
+from std_msgs.msg import Float64, Int32
 from ackermann_msgs.msg import AckermannDriveStamped
 from visualization_msgs.msg import Marker
 from tf2_ros import TransformBroadcaster
-from avt_341_msgs.msg import FollowerStatus
+from avt_341_msgs.msg import MissionModuleStatus
+
+# Matches the mission manager's latched task_change publisher QoS.
+LATCHED_QOS = QoSProfile(
+    history=QoSHistoryPolicy.KEEP_LAST,
+    depth=1,
+    reliability=QoSReliabilityPolicy.RELIABLE,
+    durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
 
 
 def yaw_to_quaternion(yaw: float) -> Quaternion:
@@ -236,10 +244,8 @@ class FormationDistanceTestDriver(Node):
             Int32, 'avt_341/nav_command_state', 1)
         self._speed_pub = self.create_publisher(
             Float64, 'avt_341/speed_setpoint', 1)
-        self._lead_stat_pub = self.create_publisher(
-            Bool, 'avt_341/leader_status', 1)
-        self._follow_stat_pub = self.create_publisher(
-            FollowerStatus, 'avt_341/follower_status', 1)
+        self._task_change_pub = self.create_publisher(
+            MissionModuleStatus, 'avt_341/task_change', LATCHED_QOS)
         self._steer_pub = self.create_publisher(
             Float64, 'avt_341/steering_angle', 1)
         self._lead_txt_pub = self.create_publisher(
@@ -255,6 +261,9 @@ class FormationDistanceTestDriver(Node):
         self._sim_timer  = self.create_timer(self._pub_dt, self._sim_step)
         self._grid_timer = self.create_timer(1.0, self._publish_grid)
         self._slow_timer = self.create_timer(0.1, self._publish_slow)
+
+        # Seed the latched formation state for late-joining planner nodes.
+        self._publish_task_change()
 
         self.get_logger().info(
             f'Formation distance test driver started. '
@@ -385,6 +394,7 @@ class FormationDistanceTestDriver(Node):
             ps.pose.orientation.w = 1.0
             pts.append(ps)
         self._return_path = pts
+        self._publish_task_change()
         self.get_logger().info(
             f'Formation ended at t={self._t:.1f} s. '
             f'Return path: {len(pts)} waypoints to origin.')
@@ -534,17 +544,19 @@ class FormationDistanceTestDriver(Node):
         sp.data = self._mpc_max_speed
         self._speed_pub.publish(sp)
 
-        ls      = Bool()
-        ls.data = self._formation_ended  # False = follower mode; True = solo mode
-        self._lead_stat_pub.publish(ls)
-
-        unit_x, unit_y = _FORMATION_UNIT_OFFSETS[self._formation]
-        fs             = FollowerStatus()
-        fs.leader_name = 'leader'
-        fs.x_offset    = float(unit_x * self._x_scale)
-        fs.y_offset    = float(unit_y * self._y_scale)
-        fs.use_leader  = True
-        self._follow_stat_pub.publish(fs)
+    def _publish_task_change(self):
+        """Publish the latched formation state, mirroring the mission manager."""
+        msg = MissionModuleStatus()
+        msg.header.stamp    = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        msg.active_task.header = msg.header
+        msg.active_task.task_id = 1
+        following = not self._formation_ended
+        msg.active_task.tracked_vehicle    = 'leader' if following else ''
+        msg.active_task.formation_type     = self._formation.upper() if following else ''
+        msg.active_task.formation_x_offset = self._x_offset if following else 0.0
+        msg.active_task.formation_y_offset = self._y_offset if following else 0.0
+        self._task_change_pub.publish(msg)
 
 
 def main(args=None):

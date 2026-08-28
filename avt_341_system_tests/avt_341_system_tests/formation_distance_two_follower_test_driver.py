@@ -27,9 +27,8 @@ Published topics (per namespace 'ns' in {mrzr2, mrzr4}):
   ns/avt_341/occupancy_grid_low_res
   ns/avt_341/nav_command_state     -- NavStackState Active (0)
   ns/avt_341/speed_setpoint        -- MPC max speed [m/s]
-  ns/avt_341/leader_status         -- Bool False (follower mode on)
-  ns/avt_341/follower_status       -- formation offsets for goal_point_processor
-                                      and MPC (the new consumer in this branch)
+  ns/avt_341/task_change           -- latched MissionModuleStatus (formation
+                                      state + offsets for goal_point_processor and MPC)
   ns/avt_341/steering_angle        -- follower steering angle
 
 Subscribed topics:
@@ -52,12 +51,21 @@ import collections
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
+                       QoSReliabilityPolicy)
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from geometry_msgs.msg import PoseStamped, Quaternion, TransformStamped
-from std_msgs.msg import Float64, Int32, Bool
+from std_msgs.msg import Float64, Int32
 from ackermann_msgs.msg import AckermannDriveStamped
 from tf2_ros import TransformBroadcaster
-from avt_341_msgs.msg import FollowerStatus
+from avt_341_msgs.msg import MissionModuleStatus
+
+# Matches the mission manager's latched task_change publisher QoS.
+LATCHED_QOS = QoSProfile(
+    history=QoSHistoryPolicy.KEEP_LAST,
+    depth=1,
+    reliability=QoSReliabilityPolicy.RELIABLE,
+    durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
 
 
 def _yaw_to_quat(yaw: float) -> Quaternion:
@@ -127,9 +135,22 @@ class _FollowerContext:
         self.grid_lr_pub    = _pub('occupancy_grid_low_res', OccupancyGrid)
         self.nav_pub        = _pub('nav_command_state',      Int32)
         self.speed_pub      = _pub('speed_setpoint',         Float64)
-        self.lead_stat_pub  = _pub('leader_status',          Bool)
-        self.follow_stat_pub = _pub('follower_status',       FollowerStatus)
+        self.task_change_pub = node.create_publisher(
+            MissionModuleStatus, f'{ns}/avt_341/task_change', LATCHED_QOS)
         self.steer_pub      = _pub('steering_angle',         Float64)
+
+        # The formation never ends in this test, so the latched formation
+        # state is published exactly once, mirroring the mission manager.
+        msg = MissionModuleStatus()
+        msg.header.stamp    = node.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        msg.active_task.header = msg.header
+        msg.active_task.task_id = 1
+        msg.active_task.tracked_vehicle    = 'leader'
+        msg.active_task.formation_type     = 'WEDGE'
+        msg.active_task.formation_x_offset = float(x_offset)
+        msg.active_task.formation_y_offset = float(y_offset)
+        self.task_change_pub.publish(msg)
 
     def drive_cb(self, msg: AckermannDriveStamped):
         self.ux = msg.drive.speed
@@ -383,20 +404,10 @@ class FormationDistanceTwoFollowerTestDriver(Node):
         nav.data = 0   # NavStackState::Active
         sp = Float64()
         sp.data = self._mpc_max_speed
-        ls = Bool()
-        ls.data = False   # leader is present -> follower mode on
 
         for ctx in self._followers:
             ctx.nav_pub.publish(nav)
             ctx.speed_pub.publish(sp)
-            ctx.lead_stat_pub.publish(ls)
-
-            fs = FollowerStatus()
-            fs.leader_name = 'leader'
-            fs.x_offset    = float(ctx.x_offset)
-            fs.y_offset    = float(ctx.y_offset)
-            fs.use_leader  = True
-            ctx.follow_stat_pub.publish(fs)
 
 
 def main(args=None):

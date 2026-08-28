@@ -21,3 +21,8 @@ geometry_msgs/Pose target_pose
 
 # List of vehicles involved in the formation. Empty if no formation.
 string[] formation_vehicles
+
+# Formation offset of the ego-vehicle from the tracked vehicle, in the tracked vehicle's frame [m].
+# Only meaningful while tracked_vehicle is non-empty.
+float64 formation_x_offset
+float64 formation_y_offset

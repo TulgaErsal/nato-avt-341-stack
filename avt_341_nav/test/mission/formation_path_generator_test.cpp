@@ -3,12 +3,12 @@
 #include <cmath>
 #include <vector>
 
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_nav/core/eigen_dto_conversion.hpp"
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/mission/formation_path_generator.h"
 #include "nav_msgs/msg/odometry.hpp"
 
+using avt_341_nav::mission::FollowerStatus;
 using avt_341_nav::mission::FormationParameters;
 using avt_341_nav::mission::FormationPathGenerator;
 
@@ -27,9 +27,9 @@ nav_msgs::msg::Odometry MakeOdom(double x, double y, double yaw)
     return odom;
 }
 
-avt_341_msgs::msg::FollowerStatus MakeStatus(double x_offset, double y_offset)
+FollowerStatus MakeStatus(double x_offset, double y_offset)
 {
-    avt_341_msgs::msg::FollowerStatus status;
+    FollowerStatus status;
     status.use_leader = true;
     status.x_offset = x_offset;
     status.y_offset = y_offset;
@@ -55,7 +55,7 @@ std::vector<double> Yaws(const FormationPathGenerator& generator)
 
 /// Drive the leader along +x from (start_x, y) for num_steps points spaced step_dist apart.
 void DriveEast(FormationPathGenerator& generator,
-               const avt_341_msgs::msg::FollowerStatus& status,
+               const FollowerStatus& status,
                double start_x, double y, int num_steps, double step_dist,
                const nav_msgs::msg::Odometry& ego = nav_msgs::msg::Odometry())
 {
@@ -66,7 +66,7 @@ void DriveEast(FormationPathGenerator& generator,
 
 /// Drive the leader along +y from (x, start_y) for num_steps points spaced step_dist apart.
 void DriveNorth(FormationPathGenerator& generator,
-                const avt_341_msgs::msg::FollowerStatus& status,
+                const FollowerStatus& status,
                 double x, double start_y, int num_steps, double step_dist,
                 const nav_msgs::msg::Odometry& ego = nav_msgs::msg::Odometry())
 {

@@ -4,7 +4,6 @@
 // c++ includes
 #include <string>
 // local includes
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "avt_341_nav/mission/formation_utils.h"
@@ -21,7 +20,7 @@ class FormationPathGenerator{
   FormationPathGenerator(const avt_341_nav::mission::FormationParameters & params);
 	
 	/// Update the controller based on the most recent leader odometry, vehicle odometry, and status message
-  void Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, avt_341_msgs::msg::FollowerStatus status);
+  void Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, FollowerStatus status);
   const nav_msgs::msg::Path & GetPath() const { return desired_global_path_; }
   inline bool useBreadcrumbs() const { return params_.use_breadcrumbs; }
   void Reset();
@@ -30,7 +29,7 @@ class FormationPathGenerator{
 
 	// Method to generate global path based on formation
   void GenerateLeaderPath(const nav_msgs::msg::Odometry & leader_odom, const nav_msgs::msg::Odometry & odom,
-													avt_341_msgs::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
+													FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy);
 
 	// control parameters
 	double gpp2_; // square of global_path_points_dist_

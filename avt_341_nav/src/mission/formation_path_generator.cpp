@@ -3,7 +3,6 @@
 // c++ includes
 #include <cmath>
 #include <math.h>
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_nav/core/eigen_dto_conversion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -32,7 +31,7 @@ FormationPathGenerator::FormationPathGenerator(const avt_341_nav::mission::Forma
  * @param leaderVy y (right) norm vector in coordinate frame of leader
  */
 void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & leader_odom, const nav_msgs::msg::Odometry & odom,
-                                             avt_341_msgs::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
+                                             FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
   if(!(bool)status.use_leader) return;
 
   double leaderYoffset = status.y_offset;
@@ -125,7 +124,7 @@ void FormationPathGenerator::CalcVehicleRotation(nav_msgs::msg::Odometry odom, V
 	NormalizeVec2D(vehicleVx);
 }
 
-void FormationPathGenerator::Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, avt_341_msgs::msg::FollowerStatus status){
+void FormationPathGenerator::Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, FollowerStatus status){
 
 	Vec2d leaderVx, leaderVy;
 

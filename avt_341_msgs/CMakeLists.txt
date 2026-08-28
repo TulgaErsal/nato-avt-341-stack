@@ -18,7 +18,6 @@ set(MESSAGE_DEFINITIONS
     "DwaInfo"
     "DwaObjective"
     "DwaTrajectory"
-    "FollowerStatus"
     "LiorfCloudInfo"
     "MissionTaskStatus"
     "MissionModuleStatus"
