@@ -1,0 +1,13 @@
+code_namespace: avt_341_nav/params/veh_converter
+ros__parameters:
+
+  # Steering feedback calibration
+  # ====================================================================================================================
+  steering_scale:
+    type: double
+    default_value: 1.0
+    description: "Multiplier applied to the raw avt_341/steering_angle reading before publishing."
+  steering_offset:
+    type: double
+    default_value: 0.0
+    description: "Offset (radians) added to the raw avt_341/steering_angle reading after scaling."

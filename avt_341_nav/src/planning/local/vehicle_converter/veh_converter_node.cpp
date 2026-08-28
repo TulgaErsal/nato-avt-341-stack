@@ -18,6 +18,7 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
+#include "avt_341_nav/veh_converter_params_service.hpp"
 
 std::shared_ptr <rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> pub_veh;
 
@@ -26,6 +27,9 @@ nav_msgs::msg::Odometry g_odometry;
 double g_acceleration{0.0};
 
 double g_steering_angle{0.0};
+
+double g_steering_scale{1.0};
+double g_steering_offset{0.0};
 
 bool g_received_odometry{false};
 
@@ -74,7 +78,7 @@ void callbackAccel(geometry_msgs::msg::AccelStamped::SharedPtr msg_accel) {
 }
 
 void callbackSteeringAngle(std_msgs::msg::Float64::SharedPtr msg_received_steering_angle) {
-    g_steering_angle = msg_received_steering_angle->data;
+    g_steering_angle = msg_received_steering_angle->data * g_steering_scale + g_steering_offset;
     g_received_steering_angle = true;
 }
 
@@ -82,6 +86,11 @@ int main(int argc, char* argv[]) {
     // Initialize ROS node.
     rclcpp::init(argc, argv);
     auto node = rclcpp::Node::make_shared("avt_341_veh_converter_node");
+
+    avt_341_nav::params::veh_converter::ParamsListener param_listener(node);
+    const auto params = param_listener.get_params();
+    g_steering_scale = params.steering_scale;
+    g_steering_offset = params.steering_offset;
 
     // Create node subscribers.
     auto sub_odometry = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
