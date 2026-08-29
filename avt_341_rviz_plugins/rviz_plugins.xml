@@ -57,6 +57,18 @@
     </description>
     <message_type>avt_341_msgs/msg/MapMarkerList</message_type>
   </class>
+  <class name="avt_341_rviz_plugins/AugmentedMap"
+         type="avt_341::rviz_plugins::AugmentedMapDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      The built-in Map display extended with custom color schemes for
+      nav_msgs/OccupancyGrid, loaded from a YAML definition file (package
+      default: resources/color_schemes.yaml, overridable per display via the
+      Color Scheme File property). The built-in map/costmap/raw schemes remain
+      available.
+    </description>
+    <message_type>nav_msgs/msg/OccupancyGrid</message_type>
+  </class>
   <class name="avt_341_rviz_plugins/StaticMapImage"
          type="avt_341::rviz_plugins::StaticMapImageDisplay"
          base_class_type="rviz_common::Display">

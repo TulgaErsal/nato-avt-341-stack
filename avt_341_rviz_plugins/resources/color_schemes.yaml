@@ -1,0 +1,59 @@
+# Color schemes for the avt_341_rviz_plugins/AugmentedMap display.
+#
+# The display renders nav_msgs/OccupancyGrid exactly like the built-in
+# rviz_default_plugins/Map display and always offers the built-in schemes
+# (map, costmap, raw); every scheme defined here is appended to the display's
+# "Color Scheme" dropdown. This file is the package default - a different file
+# can be selected per display via its "Color Scheme File" property.
+#
+# Occupancy values: 0-100 are the legal values, -1 is "unknown"; anything else
+# (101..127 and -128..-2) is out of contract ("illegal").
+#
+# Format
+# ------
+# schemes:            (required) list of scheme definitions
+#   - name:           (required) dropdown label; unique, not map/costmap/raw
+#     gradient:       map of value (0-100) -> color; linear per-channel RGBA
+#                     interpolation between stops, clamped to the end stops
+#                     outside their range (so any gradient covers all of 0-100)
+#     values:         map of value (0-100) -> color; exact entries, applied on
+#                     top of the gradient (e.g. to pin a lethal-cost color)
+#     default:        color for 0-100 cells not covered by gradient/values
+#                     (default: fully transparent)
+#     unknown:        color for the value -1 (default: fully transparent)
+#     illegal:        single color for all out-of-contract values (default: the
+#                     built-in debug colors - green band and red-to-yellow ramp -
+#                     so misbehaving publishers stay visible)
+#     binary:         colors for the display's Binary view, keyed below/above:
+#                     cells below the Binary Threshold property get "below",
+#                     cells at or above it get "above" (defaults: below fully
+#                     transparent, above the scheme's color at value 100)
+#
+# A scheme needs at least one of gradient / values / default. Colors are
+# [r, g, b] (opaque), [r, g, b, a], "#RRGGBB" or "#RRGGBBAA", channels 0-255.
+# Invalid schemes are skipped with a warning on the display's status; schemes
+# with any alpha < 255 are alpha-blended even at display Alpha = 1.
+
+schemes:
+  # Soft-cost ramp: free space invisible, rising cost green -> yellow -> red,
+  # lethal cells (100) pinned magenta so they stand out from high soft cost.
+  - name: soft_cost
+    unknown: [128, 128, 128, 64]
+    gradient:
+      0:   [0, 160, 0, 0]
+      1:   [0, 160, 0, 120]
+      60:  [255, 255, 0, 200]
+      99:  [255, 0, 0, 255]
+    values:
+      100: "#FF00FF"
+
+  # Terrain segmentation classes: exact per-class colors. Example ids - adjust
+  # to the deployed segmentation classes; unlisted ids show magenta to flag
+  # unmapped classes.
+  - name: segmentation
+    default: [255, 0, 255]
+    unknown: [0, 0, 0, 0]
+    values:
+      0: [120, 120, 120]
+      1: [34, 139, 34]
+      2: [139, 90, 43]

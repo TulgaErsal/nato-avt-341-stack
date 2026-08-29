@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- The built-in Map display icon (rviz_default_plugins Map.png: a 16x16,
+       3px-pitch cell grid - occupied cells gray, a corridor of free white cells,
+       shaded by a 10% black line grid) with the occupied cells recolored from the
+       AugmentedMap display's color schemes. Cell layout, free-cell color and
+       shading match the original pixel-for-pixel. The glyph is inset by 2 units
+       (8px of the 64px canvas) of transparent padding, like the package's other
+       plugin icons. -->
+  <g transform="translate(2 2) scale(0.75)">
+  <rect width="16" height="16" fill="#ffffff"/>
+
+  <!-- Occupied cells (3px pitch; the original's gray cells, multi-colored) -->
+  <g>
+    <rect x="0"  y="0"  width="3" height="3" fill="#228b22"/>
+    <rect x="3"  y="0"  width="3" height="3" fill="#4caf50"/>
+    <rect x="6"  y="0"  width="3" height="3" fill="#8bc34a"/>
+    <rect x="12" y="0"  width="3" height="3" fill="#ffd600"/>
+    <rect x="15" y="0"  width="3" height="3" fill="#ff8f00"/>
+    <rect x="0"  y="3"  width="3" height="3" fill="#4caf50"/>
+    <rect x="3"  y="3"  width="3" height="3" fill="#8bc34a"/>
+    <rect x="6"  y="3"  width="3" height="3" fill="#ffd600"/>
+    <rect x="12" y="3"  width="3" height="3" fill="#e53935"/>
+    <rect x="15" y="3"  width="3" height="3" fill="#e91ee9"/>
+    <rect x="0"  y="6"  width="3" height="3" fill="#8bc34a"/>
+    <rect x="3"  y="6"  width="3" height="3" fill="#ffd600"/>
+    <rect x="0"  y="9"  width="3" height="3" fill="#ff8f00"/>
+    <rect x="0"  y="12" width="3" height="3" fill="#e53935"/>
+    <rect x="9"  y="12" width="3" height="3" fill="#8b5a2b"/>
+    <rect x="12" y="12" width="3" height="3" fill="#228b22"/>
+    <rect x="15" y="12" width="3" height="3" fill="#4caf50"/>
+    <rect x="0"  y="15" width="3" height="3" fill="#e91ee9"/>
+    <rect x="9"  y="15" width="3" height="3" fill="#ffd600"/>
+    <rect x="12" y="15" width="3" height="3" fill="#ff8f00"/>
+    <rect x="15" y="15" width="3" height="3" fill="#e53935"/>
+  </g>
+
+  <!-- Cell grid: 10% black lines every 3rd pixel; crossings overlap to the
+       darker corner shade, exactly as in the original -->
+  <g fill="#000000" fill-opacity="0.1">
+    <rect x="2"  y="0" width="1" height="16"/>
+    <rect x="5"  y="0" width="1" height="16"/>
+    <rect x="8"  y="0" width="1" height="16"/>
+    <rect x="11" y="0" width="1" height="16"/>
+    <rect x="14" y="0" width="1" height="16"/>
+    <rect x="0" y="2"  width="16" height="1"/>
+    <rect x="0" y="5"  width="16" height="1"/>
+    <rect x="0" y="8"  width="16" height="1"/>
+    <rect x="0" y="11" width="16" height="1"/>
+    <rect x="0" y="14" width="16" height="1"/>
+  </g>
+  </g>
+</svg>

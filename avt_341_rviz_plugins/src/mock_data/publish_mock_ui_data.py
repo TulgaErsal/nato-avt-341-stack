@@ -33,7 +33,7 @@ from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
 
 from std_msgs.msg import Header, Float64
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist, Vector3
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import OccupancyGrid, Odometry
 
 from avt_341_msgs.msg import (ComputeTime, ComputeTimeArray, MapMarker,
                               MapMarkerList, MissionModuleStatus,
@@ -77,6 +77,28 @@ GOALS_PER_SEQUENCE: int = 3
 # Chance that a mock task change leaves the vehicle with no active task, so the
 # panel's "all tasks complete" rendering gets exercised regularly.
 IDLE_PROBABILITY: float = 0.3
+
+# Mock occupancy / segmentation grids (exercise the AugmentedMap display and its
+# color_schemes.yaml schemes): a GRID_SIZE_CELLS^2 grid centered on the origin.
+GRID_RESOLUTION_M: float = 0.5
+GRID_SIZE_CELLS: int = 80
+
+# Cells beyond this range from the origin are unknown (-1), so the schemes'
+# `unknown` color (and the display's transparency handling) gets exercised.
+GRID_KNOWN_RADIUS_M: float = 18.0
+
+# The occupancy grid's cost field: GRID_BLOB_COUNT random obstacles, lethal
+# (100) within the lethal radius and soft cost 1..99 decaying linearly to free
+# (0) at the influence radius -- the full value range of the `soft_cost` scheme.
+GRID_BLOB_COUNT: int = 4
+GRID_LETHAL_RADIUS_M: float = 1.5
+GRID_INFLUENCE_RADIUS_M: float = 6.0
+
+# Class ids painted into the segmentation grid: background class 0 plus random
+# patches of the other classes, matching the `segmentation` scheme's `values`.
+GRID_SEG_BACKGROUND_CLASS: int = 0
+GRID_SEG_PATCH_CLASSES: List[int] = [1, 2]
+GRID_SEG_PATCH_RADIUS_M: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -127,6 +149,17 @@ class MockUiDataPublisher(Node):
         }
         self._goal_sequences: Dict[str, NavGoalSequence] = {
             vehicle_id: self._build_goal_sequence()
+            for vehicle_id in VEHICLE_IDS
+        }
+
+        # Grids are randomized once and then republished with a fresh stamp, so
+        # the maps stay put in RViz instead of re-rolling on every publish.
+        self._occupancy_grids: Dict[str, OccupancyGrid] = {
+            vehicle_id: self._build_occupancy_grid()
+            for vehicle_id in VEHICLE_IDS
+        }
+        self._segmentation_grids: Dict[str, OccupancyGrid] = {
+            vehicle_id: self._build_segmentation_grid()
             for vehicle_id in VEHICLE_IDS
         }
 
@@ -194,6 +227,14 @@ class MockUiDataPublisher(Node):
                       MockUiDataPublisher._make_map_marker, qos=LATCHED_QOS),
             TopicSpec("/avt_341/map_markers_change", MapMarkerList, 0.1,
                       MockUiDataPublisher._make_map_marker_list, qos=LATCHED_QOS),
+            # Occupancy / segmentation grids for the AugmentedMap display,
+            # latched like the real (static-ish) map data.
+            TopicSpec("avt_341/occupancy_grid", OccupancyGrid, 0.1,
+                      MockUiDataPublisher._make_occupancy_grid,
+                      qos=LATCHED_QOS),
+            TopicSpec("avt_341/normal_segmentation_grid", OccupancyGrid, 0.1,
+                      MockUiDataPublisher._make_segmentation_grid,
+                      qos=LATCHED_QOS),
         ]
 
     def _create_jobs(self) -> List[PublishJob]:
@@ -492,6 +533,87 @@ class MockUiDataPublisher(Node):
             self._make_marker(vehicle_id, MapMarker.TARGET_OF_INTEREST),
         ]
         return msg
+
+    def _make_occupancy_grid(self, vehicle_id: str) -> OccupancyGrid:
+        """The vehicle's cost-field grid, randomized once at startup."""
+        msg = self._occupancy_grids[vehicle_id]
+        msg.header = self._header(MAP_FRAME_ID)
+        return msg
+
+    def _make_segmentation_grid(self, vehicle_id: str) -> OccupancyGrid:
+        """The vehicle's segmentation grid, randomized once at startup."""
+        msg = self._segmentation_grids[vehicle_id]
+        msg.header = self._header(MAP_FRAME_ID)
+        return msg
+
+    def _build_occupancy_grid(self) -> OccupancyGrid:
+        """A cost field spanning the full occupancy value range: GRID_BLOB_COUNT
+        random obstacles that are lethal (100) up close with soft cost 1..99
+        decaying linearly to free (0) at the influence radius, and unknown (-1)
+        beyond GRID_KNOWN_RADIUS_M. Exercises every band of the AugmentedMap
+        display's `soft_cost` scheme (transparent free space, cost ramp, pinned
+        lethal color and the unknown color)."""
+        obstacles = [self._random_blob_center() for _ in range(GRID_BLOB_COUNT)]
+
+        def cell_value(x: float, y: float) -> int:
+            distance = min(math.hypot(x - ox, y - oy) for ox, oy in obstacles)
+            if distance <= GRID_LETHAL_RADIUS_M:
+                return 100
+            if distance >= GRID_INFLUENCE_RADIUS_M:
+                return 0
+            decay = ((GRID_INFLUENCE_RADIUS_M - distance) /
+                     (GRID_INFLUENCE_RADIUS_M - GRID_LETHAL_RADIUS_M))
+            return max(1, min(99, round(99.0 * decay)))
+
+        return self._fill_grid(cell_value)
+
+    def _build_segmentation_grid(self) -> OccupancyGrid:
+        """A segmentation grid: background class everywhere, with one random
+        patch per class in GRID_SEG_PATCH_CLASSES painted over it and unknown
+        (-1) beyond GRID_KNOWN_RADIUS_M. Class ids match the `values` of the
+        default color_schemes.yaml `segmentation` scheme."""
+        patches = [(self._random_blob_center(), seg_class)
+                   for seg_class in GRID_SEG_PATCH_CLASSES]
+
+        def cell_value(x: float, y: float) -> int:
+            for (px, py), seg_class in patches:
+                if math.hypot(x - px, y - py) <= GRID_SEG_PATCH_RADIUS_M:
+                    return seg_class
+            return GRID_SEG_BACKGROUND_CLASS
+
+        return self._fill_grid(cell_value)
+
+    def _fill_grid(self, cell_value: Callable[[float, float], int]) -> OccupancyGrid:
+        """A GRID_SIZE_CELLS^2 grid centered on the origin whose known cells
+        (within GRID_KNOWN_RADIUS_M) are populated by ``cell_value(x, y)`` and
+        whose remaining cells are unknown (-1)."""
+        msg = OccupancyGrid()
+        msg.header = self._header(MAP_FRAME_ID)
+        msg.info.resolution = GRID_RESOLUTION_M
+        msg.info.width = GRID_SIZE_CELLS
+        msg.info.height = GRID_SIZE_CELLS
+        half_extent = 0.5 * GRID_SIZE_CELLS * GRID_RESOLUTION_M
+        msg.info.origin.position.x = -half_extent
+        msg.info.origin.position.y = -half_extent
+        msg.info.origin.orientation.w = 1.0
+
+        data: List[int] = []
+        for row in range(GRID_SIZE_CELLS):
+            y = msg.info.origin.position.y + (row + 0.5) * GRID_RESOLUTION_M
+            for col in range(GRID_SIZE_CELLS):
+                x = msg.info.origin.position.x + (col + 0.5) * GRID_RESOLUTION_M
+                known = math.hypot(x, y) <= GRID_KNOWN_RADIUS_M
+                data.append(cell_value(x, y) if known else -1)
+        msg.data = data
+        return msg
+
+    @staticmethod
+    def _random_blob_center() -> tuple:
+        """A random (x, y) for a grid blob, kept inside the known disk so the
+        feature is not swallowed by the unknown border."""
+        radius = 0.6 * GRID_KNOWN_RADIUS_M * math.sqrt(random.random())
+        angle = random.uniform(0.0, 2.0 * math.pi)
+        return (radius * math.cos(angle), radius * math.sin(angle))
 
     def _make_marker(self, vehicle_id: str, marker_type: int) -> MapMarker:
         """A MapMarker of the given type at a random 10 m position and yaw."""

@@ -19,6 +19,7 @@
   <depend>ackermann_msgs</depend>
   <depend>ament_index_cpp</depend>
   <depend>avt_341_msgs</depend>
+  <depend>cv_bridge</depend>
   <depend>geometry_msgs</depend>
   <depend>jsk_recognition_msgs</depend>
   <depend>nav_msgs</depend>

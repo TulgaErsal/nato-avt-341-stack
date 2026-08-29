@@ -24,6 +24,10 @@ find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+# yaml-cpp (located via the ROS vendor package) parses the AugmentedMap display's
+# color scheme definition files.
+find_package(yaml_cpp_vendor REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # The binary rviz_default_plugins distribution bakes its build machine's absolute
 # Qt include path into the imported target's INTERFACE_INCLUDE_DIRECTORIES. That
@@ -73,6 +77,8 @@ set(SRC_FILES
     src/display_plugins/map_marker_list_display.cpp
     src/display_plugins/map_marker_properties.cpp
     src/display_plugins/static_map_image_display.cpp
+    src/display_plugins/augmented_map_display.cpp
+    src/display_plugins/map_color_scheme.cpp
     src/tool_plugins/set_nav_goal_tool.cpp
     src/tool_plugins/set_formation_tool.cpp
     src/primitives/accordion_group.cpp
@@ -104,6 +110,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 # Link Qt5
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets Qt5::Svg Qt5::Gui)
+
+# Link yaml-cpp (target name differs between yaml-cpp releases)
+if(TARGET yaml-cpp::yaml-cpp)
+  target_link_libraries(${PROJECT_NAME} yaml-cpp::yaml-cpp)
+else()
+  target_link_libraries(${PROJECT_NAME} yaml-cpp)
+endif()
 
 # Link ROS dependencies
 ament_target_dependencies(${PROJECT_NAME}
@@ -173,6 +186,9 @@ install(FILES resources/plugin_icons/map_markers.svg
 install(FILES resources/plugin_icons/static_map_image.svg
   DESTINATION "share/${PROJECT_NAME}/icons/classes"
   RENAME "StaticMapImage.svg")
+install(FILES resources/plugin_icons/augmented_map.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "AugmentedMap.svg")
 
 # Install image assets so they resolve at runtime via rviz_common::loadPixmap
 # package:// URLs (e.g. the logo shown in the Setup tab header).
