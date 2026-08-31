@@ -33,21 +33,9 @@ struct MapColorScheme
     /// The 256-entry RGBA lookup table (256 * 4 bytes).
     std::vector<unsigned char> palette;
 
-    /// Binary-view colors for legal values below / at-or-above the display's
-    /// "Binary Threshold" property (indices 101-255 mirror `palette`).
-    SchemeColor binary_below; ///< Default: fully transparent.
-    SchemeColor binary_above; ///< Default: the palette color at value 100.
-
-    /// True when the corresponding lookup table contains an entry with alpha < 255;
-    /// the display must then keep alpha blending on even at global Alpha = 1.
+    /// True when the lookup table contains an entry with alpha < 255; the
+    /// display must then keep alpha blending on even at global Alpha = 1.
     bool translucent = false;
-    bool binary_translucent = false;
-
-    /// Build the 256-entry binary-view table for `threshold` in [0, 100]: legal
-    /// values below the threshold get binary_below, values at or above it get
-    /// binary_above (the same >= convention as the built-in schemes), and the
-    /// unknown/illegal entries are copied from `palette`.
-    std::vector<unsigned char> BuildBinaryPalette( int threshold ) const;
 };
 
 /// Result of LoadMapColorSchemes. On a fatal error (unreadable / structurally

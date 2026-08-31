@@ -21,16 +21,23 @@ namespace rviz_plugins {
 /// The built-in Map display (rviz_default_plugins/Map) extended with custom color
 /// schemes for nav_msgs/OccupancyGrid, loaded from a YAML definition file (see
 /// resources/color_schemes.yaml for the format). Everything else - swatching of
-/// huge maps, the {topic}_updates subscription, alpha / draw-behind / binary view -
-/// is inherited unchanged, and the built-in map/costmap/raw schemes stay available.
+/// huge maps, the {topic}_updates subscription, alpha / draw-behind - is inherited
+/// unchanged, and the built-in map/costmap/raw schemes stay available.
 ///
 /// The base display keeps its schemes as parallel palette-texture vectors indexed
 /// by the "Color Scheme" enum's option int; custom schemes are appended to those
-/// (protected) vectors after the three built-ins. Two base quirks are compensated:
-/// updateBinaryThreshold() only rebuilds the built-in binary palettes, so a hook on
-/// the threshold property rebuilds the custom ones; and Jazzy decides alpha
-/// blending purely from the global Alpha property, so a translucent scheme (any
-/// LUT entry with alpha < 255) forces blending on the swatches even at Alpha = 1.
+/// (protected) vectors after the three built-ins. One base quirk is compensated:
+/// the base decides alpha blending purely from the global Alpha property, so a
+/// translucent scheme (any LUT entry with alpha < 255) forces blending on the
+/// swatches even at Alpha = 1.
+///
+/// The base class's Binary view is intentionally not supported (a two-stop
+/// gradient scheme expresses the same thresholded look): where the feature exists
+/// (rviz >= 14, i.e. Jazzy; guarded by AVT341_RVIZ_HAS_BINARY_MAP_VIEW from
+/// CMake), its properties are hidden and each custom scheme's normal palette is
+/// aliased into the binary texture vector, keeping the base updatePalette()
+/// indexing in bounds should a config still enable it. Pre-binary rviz (Humble's
+/// 11.x) compiles with the guarded code omitted.
 class AugmentedMapDisplay : public rviz_default_plugins::displays::MapDisplay
 {
     Q_OBJECT
@@ -44,9 +51,6 @@ public:
 private Q_SLOTS:
     /// (Re)load the scheme file: drop custom palettes, parse, rebuild the dropdown.
     void reloadSchemes();
-    /// Binary Threshold changed: rebuild the custom binary palettes (the base slot,
-    /// which ran first, only rebuilt the built-in ones) and re-point the swatches.
-    void rebuildCustomBinaryPalettes();
     /// Force alpha blending on the swatches when the selected scheme is translucent
     /// and the global Alpha is 1 (where the base leaves the material opaque).
     void applySchemeTransparency();
@@ -64,10 +68,9 @@ private:
 
     std::vector<MapColorScheme> custom_schemes_;
 
-    /// Per-scheme "LUT contains alpha < 255" flags for the normal and binary
-    /// palettes, index-aligned with palette_textures_ (built-ins at 0-2).
+    /// Per-scheme "LUT contains alpha < 255" flags, index-aligned with
+    /// palette_textures_ (built-ins at 0-2).
     std::vector<bool> scheme_translucent_;
-    std::vector<bool> scheme_translucent_binary_;
 
     bool initialized_ = false; ///< Palettes need Ogre; gate slots until onInitialize.
 };

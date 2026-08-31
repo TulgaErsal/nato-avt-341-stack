@@ -24,10 +24,6 @@
 #     illegal:        single color for all out-of-contract values (default: the
 #                     built-in debug colors - green band and red-to-yellow ramp -
 #                     so misbehaving publishers stay visible)
-#     binary:         colors for the display's Binary view, keyed below/above:
-#                     cells below the Binary Threshold property get "below",
-#                     cells at or above it get "above" (defaults: below fully
-#                     transparent, above the scheme's color at value 100)
 #
 # A scheme needs at least one of gradient / values / default. Colors are
 # [r, g, b] (opaque), [r, g, b, a], "#RRGGBB" or "#RRGGBBAA", channels 0-255.

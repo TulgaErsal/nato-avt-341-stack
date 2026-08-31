@@ -118,6 +118,15 @@ else()
   target_link_libraries(${PROJECT_NAME} yaml-cpp)
 endif()
 
+# MapDisplay's Binary-view members (palette_textures_binary_ etc.) only exist in
+# newer rviz (Jazzy's 14.x line; Humble's 11.x predates the feature). The
+# AugmentedMap display does not support Binary view, but where the members exist
+# it must keep the base class's palette indexing in bounds - that code is
+# compiled only under this guard.
+if(rviz_default_plugins_VERSION VERSION_GREATER_EQUAL "14.0.0")
+  target_compile_definitions(${PROJECT_NAME} PRIVATE AVT341_RVIZ_HAS_BINARY_MAP_VIEW)
+endif()
+
 # Link ROS dependencies
 ament_target_dependencies(${PROJECT_NAME}
   pluginlib

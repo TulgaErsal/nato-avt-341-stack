@@ -111,16 +111,20 @@ AugmentedMapDisplay::AugmentedMapDisplay()
         this, SLOT( reloadSchemes() ), this );
 
     // Whether the built-in schemes' palettes contain translucent entries (costmap
-    // and raw do), and likewise for their binary variants (all opaque).
+    // and raw do).
     scheme_translucent_ = { false, true, true };
-    scheme_translucent_binary_ = { false, false, false };
+
+#ifdef AVT341_RVIZ_HAS_BINARY_MAP_VIEW
+    // Binary view is intentionally unsupported (a two-stop gradient scheme
+    // expresses the same thresholded look); hide its properties so the display
+    // does not advertise a toggle that ignores custom schemes.
+    binary_view_property_->hide();
+    binary_threshold_property_->hide();
+#endif
 
     // Base handlers for these signals were connected first (in the base
     // constructor) and therefore run first; the hooks below then compensate on
     // top of the state they left behind.
-    connect(
-        binary_threshold_property_, &Property::changed,
-        this, &AugmentedMapDisplay::rebuildCustomBinaryPalettes );
     connect(
         color_scheme_property_, &Property::changed,
         this, &AugmentedMapDisplay::applySchemeTransparency );
@@ -129,9 +133,6 @@ AugmentedMapDisplay::AugmentedMapDisplay()
         this, &AugmentedMapDisplay::applySchemeTransparency );
     connect(
         draw_under_property_, &Property::changed,
-        this, &AugmentedMapDisplay::applySchemeTransparency );
-    connect(
-        binary_view_property_, &Property::changed,
         this, &AugmentedMapDisplay::applySchemeTransparency );
     // Fires after the base's showMap() slot, i.e. after swatches are (re)created
     // and the base has applied palette / alpha / draw-under state to them.
@@ -178,17 +179,19 @@ void AugmentedMapDisplay::reloadSchemes()
         result = LoadMapColorSchemes( path, kBuiltinSchemeNames );
     }
 
-    const int threshold = binary_threshold_property_->getInt();
     for ( auto& scheme : result.schemes )
     {
         palette_textures_.push_back( makePaletteTexture( scheme.palette ) );
-        palette_textures_binary_.push_back(
-            makePaletteTexture( scheme.BuildBinaryPalette( threshold ) ) );
-        // Vestigial in Jazzy (written, never read) but kept index-aligned in case
-        // a future rviz release reads it again.
+#ifdef AVT341_RVIZ_HAS_BINARY_MAP_VIEW
+        // Alias the normal palette as the (unsupported) binary variant so the
+        // base updatePalette() stays in bounds if a saved config still enables
+        // Binary view: the scheme then just renders with its normal colors.
+        palette_textures_binary_.push_back( palette_textures_.back() );
+#endif
+        // Vestigial in current rviz (written, never read) but kept index-aligned
+        // in case a future release reads it again.
         color_scheme_transparency_.push_back( scheme.translucent );
         scheme_translucent_.push_back( scheme.translucent );
-        scheme_translucent_binary_.push_back( scheme.binary_translucent );
         custom_schemes_.push_back( std::move( scheme ) );
     }
 
@@ -240,27 +243,6 @@ void AugmentedMapDisplay::reloadSchemes()
     }
 }
 
-void AugmentedMapDisplay::rebuildCustomBinaryPalettes()
-{
-    if ( !initialized_ )
-    {
-        return;
-    }
-
-    const int threshold = binary_threshold_property_->getInt();
-    auto& texture_manager = Ogre::TextureManager::getSingleton();
-    for ( std::size_t i = 0; i < custom_schemes_.size(); i++ )
-    {
-        auto& slot = palette_textures_binary_[kBuiltinSchemeCount + i];
-        texture_manager.remove( slot );
-        slot = makePaletteTexture( custom_schemes_[i].BuildBinaryPalette( threshold ) );
-    }
-    // The base slot (which ran first) only swapped texture objects inside the
-    // vectors; re-point the swatches at the current ones.
-    updatePalette();
-    applySchemeTransparency();
-}
-
 void AugmentedMapDisplay::applySchemeTransparency()
 {
     if ( !initialized_ || swatches_.empty() )
@@ -273,9 +255,8 @@ void AugmentedMapDisplay::applySchemeTransparency()
         return; // base already chose alpha blending; per-texel alpha works
     }
     const int index = color_scheme_property_->getOptionInt();
-    const auto& flags =
-        binary_view_property_->getBool() ? scheme_translucent_binary_ : scheme_translucent_;
-    if ( index < 0 || index >= static_cast<int>( flags.size() ) || !flags[index] )
+    if ( index < 0 || index >= static_cast<int>( scheme_translucent_.size() ) ||
+         !scheme_translucent_[index] )
     {
         return; // opaque scheme: the base's opaque material state is correct
     }
@@ -310,21 +291,19 @@ void AugmentedMapDisplay::removeCustomPaletteTextures()
     // Remove by pointer, not by name: the name-based overload defaults to the
     // "General" group and asserts if the resource isn't found there. Swatches
     // still referencing a removed texture keep it alive via their shared pointer
-    // until updatePalette() re-points them.
+    // until updatePalette() re-points them. The binary vector holds aliases of
+    // the same textures, so it is only truncated, never removed from.
     auto& texture_manager = Ogre::TextureManager::getSingleton();
     for ( std::size_t i = kBuiltinSchemeCount; i < palette_textures_.size(); i++ )
     {
         texture_manager.remove( palette_textures_[i] );
     }
-    for ( std::size_t i = kBuiltinSchemeCount; i < palette_textures_binary_.size(); i++ )
-    {
-        texture_manager.remove( palette_textures_binary_[i] );
-    }
     palette_textures_.resize( kBuiltinSchemeCount );
+#ifdef AVT341_RVIZ_HAS_BINARY_MAP_VIEW
     palette_textures_binary_.resize( kBuiltinSchemeCount );
+#endif
     color_scheme_transparency_.resize( kBuiltinSchemeCount );
     scheme_translucent_.resize( kBuiltinSchemeCount );
-    scheme_translucent_binary_.resize( kBuiltinSchemeCount );
 }
 
 } // namespace avt_341::rviz_plugins

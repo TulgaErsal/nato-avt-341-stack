@@ -170,7 +170,7 @@ bool parseScheme( const YAML::Node& node, MapColorScheme& out, QString& err )
     }
 
     static const std::set<std::string> kKnownKeys = {
-        "name", "gradient", "values", "default", "unknown", "illegal", "binary" };
+        "name", "gradient", "values", "default", "unknown", "illegal" };
     for ( const auto& kv : node )
     {
         const std::string key = kv.first.as<std::string>();
@@ -279,69 +279,15 @@ bool parseScheme( const YAML::Node& node, MapColorScheme& out, QString& err )
     }
     setEntry( out.palette, kUnknownIndex, unknown );
 
-    // Binary-view colors; `above` defaults to the scheme's color at value 100.
-    out.binary_below = SchemeColor{};
-    out.binary_above = SchemeColor{
-        out.palette[4 * kMaxLegalValue + 0], out.palette[4 * kMaxLegalValue + 1],
-        out.palette[4 * kMaxLegalValue + 2], out.palette[4 * kMaxLegalValue + 3] };
-    if ( node["binary"] )
-    {
-        const YAML::Node binary = node["binary"];
-        if ( !binary.IsMap() )
-        {
-            err = "binary must be a map with \"below\" and/or \"above\" colors";
-            return false;
-        }
-        for ( const auto& kv : binary )
-        {
-            const std::string key = kv.first.as<std::string>();
-            if ( key != "below" && key != "above" )
-            {
-                err = QString( "binary: unrecognized key \"%1\"" )
-                          .arg( QString::fromStdString( key ) );
-                return false;
-            }
-        }
-        if ( binary["below"] && !parseColor( binary["below"], out.binary_below, err ) )
-        {
-            err = "binary.below: " + err;
-            return false;
-        }
-        if ( binary["above"] && !parseColor( binary["above"], out.binary_above, err ) )
-        {
-            err = "binary.above: " + err;
-            return false;
-        }
-    }
-
-    auto entryTranslucent = [&palette = out.palette]( int index ) {
-        return palette[4 * index + 3] < 255;
-    };
     out.translucent = false;
     for ( int i = 0; i < 256; i++ )
     {
-        out.translucent |= entryTranslucent( i );
-    }
-    // The binary table mirrors the unknown/illegal entries of the normal one.
-    out.binary_translucent = out.binary_below.a < 255 || out.binary_above.a < 255;
-    for ( int i = kIllegalPositiveFirst; i <= kUnknownIndex; i++ )
-    {
-        out.binary_translucent |= entryTranslucent( i );
+        out.translucent |= out.palette[4 * i + 3] < 255;
     }
 
     return true;
 }
 } // namespace
-
-std::vector<unsigned char> MapColorScheme::BuildBinaryPalette( int threshold ) const
-{
-    std::vector<unsigned char> binary( palette );
-    for ( int v = 0; v <= kMaxLegalValue; v++ )
-    {
-        setEntry( binary, v, v < threshold ? binary_below : binary_above );
-    }
-    return binary;
-}
 
 MapColorSchemeLoadResult LoadMapColorSchemes(
     const QString& path, const QStringList& reserved_names )
