@@ -150,6 +150,7 @@ class MissionManager{
     // otherwise the retained sample is served stale to late-joining subscribers.
     void publishTaskChange();
     avt_341_msgs::msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
+    void checkGoalArrival();
     void reset();
     void resetTaskList(bool send_completion_msg);
     void cancelTask(int task_id,bool send_completion_msg);
