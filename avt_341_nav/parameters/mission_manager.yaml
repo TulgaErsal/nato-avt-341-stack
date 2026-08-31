@@ -33,6 +33,14 @@ ros__parameters:
     type: string
     default_value: ''
     description: "Polygon zone json file defining speed zones (max_speed per zone). Empty disables speed zone monitoring. The deployment override yaml supplies the actual path."
+  check_goal_arrival:
+    type: bool
+    default_value: false
+    description: "Check if the current goal has been reached."
+  goal_arrival_distance:
+    type: double
+    default_value: 5.0
+    description: "Distance (m) to current goal for arrival when check_goal_arrival is enabled."
 
   formation:
     follow_scale_x:

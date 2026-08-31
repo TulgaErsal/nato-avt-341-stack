@@ -369,6 +369,10 @@ void MissionManager::updateTasks() {
           publishTaskChange();
         }
 
+        if(params_.check_goal_arrival) {
+            checkGoalArrival();
+        }
+
         active_task->run();
         if(active_task->is_done()){
           active_task->on_done();
@@ -453,6 +457,19 @@ void MissionManager::updateExistingContact(
             if (!encircle->init_done && encircle->contactName() == name) {
                 encircle->updateTarget(pose);
             }
+        }
+    }
+}
+
+void MissionManager::checkGoalArrival() {
+    Task* active_task = currentTask();
+    if(active_task != nullptr) {
+        geometry_msgs::msg::PoseStamped gp = active_task->terminalPose();
+        double dx = odometry.pose.pose.position.x - gp.pose.position.x;
+        double dy = odometry.pose.pose.position.y - gp.pose.position.y;
+        double dist_sq = dx*dx + dy*dy;
+        if (dist_sq < params_.goal_arrival_distance * params_.goal_arrival_distance) {
+            active_task->onGoalReached(gp);
         }
     }
 }
