@@ -55,7 +55,7 @@ void Follow::onPreempt(){
 
 bool Follow::is_done() {
     if(terminate_on_leader_arrived_){
-        return mgr->hasCompletedTask(formation_def_->leaderName(), msg_id);
+        return mgr->hasArrival(formation_def_->leaderName(), "TASK_" + std::to_string(msg_id));
     }
     if(terminate_on_all_arrived_){
       bool leader_arrived = mgr->hasArrival(formation_def_->followedVehicle(), "TASK_" + std::to_string(msg_id));
