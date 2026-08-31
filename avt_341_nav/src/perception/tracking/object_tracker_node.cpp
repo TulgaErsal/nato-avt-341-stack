@@ -290,15 +290,12 @@ ObjectTracker* ObjectTrackerNode::AddOrResetTracker(
         trackers_.clear();
     }
 
-    auto tracker = std::make_unique<ObjectTracker>(
-        this, target_class, settings_, *coord_transformer_,
-		target_contacts_publisher_, leader_odom_publisher_	);
-    ObjectTracker& tracker_ref = *tracker;
+    ObjectTracker* tracker_ptr = tracker.get();
     trackers_.emplace(target_class, std::move(tracker));
     RCLCPP_INFO(get_logger(),
-                "Created %s tracker for target class \"%s\".",
-                ToString(tracker_ptr->GetTrackerType()).c_str(),
-                target_class.c_str());
+        "Created %s tracker for target class \"%s\".",
+        ToString(tracker_ptr->GetTrackerType()).c_str(),
+        target_class.c_str());
     return tracker_ptr;
 }
 
@@ -327,10 +324,10 @@ std::unique_ptr<ObjectTracker> ObjectTrackerNode::CreateTracker(
     // ------------------------------------------------------------------------------------------
     if (!params_.target_selection.allow_generic) {
         RCLCPP_INFO(get_logger(),
-                    "Ignoring target \"%s\": not a formation vehicle or TOI "
-                    "match, and generic tracking is disabled "
-                    "(target_selection.allow_generic=false).",
-                    target_class.c_str());
+            "Ignoring target \"%s\": not a formation vehicle or TOI "
+            "match, and generic tracking is disabled "
+            "(target_selection.allow_generic=false).",
+            target_class.c_str());
         return nullptr;
     }
     return std::make_unique<ObjectTracker>(

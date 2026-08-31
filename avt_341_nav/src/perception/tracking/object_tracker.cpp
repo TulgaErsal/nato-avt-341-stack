@@ -75,6 +75,10 @@ void ObjectTracker::CreatePerTargetPublishers() {
 void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     camera_info_ = context.camera_info;
 
+	
+	// Reset detector covariance
+	R_detection_ = Eigen::Matrix3d::Identity() * params_.filter.measurement_variance;
+
     // LOST is sticky against the state machine below; only a fresh camera
     // detection of the target ends it and resumes normal tracking.
     if (state_ == TrackerState::LOST) {
@@ -104,7 +108,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
 
     if (has_tracked_target_ && !has_detection_) {
         state_ = TrackerState::LIDAR_ONLY_TRACKING;
-        RCLCPP_DEBUG(logger_,
+		RCLCPP_DEBUG(logger_,
                      "No camera target detection available, falling back to "
                      "LiDAR-only tracking ...");
     } else {
@@ -233,7 +237,9 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
 				R_improved = ObjectTracker::ImprovePoseMeasurement(best_cluster,
 					bounding_box_lidar,
                     marker.header.frame_id, frame_ids_.Camera(), old_yaw, cloud_yaw, improved_yaw);
-
+				if (R_improved(2,2) < 100.0) {
+					R_detection_.block<2,2>(0,0) = R_improved.block<2,2>(0,0); // Third row in imoroved is yaw not z
+				}
 				bounding_box_orientation_ = Eigen::Quaterniond(
 					cos(improved_yaw / 2), 0.0,
 					0.0, sin(improved_yaw / 2));
@@ -615,10 +621,10 @@ void ObjectTracker::EstimatorTick() {
         }
         else {
             // Run the IMM update step.  if chi2 is acceptable
-            double chi2 = filter_->GetChi2IMM2D(measurement_vector);
+            double chi2 = filter_->GetChi2IMM2D(measurement_vector, R_detection_);
             // Hard 4-sigma treshold TODO open up for soft and as parameter
             if (chi2 < 4 * 4)
-                filter_->Update(measurement_vector);
+                filter_->Update(measurement_vector, R_detection_);
             else {
                 const auto state_filtered = filter_->GetState();
 
@@ -935,32 +941,39 @@ Eigen::Matrix3d ObjectTracker::ImprovePoseMeasurement(
 
 		// setup clouds for information calculation
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::PointCloud<pcl::PointXYZ>::Ptr transformed(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_e(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_f(new pcl::PointCloud<pcl::PointXYZ>);
 		double info_plane = 0;
-
-		Eigen::Vector4d centroid; //local centroid
+		
+		pcl::copyPointCloud(*object_cluster, *inliers_e, *cloud);
+		pcl::transformPointCloud(*cloud, *transformed_e, endTransform);
+		
+		// TODO Sanity check of cluster inliers transformed to end
+		//PointT min_pt, max_pt;
+		//pcl::getMinMax3D(*transformed, min_pt, max_pt);	
+		
+		Eigen::Vector4d centroid_e; //local centroid end plane
+		pcl::compute3DCentroid(*transformed_e, centroid_e);
+		Eigen::Vector4d centroid_f; //local centroid flank plane
 		if (has_flank_plane_) {
 			pcl::copyPointCloud(*object_cluster, *inliers_f, *cloud);
-			pcl::transformPointCloud(*cloud, *transformed, endTransform);
-			pcl::compute3DCentroid(*transformed, centroid);
+			pcl::transformPointCloud(*cloud, *transformed_f, endTransform);
+			pcl::compute3DCentroid(*transformed_f, centroid_f);
 			double s2 = plane_deviation2_f; // estimated sigma of plane points
-			for (std::size_t idx = 0; idx < transformed->points.size(); idx++) {
-				info_plane += (transformed->points[idx].x - centroid.x()) * 1 / s2 *
-					(transformed->points[idx].x - centroid.x()); //flank plane along local x-direction 
+			for (std::size_t idx = 0; idx < transformed_f->points.size(); idx++) {
+				info_plane += (transformed_f->points[idx].x - centroid_f.x()) * 1 / s2 *
+					(transformed_f->points[idx].x - centroid_f.x()); //lever effect of flank plane along local x-direction 
 			}
 		}
 		else {
-			pcl::copyPointCloud(*object_cluster, *inliers_e, *cloud);
-			pcl::transformPointCloud(*cloud, *transformed, endTransform);
-			pcl::compute3DCentroid(*transformed, centroid);
 			double s2 = plane_deviation2_e; // estimated sigma of plane points
-			for (std::size_t idx = 0; idx < transformed->points.size(); idx++) {
-				info_plane += (transformed->points[idx].y - centroid.y()) * 1 / s2 *
-					(transformed->points[idx].y - centroid.y()); //end plane along local y-direction 
+			for (std::size_t idx = 0; idx < transformed_e->points.size(); idx++) {
+				info_plane += (transformed_e->points[idx].y - centroid_e.y()) * 1 / s2 *
+					(transformed_e->points[idx].y - centroid_e.y()); //lever effect of end plane along local y-direction 
 			}
 		}
 		Eigen::Matrix4d R_b(Eigen::Matrix4d::Identity());
-		R_b(0, 0) = 0.2 * 0.2;
+		R_b(0, 0) = plane_deviation2_e; // Rear end is within detected plane 0.2 * 0.2; 
 		R_b(1, 1) = 0.5 * 0.5;
 		improved_yaw = -platform_yaw + improved_yaw;
 		if (info_plane > 0) {

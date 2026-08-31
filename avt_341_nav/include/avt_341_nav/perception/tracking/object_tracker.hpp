@@ -310,6 +310,9 @@ class ObjectTracker {
      *         intrinsics. */
     Eigen::Matrix3d R_rdf_ = Eigen::Matrix3d::Identity();
 
+    /** @brief Detection measurement covariance in the world frame,
+    *         intrinsics. */
+    Eigen::Matrix3d R_detection_ = Eigen::Matrix3d::Identity();
     Eigen::Vector3d bounding_box_centroid_ = Eigen::Vector3d::Zero();
 
     Eigen::Vector3d bounding_box_centroid_global_ = Eigen::Vector3d::Zero();
