@@ -450,8 +450,6 @@ void ObjectTrackerNode::TrackingTimerCallback() {
 
     context_.obstacle_markers = &latest_obstacle_markers_;
     context_.has_obstacle_markers = has_obstacle_markers_;
-    context_.obstacle_markers = &latest_obstacle_markers_;
-    context_.has_obstacle_markers = has_obstacle_markers_;
     context_.camera_info = has_camera_info_ ? camera_info_message_ : nullptr;
 
     {
