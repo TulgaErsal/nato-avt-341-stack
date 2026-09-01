@@ -12,10 +12,6 @@ ros__parameters:
     type: bool
     default_value: false
     description: "If true, publishes the UAB occupancy grid."
-  default_terrain_cost:
-    type: int
-    default_value: 50
-    description: "Terrain cost assigned to a cell before it has been classified. Lower costs indicate more traversable terrain (e.g. roads), higher costs indicate less traversable terrain (e.g. grass); 50 is a neutral midpoint. Independent of the global planner's no_segmentation_data_cost param, which covers cells this node hasn't published data for at all."
 
   # Topics
   # ====================================================================================================================

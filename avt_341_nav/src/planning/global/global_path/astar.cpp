@@ -344,7 +344,9 @@ int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) 
     int xj = (x - grid->info.origin.position.x) / grid->info.resolution;
     int yj = (y - grid->info.origin.position.y) / grid->info.resolution;
     int m = xj + yj * grid->info.width;
-    seg_val = grid->data[m];
+    if (grid->data[m] >= 0) {
+      seg_val = grid->data[m];
+    }
   }
   return seg_val;
 }

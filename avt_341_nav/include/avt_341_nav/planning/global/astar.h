@@ -89,7 +89,8 @@ public:
   int GetGridHeight() { return height_; }
 
   /// Get grid value at coordinates. Returns no_segmentation_data_cost_ if the
-  /// coordinate falls outside segmentation_grid's published extent.
+  /// coordinate falls outside segmentation_grid's published extent, or if the
+  /// cell there is published as -1 (unknown).
   int GetGridValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y) const;
 
   /// Inherited from planner base class.

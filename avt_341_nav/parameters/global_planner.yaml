@@ -48,7 +48,7 @@ ros__parameters:
   no_segmentation_data_cost:
     type: double
     default_value: 50.0
-    description: "Segmentation cost assumed for a map cell with no segmentation data at all (outside the segmentation grid's published extent). Independent of uab_perception_node's default cost for cells inside its published extent that just haven't been classified yet."
+    description: "Segmentation cost assumed for a map cell with no segmentation data: either outside the segmentation grid's published extent, or published as -1 (unknown -- e.g. a cell uab_perception_node hasn't classified yet)."
   search_diagonals:
     type: bool
     default_value: true
