@@ -271,6 +271,10 @@ ros__parameters:
       type: string
       default_value: ''
       description: "Camera-info topic for the segmentation camera."
+    camera_frame:
+      type: string
+      default_value: ''
+      description: "Tf frame to project lidar points into and stamp the fused cloud with. Empty uses the camera-info message's frame_id, which must be the optical frame (x-right/y-down/z-forward) for the pinhole projection math to be correct -- set this when the camera driver's camera_info reports a non-optical (e.g. mechanical/link) frame_id instead."
     use_n_last_scans:
       type: int
       default_value: 1

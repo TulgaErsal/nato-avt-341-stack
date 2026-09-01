@@ -53,6 +53,7 @@ namespace avt_341_nav::perception
             : settings.clear_method.lidar_frame;
         lidar_frame_ = core::CombineTfParts(
             node::GetLeadingNodeNamespace(node_ref_), lidar_frame_in);
+        camera_frame_ = params.camera_frame;
         SetupSubscriptions(params);
     }
 
@@ -205,7 +206,9 @@ namespace avt_341_nav::perception
 
         const uint32_t width = seg_msg->width;
         const uint32_t height = seg_msg->height;
-        const std::string& camera_frame = cached_camera_info_.header.frame_id;
+        const std::string& camera_frame = camera_frame_.empty()
+            ? cached_camera_info_.header.frame_id
+            : camera_frame_;
         const rclcpp::Time image_stamp(seg_msg->header.stamp);
         const rclcpp::Time max_scan_stamp =
             image_stamp + rclcpp::Duration::from_seconds(SCAN_STAMP_MARGIN_SEC);

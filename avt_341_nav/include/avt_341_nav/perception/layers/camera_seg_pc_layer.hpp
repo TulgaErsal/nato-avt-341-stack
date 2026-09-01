@@ -90,6 +90,7 @@ namespace avt_341_nav::perception
         std::string segmentation_topic_;
         std::string camera_info_topic_;
         std::string lidar_frame_;
+        std::string camera_frame_;
     };
 }
 
