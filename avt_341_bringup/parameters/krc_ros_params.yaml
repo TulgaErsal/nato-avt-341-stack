@@ -21,6 +21,8 @@
       topic: '/avt_341/lidar_detector/cloud_clusters'
     camera_seg_pc_layer:
       point_cloud_topic: '/avt_341/lidar_detector/cloud_clusters'
+    polygon_layer:
+      data_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_nogo_zones.json
 
 /**/mission_manager_node:
   ros__parameters:
