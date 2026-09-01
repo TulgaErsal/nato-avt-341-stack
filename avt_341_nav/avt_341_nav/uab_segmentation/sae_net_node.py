@@ -29,6 +29,14 @@ WEIGHTS_SHARE_SUBDIR = "ml_weights/uab_segmentation"
 # Blend factor of the segmentation mask in the overlay image
 OVERLAY_ALPHA = 0.3
 
+# Terrain cost per class name
+CLASS_NAME_TO_COST = {
+    "high": 1,
+    "medium": 33,
+    "low": 50,
+}
+DEFAULT_CLASS_COST = 100
+
 
 class SaeNetNode(Node):
     def __init__(self):
@@ -54,6 +62,9 @@ class SaeNetNode(Node):
         meta = yaml.safe_load(meta_path.read_text())
         self.label_lut = np.asarray(meta["labelIDs"], dtype=np.uint8).reshape(-1, 3)
         self.network_hw = tuple(meta["inputSize"][:2])
+        self.cost_lut = np.asarray(
+            [CLASS_NAME_TO_COST.get(name, DEFAULT_CLASS_COST) for name in meta["classNames"]],
+            dtype=np.uint8)
 
         self.model = SaeNet(num_classes=self.label_lut.shape[0])
         self.model.load_state_dict(torch.load(str(weights_path), map_location="cpu"))
@@ -61,6 +72,7 @@ class SaeNetNode(Node):
 
         self.bridge = CvBridge()
         self.pub = self.create_publisher(Image, "avt_341/camera/segmentation", 1)
+        self.cost_pub = self.create_publisher(Image, "avt_341/camera/segmentation_cost", 1)
         self.overlay_pub = (self.create_publisher(Image, "avt_341/camera/segmentation_overlay", 1)
                             if bool(params.publish_overlay) else None)
         self.sub = self.create_subscription(Image, "avt_341/camera/image_raw", self.on_image, qos_profile_sensor_data)
@@ -88,8 +100,14 @@ class SaeNetNode(Node):
         resized = self.resize_bicubic(img, self.network_hw)
         resized = np.clip(resized.astype(np.int16) + int(round(self.brightness)), 0, 255).astype(np.uint8)
         x = torch.from_numpy(resized.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
-        labels = self.model(x.to(self.device)).argmax(dim=1)[0].cpu().numpy()
+        labels = self.model(x.to(self.device)).argmax(dim=1)[0].cpu().numpy().astype(np.uint8)
         mask = self.label_lut[labels]
+        costs = self.cost_lut[labels]
+
+        costs = self.resize_nearest(costs, (msg.height, msg.width))
+        cost_out = self.bridge.cv2_to_imgmsg(costs, encoding="mono8")
+        cost_out.header = msg.header
+        self.cost_pub.publish(cost_out)
 
         mask = self.resize_nearest(mask, (msg.height, msg.width))
         out = self.bridge.cv2_to_imgmsg(mask, encoding="rgb8")
