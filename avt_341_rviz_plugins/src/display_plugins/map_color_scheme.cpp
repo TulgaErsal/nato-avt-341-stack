@@ -2,9 +2,12 @@
 
 #include <algorithm>
 #include <cmath>
-#include <map>
 #include <set>
 #include <string>
+#include <utility>
+#include <vector>
+
+#include <QRegularExpression>
 
 #include <yaml-cpp/yaml.h>
 
@@ -13,10 +16,16 @@ namespace avt_341::rviz_plugins
 
 namespace
 {
-constexpr int kMaxLegalValue = 100;    // legal occupancy values are 0..100
-constexpr int kUnknownIndex = 255;     // the value -1 as an unsigned byte
-constexpr int kIllegalPositiveFirst = 101, kIllegalPositiveLast = 127;
-constexpr int kIllegalNegativeFirst = 128, kIllegalNegativeLast = 254;
+constexpr int kMinCellValue = -128; // OccupancyGrid data is signed int8
+constexpr int kMaxCellValue = 127;
+
+/// The palette texture is indexed by the occupancy byte reinterpreted as
+/// unsigned, so a signed cell value maps to its two's-complement byte
+/// (0..127 identity, -1 -> 255, -128 -> 128).
+int paletteIndex( int value )
+{
+    return static_cast<unsigned char>( value );
+}
 
 void setEntry( std::vector<unsigned char>& palette, int index, const SchemeColor& c )
 {
@@ -58,7 +67,7 @@ bool parseHexColor( const QString& text, SchemeColor& out )
     return all_ok;
 }
 
-/// Parse a color node: [r,g,b] (opaque), [r,g,b,a], or a hex string.
+/// Parse a single-color node: [r,g,b] (opaque), [r,g,b,a], or a hex string.
 bool parseColor( const YAML::Node& node, SchemeColor& out, QString& err )
 {
     if ( node.IsScalar() )
@@ -98,65 +107,152 @@ bool parseColor( const YAML::Node& node, SchemeColor& out, QString& err )
     return true;
 }
 
-/// Parse a `gradient:` / `values:` style map of occupancy value -> color, with
-/// range and duplicate-key validation.
-bool parseValueColorMap(
-    const YAML::Node& node, const QString& key, std::map<int, SchemeColor>& out,
-    QString& err )
+/// Parse a `values:` key: a single cell value "V" or an inclusive range
+/// "LO..HI", whitespace around the ".." tolerated. yaml-cpp hands every key
+/// over as a string, so integer-looking and range-looking keys arrive
+/// uniformly; the strict pattern rejects float look-alikes ("0.100", ".5")
+/// and stray extra dots ("0...100") instead of misreading them.
+bool parseValueKey( const QString& text, int& lo, int& hi, QString& err )
 {
-    if ( !node.IsMap() || node.size() == 0 )
+    static const QRegularExpression kPattern(
+        R"(^\s*(-?\d+)\s*(?:\.\.\s*(-?\d+)\s*)?$)" );
+    const QRegularExpressionMatch match = kPattern.match( text );
+    bool ok = match.hasMatch();
+    if ( ok )
     {
-        err = key + " must be a non-empty map of value: color";
+        lo = match.captured( 1 ).toInt( &ok );
+    }
+    hi = lo;
+    if ( ok && !match.captured( 2 ).isNull() )
+    {
+        hi = match.captured( 2 ).toInt( &ok );
+    }
+    if ( !ok || lo < kMinCellValue || lo > kMaxCellValue ||
+         hi < kMinCellValue || hi > kMaxCellValue )
+    {
+        err = QString( "invalid cell value or range \"%1\" "
+                       "(expected V or LO..HI, integers in -128..127)" )
+                  .arg( text.trimmed() );
         return false;
     }
-    for ( const auto& kv : node )
+    if ( lo > hi )
     {
-        int value = -1;
-        try
-        {
-            value = kv.first.as<int>();
-        }
-        catch ( const YAML::Exception& )
-        {
-        }
-        if ( value < 0 || value > kMaxLegalValue )
-        {
-            err = key + " keys must be integers in 0-100";
-            return false;
-        }
-        SchemeColor color;
-        if ( !parseColor( kv.second, color, err ) )
-        {
-            err = QString( "%1[%2]: %3" ).arg( key ).arg( value ).arg( err );
-            return false;
-        }
-        if ( !out.emplace( value, color ).second )
-        {
-            err = QString( "%1 has a duplicate entry for value %2" ).arg( key ).arg( value );
-            return false;
-        }
+        err = QString( "invalid range \"%1\" (LO must be <= HI)" ).arg( text.trimmed() );
+        return false;
     }
     return true;
 }
 
-/// Evaluate a gradient at `v`: linear per-channel RGBA interpolation between the
-/// bracketing stops, clamping to the end stops outside their range.
-SchemeColor evalGradient( const std::map<int, SchemeColor>& stops, int v )
+/// Parse a `values:` entry into gradient stops: a single color (one stop), a
+/// ".."-joined string of hex stops, or a list of two or more colors. A
+/// sequence whose elements are all integers is one [r,g,b](,a) color; any
+/// other sequence is a stop list.
+bool parseStops( const YAML::Node& node, std::vector<SchemeColor>& out, QString& err )
 {
-    if ( v <= stops.begin()->first )
+    out.clear();
+
+    if ( node.IsScalar() )
     {
-        return stops.begin()->second;
+        const QString text = QString::fromStdString( node.as<std::string>() );
+        if ( !text.contains( ".." ) )
+        {
+            SchemeColor color;
+            if ( !parseColor( node, color, err ) )
+            {
+                return false;
+            }
+            out.push_back( color );
+            return true;
+        }
+        for ( const QString& piece : text.split( ".." ) ) // ".." implies >= 2 pieces
+        {
+            SchemeColor color;
+            if ( !parseHexColor( piece.trimmed(), color ) )
+            {
+                err = QString( "invalid gradient stop \"%1\" "
+                               "(expected #RRGGBB or #RRGGBBAA)" )
+                          .arg( piece.trimmed() );
+                return false;
+            }
+            out.push_back( color );
+        }
+        return true;
     }
-    const auto last = std::prev( stops.end() );
-    if ( v >= last->first )
+
+    if ( node.IsSequence() )
     {
-        return last->second;
+        bool all_ints = node.size() > 0;
+        for ( const auto& element : node )
+        {
+            if ( !element.IsScalar() )
+            {
+                all_ints = false;
+                break;
+            }
+            try
+            {
+                element.as<int>();
+            }
+            catch ( const YAML::Exception& )
+            {
+                all_ints = false;
+                break;
+            }
+        }
+        if ( all_ints )
+        {
+            SchemeColor color;
+            if ( !parseColor( node, color, err ) )
+            {
+                return false;
+            }
+            out.push_back( color );
+            return true;
+        }
+        for ( const auto& element : node )
+        {
+            SchemeColor color;
+            if ( !parseColor( element, color, err ) )
+            {
+                return false;
+            }
+            out.push_back( color );
+        }
+        if ( out.size() < 2 )
+        {
+            err = "a gradient list needs at least 2 colors";
+            return false;
+        }
+        return true;
     }
-    const auto hi = stops.upper_bound( v );
-    const auto lo = std::prev( hi );
-    const double t =
-        static_cast<double>( v - lo->first ) / static_cast<double>( hi->first - lo->first );
-    return lerp( lo->second, hi->second, t );
+
+    err = "invalid color (expected [r, g, b], [r, g, b, a], a \"#hex\" string, "
+          "a \"#hex..#hex\" gradient or a list of colors)";
+    return false;
+}
+
+/// Paint one values: entry onto the palette. A single stop fills the whole
+/// key range; two or more stops are spread evenly across it with linear
+/// per-channel RGBA interpolation between adjacent stops.
+void applyStops(
+    std::vector<unsigned char>& palette, int lo, int hi,
+    const std::vector<SchemeColor>& stops )
+{
+    if ( stops.size() == 1 )
+    {
+        for ( int v = lo; v <= hi; v++ )
+        {
+            setEntry( palette, paletteIndex( v ), stops.front() );
+        }
+        return;
+    }
+    const int segments = static_cast<int>( stops.size() ) - 1; // lo < hi checked by caller
+    for ( int v = lo; v <= hi; v++ )
+    {
+        const double t = static_cast<double>( v - lo ) / ( hi - lo ) * segments;
+        const int seg = std::min( static_cast<int>( t ), segments - 1 );
+        setEntry( palette, paletteIndex( v ), lerp( stops[seg], stops[seg + 1], t - seg ) );
+    }
 }
 
 /// Parse one scheme entry. Returns false with `err` set on any validation error
@@ -169,8 +265,7 @@ bool parseScheme( const YAML::Node& node, MapColorScheme& out, QString& err )
         return false;
     }
 
-    static const std::set<std::string> kKnownKeys = {
-        "name", "gradient", "values", "default", "unknown", "illegal" };
+    static const std::set<std::string> kKnownKeys = { "name", "default", "values" };
     for ( const auto& kv : node )
     {
         const std::string key = kv.first.as<std::string>();
@@ -193,14 +288,14 @@ bool parseScheme( const YAML::Node& node, MapColorScheme& out, QString& err )
         return false;
     }
 
-    if ( !node["gradient"] && !node["values"] && !node["default"] )
+    if ( !node["values"] && !node["default"] )
     {
-        err = "scheme defines no colors (need at least one of gradient / values / default)";
+        err = "scheme defines no colors (need at least one of values / default)";
         return false;
     }
 
-    // Legal values 0-100: default color first, then the gradient (which covers the
-    // whole range via clamping when present), then exact `values` overrides.
+    // `default` covers every cell value not painted by a values: entry,
+    // including -1 and the out-of-contract values.
     SchemeColor default_color; // fully transparent
     if ( node["default"] && !parseColor( node["default"], default_color, err ) )
     {
@@ -209,75 +304,52 @@ bool parseScheme( const YAML::Node& node, MapColorScheme& out, QString& err )
     }
 
     out.palette.assign( 256 * 4, 0 );
-    for ( int v = 0; v <= kMaxLegalValue; v++ )
+    for ( int i = 0; i < 256; i++ )
     {
-        setEntry( out.palette, v, default_color );
-    }
-
-    if ( node["gradient"] )
-    {
-        std::map<int, SchemeColor> stops;
-        if ( !parseValueColorMap( node["gradient"], "gradient", stops, err ) )
-        {
-            return false;
-        }
-        for ( int v = 0; v <= kMaxLegalValue; v++ )
-        {
-            setEntry( out.palette, v, evalGradient( stops, v ) );
-        }
+        setEntry( out.palette, i, default_color );
     }
 
     if ( node["values"] )
     {
-        std::map<int, SchemeColor> values;
-        if ( !parseValueColorMap( node["values"], "values", values, err ) )
+        const YAML::Node values = node["values"];
+        if ( !values.IsMap() || values.size() == 0 )
         {
+            err = "values must be a non-empty map of cell value/range: color";
             return false;
         }
-        for ( const auto& [value, color] : values )
+        // yaml-cpp iterates in document order, so later entries override earlier
+        // ones where they overlap; only an exact repeat of the same value/range
+        // (a likely copy-paste slip YAML itself does not flag) is rejected.
+        std::set<std::pair<int, int>> seen;
+        for ( const auto& kv : values )
         {
-            setEntry( out.palette, value, color );
+            const QString key_text = QString::fromStdString( kv.first.as<std::string>() );
+            int lo = 0, hi = 0;
+            if ( !parseValueKey( key_text, lo, hi, err ) )
+            {
+                return false;
+            }
+            if ( !seen.emplace( lo, hi ).second )
+            {
+                err = QString( "values has a duplicate entry for %1" ).arg( key_text );
+                return false;
+            }
+            std::vector<SchemeColor> stops;
+            if ( !parseStops( kv.second, stops, err ) )
+            {
+                err = QString( "values[%1]: %2" ).arg( key_text, err );
+                return false;
+            }
+            if ( stops.size() > 1 && lo == hi )
+            {
+                err = QString( "values[%1]: a gradient needs a range of at "
+                               "least two cells" )
+                          .arg( key_text );
+                return false;
+            }
+            applyStops( out.palette, lo, hi, stops );
         }
     }
-
-    // Out-of-contract values: a single override color, or the built-in Map
-    // display's loud debug colors (green band, red-to-yellow ramp) so misbehaving
-    // publishers stay visible.
-    if ( node["illegal"] )
-    {
-        SchemeColor illegal;
-        if ( !parseColor( node["illegal"], illegal, err ) )
-        {
-            err = "illegal: " + err;
-            return false;
-        }
-        for ( int i = kIllegalPositiveFirst; i <= kIllegalNegativeLast; i++ )
-        {
-            setEntry( out.palette, i, illegal );
-        }
-    }
-    else
-    {
-        for ( int i = kIllegalPositiveFirst; i <= kIllegalPositiveLast; i++ )
-        {
-            setEntry( out.palette, i, SchemeColor{ 0, 255, 0, 255 } );
-        }
-        for ( int i = kIllegalNegativeFirst; i <= kIllegalNegativeLast; i++ )
-        {
-            const auto yellow = static_cast<unsigned char>(
-                ( 255 * ( i - kIllegalNegativeFirst ) ) /
-                ( kIllegalNegativeLast - kIllegalNegativeFirst ) );
-            setEntry( out.palette, i, SchemeColor{ 255, yellow, 0, 255 } );
-        }
-    }
-
-    SchemeColor unknown; // fully transparent
-    if ( node["unknown"] && !parseColor( node["unknown"], unknown, err ) )
-    {
-        err = "unknown: " + err;
-        return false;
-    }
-    setEntry( out.palette, kUnknownIndex, unknown );
 
     out.translucent = false;
     for ( int i = 0; i < 256; i++ )
