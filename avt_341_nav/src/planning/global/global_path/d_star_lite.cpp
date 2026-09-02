@@ -13,8 +13,9 @@ DStarLite::DStarLite(float w_distance,
                      bool search_diagonals,
                      int los_max_iterations,
                      bool los_break_on_first,
-                     float no_segmentation_data_cost)
-  : Astar(w_distance, w_occupancy, w_segmentation, search_diagonals, los_max_iterations, los_break_on_first, no_segmentation_data_cost) {
+                     float no_segmentation_data_cost,
+                     float no_occupancy_data_cost)
+  : Astar(w_distance, w_occupancy, w_segmentation, search_diagonals, los_max_iterations, los_break_on_first, no_segmentation_data_cost, no_occupancy_data_cost) {
   km_ = 0.0f;
   s_start_ = -1;
   s_goal_ = -1;
@@ -197,7 +198,7 @@ std::vector<Point> DStarLite::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int ix = 0; ix < width_; ix++) {
         double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        SetMapValue({ix, iy}, grid->data[n], GetGridValue(segmentation_grid, x_grid, y_grid));
+        SetMapValue({ix, iy}, GetOccupancyValue(grid, n), GetGridValue(segmentation_grid, x_grid, y_grid));
         n++;
       }
     }

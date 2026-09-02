@@ -54,7 +54,8 @@ public:
         bool search_diagonals,
         int los_max_iterations,
         bool los_break_on_first,
-        float no_segmentation_data_cost);
+        float no_segmentation_data_cost,
+        float no_occupancy_data_cost);
 
   /// Destructor
   virtual ~Astar();
@@ -92,6 +93,11 @@ public:
   /// coordinate falls outside segmentation_grid's published extent, or if the
   /// cell there is published as -1 (unknown).
   int GetGridValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y) const;
+
+  /// Get occupancy value at a flattened grid index. Returns no_occupancy_data_cost_
+  /// if the cell there is published as -1 (unknown), instead of passing the raw
+  /// negative value through as a cost.
+  int GetOccupancyValue(nav_msgs::msg::OccupancyGrid* grid, int index) const;
 
   /// Inherited from planner base class.
   virtual std::vector<Point> PlanPath(nav_msgs::msg::OccupancyGrid* grid,
@@ -303,6 +309,7 @@ protected:
   float w_occupancy_;
   float w_segmentation_;
   float no_segmentation_data_cost_;
+  float no_occupancy_data_cost_;
   bool search_diagonals_;
   int los_max_iterations_;
   bool los_break_on_first_;

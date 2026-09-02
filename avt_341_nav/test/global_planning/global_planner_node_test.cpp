@@ -126,6 +126,7 @@ struct GlobalPlannerParams {
   float w_occupancy            = 10.0f;
   float w_segmentation         = 0.1f;
   float no_segmentation_data_cost = 50.0f;
+  float no_occupancy_data_cost = 0.0f;
   bool  search_diagonals       = true;
   int   los_max_iterations     = 1;
   bool  los_break_on_first     = false;
@@ -160,6 +161,7 @@ static GlobalPlannerParams LoadParams(const std::string& yaml_path) {
   p.w_occupancy                  = y.get_float("w_occupancy",           p.w_occupancy);
   p.w_segmentation               = y.get_float("w_segmentation",        p.w_segmentation);
   p.no_segmentation_data_cost    = y.get_float("no_segmentation_data_cost", p.no_segmentation_data_cost);
+  p.no_occupancy_data_cost       = y.get_float("no_occupancy_data_cost", p.no_occupancy_data_cost);
   p.search_diagonals             = y.get_bool("search_diagonals",       p.search_diagonals);
   p.los_max_iterations           = y.get_int("los_max_iterations",      p.los_max_iterations);
   p.los_break_on_first           = y.get_bool("los_break_on_first",     p.los_break_on_first);
@@ -286,12 +288,12 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         p.gradient_descent_max_steps, p.gradient_descent_steps_per_point,
         p.clipping_distance,
         /*verbose=*/false,
-        p.no_segmentation_data_cost);
+        p.no_segmentation_data_cost, p.no_occupancy_data_cost);
   } else if (method == "d_star_lite") {
     return std::make_unique<avt_341_nav::planning::DStarLite>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
-        p.no_segmentation_data_cost);
+        p.no_segmentation_data_cost, p.no_occupancy_data_cost);
   } else if (method == "fast_marching_square") {
     return std::make_unique<avt_341_nav::planning::FastMarchingSquare>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
@@ -304,13 +306,13 @@ CreatePlanner(const std::string& method, const GlobalPlannerParams& p) {
         p.gradient_descent_max_steps, p.gradient_descent_steps_per_point,
         p.clipping_distance,
         /*verbose=*/false,
-        p.no_segmentation_data_cost);
+        p.no_segmentation_data_cost, p.no_occupancy_data_cost);
   } else {
     // Default: astar
     return std::make_unique<avt_341_nav::planning::Astar>(
         p.w_distance, p.w_occupancy, p.w_segmentation,
         p.search_diagonals, p.los_max_iterations, p.los_break_on_first,
-        p.no_segmentation_data_cost);
+        p.no_segmentation_data_cost, p.no_occupancy_data_cost);
   }
 }
 
@@ -643,6 +645,43 @@ TEST(GlobalPlannerParamTest, ParamsWithinRange) {
                                 g_params.planning_method) != valid_methods.end();
   EXPECT_TRUE(method_valid)
       << "planning_method '" << g_params.planning_method << "' is not recognised";
+}
+
+// ---------------------------------------------------------------------------
+// Unknown-cell handling: an in-bounds cell published as -1 must fall back to
+// the configured "no data" cost rather than being used as a raw negative
+// value, for both the segmentation grid and the occupancy grid.
+// ---------------------------------------------------------------------------
+TEST(UnknownCellHandling, SegmentationNegativeOneFallsBackToConfiguredCost) {
+  avt_341_nav::planning::Astar astar(
+      /*w_distance=*/1.0f, /*w_occupancy=*/10.0f, /*w_segmentation=*/0.1f,
+      /*search_diagonals=*/true, /*los_max_iterations=*/1,
+      /*los_break_on_first=*/false,
+      /*no_segmentation_data_cost=*/77.0f, /*no_occupancy_data_cost=*/0.0f);
+
+  auto grid = MakeGrid({-1, 42}, /*width=*/2, /*height=*/1, /*resolution=*/1.0f);
+
+  EXPECT_EQ(astar.GetGridValue(&grid, 0.5, 0.5), 77)
+      << "an in-bounds -1 cell should fall back to no_segmentation_data_cost";
+  EXPECT_EQ(astar.GetGridValue(&grid, 1.5, 0.5), 42)
+      << "a real classified value should pass through unchanged";
+  EXPECT_EQ(astar.GetGridValue(&grid, 100.0, 100.0), 77)
+      << "a coordinate outside the grid's extent should also fall back";
+}
+
+TEST(UnknownCellHandling, OccupancyNegativeOneFallsBackToConfiguredCost) {
+  avt_341_nav::planning::Astar astar(
+      /*w_distance=*/1.0f, /*w_occupancy=*/10.0f, /*w_segmentation=*/0.1f,
+      /*search_diagonals=*/true, /*los_max_iterations=*/1,
+      /*los_break_on_first=*/false,
+      /*no_segmentation_data_cost=*/0.0f, /*no_occupancy_data_cost=*/33.0f);
+
+  auto grid = MakeGrid({-1, 88}, /*width=*/2, /*height=*/1, /*resolution=*/1.0f);
+
+  EXPECT_EQ(astar.GetOccupancyValue(&grid, 0), 33)
+      << "an unknown (-1) occupancy cell should fall back to no_occupancy_data_cost";
+  EXPECT_EQ(astar.GetOccupancyValue(&grid, 1), 88)
+      << "a real occupancy value should pass through unchanged";
 }
 
 // ===========================================================================

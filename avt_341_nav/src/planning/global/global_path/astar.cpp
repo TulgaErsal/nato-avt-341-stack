@@ -20,11 +20,13 @@ Astar::Astar(float w_distance,
              bool search_diagonals,
              int los_max_iterations,
              bool los_break_on_first,
-             float no_segmentation_data_cost)
+             float no_segmentation_data_cost,
+             float no_occupancy_data_cost)
   : w_distance_(w_distance),
     w_occupancy_(w_occupancy),
     w_segmentation_(w_segmentation),
     no_segmentation_data_cost_(no_segmentation_data_cost),
+    no_occupancy_data_cost_(no_occupancy_data_cost),
     search_diagonals_(search_diagonals),
     los_max_iterations_(los_max_iterations),
     los_break_on_first_(los_break_on_first) {
@@ -351,6 +353,12 @@ int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) 
   return seg_val;
 }
 
+int Astar::GetOccupancyValue(nav_msgs::msg::OccupancyGrid* grid, int index) const {
+  return grid->data[index] >= 0
+      ? static_cast<int>(grid->data[index])
+      : static_cast<int>(no_occupancy_data_cost_);
+}
+
 std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
                                    nav_msgs::msg::OccupancyGrid* grid_segmentation,
                                    Point goal,
@@ -387,7 +395,7 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int ix = 0; ix < width_; ix++) {
         double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        SetMapValue({ix, iy}, grid->data[n], GetGridValue(grid_segmentation, x_grid, y_grid));
+        SetMapValue({ix, iy}, GetOccupancyValue(grid, n), GetGridValue(grid_segmentation, x_grid, y_grid));
         n++;
       }
     }

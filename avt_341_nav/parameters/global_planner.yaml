@@ -49,6 +49,10 @@ ros__parameters:
     type: double
     default_value: 50.0
     description: "Segmentation cost assumed for a map cell with no segmentation data: either outside the segmentation grid's published extent, or published as -1 (unknown -- e.g. a cell uab_perception_node hasn't classified yet)."
+  no_occupancy_data_cost:
+    type: double
+    default_value: 0.0
+    description: "Occupancy cost assumed for a map cell published as -1 (unknown). Defaults to 0 (free) rather than penalizing or rewarding unexplored space."
   search_diagonals:
     type: bool
     default_value: true

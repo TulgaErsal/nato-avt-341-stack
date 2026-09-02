@@ -63,7 +63,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
             double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
             double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
 
-            float occ = (float)grid->data[i];
+            float occ = (float)GetOccupancyValue(grid, i);
             float seg = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
 
             map_[ix][iy] = occ;
