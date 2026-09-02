@@ -29,6 +29,7 @@
     mission_definition_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_mission_points.csv
     mission_paths_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_paths.csv
     speed_zones_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_speed_zones.json
+    use_avt_tracker: false
 
 # perception_local_node runs on the template defaults (donor: legacy perception_local.yaml)
 
@@ -88,6 +89,10 @@
   ros__parameters:
     map_topic: 'avt_341/occupancy_grid_low_res'
     seg_topic: 'avt_341/terrain_seg/segmentation_grid'
+
+/**/mpc_planner_node:
+  ros__parameters:
+    safety_margin: 1.0
 
 /**/comm_node:
   ros__parameters:
