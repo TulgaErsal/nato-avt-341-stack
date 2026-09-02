@@ -338,7 +338,7 @@ bool Astar::ExtractPath() {
   return true;
 }
 
-int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) const {
+int Astar::GetSegmentationValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) const {
   int seg_val = static_cast<int>(no_segmentation_data_cost_);
   if (x >= grid->info.origin.position.x && x < grid->info.origin.position.x + grid->info.width * grid->info.resolution
     && y >= grid->info.origin.position.y
@@ -395,7 +395,7 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int ix = 0; ix < width_; ix++) {
         double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        SetMapValue({ix, iy}, GetOccupancyValue(grid, n), GetGridValue(grid_segmentation, x_grid, y_grid));
+        SetMapValue({ix, iy}, GetOccupancyValue(grid, n), GetSegmentationValue(grid_segmentation, x_grid, y_grid));
         n++;
       }
     }
@@ -420,7 +420,7 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int j = 1; j < height_ - 1; j++) {
         double x_grid = grid->info.origin.position.x + i * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + j * grid->info.resolution;
-        SetMapValue({i, j}, dmap[i][j], GetGridValue(grid_segmentation, x_grid, y_grid));
+        SetMapValue({i, j}, dmap[i][j], GetSegmentationValue(grid_segmentation, x_grid, y_grid));
       }
     }
   }

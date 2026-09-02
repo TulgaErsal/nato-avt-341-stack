@@ -198,7 +198,7 @@ std::vector<Point> DStarLite::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int ix = 0; ix < width_; ix++) {
         double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        SetMapValue({ix, iy}, GetOccupancyValue(grid, n), GetGridValue(segmentation_grid, x_grid, y_grid));
+        SetMapValue({ix, iy}, GetOccupancyValue(grid, n), GetSegmentationValue(segmentation_grid, x_grid, y_grid));
         n++;
       }
     }

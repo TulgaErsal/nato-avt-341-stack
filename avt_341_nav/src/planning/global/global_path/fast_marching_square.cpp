@@ -64,7 +64,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
             double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
 
             float occ = (float)GetOccupancyValue(grid, i);
-            float seg = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
+            float seg = (float)GetSegmentationValue(segmentation_grid, x_grid, y_grid);
 
             map_[ix][iy] = occ;
             base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;

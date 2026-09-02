@@ -661,11 +661,11 @@ TEST(UnknownCellHandling, SegmentationNegativeOneFallsBackToConfiguredCost) {
 
   auto grid = MakeGrid({-1, 42}, /*width=*/2, /*height=*/1, /*resolution=*/1.0f);
 
-  EXPECT_EQ(astar.GetGridValue(&grid, 0.5, 0.5), 77)
+  EXPECT_EQ(astar.GetSegmentationValue(&grid, 0.5, 0.5), 77)
       << "an in-bounds -1 cell should fall back to no_segmentation_data_cost";
-  EXPECT_EQ(astar.GetGridValue(&grid, 1.5, 0.5), 42)
+  EXPECT_EQ(astar.GetSegmentationValue(&grid, 1.5, 0.5), 42)
       << "a real classified value should pass through unchanged";
-  EXPECT_EQ(astar.GetGridValue(&grid, 100.0, 100.0), 77)
+  EXPECT_EQ(astar.GetSegmentationValue(&grid, 100.0, 100.0), 77)
       << "a coordinate outside the grid's extent should also fall back";
 }
 

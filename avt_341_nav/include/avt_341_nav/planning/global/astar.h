@@ -92,7 +92,7 @@ public:
   /// Get grid value at coordinates. Returns no_segmentation_data_cost_ if the
   /// coordinate falls outside segmentation_grid's published extent, or if the
   /// cell there is published as -1 (unknown).
-  int GetGridValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y) const;
+  int GetSegmentationValue(nav_msgs::msg::OccupancyGrid* segmentation_grid, double x, double y) const;
 
   /// Get occupancy value at a flattened grid index. Returns no_occupancy_data_cost_
   /// if the cell there is published as -1 (unknown), instead of passing the raw
