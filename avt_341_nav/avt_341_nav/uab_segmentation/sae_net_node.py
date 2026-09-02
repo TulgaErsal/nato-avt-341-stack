@@ -29,13 +29,14 @@ WEIGHTS_SHARE_SUBDIR = "ml_weights/uab_segmentation"
 # Blend factor of the segmentation mask in the overlay image
 OVERLAY_ALPHA = 0.3
 
-# Terrain cost per class name
+# Terrain cost per class name. Unmapped classes ("zero"/"sky") default to 0, matching
+# MATLAB's exclusion of obstructionIdx from its terrain-cost grid.
 CLASS_NAME_TO_COST = {
     "high": 1,
     "medium": 33,
     "low": 50,
 }
-DEFAULT_CLASS_COST = 100
+DEFAULT_CLASS_COST = 0
 
 
 class SaeNetNode(Node):
