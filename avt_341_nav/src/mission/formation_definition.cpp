@@ -85,7 +85,7 @@ FormationDefinition::FormationDefinition(
 
 FormationOffsets FormationDefinition::getOffsets(const std::string &formation) const {
   FormationOffsets offsets = offsets_map_.at(formation);
-  if(!params.offsets_from_leader && formation == "COLUMN" && !formation_at_goal_){
+  if(formation == "COLUMN" && !formation_at_goal_){
     offsets.follower2.x = offsets.follower1.x;
     offsets.follower3.x = offsets.follower1.x;
   }
@@ -154,7 +154,7 @@ bool FormationDefinition::update(FormationMsg &comm_msg, const MissionPoint & mp
   formation_vehicle_names_.erase(std::remove_if(formation_vehicle_names_.begin(), formation_vehicle_names_.end(), 
                                                 [](const std::string & s){return s.empty() || s == "NIL" || s == "NONE";}), formation_vehicle_names_.end());
 
-  if(params.offsets_from_leader || my_index_ == 0 || !isColumn()){
+  if(my_index_ == 0 || !isColumn()){
     followed_vehicle_ = leader_name;
   }else{
     followed_vehicle_ = formation_vehicle_names_[my_index_ - 1];

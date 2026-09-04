@@ -148,7 +148,7 @@ namespace avt_341_nav {
           int veh_index;
           const auto formation_status = formation_def->commToFollowerStatus(veh_name, veh_index);
           std::string followed_vehicle_i;
-          if (formation_def->params.offsets_from_leader || veh_index == 0 || !is_column) {
+          if (veh_index == 0 || !is_column) {
             followed_vehicle_i = leader_name;
           } else {
             followed_vehicle_i = formation_vehicle_names[veh_index - 1];
@@ -191,37 +191,14 @@ namespace avt_341_nav {
       if ((is_column || !self_out_of_formation) && !out_formation_veh.empty() && out_formation_veh[0] != my_name_) {
         std::string first_oof = out_formation_veh[0];
 
-        if (formation_def->params.offsets_from_leader) {
-          double distance_to_self = PosePlanarDistance(formation_poses[first_oof].pose.pose.position,
-                                                       formation_poses[my_name_].pose.pose.position);
-          // speed control IF: In formation or own vehicle close to first out of formation vehicle
-          if (!self_out_of_formation ||
-              distance_to_self < fsc_params_.oof.threshold) {
-
-            auto delta_past_threshold =
-                delta_pos_map[first_oof] - fsc_params_.oof.threshold;
-            if (delta_past_threshold > 0.0) {
-              // linear range
-              double mult =
-                  self_out_of_formation ? 1.0 / fsc_params_.oof.mult : 1.0;
-              speed_factor = std::max(
-                  1.0 - mult * fsc_params_.oof.lin_slope *
-                            delta_past_threshold -
-                            fsc_params_.oof.const_term,
-                  0.0);
-            }
-          }
-        } else {
-          auto delta_past_threshold =
-              delta_pos_map[first_oof] - fsc_params_.oof.threshold;
-          if ((is_leader || (is_column && my_index < first_oof_idx)) && delta_past_threshold > 0.0) {
-            // linear range
-            speed_factor =
-                std::max(1.0 - fsc_params_.oof.lin_slope *
-                                   delta_past_threshold -
-                                   fsc_params_.oof.const_term,
-                         0.0);
-          }
+        auto delta_past_threshold = delta_pos_map[first_oof] - fsc_params_.oof.threshold;
+        if ((is_leader || (is_column && my_index < first_oof_idx)) && delta_past_threshold > 0.0) {
+        // linear range
+        speed_factor =
+            std::max(1.0 - fsc_params_.oof.lin_slope *
+                               delta_past_threshold -
+                               fsc_params_.oof.const_term,
+                     0.0);
         }
       }
 

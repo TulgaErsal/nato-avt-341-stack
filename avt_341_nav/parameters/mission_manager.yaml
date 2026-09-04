@@ -75,10 +75,6 @@ ros__parameters:
       type: double
       default_value: 10.0
       description: "Terminal goal threshold for an ALL_ARRIVE follow task, checked after the followed vehicle arrives."
-    offsets_from_leader:
-      type: bool
-      default_value: true
-      description: "If true, calculate formation offsets from the lead vehicle. If false, calculate them from the next vehicle in a column."
 
   # Formation Speed Control Settings
   # ====================================================================================
