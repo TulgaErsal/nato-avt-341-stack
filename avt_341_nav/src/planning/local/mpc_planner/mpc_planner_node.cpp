@@ -597,6 +597,7 @@ void InitialiseJuliaAPI()
     j_set_sigma = jl_get_function(mpc_module, "SetSigma");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
     j_set_max_speed = jl_get_function(mpc_module, "SetMaxSpeed");
+    j_set_goal_stop_radius = jl_get_function(mpc_module, "SetGoalStopRadius");
     j_set_use_hard_constraints = jl_get_function(mpc_module, "SetUseHardConstraints");
     j_set_use_segmentation = jl_get_function(mpc_module, "SetUseSegmentation");
     j_set_w_distance_to_obstacles = jl_get_function(mpc_module, "SetWDistanceToObstacles");
@@ -638,6 +639,7 @@ void InitialiseJuliaAPI()
         jl_box_float64(1.414214 * mpc_params.grid_resolution);
     jl_value_t *j_min_speed = jl_box_float64(mpc_params.min_speed);
     jl_value_t *j_max_speed = jl_box_float64(mpc_params.max_speed);
+    jl_value_t *j_goal_stop_radius = jl_box_float64(mpc_params.goal_stop_radius);
     jl_value_t *j_use_hard_constraints =
         jl_box_int32(mpc_params.use_hard_constraints);
     jl_value_t *j_use_segmentation =
@@ -692,6 +694,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_sigma, j_sigma);
     jl_call1(j_set_min_speed, j_min_speed);
     jl_call1(j_set_max_speed, j_max_speed);
+    jl_call1(j_set_goal_stop_radius, j_goal_stop_radius);
     jl_call1(j_set_use_hard_constraints, j_use_hard_constraints);
     jl_call1(j_set_use_segmentation, j_use_segmentation);
     jl_call1(j_set_w_distance_to_obstacles, j_w_distance_to_obstacles);
@@ -744,6 +747,7 @@ void UpdateCostFnWeights(
     mpc_params.w_traversability_cost = params.w_traversability_cost;
     mpc_params.w_final_speed = params.w_final_speed;
     mpc_params.w_final_heading = params.w_final_heading;
+    mpc_params.goal_stop_radius = params.goal_stop_radius;
 
     jl_call1(j_set_w_distance_to_obstacles,
              jl_box_float64(mpc_params.w_distance_to_obstacles));
@@ -759,6 +763,8 @@ void UpdateCostFnWeights(
              jl_box_float64(mpc_params.w_final_speed));
     jl_call1(j_set_w_final_heading,
              jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_goal_stop_radius,
+             jl_box_float64(mpc_params.goal_stop_radius));
     CATCH_JULIA_EXCEPTION;
 }
 

@@ -38,6 +38,8 @@ global est_sink = 0.0
 global new_sinkage_available = false
 global linearSolverId = "ma27"
 global goalPointIsEndOfGlobalPath = false
+global goalStopRadius = 0.5
+global leaderStoppedSpeed = 0.05
 
 global n=0
 global XL=0
@@ -148,6 +150,10 @@ end
 
 function SetMaxSpeed(max_speed::Float64)
 	global maxSpeed = max_speed
+end
+
+function SetGoalStopRadius(radius::Float64)
+	global goalStopRadius = radius
 end
 
 function SetUseHardConstraints(use_constraints::Int32)
@@ -341,7 +347,21 @@ function GetHeading()
     return mpc_heading
 end
 
+function AtFinalGoalStop()
+	if !goalPointIsEndOfGlobalPath
+		return false
+	end
+	goal_dist = sqrt((goal[1]-x_veh)^2 + (goal[2]-y_veh)^2)
+	if goal_dist > goalStopRadius
+		return false
+	end
+	return !follower_status || abs(cmdLeaderSpeed) <= leaderStoppedSpeed
+end
+
 function GetSpeed()
+	if AtFinalGoalStop()
+		return 0.0
+	end
 	num_path_points = size(mpc_path)[1]
 	speed_idx = div(numColPoints,2)
 	if skipCount < num_path_points - speed_idx
