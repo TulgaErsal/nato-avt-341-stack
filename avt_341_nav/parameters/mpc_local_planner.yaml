@@ -72,6 +72,10 @@ ros__parameters:
     type: double
     default_value: 4.0
     description: "maximum allowed vehicle speed [m/s]"
+  goal_stop_radius:
+    type: double
+    default_value: 0.5
+    description: "distance [m] to the final goal point within which the MPC commands zero speed; only applies when the goal point is the end of the global path (and, in follower mode, only once the leader has also stopped)"
   use_hard_constraints:
     type: bool
     default_value: false
