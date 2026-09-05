@@ -21,6 +21,7 @@
 #include "avt_341_nav/core/coord_transform.hpp"
 #include "avt_341_nav/core/math_dto.hpp"
 #include "avt_341_nav/core/occupancy_grid_utils.hpp"
+#include "avt_341_nav/core/persistent_async_worker.hpp"
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/waypoint_file_parser.hpp"
 #include "avt_341_nav/planning/global/astar.h"
@@ -81,6 +82,7 @@ std::shared_ptr<avt_341_nav::core::ComputeTimeRecorder> compute_time_recorder = 
 
 // Async planning state
 std::future<std::vector<avt_341_nav::planning::Point>> planning_future;
+avt_341_nav::core::PersistentAsyncWorker planning_worker;
 std::chrono::steady_clock::time_point plan_start;
 bool timeout_logged = false;
 // Metadata of the (possibly cropped) grid the in-flight plan runs on; single plan in
@@ -709,7 +711,7 @@ int main(int argc, char* argv[])
           }
 
           plan_start = std::chrono::steady_clock::now();
-          planning_future = std::async(std::launch::async,
+          planning_future = planning_worker.Submit(
               [grid_snap, seg_snap, goal_pt, pos_snap]() mutable -> std::vector<Point> {
                 // Recording from the planning thread is safe: the recorder guards its sections with
                 // a mutex. Only PublishSummary is kept on the main loop, since it publishes.
