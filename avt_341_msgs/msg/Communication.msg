@@ -11,8 +11,8 @@ string objective_name
 float64 desired_speed
 string priority_type
 string termination_method
-float64 x_scale
-float64 y_scale
+float64 x_scale -1
+float64 y_scale -1
 float64 x_offset
 float64 y_offset
 float64 distance

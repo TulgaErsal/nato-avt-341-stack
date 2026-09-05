@@ -320,6 +320,7 @@ class MockUiDataPublisher(Node):
         # A random subset of the other vehicles participate in the formation.
         msg.formation_vehicles = random.sample(others,
                                                random.randint(0, len(others)))
+        msg.task_speed = round(random.uniform(1.0, 5.0), 1)
         return msg
 
     def _emit_active_task(self, vehicle_id: str) -> MissionTaskStatus:

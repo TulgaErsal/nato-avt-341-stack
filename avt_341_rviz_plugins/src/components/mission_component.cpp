@@ -53,6 +53,12 @@ QString taskIdText( std::int32_t task_id )
     return task_id < 0 ? QString( kEmptyValue ) : QString::number( task_id );
 }
 
+QString taskSpeedText( double task_speed )
+{
+    return task_speed < 0.0 ? QString( kEmptyValue )
+                            : QString::number( task_speed, 'f', 2 ) + " m/s";
+}
+
 }  // namespace
 
 namespace avt_341::rviz_plugins
@@ -70,6 +76,7 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     task_id_label_ = new QLabel( kActiveTaskIdLabel );
     task_id_value_ = new QLabel( kEmptyValue );
     task_description_value_ = new QLabel( kEmptyValue );
+    task_speed_value_ = new QLabel( kEmptyValue );
     tracked_vehicle_value_ = new QLabel( kEmptyValue );
     formation_type_value_ = new QLabel( kEmptyValue );
     formation_vehicles_value_ = new QLabel( kEmptyValue );
@@ -133,6 +140,7 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     layout->setFieldGrowthPolicy( QFormLayout::AllNonFixedFieldsGrow );
     layout->addRow( task_id_label_, task_id_value_ );
     layout->addRow( "Task Description:", task_description_value_ );
+    layout->addRow( "Task Speed:", task_speed_value_ );
     layout->addRow( "Tracked Vehicle:", tracked_vehicle_value_ );
     layout->addRow( "Formation Type:", formation_type_value_ );
     layout->addRow( "Formation Vehicles:", formation_vehicles_value_ );
@@ -195,6 +203,7 @@ void MissionComponent::setActiveTaskFields( const avt_341_msgs::msg::MissionTask
     task_id_value_->setText( taskIdText( msg.task_id ) );
     task_description_value_->setText(
         valueOrDash( QString::fromStdString( msg.task_description ) ) );
+    task_speed_value_->setText( taskSpeedText( msg.task_speed ) );
     tracked_vehicle_value_->setText(
         valueOrDash( QString::fromStdString( msg.tracked_vehicle ) ) );
     formation_type_value_->setText(

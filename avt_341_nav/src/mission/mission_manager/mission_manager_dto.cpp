@@ -117,7 +117,7 @@ FormationMsg::FormationMsg(const std::string &sender, int msgId, const std::stri
   const std::string &priority, const std::string & toiRegex)
   : MoveToMsg(sender, msgId, recipient, objectiveName, xOffset, yOffset, distance, yaw_threshold, priority),
   formation(formation), desired_speed(desiredSpeed),
-  x_scale(xScale), y_scale(yScale), termination_method(terminationMethod), toi_regex(toiRegex)
+  x_scale(xScale > 0.0 ? xScale : -1.0), y_scale(yScale > 0.0 ? yScale : -1.0), termination_method(terminationMethod), toi_regex(toiRegex)
 {
 }
 

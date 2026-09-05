@@ -495,9 +495,9 @@ Visualization Manager:
         Target Message ID: 0
         Termination Method: LEADER_ARRIVED
         X Offset: 0
-        X Scale: 1
+        X Scale: -1
         Y Offset: 0
-        Y Scale: 1
+        Y Scale: -1
       Markers:
         MapMarker Topic: avt_341/map_marker
         MapMarkerList Topic: /avt_341/map_markers_change

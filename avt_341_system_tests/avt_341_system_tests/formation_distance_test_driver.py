@@ -243,7 +243,7 @@ class FormationDistanceTestDriver(Node):
         self._nav_pub = self.create_publisher(
             Int32, 'avt_341/nav_command_state', 1)
         self._speed_pub = self.create_publisher(
-            Float64, 'avt_341/speed_setpoint', 1)
+            Float64, 'avt_341/speed_setpoint', LATCHED_QOS)
         self._task_change_pub = self.create_publisher(
             MissionModuleStatus, 'avt_341/task_change', LATCHED_QOS)
         self._steer_pub = self.create_publisher(

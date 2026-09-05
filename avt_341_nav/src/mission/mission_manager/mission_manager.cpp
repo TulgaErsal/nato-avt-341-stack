@@ -51,7 +51,7 @@ MissionManager::MissionManager(
     navcommand_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/nav_command_state", 10);
     communication_pub = node_->create_publisher<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/gp_toggle", 10);
-    speed_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/speed_setpoint", 10);
+    speed_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local());
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
@@ -321,6 +321,7 @@ avt_341_msgs::msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const T
     status_msg.task_id = task->msg_id;
     status_msg.task_description = task->description();
     status_msg.target_pose = task->terminalPose().pose;
+    status_msg.task_speed = resolveSpeedSetpoint(task);
 
     if (const FormationDefinition * formation_def =  task->getFormationDef()) {
         status_msg.formation_type = formation_def->getFormationType();
@@ -640,15 +641,18 @@ MissionPoint MissionManager::getClosestOverwatch(){
 }
 
 double MissionManager::getSpeedSetpoint() {
+  return resolveSpeedSetpoint(currentTask());
+}
+
+double MissionManager::resolveSpeedSetpoint(const Task* task) const {
 
   // Task override desired speed takes precedent.
   // Else take speed setpoint from mission manager state (configured from SetSpeedMsg).
   // Else take default max speed
 
   constexpr double eps = std::numeric_limits<double>::epsilon();
-  Task* current_task = currentTask();
-  if(current_task != nullptr && current_task->task_speed > eps){
-    return current_task->task_speed;
+  if(task != nullptr && task->task_speed > eps){
+    return task->task_speed;
   }
 
   return speed_setpoint_state > eps ? speed_setpoint_state
@@ -783,6 +787,7 @@ void MissionManager::handleSetSpeedMsg(const SetSpeedMsg & msg) {
     }
     RCLCPP_INFO(node_->get_logger(), "SET SPEED TO %lf", speed_setpoint_state);
     publishSpeedSetPoint();
+    publishTaskChange();
 }
 
 void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose){

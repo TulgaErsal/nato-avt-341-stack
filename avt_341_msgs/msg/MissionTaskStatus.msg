@@ -26,3 +26,8 @@ string[] formation_vehicles
 # Only meaningful while tracked_vehicle is non-empty.
 float64 formation_x_offset
 float64 formation_y_offset
+
+# Speed setpoint [m/s] the mission manager commands while this task runs.
+# Priority: the task's own speed override, else the SET_SPEED value, else the default max speed.
+# -1 if no task is running.
+float64 task_speed -1.0

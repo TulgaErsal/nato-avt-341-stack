@@ -75,7 +75,7 @@ void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & 
       double dx_i = leader_path_history_.poses[i].pose.position.x - leader_path_history_.poses[i+1].pose.position.x;
       double dy_i = leader_path_history_.poses[i].pose.position.y - leader_path_history_.poses[i+1].pose.position.y;
       s_length += sqrt(dy_i*dy_i + dx_i*dx_i);
-      if(s_length > abs(status.x_offset)){
+      if(s_length > std::abs(status.x_offset)){
         cutoff_index = i;
         break;
       }

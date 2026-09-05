@@ -306,7 +306,7 @@ int main(int argc, char* argv[]) {
     // Crate node subscribers
     auto sub_path = n->create_subscription<nav_msgs::msg::Path>("avt_341/global_path",1,callback_global_path);
     auto sub_veh = n->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/veh",1,callback_veh);
-    auto sub_speed = n->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint",1,callback_speedSetpoint);
+    auto sub_speed = n->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local(), callback_speedSetpoint);
     auto sub_task_change = n->create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
         "avt_341/task_change", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(), callback_task_change);
     auto sub_goal_pose = n->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state",1,callback_gp_state);

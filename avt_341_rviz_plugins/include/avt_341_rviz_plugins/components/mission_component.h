@@ -36,8 +36,10 @@ namespace rviz_plugins {
 /// authoritative: the mission manager publishes it on every task-list change,
 /// including the change that empties the list, and it carries the active task's
 /// full status alongside the queue. Its sibling MissionTaskStatus topic
-/// re-sends the same fields at loop rate, but none of the fields shown here
-/// vary within a task, so it is not subscribed.
+/// re-sends the same fields at loop rate, but it is not subscribed: the only
+/// field shown here that can change within a task is the task speed (via a
+/// SET_SPEED command), and the mission manager republishes the module status
+/// on that as well.
 ///
 /// Like ComputeComponent this subscribes itself using the panel's node; the
 /// panel spins that node on the UI thread, so the callback updates the labels
@@ -80,6 +82,7 @@ protected:
     QLabel* task_id_label_;
     QLabel* task_id_value_;
     QLabel* task_description_value_;
+    QLabel* task_speed_value_;
     QLabel* tracked_vehicle_value_;
     QLabel* formation_type_value_;
     QLabel* formation_vehicles_value_;

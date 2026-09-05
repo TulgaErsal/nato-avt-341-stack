@@ -134,7 +134,8 @@ class _FollowerContext:
         self.grid_pub       = _pub('occupancy_grid',         OccupancyGrid)
         self.grid_lr_pub    = _pub('occupancy_grid_low_res', OccupancyGrid)
         self.nav_pub        = _pub('nav_command_state',      Int32)
-        self.speed_pub      = _pub('speed_setpoint',         Float64)
+        self.speed_pub      = node.create_publisher(
+            Float64, f'{ns}/avt_341/speed_setpoint', LATCHED_QOS)
         self.task_change_pub = node.create_publisher(
             MissionModuleStatus, f'{ns}/avt_341/task_change', LATCHED_QOS)
         self.steer_pub      = _pub('steering_angle',         Float64)

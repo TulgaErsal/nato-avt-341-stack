@@ -105,8 +105,8 @@ FollowerStatus FormationDefinition::commToFollowerStatus(const FormationMsg & co
     follower_status.use_leader = false;
     out_idx = 0;
   }else{
-    double x_scale = comm_msg.x_scale < 0.0 ? params.follow_scale_x : comm_msg.x_scale;
-    double y_scale = comm_msg.y_scale < 0.0 ? params.follow_scale_y : comm_msg.y_scale;
+    double x_scale = comm_msg.x_scale <= 0.0 ? params.follow_scale_x : comm_msg.x_scale;
+    double y_scale = comm_msg.y_scale <= 0.0 ? params.follow_scale_y : comm_msg.y_scale;
 
     FormationOffsets f = getOffsets(comm_msg.formation);
     if(comm_msg.follower1_name == veh_name) {

@@ -203,6 +203,7 @@ class MissionManager{
     void publishTaskCompletion(Task * task);
     void publishTaskCompletion(const std::string & sender_name, int msg_id);
     void publishSpeedSetPoint();
+    double resolveSpeedSetpoint(const Task* task) const;
     void insertFormationChangeDelay(Task* formation_task, const FormationDefinition & formation_def, bool is_formation_change);
 
     // Publishes the current mission points as a latched MapMarkerList. Called

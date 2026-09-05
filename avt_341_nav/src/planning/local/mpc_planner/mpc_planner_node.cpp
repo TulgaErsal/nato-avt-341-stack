@@ -794,7 +794,7 @@ int main(int argc, char *argv[])
     auto goal_end_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
     auto head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
     auto final_head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
-    auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
+    auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local(), SpeedCallback);
     auto sink_sub = node->create_subscription<avt_341_msgs::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
     auto reset_sub = node->create_subscription<std_msgs::msg::String>("avt_341/reset",1,ResetCallback);
