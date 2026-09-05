@@ -163,6 +163,7 @@ jl_function_t* j_set_w_yaw_accel = NULL;
 jl_function_t* j_set_w_traversability_cost = NULL;
 jl_function_t* j_set_safety_margin = NULL;
 jl_function_t* j_set_obstacle_cost_speed_floor = NULL;
+jl_function_t* j_set_enable_fallback = NULL;
 jl_function_t* j_set_grid_resolution = NULL;
 jl_function_t* j_set_front_angle_goal = NULL;
 jl_function_t* j_set_front_angle_obstacle = NULL;

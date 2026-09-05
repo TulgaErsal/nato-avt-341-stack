@@ -128,6 +128,10 @@ ros__parameters:
     type: double
     default_value: 2.5
     description: "m/s; obstacle cost can't be bought down by idling below this speed"
+  enable_fallback:
+    type: bool
+    default_value: true
+    description: "retry a colliding solve from a steering-mirrored warm start and keep whichever clears the obstacle by more; disable to always use the primary solve"
   grid_resolution:
     type: double
     default_value: 0.25

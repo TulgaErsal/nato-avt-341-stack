@@ -190,6 +190,10 @@ function SetObstacleCostSpeedFloor(floor::Float64)
 	global obstacleCostSpeedFloor = floor
 end
 
+function SetEnableFallback(enable::Int32)
+	global enableFallback = Bool(enable)
+end
+
 function SetGridResolution(res::Float64)
 	global grid_resolution = res
 end
@@ -636,6 +640,7 @@ end
 
 function Plan()
 	global mpc_path, mpc_speed, mpc_steering, mpc_heading, solutionFound, skipCount, path_prev, numobs, obstacles, speedSetpoint, cmdSpeedSetpoint, slopeLimited
+	global enableFallback
 	global follower_status
 	global cmdLeaderSpeed
 	global leaderX, leaderY, leaderYaw, leaderYawRate
@@ -789,7 +794,7 @@ function Plan()
 			status1 = n.r.ocp.status; tSolve1 = n.r.ocp.tSolve
 			X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
 			clear1 = ClosestObstacleClearance(X1)
-			if clear1 < 0.0
+			if enableFallback && clear1 < 0.0
 				println("MPC fallback: primary solve collides (clearance=", round(clear1;digits=3), "m), trying mirrored warm start...")
 				MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
 				optimize!(n)
