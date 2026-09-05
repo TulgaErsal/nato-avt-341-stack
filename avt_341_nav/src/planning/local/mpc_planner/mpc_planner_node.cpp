@@ -606,6 +606,7 @@ void InitialiseJuliaAPI()
     j_set_w_traversability_cost = jl_get_function(mpc_module, "SetWTraversabilityCost");
     j_set_safety_margin = jl_get_function(mpc_module, "SetSafetyMargin");
     j_set_obstacle_cost_speed_floor = jl_get_function(mpc_module, "SetObstacleCostSpeedFloor");
+    j_set_enable_fallback = jl_get_function(mpc_module, "SetEnableFallback");
     j_set_grid_resolution = jl_get_function(mpc_module, "SetGridResolution");
     j_set_front_angle_goal = jl_get_function(mpc_module, "SetFrontAngleGoal");
     j_set_front_angle_obstacle = jl_get_function(mpc_module, "SetFrontAngleObstacle");
@@ -656,6 +657,8 @@ void InitialiseJuliaAPI()
         jl_box_float64(mpc_params.safety_margin);
     jl_value_t *j_obstacle_cost_speed_floor =
         jl_box_float64(mpc_params.obstacle_cost_speed_floor);
+    jl_value_t *j_enable_fallback =
+        jl_box_int32(mpc_params.enable_fallback);
     jl_value_t *j_grid_resolution =
         jl_box_float64(mpc_params.grid_resolution);
     jl_value_t *j_w_final_speed =
@@ -701,6 +704,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
     jl_call1(j_set_obstacle_cost_speed_floor, j_obstacle_cost_speed_floor);
+    jl_call1(j_set_enable_fallback, j_enable_fallback);
     jl_call1(j_set_w_final_speed, j_w_final_speed);
     jl_call1(j_set_w_final_heading, j_w_final_heading);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
@@ -744,6 +748,7 @@ void UpdateCostFnWeights(
     mpc_params.w_traversability_cost = params.w_traversability_cost;
     mpc_params.w_final_speed = params.w_final_speed;
     mpc_params.w_final_heading = params.w_final_heading;
+    mpc_params.enable_fallback = params.enable_fallback;
 
     jl_call1(j_set_w_distance_to_obstacles,
              jl_box_float64(mpc_params.w_distance_to_obstacles));
@@ -759,6 +764,8 @@ void UpdateCostFnWeights(
              jl_box_float64(mpc_params.w_final_speed));
     jl_call1(j_set_w_final_heading,
              jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_enable_fallback,
+             jl_box_int32(mpc_params.enable_fallback));
     CATCH_JULIA_EXCEPTION;
 }
 
