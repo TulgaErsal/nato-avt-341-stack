@@ -80,6 +80,7 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     tracked_vehicle_value_ = new QLabel( kEmptyValue );
     formation_type_value_ = new QLabel( kEmptyValue );
     formation_vehicles_value_ = new QLabel( kEmptyValue );
+    formation_offsets_value_ = new QLabel( kEmptyValue );
 
     // Free-text and the (potentially long) vehicle list wrap instead of forcing
     // the panel wider.
@@ -144,6 +145,7 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     layout->addRow( "Tracked Vehicle:", tracked_vehicle_value_ );
     layout->addRow( "Formation Type:", formation_type_value_ );
     layout->addRow( "Formation Vehicles:", formation_vehicles_value_ );
+    layout->addRow( "Formation Offsets:", formation_offsets_value_ );
     // The task-list label and table each span the full width (no field indent):
     // long descriptions need the label column's width too. The label sits
     // left-aligned on its own row above the table.
@@ -208,6 +210,11 @@ void MissionComponent::setActiveTaskFields( const avt_341_msgs::msg::MissionTask
         valueOrDash( QString::fromStdString( msg.tracked_vehicle ) ) );
     formation_type_value_->setText(
         valueOrDash( QString::fromStdString( msg.formation_type ) ) );
+    formation_offsets_value_->setText(
+        msg.tracked_vehicle.empty() ? QString( kEmptyValue )
+                                    : QString( "%1, %2" )
+                                          .arg( msg.formation_x_offset, 0, 'f', 2 )
+                                          .arg( msg.formation_y_offset, 0, 'f', 2 ) );
 
     // Join the formation vehicles into one comma-separated string.
     QStringList vehicles;

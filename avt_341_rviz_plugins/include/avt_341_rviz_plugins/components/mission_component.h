@@ -86,6 +86,7 @@ protected:
     QLabel* tracked_vehicle_value_;
     QLabel* formation_type_value_;
     QLabel* formation_vehicles_value_;
+    QLabel* formation_offsets_value_;
 
     // Full-width table of task descriptions, active task first; the vertical
     // header provides the 1-based execution position. The table stays visible

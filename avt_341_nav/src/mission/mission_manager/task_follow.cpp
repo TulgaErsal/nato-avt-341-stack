@@ -79,7 +79,9 @@ void Follow::on_done() {
 
 std::string Follow::description() const {
     std::ostringstream stream;
-    stream << "ID " << msg_id << " FOLLOW " << formation_def_->followedVehicle();
+    stream << "ID " << msg_id << " FOLLOW " << formation_def_->followedVehicle()
+           << " off=(" << formation_def_->formation_status.x_offset << ","
+           << formation_def_->formation_status.y_offset << ")";
     return stream.str();
 }
 
