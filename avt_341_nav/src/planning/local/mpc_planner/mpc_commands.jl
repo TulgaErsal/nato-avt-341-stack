@@ -698,32 +698,43 @@ function Plan()
 
 		if follower_status
 			# Follower mode: all formulation parameters set here; none leak out.
-			# Predict formation target at t+T using a constant yaw-rate arc.
 			T = predictionTimeHorizon
-			if abs(leaderYawRate) > 0.001
-				pred_yaw = leaderYaw + leaderYawRate * T
-				R = cmdLeaderSpeed / leaderYawRate
-				pred_lx = leaderX + R * (sin(pred_yaw) - sin(leaderYaw))
-				pred_ly = leaderY - R * (cos(pred_yaw) - cos(leaderYaw))
-			else
-				pred_yaw = leaderYaw
-				pred_lx = leaderX + cmdLeaderSpeed * T * cos(leaderYaw)
-				pred_ly = leaderY + cmdLeaderSpeed * T * sin(leaderYaw)
-			end
-			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset + sin(pred_yaw) * formationYOffset
-			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset - cos(pred_yaw) * formationYOffset
-			JuMP.setValue(g1, pred_target_x)
-			JuMP.setValue(g2, pred_target_y)
-			JuMP.setValue(desiredYaw, leaderYaw)
-			JuMP.setValue(final_heading_param, leaderYaw)
-			JuMP.setValue(final_heading_w_param, 0.0)
-			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
-			# Speed cap: drive formation error to zero over the prediction horizon
+			# Current (non-predictive) formation slot, and how far off it we are.
 			curr_target_x = leaderX + cos(leaderYaw) * formationXOffset + sin(leaderYaw) * formationYOffset
 			curr_target_y = leaderY + sin(leaderYaw) * formationXOffset - cos(leaderYaw) * formationYOffset
 			err_x = curr_target_x - x_veh
 			err_y = curr_target_y - y_veh
 			formation_error = err_x * cos(leaderYaw) + err_y * sin(leaderYaw)
+			total_formation_error = sqrt(err_x^2 + err_y^2)
+			offset_mag = max(sqrt(formationXOffset^2 + formationYOffset^2), 0.1)
+			# 1 once within about one offset-length of the slot, shrinking toward 0 when far from it.
+			near_weight = clamp(offset_mag / max(total_formation_error, offset_mag), 0.0, 1.0)
+			# Predict formation target at t+T_lead using a constant yaw-rate arc.
+			# T_lead only reaches the full horizon T once near_weight does, so the leader-relative prediction itself stays well-behaved through the blend below.
+			T_lead = T * near_weight
+			if abs(leaderYawRate) > 0.001
+				pred_yaw = leaderYaw + leaderYawRate * T_lead
+				R = cmdLeaderSpeed / leaderYawRate
+				pred_lx = leaderX + R * (sin(pred_yaw) - sin(leaderYaw))
+				pred_ly = leaderY - R * (cos(pred_yaw) - cos(leaderYaw))
+			else
+				pred_yaw = leaderYaw
+				pred_lx = leaderX + cmdLeaderSpeed * T_lead * cos(leaderYaw)
+				pred_ly = leaderY + cmdLeaderSpeed * T_lead * sin(leaderYaw)
+			end
+			pred_target_x = pred_lx + cos(pred_yaw) * formationXOffset + sin(pred_yaw) * formationYOffset
+			pred_target_y = pred_ly + sin(pred_yaw) * formationXOffset - cos(pred_yaw) * formationYOffset
+			# Far from the slot: track the same path-lookahead goal point solo mode uses instead of a leader-relative point, so distant catch-up follows the formation path rather than beelining for the leader.
+			JuMP.setValue(g1, near_weight * pred_target_x + (1.0 - near_weight) * goal[1])
+			JuMP.setValue(g2, near_weight * pred_target_y + (1.0 - near_weight) * goal[2])
+			# Same far/near blend for heading, via the unit-vector average.
+			blended_cos = near_weight * cos(leaderYaw) + (1.0 - near_weight) * cos(desiredHeading)
+			blended_sin = near_weight * sin(leaderYaw) + (1.0 - near_weight) * sin(desiredHeading)
+			JuMP.setValue(desiredYaw, atan(blended_sin, blended_cos))
+			JuMP.setValue(final_heading_param, leaderYaw)
+			JuMP.setValue(final_heading_w_param, 0.0)
+			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
+			# Speed cap: drive formation error to zero over the prediction horizon
 			v_desired = clamp(cmdLeaderSpeed + formation_error / T, minSpeed, speedSetpoint)
 			n.ocp.XU[7] = v_desired
 			n.ocp.XL[7] = minSpeed
