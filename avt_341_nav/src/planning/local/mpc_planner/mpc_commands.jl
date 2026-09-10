@@ -734,8 +734,10 @@ function Plan()
 			JuMP.setValue(final_heading_param, leaderYaw)
 			JuMP.setValue(final_heading_w_param, 0.0)
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
-			# Speed cap: drive formation error to zero over the prediction horizon
-			v_desired = clamp(cmdLeaderSpeed + formation_error / T, minSpeed, speedSetpoint)
+			# Speed cap: drive formation error to zero over the prediction horizon.
+			# Same near_weight blend as the position/heading targets above so that the speed is only reduced when the formation is actually close to being on track.
+			v_desired = clamp(near_weight * (cmdLeaderSpeed + formation_error / T) + (1.0 - near_weight) * speedSetpoint,
+			                   minSpeed, speedSetpoint)
 			n.ocp.XU[7] = v_desired
 			n.ocp.XL[7] = minSpeed
 			for i=1:n.ocp.state.pts
