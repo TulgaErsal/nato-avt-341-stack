@@ -708,7 +708,7 @@ function Plan()
 			total_formation_error = sqrt(err_x^2 + err_y^2)
 			offset_mag = max(sqrt(formationXOffset^2 + formationYOffset^2), 0.1)
 			# 1 once within about one offset-length of the slot, shrinking toward 0 when far from it.
-			near_weight = clamp(offset_mag / max(total_formation_error, offset_mag), 0.0, 1.0)
+			near_weight = min(1.0, exp(1.0 - total_formation_error / offset_mag))
 			# Predict formation target at t+T_lead using a constant yaw-rate arc.
 			# T_lead only reaches the full horizon T once near_weight does, so the leader-relative prediction itself stays well-behaved through the blend below.
 			T_lead = T * near_weight
