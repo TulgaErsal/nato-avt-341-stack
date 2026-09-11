@@ -149,6 +149,7 @@ find_package(avt_341_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED QUIET)
 find_package(pcl_conversions REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -215,17 +216,21 @@ ament_add_gtest(tracker_recovery_monitor_test
 target_include_directories(tracker_recovery_monitor_test
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+    ${PCL_INCLUDE_DIRS}
 )
 
 target_link_libraries(tracker_recovery_monitor_test
   ${PROJECT_NAME}_proxy
   object_tracker_params_dto
+  ${PCL_LIBRARIES}
 )
 
 ament_target_dependencies(tracker_recovery_monitor_test
   avt_341_msgs
   Eigen3
   nav_msgs
+  pcl_conversions
+  pcl_ros
   rclcpp
   sensor_msgs
   visualization_msgs

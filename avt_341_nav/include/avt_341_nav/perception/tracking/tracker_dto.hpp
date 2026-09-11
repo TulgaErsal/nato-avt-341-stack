@@ -12,7 +12,9 @@
 
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-
+#include <pcl/common/transforms.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 namespace avt_341_nav::perception
 {
 
@@ -143,6 +145,11 @@ namespace avt_341_nav::perception
         /** @brief Latest camera intrinsics; nullptr until the first CameraInfo
      *         message has been received. */
         sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info;
+
+		/** @brief Global reference to point-cloud cluster
+*        for communication between obstacle detector and detector improvment. */
+		pcl::PointCloud<pcl::PointXYZ>::Ptr current_cluster;
+
     };
 
     class PixelCoordinates {

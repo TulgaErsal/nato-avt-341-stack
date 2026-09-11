@@ -30,6 +30,11 @@
 #include <avt_341_nav/perception/tracking/tracker_params.hpp>
 #include <avt_341_nav/perception/tracking/tracker_dto.hpp>
 
+// Improve detections use RANSAC and cropbox to segment planes
+#include <pcl/sample_consensus/sac_model_parallel_plane.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/crop_box.h>
+
 namespace avt_341_nav {
 namespace perception {
 
@@ -168,6 +173,18 @@ class ObjectTracker {
         const vision_msgs::msg::Detection2D& detections_message,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info_message);
 
+	// JN addition for better pose measurement
+	/** @brief Improve detection by fitting planes to point cloude end and flank given current yaw
+	*         Input: pcl cluster object_cluster from obstacle detector, current yaw is read from global variable (last_reliable_yaw_)
+	*        return covariance matirix and improved_centroid and improved_yaw */
+	Eigen::Matrix3d ImprovePoseMeasurement(pcl::PointCloud<pcl::PointXYZ>::Ptr object_cluster,
+		Eigen::Vector3d measured_centroid, const std::string& source_frame,
+		const std::string& target_frame, double current_yaw, double platform_yaw, double& improved_yaw);
+	double current_yaw_; //keep track of yaw from ImprovePoseMeasurement
+	double current_yaw_info_; //keep track of yaw information for fusion using informationfilter
+	double yaw_info_;
+	pcl::SACSegmentation<pcl::PointXYZ> sac_segmentation_;
+
     void UpdateHeadingHold();
 
     void PublishOdometry();
@@ -293,6 +310,9 @@ class ObjectTracker {
      *         intrinsics. */
     Eigen::Matrix3d R_rdf_ = Eigen::Matrix3d::Identity();
 
+    /** @brief Detection measurement covariance in the world frame,
+    *         intrinsics. */
+    Eigen::Matrix3d R_detection_ = Eigen::Matrix3d::Identity();
     Eigen::Vector3d bounding_box_centroid_ = Eigen::Vector3d::Zero();
 
     Eigen::Vector3d bounding_box_centroid_global_ = Eigen::Vector3d::Zero();
