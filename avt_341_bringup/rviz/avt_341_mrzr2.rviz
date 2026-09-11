@@ -10,7 +10,6 @@ Panels:
         - /Navigation1/Global Planner1
         - /Localization1/Robot Frame1
         - /Overlays1/Mission Points1
-        - /Overlays1/Satellite Basemap1
       Splitter Ratio: 0.5353535413742065
     Tree Height: 833
   - Class: rviz_common/Selection
@@ -393,7 +392,7 @@ Visualization Manager:
           Length: 3
           Name: Robot Frame
           Radius: 0.30000001192092896
-          Reference Frame: mrzr2/cg_link
+          Reference Frame: mrzr2/base_link
           Value: true
       Enabled: true
       Name: Localization
@@ -421,7 +420,7 @@ Visualization Manager:
           Draw Behind: true
           Enabled: true
           Frame: map
-          Image File: package://avt_341_integration/config/NATO_Area_0025m.png
+          Image File: package://mrzr_avt_341_integration/config/NATO_Area_0025m.png
           Interpolation: Linear
           Name: Satellite Basemap
           Origin X: 238.45997619628906
@@ -521,7 +520,7 @@ Visualization Manager:
       Name: Current View
       Near Clip Distance: 0.009999999776482582
       Scale: 10
-      Target Frame: mrzr2/cg_link
+      Target Frame: mrzr2/base_link
       Value: TopDownOrtho (rviz_default_plugins)
       X: 0
       Y: 0
