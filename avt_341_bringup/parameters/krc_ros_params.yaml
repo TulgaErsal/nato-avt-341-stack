@@ -21,6 +21,8 @@
       topic: '/avt_341/lidar_detector/cloud_clusters'
     camera_seg_pc_layer:
       point_cloud_topic: '/avt_341/lidar_detector/cloud_clusters'
+    polygon_layer:
+      data_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_nogo_zones.json
 
 /**/mission_manager_node:
   ros__parameters:
@@ -48,8 +50,8 @@
         x: 0.5
         y: 0.5
       publish:
-        max_grid_width: 800.0
-        max_grid_height: 800.0
+        max_grid_width: 400.0
+        max_grid_height: 400.0
     clear_method:
       voxel_height_res: 1.0
       obj_range_filter: 0.5
@@ -86,6 +88,12 @@
   ros__parameters:
     map_topic: 'avt_341/occupancy_grid_low_res'
     seg_topic: 'avt_341/terrain_seg/segmentation_grid'
+
+/**/comm_node:
+  ros__parameters:
+    name: 'MRZR'
+    broadcast_over_ros: true
+    vehicle_namespaces: ['mrzr', 'mrzr2', 'feda']
 
 # object_detector_node / object_tracker_node run on the template defaults
 

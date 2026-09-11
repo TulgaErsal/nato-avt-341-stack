@@ -24,10 +24,6 @@ Follow::Follow(MissionManager* manager, std::string sender, int id, FormationDef
 void Follow::init_() {
     mgr->publishNavStateCmd(avt_341_nav::core::NavStateCmd::GoActive);
     mgr->publishGpToggle(path_generator_.useBreadcrumbs() ? 0 : 1);
-
-    if(!formation_def_->formationAtGoal()){
-      mgr->publishFormationStatus(formation_def_->formation_status);
-    }
 }
 
 void Follow::run() {
@@ -59,7 +55,7 @@ void Follow::onPreempt(){
 
 bool Follow::is_done() {
     if(terminate_on_leader_arrived_){
-        return mgr->hasCompletedTask(formation_def_->leaderName(), msg_id);
+        return mgr->hasArrival(formation_def_->leaderName(), "TASK_" + std::to_string(msg_id));
     }
     if(terminate_on_all_arrived_){
       bool leader_arrived = mgr->hasArrival(formation_def_->followedVehicle(), "TASK_" + std::to_string(msg_id));
@@ -83,7 +79,9 @@ void Follow::on_done() {
 
 std::string Follow::description() const {
     std::ostringstream stream;
-    stream << "ID " << msg_id << " FOLLOW " << formation_def_->followedVehicle();
+    stream << "ID " << msg_id << " FOLLOW " << formation_def_->followedVehicle()
+           << " off=(" << formation_def_->formation_status.x_offset << ","
+           << formation_def_->formation_status.y_offset << ")";
     return stream.str();
 }
 

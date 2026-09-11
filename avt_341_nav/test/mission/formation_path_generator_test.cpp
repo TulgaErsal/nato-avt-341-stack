@@ -3,12 +3,12 @@
 #include <cmath>
 #include <vector>
 
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_nav/core/eigen_dto_conversion.hpp"
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/mission/formation_path_generator.h"
 #include "nav_msgs/msg/odometry.hpp"
 
+using avt_341_nav::mission::FollowerStatus;
 using avt_341_nav::mission::FormationParameters;
 using avt_341_nav::mission::FormationPathGenerator;
 
@@ -27,9 +27,9 @@ nav_msgs::msg::Odometry MakeOdom(double x, double y, double yaw)
     return odom;
 }
 
-avt_341_msgs::msg::FollowerStatus MakeStatus(double x_offset, double y_offset)
+FollowerStatus MakeStatus(double x_offset, double y_offset)
 {
-    avt_341_msgs::msg::FollowerStatus status;
+    FollowerStatus status;
     status.use_leader = true;
     status.x_offset = x_offset;
     status.y_offset = y_offset;
@@ -55,7 +55,7 @@ std::vector<double> Yaws(const FormationPathGenerator& generator)
 
 /// Drive the leader along +x from (start_x, y) for num_steps points spaced step_dist apart.
 void DriveEast(FormationPathGenerator& generator,
-               const avt_341_msgs::msg::FollowerStatus& status,
+               const FollowerStatus& status,
                double start_x, double y, int num_steps, double step_dist,
                const nav_msgs::msg::Odometry& ego = nav_msgs::msg::Odometry())
 {
@@ -66,7 +66,7 @@ void DriveEast(FormationPathGenerator& generator,
 
 /// Drive the leader along +y from (x, start_y) for num_steps points spaced step_dist apart.
 void DriveNorth(FormationPathGenerator& generator,
-                const avt_341_msgs::msg::FollowerStatus& status,
+                const FollowerStatus& status,
                 double x, double start_y, int num_steps, double step_dist,
                 const nav_msgs::msg::Odometry& ego = nav_msgs::msg::Odometry())
 {
@@ -86,6 +86,17 @@ protected:
         // logic; the tests that care about those enable them explicitly.
         params.prune_global_path = false;
         params.x_offset_on_path = false;
+    }
+};
+
+class BreadcrumbFormationPathGeneratorTest : public FormationPathGeneratorTest {
+protected:
+    void SetUp() override
+    {
+        FormationPathGeneratorTest::SetUp();
+        params.use_breadcrumbs = true;
+        params.x_offset_on_path = true;
+        params.global_path_points_dist = 1.0;
     }
 };
 
@@ -231,4 +242,147 @@ TEST_F(FormationPathGeneratorTest, ResetClearsPathAndReseedsHeading)
     generator.Update(MakeOdom(50.0, 50.0, -1.2), nav_msgs::msg::Odometry(), status);
     ASSERT_EQ(generator.GetPath().poses.size(), 1u);
     EXPECT_NEAR(YawAt(generator, 0), -1.2, 1e-5);
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, StartupUsesFirstHeadingAndPreservesLateralOffset)
+{
+    params.use_tangent_heading = true;
+    FormationPathGenerator generator(params);
+    const auto leader = MakeOdom(100.0, 200.0, M_PI_2);
+    const auto status = MakeStatus(-10.0, 2.0);
+
+    // Repeated stationary updates must not expose the rest of the seeded history.
+    for (int i = 0; i < 3; ++i) {
+        generator.Update(leader, nav_msgs::msg::Odometry(), status);
+        ASSERT_EQ(generator.GetPath().poses.size(), 1u);
+        const auto& pose = generator.GetPath().poses.front();
+        EXPECT_NEAR(pose.pose.position.x, 102.0, 1e-5);
+        EXPECT_NEAR(pose.pose.position.y, 190.0, 1e-5);
+        EXPECT_NEAR(YawAt(generator, 0), M_PI_2, 1e-5);
+        EXPECT_EQ(pose.header.frame_id, "map");
+        EXPECT_EQ(pose.header.stamp.sec, LEADER_STAMP_SEC);
+    }
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, PartialHistoryTransitionsAtExactOffsetWithoutDuplicates)
+{
+    FormationPathGenerator generator(params);
+    const auto status = MakeStatus(-10.0, 3.0);
+
+    // At 0, 5, and 10 m of real history, the target is respectively 10, 5,
+    // and 0 m behind the start. Continue beyond that into entirely real history.
+    for (int distance = 0; distance <= 15; ++distance) {
+        generator.Update(MakeOdom(100.0 + distance, 20.0, 0.0), nav_msgs::msg::Odometry(), status);
+        const auto& poses = generator.GetPath().poses;
+        ASSERT_EQ(poses.size(), static_cast<size_t>(distance + 1));
+        EXPECT_NEAR(poses.back().pose.position.x, 90.0 + distance, 1e-6);
+        for (size_t i = 0; i < poses.size(); ++i) {
+            EXPECT_NEAR(poses[i].pose.position.x, 90.0 + i, 1e-6);
+            EXPECT_NEAR(poses[i].pose.position.y, 17.0, 1e-6);
+        }
+    }
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, ZeroAndFractionalOffsetsRespectBreadcrumbResolution)
+{
+    for (double lag : {0.0, 0.25, 2.5}) {
+        SCOPED_TRACE(lag);
+        FormationPathGenerator generator(params);
+        const auto status = MakeStatus(-lag, 0.0);
+        for (int distance = 0; distance <= 8; ++distance) {
+            generator.Update(MakeOdom(distance, 0.0, 0.0), nav_msgs::msg::Odometry(), status);
+            const auto& poses = generator.GetPath().poses;
+            ASSERT_FALSE(poses.empty());
+            const double actual_lag = distance - poses.back().pose.position.x;
+            EXPECT_GE(actual_lag, lag - 1e-6);
+            EXPECT_LT(actual_lag, lag + params.global_path_points_dist + 1e-6);
+            EXPECT_NEAR(poses.front().pose.position.x, -lag, 1e-6);
+            for (size_t i = 1; i < poses.size(); ++i) {
+                EXPECT_GT(poses[i].pose.position.x, poses[i-1].pose.position.x);
+            }
+        }
+    }
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, LeaderTurnDoesNotRotateSyntheticHistory)
+{
+    FormationPathGenerator generator(params);
+    const auto status = MakeStatus(-4.0, 0.0);
+    generator.Update(MakeOdom(0.0, 0.0, 0.0), nav_msgs::msg::Odometry(), status);
+
+    for (int distance = 1; distance <= 4; ++distance) {
+        generator.Update(MakeOdom(0.0, distance, M_PI_2), nav_msgs::msg::Odometry(), status);
+        const auto& poses = generator.GetPath().poses;
+        EXPECT_NEAR(poses.back().pose.position.x, -4.0 + distance, 1e-6);
+        EXPECT_NEAR(poses.back().pose.position.y, 0.0, 1e-6);
+        EXPECT_NEAR(YawAt(generator, poses.size() - 1), 0.0, 1e-6);
+    }
+    generator.Update(MakeOdom(0.0, 5.0, M_PI_2), nav_msgs::msg::Odometry(), status);
+    const auto& poses = generator.GetPath().poses;
+    EXPECT_NEAR(poses.back().pose.position.x, 0.0, 1e-6);
+    EXPECT_NEAR(poses.back().pose.position.y, 1.0, 1e-6);
+    EXPECT_NEAR(YawAt(generator, poses.size() - 1), M_PI_2, 1e-5);
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, DecimalSpacingDoesNotDuplicateLeaderStart)
+{
+    params.global_path_points_dist = 0.1;
+    FormationPathGenerator generator(params);
+    const auto status = MakeStatus(-1.0, 0.0);
+    generator.Update(MakeOdom(0.0, 0.0, 0.0), nav_msgs::msg::Odometry(), status);
+    generator.Update(MakeOdom(1.0, 0.0, 0.0), nav_msgs::msg::Odometry(), status);
+    const auto& poses = generator.GetPath().poses;
+    ASSERT_EQ(poses.size(), 11u);
+    for (size_t i = 0; i < poses.size(); ++i) {
+        EXPECT_NEAR(poses[i].pose.position.x, -1.0 + i * 0.1, 1e-6);
+    }
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, PruningAndResetPreserveLagAndReseedHeading)
+{
+    params.prune_global_path = true;
+    params.use_tangent_heading = true;
+    FormationPathGenerator generator(params);
+    const auto status = MakeStatus(-4.0, 2.0);
+    for (int distance = 0; distance <= 8; ++distance) {
+        generator.Update(MakeOdom(distance, 0.0, 0.0), MakeOdom(distance - 4.0, -2.0, 0.0), status);
+        ASSERT_EQ(generator.GetPath().poses.size(), 1u);
+        EXPECT_NEAR(generator.GetPath().poses.back().pose.position.x, distance - 4.0, 1e-6);
+    }
+
+    generator.Reset();
+    EXPECT_TRUE(generator.GetPath().poses.empty());
+    generator.Update(MakeOdom(50.0, 50.0, -M_PI_2), MakeOdom(48.0, 54.0, -M_PI_2), status);
+    ASSERT_EQ(generator.GetPath().poses.size(), 1u);
+    EXPECT_NEAR(generator.GetPath().poses.back().pose.position.x, 48.0, 1e-5);
+    EXPECT_NEAR(generator.GetPath().poses.back().pose.position.y, 54.0, 1e-5);
+    EXPECT_NEAR(YawAt(generator, 0), -M_PI_2, 1e-5);
+    generator.Update(MakeOdom(50.0, 49.0, -M_PI_2), MakeOdom(48.0, 53.0, -M_PI_2), status);
+    ASSERT_EQ(generator.GetPath().poses.size(), 1u);
+    EXPECT_NEAR(generator.GetPath().poses.back().pose.position.y, 53.0, 1e-5);
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, PoseRelativeOffsetDoesNotSeedHistory)
+{
+    params.x_offset_on_path = false;
+    FormationPathGenerator generator(params);
+    generator.Update(MakeOdom(100.0, 200.0, M_PI_2), nav_msgs::msg::Odometry(), MakeStatus(-10.0, 2.0));
+    ASSERT_EQ(generator.GetPath().poses.size(), 1u);
+    EXPECT_NEAR(generator.GetPath().poses.back().pose.position.x, 102.0, 1e-5);
+    EXPECT_NEAR(generator.GetPath().poses.back().pose.position.y, 190.0, 1e-5);
+}
+
+TEST_F(BreadcrumbFormationPathGeneratorTest, GlobalPlannerModePreservesLagThroughStartup)
+{
+    params.use_breadcrumbs = false;
+    FormationPathGenerator generator(params);
+    const auto status = MakeStatus(-10.0, 2.0);
+    // Follow publishes the last pose as a goal in this mode. It must retain
+    // the offset during startup and after enough real history has accumulated.
+    for (int distance = 0; distance <= 15; ++distance) {
+        generator.Update(MakeOdom(100.0, 200.0 + distance, M_PI_2), nav_msgs::msg::Odometry(), status);
+        ASSERT_EQ(generator.GetPath().poses.size(), static_cast<size_t>(distance + 1));
+        EXPECT_NEAR(generator.GetPath().poses.back().pose.position.x, 102.0, 1e-5);
+        EXPECT_NEAR(generator.GetPath().poses.back().pose.position.y, 190.0 + distance, 1e-5);
+    }
 }

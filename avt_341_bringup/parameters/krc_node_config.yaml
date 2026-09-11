@@ -19,10 +19,6 @@
   remappings:
     avt_341/segmentation_grid: avt_341/normal_segmentation_grid
 
-/**/mission_manager_node:
-  remappings:
-    avt_341/comm_messages: /avt_341/comm_messages
-
 /**/uab_perception_node:
   remappings:
     avt_341/points: /ouster/points
@@ -35,11 +31,14 @@
     LD_LIBRARY_PATH:
       separator: ":"
       values:
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/runtime/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/bin/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/sys/os/glnxa64"
-        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2025b}/extern/bin/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/runtime/glnxa64"
+        - "$env_var{MCR_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/R2023a}/bin/glnxa64"
         - "$env_var{LD_LIBRARY_PATH:-}"
+    LD_PRELOAD:
+      separator: ":"
+      values:
+        - "/usr/lib/x86_64-linux-gnu/libxml2.so.2"
+        - "/usr/lib/x86_64-linux-gnu/libtiff.so.5"
 
 /**/sae_net_node:
   remappings:

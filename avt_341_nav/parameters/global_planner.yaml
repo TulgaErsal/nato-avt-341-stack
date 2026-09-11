@@ -113,7 +113,11 @@ ros__parameters:
   safety_margin_global:
     type: double
     default_value: 0.25
-    description: "Safety margin from obstacles in meters (for EDT-based planners)."
+    description: "Hard safety margin from obstacles in meters. Cells within this distance from obstacles are considered impassable (for EDT-based planners)."
+  safety_margin_soft:
+    type: double
+    default_value: 0.25
+    description: "Soft safety margin from obstacles in meters, used as the start of the clearance-penalty cost ramp. Independent of safety_margin_global so the two can be tuned separately (for EDT-based planners)."
   path_extraction_method:
     type: string
     default_value: "hybrid"
@@ -160,3 +164,15 @@ ros__parameters:
     description: "Max milliseconds a single PlanPath call may run before it is cancelled and the previous path is re-published."
     validation:
       gt<>: [ 0 ]
+
+  costmap_crop:
+    is_enabled:
+      type: bool
+      default_value: false
+      description: "If true, costmap processed by planner will be limited to an axis-aligned bounding box + padding encompassing ego-vehicle and target goal."
+    padding:
+      type: double
+      default_value: 30.0
+      description: "Padding applied to costmap bounding box."
+      validation:
+        gt_eq<>: [ 0.0 ]

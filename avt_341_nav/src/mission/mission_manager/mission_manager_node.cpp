@@ -486,8 +486,6 @@ int main(int argc, char **argv) {
 
         // Publish mission task status
         mgr->publishTaskStatus();
-        // TODO: Can remove lead status and follower status messages. Use single MissionTaskStatus message.
-        mgr->publishLeaderStatus();
 
         avt_341_nav::mission::Task* task = mgr->currentTask();
         if(task != nullptr){

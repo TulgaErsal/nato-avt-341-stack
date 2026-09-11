@@ -1014,7 +1014,7 @@ void ObjectTracker::PublishOdometry() {
     nav_msgs::msg::Odometry odometry_message;
     odometry_message.header.stamp = node_->get_clock()->now();
     odometry_message.header.frame_id = frame_ids_.Map();
-    odometry_message.child_frame_id = frame_ids_.BaseLink();
+    odometry_message.child_frame_id = core::CombineTfParts(target_ns_, params_.frames.base_link);
     odometry_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_global_);
     odometry_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
 
@@ -1023,7 +1023,7 @@ void ObjectTracker::PublishOdometry() {
     nav_msgs::msg::Odometry tracked_target_message;
     tracked_target_message.header.stamp = node_->get_clock()->now();
     tracked_target_message.header.frame_id = frame_ids_.Map();
-    tracked_target_message.child_frame_id = frame_ids_.BaseLink();
+    tracked_target_message.child_frame_id = core::CombineTfParts(target_ns_, params_.frames.base_link);
     tracked_target_message.pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
     tracked_target_message.pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
 

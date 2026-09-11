@@ -19,7 +19,7 @@
 #include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
-#include "avt_341_msgs/msg/follower_status.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -309,18 +309,15 @@ void LeaderOdomCallback(nav_msgs::msg::Odometry::SharedPtr msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-void FollowerStatusCallback(avt_341_msgs::msg::FollowerStatus::SharedPtr msg)
+void TaskChangeCallback(avt_341_msgs::msg::MissionModuleStatus::SharedPtr msg)
 {
-    jl_value_t *j_xo = jl_box_float64(msg->x_offset);
-    jl_value_t *j_yo = jl_box_float64(msg->y_offset);
+    jl_value_t *j_xo = jl_box_float64(msg->active_task.formation_x_offset);
+    jl_value_t *j_yo = jl_box_float64(msg->active_task.formation_y_offset);
     jl_call2(j_set_formation_offset, j_xo, j_yo);
     CATCH_JULIA_EXCEPTION;
-}
 
-void LeaderStatusCallback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-    bool status = !(msg->data);
-    jl_value_t *j_status = jl_box_bool(status);
+    bool following = !msg->active_task.tracked_vehicle.empty();
+    jl_value_t *j_status = jl_box_bool(following);
     jl_call1(j_set_follower_status, j_status);
     CATCH_JULIA_EXCEPTION;
 }
@@ -419,6 +416,21 @@ std_msgs::msg::Bool GetSlopeLimited()
     std_msgs::msg::Bool slope_limited_msg;
     slope_limited_msg.data = slope_limited;
     return slope_limited_msg;
+}
+
+std_msgs::msg::Float64MultiArray GetMPCSolveDiagnostics()
+{
+    int32_t status_code = jl_unbox_int32(jl_call0(j_get_solve_status_code));
+    double solve_time_ms = jl_unbox_float64(jl_call0(j_get_solve_time_ms));
+    double effective_tf = jl_unbox_float64(jl_call0(j_get_effective_tf));
+    CATCH_JULIA_EXCEPTION;
+
+    std_msgs::msg::Float64MultiArray diag_msg;
+    diag_msg.data.resize(3);
+    diag_msg.data[0] = static_cast<double>(status_code);
+    diag_msg.data[1] = solve_time_ms;
+    diag_msg.data[2] = effective_tf;
+    return diag_msg;
 }
 
 bool NewInputAvailable() {
@@ -564,6 +576,9 @@ void InitialiseJuliaAPI()
     j_get_steering = jl_get_function(mpc_module, "GetSteering");
     j_get_heading = jl_get_function(mpc_module, "GetHeading");
     j_get_slope_limited = jl_get_function(mpc_module, "GetSlopeLimited");
+    j_get_solve_status_code = jl_get_function(mpc_module, "GetSolveStatusCode");
+    j_get_solve_time_ms = jl_get_function(mpc_module, "GetSolveTimeMs");
+    j_get_effective_tf = jl_get_function(mpc_module, "GetEffectiveTf");
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
@@ -590,6 +605,8 @@ void InitialiseJuliaAPI()
     j_set_w_yaw_accel = jl_get_function(mpc_module, "SetWYawAccel");
     j_set_w_traversability_cost = jl_get_function(mpc_module, "SetWTraversabilityCost");
     j_set_safety_margin = jl_get_function(mpc_module, "SetSafetyMargin");
+    j_set_obstacle_cost_speed_floor = jl_get_function(mpc_module, "SetObstacleCostSpeedFloor");
+    j_set_enable_fallback = jl_get_function(mpc_module, "SetEnableFallback");
     j_set_grid_resolution = jl_get_function(mpc_module, "SetGridResolution");
     j_set_front_angle_goal = jl_get_function(mpc_module, "SetFrontAngleGoal");
     j_set_front_angle_obstacle = jl_get_function(mpc_module, "SetFrontAngleObstacle");
@@ -638,6 +655,10 @@ void InitialiseJuliaAPI()
         jl_box_float64(mpc_params.w_traversability_cost);
     jl_value_t *j_safety_margin =
         jl_box_float64(mpc_params.safety_margin);
+    jl_value_t *j_obstacle_cost_speed_floor =
+        jl_box_float64(mpc_params.obstacle_cost_speed_floor);
+    jl_value_t *j_enable_fallback =
+        jl_box_int32(mpc_params.enable_fallback);
     jl_value_t *j_grid_resolution =
         jl_box_float64(mpc_params.grid_resolution);
     jl_value_t *j_w_final_speed =
@@ -682,6 +703,8 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_w_yaw_accel, j_w_yaw_accel);
     jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
     jl_call1(j_set_safety_margin, j_safety_margin);
+    jl_call1(j_set_obstacle_cost_speed_floor, j_obstacle_cost_speed_floor);
+    jl_call1(j_set_enable_fallback, j_enable_fallback);
     jl_call1(j_set_w_final_speed, j_w_final_speed);
     jl_call1(j_set_w_final_heading, j_w_final_heading);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
@@ -725,6 +748,7 @@ void UpdateCostFnWeights(
     mpc_params.w_traversability_cost = params.w_traversability_cost;
     mpc_params.w_final_speed = params.w_final_speed;
     mpc_params.w_final_heading = params.w_final_heading;
+    mpc_params.enable_fallback = params.enable_fallback;
 
     jl_call1(j_set_w_distance_to_obstacles,
              jl_box_float64(mpc_params.w_distance_to_obstacles));
@@ -740,6 +764,8 @@ void UpdateCostFnWeights(
              jl_box_float64(mpc_params.w_final_speed));
     jl_call1(j_set_w_final_heading,
              jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_enable_fallback,
+             jl_box_int32(mpc_params.enable_fallback));
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -775,15 +801,15 @@ int main(int argc, char *argv[])
     auto goal_end_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/mpc_goalPoint_is_end_of_global_path", 1, GoalPointEndOfGlobalPathCallback);
     auto head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
     auto final_head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
-    auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint",1,SpeedCallback);
+    auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local(), SpeedCallback);
     auto sink_sub = node->create_subscription<avt_341_msgs::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
     auto reset_sub = node->create_subscription<std_msgs::msg::String>("avt_341/reset",1,ResetCallback);
     auto terrain_slope_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/terrain_slope",1,TerrainSlopeCallback);
     auto terrain_rms_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/terrain_rms",1,TerrainRMSCallback);
     auto leader_odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/leader_odometry",1,LeaderOdomCallback);
-    auto leader_status_sub = node->create_subscription<std_msgs::msg::Bool>("avt_341/leader_status",1,LeaderStatusCallback);
-    auto follower_status_sub = node->create_subscription<avt_341_msgs::msg::FollowerStatus>("avt_341/follower_status",1,FollowerStatusCallback);
+    auto task_change_sub = node->create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
+        "avt_341/task_change", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(), TaskChangeCallback);
 
     // Register publishers
     // -------------------.
@@ -797,6 +823,7 @@ int main(int argc, char *argv[])
     auto heading_pub = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/mpc_heading_trajectory", 1); 
     auto reset_ack_pub = node->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
     auto slope_limited_pub = node->create_publisher<std_msgs::msg::Bool>("avt_341/mpc_slope_limited", 1);
+    auto solve_diagnostics_pub = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/mpc_solve_diagnostics", 1);
     if (mpc_params.visualize_culled_obstacles) {
         culled_obs_marker_pub = node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/culled_obstacle_markers", 1);
     }
@@ -844,6 +871,7 @@ int main(int argc, char *argv[])
             drive_pub->publish(GetMPCDrive());
 	        heading_pub->publish(GetMPCHeading());
             slope_limited_pub->publish(GetSlopeLimited());
+            solve_diagnostics_pub->publish(GetMPCSolveDiagnostics());
         }
 
         // Published outside the NewInputAvailable block above so that compute times keep flowing

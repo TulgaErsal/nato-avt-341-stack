@@ -111,6 +111,19 @@ private:
   int target_msg_id_;
 }; // class WaitUntil
 
+class WaitForDuration : public Task {
+public:
+    WaitForDuration(MissionManager * manager, const std::string & sender, int msg_id, double duration_s);
+    void init_() override;
+    void run() override;
+    bool is_done() override;
+    void on_done() override;
+    std::string description() const override;
+private:
+  double duration_s_;
+  double start_time_s_;
+}; // class WaitForDuration
+
 class Encircle : public Task {
 public:
     Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,

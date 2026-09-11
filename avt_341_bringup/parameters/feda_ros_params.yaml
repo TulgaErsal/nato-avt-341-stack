@@ -1,0 +1,15 @@
+__overrides: $pkg_path{avt_341_bringup}/parameters/krc_ros_params.yaml
+
+/**:
+  ros__parameters:
+    frames:
+      base_link: 'base_link'
+      cg: 'base_link'
+
+/**/comm_node:
+  ros__parameters:
+    name: 'FEDA'
+
+/**/mission_manager_node:
+  ros__parameters:
+    check_goal_arrival: true

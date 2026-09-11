@@ -1,7 +1,6 @@
 #ifndef AVT_341_FORMATION_DEFINITION_H
 #define AVT_341_FORMATION_DEFINITION_H
 
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "avt_341_nav/mission/mission_manager_dto.h"
@@ -16,6 +15,14 @@ struct FormationOffsets {
   geometry_msgs::msg::Point follower1;
   geometry_msgs::msg::Point follower2;
   geometry_msgs::msg::Point follower3;
+};
+
+// Formation follower state derived from a formation command: the ego-vehicle's
+// offset from the followed vehicle (in its frame) and whether a leader is followed.
+struct FollowerStatus {
+  double x_offset = 0.0;
+  double y_offset = 0.0;
+  bool use_leader = false;
 };
 
 struct MissionPoint {
@@ -42,8 +49,8 @@ public:
                       const FormationParameters &params_in,
                       const std::string & my_name);
 
-  avt_341_msgs::msg::FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
-  avt_341_msgs::msg::FollowerStatus commToFollowerStatus(const FormationMsg & comm_msg, const std::string &veh_name, int &out_idx) const;
+  FollowerStatus commToFollowerStatus(const std::string &veh_name, int &out_idx) const;
+  FollowerStatus commToFollowerStatus(const FormationMsg & comm_msg, const std::string &veh_name, int &out_idx) const;
   bool update(FormationMsg &comm_msg, const MissionPoint & mp);
   FormationOffsets getOffsets(const std::string &formation) const;
 
@@ -59,7 +66,7 @@ public:
   inline bool isColumn() const { return current_formation_msg_.formation == "COLUMN"; }
   inline std::string getFormationType() const { return current_formation_msg_.formation; }
 
-  avt_341_msgs::msg::FollowerStatus formation_status;
+  FollowerStatus formation_status;
   geometry_msgs::msg::PoseStamped goal;
   const FormationParameters &params;
 

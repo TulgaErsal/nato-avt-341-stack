@@ -110,8 +110,10 @@ SetFormationTool::SetFormationTool()
     termination_method_property_->addOption( "LEADER_ARRIVED", 0 );
     termination_method_property_->addOption( "ALL_ARRIVED", 1 );
 
-    x_scale_property_ = new FloatProperty( "X Scale", 1.0f, "Communication.x_scale.", form_group );
-    y_scale_property_ = new FloatProperty( "Y Scale", 1.0f, "Communication.y_scale.", form_group );
+    x_scale_property_ = new FloatProperty( "X Scale", -1.0f, "Communication.x_scale: formation x spacing [m], replaces follow_scale_x. -1 (message default) = use mission manager default.", form_group );
+    y_scale_property_ = new FloatProperty( "Y Scale", -1.0f, "Communication.y_scale: formation y spacing [m], replaces follow_scale_y. -1 (message default) = use mission manager default.", form_group );
+    x_scale_property_->setMin( -1.0f );
+    y_scale_property_->setMin( -1.0f );
     x_offset_property_ = new FloatProperty( "X Offset", 0.0f, "Communication.x_offset.", form_group );
     y_offset_property_ = new FloatProperty( "Y Offset", 0.0f, "Communication.y_offset.", form_group );
     distance_property_ = new FloatProperty( "Distance", 0.0f, "Communication.distance.", form_group );

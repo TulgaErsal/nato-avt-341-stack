@@ -59,9 +59,12 @@ void Astar::AllocateMap(int h, int w, int init_val) {
     }
   }
 
-  std::vector<float> column;
-  column.resize(height_, 0.0f);
-  map_.resize(width_, column);
+  // resize(width_, column) would leave pre-existing columns at their old height, which
+  // writes out of bounds when the grid dimensions change between calls (e.g. costmap crop)
+  map_.resize(width_);
+  for (auto& column : map_) {
+    column.assign(height_, 0.0f);
+  }
 }
 
 void Astar::SetMapValue(const Index& index, int val_height, int val_seg) {
@@ -332,7 +335,8 @@ bool Astar::ExtractPath() {
 }
 
 int Astar::GetGridValue(nav_msgs::msg::OccupancyGrid* grid, double x, double y) {
-  int seg_val = 0;
+  constexpr int kNoSegmentationDataCost = 50;
+  int seg_val = kNoSegmentationDataCost;
   if (x >= grid->info.origin.position.x && x < grid->info.origin.position.x + grid->info.width * grid->info.resolution
     && y >= grid->info.origin.position.y
     && y < grid->info.origin.position.y + grid->info.height * grid->info.resolution) {
@@ -380,7 +384,7 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int ix = 0; ix < width_; ix++) {
         double x_grid = grid->info.origin.position.x + ix * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
-        SetMapValue({ix, iy}, grid->data[n], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
+        SetMapValue({ix, iy}, grid->data[n], GetGridValue(grid_segmentation, x_grid, y_grid));
         n++;
       }
     }
@@ -405,7 +409,7 @@ std::vector<Point> Astar::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
       for (int j = 1; j < height_ - 1; j++) {
         double x_grid = grid->info.origin.position.x + i * grid->info.resolution;
         double y_grid = grid->info.origin.position.y + j * grid->info.resolution;
-        SetMapValue({i, j}, dmap[i][j], 100 - GetGridValue(grid_segmentation, x_grid, y_grid));
+        SetMapValue({i, j}, dmap[i][j], GetGridValue(grid_segmentation, x_grid, y_grid));
       }
     }
   }

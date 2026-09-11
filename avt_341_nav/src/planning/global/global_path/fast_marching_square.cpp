@@ -64,7 +64,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
             double y_grid = grid->info.origin.position.y + iy * grid->info.resolution;
 
             float occ = (float)grid->data[i];
-            float seg = 100.0f - (float)GetGridValue(segmentation_grid, x_grid, y_grid);
+            float seg = (float)GetGridValue(segmentation_grid, x_grid, y_grid);
 
             map_[ix][iy] = occ;
             base_weights_tmp_[i] = w_distance_ * Astar::EdgeDistanceCost + w_occupancy_ * occ + w_segmentation_ * seg;
@@ -78,9 +78,11 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
     }
 
     float adjusted_safety_margin = safety_margin_global_ + (map_res_ * 0.5f);
+    float adjusted_safety_margin_soft = std::max(safety_margin_soft_, safety_margin_global_) + (map_res_ * 0.5f);
 
     if (verbose_) {
-        std::cout << "[FastMarchingSquare] Safety margin (input/adjusted): " << safety_margin_global_ << "/" << adjusted_safety_margin << "m" << std::endl;
+        std::cout << "[FastMarchingSquare] Safety margin hard (input/adjusted): " << safety_margin_global_ << "/" << adjusted_safety_margin
+                  << "m, soft (input/adjusted): " << safety_margin_soft_ << "/" << adjusted_safety_margin_soft << "m" << std::endl;
     }
 
     shifts_.assign(n_cells, {0.0f, 0.0f});
@@ -119,12 +121,12 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
                 }
             }
 
-            float effective_d = std::max(d, adjusted_safety_margin);
+            float effective_d = std::max(d, adjusted_safety_margin_soft);
 
-            if (effective_d < adjusted_safety_margin + transition_buffer) {
-                float dist_into_buffer = (effective_d - adjusted_safety_margin);
+            if (effective_d < adjusted_safety_margin_soft + transition_buffer) {
+                float dist_into_buffer = (effective_d - adjusted_safety_margin_soft);
                 float ratio = dist_into_buffer / transition_buffer;
-                weights_[i] = base_weights_tmp_[i] + w_penalty * std::pow(1.0f - ratio, 2); 
+                weights_[i] = base_weights_tmp_[i] + w_penalty * std::pow(1.0f - ratio, 2);
             } else {
                 weights_[i] = base_weights_tmp_[i];
             }

@@ -52,7 +52,6 @@ def launch_setup(context, *args, **kwargs):
         'use_tangent_heading': False,
         'formation_prune_gp': False,
         'x_offset_on_path': False,
-        'offsets_from_leader': True,
         'follower_dist_break': 10.0,
         'follower_dot_threshold': 0.0,
         'follower_dot_range': 100.0,

@@ -3,7 +3,6 @@
 // c++ includes
 #include <cmath>
 #include <math.h>
-#include "avt_341_msgs/msg/follower_status.hpp"
 #include "avt_341_nav/core/eigen_dto_conversion.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -32,7 +31,7 @@ FormationPathGenerator::FormationPathGenerator(const avt_341_nav::mission::Forma
  * @param leaderVy y (right) norm vector in coordinate frame of leader
  */
 void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & leader_odom, const nav_msgs::msg::Odometry & odom,
-                                             avt_341_msgs::msg::FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
+                                             FollowerStatus status, Vec2d leaderVx, Vec2d leaderVy){
   if(!(bool)status.use_leader) return;
 
   double leaderYoffset = status.y_offset;
@@ -49,10 +48,25 @@ void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & 
   target_pose.pose.position.z = leader_odom.pose.pose.position.z;
   target_pose.pose.orientation = core::YawToQuaternionMsg(std::atan2(leaderVx[1], leaderVx[0]));
 
-  // If x_offset_on_path, need to keep track of leader path history and only add to desired global path once past x_offset
+  // Supply the missing startup history along the first pose's heading. These
+  // points already carry the lateral offset and are promoted like real history.
   if(desired_global_path_.poses.empty()){
-    desired_global_path_.poses.push_back(target_pose);
+    if(params_.x_offset_on_path){
+      const double lag_distance = std::abs(status.x_offset);
+      const double seed_step = params_.global_path_points_dist > 0.0
+          ? params_.global_path_points_dist : lag_distance;
+      const size_t seed_count = seed_step > 0.0
+          ? static_cast<size_t>(std::ceil(lag_distance / seed_step)) : 0;
+      for(size_t i = 0; i < seed_count; ++i){
+        const double distance = lag_distance * (seed_count - i) / seed_count;
+        auto seed_pose = target_pose;
+        seed_pose.pose.position.x -= leaderVx[0] * distance;
+        seed_pose.pose.position.y -= leaderVx[1] * distance;
+        leader_path_history_.poses.push_back(seed_pose);
+      }
+    }
     leader_path_history_.poses.push_back(target_pose);
+    desired_global_path_.poses.push_back(leader_path_history_.poses.front());
     return;
   }
 
@@ -71,23 +85,21 @@ void FormationPathGenerator::GenerateLeaderPath(const nav_msgs::msg::Odometry & 
   // Extra logic if x_offset_on_path_. Add points to desired_global_path_ from leader_path_history_ that are path x_offset in path distance.
   if(params_.x_offset_on_path){
     double s_length = 0;
-    int cutoff_index = -1;
-    for(int i = leader_path_history_.poses.size()-2; i > 0; i--){
-      double dx_i = leader_path_history_.poses[i].pose.position.x - leader_path_history_.poses[i+1].pose.position.x;
-      double dy_i = leader_path_history_.poses[i].pose.position.y - leader_path_history_.poses[i+1].pose.position.y;
-      s_length += sqrt(dy_i*dy_i + dx_i*dx_i);
-      if(s_length > abs(status.x_offset)){
-        cutoff_index = i;
-        break;
-      }
+    size_t cutoff_index = leader_path_history_.poses.size() - 1;
+    // Include the oldest segment and equality at the requested distance. The
+    // tolerance prevents roundoff from delaying promotion by a whole point.
+    while(cutoff_index > 0 && s_length + 1e-6 < std::abs(status.x_offset)){
+      const auto & newer = leader_path_history_.poses[cutoff_index].pose.position;
+      const auto & older = leader_path_history_.poses[cutoff_index-1].pose.position;
+      s_length += std::hypot(newer.x - older.x, newer.y - older.y);
+      --cutoff_index;
     }
-    if(cutoff_index > -1){
-      for(int i = 0; i < cutoff_index; i++){
-        desired_global_path_.poses.push_back(leader_path_history_.poses[i]);
-      }
-      leader_path_history_.poses = std::vector<geometry_msgs::msg::PoseStamped>(leader_path_history_.poses.begin()+cutoff_index,
-                                                                          leader_path_history_.poses.end());
-    }
+    // The history's first point is already the output's last point. Retain the
+    // new cutoff as that shared boundary, including when the offset is zero.
+    desired_global_path_.poses.insert(desired_global_path_.poses.end(),
+        leader_path_history_.poses.begin()+1, leader_path_history_.poses.begin()+cutoff_index+1);
+    leader_path_history_.poses.erase(leader_path_history_.poses.begin(),
+                                    leader_path_history_.poses.begin()+cutoff_index);
   }
 
   if(params_.prune_global_path){
@@ -125,11 +137,15 @@ void FormationPathGenerator::CalcVehicleRotation(nav_msgs::msg::Odometry odom, V
 	NormalizeVec2D(vehicleVx);
 }
 
-void FormationPathGenerator::Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, avt_341_msgs::msg::FollowerStatus status){
+void FormationPathGenerator::Update(nav_msgs::msg::Odometry leader_odom, nav_msgs::msg::Odometry odom, FollowerStatus status){
 
 	Vec2d leaderVx, leaderVy;
 
   if (params_.use_tangent_heading) {
+    if (leader_path_history_.poses.empty()) {
+      prev_leader_x_ = leader_odom.pose.pose.position.x;
+      prev_leader_y_ = leader_odom.pose.pose.position.y;
+    }
     double dx = leader_odom.pose.pose.position.x - prev_leader_x_;
     double dy = leader_odom.pose.pose.position.y - prev_leader_y_;
     if (dx*dx + dy*dy > gpp2_) {

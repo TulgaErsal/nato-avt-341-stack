@@ -14,8 +14,8 @@ A formation request communication message contains the requested `formation`,
 the `leader_name`, the `follower1_name`, the `follower2_name`, the
 `follower3_name`, the `objective` and the `desired_speed`. The receiving vehicle
 determines which position it is in (leader, follower1, follower2, follower3, or
-none) and updates its leader status, follower status, current task, and speed
-accordingly.
+none) and updates its current task and speed accordingly. The resulting
+formation role and offsets are published on the latched task-change topic.
 
 Acknowledgement
 ^^^^^^^^^^^^^^^
