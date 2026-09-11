@@ -153,6 +153,7 @@ jl_function_t* j_set_max_num_seg = NULL;
 jl_function_t* j_set_sigma = NULL;
 jl_function_t* j_set_min_speed = NULL;
 jl_function_t* j_set_max_speed = NULL;
+jl_function_t* j_set_goal_stop_radius = NULL;
 jl_function_t* j_set_stop_on_max_solve_time = NULL;
 jl_function_t* j_set_use_hard_constraints = NULL;
 jl_function_t* j_set_use_segmentation = NULL;
