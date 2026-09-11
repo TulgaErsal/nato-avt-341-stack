@@ -249,18 +249,12 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
 				last_lidar_world_pos_ = coord_transformer_.Transform(
                     marker.header.frame_id,
                     frame_ids_.Map(), bounding_box_centroid_);// improved_centroid);
-				RCLCPP_INFO(logger_,
-					"LIDAR_ONLY: improved position  "
-					"(%.2f, %.2f, %.2f) camera-frame.",
-					bounding_box_centroid_.x(),
-					bounding_box_centroid_.y(),
-					bounding_box_centroid_.z());
 			}
 			else {
 				last_lidar_world_pos_ = coord_transformer_.Transform(
                     marker.header.frame_id,
                     frame_ids_.Map(), marker_pos);
-				RCLCPP_INFO(logger_,
+				RCLCPP_DEBUG(logger_,
 					"LIDAR_ONLY: not improved because current_yaw_info_ =  %.2f not > %.2f ", current_yaw_info_, (1 / (3.14 * 3.14 / 142)));
 			}
 			// <-- JN Improve 
@@ -606,8 +600,8 @@ void ObjectTracker::EstimatorTick() {
                 // Run the IMM update step
                 // with custom R. if chi2 is acceptable
                 double chi2 = filter_->GetChi2IMM2D(measurement_vector, R);
-                // Hard 4-sigma treshold TODO open up for soft and as parameter
-                if (chi2 < 4 * 4)
+                // Hard 6-sigma treshold TODO open up for soft and as parameter (was 4)
+                if (chi2 < 6 * 6)
                     filter_->Update(measurement_vector, R);
                 else {
                     const auto state_filtered = filter_->GetState();
@@ -622,8 +616,8 @@ void ObjectTracker::EstimatorTick() {
         else {
             // Run the IMM update step.  if chi2 is acceptable
             double chi2 = filter_->GetChi2IMM2D(measurement_vector, R_detection_);
-            // Hard 4-sigma treshold TODO open up for soft and as parameter
-            if (chi2 < 4 * 4)
+            // Hard 6-sigma treshold TODO open up for soft and as parameter (was 4)
+            if (chi2 < 6 * 6)
                 filter_->Update(measurement_vector, R_detection_);
             else {
                 const auto state_filtered = filter_->GetState();
