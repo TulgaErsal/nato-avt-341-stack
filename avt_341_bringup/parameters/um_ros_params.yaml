@@ -11,7 +11,7 @@
         origin_y: 264132.3708496094
     costmap:
       geometry:
-        width: 2955.0
+        width: 1500.0
         height: 2290.0
       publish:
         method: 'window'
