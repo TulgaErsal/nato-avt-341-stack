@@ -78,6 +78,18 @@ def tf2_nodes(context):
             name='lidar_to_flir_publisher',
             arguments=['0.114996', '-0.090527', '-0.047696', '0.497703', '0.500851', '-0.500116', '0.501323', 'os_lidar', 'flir_camera']
         ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='cg_link_ns_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "mrzr2/cg_link", "cg_link"]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='lidar_ns_publisher',
+            arguments=["0", "0", "0", "0", "0", "0", "lidar", "mrzr2/lidar"]
+        ),
     ]
 
 
@@ -195,6 +207,7 @@ def launch_setup(context, *args, **kwargs):
                 "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":         "mpc",
                 "enable_logging":               enable_logging.perform(context),
+                "logging_path":                 os.path.join(os.path.expanduser('~'), 'bags', 'avt_341_data'),
             }.items()
         )
     ]
