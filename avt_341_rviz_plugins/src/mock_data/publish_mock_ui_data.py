@@ -34,6 +34,7 @@ from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile,
 from std_msgs.msg import Header, Float64
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist, Vector3
 from nav_msgs.msg import OccupancyGrid, Odometry
+from map_msgs.msg import OccupancyGridUpdate
 
 from avt_341_msgs.msg import (ComputeTime, ComputeTimeArray, MapMarker,
                               MapMarkerList, MissionModuleStatus,
@@ -100,6 +101,13 @@ GRID_SEG_BACKGROUND_CLASS: int = 0
 GRID_SEG_PATCH_CLASSES: List[int] = [1, 2]
 GRID_SEG_PATCH_RADIUS_M: float = 5.0
 
+# Incremental occupancy-grid updates (exercise the AugmentedMap display's change
+# highlight): each publish repaints one random disc inside a random window of
+# the cached grid and sends that window on the `_updates` topic, unchanged cells
+# included, the way nav2's costmap publisher does.
+GRID_UPDATE_RATE_HZ: float = 2.0
+GRID_UPDATE_WINDOW_CELLS: tuple = (6, 16)
+
 
 @dataclass(frozen=True)
 class TopicSpec:
@@ -153,7 +161,8 @@ class MockUiDataPublisher(Node):
         }
 
         # Grids are randomized once and then republished with a fresh stamp, so
-        # the maps stay put in RViz instead of re-rolling on every publish.
+        # the maps stay put in RViz instead of re-rolling on every publish. The
+        # occupancy grid additionally accumulates the incremental updates.
         self._occupancy_grids: Dict[str, OccupancyGrid] = {
             vehicle_id: self._build_occupancy_grid()
             for vehicle_id in VEHICLE_IDS
@@ -232,6 +241,9 @@ class MockUiDataPublisher(Node):
             TopicSpec("avt_341/occupancy_grid", OccupancyGrid, 0.1,
                       MockUiDataPublisher._make_occupancy_grid,
                       qos=LATCHED_QOS),
+            TopicSpec("avt_341/occupancy_grid_updates", OccupancyGridUpdate,
+                      GRID_UPDATE_RATE_HZ,
+                      MockUiDataPublisher._make_occupancy_grid_update),
             TopicSpec("avt_341/normal_segmentation_grid", OccupancyGrid, 0.1,
                       MockUiDataPublisher._make_segmentation_grid,
                       qos=LATCHED_QOS),
@@ -545,6 +557,42 @@ class MockUiDataPublisher(Node):
         """The vehicle's segmentation grid, randomized once at startup."""
         msg = self._segmentation_grids[vehicle_id]
         msg.header = self._header(MAP_FRAME_ID)
+        return msg
+
+    def _make_occupancy_grid_update(self, vehicle_id: str) -> OccupancyGridUpdate:
+        """Repaint a random disc inside a random window of the vehicle's cached
+        occupancy grid and publish that window as an incremental update. The
+        cache is modified in place so the next full publish agrees with the
+        updates already sent."""
+        grid = self._occupancy_grids[vehicle_id]
+        size = random.randint(*GRID_UPDATE_WINDOW_CELLS)
+        center_x, center_y = self._random_blob_center()
+        x0 = round((center_x - grid.info.origin.position.x) / GRID_RESOLUTION_M
+                   - size / 2.0)
+        y0 = round((center_y - grid.info.origin.position.y) / GRID_RESOLUTION_M
+                   - size / 2.0)
+        x0 = max(0, min(GRID_SIZE_CELLS - size, x0))
+        y0 = max(0, min(GRID_SIZE_CELLS - size, y0))
+        value = random.choice([0, 100, random.randint(1, 99)])
+        radius = 0.4 * size
+        disc_x, disc_y = x0 + size / 2.0, y0 + size / 2.0
+
+        data = list(grid.data)
+        for row in range(y0, y0 + size):
+            for col in range(x0, x0 + size):
+                if math.hypot(col + 0.5 - disc_x, row + 0.5 - disc_y) <= radius:
+                    data[row * GRID_SIZE_CELLS + col] = value
+        grid.data = data
+
+        msg = OccupancyGridUpdate()
+        msg.header = self._header(MAP_FRAME_ID)
+        msg.x = x0
+        msg.y = y0
+        msg.width = size
+        msg.height = size
+        msg.data = [data[row * GRID_SIZE_CELLS + col]
+                    for row in range(y0, y0 + size)
+                    for col in range(x0, x0 + size)]
         return msg
 
     def _build_occupancy_grid(self) -> OccupancyGrid:

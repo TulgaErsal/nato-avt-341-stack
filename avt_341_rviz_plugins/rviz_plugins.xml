@@ -65,7 +65,8 @@
       nav_msgs/OccupancyGrid, loaded from a YAML definition file (package
       default: resources/color_schemes.yaml, overridable per display via the
       Color Scheme File property). The built-in map/costmap/raw schemes remain
-      available.
+      available. Cells changed by an incremental {topic}_updates message can be
+      flashed and faded out (Change Highlight).
     </description>
     <message_type>nav_msgs/msg/OccupancyGrid</message_type>
   </class>

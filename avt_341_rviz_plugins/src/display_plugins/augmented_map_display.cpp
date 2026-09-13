@@ -1,15 +1,20 @@
 #include <avt_341_rviz_plugins/display_plugins/augmented_map_display.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 
+#include <QColor>
 #include <QString>
 #include <QUrl>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include <OgreBlendMode.h>
+#include <OgreColourValue.h>
 #include <OgreDataStream.h>
 #include <OgrePixelFormat.h>
 #include <OgreResourceGroupManager.h>
@@ -17,6 +22,7 @@
 
 #include <rviz_common/display_context.hpp>
 #include <rviz_common/properties/bool_property.hpp>
+#include <rviz_common/properties/color_property.hpp>
 #include <rviz_common/properties/enum_property.hpp>
 #include <rviz_common/properties/file_picker_property.hpp>
 #include <rviz_common/properties/float_property.hpp>
@@ -25,10 +31,17 @@
 #include <rviz_default_plugins/displays/map/swatch.hpp>
 #include <rviz_rendering/material_manager.hpp>
 
+#include <avt_341_rviz_plugins/primitives/map_change_overlay.h>
+
 namespace avt_341::rviz_plugins
 {
 
+using rviz_common::properties::BoolProperty;
+using rviz_common::properties::ColorProperty;
+using rviz_common::properties::EnumProperty;
 using rviz_common::properties::FilePickerProperty;
+using rviz_common::properties::FloatProperty;
+using rviz_common::properties::IntProperty;
 using rviz_common::properties::Property;
 using rviz_common::properties::StatusProperty;
 
@@ -43,6 +56,8 @@ const QStringList kBuiltinSchemeNames = { "map", "costmap", "raw" };
 /// Monotonic counter for globally unique Ogre texture names (same convention as
 /// the other avt_341 primitives).
 std::atomic<std::uint64_t> g_palette_counter{ 0 };
+
+constexpr const char* kHighlightStatus = "Change Highlight";
 
 /// Upload a 256-entry RGBA lookup table as the 256x1 1D palette texture the map
 /// material samples with the occupancy byte (mirrors the base display's private
@@ -98,6 +113,18 @@ QString resolveResourcePath( const QString& raw )
 
     return path;
 }
+
+bool sameGeometry( const nav_msgs::msg::MapMetaData& a, const nav_msgs::msg::MapMetaData& b )
+{
+    return a.width == b.width && a.height == b.height && a.resolution == b.resolution &&
+        a.origin.position.x == b.origin.position.x &&
+        a.origin.position.y == b.origin.position.y &&
+        a.origin.position.z == b.origin.position.z &&
+        a.origin.orientation.x == b.origin.orientation.x &&
+        a.origin.orientation.y == b.origin.orientation.y &&
+        a.origin.orientation.z == b.origin.orientation.z &&
+        a.origin.orientation.w == b.origin.orientation.w;
+}
 } // namespace
 
 AugmentedMapDisplay::AugmentedMapDisplay()
@@ -109,6 +136,43 @@ AugmentedMapDisplay::AugmentedMapDisplay()
         "resource URL. Leave empty to use this package's default "
         "resources/color_schemes.yaml (which also documents the format).",
         this, SLOT( reloadSchemes() ), this );
+
+    highlight_enabled_ = new BoolProperty(
+        "Change Highlight", true,
+        "Flash the cells whose value changed in an incoming map update, then fade "
+        "them out. When unchecked no change tracking or per-frame work is done.",
+        this, SLOT( updateHighlightEnabled() ), this );
+    highlight_enabled_->setDisableChildrenIfFalse( true );
+    highlight_color_ = new ColorProperty(
+        "Color", QColor( 255, 255, 255 ), "Color of the highlight.",
+        highlight_enabled_, SLOT( updateHighlightAppearance() ), this );
+    highlight_alpha_ = new FloatProperty(
+        "Peak Alpha", 0.8f, "Opacity of a freshly changed cell.",
+        highlight_enabled_, SLOT( updateHighlightAppearance() ), this );
+    highlight_alpha_->setMin( 0.0f );
+    highlight_alpha_->setMax( 1.0f );
+    highlight_hold_ = new FloatProperty(
+        "Hold", 0.05f, "Seconds a changed cell stays at peak opacity before fading.",
+        highlight_enabled_ );
+    highlight_hold_->setMin( 0.0f );
+    highlight_fade_ = new FloatProperty(
+        "Fade", 0.35f, "Seconds the highlight takes to fade out after the hold.",
+        highlight_enabled_ );
+    highlight_fade_->setMin( 0.0f );
+    highlight_source_ = new EnumProperty(
+        "Source", "Updates only",
+        "Which messages trigger the highlight: incremental updates on the Update "
+        "Topic only, or full maps on the main topic as well.",
+        highlight_enabled_ );
+    highlight_source_->addOption( "Updates only", 0 );
+    highlight_source_->addOption( "Updates and full maps", 1 );
+    highlight_min_change_ = new IntProperty(
+        "Min Change", 1,
+        "Smallest change in a cell's value that counts as a change. A cell "
+        "switching to or from unknown (-1) always counts.",
+        highlight_enabled_ );
+    highlight_min_change_->setMin( 1 );
+    highlight_min_change_->setMax( 100 );
 
     // Whether the built-in schemes' palettes contain translucent entries (costmap
     // and raw do).
@@ -134,11 +198,17 @@ AugmentedMapDisplay::AugmentedMapDisplay()
     connect(
         draw_under_property_, &Property::changed,
         this, &AugmentedMapDisplay::applySchemeTransparency );
+    connect(
+        draw_under_property_, &Property::changed,
+        this, &AugmentedMapDisplay::updateHighlightAppearance );
     // Fires after the base's showMap() slot, i.e. after swatches are (re)created
     // and the base has applied palette / alpha / draw-under state to them.
     connect(
         this, &AugmentedMapDisplay::mapUpdated,
         this, &AugmentedMapDisplay::applySchemeTransparency );
+    connect(
+        this, &AugmentedMapDisplay::mapUpdated,
+        this, &AugmentedMapDisplay::onMapUpdated );
 }
 
 AugmentedMapDisplay::~AugmentedMapDisplay()
@@ -153,7 +223,25 @@ void AugmentedMapDisplay::onInitialize()
 {
     MapDisplay::onInitialize(); // creates the built-in palette textures (0-2)
     initialized_ = true;
+    epoch_ = std::chrono::steady_clock::now();
+    overlay_ = std::make_unique<MapChangeOverlay>( scene_manager_, scene_node_ );
+    updateHighlightAppearance();
     reloadSchemes();
+}
+
+void AugmentedMapDisplay::reset()
+{
+    MapDisplay::reset();
+    clearHighlightState();
+}
+
+void AugmentedMapDisplay::update( float wall_dt, float ros_dt )
+{
+    MapDisplay::update( wall_dt, ros_dt );
+    if ( !bursts_.empty() )
+    {
+        advanceHighlight();
+    }
 }
 
 void AugmentedMapDisplay::reloadSchemes()
@@ -265,6 +353,240 @@ void AugmentedMapDisplay::applySchemeTransparency()
         swatch->updateAlpha( Ogre::SBT_TRANSPARENT_ALPHA, false, alpha );
     }
     context_->queueRender();
+}
+
+void AugmentedMapDisplay::onMapUpdated()
+{
+    if ( !overlay_ || !highlight_enabled_->getBool() || !mapIsValid() )
+    {
+        return;
+    }
+
+    const bool from_update = update_messages_received_ != last_update_count_;
+    last_update_count_ = update_messages_received_;
+
+    if ( !sameGeometry( current_map_.info, shadow_info_ ) )
+    {
+        resyncHighlightState();
+        return;
+    }
+    if ( !overlay_->valid() )
+    {
+        return;
+    }
+    if ( !from_update && highlight_source_->getOptionInt() == 0 )
+    {
+        shadow_data_ = current_map_.data;
+        return;
+    }
+
+    const int min_change = highlight_min_change_->getInt();
+    const std::uint32_t now = nowMs();
+    const std::uint32_t width = shadow_info_.width;
+    const std::uint32_t height = shadow_info_.height;
+    const std::int8_t* current = current_map_.data.data();
+    std::int8_t* shadow = shadow_data_.data();
+
+    std::uint32_t min_x = width, min_y = height, max_x = 0, max_y = 0;
+    bool any = false;
+    for ( std::uint32_t y = 0; y < height; y++ )
+    {
+        const std::size_t row = static_cast<std::size_t>( y ) * width;
+        if ( std::memcmp( current + row, shadow + row, width ) == 0 )
+        {
+            continue;
+        }
+        for ( std::uint32_t x = 0; x < width; x++ )
+        {
+            const std::int8_t before = shadow[row + x];
+            const std::int8_t after = current[row + x];
+            if ( before == after )
+            {
+                continue;
+            }
+            const bool counts = before < 0 || after < 0 ||
+                std::abs( static_cast<int>( after ) - static_cast<int>( before ) ) >= min_change;
+            if ( !counts )
+            {
+                continue;
+            }
+            changed_at_ms_[row + x] = now;
+            min_x = std::min( min_x, x );
+            max_x = std::max( max_x, x );
+            min_y = std::min( min_y, y );
+            max_y = std::max( max_y, y );
+            any = true;
+        }
+        std::memcpy( shadow + row, current + row, width );
+    }
+
+    if ( !any )
+    {
+        return;
+    }
+    bursts_.push_back( { Ogre::Box( min_x, min_y, max_x + 1, max_y + 1 ), now } );
+    overlay_->setVisible( true );
+    context_->queueRender();
+}
+
+void AugmentedMapDisplay::updateHighlightEnabled()
+{
+    if ( !overlay_ )
+    {
+        return;
+    }
+    if ( highlight_enabled_->getBool() )
+    {
+        resyncHighlightState();
+    }
+    else
+    {
+        clearHighlightState();
+    }
+    context_->queueRender();
+}
+
+void AugmentedMapDisplay::updateHighlightAppearance()
+{
+    if ( !overlay_ )
+    {
+        return;
+    }
+    overlay_->setAlpha( highlight_alpha_->getFloat() );
+    overlay_->setDrawUnder( draw_under_property_->getValue().toBool() );
+    context_->queueRender();
+}
+
+bool AugmentedMapDisplay::mapIsValid() const
+{
+    return loaded_ && !swatches_.empty() && width_ != 0 && height_ != 0 &&
+        current_map_.info.width == width_ && current_map_.info.height == height_ &&
+        current_map_.data.size() == static_cast<std::size_t>( width_ ) * height_;
+}
+
+void AugmentedMapDisplay::resyncHighlightState()
+{
+    bursts_.clear();
+    last_update_count_ = update_messages_received_;
+    if ( !overlay_ || !mapIsValid() )
+    {
+        clearHighlightState();
+        return;
+    }
+
+    shadow_info_ = current_map_.info;
+    overlay_->setVisible( false );
+    if ( overlay_->resize( shadow_info_.width, shadow_info_.height, shadow_info_.resolution ) )
+    {
+        shadow_data_ = current_map_.data;
+        changed_at_ms_.assign( shadow_data_.size(), 0 );
+        deleteStatus( kHighlightStatus );
+    }
+    else
+    {
+        shadow_data_.clear();
+        changed_at_ms_.clear();
+        setStatus(
+            StatusProperty::Warn, kHighlightStatus,
+            "Could not create an overlay texture for this map size; highlighting "
+            "is off for this map" );
+    }
+}
+
+void AugmentedMapDisplay::clearHighlightState()
+{
+    bursts_.clear();
+    shadow_info_ = nav_msgs::msg::MapMetaData();
+    shadow_data_.clear();
+    shadow_data_.shrink_to_fit();
+    changed_at_ms_.clear();
+    changed_at_ms_.shrink_to_fit();
+    staging_.clear();
+    staging_.shrink_to_fit();
+    if ( overlay_ )
+    {
+        overlay_->clear();
+    }
+    deleteStatus( kHighlightStatus );
+}
+
+void AugmentedMapDisplay::advanceHighlight()
+{
+    if ( !overlay_ || !overlay_->valid() )
+    {
+        bursts_.clear();
+        return;
+    }
+
+    const std::uint32_t now = nowMs();
+    const double lifetime_ms =
+        ( highlight_hold_->getFloat() + highlight_fade_->getFloat() ) * 1000.0;
+
+    for ( const Burst& burst : bursts_ )
+    {
+        uploadBox( burst.box, now );
+    }
+    while ( !bursts_.empty() &&
+            static_cast<double>( now - bursts_.front().start_ms ) > lifetime_ms )
+    {
+        bursts_.pop_front();
+    }
+    if ( bursts_.empty() )
+    {
+        overlay_->setVisible( false );
+    }
+    context_->queueRender();
+}
+
+void AugmentedMapDisplay::uploadBox( const Ogre::Box& box, std::uint32_t now_ms )
+{
+    const float hold_ms = highlight_hold_->getFloat() * 1000.0f;
+    const float fade_ms = highlight_fade_->getFloat() * 1000.0f;
+    const Ogre::ColourValue color = highlight_color_->getOgreColor();
+    const auto r = static_cast<std::uint8_t>( color.r * 255.0f + 0.5f );
+    const auto g = static_cast<std::uint8_t>( color.g * 255.0f + 0.5f );
+    const auto b = static_cast<std::uint8_t>( color.b * 255.0f + 0.5f );
+    const std::uint32_t width = shadow_info_.width;
+
+    staging_.resize( static_cast<std::size_t>( box.getWidth() ) * box.getHeight() * 4u );
+    std::uint8_t* out = staging_.data();
+    for ( std::uint32_t y = box.top; y < box.bottom; y++ )
+    {
+        const std::size_t row = static_cast<std::size_t>( y ) * width;
+        for ( std::uint32_t x = box.left; x < box.right; x++ )
+        {
+            const std::uint32_t stamp = changed_at_ms_[row + x];
+            float intensity = 0.0f;
+            if ( stamp != 0 )
+            {
+                const float age_ms = static_cast<float>( now_ms - stamp );
+                if ( age_ms <= hold_ms )
+                {
+                    intensity = 1.0f;
+                }
+                else if ( fade_ms > 0.0f )
+                {
+                    const float u = ( age_ms - hold_ms ) / fade_ms;
+                    if ( u < 1.0f )
+                    {
+                        intensity = ( 1.0f - u ) * ( 1.0f - u );
+                    }
+                }
+            }
+            *out++ = r;
+            *out++ = g;
+            *out++ = b;
+            *out++ = static_cast<std::uint8_t>( intensity * 255.0f + 0.5f );
+        }
+    }
+    overlay_->upload( box, staging_.data() );
+}
+
+std::uint32_t AugmentedMapDisplay::nowMs() const
+{
+    const auto elapsed = std::chrono::steady_clock::now() - epoch_;
+    return static_cast<std::uint32_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() ) + 1u;
 }
 
 QString AugmentedMapDisplay::resolveSchemeFilePath() const

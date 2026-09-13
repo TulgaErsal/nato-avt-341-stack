@@ -91,6 +91,7 @@ set(SRC_FILES
     src/primitives/map_marker_visual.cpp
     src/primitives/flat_text.cpp
     src/primitives/map_image.cpp
+    src/primitives/map_change_overlay.cpp
     src/primitives/vector_field.cpp
     src/primitives/matrix_field.cpp)
 
