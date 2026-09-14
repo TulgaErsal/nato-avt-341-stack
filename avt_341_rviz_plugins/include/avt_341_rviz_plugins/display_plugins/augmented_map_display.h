@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include <OgrePrerequisites.h>
 #include <OgreCommon.h>
 
 #include <nav_msgs/msg/map_meta_data.hpp>

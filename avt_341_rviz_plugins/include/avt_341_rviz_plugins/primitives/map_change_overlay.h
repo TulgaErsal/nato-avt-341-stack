@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include <OgrePrerequisites.h>
 #include <OgreCommon.h>
 #include <OgreMaterial.h>
 #include <OgreTexture.h>
