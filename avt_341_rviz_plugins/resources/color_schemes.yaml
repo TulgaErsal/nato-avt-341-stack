@@ -64,3 +64,39 @@ schemes:
   - name: grayscale
     values:
       0..100: "#000000..#FFFFFF"
+
+  # Variants of the built-in costmap scheme (0 transparent, -1 the built-in
+  # unknown gray, illegal negatives red -> yellow) with a full-range cost ramp.
+  # Byte value 128 is the signed cell value -128, so the ramp's last step and
+  # the black "128" cell are keyed as -128.
+  - name: costmap_br
+    values:
+      -1:        "#708986"
+      0:         [0, 0, 0, 0]
+      1..127:    "#0000FF..#FD0002"
+      -128:      "#FF0000"
+      -127..-2:  "#FF0000..#FFFF00"
+
+  - name: costmap_gr
+    values:
+      -1:        "#708986"
+      0:         [0, 0, 0, 0]
+      1..127:    "#00FF00..#FD0200"
+      -128:      "#FF0000"
+      -127..-2:  "#FF0000..#FFFF00"
+
+  - name: costmap_brk
+    values:
+      -1:        "#708986"
+      0:         [0, 0, 0, 0]
+      1..127:    "#0000FF..#FF0000"
+      -128:      "#000000"
+      -127..-2:  "#FF0000..#FFFF00"
+
+  - name: costmap_grk
+    values:
+      -1:        "#708986"
+      0:         [0, 0, 0, 0]
+      1..127:    "#00FF00..#FF0000"
+      -128:      "#000000"
+      -127..-2:  "#FF0000..#FFFF00"
