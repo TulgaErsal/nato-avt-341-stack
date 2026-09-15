@@ -207,6 +207,7 @@ def launch_setup(context, *args, **kwargs):
                 "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":         "mpc",
                 "enable_logging":               enable_logging.perform(context),
+                "logging_config":               f"{avt_341_bringup_dir}/bagging/config/um_mrzr_bag_config.yaml",
                 "logging_path":                 os.path.join(os.path.expanduser('~'), 'bags', 'avt_341_data'),
             }.items()
         )

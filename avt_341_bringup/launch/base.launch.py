@@ -199,7 +199,7 @@ def _spawn_vehicles(context, *args, **kwargs):
         actions.append(ExecuteProcess(
             cmd=[
                 'ros2', 'run', 'avt_341_bringup', 'record_bag.py',
-                f'{BRINGUP_DIR}/bagging/config/rw_bag_config.yaml',
+                LaunchConfiguration('logging_config').perform(context),
                 LaunchConfiguration('logging_path').perform(context),
                 '--bag_format', 'mcap',
             ],
@@ -239,6 +239,7 @@ def generate_launch_description():
         DeclareLaunchArgument('auto_launch_rviz',            default_value='True',                                                description='Automatically launch rviz display window'),
         DeclareLaunchArgument('rviz_config',                 default_value=f'{BRINGUP_DIR}/rviz/avt_341.rviz',                    description='Single vehicle rviz config file'),
         DeclareLaunchArgument('enable_logging',              default_value='False',                                               description='Enable standardized vehicle logging for V&V efforts'),
+        DeclareLaunchArgument('logging_config',              default_value=f'{BRINGUP_DIR}/bagging/config/rw_bag_config.yaml',    description='Config file for vehicle logging'),
         DeclareLaunchArgument('logging_path',                default_value=os.path.join(os.path.expanduser('~'), 'avt_341_data'), description='Save path for vehicle logging'),
 
         *pargs.declare_arguments(),
