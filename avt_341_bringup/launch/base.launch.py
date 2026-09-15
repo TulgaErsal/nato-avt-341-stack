@@ -201,6 +201,7 @@ def _spawn_vehicles(context, *args, **kwargs):
                 'ros2', 'run', 'avt_341_bringup', 'record_bag.py',
                 LaunchConfiguration('logging_config').perform(context),
                 LaunchConfiguration('logging_path').perform(context),
+                '--vehicles_override', ','.join(spawned_vehicles),
                 '--bag_format', 'mcap',
             ],
             output='screen',
