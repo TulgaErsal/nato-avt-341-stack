@@ -24,6 +24,7 @@ set(AVT341_SOURCE_FILES
     "control/odom_to_tf"
     "control/control"
     "control/speed_control"
+    "control/atat_speed_control"
     "daq/data_acquisition"
     "mission/goal_filtering"
     "mission/mission_manager"

@@ -1,0 +1,93 @@
+code_namespace: avt_341_nav/params/atat_speed_control
+ros__parameters:
+
+  # Steering pass-through
+  # ====================================================================================================================
+  steering_delta_abs_max:
+    type: double
+    default_value: 0.5
+    description: "Max steering angle (rad) used to normalize cmd_steer into an effort when output_steering_percent is true, or to clamp the passed-through angle otherwise."
+  output_steering_percent:
+    type: bool
+    default_value: false
+    description: "Set to true to output steering commands as a percentage of steering_delta_abs_max (angular.z -> % steering) instead of the clamped wheel angle (angular.z -> wheel angle [rad], matching this stack's other speed controller)."
+
+  # KPID throttle control
+  # ====================================================================================================================
+  throttle_input_min:
+    type: double
+    default_value: 0.0
+    description: "Minimum reference velocity (m/s) after desired_speed_factor scaling, before filtering."
+  throttle_input_max:
+    type: double
+    default_value: 12.0
+    description: "Maximum reference velocity (m/s) after desired_speed_factor scaling, before filtering."
+  throttle_output_min:
+    type: double
+    default_value: 0.0
+    description: "Minimum throttle effort commanded by the PID term (does not include brake_drag)."
+  throttle_output_max:
+    type: double
+    default_value: 0.5
+    description: "Maximum throttle effort commanded by the PID term."
+  feed_forward_k0:
+    type: double
+    default_value: 0.1
+    description: "Zeroth-order (deadband) feed-forward term, applied as k0*sign(reference); always active, unlike this stack's other speed controller where feed-forward is optional."
+  feed_forward_k1:
+    type: double
+    default_value: 0.0
+    description: "First-order feed-forward coefficient, applied as k1*reference."
+  feed_forward_k2:
+    type: double
+    default_value: 0.0
+    description: "Second-order feed-forward coefficient, applied as k2*reference^2."
+  throttle_kp:
+    type: double
+    default_value: 0.1
+    description: "Proportional gain for the KPID throttle controller."
+  throttle_ki:
+    type: double
+    default_value: 0.0
+    description: "Integral gain for the KPID throttle controller."
+  throttle_kd:
+    type: double
+    default_value: 0.0
+    description: "Derivative gain for the KPID throttle controller."
+  integral_abs_max:
+    type: double
+    default_value: 1.0
+    description: "Max absolute value of the KPID integral term; always clamped."
+
+  # Braking (near-zero reference / inactive / stale-input fallback)
+  # ====================================================================================================================
+  brake_drag:
+    type: double
+    default_value: 0.1
+    description: "Fixed brake effort commanded whenever the reference speed is ~0, the nav stack is not Active, or inputs are stale. This controller has no continuously-variable braking; it is either coasting/accelerating or applying this fixed drag value."
+
+  # Filtering
+  # ====================================================================================================================
+  reference_buffer_size:
+    type: int
+    default_value: 20
+    description: "Number of samples in the moving-average filter applied to the reference velocity."
+  measurement_buffer_size:
+    type: int
+    default_value: 10
+    description: "Number of samples in the moving-average filter applied to the measured velocity."
+
+  # Timing / staleness
+  # ====================================================================================================================
+  control_rate:
+    type: double
+    default_value: 100.0
+    description: "Rate (Hz) at which the control loop runs and publishes avt_341/cmd_vel."
+  odom_timeout:
+    type: double
+    default_value: 0.05
+    description: "Max age (s) of the most recent avt_341/odometry message before it is considered stale and the controller halts."
+  control_timeout:
+    type: double
+    default_value: 0.05
+    description: "Max age (s) of the most recently received avt_341/desired_speed or avt_341/cmd_steer value before it is considered stale and the controller halts."
