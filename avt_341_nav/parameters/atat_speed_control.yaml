@@ -33,15 +33,15 @@ ros__parameters:
   feed_forward_k0:
     type: double
     default_value: 0.1
-    description: "Zeroth-order (deadband) feed-forward term, applied as k0*sign(reference); always active, unlike this stack's other speed controller where feed-forward is optional."
+    description: "Zeroth-order (deadband) feed-forward term, applied as k0*sign(reference); always active, unlike this stack's other speed controller where feed-forward is optional. Fit via least-squares to UM MRZR steady-state throttle-vs-speed data (4,6,8,12 m/s @ 0.18,0.21,0.30,0.44 effort; R^2=0.989)."
   feed_forward_k1:
     type: double
-    default_value: 0.0
-    description: "First-order feed-forward coefficient, applied as k1*reference."
+    default_value: 0.0135
+    description: "First-order feed-forward coefficient, applied as k1*reference. Fit via least-squares to UM MRZR steady-state throttle-vs-speed data (4,6,8,12 m/s @ 0.18,0.21,0.30,0.44 effort; R^2=0.989)."
   feed_forward_k2:
     type: double
-    default_value: 0.0
-    description: "Second-order feed-forward coefficient, applied as k2*reference^2."
+    default_value: 0.00125
+    description: "Second-order feed-forward coefficient, applied as k2*reference^2. Fit via least-squares to UM MRZR steady-state throttle-vs-speed data (4,6,8,12 m/s @ 0.18,0.21,0.30,0.44 effort; R^2=0.989)."
   throttle_kp:
     type: double
     default_value: 0.1
