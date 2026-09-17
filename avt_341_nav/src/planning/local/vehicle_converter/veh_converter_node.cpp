@@ -49,13 +49,19 @@ double quaternionMsg2Yaw(const geometry_msgs::msg::Quaternion& orientation_msg) 
 void callbackOdometry(nav_msgs::msg::Odometry::SharedPtr msg_received_odometry) {
     g_odometry = *msg_received_odometry;
     g_received_odometry = true;
+}
+
+void PublishVeh() {
+    if (!g_received_odometry) {
+        return;
+    }
     std_msgs::msg::Float64MultiArray veh;
     double time = 0.0;
     double x = g_odometry.pose.pose.position.x;
     double y = g_odometry.pose.pose.position.y;
     double speed_longitudinal = g_odometry.twist.twist.linear.x;
     double speed_lateral = g_odometry.twist.twist.linear.y;
-    double steering_angle = g_steering_angle;
+    double steering_angle = (g_received_steering_angle) ? g_steering_angle : 0.0;
     double yaw = quaternionMsg2Yaw(g_odometry.pose.pose.orientation);
     double yaw_rate = g_odometry.twist.twist.angular.z;
     double acceleration = (g_received_acceleration) ? g_acceleration : 0.0;
@@ -105,6 +111,7 @@ int main(int argc, char* argv[]) {
     rclcpp::Rate rosrate(100.0f);
     while (rclcpp::ok()) {
         rclcpp::spin_some(node);
+        PublishVeh();
         rosrate.sleep();
     }
 }
