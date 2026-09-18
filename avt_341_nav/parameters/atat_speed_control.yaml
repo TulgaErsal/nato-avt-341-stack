@@ -85,9 +85,9 @@ ros__parameters:
     description: "Rate (Hz) at which the control loop runs and publishes avt_341/cmd_vel."
   odom_timeout:
     type: double
-    default_value: 0.05
+    default_value: 0.1
     description: "Max age (s) of the most recent avt_341/odometry message before it is considered stale and the controller halts."
   control_timeout:
     type: double
-    default_value: 0.05
+    default_value: 0.2
     description: "Max age (s) of the most recently received avt_341/desired_speed or avt_341/cmd_steer value before it is considered stale and the controller halts."
