@@ -416,6 +416,11 @@ class ObjectTrackerNode : public rclcpp::Node {
     /** @brief Builds and publishes (and stores) a DELETEALL MarkerArray. */
     void PublishObstacleDeleteAll(const std_msgs::msg::Header& header);
 
+    /** @brief Called instead of RunObstacleDetection while no tracker exists.
+     *         On the first idle cloud it clears the published markers and the
+     *         stored box history, so stale boxes are never used later. */
+    void ReleaseObstacleDetection(const std_msgs::msg::Header& header);
+
     /** @brief Builds markers from curr_boxes_ and publishes them. */
     void PublishObstacleMarkers(const std_msgs::msg::Header& header);
 
