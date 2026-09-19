@@ -244,6 +244,10 @@ ros__parameters:
       type: bool
       default_value: false
       description: "Publish the ground point cloud."
+    run_without_trackers:
+      type: bool
+      default_value: false
+      description: "Run the obstacle detector on every point cloud even when no tracker exists. When false it only runs while at least one tracker is active, and its markers are cleared when it goes idle."
 
   recovery:
     no_movement_enabled:
