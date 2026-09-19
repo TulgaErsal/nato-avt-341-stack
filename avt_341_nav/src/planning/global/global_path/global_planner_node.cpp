@@ -457,7 +457,10 @@ int main(int argc, char* argv[])
   auto nav_command_sub = n->create_subscription<std_msgs::msg::Int32>("avt_341/nav_command_state", 10, NavCommandCallback);
   auto reset_sub = n->create_subscription<std_msgs::msg::String>("avt_341/reset", 10, ResetCallback);
   auto reset_ack_pub = n->create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
-  auto fastmatching_costs_pub = n->create_publisher<nav_msgs::msg::OccupancyGrid>("avt_341/fm_map", 1);
+  std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>> fastmatching_costs_pub = nullptr;
+  if (params.publish_fm_map) {
+    fastmatching_costs_pub = n->create_publisher<nav_msgs::msg::OccupancyGrid>("avt_341/fm_map", 1);
+  }
 
   state_pub = n->create_publisher<avt_341_msgs::msg::NavState>("avt_341/state", 10);
   state.run_state = NavStackState::NotInit;
@@ -621,7 +624,7 @@ int main(int argc, char* argv[])
             timeout_logged = false;
 
             if (!new_path.empty()) {
-              if (params.planning_method == "fast_marching") {
+              if (params.publish_fm_map && params.planning_method == "fast_marching") {
                 nav_msgs::msg::OccupancyGrid fast_marching_grid;
                 //use the metadata of the (possibly cropped) grid the plan actually ran on,
                 //which always agrees with the planner dims below; current_grid may have
