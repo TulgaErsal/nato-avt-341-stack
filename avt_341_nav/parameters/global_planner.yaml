@@ -33,6 +33,10 @@ ros__parameters:
     type: bool
     default_value: true
     description: "Enables debug visualization of global planner."
+  publish_fm_map:
+    type: bool
+    default_value: false
+    description: "Publish the fast marching cost grid on avt_341/fm_map after each plan (fast_marching planning method only). When false the publisher is not created and the cost grid is not converted. Read at startup."
   w_distance:
     type: double
     default_value: 1.0
