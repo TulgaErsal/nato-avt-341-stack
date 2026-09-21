@@ -93,6 +93,9 @@ jl_function_t* j_setup = NULL;
 /** @brief Pointer to the Julia function to plan a path. */
 jl_function_t* j_plan = NULL;
 
+/** @brief Pointer to the Julia function to run a throwaway solve after setup. */
+jl_function_t* j_warm_up = NULL;
+
 /** @brief Pointer to the Julia function to set vehicle state. */
 jl_function_t* j_set_state = NULL;
 

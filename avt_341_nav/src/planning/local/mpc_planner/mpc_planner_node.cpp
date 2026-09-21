@@ -561,6 +561,7 @@ void InitialiseJuliaAPI()
     // Define the Julia functions.
     j_setup = jl_get_function(mpc_module, "Setup");
     j_plan = jl_get_function(mpc_module, "Plan");
+    j_warm_up = jl_get_function(mpc_module, "WarmUp");
     j_set_state = jl_get_function(mpc_module, "SetState");
     j_set_obstacles = jl_get_function(mpc_module, "SetObstacles");
     j_set_goal_point = jl_get_function(mpc_module, "SetGoalPoint");
@@ -738,6 +739,10 @@ void InitialisePlanner()
     CATCH_JULIA_EXCEPTION;
     // ----------------------
 
+    RCLCPP_INFO(node->get_logger(), "Warming up MPC solver.");
+    jl_call0(j_warm_up);
+    CATCH_JULIA_EXCEPTION;
+
     is_initialized = true;
     RCLCPP_INFO(node->get_logger(), "MPC planner initialized.");
 }
@@ -851,11 +856,11 @@ int main(int argc, char *argv[])
             UpdateCostFnWeights(updated_params);
         }
 
-        if (NewInputAvailable()) {
-            if (!is_initialized) {
-                InitialisePlanner();
-            }
+        if (recv_veh_input && !is_initialized) {
+            InitialisePlanner();
+        }
 
+        if (NewInputAvailable()) {
             // Update Julia MPC planner
             {
                 auto recording = compute_time_recorder->RecordScope(PLAN_SECTION_ID);
