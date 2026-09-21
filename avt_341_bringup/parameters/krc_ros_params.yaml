@@ -28,7 +28,8 @@
   ros__parameters:
     mission_definition_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_mission_points.csv
     mission_paths_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_paths.csv
-    speed_zones_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_speed_zones.json
+    #speed_zones_file: $pkg_path{avt_341_bringup}/env_data/krc/krc_speed_zones.json
+    use_avt_tracker: false
 
 # perception_local_node runs on the template defaults (donor: legacy perception_local.yaml)
 
