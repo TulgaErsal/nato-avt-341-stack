@@ -29,6 +29,7 @@ global segmentation = Float32[]
 global numSegCells = 0
 global count = 0
 global goal = [0. 0.]
+global warmUpGoalDistance = 10.0
 global desiredHeading = 0.0
 global finalHeading = 0.0
 global w_finalHeading = 0.0
@@ -861,6 +862,14 @@ function Plan()
 			end
 		end
 	end
+end
+
+function WarmUp()
+	global goal
+	saved_goal = goal
+	goal = [x_veh + warmUpGoalDistance*cos(yaw), y_veh + warmUpGoalDistance*sin(yaw)]
+	Plan()
+	goal = saved_goal
 end
 
 end # module MPC
