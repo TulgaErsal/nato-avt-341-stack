@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    max_speed: 4.0
+    max_speed: 1.0
     frames:
       use_vehicle_prefix: false
       camera: 'flir_optical'
@@ -19,6 +19,8 @@
         method: 'window'
     point_cloud_layer:
       topic: '/avt_341/lidar_detector/cloud_clusters'
+      filter:
+        max_overhead_clearance: 1.2
     camera_seg_pc_layer:
       point_cloud_topic: '/avt_341/lidar_detector/cloud_clusters'
     polygon_layer:
@@ -46,7 +48,7 @@
   ros__parameters:
     costmap:
       geometry:
-        res: 0.5
+        res: 0.4
       dilation:
         x: 0.5
         y: 0.5
@@ -89,12 +91,23 @@
   ros__parameters:
     map_topic: 'avt_341/occupancy_grid_low_res'
     seg_topic: 'avt_341/terrain_seg/segmentation_grid'
+    clearance_penalty_type: 'linear'
+    clearance_penalty_scale: 10.0
+    clearance_penalty_range: 0.9
+    safety_margin_global: 0.4
+    safety_margin_soft: 0.45
 
 /**/comm_node:
   ros__parameters:
     name: 'MRZR'
     broadcast_over_ros: true
     vehicle_namespaces: ['mrzr', 'mrzr2', 'feda']
+
+/**/mpc_planner_node:
+  ros__parameters:
+    safety_margin: 0.4
+    w_distance_to_obstacles: 0.0
+    prediction_time_horizon: 1.0
 
 # object_detector_node / object_tracker_node run on the template defaults
 
