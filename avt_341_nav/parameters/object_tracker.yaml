@@ -84,7 +84,7 @@ ros__parameters:
       description: "Publish 3D detection messages."
     image:
       type: bool
-      default_value: true
+      default_value: false
       description: "Publish annotated tracking images."
 
   tracking:
