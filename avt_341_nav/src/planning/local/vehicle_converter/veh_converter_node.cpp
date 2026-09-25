@@ -99,11 +99,14 @@ int main(int argc, char* argv[]) {
     g_steering_offset = params.steering_offset;
 
     // Create node subscribers.
-    auto sub_odometry = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, callbackOdometry);
+    const auto sensor_qos = rclcpp::QoS(1).best_effort();
+    auto sub_odometry =
+        node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", sensor_qos, callbackOdometry);
     auto sub_steering_angle =
-        node->create_subscription<std_msgs::msg::Float64>("avt_341/steering_angle", 1, callbackSteeringAngle);
-    auto sub_imu = node->create_subscription<sensor_msgs::msg::Imu>("/mavs_ros/imu", 1, callbackImu);
-    auto sub_accel = node->create_subscription<geometry_msgs::msg::AccelStamped>("/avt_341/acceleration", 1, callbackAccel);
+        node->create_subscription<std_msgs::msg::Float64>("avt_341/steering_angle", sensor_qos, callbackSteeringAngle);
+    auto sub_imu = node->create_subscription<sensor_msgs::msg::Imu>("/mavs_ros/imu", sensor_qos, callbackImu);
+    auto sub_accel =
+        node->create_subscription<geometry_msgs::msg::AccelStamped>("/avt_341/acceleration", sensor_qos, callbackAccel);
 
     // Create node publishers.
     pub_veh = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/veh", 1);

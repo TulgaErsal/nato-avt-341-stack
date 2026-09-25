@@ -686,9 +686,28 @@ void ObjectTrackerNode::PointCloudCallback(
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Point cloud callback triggered!");
 
+    if (!params_.obstacle_detector.run_without_trackers && trackers_.empty()) {
+        ReleaseObstacleDetection(point_cloud_message->header);
+        return;
+    }
+
     // Run the integrated obstacle detector synchronously so that
     // latest_obstacle_markers_ is up-to-date before the next tracking tick.
     RunObstacleDetection(point_cloud_message);
+}
+
+void ObjectTrackerNode::ReleaseObstacleDetection(
+    const std_msgs::msg::Header& header) {
+    if (!has_obstacle_markers_) {
+        return;
+    }
+    std_msgs::msg::Header base_link_header = header;
+    base_link_header.frame_id = frame_ids_->BaseLink();
+    PublishObstacleDeleteAll(base_link_header);
+    latest_obstacle_markers_.markers.clear();
+    has_obstacle_markers_ = false;
+    prev_boxes_.clear();
+    curr_boxes_.clear();
 }
 
 void ObjectTrackerNode::ImageCallback(

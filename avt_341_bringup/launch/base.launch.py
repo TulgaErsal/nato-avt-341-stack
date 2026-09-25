@@ -47,6 +47,12 @@ def is_local_planner(*methods):
         return LaunchConfiguration('local_planner_method').perform(context) in methods
     return condition
 
+def all_of(*conditions):
+    """Condition: every one of `conditions` holds."""
+    def condition(context):
+        return all(c(context) for c in conditions)
+    return condition
+
 
 # Nodes given disallowed_vehicles_arg='manual_vehicle_ids' are autonomy nodes:
 # they are not spawned on manually controlled vehicles.
@@ -82,12 +88,12 @@ NODES = {
 
     # local planners - MPC supporting nodes
     'obstacle_processor_node':          NodeSpec('obstacle_processor_node',          _templates('mpc_local_planner'), condition=is_local_planner('mpc'),                                                                                                                                  disallowed_vehicles_arg='manual_vehicle_ids'),
-    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node', _templates('mpc_local_planner'), condition=is_local_planner('mpc'),                                                                                                                                  disallowed_vehicles_arg='manual_vehicle_ids'),
+    'segmentation_grid_processor_node': NodeSpec('segmentation_grid_processor_node', _templates('mpc_local_planner'), condition=all_of(is_local_planner('mpc'), is_cfg('use_segmentation_grid_processor')),                                                                                              disallowed_vehicles_arg='manual_vehicle_ids'),
     'goal_point_processor_node':        NodeSpec('goal_point_processor_node',        _templates('mpc_local_planner'), condition=is_local_planner('mpc'),                                                                                                                                  disallowed_vehicles_arg='manual_vehicle_ids'),
     'veh_converter_node':               NodeSpec('veh_converter_node',               _templates('veh_converter'),     condition=is_local_planner('mpc'),                                                                                                                                  disallowed_vehicles_arg='manual_vehicle_ids'),
 
     # Controllers (selected by local planner method)
-    'speed_control_node':               NodeSpec('speed_control_node',               _templates('speed_control'),     condition=is_local_planner('dwa', 'mpc'),                                                                                                                           disallowed_vehicles_arg='manual_vehicle_ids'),
+    'speed_control_node':               NodeSpec('speed_control_node',               _templates('speed_control'),     condition=all_of(is_local_planner('dwa', 'mpc'), is_cfg('use_speed_control')),                                                                                      disallowed_vehicles_arg='manual_vehicle_ids'),
     'control_node':                     NodeSpec('control_node',                     _templates('control'),           condition=is_local_planner('rcc', 'pf'),                                                                                                                            disallowed_vehicles_arg='manual_vehicle_ids'),
 
     # State pre-processing
@@ -233,6 +239,8 @@ def generate_launch_description():
         DeclareLaunchArgument('use_uab_perception_py',       default_value='False',                                               description='Enable to use UAB image segmentation'),
         DeclareLaunchArgument('use_obj_detector',            default_value='True',                                                description='Enable 2d bounding box detection of static objects using deep neural network inference'),
         DeclareLaunchArgument('use_object_tracker',          default_value='True',                                                description='Enable the object tracking node'),
+        DeclareLaunchArgument('use_segmentation_grid_processor', default_value='True',                                        description='Enable the MPC segmentation grid processor node (only with local_planner_method=mpc)'),
+        DeclareLaunchArgument('use_speed_control',           default_value='True',                                                description='Enable the speed control node (only with local_planner_method=dwa or mpc)'),
         DeclareLaunchArgument('use_data_acquisition',        default_value='True',                                                description='Enable the data acquisition node'),
         DeclareLaunchArgument('publish_urdf_to_tf',          default_value='True',                                                description='Publish the robot URDF description to tf via robot_state_publisher'),
 
