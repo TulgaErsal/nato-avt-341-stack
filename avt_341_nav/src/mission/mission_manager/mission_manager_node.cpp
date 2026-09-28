@@ -500,4 +500,13 @@ int main(int argc, char **argv) {
         rclcpp::spin_some(nh);
         loop_rate.sleep();
     }
+
+    speed_zone_monitor.reset();
+    mgr.reset();
+    tracker_param_client.reset();
+    leader_pub.reset();
+    tf.reset();
+    nh.reset();
+    rclcpp::shutdown();
+    return 0;
 }
