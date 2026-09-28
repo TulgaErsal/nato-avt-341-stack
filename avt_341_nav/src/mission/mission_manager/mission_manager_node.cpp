@@ -488,13 +488,14 @@ int main(int argc, char **argv) {
         mgr->publishTaskStatus();
 
         avt_341_nav::mission::Task* task = mgr->currentTask();
+        std_msgs::msg::Float64 speed_msg;
+        speed_msg.data = 1.0;
         if(task != nullptr){
-            std_msgs::msg::Float64 speed_msg;
             speed_msg.data = speedController->getSpeedFactor(task->getFormationDef(), task->terminalPose(), formation_odoms, mgr->getSpeedSetpoint());
-            speed_factor_pub->publish(speed_msg);
         }else{
           speedController->clearVisualization();
         }
+        speed_factor_pub->publish(speed_msg);
         
         rclcpp::spin_some(nh);
         loop_rate.sleep();
