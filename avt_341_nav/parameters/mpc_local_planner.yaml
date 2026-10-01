@@ -179,8 +179,41 @@ ros__parameters:
 
   vehicle_axle_distance_front:
     type: double
-    default_value: 1.38599
-    description: "Distance from vehicle reference point to the front axle [m]."
+    default_value: 1.54134
+    description: "Distance from the odometry point to the front axle [m]; the MPC and the obstacle, segmentation and goal point processors shift the odometry position forward by this amount. 0 if the odometry point is the front axle."
+
+  # Vehicle model (MPC dynamics); defaults are for the UM MRZR
+  # ====================================================================================================================
+  vehicle_cg_to_front_axle_distance:
+    type: double
+    default_value: 1.54134
+    description: "Distance from the CG to the front axle (la) [m]; the CG-to-rear-axle distance is vehicle_wheelbase minus this"
+    validation:
+      gt<>: [ 0.0 ]
+  vehicle_wheelbase:
+    type: double
+    default_value: 2.71534
+    description: "Wheelbase (L) [m]"
+    validation:
+      gt<>: [ 0.0 ]
+  vehicle_cg_height:
+    type: double
+    default_value: 0.634
+    description: "CG height (h_cg) [m]"
+    validation:
+      gt<>: [ 0.0 ]
+  vehicle_mass:
+    type: double
+    default_value: 1269.0
+    description: "Vehicle mass (m) [kg]"
+    validation:
+      gt<>: [ 0.0 ]
+  vehicle_yaw_inertia:
+    type: double
+    default_value: 1620.0
+    description: "Yaw moment of inertia about the CG (Izz) [kg m^2]"
+    validation:
+      gt<>: [ 0.0 ]
 
   # Obstacle / segmentation processing (obstacle_processor_node, segmentation_grid_processor_node)
   # ====================================================================================================================
