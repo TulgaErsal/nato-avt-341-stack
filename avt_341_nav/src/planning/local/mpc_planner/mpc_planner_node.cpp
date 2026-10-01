@@ -594,6 +594,7 @@ void InitialiseJuliaAPI()
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
     j_set_prediction_time_horizon = jl_get_function(mpc_module, "SetPredictionTimeHorizon");
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
+    j_set_obs_per_col_point = jl_get_function(mpc_module, "SetObsPerColPoint");
     j_set_max_num_seg = jl_get_function(mpc_module, "SetMaxNumSeg");
     j_set_sigma = jl_get_function(mpc_module, "SetSigma");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
@@ -640,6 +641,8 @@ void InitialiseJuliaAPI()
         jl_box_float64(mpc_params.prediction_time_horizon);
     jl_value_t *j_max_num_obs =
         jl_box_int32(static_cast<int32_t>(mpc_params.max_num_obs));
+    jl_value_t *j_obs_per_col_point =
+        jl_box_int32(static_cast<int32_t>(mpc_params.obs_per_col_point));
     jl_value_t *j_max_num_seg =
         jl_box_int32(static_cast<int32_t>(mpc_params.max_num_seg));
     jl_value_t *j_sigma =
@@ -707,6 +710,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_num_col_points, j_num_col_points);
     jl_call1(j_set_prediction_time_horizon, j_prediction_time_horizon);
     jl_call1(j_set_max_num_obs, j_max_num_obs);
+    jl_call1(j_set_obs_per_col_point, j_obs_per_col_point);
     jl_call1(j_set_max_num_seg, j_max_num_seg);
     jl_call1(j_set_sigma, j_sigma);
     jl_call1(j_set_min_speed, j_min_speed);
