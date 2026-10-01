@@ -58,6 +58,12 @@ ros__parameters:
     description: "maximum number of obstacles allowed in MPC"
     validation:
       gt<>: [ 0 ]
+  obs_per_col_point:
+    type: int
+    default_value: 0
+    description: "if > 0, each collocation point only sees its this many nearest obstacles (re-selected every solve), so the MPC cost no longer grows with max_num_obs; 0 = every collocation point sees all max_num_obs slots"
+    validation:
+      gt_eq<>: [ 0 ]
   max_num_seg:
     type: int
     default_value: 2000
