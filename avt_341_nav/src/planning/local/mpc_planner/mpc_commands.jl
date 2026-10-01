@@ -786,7 +786,8 @@ function Plan()
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
 			# Speed cap: drive formation error to zero over the prediction horizon.
 			# Same near_weight blend as the position/heading targets above so that the speed is only reduced when the formation is actually close to being on track.
-			final_approach = goalPointIsEndOfGlobalPath && total_formation_error <= speedSetpoint * T
+			final_approach = goalPointIsEndOfGlobalPath &&
+			                  (total_formation_error <= speedSetpoint * T || formation_error < 0.0)
 			v_desired_floor = final_approach ? 0.0 : minSpeed
 			JuMP.setValue(leader_speed, 0.0)
 			JuMP.setValue(final_speed_w_param, final_approach ? w_finalSpeed : 0.0)
