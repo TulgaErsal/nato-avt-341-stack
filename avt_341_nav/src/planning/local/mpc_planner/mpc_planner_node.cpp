@@ -613,7 +613,12 @@ void InitialiseJuliaAPI()
     j_set_front_angle_goal = jl_get_function(mpc_module, "SetFrontAngleGoal");
     j_set_front_angle_obstacle = jl_get_function(mpc_module, "SetFrontAngleObstacle");
     j_set_terrain_adaptive = jl_get_function(mpc_module, "SetTerrainAdaptive");
-    // j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
+    j_set_veh_front_axle_dist = jl_get_function(mpc_module, "SetVehFrontAxleDist");
+    j_set_veh_cg_to_front_axle_dist = jl_get_function(mpc_module, "SetVehCgToFrontAxleDist");
+    j_set_veh_wheelbase = jl_get_function(mpc_module, "SetVehWheelbase");
+    j_set_veh_cg_height = jl_get_function(mpc_module, "SetVehCgHeight");
+    j_set_veh_mass = jl_get_function(mpc_module, "SetVehMass");
+    j_set_veh_yaw_inertia = jl_get_function(mpc_module, "SetVehYawInertia");
     j_set_front_angle_segmentation = jl_get_function(mpc_module, "SetFrontAngleSeg");
     j_set_linear_solver = jl_get_function(mpc_module, "SetLinearSolver");
     j_set_slope_threshold = jl_get_function(mpc_module, "SetSlopeThreshold");
@@ -673,6 +678,14 @@ void InitialiseJuliaAPI()
     jl_value_t *j_front_angle_obstacle =
         jl_box_float64(mpc_params.front_angle_obstacle);
     jl_value_t *j_adaptive = jl_box_int32(mpc_params.adaptive);
+    jl_value_t *j_vehicle_axle_distance_front =
+        jl_box_float64(mpc_params.vehicle_axle_distance_front);
+    jl_value_t *j_vehicle_cg_to_front_axle_distance =
+        jl_box_float64(mpc_params.vehicle_cg_to_front_axle_distance);
+    jl_value_t *j_vehicle_wheelbase = jl_box_float64(mpc_params.vehicle_wheelbase);
+    jl_value_t *j_vehicle_cg_height = jl_box_float64(mpc_params.vehicle_cg_height);
+    jl_value_t *j_vehicle_mass = jl_box_float64(mpc_params.vehicle_mass);
+    jl_value_t *j_vehicle_yaw_inertia = jl_box_float64(mpc_params.vehicle_yaw_inertia);
     jl_value_t *j_front_angle_segmentation =
         jl_box_float64(mpc_params.front_angle_segmentation);
     jl_value_t *j_linear_solver =
@@ -715,7 +728,12 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
     jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
     jl_call1(j_set_terrain_adaptive, j_adaptive);
-    // jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
+    jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
+    jl_call1(j_set_veh_cg_to_front_axle_dist, j_vehicle_cg_to_front_axle_distance);
+    jl_call1(j_set_veh_wheelbase, j_vehicle_wheelbase);
+    jl_call1(j_set_veh_cg_height, j_vehicle_cg_height);
+    jl_call1(j_set_veh_mass, j_vehicle_mass);
+    jl_call1(j_set_veh_yaw_inertia, j_vehicle_yaw_inertia);
     jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
     jl_call1(j_set_linear_solver, j_linear_solver);
     jl_call1(j_set_slope_threshold, j_slope_threshold);

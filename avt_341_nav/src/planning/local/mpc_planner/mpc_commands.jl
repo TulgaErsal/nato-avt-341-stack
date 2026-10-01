@@ -41,6 +41,7 @@ global linearSolverId = "ma27"
 global goalPointIsEndOfGlobalPath = false
 global goalStopRadius = 0.5
 global leaderStoppedSpeed = 0.05
+global odomToFrontAxle = 1.54134
 
 global n=0
 global XL=0
@@ -217,9 +218,33 @@ function SetTerrainAdaptive(use_adaptive::Int32)
 	global adaptive = Bool(use_adaptive)
 end
 
-# function SetVehFrontAxleDist(front_axle_dist::Float64)
-# 	global la = front_axle_dist
-# end
+function SetVehFrontAxleDist(front_axle_dist::Float64)
+	global odomToFrontAxle = front_axle_dist
+end
+
+function SetVehCgToFrontAxleDist(cg_to_front_axle::Float64)
+	global la = cg_to_front_axle
+	UpdateDerivedVehicleParameters()
+end
+
+function SetVehWheelbase(wheelbase::Float64)
+	global L = wheelbase
+	UpdateDerivedVehicleParameters()
+end
+
+function SetVehCgHeight(cg_height::Float64)
+	global h_cg = cg_height
+	UpdateDerivedVehicleParameters()
+end
+
+function SetVehMass(mass::Float64)
+	global m = mass
+	UpdateDerivedVehicleParameters()
+end
+
+function SetVehYawInertia(yaw_inertia::Float64)
+	global Izz = yaw_inertia
+end
 
 function SetFrontAngleSeg(angle_seg::Float64)
 	global frontAngleSegmentation = angle_seg
@@ -232,8 +257,8 @@ function SetState(veh_data::Vector{Float64})
 	#println("Received vehicle data: [",veh_data[1], ", ", veh_data[2], ", ", veh_data[3], ", ", veh_data[4], ", ", veh_data[5], ", ", veh_data[6], ", ", veh_data[7], ", ", veh_data[8], ", ", veh_data[9], ", ", veh_data[10], ", ", veh_data[11], "]")
 	global current_time = veh_data[1]
 	global yaw = veh_data[7]
-	global x_veh = veh_data[2] + la*cos(yaw) # x position of front axle
-	global y_veh = veh_data[3] + la*sin(yaw)# y position of front axle
+	global x_veh = veh_data[2] + odomToFrontAxle*cos(yaw) # x position of front axle
+	global y_veh = veh_data[3] + odomToFrontAxle*sin(yaw)# y position of front axle
 	global longvel = veh_data[4]
 	global latvel = veh_data[5]
 	global steer_angle = veh_data[6]
@@ -848,8 +873,8 @@ function Plan()
 		if n.r.ocp.status == :Optimal
 			solutionFound = true
 			@views X = n.r.ocp.X;  # Create views to avoid unnecessary copying
-			mpc_path[:,1] = X[:,1] .- (la .* cos.(X[:,5]));
-			mpc_path[:,2] = X[:,2] .- (la .* sin.(X[:,5]));
+			mpc_path[:,1] = X[:,1] .- (odomToFrontAxle .* cos.(X[:,5]));
+			mpc_path[:,2] = X[:,2] .- (odomToFrontAxle .* sin.(X[:,5]));
 			mpc_speed = X[:,7]
 			mpc_steering = X[:,6]
 			mpc_heading = X[:,5]

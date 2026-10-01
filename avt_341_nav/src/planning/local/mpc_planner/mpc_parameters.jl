@@ -17,19 +17,25 @@ adaptive = false
 n_guess = 0.7
 
 # vehicle parameters
+# defaults are for the UM MRZR; the MPC node overrides them from mpc_local_planner.yaml before Setup()
 const g  = 9.81
-const la = 1.54134
-const L = 2.71534
-const lb = L-la  #2.715-la
-const h_cg = 0.634;
-const m = 1.269e+03
-const Izz = 1.620e+03
-const Fz = m*g
-const Fzf = Fz*lb/(la+lb)
-const Fzr = Fz-Fzf
-const KZX     = 1/2*m*h_cg/(la+lb) #289.5
-const FzF0    = Fzf/2.
-const FzR0    = Fzr/2.
+la = 1.54134
+L = 2.71534
+h_cg = 0.634
+m = 1.269e+03
+Izz = 1.620e+03
+
+function UpdateDerivedVehicleParameters()
+	global lb = L-la
+	global Fz = m*g
+	global Fzf = Fz*lb/(la+lb)
+	global Fzr = Fz-Fzf
+	global KZX = 1/2*m*h_cg/(la+lb)
+	global FzF0 = Fzf/2.
+	global FzR0 = Fzr/2.
+end
+
+UpdateDerivedVehicleParameters()
 
 # parameters for the deformable tire model
 const T = 0.002

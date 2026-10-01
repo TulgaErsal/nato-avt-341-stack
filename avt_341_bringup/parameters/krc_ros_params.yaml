@@ -1,6 +1,12 @@
 /**:
   ros__parameters:
     max_speed: 4.0
+    vehicle_axle_distance_front: 0.0
+    vehicle_cg_to_front_axle_distance: 1.16923
+    vehicle_wheelbase: 2.0598
+    vehicle_cg_height: 0.634
+    vehicle_mass: 1132.4
+    vehicle_yaw_inertia: 1035.0
     frames:
       use_vehicle_prefix: false
       camera: 'flir_optical'
