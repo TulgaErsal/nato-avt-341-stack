@@ -460,6 +460,7 @@ function Setup()
 	global deviationFromDesiredFinalSpeed
 	global traversabilityCost
 	global leader_speed
+	global final_speed_w_param
 	global beta
 	global distanceToGoalAlongPath
 	global finalHeadingCost
@@ -571,6 +572,7 @@ function Setup()
 	# The weight (final_heading_w_param) is set to zero when inactive.
 	@NLparameter(n.ocp.mdl, final_heading_param == 0.0)
 	@NLparameter(n.ocp.mdl, final_heading_w_param == 0.0)
+	@NLparameter(n.ocp.mdl, final_speed_w_param == 0.0)
 	finalHeadingCost = @NLexpression(n.ocp.mdl,
 		(cos(psi[end]) - cos(final_heading_param))^2 + (sin(psi[end]) - sin(final_heading_param))^2
 	)
@@ -579,11 +581,11 @@ function Setup()
 	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
 
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
 	end
 	n.s.ocp.save = false
 
@@ -702,6 +704,8 @@ function Plan()
 	global final_heading_param
 	global final_heading_w_param
 	global deviation_in_yaw_w_param
+	global final_speed_w_param
+	global leader_speed
 
 	# stop calculating if previous path already reached the goal
 	if false && path_prev != 0 && maximum(sqrt.((path_prev[:,1] .- goal[1]).^2. .+ (path_prev[:,2] .- goal[2]).^2.) .< 2.0)
@@ -782,10 +786,15 @@ function Plan()
 			JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
 			# Speed cap: drive formation error to zero over the prediction horizon.
 			# Same near_weight blend as the position/heading targets above so that the speed is only reduced when the formation is actually close to being on track.
+			final_approach = goalPointIsEndOfGlobalPath &&
+			                  (total_formation_error <= speedSetpoint * T || formation_error < 0.0)
+			v_desired_floor = final_approach ? 0.0 : minSpeed
+			JuMP.setValue(leader_speed, 0.0)
+			JuMP.setValue(final_speed_w_param, final_approach ? w_finalSpeed : 0.0)
 			v_desired = clamp(near_weight * (cmdLeaderSpeed + formation_error / T) + (1.0 - near_weight) * speedSetpoint,
-			                   minSpeed, speedSetpoint)
+			                   v_desired_floor, speedSetpoint)
 			n.ocp.XU[7] = v_desired
-			n.ocp.XL[7] = minSpeed
+			n.ocp.XL[7] = v_desired_floor
 			for i=1:n.ocp.state.pts
 				setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
 				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
@@ -797,12 +806,20 @@ function Plan()
 			JuMP.setValue(g2, goal[2])
 			JuMP.setValue(desiredYaw, desiredHeading)
 			JuMP.setValue(final_heading_param, finalHeading)
+			goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
+			horizon_dist = speedSetpoint * predictionTimeHorizon
+			terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
 			# Reduce speed for near-180-degree turns toward the goal
 			dx_goal = goal[1] - x_veh
 			dy_goal = goal[2] - y_veh
 			dir_to_goal = atan(dy_goal, dx_goal)
 			heading_error = abs(atan(sin(yaw - dir_to_goal), cos(yaw - dir_to_goal)))
-			if abs(heading_error - pi) <= angleThreshold
+			if terminal_heading_active
+				n.ocp.XL[7] = 0.0
+				for i in 1:n.ocp.state.pts
+					setlowerbound(n.r.ocp.xUnscaled[i,7], n.ocp.XL[7])
+				end
+			elseif abs(heading_error - pi) <= angleThreshold
 				speedSetpoint = speedForTurningBack
 				n.ocp.XL[7] = speedForTurningBack
 				for i in 1:n.ocp.state.pts
@@ -818,10 +835,8 @@ function Plan()
 			for i=1:n.ocp.state.pts
 				setupperbound(n.r.ocp.xUnscaled[i,7], n.ocp.XU[7])
 			end
-			# Terminal heading: activate when goal is at path end and within horizon
-			goal_dist = sqrt((goal[1] - x_veh)^2 + (goal[2] - y_veh)^2)
-			horizon_dist = speedSetpoint * predictionTimeHorizon
-			terminal_heading_active = goalPointIsEndOfGlobalPath && goal_dist <= horizon_dist
+			JuMP.setValue(leader_speed, 0.0)
+			JuMP.setValue(final_speed_w_param, terminal_heading_active ? w_finalSpeed : 0.0)
 			if terminal_heading_active
 				JuMP.setValue(final_heading_w_param, w_finalHeading)
 				JuMP.setValue(deviation_in_yaw_w_param, 0.0)
