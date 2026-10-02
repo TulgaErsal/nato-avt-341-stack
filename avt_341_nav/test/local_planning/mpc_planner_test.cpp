@@ -184,8 +184,11 @@ TEST(MPCPlannerTest, PerColPointObstaclesSeeObstacleAheadAmongThousands) {
 
     std::vector<double> state_data = {0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
-    jl_array_t *jl_state = jl_ptr_to_array_1d(array_type, state_data.data(), state_data.size(), 0);
-    jl_call1(jl_get_function(mpc_module, "SetState"), (jl_value_t*)jl_state);
+    auto set_state = [&]() {
+        jl_array_t *jl_state = jl_ptr_to_array_1d(array_type, state_data.data(), state_data.size(), 0);
+        jl_call1(jl_get_function(mpc_module, "SetState"), (jl_value_t*)jl_state);
+    };
+    set_state();
     jl_call2(jl_get_function(mpc_module, "SetGoalPoint"), jl_box_float64(10.0), jl_box_float64(0.0));
     jl_eval_string("Main.MPC.eval(:(beta = 0.1))");
     jl_call0(jl_get_function(mpc_module, "Setup"));
@@ -203,7 +206,7 @@ TEST(MPCPlannerTest, PerColPointObstaclesSeeObstacleAheadAmongThousands) {
     ASSERT_FALSE(HasJuliaException());
 
     for (int k = 0; k < 3; k++) {
-        jl_call1(jl_get_function(mpc_module, "SetState"), (jl_value_t*)jl_state);
+        set_state();
         jl_call0(jl_get_function(mpc_module, "Plan"));
         ASSERT_FALSE(HasJuliaException()) << "MPC Plan failed";
     }
