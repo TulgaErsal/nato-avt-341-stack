@@ -26,6 +26,9 @@ global obstacle_size_meters = 0.0
 global obs_radius = 0.0
 global obstacles = Float64[]
 global obsPerColPoint = 0
+global w_speedTracking = 0.0
+global speed_ref_param = 0
+global speed_tracking_w_param = 0
 global obsActiveSetTol = 0.01
 global maxObsActiveSetResolves = 2
 global numActiveSetResolves = 0
@@ -202,6 +205,13 @@ end
 
 function SetWTraversabilityCost(w_traversability_cost::Float64)
 	global w_traversabilityCost = w_traversability_cost
+end
+
+function SetWSpeedTracking(w::Float64)
+	global w_speedTracking = w
+	if speed_tracking_w_param != 0
+		JuMP.setValue(speed_tracking_w_param, w)
+	end
 end
 
 function SetWFinalSpeed(w_final_speed::Float64)
@@ -624,12 +634,17 @@ function Setup()
 	# so the two costs do not fight each other.
 	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
 
+	global speed_ref_param, speed_tracking_w_param
+	@NLparameter(n.ocp.mdl, speed_ref_param == maxSpeed)
+	@NLparameter(n.ocp.mdl, speed_tracking_w_param == w_speedTracking)
+	speedTrackingCost = @NLexpression(n.ocp.mdl, sum(((ux[j] - speed_ref_param)/speed_ref_param)^2 for j=2:pts)/(pts-1))
+
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed + speed_tracking_w_param*speedTrackingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed + speed_tracking_w_param*speedTrackingCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed + speed_tracking_w_param*speedTrackingCost)
 	end
 	n.s.ocp.save = false
 
@@ -990,6 +1005,8 @@ function Plan()
 				JuMP.setValue(deviation_in_yaw_w_param, w_deviationInYaw)
 			end
 		end
+
+		JuMP.setValue(speed_ref_param, max(n.ocp.XU[7], 0.5))
 
 		if n.s.mpc.shiftX0
 			for st in 1:n.ocp.state.num

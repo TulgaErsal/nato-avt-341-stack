@@ -583,6 +583,7 @@ void InitialiseJuliaAPI()
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
+    j_set_w_speed_tracking = jl_get_function(mpc_module, "SetWSpeedTracking");
     j_set_final_heading = jl_get_function(mpc_module, "SetFinalHeading");
     j_set_w_final_heading = jl_get_function(mpc_module, "SetWFinalHeading");
     j_set_goal_point_is_end_of_global_path = jl_get_function(mpc_module, "SetGoalPointIsEndOfGlobalPath");
@@ -727,6 +728,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_obstacle_cost_speed_floor, j_obstacle_cost_speed_floor);
     jl_call1(j_set_enable_fallback, j_enable_fallback);
     jl_call1(j_set_w_final_speed, j_w_final_speed);
+    jl_call1(j_set_w_speed_tracking, jl_box_float64(mpc_params.w_speed_tracking));
     jl_call1(j_set_w_final_heading, j_w_final_heading);
     jl_call1(j_set_grid_resolution, j_grid_resolution);
     jl_call1(j_set_front_angle_goal, j_front_angle_goal);
@@ -777,6 +779,7 @@ void UpdateCostFnWeights(
     mpc_params.w_yaw_accel = params.w_yaw_accel;
     mpc_params.w_traversability_cost = params.w_traversability_cost;
     mpc_params.w_final_speed = params.w_final_speed;
+    mpc_params.w_speed_tracking = params.w_speed_tracking;
     mpc_params.w_final_heading = params.w_final_heading;
     mpc_params.enable_fallback = params.enable_fallback;
     mpc_params.goal_stop_radius = params.goal_stop_radius;
@@ -795,6 +798,8 @@ void UpdateCostFnWeights(
              jl_box_float64(mpc_params.w_final_speed));
     jl_call1(j_set_w_final_heading,
              jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_w_speed_tracking,
+             jl_box_float64(mpc_params.w_speed_tracking));
     jl_call1(j_set_enable_fallback,
              jl_box_int32(mpc_params.enable_fallback));
     jl_call1(j_set_goal_stop_radius,
