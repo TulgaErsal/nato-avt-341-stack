@@ -299,7 +299,14 @@ function SetObstacles(obs::Vector{Float64})
 	global numobs = Int(length(obstacles)/3)
 
 	if numobs > maxNumObs
-		println("Number of obstacles exceeds limit (", numobs, ">", maxNumObs, "); ignoring the extra ones.")
+		if obsPerColPoint > 0
+			println("Number of obstacles exceeds limit (", numobs, ">", maxNumObs, "); ignoring the farthest ones.")
+			d2 = [(obstacles[3*i-2]-x_veh)^2 + (obstacles[3*i-1]-y_veh)^2 for i in 1:numobs]
+			keep = sort(partialsortperm(d2, 1:Int(maxNumObs)))
+			global obstacles = vcat([obstacles[3*i-2:3*i] for i in keep]...)
+		else
+			println("Number of obstacles exceeds limit (", numobs, ">", maxNumObs, "); ignoring the extra ones.")
+		end
 		numobs = Int(maxNumObs)
 	end
 
