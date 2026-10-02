@@ -15,6 +15,8 @@ find_package(ament_cmake REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(rviz_rendering REQUIRED)
+# Ogre's Overlay component draws the Legend display's screen-space panel.
+find_package(rviz_ogre_vendor REQUIRED)
 find_package(rviz_default_plugins REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ament_index_cpp REQUIRED)
@@ -79,6 +81,8 @@ set(SRC_FILES
     src/display_plugins/static_map_image_display.cpp
     src/display_plugins/augmented_map_display.cpp
     src/display_plugins/map_color_scheme.cpp
+    src/display_plugins/legend_display.cpp
+    src/display_plugins/legend_properties.cpp
     src/tool_plugins/set_nav_goal_tool.cpp
     src/tool_plugins/set_formation_tool.cpp
     src/primitives/accordion_group.cpp
@@ -92,6 +96,8 @@ set(SRC_FILES
     src/primitives/flat_text.cpp
     src/primitives/map_image.cpp
     src/primitives/map_change_overlay.cpp
+    src/primitives/screen_overlay.cpp
+    src/primitives/legend_renderer.cpp
     src/primitives/vector_field.cpp
     src/primitives/matrix_field.cpp)
 
@@ -118,6 +124,10 @@ if(TARGET yaml-cpp::yaml-cpp)
 else()
   target_link_libraries(${PROJECT_NAME} yaml-cpp)
 endif()
+
+# Link Ogre's Overlay component explicitly rather than relying on rviz_rendering
+# re-exporting it.
+target_link_libraries(${PROJECT_NAME} rviz_ogre_vendor::OgreOverlay)
 
 # MapDisplay's Binary-view members (palette_textures_binary_ etc.) only exist in
 # newer rviz (Jazzy's 14.x line; Humble's 11.x predates the feature). The
@@ -199,6 +209,9 @@ install(FILES resources/plugin_icons/static_map_image.svg
 install(FILES resources/plugin_icons/augmented_map.svg
   DESTINATION "share/${PROJECT_NAME}/icons/classes"
   RENAME "AugmentedMap.svg")
+install(FILES resources/plugin_icons/legend.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "Legend.svg")
 
 # Install image assets so they resolve at runtime via rviz_common::loadPixmap
 # package:// URLs (e.g. the logo shown in the Setup tab header).
@@ -211,6 +224,7 @@ ament_export_dependencies(
   pluginlib
   rviz_common
   rviz_rendering
+  rviz_ogre_vendor
   rviz_default_plugins
   rclcpp
   ament_index_cpp

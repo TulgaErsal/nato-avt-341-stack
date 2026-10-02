@@ -80,6 +80,17 @@
       height are taken from the image.
     </description>
   </class>
+  <class name="avt_341_rviz_plugins/Legend"
+         type="avt_341::rviz_plugins::LegendDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      A configurable legend drawn over the 3D view, anchored to a corner of the
+      view (unaffected by the camera): line, gradient and cell entries with
+      custom labels and colors, wrapping into columns past Max Rows. Background,
+      border, font and marker size are configurable. Driven entirely by its
+      properties (no topic); drag it with the left mouse button to move it.
+    </description>
+  </class>
   <class name="avt_341_rviz_plugins/Set Nav Goal"
          type="avt_341::rviz_plugins::SetNavGoalTool"
          base_class_type="rviz_common::Tool">

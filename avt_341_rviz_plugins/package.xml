@@ -23,6 +23,7 @@
   <depend>ament_index_cpp</depend>
   <depend>rviz_common</depend>
   <depend>rviz_rendering</depend>
+  <depend>rviz_ogre_vendor</depend>
   <depend>rviz_default_plugins</depend>
   <depend>yaml_cpp_vendor</depend>
   <depend>std_msgs</depend>
