@@ -54,14 +54,14 @@ ros__parameters:
     description: "MPC prediction time horizon [s]"
   max_num_obs:
     type: int
-    default_value: 500
-    description: "maximum number of obstacles allowed in MPC"
+    default_value: 20000
+    description: "maximum number of obstacles the MPC takes; extra ones are dropped, farthest from the vehicle first when obs_per_col_point > 0, otherwise in the order received. With obs_per_col_point > 0 this is only a safety ceiling; with obs_per_col_point = 0 it sizes the NLP and its cost grows with it, so use ~500 there"
     validation:
       gt<>: [ 0 ]
   obs_per_col_point:
     type: int
-    default_value: 0
-    description: "if > 0, each collocation point only sees its this many nearest obstacles (re-selected every solve), so the MPC cost no longer grows with max_num_obs; 0 = every collocation point sees all max_num_obs slots"
+    default_value: 30
+    description: "if > 0, each collocation point only sees its this many nearest obstacles (re-selected every solve), so the MPC cost no longer grows with max_num_obs; 0 = every collocation point sees all max_num_obs slots (legacy formulation)"
     validation:
       gt_eq<>: [ 0 ]
   max_num_seg:
