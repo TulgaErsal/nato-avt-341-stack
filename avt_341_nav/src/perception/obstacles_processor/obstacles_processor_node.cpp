@@ -96,15 +96,6 @@ std::vector<double> cluster_occupied_cells(double r) {
     std::vector<double> output;
     for(int xi = 0; xi < obs.size(); xi++) {
         for(int yi = 0; yi < obs[0].size(); yi++) {
-            // Check obstacle limit
-            if (int(output.size() / 3) >= node_params.max_num_obs) {
-                std::cerr << "Number of obstacles exceeds limit ("
-                          << int(output.size() / 3) << ">"
-                          << node_params.max_num_obs
-                          << "). Consider increasing max_num_obs.\n";
-                return output;
-            }
-
             if (!obs[xi][yi]) continue;
 
             // Find largest occupied square
