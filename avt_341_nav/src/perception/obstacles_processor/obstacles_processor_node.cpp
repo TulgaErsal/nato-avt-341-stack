@@ -293,7 +293,7 @@ int main(int argc, char* argv[]) {
         node, "avt_341/occupancy_grid", 10, node_params.costmap.publish.method, callback_obs);
     auto seg_grid_sub = avt_341_nav::node::OccupancyGridSubscriber(
         node, "avt_341/segmentation_grid", 1, node_params.costmap.publish.method, callback_seg);
-    auto odometry_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 10, callback_veh);
+    auto odometry_sub = node->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, callback_veh);
     auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local(), callback_speed);
     auto obstacle_clusters_pub = node->create_publisher<std_msgs::msg::Float64MultiArray>("avt_341/obstacle_clusters", 1);
     auto obstacles_marker_pub = node->create_publisher<visualization_msgs::msg::MarkerArray>("avt_341/obstacle_markers", 1);
