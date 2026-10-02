@@ -190,6 +190,7 @@ jl_function_t* j_set_sr_min = NULL;
 jl_function_t* j_set_sr_max = NULL;
 jl_function_t* j_set_ax_max = NULL;
 jl_function_t* j_set_w_final_speed = NULL;
+jl_function_t* j_set_w_speed_tracking = NULL;
 jl_function_t* j_set_final_heading = NULL;
 jl_function_t* j_set_w_final_heading = NULL;
 jl_function_t* j_set_leader_speed = NULL;

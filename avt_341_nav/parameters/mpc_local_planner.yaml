@@ -125,6 +125,10 @@ ros__parameters:
     type: double
     default_value: 200.0
     description: "weight on deviationFromDesiredFinalSpeed in the objective function"
+  w_speed_tracking:
+    type: double
+    default_value: 0.0
+    description: "weight on the squared shortfall of the predicted speed from the speed setpoint (normalized by the setpoint, averaged over the horizon); counters slowing down to keep obstacles out of the fixed-time horizon"
   w_final_heading:
     type: double
     default_value: 100.0
