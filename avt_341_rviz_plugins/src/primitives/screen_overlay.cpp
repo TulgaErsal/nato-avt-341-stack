@@ -11,6 +11,7 @@
 #include <OgreMaterialManager.h>
 #include <OgrePass.h>
 #include <OgrePixelFormat.h>
+#include <OgreRenderSystem.h>
 #include <OgreResourceGroupManager.h>
 #include <OgreSceneManager.h>
 #include <OgreTechnique.h>
@@ -53,6 +54,18 @@ double clampAxis( double position, double size, double extent, bool far_anchor )
     }
     return std::clamp( position, 0.0, max_position );
 }
+
+/// The overlay system RViz created, or null if there is none. Ogre made it a
+/// singleton in 1.12.7; before that (Humble's 1.12.1) it is reachable only as the
+/// render system's shared listener, which its constructor installs.
+Ogre::OverlaySystem* findOverlaySystem()
+{
+#if OGRE_VERSION >= ( ( 1 << 16 ) | ( 12 << 8 ) | 7 )
+    return Ogre::OverlaySystem::getSingletonPtr();
+#else
+    return dynamic_cast<Ogre::OverlaySystem*>( Ogre::RenderSystem::getSharedListener() );
+#endif
+}
 } // namespace
 
 QPointF AnchoredTopLeft( ScreenCorner corner, const QPointF& offset,
@@ -83,7 +96,7 @@ ScreenOverlay::ScreenOverlay( Ogre::SceneManager* scene_manager,
     // unconditionally, and RViz may already have done so for the main scene; a
     // second registration would draw every overlay twice (doubling translucent
     // backgrounds). Remove-then-add leaves exactly one.
-    if ( Ogre::OverlaySystem* overlay_system = Ogre::OverlaySystem::getSingletonPtr() )
+    if ( Ogre::OverlaySystem* overlay_system = findOverlaySystem() )
     {
         scene_manager->removeRenderQueueListener( overlay_system );
         scene_manager->addRenderQueueListener( overlay_system );
