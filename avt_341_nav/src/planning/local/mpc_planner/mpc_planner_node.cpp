@@ -725,6 +725,12 @@ int main(int argc, char *argv[])
     avt_341_nav::params::mpc_local_planner::ParamsListener param_listener(
         node);
     mpc_params = param_listener.get_params();
+    if (mpc_params.obs_per_col_point == 0 && mpc_params.max_num_obs > 1000) {
+        RCLCPP_WARN(node->get_logger(),
+            "obs_per_col_point is 0 (legacy obstacle formulation) but max_num_obs is %ld: every collocation point "
+            "carries all max_num_obs obstacle slots, so the solve will be far too slow. Set max_num_obs to ~500.",
+            static_cast<long>(mpc_params.max_num_obs));
+    }
 
     compute_time_recorder = std::make_shared<avt_341_nav::core::ComputeTimeRecorder>(
         node, avt_341_nav::core::ComputeTimeRecorder::MakeNodeTag(node));
