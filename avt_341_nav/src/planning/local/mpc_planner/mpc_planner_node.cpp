@@ -453,6 +453,31 @@ void PublishPath() {}
 
 void Plan() {}
 
+std::string ResolveJuliaModulePath(const std::string& param_path, const char* compiled_path,
+                                   const char* param_name, const char* description)
+{
+    std::string path;
+    if (!param_path.empty())
+    {
+        path = param_path;
+        RCLCPP_INFO(node->get_logger(), "Loading %s from the %s parameter: %s", description, param_name, path.c_str());
+    }
+    else if (strlen(compiled_path) != 0)
+    {
+        path = compiled_path;
+        RCLCPP_INFO(node->get_logger(), "Loading %s from the CMake compile definition: %s", description, path.c_str());
+    }
+    else
+    {
+        RCLCPP_ERROR(node->get_logger(), "No path to the %s: set the %s parameter or check the CMake build.",
+                     description, param_name);
+        has_error = EXIT_FAILURE;
+        jl_atexit_hook(has_error);
+        throw std::invalid_argument(std::string("No valid path to the ") + description + " could be found.");
+    }
+    return path;
+}
+
 void InitialiseJuliaAPI()
 {
     // Initialise the Julia C bindings
@@ -477,29 +502,8 @@ void InitialiseJuliaAPI()
 
     // ----------------------------------------------------------
     // ----------[ Load the Julia MPC planner module. ]----------
-    if (!mpc_params.planner_module_path.empty())
-    {
-        RCLCPP_INFO(node->get_logger(), "Loading Julia module from user-defined path at: %s ...", mpc_params.planner_module_path.c_str());
-    }
-    else if (!strlen(MPC_PLANNER_MODULE_PATH) == 0)
-    {
-        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia module was defined. Reverting to "
-            "CMake compile definition, defined at: %s", MPC_PLANNER_MODULE_PATH);
-    }
-    else
-    {
-        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia module could be found. Check your "
-            "CMake build log for variable MPC_PLANNER_MODULE_PATH or define the "
-            "parameter ~julia_planner_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC module could be found.");
-    }
-
-    RCLCPP_INFO(node->get_logger(), "Loading Julia planner module at: %s", MPC_PLANNER_MODULE_PATH);
-    std::string planner_module_include_command(std::string("Base.include(Main, \"") + MPC_PLANNER_MODULE_PATH +
-                                               std::string("\")"));
+    const std::string planner_module_path = ResolveJuliaModulePath(mpc_params.planner_module_path, MPC_PLANNER_MODULE_PATH, "planner_module_path", "Julia MPC planner module");
+    std::string planner_module_include_command = "Base.include(Main, raw\"" + planner_module_path + "\")";
     jl_eval_string(planner_module_include_command.c_str());
     CATCH_JULIA_EXCEPTION;
     if (has_error) {
@@ -510,30 +514,8 @@ void InitialiseJuliaAPI()
 
     // -------------------------------------------------------------
     // ----------[ Load the Julia MPC parameters module. ]----------
-    if (!mpc_params.parameters_module_path.empty())
-    {
-        RCLCPP_INFO(node->get_logger(), "Loading Julia MPC parameters module from user-defined path at: %s ...", mpc_params.parameters_module_path.c_str());
-    }
-    else if (!strlen(MPC_PARAMETERS_MODULE_PATH) == 0)
-    {
-        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia MPC parameters module was defined. Reverting to "
-            "CMake compile definition, defined at: %s", MPC_PARAMETERS_MODULE_PATH);
-    }
-    else
-    {
-        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia MPC parameters module could be found. Check your "
-            "CMake build log for variable MPC_PARAMETERS_MODULE_PATH or define the "
-            "parameter ~julia_parameters_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC parameters module could be found.");
-    }
-
-    RCLCPP_INFO(node->get_logger(), "Loading Julia MPC parameters module at: %s", MPC_PARAMETERS_MODULE_PATH);
-
-    std::string parameters_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_PARAMETERS_MODULE_PATH +
-                                                  std::string("\")"));
+    const std::string parameters_module_path = ResolveJuliaModulePath(mpc_params.parameters_module_path, MPC_PARAMETERS_MODULE_PATH, "parameters_module_path", "Julia MPC parameters module");
+    std::string parameters_module_include_command = "Base.include(Main.MPC, raw\"" + parameters_module_path + "\")";
     jl_eval_string(parameters_module_include_command.c_str());
     CATCH_JULIA_EXCEPTION;
     if (has_error) {
@@ -544,31 +526,9 @@ void InitialiseJuliaAPI()
 
     // ---------------------------------------------------------
     // ----------[ Load the Julia MPC models module. ]----------
-    if (!mpc_params.models_module_path.empty())
-    {
-        RCLCPP_INFO(node->get_logger(), "Loading Julia MPC models module from user-defined path at: %s ...", mpc_params.models_module_path.c_str());
-    }
-    else if (!strlen(MPC_MODELS_MODULE_PATH) == 0)
-    {
-        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia MPC models module was defined. Reverting to "
-            "CMake compile definition, defined at: %s", MPC_MODELS_MODULE_PATH);
-    }
-    else
-    {
-        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia MPC models module could be found. Check your "
-            "CMake build log for variable MPC_MODELS_MODULE_PATH or define the "
-            "parameter ~julia_models_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC models module could be found.");
-    }
-
-    RCLCPP_INFO(node->get_logger(), "Loading Julia MPC models module at: %s", MPC_MODELS_MODULE_PATH);
+    const std::string models_module_path = ResolveJuliaModulePath(mpc_params.models_module_path, MPC_MODELS_MODULE_PATH, "models_module_path", "Julia MPC models module");
     RCLCPP_INFO(node->get_logger(), "Using linear solver: %s", mpc_params.linear_solver.c_str());
-
-    std::string models_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_MODELS_MODULE_PATH +
-                                                  std::string("\")"));
+    std::string models_module_include_command = "Base.include(Main.MPC, raw\"" + models_module_path + "\")";
     jl_eval_string(models_module_include_command.c_str());
     CATCH_JULIA_EXCEPTION;
     if (has_error) {
