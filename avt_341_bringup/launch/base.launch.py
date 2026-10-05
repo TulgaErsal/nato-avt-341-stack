@@ -93,7 +93,7 @@ NODES = {
     'veh_converter_node':               NodeSpec('veh_converter_node',               _templates('veh_converter'),     condition=is_local_planner('mpc'),                                                                                                                                  disallowed_vehicles_arg='manual_vehicle_ids'),
 
     # Controllers (selected by local planner method)
-    'speed_control_node':               NodeSpec('speed_control_node',               _templates('speed_control'),     condition=all_of(is_local_planner('dwa', 'mpc'), is_cfg('use_speed_control')),                                                                                      disallowed_vehicles_arg='manual_vehicle_ids'),
+    'speed_control_node':               NodeSpec('atat_speed_control_node',          _templates('atat_speed_control'),condition=all_of(is_local_planner('dwa', 'mpc'), is_cfg('use_speed_control')),                                                                                      disallowed_vehicles_arg='manual_vehicle_ids'),
     'control_node':                     NodeSpec('control_node',                     _templates('control'),           condition=is_local_planner('rcc', 'pf'),                                                                                                                            disallowed_vehicles_arg='manual_vehicle_ids'),
 
     # State pre-processing
