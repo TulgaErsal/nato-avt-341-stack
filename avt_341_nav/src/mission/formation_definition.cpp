@@ -53,7 +53,7 @@ FormationDefinition::FormationDefinition(
   offsets_map_["DIAMOND"] = f;
   f.follower1.x = -1;
   f.follower1.y = 1;
-  f.follower2.x = 0;
+  f.follower2.x = -1;
   f.follower2.y = -1;
   f.follower3.x = -1;
   f.follower3.y = -2;
