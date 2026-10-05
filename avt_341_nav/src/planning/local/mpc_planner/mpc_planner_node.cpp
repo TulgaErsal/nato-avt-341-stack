@@ -192,10 +192,13 @@ void GoalPointCallback(const geometry_msgs::msg::PointStamped::SharedPtr point_s
     double x = point_stamped_msg->point.x;
     double y = point_stamped_msg->point.y;
 
-    jl_value_t *j_x = jl_box_float64(x);
-    jl_value_t *j_y = jl_box_float64(y);
-
+    jl_value_t *j_x = NULL;
+    jl_value_t *j_y = NULL;
+    JL_GC_PUSH2(&j_x, &j_y);
+    j_x = jl_box_float64(x);
+    j_y = jl_box_float64(y);
     jl_call2(j_set_goal_point, j_x, j_y);
+    JL_GC_POP();
     CATCH_JULIA_EXCEPTION;
 
     recv_goal_point = true;
@@ -256,11 +259,13 @@ void SegCallback(std_msgs::msg::Float64MultiArray::SharedPtr seg_msg)
 
     jl_value_t* seg_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
     double* seg_arr = const_cast<double*>(&seg_msg->data[0]);
-    jl_array_t *seg_arg = jl_ptr_to_array_1d(seg_type, seg_arr, seg_msg->data.size(), 0);
-    jl_value_t *seg_res =
-        jl_box_float64(mpc_params.segmentation_resolution);
-
+    jl_array_t *seg_arg = NULL;
+    jl_value_t *seg_res = NULL;
+    JL_GC_PUSH2(&seg_arg, &seg_res);
+    seg_arg = jl_ptr_to_array_1d(seg_type, seg_arr, seg_msg->data.size(), 0);
+    seg_res = jl_box_float64(mpc_params.segmentation_resolution);
     jl_call2(j_set_segmentation, (jl_value_t*)seg_arg, seg_res);
+    JL_GC_POP();
     CATCH_JULIA_EXCEPTION;
 
     recv_seg_input = true;
@@ -301,19 +306,26 @@ void LeaderOdomCallback(nav_msgs::msg::Odometry::SharedPtr msg)
     double qzi = msg->pose.pose.orientation.z;
     double lyaw = std::atan2(2.0*(qw*qzi + qxi*qyi), 1.0 - 2.0*(qyi*qyi + qzi*qzi));
     double lyaw_rate = msg->twist.twist.angular.z;
-    jl_value_t *pose_args[4] = {
-        jl_box_float64(lx), jl_box_float64(ly),
-        jl_box_float64(lyaw), jl_box_float64(lyaw_rate)
-    };
+    jl_value_t **pose_args;
+    JL_GC_PUSHARGS(pose_args, 4);
+    pose_args[0] = jl_box_float64(lx);
+    pose_args[1] = jl_box_float64(ly);
+    pose_args[2] = jl_box_float64(lyaw);
+    pose_args[3] = jl_box_float64(lyaw_rate);
     jl_call(j_set_leader_pose, pose_args, 4);
+    JL_GC_POP();
     CATCH_JULIA_EXCEPTION;
 }
 
 void TaskChangeCallback(avt_341_msgs::msg::MissionModuleStatus::SharedPtr msg)
 {
-    jl_value_t *j_xo = jl_box_float64(msg->active_task.formation_x_offset);
-    jl_value_t *j_yo = jl_box_float64(msg->active_task.formation_y_offset);
+    jl_value_t *j_xo = NULL;
+    jl_value_t *j_yo = NULL;
+    JL_GC_PUSH2(&j_xo, &j_yo);
+    j_xo = jl_box_float64(msg->active_task.formation_x_offset);
+    j_yo = jl_box_float64(msg->active_task.formation_y_offset);
     jl_call2(j_set_formation_offset, j_xo, j_yo);
+    JL_GC_POP();
     CATCH_JULIA_EXCEPTION;
 
     bool following = !msg->active_task.tracked_vehicle.empty();
@@ -441,6 +453,31 @@ void PublishPath() {}
 
 void Plan() {}
 
+std::string ResolveJuliaModulePath(const std::string& param_path, const char* compiled_path,
+                                   const char* param_name, const char* description)
+{
+    std::string path;
+    if (!param_path.empty())
+    {
+        path = param_path;
+        RCLCPP_INFO(node->get_logger(), "Loading %s from the %s parameter: %s", description, param_name, path.c_str());
+    }
+    else if (strlen(compiled_path) != 0)
+    {
+        path = compiled_path;
+        RCLCPP_INFO(node->get_logger(), "Loading %s from the CMake compile definition: %s", description, path.c_str());
+    }
+    else
+    {
+        RCLCPP_ERROR(node->get_logger(), "No path to the %s: set the %s parameter or check the CMake build.",
+                     description, param_name);
+        has_error = EXIT_FAILURE;
+        jl_atexit_hook(has_error);
+        throw std::invalid_argument(std::string("No valid path to the ") + description + " could be found.");
+    }
+    return path;
+}
+
 void InitialiseJuliaAPI()
 {
     // Initialise the Julia C bindings
@@ -465,91 +502,38 @@ void InitialiseJuliaAPI()
 
     // ----------------------------------------------------------
     // ----------[ Load the Julia MPC planner module. ]----------
-    if (!mpc_params.planner_module_path.empty())
-    {
-        RCLCPP_INFO(node->get_logger(), "Loading Julia module from user-defined path at: %s ...", mpc_params.planner_module_path.c_str());
-    }
-    else if (!strlen(MPC_PLANNER_MODULE_PATH) == 0)
-    {
-        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia module was defined. Reverting to "
-            "CMake compile definition, defined at: %s", MPC_PLANNER_MODULE_PATH);
-    }
-    else
-    {
-        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia module could be found. Check your "
-            "CMake build log for variable MPC_PLANNER_MODULE_PATH or define the "
-            "parameter ~julia_planner_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC module could be found.");
-    }
-
-    RCLCPP_INFO(node->get_logger(), "Loading Julia planner module at: %s", MPC_PLANNER_MODULE_PATH);
-    std::string planner_module_include_command(std::string("Base.include(Main, \"") + MPC_PLANNER_MODULE_PATH +
-                                               std::string("\")"));
+    const std::string planner_module_path = ResolveJuliaModulePath(mpc_params.planner_module_path, MPC_PLANNER_MODULE_PATH, "planner_module_path", "Julia MPC planner module");
+    std::string planner_module_include_command = "Base.include(Main, raw\"" + planner_module_path + "\")";
     jl_eval_string(planner_module_include_command.c_str());
+    CATCH_JULIA_EXCEPTION;
+    if (has_error) {
+        throw std::runtime_error("Loading a Julia MPC module failed; see the Julia exception above.");
+    }
     // ----------[ Load the Julia MPC planner module. ]----------
     // ----------------------------------------------------------
 
     // -------------------------------------------------------------
     // ----------[ Load the Julia MPC parameters module. ]----------
-    if (!mpc_params.parameters_module_path.empty())
-    {
-        RCLCPP_INFO(node->get_logger(), "Loading Julia MPC parameters module from user-defined path at: %s ...", mpc_params.parameters_module_path.c_str());
-    }
-    else if (!strlen(MPC_PARAMETERS_MODULE_PATH) == 0)
-    {
-        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia MPC parameters module was defined. Reverting to "
-            "CMake compile definition, defined at: %s", MPC_PARAMETERS_MODULE_PATH);
-    }
-    else
-    {
-        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia MPC parameters module could be found. Check your "
-            "CMake build log for variable MPC_PARAMETERS_MODULE_PATH or define the "
-            "parameter ~julia_parameters_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC parameters module could be found.");
-    }
-
-    RCLCPP_INFO(node->get_logger(), "Loading Julia MPC parameters module at: %s", MPC_PARAMETERS_MODULE_PATH);
-
-    std::string parameters_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_PARAMETERS_MODULE_PATH +
-                                                  std::string("\")"));
+    const std::string parameters_module_path = ResolveJuliaModulePath(mpc_params.parameters_module_path, MPC_PARAMETERS_MODULE_PATH, "parameters_module_path", "Julia MPC parameters module");
+    std::string parameters_module_include_command = "Base.include(Main.MPC, raw\"" + parameters_module_path + "\")";
     jl_eval_string(parameters_module_include_command.c_str());
+    CATCH_JULIA_EXCEPTION;
+    if (has_error) {
+        throw std::runtime_error("Loading a Julia MPC module failed; see the Julia exception above.");
+    }
     // ----------[ Load the Julia MPC parameters module. ]----------
     // -------------------------------------------------------------
 
     // ---------------------------------------------------------
     // ----------[ Load the Julia MPC models module. ]----------
-    if (!mpc_params.models_module_path.empty())
-    {
-        RCLCPP_INFO(node->get_logger(), "Loading Julia MPC models module from user-defined path at: %s ...", mpc_params.models_module_path.c_str());
-    }
-    else if (!strlen(MPC_MODELS_MODULE_PATH) == 0)
-    {
-        RCLCPP_INFO(node->get_logger(), "No absolute path to the Julia MPC models module was defined. Reverting to "
-            "CMake compile definition, defined at: %s", MPC_MODELS_MODULE_PATH);
-    }
-    else
-    {
-        RCLCPP_ERROR(node->get_logger(), "No valid path to the Julia MPC models module could be found. Check your "
-            "CMake build log for variable MPC_MODELS_MODULE_PATH or define the "
-            "parameter ~julia_models_module_path manually.");
-        has_error = EXIT_FAILURE;
-        jl_atexit_hook(has_error);
-        throw std::invalid_argument(
-            "No valid path to the Julia MPC models module could be found.");
-    }
-
-    RCLCPP_INFO(node->get_logger(), "Loading Julia MPC models module at: %s", MPC_MODELS_MODULE_PATH);
+    const std::string models_module_path = ResolveJuliaModulePath(mpc_params.models_module_path, MPC_MODELS_MODULE_PATH, "models_module_path", "Julia MPC models module");
     RCLCPP_INFO(node->get_logger(), "Using linear solver: %s", mpc_params.linear_solver.c_str());
-
-    std::string models_module_include_command(std::string("Base.include(Main.MPC, \"") + MPC_MODELS_MODULE_PATH +
-                                                  std::string("\")"));
+    std::string models_module_include_command = "Base.include(Main.MPC, raw\"" + models_module_path + "\")";
     jl_eval_string(models_module_include_command.c_str());
+    CATCH_JULIA_EXCEPTION;
+    if (has_error) {
+        throw std::runtime_error("Loading a Julia MPC module failed; see the Julia exception above.");
+    }
     // ----------[ Load the Julia MPC models module. ]----------
     // ---------------------------------------------------------
 
@@ -583,6 +567,7 @@ void InitialiseJuliaAPI()
     j_set_leader_speed = jl_get_function(mpc_module, "SetLeaderSpeed");
     j_set_follower_status = jl_get_function(mpc_module, "SetFollowerStatus");
     j_set_w_final_speed = jl_get_function(mpc_module, "SetWFinalSpeed");
+    j_set_w_speed_tracking = jl_get_function(mpc_module, "SetWSpeedTracking");
     j_set_final_heading = jl_get_function(mpc_module, "SetFinalHeading");
     j_set_w_final_heading = jl_get_function(mpc_module, "SetWFinalHeading");
     j_set_goal_point_is_end_of_global_path = jl_get_function(mpc_module, "SetGoalPointIsEndOfGlobalPath");
@@ -594,6 +579,7 @@ void InitialiseJuliaAPI()
     j_set_num_col_points = jl_get_function(mpc_module, "SetNumColPoints");
     j_set_prediction_time_horizon = jl_get_function(mpc_module, "SetPredictionTimeHorizon");
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
+    j_set_obs_per_col_point = jl_get_function(mpc_module, "SetObsPerColPoint");
     j_set_max_num_seg = jl_get_function(mpc_module, "SetMaxNumSeg");
     j_set_sigma = jl_get_function(mpc_module, "SetSigma");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
@@ -631,119 +617,50 @@ void InitialiseJuliaAPI()
     j_set_ax_max = jl_get_function(mpc_module, "SetAxMax");
     // -------------------------------
 
-    // Convert params to Julia types
-    jl_value_t *j_tire_model =
-        jl_cstr_to_string(mpc_params.tire_model.c_str());
-    jl_value_t *j_num_col_points =
-        jl_box_int32(static_cast<int32_t>(mpc_params.num_col_points));
-    jl_value_t *j_prediction_time_horizon =
-        jl_box_float64(mpc_params.prediction_time_horizon);
-    jl_value_t *j_max_num_obs =
-        jl_box_int32(static_cast<int32_t>(mpc_params.max_num_obs));
-    jl_value_t *j_max_num_seg =
-        jl_box_int32(static_cast<int32_t>(mpc_params.max_num_seg));
-    jl_value_t *j_sigma =
-        jl_box_float64(1.414214 * mpc_params.grid_resolution);
-    jl_value_t *j_min_speed = jl_box_float64(mpc_params.min_speed);
-    jl_value_t *j_max_speed = jl_box_float64(mpc_params.max_speed);
-    jl_value_t *j_goal_stop_radius = jl_box_float64(mpc_params.goal_stop_radius);
-    jl_value_t *j_use_hard_constraints =
-        jl_box_int32(mpc_params.use_hard_constraints);
-    jl_value_t *j_use_segmentation =
-        jl_box_int32(mpc_params.use_segmentation);
-    jl_value_t *j_w_distance_to_obstacles =
-        jl_box_float64(mpc_params.w_distance_to_obstacles);
-    jl_value_t *j_w_distance_to_goal =
-        jl_box_float64(mpc_params.w_distance_to_goal);
-    jl_value_t *j_w_deviation_in_yaw =
-        jl_box_float64(mpc_params.w_deviation_in_yaw);
-    jl_value_t *j_w_yaw_accel =
-        jl_box_float64(mpc_params.w_yaw_accel);
-    jl_value_t *j_w_traversability_cost =
-        jl_box_float64(mpc_params.w_traversability_cost);
-    jl_value_t *j_safety_margin =
-        jl_box_float64(mpc_params.safety_margin);
-    jl_value_t *j_obstacle_cost_speed_floor =
-        jl_box_float64(mpc_params.obstacle_cost_speed_floor);
-    jl_value_t *j_enable_fallback =
-        jl_box_int32(mpc_params.enable_fallback);
-    jl_value_t *j_grid_resolution =
-        jl_box_float64(mpc_params.grid_resolution);
-    jl_value_t *j_w_final_speed =
-        jl_box_float64(mpc_params.w_final_speed);
-    jl_value_t *j_w_final_heading =
-        jl_box_float64(mpc_params.w_final_heading);
-    jl_value_t *j_front_angle_goal =
-        jl_box_float64(mpc_params.front_angle_goal);
-    jl_value_t *j_front_angle_obstacle =
-        jl_box_float64(mpc_params.front_angle_obstacle);
-    jl_value_t *j_adaptive = jl_box_int32(mpc_params.adaptive);
-    jl_value_t *j_vehicle_axle_distance_front =
-        jl_box_float64(mpc_params.vehicle_axle_distance_front);
-    jl_value_t *j_vehicle_cg_to_front_axle_distance =
-        jl_box_float64(mpc_params.vehicle_cg_to_front_axle_distance);
-    jl_value_t *j_vehicle_wheelbase = jl_box_float64(mpc_params.vehicle_wheelbase);
-    jl_value_t *j_vehicle_cg_height = jl_box_float64(mpc_params.vehicle_cg_height);
-    jl_value_t *j_vehicle_mass = jl_box_float64(mpc_params.vehicle_mass);
-    jl_value_t *j_vehicle_yaw_inertia = jl_box_float64(mpc_params.vehicle_yaw_inertia);
-    jl_value_t *j_front_angle_segmentation =
-        jl_box_float64(mpc_params.front_angle_segmentation);
-    jl_value_t *j_linear_solver =
-        jl_cstr_to_string(mpc_params.linear_solver.c_str());
-    jl_value_t *j_slope_threshold =
-        jl_box_float64(mpc_params.slope_threshold);
-    jl_value_t *j_rms_threshold =
-        jl_box_float64(mpc_params.rms_threshold);
-    jl_value_t *j_speed_around_large_slopes_and_rms =
-        jl_box_float64(mpc_params.speed_around_large_slopes_and_rms);
-    jl_value_t *j_sa_min = jl_box_float64(mpc_params.sa_min);
-    jl_value_t *j_sa_max = jl_box_float64(mpc_params.sa_max);
-    jl_value_t *j_sr_min = jl_box_float64(mpc_params.sr_min);
-    jl_value_t *j_sr_max = jl_box_float64(mpc_params.sr_max);
-    jl_value_t *j_ax_max = jl_box_float64(mpc_params.ax_max);
-
     // Set Julia parameters
-    jl_call1(j_set_tire_model, j_tire_model);
-    jl_call1(j_set_num_col_points, j_num_col_points);
-    jl_call1(j_set_prediction_time_horizon, j_prediction_time_horizon);
-    jl_call1(j_set_max_num_obs, j_max_num_obs);
-    jl_call1(j_set_max_num_seg, j_max_num_seg);
-    jl_call1(j_set_sigma, j_sigma);
-    jl_call1(j_set_min_speed, j_min_speed);
-    jl_call1(j_set_max_speed, j_max_speed);
-    jl_call1(j_set_goal_stop_radius, j_goal_stop_radius);
-    jl_call1(j_set_use_hard_constraints, j_use_hard_constraints);
-    jl_call1(j_set_use_segmentation, j_use_segmentation);
-    jl_call1(j_set_w_distance_to_obstacles, j_w_distance_to_obstacles);
-    jl_call1(j_set_w_distance_to_goal, j_w_distance_to_goal);
-    jl_call1(j_set_w_deviation_in_yaw, j_w_deviation_in_yaw);
-    jl_call1(j_set_w_yaw_accel, j_w_yaw_accel);
-    jl_call1(j_set_w_traversability_cost, j_w_traversability_cost);
-    jl_call1(j_set_safety_margin, j_safety_margin);
-    jl_call1(j_set_obstacle_cost_speed_floor, j_obstacle_cost_speed_floor);
-    jl_call1(j_set_enable_fallback, j_enable_fallback);
-    jl_call1(j_set_w_final_speed, j_w_final_speed);
-    jl_call1(j_set_w_final_heading, j_w_final_heading);
-    jl_call1(j_set_grid_resolution, j_grid_resolution);
-    jl_call1(j_set_front_angle_goal, j_front_angle_goal);
-    jl_call1(j_set_front_angle_obstacle, j_front_angle_obstacle);
-    jl_call1(j_set_terrain_adaptive, j_adaptive);
-    jl_call1(j_set_veh_front_axle_dist, j_vehicle_axle_distance_front);
-    jl_call1(j_set_veh_cg_to_front_axle_dist, j_vehicle_cg_to_front_axle_distance);
-    jl_call1(j_set_veh_wheelbase, j_vehicle_wheelbase);
-    jl_call1(j_set_veh_cg_height, j_vehicle_cg_height);
-    jl_call1(j_set_veh_mass, j_vehicle_mass);
-    jl_call1(j_set_veh_yaw_inertia, j_vehicle_yaw_inertia);
-    jl_call1(j_set_front_angle_segmentation, j_front_angle_segmentation);
-    jl_call1(j_set_linear_solver, j_linear_solver);
-    jl_call1(j_set_slope_threshold, j_slope_threshold);
-    jl_call1(j_set_rms_threshold, j_rms_threshold);
-    jl_call1(j_set_speed_around_large_slopes_and_rms, j_speed_around_large_slopes_and_rms);
-    jl_call1(j_set_sa_min, j_sa_min);
-    jl_call1(j_set_sa_max, j_sa_max);
-    jl_call1(j_set_sr_min, j_sr_min);
-    jl_call1(j_set_sr_max, j_sr_max);
-    jl_call1(j_set_ax_max, j_ax_max);
+    jl_call1(j_set_tire_model, jl_cstr_to_string(mpc_params.tire_model.c_str()));
+    jl_call1(j_set_num_col_points, jl_box_int32(static_cast<int32_t>(mpc_params.num_col_points)));
+    jl_call1(j_set_prediction_time_horizon, jl_box_float64(mpc_params.prediction_time_horizon));
+    jl_call1(j_set_max_num_obs, jl_box_int32(static_cast<int32_t>(mpc_params.max_num_obs)));
+    jl_call1(j_set_obs_per_col_point, jl_box_int32(static_cast<int32_t>(mpc_params.obs_per_col_point)));
+    jl_call1(j_set_max_num_seg, jl_box_int32(static_cast<int32_t>(mpc_params.max_num_seg)));
+    jl_call1(j_set_sigma, jl_box_float64(1.414214 * mpc_params.grid_resolution));
+    jl_call1(j_set_min_speed, jl_box_float64(mpc_params.min_speed));
+    jl_call1(j_set_max_speed, jl_box_float64(mpc_params.max_speed));
+    jl_call1(j_set_goal_stop_radius, jl_box_float64(mpc_params.goal_stop_radius));
+    jl_call1(j_set_use_hard_constraints, jl_box_int32(mpc_params.use_hard_constraints));
+    jl_call1(j_set_use_segmentation, jl_box_int32(mpc_params.use_segmentation));
+    jl_call1(j_set_w_distance_to_obstacles, jl_box_float64(mpc_params.w_distance_to_obstacles));
+    jl_call1(j_set_w_distance_to_goal, jl_box_float64(mpc_params.w_distance_to_goal));
+    jl_call1(j_set_w_deviation_in_yaw, jl_box_float64(mpc_params.w_deviation_in_yaw));
+    jl_call1(j_set_w_yaw_accel, jl_box_float64(mpc_params.w_yaw_accel));
+    jl_call1(j_set_w_traversability_cost, jl_box_float64(mpc_params.w_traversability_cost));
+    jl_call1(j_set_safety_margin, jl_box_float64(mpc_params.safety_margin));
+    jl_call1(j_set_obstacle_cost_speed_floor, jl_box_float64(mpc_params.obstacle_cost_speed_floor));
+    jl_call1(j_set_enable_fallback, jl_box_int32(mpc_params.enable_fallback));
+    jl_call1(j_set_w_final_speed, jl_box_float64(mpc_params.w_final_speed));
+    jl_call1(j_set_w_speed_tracking, jl_box_float64(mpc_params.w_speed_tracking));
+    jl_call1(j_set_w_final_heading, jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_grid_resolution, jl_box_float64(mpc_params.grid_resolution));
+    jl_call1(j_set_front_angle_goal, jl_box_float64(mpc_params.front_angle_goal));
+    jl_call1(j_set_front_angle_obstacle, jl_box_float64(mpc_params.front_angle_obstacle));
+    jl_call1(j_set_terrain_adaptive, jl_box_int32(mpc_params.adaptive));
+    jl_call1(j_set_veh_front_axle_dist, jl_box_float64(mpc_params.vehicle_axle_distance_front));
+    jl_call1(j_set_veh_cg_to_front_axle_dist, jl_box_float64(mpc_params.vehicle_cg_to_front_axle_distance));
+    jl_call1(j_set_veh_wheelbase, jl_box_float64(mpc_params.vehicle_wheelbase));
+    jl_call1(j_set_veh_cg_height, jl_box_float64(mpc_params.vehicle_cg_height));
+    jl_call1(j_set_veh_mass, jl_box_float64(mpc_params.vehicle_mass));
+    jl_call1(j_set_veh_yaw_inertia, jl_box_float64(mpc_params.vehicle_yaw_inertia));
+    jl_call1(j_set_front_angle_segmentation, jl_box_float64(mpc_params.front_angle_segmentation));
+    jl_call1(j_set_linear_solver, jl_cstr_to_string(mpc_params.linear_solver.c_str()));
+    jl_call1(j_set_slope_threshold, jl_box_float64(mpc_params.slope_threshold));
+    jl_call1(j_set_rms_threshold, jl_box_float64(mpc_params.rms_threshold));
+    jl_call1(j_set_speed_around_large_slopes_and_rms, jl_box_float64(mpc_params.speed_around_large_slopes_and_rms));
+    jl_call1(j_set_sa_min, jl_box_float64(mpc_params.sa_min));
+    jl_call1(j_set_sa_max, jl_box_float64(mpc_params.sa_max));
+    jl_call1(j_set_sr_min, jl_box_float64(mpc_params.sr_min));
+    jl_call1(j_set_sr_max, jl_box_float64(mpc_params.sr_max));
+    jl_call1(j_set_ax_max, jl_box_float64(mpc_params.ax_max));
     CATCH_JULIA_EXCEPTION;
 }
 
@@ -773,6 +690,7 @@ void UpdateCostFnWeights(
     mpc_params.w_yaw_accel = params.w_yaw_accel;
     mpc_params.w_traversability_cost = params.w_traversability_cost;
     mpc_params.w_final_speed = params.w_final_speed;
+    mpc_params.w_speed_tracking = params.w_speed_tracking;
     mpc_params.w_final_heading = params.w_final_heading;
     mpc_params.enable_fallback = params.enable_fallback;
     mpc_params.goal_stop_radius = params.goal_stop_radius;
@@ -791,6 +709,8 @@ void UpdateCostFnWeights(
              jl_box_float64(mpc_params.w_final_speed));
     jl_call1(j_set_w_final_heading,
              jl_box_float64(mpc_params.w_final_heading));
+    jl_call1(j_set_w_speed_tracking,
+             jl_box_float64(mpc_params.w_speed_tracking));
     jl_call1(j_set_enable_fallback,
              jl_box_int32(mpc_params.enable_fallback));
     jl_call1(j_set_goal_stop_radius,
@@ -805,6 +725,12 @@ int main(int argc, char *argv[])
     avt_341_nav::params::mpc_local_planner::ParamsListener param_listener(
         node);
     mpc_params = param_listener.get_params();
+    if (mpc_params.obs_per_col_point == 0 && mpc_params.max_num_obs > 1000) {
+        RCLCPP_WARN(node->get_logger(),
+            "obs_per_col_point is 0 (legacy obstacle formulation) but max_num_obs is %ld: every collocation point "
+            "carries all max_num_obs obstacle slots, so the solve will be far too slow. Set max_num_obs to ~500.",
+            static_cast<long>(mpc_params.max_num_obs));
+    }
 
     compute_time_recorder = std::make_shared<avt_341_nav::core::ComputeTimeRecorder>(
         node, avt_341_nav::core::ComputeTimeRecorder::MakeNodeTag(node));

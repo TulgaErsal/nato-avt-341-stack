@@ -25,6 +25,19 @@ global numobs = 0
 global obstacle_size_meters = 0.0
 global obs_radius = 0.0
 global obstacles = Float64[]
+global obsPerColPoint = 0
+global w_speedTracking = 0.0
+global speed_ref_param = 0
+global speed_tracking_w_param = 0
+global obsActiveSetTol = 0.01
+global maxObsActiveSetResolves = 2
+global numActiveSetResolves = 0
+global lastNeglectedObstacleCost = 0.0
+global numActiveSetUnconverged = 0
+global obsXpt = 0
+global obsYpt = 0
+global obsInvR2pt = 0
+global obsRs2pt = 0
 global segmentation = Float32[]
 global numSegCells = 0
 global count = 0
@@ -138,6 +151,14 @@ function SetMaxNumObs(num_obs::Int32)
 	global Yobs = fill(0.0, maxNumObs)
 end
 
+function SetObsPerColPoint(k::Int32)
+	global obsPerColPoint = k
+end
+
+function SetObsActiveSetTol(tol::Float64)
+	global obsActiveSetTol = tol
+end
+
 function SetMaxNumSeg(num_seg::Int32)
 	global maxNumSeg = num_seg
 end
@@ -184,6 +205,13 @@ end
 
 function SetWTraversabilityCost(w_traversability_cost::Float64)
 	global w_traversabilityCost = w_traversability_cost
+end
+
+function SetWSpeedTracking(w::Float64)
+	global w_speedTracking = w
+	if speed_tracking_w_param != 0
+		JuMP.setValue(speed_tracking_w_param, w)
+	end
 end
 
 function SetWFinalSpeed(w_final_speed::Float64)
@@ -271,7 +299,19 @@ function SetObstacles(obs::Vector{Float64})
 	global numobs = Int(length(obstacles)/3)
 
 	if numobs > maxNumObs
-		println("Number of obstacles exceeds limit. Consider increasing maxNumObs.")
+		if obsPerColPoint > 0
+			println("Number of obstacles exceeds limit (", numobs, ">", maxNumObs, "); ignoring the farthest ones.")
+			d2 = [(obstacles[3*i-2]-x_veh)^2 + (obstacles[3*i-1]-y_veh)^2 for i in 1:numobs]
+			keep = sort(partialsortperm(d2, 1:Int(maxNumObs)))
+			global obstacles = vcat([obstacles[3*i-2:3*i] for i in keep]...)
+		else
+			println("Number of obstacles exceeds limit (", numobs, ">", maxNumObs, "); ignoring the extra ones.")
+		end
+		numobs = Int(maxNumObs)
+	end
+
+	if obsPerColPoint > 0
+		return
 	end
 
 	for i=1:numobs
@@ -521,9 +561,21 @@ function Setup()
 	global Robs = fill(1.0, maxNumObs)
 	global Xobs = fill(1000.0, maxNumObs)
 	global Yobs = fill(0.0, maxNumObs)
-	@NLparameter(n.ocp.mdl, obs_r[i=1:maxNumObs] == Robs[i]);
-	@NLparameter(n.ocp.mdl, Xobs_0[i=1:maxNumObs] == Xobs[i]);
-	@NLparameter(n.ocp.mdl, Yobs_0[i=1:maxNumObs] == Yobs[i]);
+	global obsXpt, obsYpt, obsInvR2pt, obsRs2pt
+	pts = n.ocp.state.pts
+	K = obsPerColPoint
+	if K > 0
+		@NLparameter(n.ocp.mdl, obsXpt[j=2:pts, k=1:K] == 1000.0)
+		@NLparameter(n.ocp.mdl, obsYpt[j=2:pts, k=1:K] == 0.0)
+		@NLparameter(n.ocp.mdl, obsInvR2pt[j=2:pts, k=1:K] == 1.0)
+		if useHardConstraints
+			@NLparameter(n.ocp.mdl, obsRs2pt[j=2:pts, k=1:K] == 1.0)
+		end
+	else
+		@NLparameter(n.ocp.mdl, obs_r[i=1:maxNumObs] == Robs[i]);
+		@NLparameter(n.ocp.mdl, Xobs_0[i=1:maxNumObs] == Xobs[i]);
+		@NLparameter(n.ocp.mdl, Yobs_0[i=1:maxNumObs] == Yobs[i]);
+	end
 	if useSegmentation
 		global cellX0 = 0.
 		global cellY0 = 0.
@@ -536,7 +588,11 @@ function Setup()
 	@NLparameter(n.ocp.mdl, g2 == 0.0);
 	@NLparameter(n.ocp.mdl, rhoKS == 2.5 * obstacle_size_meters)
 	if useHardConstraints
-		ksAggregation = @NLexpression(n.ocp.mdl, sum(exp(rhoKS * (- (x[i]-Xobs_0[j])^2.0 - (y[i]-Yobs_0[j])^2.0 + (obs_r[j] + safetyMargin)^2.0)) for j=1:maxNumObs for i=2:n.ocp.state.pts))
+		if K > 0
+			ksAggregation = @NLexpression(n.ocp.mdl, sum(exp(rhoKS * (obsRs2pt[i,k] - (x[i]-obsXpt[i,k])^2 - (y[i]-obsYpt[i,k])^2)) for k=1:K for i=2:pts))
+		else
+			ksAggregation = @NLexpression(n.ocp.mdl, sum(exp(rhoKS * (- (x[i]-Xobs_0[j])^2.0 - (y[i]-Yobs_0[j])^2.0 + (obs_r[j] + safetyMargin)^2.0)) for j=1:maxNumObs for i=2:n.ocp.state.pts))
+		end
 		obs_con = @NLconstraint(n.ocp.mdl, ksAggregation <= 1.0)
 		newConstraint!(n,obs_con,:obs_con)
 	end
@@ -554,8 +610,13 @@ function Setup()
 	)
 	
 	speedFloorEps = 0.05 # m/s
-	@NLexpression(n.ocp.mdl, obsBumpSum[j=2:n.ocp.state.pts],
-		sum(exp(-((x[j] - Xobs_0[i])^2 + (y[j] - Yobs_0[i])^2) / (obs_r[i] + safetyMargin)^2) for i=1:maxNumObs))
+	if K > 0
+		@NLexpression(n.ocp.mdl, obsBumpSum[j=2:pts],
+			sum(exp(-((x[j] - obsXpt[j,k])^2 + (y[j] - obsYpt[j,k])^2) * obsInvR2pt[j,k]) for k=1:K))
+	else
+		@NLexpression(n.ocp.mdl, obsBumpSum[j=2:n.ocp.state.pts],
+			sum(exp(-((x[j] - Xobs_0[i])^2 + (y[j] - Yobs_0[i])^2) / (obs_r[i] + safetyMargin)^2) for i=1:maxNumObs))
+	end
 	distanceToObstacles = @NLexpression(n.ocp.mdl,
 		sum((obstacleCostSpeedFloor + ((ux[j] - obstacleCostSpeedFloor) + sqrt((ux[j] - obstacleCostSpeedFloor)^2 + speedFloorEps^2)) / 2.0) / maxSpeed
 			* (1.0 - exp(-obsBumpSum[j])) for j=2:n.ocp.state.pts))
@@ -580,12 +641,17 @@ function Setup()
 	# so the two costs do not fight each other.
 	@NLparameter(n.ocp.mdl, deviation_in_yaw_w_param == w_deviationInYaw)
 
+	global speed_ref_param, speed_tracking_w_param
+	@NLparameter(n.ocp.mdl, speed_ref_param == maxSpeed)
+	@NLparameter(n.ocp.mdl, speed_tracking_w_param == w_speedTracking)
+	speedTrackingCost = @NLexpression(n.ocp.mdl, sum(((ux[j] - speed_ref_param)/speed_ref_param)^2 for j=2:pts)/(pts-1))
+
 	obj = integrate!(n,:( 10.0*sr[j]^2. + 0.01*jx[j]^2.))
-	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
+	@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed + speed_tracking_w_param*speedTrackingCost)
 	if useSegmentation
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + w_traversabilityCost*traversabilityCost + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed + speed_tracking_w_param*speedTrackingCost)
 	else
-		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed)
+		@NLobjective(n.ocp.mdl, Min, obj + w_distanceToGoal*distanceToGoal + w_distanceToObstacles*distanceToObstacles + deviation_in_yaw_w_param*deviationInYaw + w_yawAccel*yawAccel + final_heading_w_param*finalHeadingCost + final_speed_w_param*deviationFromDesiredFinalSpeed + speed_tracking_w_param*speedTrackingCost)
 	end
 	n.s.ocp.save = false
 
@@ -611,7 +677,7 @@ function Setup()
 	end
 
 	# println("Goal: ",JuMP.getvalue(g1)," ",JuMP.getvalue(g2))
-	optimize!(n)
+	OptimizeWithObstacles!(n)
 	# println("Initialization status: ",n.r.ocp.status)
 	# println("Setup done. Type 'q' to quit.")
 
@@ -634,12 +700,113 @@ function Setup()
 
 end
 
+function ObstacleBumps!(b::Vector{Float64}, obs::Vector{Float64}, nobs::Integer, sm::Float64, px::Float64, py::Float64)
+	@inbounds for i in 1:nobs
+		R = 1.414*obs[3*i]/2.0 + sm
+		b[i] = exp(-((px - obs[3*i-2])^2 + (py - obs[3*i-1])^2) / R^2)
+	end
+	return b
+end
+
+ObstacleBumps(px, py) = ObstacleBumps!(Vector{Float64}(undef, numobs), obstacles, numobs, Float64(safetyMargin), Float64(px), Float64(py))
+
+function ColPointPositions()
+	pts = n.ocp.state.pts
+	P = Array{Float64}(undef, pts, 2)
+	for j in 1:pts
+		P[j,1] = JuMP.getvalue(n.r.ocp.x[j,1])
+		P[j,2] = JuMP.getvalue(n.r.ocp.x[j,2])
+		if isnan(P[j,1]) || isnan(P[j,2])
+			s = longvel * predictionTimeHorizon * (j-1) / (pts-1)
+			P[j,1] = x_veh + s*cos(yaw)
+			P[j,2] = y_veh + s*sin(yaw)
+		end
+	end
+	return P
+end
+
+# assigns each collocation point the obsPerColPoint obstacles with the largest bump at any of its positions in Ps
+function AssignObstaclesToColPoints!(Ps::Vector)
+	K = obsPerColPoint
+	P = Ps[end]
+	sel = Vector{Vector{Int}}(undef, size(P,1))
+	b = Vector{Float64}(undef, numobs)
+	bm = Vector{Float64}(undef, numobs)
+	for j in 2:size(P,1)
+		ObstacleBumps!(b, obstacles, numobs, Float64(safetyMargin), Float64(Ps[1][j,1]), Float64(Ps[1][j,2]))
+		for m in 2:length(Ps)
+			ObstacleBumps!(bm, obstacles, numobs, Float64(safetyMargin), Float64(Ps[m][j,1]), Float64(Ps[m][j,2]))
+			b .= max.(b, bm)
+		end
+		idx = numobs > K ? partialsortperm(b, 1:K; rev=true) : collect(1:numobs)
+		sel[j] = idx
+		for k in 1:K
+			if k <= length(idx)
+				i = idx[k]
+				Rs = 1.414*obstacles[3*i]/2.0 + safetyMargin
+				JuMP.setValue(obsXpt[j,k], obstacles[3*i-2])
+				JuMP.setValue(obsYpt[j,k], obstacles[3*i-1])
+				JuMP.setValue(obsInvR2pt[j,k], 1.0/Rs^2)
+				useHardConstraints && JuMP.setValue(obsRs2pt[j,k], Rs^2)
+			else
+				JuMP.setValue(obsXpt[j,k], 1000.0)
+				JuMP.setValue(obsYpt[j,k], 0.0)
+				JuMP.setValue(obsInvR2pt[j,k], 1.0)
+				useHardConstraints && JuMP.setValue(obsRs2pt[j,k], 1.0)
+			end
+		end
+	end
+	return sel
+end
+
+# largest per-point error in (1 - exp(-bumpSum)) from the obstacles left out of the selection
+function MaxNeglectedObstacleCost(P, sel)
+	worst = 0.0
+	for j in 2:size(P,1)
+		b = ObstacleBumps(P[j,1], P[j,2])
+		bsel = isempty(sel[j]) ? 0.0 : sum(b[sel[j]])
+		ball = isempty(b) ? 0.0 : sum(b)
+		worst = max(worst, exp(-bsel) - exp(-ball))
+	end
+	return worst
+end
+
+function OptimizeWithObstacles!(n)
+	if obsPerColPoint <= 0
+		optimize!(n)
+		return
+	end
+	global numActiveSetResolves, numActiveSetUnconverged, lastNeglectedObstacleCost
+	Ps = [ColPointPositions()]
+	sel = AssignObstaclesToColPoints!(Ps)
+	optimize!(n)
+	tSolve = n.r.ocp.tSolve
+	for r in 0:maxObsActiveSetResolves
+		n.r.ocp.status == :Optimal || break
+		P = ColPointPositions()
+		lastNeglectedObstacleCost = MaxNeglectedObstacleCost(P, sel)
+		lastNeglectedObstacleCost > obsActiveSetTol || break
+		if r == maxObsActiveSetResolves
+			numActiveSetUnconverged += 1
+			break
+		end
+		numActiveSetResolves += 1
+		push!(Ps, P)
+		sel = AssignObstaclesToColPoints!(Ps)
+		optimize!(n)
+		tSolve += n.r.ocp.tSolve
+	end
+	n.r.ocp.tSolve = tSolve
+end
+
 # min(dist to obstacle center - effective radius) over a solved state trajectory
-function ClosestObstacleClearance(Xmat)
+ClosestObstacleClearance(Xmat) = ClosestObstacleClearance(Xmat, obstacles, numobs, Float64(safetyMargin))
+
+function ClosestObstacleClearance(Xmat, obs::Vector{Float64}, nobs::Integer, sm::Float64)
 	minClear = Inf
-	for i in 2:size(Xmat,1), k in 1:numobs
-		r = 1.414*obstacles[3*k]/2.0 + safetyMargin
-		d = sqrt((Xmat[i,1]-obstacles[3*k-2])^2 + (Xmat[i,2]-obstacles[3*k-1])^2) - r
+	@inbounds for i in 2:size(Xmat,1), k in 1:nobs
+		r = 1.414*obs[3*k]/2.0 + sm
+		d = sqrt((Xmat[i,1]-obs[3*k-2])^2 + (Xmat[i,2]-obs[3*k-1])^2) - r
 		minClear = min(minClear, d)
 	end
 	return minClear
@@ -846,6 +1013,8 @@ function Plan()
 			end
 		end
 
+		JuMP.setValue(speed_ref_param, max(n.ocp.XU[7], 0.5))
+
 		if n.s.mpc.shiftX0
 			for st in 1:n.ocp.state.num
 				if n.ocp.X0[st] < n.ocp.XL[st]
@@ -860,7 +1029,7 @@ function Plan()
 			JuMP.setRHS(n.r.ocp.x0Con[st],n.ocp.X0[st])
 		end
 
-		optimize!(n)
+		OptimizeWithObstacles!(n)
 
 		# Reactive fallback: an Optimal solve can still land in a
 		# colliding local minimum. Retry when that's actually detected, from a mirrored warm-start
@@ -871,7 +1040,7 @@ function Plan()
 			if enableFallback && clear1 < 0.0
 				println("MPC fallback: primary solve collides (clearance=", round(clear1;digits=3), "m), trying mirrored warm start...")
 				MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
-				optimize!(n)
+				OptimizeWithObstacles!(n)
 				clear2 = n.r.ocp.status == :Optimal ? ClosestObstacleClearance(n.r.ocp.X) : -Inf
 				if clear2 > clear1
 					println("MPC fallback: mirrored solve is better (clearance=", round(clear2;digits=3), "m), using it.")
@@ -879,6 +1048,9 @@ function Plan()
 					println("MPC fallback: mirrored solve did not help (clearance=", round(clear2;digits=3), "m), keeping primary solve.")
 					n.r.ocp.X = X1; n.r.ocp.U = U1; n.r.ocp.status = status1
 					RestoreWarmStart!(n, X1, U1)
+					if obsPerColPoint > 0
+						global lastNeglectedObstacleCost = MaxNeglectedObstacleCost(X1, AssignObstaclesToColPoints!([X1]))
+					end
 				end
 				n.r.ocp.tSolve = tSolve1 + n.r.ocp.tSolve
 			end

@@ -119,6 +119,11 @@ void SetDefaultMPCParameters(jl_module_t* mpc_module) {
     set_float("SetSteeringAngleMax", 0.5);
     set_float("SetSteeringRateMin", -0.5);
     set_float("SetSteeringRateMax", 0.5);
+    set_float("SetAxMax", 2.0);
+    set_float("SetObstacleCostSpeedFloor", 2.5);
+    set_int("SetEnableFallback", 1);
+    set_float("SetGoalStopRadius", 0.5);
+    set_float("SetWFinalHeading", 0.0);
     
     HasJuliaException();
 }
@@ -165,6 +170,96 @@ TEST(MPCPlannerTest, PlanPath) {
         EXPECT_GT(last_x, 0.0);
         std::cout << "Path generated with " << path_len << " points. Final X: " << last_x << std::endl;
     }
+}
+
+TEST(MPCPlannerTest, PerColPointObstaclesSeeObstacleAheadAmongThousands) {
+    jl_module_t* mpc_module = (jl_module_t *)jl_eval_string("Main.MPC");
+    ASSERT_NE(mpc_module, nullptr);
+
+    SetDefaultMPCParameters(mpc_module);
+    jl_call1(jl_get_function(mpc_module, "SetMaxNumObs"), jl_box_int32(3000));
+    jl_call1(jl_get_function(mpc_module, "SetObsPerColPoint"), jl_box_int32(10));
+    jl_call1(jl_get_function(mpc_module, "SetWDistanceToObstacles"), jl_box_float64(100.0));
+    ASSERT_FALSE(HasJuliaException());
+
+    std::vector<double> state_data = {0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
+    auto set_state = [&]() {
+        jl_array_t *jl_state = jl_ptr_to_array_1d(array_type, state_data.data(), state_data.size(), 0);
+        jl_call1(jl_get_function(mpc_module, "SetState"), (jl_value_t*)jl_state);
+    };
+    set_state();
+    jl_call2(jl_get_function(mpc_module, "SetGoalPoint"), jl_box_float64(10.0), jl_box_float64(0.0));
+    jl_eval_string("Main.MPC.eval(:(beta = 0.1))");
+    jl_call0(jl_get_function(mpc_module, "Setup"));
+    ASSERT_FALSE(HasJuliaException()) << "MPC Setup failed";
+
+    std::vector<double> obs;
+    for (int i = 0; i < 2500; i++) {
+        obs.push_back(-20.0 - 0.25 * (i % 50));
+        obs.push_back(-20.0 + 0.25 * (i / 50));
+        obs.push_back(0.25);
+    }
+    obs.push_back(4.0); obs.push_back(0.3); obs.push_back(0.5);
+    jl_array_t *jl_obs = jl_ptr_to_array_1d(array_type, obs.data(), obs.size(), 0);
+    jl_call1(jl_get_function(mpc_module, "SetObstacles"), (jl_value_t*)jl_obs);
+    ASSERT_FALSE(HasJuliaException());
+
+    for (int k = 0; k < 3; k++) {
+        set_state();
+        jl_call0(jl_get_function(mpc_module, "Plan"));
+        ASSERT_FALSE(HasJuliaException()) << "MPC Plan failed";
+    }
+
+    double clearance = jl_unbox_float64(jl_eval_string("Main.MPC.ClosestObstacleClearance(Main.MPC.n.r.ocp.X)"));
+    ASSERT_FALSE(HasJuliaException());
+    EXPECT_GT(clearance, 0.0);
+    jl_call1(jl_get_function(mpc_module, "SetObsPerColPoint"), jl_box_int32(0));
+}
+
+TEST(MPCPlannerTest, PerColPointCeilingKeepsNearestObstacles) {
+    jl_module_t* mpc_module = (jl_module_t *)jl_eval_string("Main.MPC");
+    ASSERT_NE(mpc_module, nullptr);
+
+    SetDefaultMPCParameters(mpc_module);
+    jl_call1(jl_get_function(mpc_module, "SetMaxNumObs"), jl_box_int32(100));
+    jl_call1(jl_get_function(mpc_module, "SetObsPerColPoint"), jl_box_int32(10));
+    jl_call1(jl_get_function(mpc_module, "SetWDistanceToObstacles"), jl_box_float64(100.0));
+    ASSERT_FALSE(HasJuliaException());
+
+    std::vector<double> state_data = {0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
+    auto set_state = [&]() {
+        jl_array_t *jl_state = jl_ptr_to_array_1d(array_type, state_data.data(), state_data.size(), 0);
+        jl_call1(jl_get_function(mpc_module, "SetState"), (jl_value_t*)jl_state);
+    };
+    set_state();
+    jl_call2(jl_get_function(mpc_module, "SetGoalPoint"), jl_box_float64(10.0), jl_box_float64(0.0));
+    jl_eval_string("Main.MPC.eval(:(beta = 0.1))");
+    jl_call0(jl_get_function(mpc_module, "Setup"));
+    ASSERT_FALSE(HasJuliaException()) << "MPC Setup failed";
+
+    std::vector<double> obs;
+    for (int i = 0; i < 2500; i++) {
+        obs.push_back(-20.0 - 0.25 * (i % 50));
+        obs.push_back(-20.0 + 0.25 * (i / 50));
+        obs.push_back(0.25);
+    }
+    obs.push_back(4.0); obs.push_back(0.3); obs.push_back(0.5);
+    jl_array_t *jl_obs = jl_ptr_to_array_1d(array_type, obs.data(), obs.size(), 0);
+    jl_call1(jl_get_function(mpc_module, "SetObstacles"), (jl_value_t*)jl_obs);
+    ASSERT_FALSE(HasJuliaException());
+
+    for (int k = 0; k < 3; k++) {
+        set_state();
+        jl_call0(jl_get_function(mpc_module, "Plan"));
+        ASSERT_FALSE(HasJuliaException()) << "MPC Plan failed";
+    }
+
+    double clearance = jl_unbox_float64(jl_eval_string("let X = Main.MPC.n.r.ocp.X; minimum(hypot(X[i,1] - 4.0, X[i,2] - 0.3) for i in 2:size(X,1)) - (1.414*0.5/2.0 + Main.MPC.safetyMargin) end"));
+    ASSERT_FALSE(HasJuliaException());
+    EXPECT_GT(clearance, 0.0);
+    jl_call1(jl_get_function(mpc_module, "SetObsPerColPoint"), jl_box_int32(0));
 }
 
 int main(int argc, char ** argv)
