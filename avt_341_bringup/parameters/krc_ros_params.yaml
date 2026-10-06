@@ -6,7 +6,7 @@
     vehicle_wheelbase: 2.06
     vehicle_cg_height: 1.142
     vehicle_mass: 1092.25
-    vehicle_yaw_inertia: 690
+    vehicle_yaw_inertia: 690.0
     frames:
       use_vehicle_prefix: false
       camera: 'flir_optical'

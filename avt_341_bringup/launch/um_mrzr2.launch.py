@@ -206,6 +206,7 @@ def launch_setup(context, *args, **kwargs):
                 "rviz_config":                  f"{avt_341_bringup_dir}/rviz/avt_341_um_mrzr.rviz",
                 "use_lidar_obstacle_detector":  "True",
                 "local_planner_method":         "mpc",
+                "use_atat_control":             "False",
                 "use_speed_control":            "False",
                 "use_segmentation_grid_processor": "False",
                 "use_perception_rms":           "False",
