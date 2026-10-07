@@ -122,6 +122,7 @@ class MissionManager{
     void handleTaskComplete(const TaskCompleteMsg & msg);
     void handleSetSpeedMsg(const SetSpeedMsg & msg);
     void handleOverwatch(const OverwatchMsg & msg);
+    void handleWaitUntilComplete(const WaitUntilCompleteMsg & msg);
     void handleCancelTask(const CancelMsg & msg);
     void handleCancelAllTask(const CancelAllMsg & msg);
 

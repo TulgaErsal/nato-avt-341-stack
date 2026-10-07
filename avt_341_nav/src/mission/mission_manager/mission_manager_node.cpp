@@ -453,6 +453,8 @@ int main(int argc, char **argv) {
                 mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::PathFollow){
                 mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
+            } else if(rcvd_msg.type == MissionMsgType::WaitUntilComplete){
+                mgr->handleWaitUntilComplete(WaitUntilCompleteMsg(rcvd_msg));
             }
             else{
               RCLCPP_WARN(nh->get_logger(), "Unknown message type: %s", rcvd_msg.type.c_str());

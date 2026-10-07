@@ -38,6 +38,22 @@ Not fully implemented. Handler simply prints an acknowledgement that another
 vehicle has acknowledged a previous message sent out by the ego vehicle. This
 should be used to help track task performance by other vehicles.
 
+Wait Until Complete
+^^^^^^^^^^^^^^^^^^^
+
+`<sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>`
+
+Queues a task on the receiving vehicle that holds its task queue until
+`<target_vehicle>` reports `TASK_COMPLETE` for its task `<target_msg_id>`. In the
+`Communication` message the target vehicle is carried in `objective_name` and the
+task id in `target_msg_id`. A completion received at any time since the last reset
+releases the wait, including one received before the wait task started.
+Cancelling the target task also releases it, since a cancelled task reports
+`TASK_COMPLETE`.
+
+A formation command creates a task on every vehicle in the formation, so to hold
+a formation send a `WAIT_UNTIL_COMPLETE` to each of its vehicles.
+
 Move To
 ^^^^^^^
 

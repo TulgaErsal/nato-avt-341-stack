@@ -13,6 +13,7 @@ const std::string MissionMsgType::Cancel = "CANCEL";
 const std::string MissionMsgType::CancelAll = "CANCEL_ALL";
 const std::string MissionMsgType::Overwatch = "OVERWATCH";
 const std::string MissionMsgType::PathFollow = "PATH_FOLLOW";
+const std::string MissionMsgType::WaitUntilComplete = "WAIT_UNTIL_COMPLETE";
 
 const std::string PriorityType::QUEUE = "QUEUE";
 const std::string PriorityType::QUEUE_SHORT = "Q";
@@ -297,3 +298,23 @@ avt_341_msgs::msg::Communication OverwatchMsg::toROSMsg(){
 }
 std::string OverwatchMsg::getType() { return MissionMsgType::Overwatch; }
 
+
+// WaitUntilComplete
+// =====================================================================================================================
+
+WaitUntilCompleteMsg::WaitUntilCompleteMsg(const avt_341_msgs::msg::Communication &msg)
+: MissionManagerDto(msg), target_vehicle(msg.objective_name), target_msg_id(msg.target_msg_id){
+}
+
+WaitUntilCompleteMsg::WaitUntilCompleteMsg(const std::string &sender, int msgId, const std::string & recipient,
+                                           const std::string & targetVehicle, int targetMsgId, const std::string &priority)
+             : MissionManagerDto(sender, msgId, recipient, priority), target_vehicle(targetVehicle), target_msg_id(targetMsgId){
+}
+
+avt_341_msgs::msg::Communication WaitUntilCompleteMsg::toROSMsg(){
+  avt_341_msgs::msg::Communication msg = MissionManagerDto::toROSMsg();
+  msg.objective_name = target_vehicle;
+  msg.target_msg_id = target_msg_id;
+  return msg;
+}
+std::string WaitUntilCompleteMsg::getType() { return MissionMsgType::WaitUntilComplete; }

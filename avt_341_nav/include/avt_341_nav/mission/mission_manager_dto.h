@@ -28,6 +28,7 @@ struct MissionMsgType {
   static const std::string CancelAll;
   static const std::string Overwatch;
   static const std::string PathFollow;
+  static const std::string WaitUntilComplete;
 };
 
 struct MissionManagerDto {
@@ -180,6 +181,19 @@ struct OverwatchMsg : public MissionManagerDto {
   std::string getType() override;
 
   int wait_for_msg_id;
+};
+
+// The target vehicle is carried in Communication.objective_name.
+struct WaitUntilCompleteMsg : public MissionManagerDto {
+  explicit WaitUntilCompleteMsg(const avt_341_msgs::msg::Communication &msg);
+  WaitUntilCompleteMsg(const std::string &sender, int msgId, const std::string & recipient,
+                       const std::string & targetVehicle, int targetMsgId,
+                       const std::string &priority = PriorityType::QUEUE);
+  avt_341_msgs::msg::Communication toROSMsg() override;
+  std::string getType() override;
+
+  std::string target_vehicle;
+  int target_msg_id;
 };
 
 #endif

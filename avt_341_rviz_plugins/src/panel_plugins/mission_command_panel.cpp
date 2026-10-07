@@ -33,7 +33,7 @@ namespace avt_341::rviz_plugins
 
         // Setup entries
         msg_id_entry_->setValidator(new QIntValidator(0, 99, this));
-        msg_type_combo_->addItems({ "FORM", "ACK", "ARRIVE", "TASK_COMPLETE", "MOVETO", "SHUTDOWN", "SET_SPEED", "CANCEL", "CANCEL_ALL", "OVERWATCH" });
+        msg_type_combo_->addItems({ "FORM", "ACK", "ARRIVE", "TASK_COMPLETE", "MOVETO", "SHUTDOWN", "SET_SPEED", "CANCEL", "CANCEL_ALL", "OVERWATCH", "WAIT_UNTIL_COMPLETE" });
         desired_speed_entry_->setValidator(new QDoubleValidator(0, 100, 2, this));
         priority_type_combo_->addItems({ "QUEUE", "PREEMPT", "CANCEL_ALL" });
         termination_method_combo_->addItems({ "LEADER_ARRIVED", "ALL_ARRIVED" });

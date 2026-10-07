@@ -127,6 +127,16 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.desired_speed = std::stod(tokens[5]);
     message.priority_type = tokens[6];
   }
+    // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>
+    // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
+  else if(message.type == MissionMsgType::WaitUntilComplete) {
+    message.receiver_name = tokens[3];
+    message.objective_name = tokens[4];
+    message.target_msg_id = atoi(tokens[5].c_str());
+    if(tokens.size() > 6) {
+      message.priority_type = tokens[6];
+    }
+  }
 
   return message;
 }
@@ -184,6 +194,10 @@ std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
   else if(msg.type == MissionMsgType::PathFollow) {
     stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.desired_speed << "," << msg.priority_type;
   }
+  // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
+  else if(msg.type == MissionMsgType::WaitUntilComplete) {
+    stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.target_msg_id << "," << msg.priority_type;
+  }
 
   return stream.str();
 
@@ -226,6 +240,9 @@ std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341_msgs::msg::Com
   }
   if(msg.type == MissionMsgType::PathFollow){
     return std::make_shared<PathFollowMsg>(msg);
+  }
+  if(msg.type == MissionMsgType::WaitUntilComplete){
+    return std::make_shared<WaitUntilCompleteMsg>(msg);
   }
   return nullptr;
 }

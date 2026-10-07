@@ -338,7 +338,7 @@ avt_341_msgs::msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const T
 }
 
 void MissionManager::publishTaskCompletion(const std::string & sender_name, int msg_id){
-  communication_pub->publish(TaskCompleteMsg(sender_name, -1, sender_name, msg_id).toROSMsg());
+  communication_pub->publish(TaskCompleteMsg(my_name, -1, sender_name, msg_id).toROSMsg());
 }
 
 void MissionManager::publishTaskChange() {
@@ -623,6 +623,17 @@ void MissionManager::handleOverwatch(const OverwatchMsg & msg){
     RCLCPP_INFO(node_->get_logger(), "No overwatch found to investigate contact");
   }
 
+}
+
+// <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
+void MissionManager::handleWaitUntilComplete(const WaitUntilCompleteMsg & msg){
+  if(msg.target_vehicle.empty()){
+    RCLCPP_WARN(node_->get_logger(), "Ignoring WAIT_UNTIL_COMPLETE %d: no target vehicle given.", msg.msg_id);
+    return;
+  }
+  std::string target_vehicle = msg.target_vehicle;
+  std::transform(target_vehicle.begin(), target_vehicle.end(), target_vehicle.begin(), [](unsigned char c){ return std::toupper(c); });
+  addTask(new WaitUntilComplete(this, msg.sender_name, msg.msg_id, target_vehicle, msg.target_msg_id), msg.priority_type);
 }
 
 MissionPoint MissionManager::getClosestOverwatch(){
