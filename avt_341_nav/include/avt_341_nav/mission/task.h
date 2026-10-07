@@ -105,6 +105,7 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
+    void onPreempt() override { init_done = false; }
     std::string description() const override;
 private:
   std::string target_veh_;

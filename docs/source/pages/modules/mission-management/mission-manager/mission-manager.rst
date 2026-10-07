@@ -51,7 +51,9 @@ counts, so a reused task id does not release a new wait. Send the wait before th
 target task can finish (for example, together with it); a wait sent after the
 target task already finished does not release and has to be cancelled.
 Cancelling the target task releases the wait, since a cancelled task reports
-`TASK_COMPLETE`.
+`TASK_COMPLETE`. A `CANCEL` or `CANCEL_ALL` message also reports `TASK_COMPLETE`
+under its own message id, so message ids must be unique across all message types
+from a commander: a cancel that reuses a waited-on id releases the wait.
 
 When the wait starts, the vehicle is given a hold goal at its current position,
 so a `PREEMPT` wait stops a moving vehicle. The preempted task resumes after the
