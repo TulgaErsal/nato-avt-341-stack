@@ -13,3 +13,5 @@ __overrides: $pkg_path{avt_341_bringup}/parameters/krc_ros_params.yaml
 /**/mission_manager_node:
   ros__parameters:
     check_goal_arrival: true
+    formation_change_delay:
+      is_enabled: true
