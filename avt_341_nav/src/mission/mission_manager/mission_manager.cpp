@@ -633,6 +633,10 @@ void MissionManager::handleWaitUntilComplete(const WaitUntilCompleteMsg & msg){
   }
   std::string target_vehicle = msg.target_vehicle;
   std::transform(target_vehicle.begin(), target_vehicle.end(), target_vehicle.begin(), [](unsigned char c){ return std::toupper(c); });
+  if(target_vehicle == my_name){
+    RCLCPP_WARN(node_->get_logger(), "Ignoring WAIT_UNTIL_COMPLETE %d: a vehicle cannot wait on its own task.", msg.msg_id);
+    return;
+  }
   addTask(new WaitUntilComplete(this, msg.sender_name, msg.msg_id, target_vehicle, msg.target_msg_id), msg.priority_type);
 }
 
@@ -820,8 +824,11 @@ void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
-bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id) const{
-  return std::find_if(task_completions_.begin(), task_completions_.end(),
+bool MissionManager::hasCompletedTask(const std::string & target_veh, int target_msg_id, size_t since) const{
+  if(since >= task_completions_.size()){
+    return false;
+  }
+  return std::find_if(task_completions_.begin() + since, task_completions_.end(),
                    [&](const TaskCompleteMsg & comm){return comm.sender_name == target_veh && comm.target_msg_id == target_msg_id;}) != task_completions_.end();
 }
 

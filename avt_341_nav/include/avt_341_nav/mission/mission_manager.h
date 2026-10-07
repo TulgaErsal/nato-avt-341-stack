@@ -156,7 +156,9 @@ class MissionManager{
     void resetTaskList(bool send_completion_msg);
     void cancelTask(int task_id,bool send_completion_msg);
     void onGoalReached(const geometry_msgs::msg::PoseStamped & pose);
-    bool hasCompletedTask(const std::string & target_veh, int target_msg_id) const;
+    // Only completions received after the first `since` completions count.
+    bool hasCompletedTask(const std::string & target_veh, int target_msg_id, size_t since = 0) const;
+    size_t completionCount() const { return task_completions_.size(); }
     bool hasArrival(const std::string & target_veh, const std::string & objective) const;
 
     Task* currentTask();

@@ -109,6 +109,7 @@ public:
 private:
   std::string target_veh_;
   int target_msg_id_;
+  size_t completions_before_;
 }; // class WaitUntil
 
 class WaitForDuration : public Task {

@@ -129,7 +129,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   }
     // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>
     // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
-  else if(message.type == MissionMsgType::WaitUntilComplete) {
+  else if(message.type == MissionMsgType::WaitUntilComplete && tokens.size() >= 6) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
     message.target_msg_id = atoi(tokens[5].c_str());

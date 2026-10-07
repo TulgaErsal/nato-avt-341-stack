@@ -46,10 +46,16 @@ Wait Until Complete
 Queues a task on the receiving vehicle that holds its task queue until
 `<target_vehicle>` reports `TASK_COMPLETE` for its task `<target_msg_id>`. In the
 `Communication` message the target vehicle is carried in `objective_name` and the
-task id in `target_msg_id`. A completion received at any time since the last reset
-releases the wait, including one received before the wait task started.
-Cancelling the target task also releases it, since a cancelled task reports
+task id in `target_msg_id`. Only a completion received after the wait message
+counts, so a reused task id does not release a new wait. Send the wait before the
+target task can finish (for example, together with it); a wait sent after the
+target task already finished does not release and has to be cancelled.
+Cancelling the target task releases the wait, since a cancelled task reports
 `TASK_COMPLETE`.
+
+When the wait starts, the vehicle is given a hold goal at its current position,
+so a `PREEMPT` wait stops a moving vehicle. The preempted task resumes after the
+wait. A wait whose target vehicle is the receiving vehicle itself is rejected.
 
 A formation command creates a task on every vehicle in the formation, so to hold
 a formation send a `WAIT_UNTIL_COMPLETE` to each of its vehicles.
