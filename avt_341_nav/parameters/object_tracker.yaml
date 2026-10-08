@@ -136,7 +136,7 @@ ros__parameters:
       description: "Integrate with the mission manager for target selection."
     autostart_target_classes:
       type: string_array
-      default_value: ['car']
+      default_value: ['']
       description: "Detection classes eligible for autostart tracking."
     formation_vehicle_ids:
       type: string_array
