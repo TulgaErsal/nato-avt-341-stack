@@ -57,6 +57,7 @@
 #include <regex>
 
 #include <avt_341_nav/core/eigen_dto_conversion.hpp>
+#include <avt_341_nav/core/string_utils.hpp>
 #include <avt_341_nav/perception/tracking/formation_vehicle_tracker.hpp>
 #include <avt_341_nav/perception/tracking/toi_tracker.hpp>
 
@@ -400,6 +401,28 @@ void ObjectTrackerNode::RemoveStaleToiTrackers() {
                         "matches target_selection.toi_regex \"%s\".",
                         it->first.c_str(),
                         params_.target_selection.toi_regex.c_str());
+            it = trackers_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+bool ObjectTrackerNode::IsFormationLeader(
+    const avt_341_msgs::msg::MissionTaskStatus& task_status) const {
+    // Formation vehicles are ordered leader first and named in uppercase,
+    // while target ids are the lowercase vehicle namespaces.
+    return !task_status.formation_vehicles.empty() &&
+           IsEgoVehicle(core::ToLowerCase(task_status.formation_vehicles.front()));
+}
+
+void ObjectTrackerNode::RemoveFormationVehicleTrackers() {
+    for (auto it = trackers_.begin(); it != trackers_.end();) {
+        if (it->second->GetTrackerType() == ObjectTrackerType::FormationVehicle) {
+            RCLCPP_INFO(get_logger(),
+                        "Removing formation vehicle tracker \"%s\": the ego "
+                        "vehicle leads the formation.",
+                        it->first.c_str());
             it = trackers_.erase(it);
         } else {
             ++it;
@@ -805,11 +828,17 @@ void ObjectTrackerNode::PublishImage() {
 
 void ObjectTrackerNode::TaskChangedCallback(
     avt_341_msgs::msg::MissionModuleStatus::SharedPtr task_status_message) {
-    const std::string& target_class = task_status_message->active_task.tracked_vehicle;
+    const auto& active_task = task_status_message->active_task;
+    const std::string& target_class = active_task.tracked_vehicle;
 
     if (target_class.empty()) {
-        // No follow target assigned (e.g. the ego-vehicle is the formation
-        // leader). Leave the existing trackers undisturbed.
+        // No follow target assigned. A single-tracking formation leader frees
+        // its only slot (blocked by a formation vehicle tracker) for a target
+        // of interest. Otherwise leave the existing trackers undisturbed.
+        if (!params_.target_selection.use_multi_tracking &&
+            IsFormationLeader(active_task)) {
+            RemoveFormationVehicleTrackers();
+        }
         RCLCPP_DEBUG(get_logger(),
                      "Task status without tracked vehicle, ignoring ...");
         return;

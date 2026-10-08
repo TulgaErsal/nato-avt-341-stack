@@ -220,6 +220,12 @@ class ObjectTrackerNode : public rclcpp::Node {
      *         the regex parameter changes at runtime. */
     void RemoveStaleToiTrackers();
 
+    /** @brief Whether the ego vehicle leads the formation of @p task_status. */
+    bool IsFormationLeader(const avt_341_msgs::msg::MissionTaskStatus& task_status) const;
+
+    /** @brief Remove every tracker of type FormationVehicle. */
+    void RemoveFormationVehicleTrackers();
+
     /** @brief Create one tracker per autostart target class (only the first
      *         class in single-tracking mode). */
     void SpawnAutostartTrackers();
@@ -321,7 +327,9 @@ class ObjectTrackerNode : public rclcpp::Node {
 
     /**
      * @brief Mission task status subscription callback. A non-empty tracked
-     * vehicle adds or re-targets a tracker without disturbing the others.
+     * vehicle adds or re-targets a tracker. In single-tracking mode, leading a
+     * formation frees the tracker slot of a formation vehicle so that a target
+     * of interest can be tracked.
      *
      * @param task_status_message ROS avt_341_msgs/MissionModuleStatus message.
      */

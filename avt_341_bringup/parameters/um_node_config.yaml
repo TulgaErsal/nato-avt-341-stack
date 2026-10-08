@@ -52,6 +52,6 @@
     points/input: /ouster/points
     detection_2d: detections/vision
     avt_341/reset: avt_341/reset
-    task: avt_341/mission_task_state
+    task: avt_341/task_change
     avt_341/odometry/estimated/odom: odometry/estimated
     avt_341/reset_ack: avt_341/reset_ack
