@@ -158,6 +158,10 @@ function SetObsPerColPoint(k::Int32)
 	global obsPerColPoint = k
 end
 
+function SetSolveCpuTimeBudget(t::Float64)
+	global solveCpuTimeBudget = t
+end
+
 function SetObsActiveSetTol(tol::Float64)
 	global obsActiveSetTol = tol
 end
