@@ -681,9 +681,14 @@ function Setup()
 	# println("Initialization status: ",n.r.ocp.status)
 	# println("Setup done. Type 'q' to quit.")
 
-	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
+	JuMP.setsolver(n.ocp.mdl, PlanningSolver())
+
+end
+
+function PlanningSolver(; max_iter = 200)
+	return Ipopt.IpoptSolver(;
 		linear_solver = linearSolverId,
-		max_iter = 200,
+		max_iter = max_iter,
 		max_cpu_time = 0.2,
 		print_level = 0,
 		warm_start_init_point = "yes",
@@ -696,8 +701,7 @@ function Setup()
 		acceptable_constr_viol_tol = 0.01,
 		acceptable_dual_inf_tol = 1e10,
 		acceptable_compl_inf_tol = 0.01
-	))
-
+	)
 end
 
 function ObstacleBumps!(b::Vector{Float64}, obs::Vector{Float64}, nobs::Integer, sm::Float64, px::Float64, py::Float64)
@@ -1076,12 +1080,27 @@ function Plan()
 	end
 end
 
+# also compiles the paths first hit mid-drive otherwise: > obsPerColPoint obstacles, an early-stopped solve, the fallback warm starts
 function WarmUp()
-	global goal
-	saved_goal = goal
+	global goal, obstacles, numobs
+	saved_goal, saved_obstacles, saved_numobs = goal, obstacles, numobs
 	goal = [x_veh + warmUpGoalDistance*cos(yaw), y_veh + warmUpGoalDistance*sin(yaw)]
+	numobs = max(obsPerColPoint, 1) + 1
+	obstacles = vcat([[x_veh + 1000.0 + i, y_veh + 1000.0, 1.0] for i in 1:numobs]...)
+	Plan()
+	JuMP.setsolver(n.ocp.mdl, PlanningSolver(max_iter = 1))
+	Plan()
+	JuMP.setsolver(n.ocp.mdl, PlanningSolver())
+	X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
+	ClosestObstacleClearance(X1)
+	MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
+	RestoreWarmStart!(n, X1, U1)
+	obsPerColPoint > 0 && MaxNeglectedObstacleCost(X1, AssignObstaclesToColPoints!([X1]))
+	println("MPC warm-up: clearance to dummy obstacles ", round(ClosestObstacleClearance(n.r.ocp.X); digits=3), " m")
+	obstacles, numobs = saved_obstacles, saved_numobs
 	Plan()
 	goal = saved_goal
+	GC.gc()
 end
 
 end # module MPC
