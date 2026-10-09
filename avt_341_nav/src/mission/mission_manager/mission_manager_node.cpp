@@ -139,7 +139,7 @@ void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
 
     const std::string leader_name = current_task->getFormationDef()->followedVehicle();
 
-    if(!leader_name.empty() && child_frame_id.find(leader_name) != std::string::npos ) {
+    if(!leader_name.empty() && veh_name == leader_name ) {
       nav_msgs::msg::Odometry leader_odom = *msg;
 
       // Check if odometry is in map frame
