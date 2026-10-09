@@ -32,7 +32,7 @@ global speed_tracking_w_param = 0
 global obsActiveSetTol = 0.01
 global maxObsActiveSetResolves = 2
 global solveCpuTimeBudget = 0.1
-global minResolveCpuTime = 0.03
+global minResolveCpuTime = 0.001
 global solveCpuTimeLeft = Inf
 global numActiveSetResolves = 0
 global lastNeglectedObstacleCost = 0.0
@@ -787,7 +787,7 @@ function BudgetedOptimize!(n)
 	global solveCpuTimeLeft
 	opts = n.ocp.mdl.solver.options
 	i = findfirst(o -> o[1] == :max_cpu_time, opts)
-	i === nothing || (opts[i] = (:max_cpu_time, max(solveCpuTimeLeft, 0.01)))
+	i === nothing || (opts[i] = (:max_cpu_time, max(solveCpuTimeLeft, minResolveCpuTime)))
 	optimize!(n)
 	solveCpuTimeLeft -= n.r.ocp.tSolve
 end

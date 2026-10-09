@@ -67,7 +67,7 @@ ros__parameters:
   solve_cpu_time_budget:
     type: double
     default_value: 0.1
-    description: "CPU time [s] the Ipopt solves of one planning step may use together; each solve gets what is left, and obstacle re-selection and fallback re-solves are skipped when less than 0.03 s is left"
+    description: "CPU time [s] the Ipopt solves of one planning step may use together; each solve gets what is left, and obstacle re-selection and fallback re-solves are skipped when less than 0.001 s is left"
     validation:
       gt<>: [ 0.0 ]
   max_num_seg:
