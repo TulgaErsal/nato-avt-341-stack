@@ -31,6 +31,9 @@ global speed_ref_param = 0
 global speed_tracking_w_param = 0
 global obsActiveSetTol = 0.01
 global maxObsActiveSetResolves = 2
+global solveCpuTimeBudget = 0.1
+global minResolveCpuTime = 0.03
+global solveCpuTimeLeft = Inf
 global numActiveSetResolves = 0
 global lastNeglectedObstacleCost = 0.0
 global numActiveSetUnconverged = 0
@@ -689,7 +692,7 @@ function PlanningSolver(; max_iter = 200)
 	return Ipopt.IpoptSolver(;
 		linear_solver = linearSolverId,
 		max_iter = max_iter,
-		max_cpu_time = 0.2,
+		max_cpu_time = solveCpuTimeBudget,
 		print_level = 0,
 		warm_start_init_point = "yes",
 		# mu_strategy = "adaptive",
@@ -775,29 +778,39 @@ function MaxNeglectedObstacleCost(P, sel)
 	return worst
 end
 
+# solves with max_cpu_time set to what is left of this step's solveCpuTimeBudget
+function BudgetedOptimize!(n)
+	global solveCpuTimeLeft
+	opts = n.ocp.mdl.solver.options
+	i = findfirst(o -> o[1] == :max_cpu_time, opts)
+	i === nothing || (opts[i] = (:max_cpu_time, max(solveCpuTimeLeft, 0.01)))
+	optimize!(n)
+	solveCpuTimeLeft -= n.r.ocp.tSolve
+end
+
 function OptimizeWithObstacles!(n)
 	if obsPerColPoint <= 0
-		optimize!(n)
+		BudgetedOptimize!(n)
 		return
 	end
 	global numActiveSetResolves, numActiveSetUnconverged, lastNeglectedObstacleCost
 	Ps = [ColPointPositions()]
 	sel = AssignObstaclesToColPoints!(Ps)
-	optimize!(n)
+	BudgetedOptimize!(n)
 	tSolve = n.r.ocp.tSolve
 	for r in 0:maxObsActiveSetResolves
 		n.r.ocp.status == :Optimal || break
 		P = ColPointPositions()
 		lastNeglectedObstacleCost = MaxNeglectedObstacleCost(P, sel)
 		lastNeglectedObstacleCost > obsActiveSetTol || break
-		if r == maxObsActiveSetResolves
+		if r == maxObsActiveSetResolves || solveCpuTimeLeft < minResolveCpuTime
 			numActiveSetUnconverged += 1
 			break
 		end
 		numActiveSetResolves += 1
 		push!(Ps, P)
 		sel = AssignObstaclesToColPoints!(Ps)
-		optimize!(n)
+		BudgetedOptimize!(n)
 		tSolve += n.r.ocp.tSolve
 	end
 	n.r.ocp.tSolve = tSolve
@@ -1033,6 +1046,7 @@ function Plan()
 			JuMP.setRHS(n.r.ocp.x0Con[st],n.ocp.X0[st])
 		end
 
+		global solveCpuTimeLeft = solveCpuTimeBudget
 		OptimizeWithObstacles!(n)
 
 		# Reactive fallback: an Optimal solve can still land in a
@@ -1041,7 +1055,7 @@ function Plan()
 			status1 = n.r.ocp.status; tSolve1 = n.r.ocp.tSolve
 			X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
 			clear1 = ClosestObstacleClearance(X1)
-			if enableFallback && clear1 < 0.0
+			if enableFallback && clear1 < 0.0 && solveCpuTimeLeft >= minResolveCpuTime
 				println("MPC fallback: primary solve collides (clearance=", round(clear1;digits=3), "m), trying mirrored warm start...")
 				MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
 				OptimizeWithObstacles!(n)
