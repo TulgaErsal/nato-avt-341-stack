@@ -31,6 +31,9 @@ global speed_ref_param = 0
 global speed_tracking_w_param = 0
 global obsActiveSetTol = 0.01
 global maxObsActiveSetResolves = 2
+global solveCpuTimeBudget = 0.1
+global minResolveCpuTime = 0.02
+global solveCpuTimeLeft = Inf
 global numActiveSetResolves = 0
 global lastNeglectedObstacleCost = 0.0
 global numActiveSetUnconverged = 0
@@ -153,6 +156,14 @@ end
 
 function SetObsPerColPoint(k::Int32)
 	global obsPerColPoint = k
+end
+
+function SetSolveCpuTimeBudget(t::Float64)
+	global solveCpuTimeBudget = t
+end
+
+function SetMinResolveCpuTime(t::Float64)
+	global minResolveCpuTime = t
 end
 
 function SetObsActiveSetTol(tol::Float64)
@@ -681,10 +692,15 @@ function Setup()
 	# println("Initialization status: ",n.r.ocp.status)
 	# println("Setup done. Type 'q' to quit.")
 
-	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
+	JuMP.setsolver(n.ocp.mdl, PlanningSolver())
+
+end
+
+function PlanningSolver(; max_iter = 200)
+	return Ipopt.IpoptSolver(;
 		linear_solver = linearSolverId,
-		max_iter = 200,
-		max_cpu_time = 0.2,
+		max_iter = max_iter,
+		max_cpu_time = solveCpuTimeBudget,
 		print_level = 0,
 		warm_start_init_point = "yes",
 		# mu_strategy = "adaptive",
@@ -696,8 +712,7 @@ function Setup()
 		acceptable_constr_viol_tol = 0.01,
 		acceptable_dual_inf_tol = 1e10,
 		acceptable_compl_inf_tol = 0.01
-	))
-
+	)
 end
 
 function ObstacleBumps!(b::Vector{Float64}, obs::Vector{Float64}, nobs::Integer, sm::Float64, px::Float64, py::Float64)
@@ -771,30 +786,47 @@ function MaxNeglectedObstacleCost(P, sel)
 	return worst
 end
 
+# solves with max_cpu_time set to what is left of this step's solveCpuTimeBudget
+function BudgetedOptimize!(n)
+	global solveCpuTimeLeft
+	opts = n.ocp.mdl.solver.options
+	i = findfirst(o -> o[1] == :max_cpu_time, opts)
+	i === nothing || (opts[i] = (:max_cpu_time, solveCpuTimeLeft))
+	optimize!(n)
+	solveCpuTimeLeft -= n.r.ocp.tSolve
+end
+
 function OptimizeWithObstacles!(n)
 	if obsPerColPoint <= 0
-		optimize!(n)
+		BudgetedOptimize!(n)
 		return
 	end
 	global numActiveSetResolves, numActiveSetUnconverged, lastNeglectedObstacleCost
 	Ps = [ColPointPositions()]
 	sel = AssignObstaclesToColPoints!(Ps)
-	optimize!(n)
+	BudgetedOptimize!(n)
 	tSolve = n.r.ocp.tSolve
 	for r in 0:maxObsActiveSetResolves
 		n.r.ocp.status == :Optimal || break
 		P = ColPointPositions()
 		lastNeglectedObstacleCost = MaxNeglectedObstacleCost(P, sel)
 		lastNeglectedObstacleCost > obsActiveSetTol || break
-		if r == maxObsActiveSetResolves
+		if r == maxObsActiveSetResolves || solveCpuTimeLeft < minResolveCpuTime
 			numActiveSetUnconverged += 1
 			break
 		end
 		numActiveSetResolves += 1
+		Xok = copy(n.r.ocp.X); Uok = copy(n.r.ocp.U)
 		push!(Ps, P)
 		sel = AssignObstaclesToColPoints!(Ps)
-		optimize!(n)
+		BudgetedOptimize!(n)
 		tSolve += n.r.ocp.tSolve
+		if n.r.ocp.status != :Optimal
+			n.r.ocp.X = Xok; n.r.ocp.U = Uok; n.r.ocp.status = :Optimal
+			RestoreWarmStart!(n, Xok, Uok)
+			numActiveSetUnconverged += 1
+			break
+		end
 	end
 	n.r.ocp.tSolve = tSolve
 end
@@ -1029,6 +1061,7 @@ function Plan()
 			JuMP.setRHS(n.r.ocp.x0Con[st],n.ocp.X0[st])
 		end
 
+		global solveCpuTimeLeft = solveCpuTimeBudget
 		OptimizeWithObstacles!(n)
 
 		# Reactive fallback: an Optimal solve can still land in a
@@ -1037,7 +1070,7 @@ function Plan()
 			status1 = n.r.ocp.status; tSolve1 = n.r.ocp.tSolve
 			X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
 			clear1 = ClosestObstacleClearance(X1)
-			if enableFallback && clear1 < 0.0
+			if enableFallback && clear1 < 0.0 && solveCpuTimeLeft >= minResolveCpuTime
 				println("MPC fallback: primary solve collides (clearance=", round(clear1;digits=3), "m), trying mirrored warm start...")
 				MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
 				OptimizeWithObstacles!(n)
@@ -1076,12 +1109,27 @@ function Plan()
 	end
 end
 
+# also compiles the paths first hit mid-drive otherwise: > obsPerColPoint obstacles, an early-stopped solve, the fallback warm starts
 function WarmUp()
-	global goal
-	saved_goal = goal
+	global goal, obstacles, numobs
+	saved_goal, saved_obstacles, saved_numobs = goal, obstacles, numobs
 	goal = [x_veh + warmUpGoalDistance*cos(yaw), y_veh + warmUpGoalDistance*sin(yaw)]
+	numobs = max(obsPerColPoint, 1) + 1
+	obstacles = vcat([[x_veh + 1000.0 + i, y_veh + 1000.0, 1.0] for i in 1:numobs]...)
+	Plan()
+	X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
+	JuMP.setsolver(n.ocp.mdl, PlanningSolver(max_iter = 1))
+	Plan()
+	JuMP.setsolver(n.ocp.mdl, PlanningSolver())
+	ClosestObstacleClearance(X1)
+	MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
+	RestoreWarmStart!(n, X1, U1)
+	obsPerColPoint > 0 && MaxNeglectedObstacleCost(X1, AssignObstaclesToColPoints!([X1]))
+	println("MPC warm-up: clearance to dummy obstacles ", round(ClosestObstacleClearance(n.r.ocp.X); digits=3), " m")
+	obstacles, numobs = saved_obstacles, saved_numobs
 	Plan()
 	goal = saved_goal
+	GC.gc()
 end
 
 end # module MPC

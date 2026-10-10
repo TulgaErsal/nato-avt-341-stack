@@ -64,6 +64,18 @@ ros__parameters:
     description: "if > 0, each collocation point only sees its this many nearest obstacles (re-selected every solve), so the MPC cost no longer grows with max_num_obs; 0 = every collocation point sees all max_num_obs slots (legacy formulation)"
     validation:
       gt_eq<>: [ 0 ]
+  solve_cpu_time_budget:
+    type: double
+    default_value: 0.1
+    description: "CPU time [s] the Ipopt solves of one planning step may use together; each solve gets what is left, and obstacle re-selection and fallback re-solves are skipped when less than min_resolve_cpu_time is left; a re-selection re-solve that does not finish keeps the previous optimal solution"
+    validation:
+      gt<>: [ 0.0 ]
+  min_resolve_cpu_time:
+    type: double
+    default_value: 0.02
+    description: "CPU time [s] that must be left of solve_cpu_time_budget to start an obstacle re-selection or fallback re-solve"
+    validation:
+      gt<>: [ 0.0 ]
   max_num_seg:
     type: int
     default_value: 2000

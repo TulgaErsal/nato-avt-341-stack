@@ -92,6 +92,18 @@ function main()
 
 	optimize!(n);
 	println(n.r.ocp.status," (",round(1000*n.r.ocp.tSolve; digits = 1)," ms)")
+
+	JuMP.setsolver(n.ocp.mdl, Ipopt.IpoptSolver(;
+	linear_solver = "ma27",
+	max_iter = 1,
+	print_level = 0,
+	warm_start_init_point = "yes"
+	))
+	optimize!(n);
+	println(n.r.ocp.status," (",round(1000*n.r.ocp.tSolve; digits = 1)," ms)")
+
+	partialsortperm(rand(40), 1:30; rev=true)
+	sort(partialsortperm(rand(40), 1:30))
 	path_prev = Array{Float64}(undef, numColPoints+1, 2)
 	mpc_path = Array{Float64}(undef, numColPoints+1, 2)
         @views X = n.r.ocp.X;
