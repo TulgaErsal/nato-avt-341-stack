@@ -119,6 +119,12 @@ ros__parameters:
     description: "Minimum neighboring obstacle points [points]."
     validation:
       gt_eq<>: [ 0 ]
+  normal_estimation_threads:
+    type: int
+    default_value: 0
+    description: "OpenMP threads for normal estimation. 0 uses one thread per logical CPU."
+    validation:
+      gt_eq<>: [ 0 ]
 
   # Pointcloud Topics
   # ====================================================================================================================

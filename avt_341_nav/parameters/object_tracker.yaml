@@ -156,6 +156,11 @@ ros__parameters:
       description: "Track generic targets that are neither formation vehicles nor TOI objects."
 
   obstacle_detector:
+    use_external_detector:
+      type: bool
+      default_value: false
+      read_only: true
+      description: "Take the obstacle markers and obstacle cloud from lidar_obstacle_detector_node (topics obstacles/bboxes and obstacles/cloud_clusters) instead of running the integrated obstacle detector on the raw point cloud. The other obstacle_detector parameters then have no effect; that node's parameters apply."
     use_pca_box:
       type: bool
       default_value: true
@@ -212,6 +217,12 @@ ros__parameters:
       description: "Minimum neighboring obstacle points."
       validation:
         gt_eq<>: [ 0 ]
+    normal_estimation_threads:
+      type: int
+      default_value: 0
+      description: "OpenMP threads for normal estimation. 0 uses one thread per logical CPU."
+      validation:
+        gt_eq<>: [ 0 ]
     cluster_threshold:
       type: double
       default_value: 0.5
@@ -247,7 +258,7 @@ ros__parameters:
     run_without_trackers:
       type: bool
       default_value: false
-      description: "Run the obstacle detector on every point cloud even when no tracker exists. When false it only runs while at least one tracker is active, and its markers are cleared when it goes idle."
+      description: "Run the obstacle detector on every point cloud even when no tracker uses it. When false it only runs while at least one tracker has had its first camera detection, and its markers are cleared when it goes idle."
 
   recovery:
     no_movement_enabled:
