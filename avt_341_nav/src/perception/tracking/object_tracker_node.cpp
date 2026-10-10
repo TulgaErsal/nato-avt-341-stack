@@ -149,11 +149,24 @@ void ObjectTrackerNode::CreateSubscriptions() {
             std::bind(&ObjectTrackerNode::CameraInfoCallback, this,
                       std::placeholders::_1));
 
-    point_cloud_subscription_ =
-        create_subscription<sensor_msgs::msg::PointCloud2>(
-            "points/input", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
-            std::bind(&ObjectTrackerNode::PointCloudCallback, this,
-                      std::placeholders::_1));
+    if (params_.obstacle_detector.use_external_detector) {
+        external_bboxes_subscription_ =
+            create_subscription<visualization_msgs::msg::MarkerArray>(
+                "obstacles/bboxes", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+                std::bind(&ObjectTrackerNode::ExternalBboxesCallback, this,
+                          std::placeholders::_1));
+        external_clusters_subscription_ =
+            create_subscription<sensor_msgs::msg::PointCloud2>(
+                "obstacles/cloud_clusters", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+                std::bind(&ObjectTrackerNode::ExternalClustersCallback, this,
+                          std::placeholders::_1));
+    } else {
+        point_cloud_subscription_ =
+            create_subscription<sensor_msgs::msg::PointCloud2>(
+                "points/input", RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,
+                std::bind(&ObjectTrackerNode::PointCloudCallback, this,
+                          std::placeholders::_1));
+    }
 
     if (params_.target_selection.use_mission_manager) {
         task_status_subscription_ =
@@ -222,6 +235,10 @@ void ObjectTrackerNode::CreatePublishers() {
     obstacle_bboxes_publisher_ =
         create_publisher<visualization_msgs::msg::MarkerArray>(
             "lidar_detector/bboxes", 1);
+
+    if (params_.obstacle_detector.use_external_detector) {
+        return;
+    }
 
     if (params_.obstacle_detector.publish_ground_cloud) {
         obstacle_ground_cloud_publisher_ =
@@ -651,7 +668,8 @@ void ObjectTrackerNode::RunObstacleDetection(
             norm_filtered, ground_filtered,
             ground_normal, static_cast<float>(od.ground_normal_threshold),
             static_cast<float>(od.obstacle_scale),
-            static_cast<int>(od.obstacle_min_neighbors));
+            static_cast<int>(od.obstacle_min_neighbors),
+            static_cast<unsigned int>(od.normal_estimation_threads));
     }
 
     if (od.publish_ground_cloud && obstacle_ground_cloud_publisher_) {
@@ -709,7 +727,7 @@ void ObjectTrackerNode::PointCloudCallback(
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Point cloud callback triggered!");
 
-    if (!params_.obstacle_detector.run_without_trackers && trackers_.empty()) {
+    if (!ObstacleDetectionNeeded()) {
         ReleaseObstacleDetection(point_cloud_message->header);
         return;
     }
@@ -717,6 +735,65 @@ void ObjectTrackerNode::PointCloudCallback(
     // Run the integrated obstacle detector synchronously so that
     // latest_obstacle_markers_ is up-to-date before the next tracking tick.
     RunObstacleDetection(point_cloud_message);
+}
+
+void ObjectTrackerNode::ExternalBboxesCallback(
+    visualization_msgs::msg::MarkerArray::SharedPtr markers_message) {
+    RCLCPP_DEBUG_ONCE(get_logger(), "External obstacle markers callback triggered!");
+
+    if (markers_message->markers.empty()) {
+        return;
+    }
+    if (!ObstacleDetectionNeeded()) {
+        ReleaseObstacleDetection(markers_message->markers.front().header);
+        return;
+    }
+    pending_external_markers_ = markers_message;
+    CommitExternalObstacles();
+}
+
+void ObjectTrackerNode::ExternalClustersCallback(
+    sensor_msgs::msg::PointCloud2::SharedPtr cloud_message) {
+    RCLCPP_DEBUG_ONCE(get_logger(), "External obstacle cloud callback triggered!");
+
+    if (!ObstacleDetectionNeeded()) {
+        return;
+    }
+    auto recording = Recorder()->RecordScope(OBSTACLE_DETECTION_SECTION_ID);
+    pending_external_cluster_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromROSMsg(*cloud_message, *pending_external_cluster_);
+    pending_external_cluster_stamp_ = cloud_message->header.stamp;
+    CommitExternalObstacles();
+}
+
+void ObjectTrackerNode::CommitExternalObstacles() {
+    if (!pending_external_markers_) {
+        return;
+    }
+    const auto& markers = pending_external_markers_->markers;
+    const bool has_boxes = std::any_of(
+        markers.begin(), markers.end(), [](const auto& marker) {
+            return marker.action == visualization_msgs::msg::Marker::ADD;
+        });
+    if (has_boxes) {
+        if (!pending_external_cluster_ ||
+            pending_external_cluster_stamp_ != markers.front().header.stamp) {
+            return;
+        }
+        context_.current_cluster = pending_external_cluster_;
+    }
+    latest_obstacle_markers_ = std::move(*pending_external_markers_);
+    has_obstacle_markers_ = true;
+    pending_external_markers_.reset();
+    obstacle_bboxes_publisher_->publish(latest_obstacle_markers_);
+}
+
+bool ObjectTrackerNode::ObstacleDetectionNeeded() const {
+    return params_.obstacle_detector.run_without_trackers ||
+           std::any_of(trackers_.begin(), trackers_.end(),
+                       [](const auto& entry) {
+                           return entry.second->HasFirstDetection();
+                       });
 }
 
 void ObjectTrackerNode::ReleaseObstacleDetection(
@@ -731,6 +808,8 @@ void ObjectTrackerNode::ReleaseObstacleDetection(
     has_obstacle_markers_ = false;
     prev_boxes_.clear();
     curr_boxes_.clear();
+    pending_external_markers_.reset();
+    pending_external_cluster_.reset();
 }
 
 void ObjectTrackerNode::ImageCallback(

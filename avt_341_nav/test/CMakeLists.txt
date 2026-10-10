@@ -204,6 +204,50 @@ ament_target_dependencies(object_tracker_reset_test
   visualization_msgs
 )
 
+message(STATUS "Adding object tracking obstacle gate unit tests")
+foreach(gate_test object_tracker_obstacle_gate_test object_tracker_external_obstacle_gate_test)
+  ament_add_gtest(${gate_test}
+    perception/tracking/object_tracker_obstacle_gate_test.cpp
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker_node.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/object_tracker.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/toi_tracker.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/formation_vehicle_tracker.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
+  )
+  target_include_directories(${gate_test}
+    PUBLIC
+      "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+      ${PCL_INCLUDE_DIRS}
+  )
+  target_link_libraries(${gate_test}
+    ${PROJECT_NAME}_proxy
+    ${PCL_LIBRARIES}
+    object_tracker_params_service
+  )
+  ament_target_dependencies(${gate_test}
+    avt_341_msgs
+    cv_bridge
+    Eigen3
+    nav_msgs
+    OpenCV
+    pcl_conversions
+    pcl_ros
+    rclcpp
+    sensor_msgs
+    std_msgs
+    tf2
+    tf2_eigen
+    tf2_geometry_msgs
+    tf2_ros
+    tf2_sensor_msgs
+    vision_msgs
+    visualization_msgs
+  )
+endforeach()
+target_compile_definitions(object_tracker_external_obstacle_gate_test
+  PRIVATE OBJECT_TRACKER_TEST_EXTERNAL_DETECTOR)
+
 # Tracker Recovery Monitor Tests
 # ------------------------------
 message(STATUS "Adding tracker recovery monitor unit tests")

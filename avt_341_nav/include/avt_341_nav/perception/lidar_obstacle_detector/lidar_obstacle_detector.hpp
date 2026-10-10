@@ -53,7 +53,7 @@ class LidarObstacleDetector
 
   Box pcaBoundingBox(typename pcl::PointCloud<PointT>::Ptr& cluster, const int id);
 
-  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_fixed, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors);
+  void pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_fixed, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors, unsigned int num_threads = 0);
 
   // ****************** Tracking ***********************
   void obstacleTracking(const std::vector<Box>& prev_boxes, std::vector<Box>& curr_boxes, const float displacement_thresh, const float iou_thresh);
@@ -475,7 +475,7 @@ int LidarObstacleDetector<PointT>::searchBoxIndex(const std::vector<Box>& boxes,
 }
 
 template <typename PointT>
-void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_fixed, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors)
+void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<PointT>::Ptr cloud_in, typename pcl::PointCloud<PointT>::Ptr cloud_fixed, typename pcl::PointCloud<PointT>::Ptr cloud_out, typename pcl::PointCloud<PointT>::Ptr cloud_rem, const Eigen::Vector3f& norm, float threshold, float scale, int min_neighbors, unsigned int num_threads)
 {
 	// Create a search tree, use KDTreee for non-organized data.
 	typename pcl::search::Search<PointT>::Ptr tree;
@@ -485,7 +485,7 @@ void LidarObstacleDetector<PointT>::pclFilterNorms(typename pcl::PointCloud<Poin
 	tree->setInputCloud(cloud_fixed);
 
 	// Compute normals using both small and large scales at each point
-	typename pcl::NormalEstimationOMP<PointT, pcl::PointNormal> ne;
+	typename pcl::NormalEstimationOMP<PointT, pcl::PointNormal> ne(num_threads);
 	ne.setInputCloud(cloud_fixed);
 	ne.setSearchMethod(tree);
 
