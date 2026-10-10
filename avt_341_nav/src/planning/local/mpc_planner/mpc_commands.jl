@@ -32,7 +32,7 @@ global speed_tracking_w_param = 0
 global obsActiveSetTol = 0.01
 global maxObsActiveSetResolves = 2
 global solveCpuTimeBudget = 0.1
-global minResolveCpuTime = 0.001
+global minResolveCpuTime = 0.02
 global solveCpuTimeLeft = Inf
 global numActiveSetResolves = 0
 global lastNeglectedObstacleCost = 0.0
@@ -812,10 +812,17 @@ function OptimizeWithObstacles!(n)
 			break
 		end
 		numActiveSetResolves += 1
+		Xok = copy(n.r.ocp.X); Uok = copy(n.r.ocp.U)
 		push!(Ps, P)
 		sel = AssignObstaclesToColPoints!(Ps)
 		BudgetedOptimize!(n)
 		tSolve += n.r.ocp.tSolve
+		if n.r.ocp.status != :Optimal
+			n.r.ocp.X = Xok; n.r.ocp.U = Uok; n.r.ocp.status = :Optimal
+			RestoreWarmStart!(n, Xok, Uok)
+			numActiveSetUnconverged += 1
+			break
+		end
 	end
 	n.r.ocp.tSolve = tSolve
 end
