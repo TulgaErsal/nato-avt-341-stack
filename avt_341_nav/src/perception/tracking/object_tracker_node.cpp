@@ -759,6 +759,17 @@ void ObjectTrackerNode::ExternalClustersCallback(
     if (!ObstacleDetectionNeeded()) {
         return;
     }
+    const bool xyz_only = std::all_of(
+        cloud_message->fields.begin(), cloud_message->fields.end(),
+        [](const auto& field) {
+            return field.name == "x" || field.name == "y" || field.name == "z";
+        });
+    if (!xyz_only) {
+        RCLCPP_WARN_ONCE(get_logger(),
+                         "The external obstacle cloud has fields besides x, y, z; "
+                         "if it also carries ground points (publish_seg_as_one), "
+                         "they are treated as obstacle points.");
+    }
     auto recording = Recorder()->RecordScope(OBSTACLE_DETECTION_SECTION_ID);
     pending_external_cluster_.reset(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*cloud_message, *pending_external_cluster_);
