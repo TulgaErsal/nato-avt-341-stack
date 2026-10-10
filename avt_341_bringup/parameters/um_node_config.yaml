@@ -55,3 +55,13 @@
     task: avt_341/task_change
     avt_341/odometry/estimated/odom: odometry/estimated
     avt_341/reset_ack: avt_341/reset_ack
+    obstacles/bboxes: /avt_341/lidar_detector/bboxes
+    obstacles/cloud_clusters: /avt_341/lidar_detector/cloud_clusters
+  additional_env:
+    OMP_WAIT_POLICY: "PASSIVE"
+    OMP_THREAD_LIMIT: "6"
+
+/**/lidar_obstacle_detector_node:
+  additional_env:
+    OMP_WAIT_POLICY: "PASSIVE"
+    OMP_THREAD_LIMIT: "6"
