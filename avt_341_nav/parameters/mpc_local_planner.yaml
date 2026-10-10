@@ -75,7 +75,7 @@ ros__parameters:
     default_value: 0.02
     description: "CPU time [s] that must be left of solve_cpu_time_budget to start an obstacle re-selection or fallback re-solve"
     validation:
-      gt_eq<>: [ 0.0 ]
+      gt<>: [ 0.0 ]
   max_num_seg:
     type: int
     default_value: 2000
