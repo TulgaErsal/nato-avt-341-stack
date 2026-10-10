@@ -581,6 +581,7 @@ void InitialiseJuliaAPI()
     j_set_max_num_obs = jl_get_function(mpc_module, "SetMaxNumObs");
     j_set_obs_per_col_point = jl_get_function(mpc_module, "SetObsPerColPoint");
     j_set_solve_cpu_time_budget = jl_get_function(mpc_module, "SetSolveCpuTimeBudget");
+    j_set_min_resolve_cpu_time = jl_get_function(mpc_module, "SetMinResolveCpuTime");
     j_set_max_num_seg = jl_get_function(mpc_module, "SetMaxNumSeg");
     j_set_sigma = jl_get_function(mpc_module, "SetSigma");
     j_set_min_speed = jl_get_function(mpc_module, "SetMinSpeed");
@@ -625,6 +626,7 @@ void InitialiseJuliaAPI()
     jl_call1(j_set_max_num_obs, jl_box_int32(static_cast<int32_t>(mpc_params.max_num_obs)));
     jl_call1(j_set_obs_per_col_point, jl_box_int32(static_cast<int32_t>(mpc_params.obs_per_col_point)));
     jl_call1(j_set_solve_cpu_time_budget, jl_box_float64(mpc_params.solve_cpu_time_budget));
+    jl_call1(j_set_min_resolve_cpu_time, jl_box_float64(mpc_params.min_resolve_cpu_time));
     jl_call1(j_set_max_num_seg, jl_box_int32(static_cast<int32_t>(mpc_params.max_num_seg)));
     jl_call1(j_set_sigma, jl_box_float64(1.414214 * mpc_params.grid_resolution));
     jl_call1(j_set_min_speed, jl_box_float64(mpc_params.min_speed));
@@ -793,7 +795,7 @@ int main(int argc, char *argv[])
 
     RCLCPP_INFO(node->get_logger(), "Prediction time horizon: %.1f.", mpc_params.prediction_time_horizon);
 
-    RCLCPP_INFO(node->get_logger(), "Solve CPU time budget per planning step: %.3f s.", mpc_params.solve_cpu_time_budget);
+    RCLCPP_INFO(node->get_logger(), "Solve CPU time budget per planning step: %.3f s (re-solves need %.3f s left).", mpc_params.solve_cpu_time_budget, mpc_params.min_resolve_cpu_time);
 
     rclcpp::Rate node_rate(mpc_params.rate);
     double last_compute_time_pub = 0.0;

@@ -162,6 +162,10 @@ function SetSolveCpuTimeBudget(t::Float64)
 	global solveCpuTimeBudget = t
 end
 
+function SetMinResolveCpuTime(t::Float64)
+	global minResolveCpuTime = t
+end
+
 function SetObsActiveSetTol(tol::Float64)
 	global obsActiveSetTol = tol
 end
@@ -787,7 +791,7 @@ function BudgetedOptimize!(n)
 	global solveCpuTimeLeft
 	opts = n.ocp.mdl.solver.options
 	i = findfirst(o -> o[1] == :max_cpu_time, opts)
-	i === nothing || (opts[i] = (:max_cpu_time, max(solveCpuTimeLeft, minResolveCpuTime)))
+	i === nothing || (opts[i] = (:max_cpu_time, solveCpuTimeLeft))
 	optimize!(n)
 	solveCpuTimeLeft -= n.r.ocp.tSolve
 end
@@ -1113,10 +1117,10 @@ function WarmUp()
 	numobs = max(obsPerColPoint, 1) + 1
 	obstacles = vcat([[x_veh + 1000.0 + i, y_veh + 1000.0, 1.0] for i in 1:numobs]...)
 	Plan()
+	X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
 	JuMP.setsolver(n.ocp.mdl, PlanningSolver(max_iter = 1))
 	Plan()
 	JuMP.setsolver(n.ocp.mdl, PlanningSolver())
-	X1 = copy(n.r.ocp.X); U1 = copy(n.r.ocp.U)
 	ClosestObstacleClearance(X1)
 	MirroredWarmStart!(n, x_veh, y_veh, yaw, X1, U1)
 	RestoreWarmStart!(n, X1, U1)

@@ -154,6 +154,7 @@ jl_function_t* j_set_prediction_time_horizon = NULL;
 jl_function_t* j_set_max_num_obs = NULL;
 jl_function_t* j_set_obs_per_col_point = NULL;
 jl_function_t* j_set_solve_cpu_time_budget = NULL;
+jl_function_t* j_set_min_resolve_cpu_time = NULL;
 jl_function_t* j_set_max_num_seg = NULL;
 jl_function_t* j_set_sigma = NULL;
 jl_function_t* j_set_min_speed = NULL;
