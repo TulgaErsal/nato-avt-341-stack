@@ -60,6 +60,13 @@
 /**/lidar_obstacle_detector_node:
   ros__parameters:
     lidar_points_topic: '/ouster/points'
+    normal_estimation_threads: 6
+
+/**/object_tracker_node:
+  ros__parameters:
+    obstacle_detector:
+      use_external_detector: true
+      normal_estimation_threads: 6
 
 /**/perception_rms_node:
   ros__parameters:
