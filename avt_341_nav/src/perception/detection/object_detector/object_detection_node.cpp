@@ -47,7 +47,7 @@
 namespace avt_341_nav {
 namespace perception {
 
-ObjectDetectorNode::ObjectDetectorNode() : image_transport_(std::shared_ptr<ObjectDetectorNode>(this)), rclcpp::Node("object_detector") {
+ObjectDetectorNode::ObjectDetectorNode() : rclcpp::Node("object_detector"), image_transport_(std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*) {})) {
     param_listener_ =
         std::make_shared<avt_341_nav::params::object_detector::ParamsListener>(
             get_node_parameters_interface(), get_logger());
