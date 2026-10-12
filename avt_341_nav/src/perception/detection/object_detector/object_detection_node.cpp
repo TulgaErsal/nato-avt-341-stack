@@ -75,7 +75,7 @@ void ObjectDetectorNode::Initialize() {
             model_package_share_dir_ = ament_index_cpp::get_package_share_directory("avt_341_nav");
         } catch(const ament_index_cpp::PackageNotFoundError& exception) {
             RCLCPP_ERROR(get_logger(), "Package not found - is your environment sourced correctly?");
-            rclcpp::shutdown();
+            throw;
         }
 
         model_path = model_package_share_dir_ +
