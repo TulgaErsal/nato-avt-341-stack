@@ -1,6 +1,6 @@
 # Object detection models
 
-This empty folder is a placeholder for object detection models loaded manually
+This folder holds the object detection models, either loaded manually
 or downloaded through the CMake build.
 
 ## Manual installation
@@ -12,11 +12,16 @@ absolute or relative path to the model.
 
 ## Automatic download via CMake build
 
-To automatically download all available models via CMake at build time, call
-CMake with the additional argument `-DGET_AVT341_DETECTION_MODELS=ON`. If you
-are using `colcon` to build this package, this can be dones by passing
-`--cmake-args` to the `colcon build` command as follows:
+All available models are downloaded automatically at build time into this
+folder. A model file is only downloaded when it is missing or its hash does not
+match the expected one, and a failed download (ex: no internet) only produces a
+warning, so the build still succeeds and the next build retries.
+
+To skip the download, call CMake with the additional argument
+`-DGET_AVT341_DETECTION_MODELS=OFF`. If you are using `colcon` to build this
+package, this can be done by passing `--cmake-args` to the `colcon build`
+command as follows:
 
 ```shell
-colcon build --cmake-args -DGET_AVT341_DETECTION_MODELS=ON
+colcon build --cmake-args -DGET_AVT341_DETECTION_MODELS=OFF
 ```
