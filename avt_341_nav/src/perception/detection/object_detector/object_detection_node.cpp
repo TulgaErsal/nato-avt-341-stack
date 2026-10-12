@@ -47,7 +47,7 @@
 namespace avt_341_nav {
 namespace perception {
 
-ObjectDetectorNode::ObjectDetectorNode() : rclcpp::Node("object_detector"), image_transport_(std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*) {})) {
+ObjectDetectorNode::ObjectDetectorNode() : rclcpp::Node("object_detector") {
     param_listener_ =
         std::make_shared<avt_341_nav::params::object_detector::ParamsListener>(
             get_node_parameters_interface(), get_logger());
@@ -160,7 +160,11 @@ void ObjectDetectorNode::Initialize() {
 
 
 void ObjectDetectorNode::CreateSubscriptions() {
-    image_subscription_ = image_transport_.subscribe("image", 1, std::bind(&ObjectDetectorNode::ImageCallback, this, std::placeholders::_1));
+    rmw_qos_profile_t image_qos = rmw_qos_profile_default;
+    image_qos.depth = 1;
+    image_subscription_ = image_transport::create_subscription(
+        this, "image", std::bind(&ObjectDetectorNode::ImageCallback, this, std::placeholders::_1),
+        image_transport::TransportHints(this).getTransport(), image_qos);
     // image_subscription_ = create_subscription<sensor_msgs::msg::Image>(
     //     "image",
     //     RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT,

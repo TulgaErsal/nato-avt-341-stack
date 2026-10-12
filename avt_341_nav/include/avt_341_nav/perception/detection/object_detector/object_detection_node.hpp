@@ -227,9 +227,6 @@ class ObjectDetectorNode : public rclcpp::Node {
     //rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscription_;
     image_transport::Subscriber image_subscription_;
 
-    /** @brief Image transport instance */
-    image_transport::ImageTransport image_transport_;
-
     /** @brief Whether or not a valid image has been received since the latest
      * object detector reset. */
     bool has_image_ = false;
