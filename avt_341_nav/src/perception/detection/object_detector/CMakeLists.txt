@@ -52,6 +52,16 @@ if(GET_AVT341_DETECTION_MODELS)
     "https://www.dropbox.com/scl/fi/7z1bpjty9iwlin5ky4fdz/yolov8n-cpu-640x640.names?rlkey=4u6vtcfr1vvutnrj25tmkxpk8&st=y2sju2xy&dl=1"
     634a1132eb33f8091d60f2c346ababe8b905ae08387037aed883953b7329af84)
 
+  # YOLOv8m TorchScript GPU 640x640
+  avt_341_get_detection_model_file(
+    yolov8m-cuda-640x640.torchscript
+    "https://www.dropbox.com/scl/fi/d9lytr0bejsix47rwy86b/yolov8m-cuda-640x640.torchscript?rlkey=xrhc6tmv7dbidfek0rurhsupq&st=i1jb46o0&dl=1"
+    fd8db18fcaae364fba481d755a1d0f354fd2ef315766b79c703e3ebeeb083822)
+  avt_341_get_detection_model_file(
+    yolov8m-cuda-640x640.names
+    "https://www.dropbox.com/scl/fi/c6p8kcmwn55llgdizp69r/yolov8m-cuda-640x640.names?rlkey=zosxtfu6t3y70g481od5q7wkg&st=bezl6022&dl=1"
+    634a1132eb33f8091d60f2c346ababe8b905ae08387037aed883953b7329af84)
+
   # FED Alpha TorchScript YOLOv8m GPU 640x640
   avt_341_get_detection_model_file(
     fedav8m-cuda-640x640.torchscript
