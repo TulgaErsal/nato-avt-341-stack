@@ -160,7 +160,7 @@ ros__parameters:
       type: bool
       default_value: false
       read_only: true
-      description: "Take the obstacle markers and obstacle cloud from lidar_obstacle_detector_node (topics obstacles/bboxes and obstacles/cloud_clusters) instead of running the integrated obstacle detector on the raw point cloud. The other obstacle_detector parameters then have no effect; that node's parameters apply."
+      description: "If false, the tracker runs its integrated obstacle detector on the raw point cloud (points/input). If true, it instead takes the obstacle markers and obstacle cloud from lidar_obstacle_detector_node (topics obstacles/bboxes and obstacles/cloud_clusters); the other obstacle_detector parameters, except run_without_trackers, then have no effect, and that node's parameters apply."
     use_pca_box:
       type: bool
       default_value: true
