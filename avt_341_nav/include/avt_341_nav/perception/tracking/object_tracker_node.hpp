@@ -424,10 +424,39 @@ class ObjectTrackerNode : public rclcpp::Node {
     /** @brief Builds and publishes (and stores) a DELETEALL MarkerArray. */
     void PublishObstacleDeleteAll(const std_msgs::msg::Header& header);
 
-    /** @brief Called instead of RunObstacleDetection while no tracker exists.
+    /** @brief True when the obstacle markers can be used: run_without_trackers
+     *         is set, or at least one tracker has had its first detection. */
+    bool ObstacleDetectionNeeded() const;
+
+    /** @brief Called instead of RunObstacleDetection while it is not needed.
      *         On the first idle cloud it clears the published markers and the
      *         stored box history, so stale boxes are never used later. */
     void ReleaseObstacleDetection(const std_msgs::msg::Header& header);
+
+    /** @brief Obstacle markers from lidar_obstacle_detector_node
+     *         (obstacle_detector.use_external_detector). */
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr
+        external_bboxes_subscription_;
+
+    /** @brief Obstacle cloud from lidar_obstacle_detector_node, the cloud its
+     *         markers were clustered from. */
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
+        external_clusters_subscription_;
+
+    void ExternalBboxesCallback(
+        visualization_msgs::msg::MarkerArray::SharedPtr markers_message);
+
+    void ExternalClustersCallback(
+        sensor_msgs::msg::PointCloud2::SharedPtr cloud_message);
+
+    /** @brief Makes the pending external markers the latest obstacle markers
+     *         once the obstacle cloud of the same scan has arrived, so the
+     *         trackers never crop a cloud from a different scan. */
+    void CommitExternalObstacles();
+
+    visualization_msgs::msg::MarkerArray::SharedPtr pending_external_markers_;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pending_external_cluster_;
+    builtin_interfaces::msg::Time pending_external_cluster_stamp_;
 
     /** @brief Builds markers from curr_boxes_ and publishes them. */
     void PublishObstacleMarkers(const std_msgs::msg::Header& header);

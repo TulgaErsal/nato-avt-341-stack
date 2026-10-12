@@ -244,7 +244,8 @@ void lidarPointsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr lidar_po
       ground_normal,
       static_cast<float>(node_params.ground_normal_threshold),
       static_cast<float>(node_params.obstacle_scale),
-      static_cast<int>(node_params.obstacle_min_neighbors));
+      static_cast<int>(node_params.obstacle_min_neighbors),
+      static_cast<unsigned int>(node_params.normal_estimation_threads));
 
   // Segment the groud plane and obstacles
   //auto segmented_clouds = obstacle_detector->segmentPlane(filtered_cloud, 30, ground_threshold);

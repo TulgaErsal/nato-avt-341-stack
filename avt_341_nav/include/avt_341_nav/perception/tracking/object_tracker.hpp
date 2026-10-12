@@ -129,6 +129,11 @@ class ObjectTracker {
 
     TrackerState GetTrackerState() const { return state_; }
 
+    /** @brief True once a camera detection has initialized the tracker, until
+     *         a reset or target timeout clears it. Before that the tracker
+     *         never reads the obstacle markers. */
+    bool HasFirstDetection() const { return has_first_detection_; }
+
     const std::string& GetTargetClass() const { return target_class_; }
 
     /**
