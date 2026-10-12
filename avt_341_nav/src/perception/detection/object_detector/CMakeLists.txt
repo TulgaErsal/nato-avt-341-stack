@@ -18,6 +18,27 @@ function(avt_341_get_detection_model_file FILE_NAME URL SHA256)
                    "(got ${MODEL_HASH}); re-downloading ...")
   endif()
 
+  get_property(MODELS_STATE GLOBAL PROPERTY AVT341_DETECTION_MODELS_STATE)
+  if(MODELS_STATE STREQUAL "UNREACHABLE")
+    return()
+  elseif(NOT MODELS_STATE STREQUAL "REACHABLE")
+    file(
+      DOWNLOAD "${AVT341_DETECTION_MODELS_PROBE_URL}"
+      "${PROJECT_BINARY_DIR}/detection_models_probe.tmp"
+      TIMEOUT 10
+      STATUS PROBE_STATUS)
+    file(REMOVE "${PROJECT_BINARY_DIR}/detection_models_probe.tmp")
+    list(GET PROBE_STATUS 0 PROBE_ERROR)
+    if(NOT PROBE_ERROR EQUAL 0)
+      list(GET PROBE_STATUS 1 PROBE_MESSAGE)
+      set_property(GLOBAL PROPERTY AVT341_DETECTION_MODELS_STATE "UNREACHABLE")
+      message(WARNING "Detection model host unreachable (${PROBE_MESSAGE}); "
+                      "skipping detection model downloads, the next build will retry.")
+      return()
+    endif()
+    set_property(GLOBAL PROPERTY AVT341_DETECTION_MODELS_STATE "REACHABLE")
+  endif()
+
   message(STATUS "Downloading detection model ${FILE_NAME} ...")
   file(
     DOWNLOAD "${URL}" "${MODEL_FILE}.tmp"
@@ -36,12 +57,17 @@ function(avt_341_get_detection_model_file FILE_NAME URL SHA256)
   else()
     file(REMOVE "${MODEL_FILE}.tmp")
     list(GET MODEL_DOWNLOAD_STATUS 1 MODEL_DOWNLOAD_MESSAGE)
+    set_property(GLOBAL PROPERTY AVT341_DETECTION_MODELS_STATE "UNREACHABLE")
     message(WARNING "Detection model ${FILE_NAME} download failed "
-                    "(${MODEL_DOWNLOAD_MESSAGE}); the next build will retry.")
+                    "(${MODEL_DOWNLOAD_MESSAGE}); skipping the remaining detection "
+                    "model downloads, the next build will retry.")
   endif()
 endfunction()
 
 if(GET_AVT341_DETECTION_MODELS)
+  set(AVT341_DETECTION_MODELS_PROBE_URL
+      "https://www.dropbox.com/scl/fi/7z1bpjty9iwlin5ky4fdz/yolov8n-cpu-640x640.names?rlkey=4u6vtcfr1vvutnrj25tmkxpk8&st=y2sju2xy&dl=1")
+
   # YOLOv8n TorchScript CPU 640x640
   avt_341_get_detection_model_file(
     yolov8n-cpu-640x640.torchscript
