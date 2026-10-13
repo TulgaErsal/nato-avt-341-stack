@@ -364,7 +364,7 @@ bool ObjectTrackerNode::IsEgoVehicle(const std::string& target_class) const {
 bool ObjectTrackerNode::MatchesToiRegex(
     const std::string& target_class) const {
     const std::string& toi_regex = params_.target_selection.toi_regex;
-    if (toi_regex.empty()) {
+    if (toi_regex.empty() || target_class.empty()) {
         return false;
     }
     try {
