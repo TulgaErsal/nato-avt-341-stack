@@ -24,11 +24,36 @@ std::vector<std::string> tokenizeMsg(std::string input){
   return tokens;
 }
 
+// True when a serialized message of the given type has one of the field counts its formats define
+// (see the format comments in serializedToROSMsg), so that parsing never indexes past the tokens.
+static bool hasValidFieldCount(const std::string & type, size_t n){
+  if(type == MissionMsgType::Formation) {
+    return n == 10 || n == 11 || n >= 18;
+  }
+  if(type == MissionMsgType::MoveTo) {
+    return n == 6 || n >= 10;
+  }
+  if(type == MissionMsgType::PathFollow) {
+    return n >= 7;
+  }
+  if(type == MissionMsgType::WaitUntilComplete) {
+    return n >= 6;
+  }
+  if(type == MissionMsgType::Acknowledge || type == MissionMsgType::TaskComplete ||
+     type == MissionMsgType::SetSpeed || type == MissionMsgType::Cancel || type == MissionMsgType::Overwatch) {
+    return n >= 5;
+  }
+  if(type == MissionMsgType::Arrived || type == MissionMsgType::Shutdown || type == MissionMsgType::CancelAll) {
+    return n >= 4;
+  }
+  return true;
+}
+
 avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   auto tokens = tokenizeMsg(msg);
 
   avt_341_msgs::msg::Communication message;
-  if(tokens.size() < 3){
+  if(tokens.size() < 3 || !hasValidFieldCount(tokens[2], tokens.size())){
     return message;
   }
   message.sender_name = tokens[0];
@@ -144,7 +169,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   }
     // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>
     // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
-  else if(message.type == MissionMsgType::WaitUntilComplete && tokens.size() >= 6) {
+  else if(message.type == MissionMsgType::WaitUntilComplete) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
     message.target_msg_id = atoi(tokens[5].c_str());

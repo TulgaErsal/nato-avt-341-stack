@@ -126,6 +126,30 @@ TEST(SerializedToiRegex, CommandsWithoutRegexLeaveTrackerUnchanged)
     }
 }
 
+TEST(SerializedMessages, MalformedFieldCountsParseToEmptyMessage)
+{
+    for(const auto & text : {std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1"),
+                             std::string("MRZR,0,MOVETO,MRZR"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,10,10,0,0,0,-1"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5"),
+                             std::string("MRZR,0,WAIT_UNTIL_COMPLETE,MRZR,FEDA"),
+                             std::string("MRZR,0,SET_SPEED,MRZR"),
+                             std::string("MRZR,0,CANCEL_ALL")}) {
+        EXPECT_EQ(serializedToROSMsg(text).type, "") << text;
+    }
+}
+
+TEST(SerializedMessages, ValidShortFormatsStillParse)
+{
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE").objective_name, "MP_Y");
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5").objective_name, "MP_AD");
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,QUEUE").priority_type, "QUEUE");
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,4.5").desired_speed, 4.5);
+    EXPECT_EQ(serializedToROSMsg("MRZR,-1,ARRIVE,TASK_0").objective_name, "TASK_0");
+}
+
 // Team vehicle contact filter
 // ------------------------------------------------------------------------------------------------
 
@@ -184,7 +208,6 @@ TEST_F(MissionManagerContactsTest, ZeroRadiusDisablesFilter)
 
 TEST_F(MissionManagerContactsTest, IgnoredContactDoesNotBlockLaterSighting)
 {
-    params_.toi.contact_trigger_delay = 0.0;
     auto manager = MakeManager();
     manager->handleContacts(MakeContact("car", 50.0, 2.0), team_);
     EXPECT_EQ(manager->currentTask(), nullptr);
