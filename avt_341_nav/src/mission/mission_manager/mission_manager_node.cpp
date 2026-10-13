@@ -51,7 +51,6 @@ std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
 std::optional<std::string> applied_toi_regex;
 
 // Reconfigure the object tracking node with the targets of interest regex of a mission command (see toiRegexUpdate).
-// An empty regex is a valid value: it tells the tracker to ignore all targets of interest.
 void UpdateTrackerToiRegex(const std::string & toi_regex) {
     if(applied_toi_regex.has_value() && applied_toi_regex.value() == toi_regex) {
         return;

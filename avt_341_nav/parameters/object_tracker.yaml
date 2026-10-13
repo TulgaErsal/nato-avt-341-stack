@@ -149,7 +149,7 @@ ros__parameters:
     toi_regex:
       type: string
       default_value: '^TI_'
-      description: "Object ids matching this regex are considered targets of interest."
+      description: "Object ids matching this regex are considered targets of interest. Empty or '^$' disables targets of interest."
     allow_generic:
       type: bool
       default_value: false

@@ -170,7 +170,7 @@ ros__parameters:
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'
-      description: "Object tracking node whose target_selection.toi_regex is reconfigured when a FORM, MOVETO or PATHFOLLOW command carries a toi_regex. Relative names resolve under this vehicle's namespace."
+      description: "Object tracking node whose target_selection.toi_regex is reconfigured when a FORM, MOVETO or PATH_FOLLOW command carries a non-empty toi_regex ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:
     type: bool

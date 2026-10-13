@@ -34,7 +34,7 @@ namespace avt_341::rviz_plugins
             "Regex matched against detected object class ids (e.g. \"car\" for the COCO detector, \"^TI_\" in "
             "simulation); matches become targets of interest that the vehicle investigates.\n"
             "Sent with every command and applied to the object tracker by FORM, MOVETO and PATH_FOLLOW.\n"
-            "Empty: MOVETO and PATH_FOLLOW keep the current regex; FORM turns target of interest detection off.");
+            "Empty keeps the vehicle's current regex; ^$ turns target of interest detection off.");
 
         // Setup entries
         msg_id_entry_->setValidator(new QIntValidator(0, 99, this));

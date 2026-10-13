@@ -11,8 +11,8 @@ std::vector<std::string> tokenizeMsg(std::string input);
 
 bool isMsgFor(const std::string & veh, const avt_341_msgs::msg::Communication & msg);
 bool isMsgFor(const std::string & veh, MissionManagerDto* msg);
-// Targets of interest regex to apply to the object tracker for a received command, if any. FORM always
-// applies its regex (empty disables targets of interest); MOVETO and PATH_FOLLOW apply only a non-empty one.
+// Targets of interest regex to apply to the object tracker for a received command, if any. FORM, MOVETO and
+// PATH_FOLLOW apply a non-empty regex; an empty one keeps the current regex. "^$" disables targets of interest.
 std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg);
 bool isVehicleInFormation(const std::string & veh, const avt_341_msgs::msg::Communication & msg);
 

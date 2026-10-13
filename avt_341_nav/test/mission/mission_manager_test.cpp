@@ -61,16 +61,17 @@ nav_msgs::msg::Path MakeContact(const std::string & name, double x, double y)
 // toiRegexUpdate
 // ------------------------------------------------------------------------------------------------
 
-TEST(ToiRegexUpdate, FormationAlwaysApplies)
+TEST(ToiRegexUpdate, NonEmptyRegexAppliesForFormMoveToAndPathFollow)
 {
-    EXPECT_EQ(toiRegexUpdate(MakeCommand(MissionMsgType::Formation, "car")), std::optional<std::string>("car"));
-    EXPECT_EQ(toiRegexUpdate(MakeCommand(MissionMsgType::Formation, "")), std::optional<std::string>(""));
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        EXPECT_EQ(toiRegexUpdate(MakeCommand(type, "car")), std::optional<std::string>("car")) << type;
+        EXPECT_EQ(toiRegexUpdate(MakeCommand(type, "^$")), std::optional<std::string>("^$")) << type;
+    }
 }
 
-TEST(ToiRegexUpdate, MoveToAndPathFollowApplyOnlyNonEmpty)
+TEST(ToiRegexUpdate, EmptyRegexKeepsCurrentForEveryCommand)
 {
-    for(const auto & type : {MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
-        EXPECT_EQ(toiRegexUpdate(MakeCommand(type, "car")), std::optional<std::string>("car")) << type;
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
         EXPECT_FALSE(toiRegexUpdate(MakeCommand(type, "")).has_value()) << type;
     }
 }
@@ -119,7 +120,9 @@ TEST(SerializedToiRegex, CommandsWithoutRegexLeaveTrackerUnchanged)
                              std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE"),
                              std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE,"),
                              std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE"),
-                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE,")}) {
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE,"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,10,10,0,0,0,-1,LEADER_ARRIVED,QUEUE"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,10,10,0,0,0,-1,LEADER_ARRIVED,QUEUE,")}) {
         const auto parsed = serializedToROSMsg(text);
         EXPECT_EQ(parsed.toi_regex, "") << text;
         EXPECT_FALSE(toiRegexUpdate(parsed).has_value()) << text;

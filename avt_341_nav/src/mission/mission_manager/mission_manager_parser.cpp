@@ -302,10 +302,9 @@ std::string concreteToSerializedMsg(MissionManagerDto * msg){
 }
 
 std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg){
-  if(msg.type == MissionMsgType::Formation) {
-    return msg.toi_regex;
-  }
-  if((msg.type == MissionMsgType::MoveTo || msg.type == MissionMsgType::PathFollow) && !msg.toi_regex.empty()) {
+  const bool carries_toi_regex = msg.type == MissionMsgType::Formation || msg.type == MissionMsgType::MoveTo ||
+                                 msg.type == MissionMsgType::PathFollow;
+  if(carries_toi_regex && !msg.toi_regex.empty()) {
     return msg.toi_regex;
   }
   return std::nullopt;

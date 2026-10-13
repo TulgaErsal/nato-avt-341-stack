@@ -4,6 +4,7 @@ add_executable(
   comm_node
   "comm_node.cpp"
   "tcp_socket_proxy.cpp"
+  "socket_message_framer.cpp"
   "${PROJECT_SOURCE_DIR}/src/mission/mission_manager/mission_manager_dto.cpp"
   "${PROJECT_SOURCE_DIR}/src/mission/mission_manager/mission_manager_parser.cpp"
 )

@@ -280,6 +280,19 @@ ament_target_dependencies(tracker_recovery_monitor_test
   visualization_msgs
 )
 
+# Socket Message Framer Tests
+# ---------------------------
+message(STATUS "Adding socket message framer unit tests")
+ament_add_gtest(socket_message_framer_test
+  communication/socket_message_framer_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/communication/socket_message_framer.cpp"
+)
+
+target_include_directories(socket_message_framer_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
 # Mission Manager Tests
 # ---------------------
 # The mission manager sources are compiled straight into mission_manager_node, so they are listed here.
