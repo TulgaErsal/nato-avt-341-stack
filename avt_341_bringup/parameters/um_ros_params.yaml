@@ -64,6 +64,8 @@
 
 /**/object_tracker_node:
   ros__parameters:
+    target_selection:
+      toi_regex: '^$'
     obstacle_detector:
       use_external_detector: true
       normal_estimation_threads: 6

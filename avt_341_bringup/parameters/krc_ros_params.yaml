@@ -104,7 +104,12 @@
     broadcast_over_ros: true
     vehicle_namespaces: ['mrzr', 'mrzr2', 'feda']
 
-# object_detector_node / object_tracker_node run on the template defaults
+/**/object_tracker_node:
+  ros__parameters:
+    target_selection:
+      toi_regex: '^$'
+
+# object_detector_node runs on the template defaults
 
 #/**/object_detector_node:
 #  ros__parameters:
