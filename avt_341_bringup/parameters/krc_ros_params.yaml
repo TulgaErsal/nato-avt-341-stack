@@ -106,8 +106,11 @@
 
 /**/object_tracker_node:
   ros__parameters:
+    #frames:
+    #  odometry_child_frame: 'feda/odom'
     target_selection:
       toi_regex: '^$'
+      #autostart_target_classes: ['FED Alpha']
 
 # object_detector_node runs on the template defaults
 
@@ -116,10 +119,3 @@
 #    model:
 #      name: 'fedav8m-cuda-640x640'
 #      classes: ['FED Alpha']
-#
-#/**/object_tracker_node:
-#  ros__parameters:
-#    frames:
-#      odometry_child_frame: 'feda/odom'
-#    target_selection:
-#      autostart_target_classes: ['FED Alpha']
