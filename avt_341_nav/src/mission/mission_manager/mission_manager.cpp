@@ -585,7 +585,7 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             }
         }
 
-        auto existing =std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
             [&](const Contact& c) { return c.name == pose.header.frame_id; });
 
         if (existing != mission_contacts.end()) {

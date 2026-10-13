@@ -1,0 +1,193 @@
+#include <gtest/gtest.h>
+
+#include <map>
+#include <memory>
+#include <string>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341_nav/mission/mission_manager.h"
+#include "avt_341_nav/mission/mission_manager_parser.h"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+
+using avt_341_nav::mission::MissionManager;
+using avt_341_nav::mission::MissionManagerParams;
+
+namespace {
+
+avt_341_msgs::msg::Communication MakeCommand(const std::string & type, const std::string & toi_regex)
+{
+    avt_341_msgs::msg::Communication msg;
+    msg.sender_name = "MRZR";
+    msg.msg_id = 3;
+    msg.type = type;
+    msg.receiver_name = "MRZR";
+    msg.objective_name = "MP_Y";
+    msg.desired_speed = 5.0;
+    msg.priority_type = "QUEUE";
+    msg.yaw_threshold = -1.0;
+    msg.toi_regex = toi_regex;
+    return msg;
+}
+
+nav_msgs::msg::Odometry MakeOdom(double x, double y)
+{
+    nav_msgs::msg::Odometry odom;
+    odom.header.frame_id = "map";
+    odom.pose.pose.position.x = x;
+    odom.pose.pose.position.y = y;
+    odom.pose.pose.orientation.w = 1.0;
+    return odom;
+}
+
+nav_msgs::msg::Path MakeContact(const std::string & name, double x, double y)
+{
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header.frame_id = name;
+    pose.pose.position.x = x;
+    pose.pose.position.y = y;
+    pose.pose.orientation.w = 1.0;
+    nav_msgs::msg::Path contacts;
+    contacts.header.frame_id = "map";
+    contacts.poses.push_back(pose);
+    return contacts;
+}
+
+}  // namespace
+
+// toiRegexUpdate
+// ------------------------------------------------------------------------------------------------
+
+TEST(ToiRegexUpdate, FormationAlwaysApplies)
+{
+    EXPECT_EQ(toiRegexUpdate(MakeCommand(MissionMsgType::Formation, "car")), std::optional<std::string>("car"));
+    EXPECT_EQ(toiRegexUpdate(MakeCommand(MissionMsgType::Formation, "")), std::optional<std::string>(""));
+}
+
+TEST(ToiRegexUpdate, MoveToAndPathFollowApplyOnlyNonEmpty)
+{
+    for(const auto & type : {MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        EXPECT_EQ(toiRegexUpdate(MakeCommand(type, "car")), std::optional<std::string>("car")) << type;
+        EXPECT_FALSE(toiRegexUpdate(MakeCommand(type, "")).has_value()) << type;
+    }
+}
+
+TEST(ToiRegexUpdate, OtherCommandsNeverApply)
+{
+    EXPECT_FALSE(toiRegexUpdate(MakeCommand(MissionMsgType::SetSpeed, "car")).has_value());
+    EXPECT_FALSE(toiRegexUpdate(MakeCommand(MissionMsgType::Cancel, "car")).has_value());
+}
+
+// Text serialization (socket comms)
+// ------------------------------------------------------------------------------------------------
+
+TEST(SerializedToiRegex, MoveToRoundTripKeepsRegexWithCommas)
+{
+    const auto parsed = serializedToROSMsg(rosToSerializedMsg(MakeCommand(MissionMsgType::MoveTo, "TI_[0-9]{1,3},car")));
+    EXPECT_EQ(parsed.type, MissionMsgType::MoveTo);
+    EXPECT_EQ(parsed.objective_name, "MP_Y");
+    EXPECT_EQ(parsed.priority_type, "QUEUE");
+    EXPECT_EQ(parsed.toi_regex, "TI_[0-9]{1,3},car");
+}
+
+TEST(SerializedToiRegex, PathFollowRoundTripKeepsRegexWithCommas)
+{
+    const auto parsed = serializedToROSMsg(rosToSerializedMsg(MakeCommand(MissionMsgType::PathFollow, "^car$,truck")));
+    EXPECT_EQ(parsed.type, MissionMsgType::PathFollow);
+    EXPECT_EQ(parsed.objective_name, "MP_Y");
+    EXPECT_DOUBLE_EQ(parsed.desired_speed, 5.0);
+    EXPECT_EQ(parsed.priority_type, "QUEUE");
+    EXPECT_EQ(parsed.toi_regex, "^car$,truck");
+}
+
+TEST(SerializedToiRegex, FormationRoundTripKeepsRegex)
+{
+    auto msg = MakeCommand(MissionMsgType::Formation, "car");
+    msg.formation = "COLUMN";
+    msg.leader_name = "MRZR";
+    msg.follower1_name = "FEDA";
+    msg.termination_method = "LEADER_ARRIVED";
+    EXPECT_EQ(serializedToROSMsg(rosToSerializedMsg(msg)).toi_regex, "car");
+}
+
+TEST(SerializedToiRegex, CommandsWithoutRegexLeaveTrackerUnchanged)
+{
+    for(const auto & text : {std::string("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE,"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE,")}) {
+        const auto parsed = serializedToROSMsg(text);
+        EXPECT_EQ(parsed.toi_regex, "") << text;
+        EXPECT_FALSE(toiRegexUpdate(parsed).has_value()) << text;
+    }
+}
+
+// Team vehicle contact filter
+// ------------------------------------------------------------------------------------------------
+
+class MissionManagerContactsTest : public ::testing::Test {
+  protected:
+    static void SetUpTestSuite() { rclcpp::init(0, nullptr); }
+    static void TearDownTestSuite() { rclcpp::shutdown(); }
+
+    void SetUp() override
+    {
+        node_ = std::make_shared<rclcpp::Node>("mission_manager_contacts_test");
+        params_.toi.contact_trigger_delay = 0.0;
+        team_ = {{"MRZR", MakeOdom(0.0, 0.0)}, {"FEDA", MakeOdom(50.0, 0.0)}};
+    }
+
+    std::unique_ptr<MissionManager> MakeManager()
+    {
+        auto goal_filter = avt_341_nav::mission::create_goal_filter("MRZR", "none", node_, params_.fgf_obs_avoid);
+        return std::make_unique<MissionManager>(params_, "MRZR", node_, goal_filter);
+    }
+
+    rclcpp::Node::SharedPtr node_;
+    MissionManagerParams params_;
+    std::map<std::string, nav_msgs::msg::Odometry> team_;
+};
+
+TEST_F(MissionManagerContactsTest, ContactAwayFromTeamCreatesInvestigationTasks)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_NE(manager->currentTask()->description().find("CONTACT car"), std::string::npos);
+}
+
+TEST_F(MissionManagerContactsTest, ContactAtTeamVehicleIsIgnored)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 52.0, 3.0), team_);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+}
+
+TEST_F(MissionManagerContactsTest, ContactAtEgoVehicleIsIgnored)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 1.0, -1.0), team_);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+}
+
+TEST_F(MissionManagerContactsTest, ZeroRadiusDisablesFilter)
+{
+    params_.toi.team_vehicle_exclusion_radius = 0.0;
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 52.0, 3.0), team_);
+    EXPECT_NE(manager->currentTask(), nullptr);
+}
+
+TEST_F(MissionManagerContactsTest, IgnoredContactDoesNotBlockLaterSighting)
+{
+    params_.toi.contact_trigger_delay = 0.0;
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 2.0), team_);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    EXPECT_NE(manager->currentTask(), nullptr);
+}

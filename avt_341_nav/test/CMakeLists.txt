@@ -284,6 +284,40 @@ ament_target_dependencies(tracker_recovery_monitor_test
 # ------------------------------
 # formation_path_generator.cpp / formation_utils.cpp are not part of ${PROJECT_NAME}_proxy --
 # they are compiled straight into mission_manager_node -- so they are listed here as extra sources.
+message(STATUS "Adding mission manager unit tests")
+set(MISSION_MANAGER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../src/mission/mission_manager")
+set(MISSION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../src/mission")
+ament_add_gtest(mission_manager_test
+  mission/mission_manager_test.cpp
+  "${MISSION_MANAGER_DIR}/mission_manager.cpp"
+  "${MISSION_MANAGER_DIR}/mission_manager_dto.cpp"
+  "${MISSION_MANAGER_DIR}/mission_manager_parser.cpp"
+  "${MISSION_MANAGER_DIR}/task.cpp"
+  "${MISSION_MANAGER_DIR}/task_encircle.cpp"
+  "${MISSION_MANAGER_DIR}/task_follow.cpp"
+  "${MISSION_MANAGER_DIR}/task_moveto.cpp"
+  "${MISSION_MANAGER_DIR}/task_wait_until.cpp"
+  "${MISSION_MANAGER_DIR}/task_wait_for_duration.cpp"
+  "${MISSION_MANAGER_DIR}/task_pathfollow.cpp"
+  "${MISSION_DIR}/formation_definition.cpp"
+  "${MISSION_DIR}/formation_path_generator.cpp"
+  "${MISSION_DIR}/formation_speed_control.cpp"
+  "${MISSION_DIR}/formation_utils.cpp"
+  "${MISSION_DIR}/goal_filtering/goal_filter_factory.cpp"
+  "${MISSION_DIR}/goal_filtering/obs_avoid_goal_filter.cpp"
+  "${MISSION_DIR}/goal_filtering/obs_avoid_goal_filter_utils.cpp"
+)
+
+target_include_directories(mission_manager_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(mission_manager_test
+  ${PROJECT_NAME}_proxy
+  mission_manager_params_dto
+)
+
 message(STATUS "Adding formation utils unit tests")
 ament_add_gtest(formation_utils_test
   mission/formation_utils_test.cpp

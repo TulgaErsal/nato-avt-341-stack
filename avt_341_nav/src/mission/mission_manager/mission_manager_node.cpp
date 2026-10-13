@@ -50,7 +50,7 @@ std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
 std::optional<std::string> applied_toi_regex;
 
-// Reconfigure the object tracking node with the targets of interest regex of a FORM, MOVETO or PATHFOLLOW command.
+// Reconfigure the object tracking node with the targets of interest regex of a mission command (see toiRegexUpdate).
 // An empty regex is a valid value: it tells the tracker to ignore all targets of interest.
 void UpdateTrackerToiRegex(const std::string & toi_regex) {
     if(applied_toi_regex.has_value() && applied_toi_regex.value() == toi_regex) {
@@ -157,18 +157,27 @@ void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
     }
 }
 
-// Team vehicle odometry with poses expressed in the map frame (target contacts are in the map frame)
+// Team vehicle odometry with poses expressed in the map frame (target contacts are in the map frame).
+// Uses the latest transform without waiting; if it is unavailable the raw pose is kept, so the vehicle
+// still counts as a team member (map and odom coincide on the current vehicles).
 std::map<std::string, nav_msgs::msg::Odometry> FormationOdomsInMapFrame() {
     std::map<std::string, nav_msgs::msg::Odometry> odoms_map;
     for(const auto & [veh_name, veh_odom] : formation_odoms) {
         nav_msgs::msg::Odometry odom_map = veh_odom;
-        if(veh_odom.header.frame_id != "map") {
+        const std::string & frame = veh_odom.header.frame_id;
+        if(frame != "map") {
             geometry_msgs::msg::PoseStamped pose, pose_map;
-            pose.header.frame_id = veh_odom.header.frame_id;
+            pose.header.frame_id = frame;
             pose.pose = veh_odom.pose.pose;
-            tf->transform_pose(pose, pose_map, "map", 0.2);
-            odom_map.header.frame_id = pose_map.header.frame_id;
-            odom_map.pose.pose = pose_map.pose;
+            if(tf->get_buffer().canTransform("map", frame, tf2::TimePointZero) &&
+               tf->transform_pose(pose, pose_map, "map", 0.0)) {
+                odom_map.header.frame_id = "map";
+                odom_map.pose.pose = pose_map.pose;
+            } else {
+                RCLCPP_WARN_THROTTLE(nh->get_logger(), *nh->get_clock(), 5000,
+                    "No transform from %s to map for %s odometry; using its pose unchanged for target contact handling.",
+                    frame.c_str(), veh_name.c_str());
+            }
         }
         odoms_map[veh_name] = odom_map;
     }
@@ -447,8 +456,11 @@ int main(int argc, char **argv) {
             //std::string msg_text = rosToSerializedMsg(rcvd_msg);
             RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
+            if(const auto toi_regex = toiRegexUpdate(rcvd_msg)) {
+                UpdateTrackerToiRegex(*toi_regex);
+            }
+
             if(rcvd_msg.type == MissionMsgType::Formation) {
-                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handleFormationRequest(FormationMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Acknowledge) {
                 mgr->handleAcknowledge(AcknowledgeMsg(rcvd_msg));
@@ -457,7 +469,6 @@ int main(int argc, char **argv) {
             } else if(rcvd_msg.type == MissionMsgType::TaskComplete) {
                 mgr->handleTaskComplete(TaskCompleteMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::MoveTo) {
-                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handleMoveTo(MoveToMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Shutdown) {
                 std::cout << mgr->my_name << " is shutting down" << std::endl;
@@ -471,7 +482,6 @@ int main(int argc, char **argv) {
             } else if(rcvd_msg.type == MissionMsgType::Overwatch){
                 mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::PathFollow){
-                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::WaitUntilComplete){
                 mgr->handleWaitUntilComplete(WaitUntilCompleteMsg(rcvd_msg));
