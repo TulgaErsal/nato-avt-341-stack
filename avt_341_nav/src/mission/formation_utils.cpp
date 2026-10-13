@@ -40,6 +40,21 @@ bool IsClose(const geometry_msgs::msg::Pose & p1, const geometry_msgs::msg::Pose
   return PosePlanarDistanceSq(p1.position, p2.position) < threshold * threshold;
 }
 
+std::optional<std::string> FindVehicleWithin(const geometry_msgs::msg::Point & point,
+                                             const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,
+                                             double radius){
+  std::optional<std::string> closest;
+  double closest_dist_sq = radius * radius;
+  for(const auto & [name, odom] : veh_poses){
+    const double dist_sq = PosePlanarDistanceSq(point, odom.pose.pose.position);
+    if(dist_sq < closest_dist_sq){
+      closest_dist_sq = dist_sq;
+      closest = name;
+    }
+  }
+  return closest;
+}
+
 const std::string FormationSpeedControlType::SLOW_DOWN_LEADER = "slow_down_leader";
 const std::string FormationSpeedControlType::SPEED_UP_FOLLOWER = "speed_up_follower";
 const std::string FormationSpeedControlType::NONE = "none";

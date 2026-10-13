@@ -573,7 +573,19 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
     const double now = node_->now().seconds();
 
     for(const auto& pose: contacts.poses) {
-        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
+            const auto team_vehicle = FindVehicleWithin(
+                pose.pose.position, veh_poses, params_.toi.team_vehicle_exclusion_radius);
+            if (team_vehicle.has_value()) {
+                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                    "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
+                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
+                    params_.toi.team_vehicle_exclusion_radius, team_vehicle->c_str());
+                continue;
+            }
+        }
+
+        auto existing =std::find_if(mission_contacts.begin(), mission_contacts.end(),
             [&](const Contact& c) { return c.name == pose.header.frame_id; });
 
         if (existing != mission_contacts.end()) {

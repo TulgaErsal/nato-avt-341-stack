@@ -284,6 +284,22 @@ ament_target_dependencies(tracker_recovery_monitor_test
 # ------------------------------
 # formation_path_generator.cpp / formation_utils.cpp are not part of ${PROJECT_NAME}_proxy --
 # they are compiled straight into mission_manager_node -- so they are listed here as extra sources.
+message(STATUS "Adding formation utils unit tests")
+ament_add_gtest(formation_utils_test
+  mission/formation_utils_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/mission/formation_utils.cpp"
+)
+
+target_include_directories(formation_utils_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+ament_target_dependencies(formation_utils_test
+  geometry_msgs
+  nav_msgs
+)
+
 message(STATUS "Adding formation path generator unit tests")
 ament_add_gtest(formation_path_generator_test
   mission/formation_path_generator_test.cpp

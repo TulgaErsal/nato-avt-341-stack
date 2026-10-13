@@ -50,7 +50,7 @@ std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
 std::optional<std::string> applied_toi_regex;
 
-// Reconfigure the object tracking node with the targets of interest regex of a formation command.
+// Reconfigure the object tracking node with the targets of interest regex of a FORM, MOVETO or PATHFOLLOW command.
 // An empty regex is a valid value: it tells the tracker to ignore all targets of interest.
 void UpdateTrackerToiRegex(const std::string & toi_regex) {
     if(applied_toi_regex.has_value() && applied_toi_regex.value() == toi_regex) {
@@ -60,7 +60,7 @@ void UpdateTrackerToiRegex(const std::string & toi_regex) {
     try {
         std::regex{toi_regex};
     } catch (const std::regex_error & e) {
-        RCLCPP_WARN(nh->get_logger(), "Ignoring invalid toi_regex \"%s\" in formation command: %s",
+        RCLCPP_WARN(nh->get_logger(), "Ignoring invalid toi_regex \"%s\" in mission command: %s",
             toi_regex.c_str(), e.what());
         return;
     }
@@ -155,6 +155,24 @@ void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
       mgr->rcvd_leader_odom = true;
       leader_pub->publish(*msg);
     }
+}
+
+// Team vehicle odometry with poses expressed in the map frame (target contacts are in the map frame)
+std::map<std::string, nav_msgs::msg::Odometry> FormationOdomsInMapFrame() {
+    std::map<std::string, nav_msgs::msg::Odometry> odoms_map;
+    for(const auto & [veh_name, veh_odom] : formation_odoms) {
+        nav_msgs::msg::Odometry odom_map = veh_odom;
+        if(veh_odom.header.frame_id != "map") {
+            geometry_msgs::msg::PoseStamped pose, pose_map;
+            pose.header.frame_id = veh_odom.header.frame_id;
+            pose.pose = veh_odom.pose.pose;
+            tf->transform_pose(pose, pose_map, "map", 0.2);
+            odom_map.header.frame_id = pose_map.header.frame_id;
+            odom_map.pose.pose = pose_map.pose;
+        }
+        odoms_map[veh_name] = odom_map;
+    }
+    return odoms_map;
 }
 
 // Receive information on target contacts
@@ -439,6 +457,7 @@ int main(int argc, char **argv) {
             } else if(rcvd_msg.type == MissionMsgType::TaskComplete) {
                 mgr->handleTaskComplete(TaskCompleteMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::MoveTo) {
+                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handleMoveTo(MoveToMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Shutdown) {
                 std::cout << mgr->my_name << " is shutting down" << std::endl;
@@ -452,6 +471,7 @@ int main(int argc, char **argv) {
             } else if(rcvd_msg.type == MissionMsgType::Overwatch){
                 mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::PathFollow){
+                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::WaitUntilComplete){
                 mgr->handleWaitUntilComplete(WaitUntilCompleteMsg(rcvd_msg));
@@ -461,10 +481,13 @@ int main(int argc, char **argv) {
             }
         }
 
-        while(!contacts.empty()){
-          auto rcvd_msg = contacts.front();
-          contacts.pop();
-          mgr->handleContacts(rcvd_msg, formation_odoms);
+        if(!contacts.empty()){
+          const auto team_poses = FormationOdomsInMapFrame();
+          while(!contacts.empty()){
+            auto rcvd_msg = contacts.front();
+            contacts.pop();
+            mgr->handleContacts(rcvd_msg, team_poses);
+          }
         }
 
         // Incoming internal notifications

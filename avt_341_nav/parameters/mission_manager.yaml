@@ -161,10 +161,16 @@ ros__parameters:
       type: double
       default_value: 1.0
       description: "Distance threshold for combining observations of the same target."
+    team_vehicle_exclusion_radius:
+      type: double
+      default_value: 5.0
+      description: "Target contacts within this planar distance [m] of any team vehicle (including the ego vehicle) are ignored, so team members detected as targets of interest are not investigated. 0 disables the filter."
+      validation:
+        gt_eq<>: [ 0.0 ]
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'
-      description: "Object tracking node whose target_selection.toi_regex is reconfigured when a formation command carries a toi_regex. Relative names resolve under this vehicle's namespace."
+      description: "Object tracking node whose target_selection.toi_regex is reconfigured when a FORM, MOVETO or PATHFOLLOW command carries a toi_regex. Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:
     type: bool

@@ -2,9 +2,13 @@
 #define AVT_341_FORMATION_UTILS_H
 
 #include <cmath>
+#include <map>
+#include <optional>
+#include <string>
 
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 // convenient shorthands for adapting TW's code
 typedef float Matrix3x3[3][3];
@@ -25,6 +29,11 @@ inline double PosePlanarDistanceSq(const geometry_msgs::msg::Point & p1, const g
 inline double PosePlanarDistance(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2) {
   return sqrt(PosePlanarDistanceSq(p1, p2));
 }
+
+// Name of the closest vehicle whose planar distance to point is below radius, if any.
+std::optional<std::string> FindVehicleWithin(const geometry_msgs::msg::Point & point,
+                                             const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,
+                                             double radius);
 
 class FormationSpeedControlType {
 public:
