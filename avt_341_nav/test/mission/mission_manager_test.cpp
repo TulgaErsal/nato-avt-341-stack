@@ -126,6 +126,19 @@ TEST(SerializedToiRegex, CommandsWithoutRegexLeaveTrackerUnchanged)
     }
 }
 
+TEST(SerializedToiRegex, TrailingLineEndingsAreStripped)
+{
+    for(const auto & ending : {std::string("\n"), std::string("\r\n"), std::string(" \r\n")}) {
+        EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE,car" + ending).toi_regex, "car");
+        EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE" + ending).priority_type, "QUEUE");
+        const auto no_regex = serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,0,0,0,-1,QUEUE," + ending);
+        EXPECT_EQ(no_regex.toi_regex, "");
+        EXPECT_FALSE(toiRegexUpdate(no_regex).has_value());
+        EXPECT_EQ(serializedToROSMsg("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE,^TI_" + ending).toi_regex, "^TI_");
+    }
+    EXPECT_EQ(serializedToROSMsg("\r\n").type, "");
+}
+
 TEST(SerializedMessages, MalformedFieldCountsParseToEmptyMessage)
 {
     for(const auto & text : {std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0"),

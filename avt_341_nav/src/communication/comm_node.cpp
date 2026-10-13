@@ -110,8 +110,7 @@ int main(int argc, char* argv[])
                 pub->publish(next_msg);
               }
             }else{
-              strcpy(buffer, msg_serialized.c_str());
-              int n = client->write(buffer, strlen(buffer));
+              int n = client->write(msg_serialized.c_str(), static_cast<int>(msg_serialized.size()));
               if(n < 0)
                 RCLCPP_ERROR(nh->get_logger(), "Error writing to socket\n");
               else {
@@ -123,9 +122,10 @@ int main(int argc, char* argv[])
         std::fill(std::begin(buffer), std::end(buffer), '\0');
 
         // read the socket
-        if(client->read_available(buffer, 256) > 0)
+        const int n_read = client->read_available(buffer, sizeof(buffer));
+        if(n_read > 0)
         {
-            std::string buffer_str = std::string(buffer);
+            std::string buffer_str = std::string(buffer, n_read);
             if(params.verbose_comm_log){
               RCLCPP_INFO(nh->get_logger(), "Read %s", buffer_str.c_str());
             }

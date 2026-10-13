@@ -50,7 +50,10 @@ static bool hasValidFieldCount(const std::string & type, size_t n){
 }
 
 avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
-  auto tokens = tokenizeMsg(msg);
+  // Drop line endings and trailing whitespace a socket server may append, so they cannot end up in the
+  // trailing toi_regex field.
+  const auto last = msg.find_last_not_of(" \t\r\n");
+  auto tokens = tokenizeMsg(last == std::string::npos ? std::string() : msg.substr(0, last + 1));
 
   avt_341_msgs::msg::Communication message;
   if(tokens.size() < 3 || !hasValidFieldCount(tokens[2], tokens.size())){
