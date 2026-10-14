@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <map>
 #include <memory>
 #include <string>
@@ -10,11 +11,13 @@
 #include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/mission/mission_manager_parser.h"
+#include "avt_341_nav/mission/task.h"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 
 using avt_341_nav::mission::MissionManager;
 using avt_341_nav::mission::MissionManagerParams;
+using avt_341_nav::mission::Encircle;
 
 namespace {
 
@@ -229,4 +232,112 @@ TEST_F(MissionManagerContactsTest, IgnoredContactDoesNotBlockLaterSighting)
     EXPECT_EQ(manager->currentTask(), nullptr);
     manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
     EXPECT_NE(manager->currentTask(), nullptr);
+}
+
+// Encircle re-planning on contact updates
+// ------------------------------------------------------------------------------------------------
+
+namespace {
+
+geometry_msgs::msg::PoseStamped MakePose(double x, double y)
+{
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header.frame_id = "map";
+    pose.pose.position.x = x;
+    pose.pose.position.y = y;
+    pose.pose.orientation.w = 1.0;
+    return pose;
+}
+
+double BearingDeg(const geometry_msgs::msg::PoseStamped & pose, double cx, double cy)
+{
+    return std::atan2(pose.pose.position.y - cy, pose.pose.position.x - cx) * 180.0 / M_PI;
+}
+
+double DistanceTo(const geometry_msgs::msg::PoseStamped & pose, double cx, double cy)
+{
+    return std::hypot(pose.pose.position.x - cx, pose.pose.position.y - cy);
+}
+
+}  // namespace
+
+class EncircleReplanTest : public MissionManagerContactsTest {
+  protected:
+    void SetUp() override
+    {
+        MissionManagerContactsTest::SetUp();
+        params_.toi.encircle_radius = 10.0;
+        params_.toi.encircle_degrees = 180.0;
+        params_.toi.encircle_cw = true;
+        params_.toi.encircle_replan_distance = 2.0;
+    }
+
+    std::unique_ptr<Encircle> StartEncircle(MissionManager & manager, double vx, double vy)
+    {
+        manager.odometry = MakeOdom(vx, vy);
+        auto encircle = std::make_unique<Encircle>(&manager, "MRZR", 9999, MakePose(0.0, 0.0), params_.toi);
+        encircle->init();
+        return encircle;
+    }
+};
+
+TEST_F(EncircleReplanTest, QueuedEncircleOnlyTakesTheNewTarget)
+{
+    auto manager = MakeManager();
+    Encircle encircle(manager.get(), "MRZR", 9999, MakePose(0.0, 0.0), params_.toi);
+    EXPECT_FALSE(encircle.updateTarget(MakePose(30.0, 0.0)));
+    EXPECT_DOUBLE_EQ(encircle.target().pose.position.x, 30.0);
+    EXPECT_TRUE(encircle.circlePath().poses.empty());
+}
+
+TEST_F(EncircleReplanTest, RunningEncircleReplansTheRemainingArcAroundTheMovedTarget)
+{
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 20.0, 0.0);
+    ASSERT_EQ(encircle->circlePath().poses.size(), 180u);
+    EXPECT_NEAR(BearingDeg(encircle->circlePath().poses.back(), 0.0, 0.0), -179.0, 1e-6);
+
+    manager->odometry = MakeOdom(0.0, -10.0);
+    ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 5.0)));
+    EXPECT_DOUBLE_EQ(encircle->target().pose.position.y, 5.0);
+
+    const auto & path = encircle->circlePath().poses;
+    ASSERT_FALSE(path.empty());
+    for (const auto & pose : path) {
+        EXPECT_NEAR(DistanceTo(pose, 0.0, 5.0), 10.0, 1e-6);
+    }
+    EXPECT_NEAR(BearingDeg(path.front(), 0.0, 5.0), -90.0, 1e-6);
+    EXPECT_NEAR(BearingDeg(path.back(), 0.0, 5.0), -179.0, 1.0);
+    EXPECT_NEAR(static_cast<double>(path.size()), 90.0, 1.0);
+}
+
+TEST_F(EncircleReplanTest, SmallContactUpdatesKeepTheCircle)
+{
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 20.0, 0.0);
+    const auto before = encircle->circlePath().poses;
+    EXPECT_FALSE(encircle->updateTarget(MakePose(1.0, 1.0)));
+    EXPECT_DOUBLE_EQ(encircle->target().pose.position.x, 0.0);
+    ASSERT_EQ(encircle->circlePath().poses.size(), before.size());
+    EXPECT_DOUBLE_EQ(encircle->circlePath().poses.back().pose.position.y, before.back().pose.position.y);
+}
+
+TEST_F(EncircleReplanTest, ZeroReplanDistanceKeepsTheCircle)
+{
+    params_.toi.encircle_replan_distance = 0.0;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 20.0, 0.0);
+    EXPECT_FALSE(encircle->updateTarget(MakePose(0.0, 30.0)));
+    EXPECT_NEAR(DistanceTo(encircle->circlePath().poses.back(), 0.0, 0.0), 10.0, 1e-6);
+}
+
+TEST_F(EncircleReplanTest, VehiclePastTheEndOfTheArcGetsOnlyTheEndPoint)
+{
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 20.0, 0.0);
+    const double past_end = (-179.0 - 10.0) * M_PI / 180.0;
+    manager->odometry = MakeOdom(10.0 * std::cos(past_end), 5.0 + 10.0 * std::sin(past_end));
+    ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 5.0)));
+    ASSERT_EQ(encircle->circlePath().poses.size(), 1u);
+    EXPECT_NEAR(BearingDeg(encircle->circlePath().poses.front(), 0.0, 5.0), -179.0, 1e-6);
 }

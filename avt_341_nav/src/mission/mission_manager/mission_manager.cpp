@@ -453,10 +453,9 @@ void MissionManager::updateExistingContact(
                 moveto->target_pose = pose;
             }
         } else if (auto* encircle = dynamic_cast<Encircle*>(task)) {
-            // Only update while the task is still queued (init_done=false).
-            // Once init_() has run the circle path is already computed.
-            if (!encircle->init_done && encircle->contactName() == name) {
-                encircle->updateTarget(pose);
+            if (encircle->contactName() == name && encircle->updateTarget(pose)) {
+                RCLCPP_INFO(node_->get_logger(), "Re-planned encircle of \"%s\" around (%.2f, %.2f).",
+                            name.c_str(), pose.pose.position.x, pose.pose.position.y);
             }
         }
     }

@@ -153,6 +153,12 @@ ros__parameters:
       type: double
       default_value: 5.0
       description: "Distance at which the vehicle is considered to have approached the target of interest."
+    encircle_replan_distance:
+      type: double
+      default_value: 2.0
+      description: "Once an encircle is running, a contact position update that moves the target at least this planar distance [m] re-plans the rest of the circle around the new position. 0 keeps the circle fixed."
+      validation:
+        gt_eq<>: [ 0.0 ]
     contact_trigger_delay:
       type: double
       default_value: 1.0
