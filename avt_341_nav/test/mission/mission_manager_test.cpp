@@ -307,8 +307,8 @@ TEST_F(EncircleReplanTest, RunningEncircleReplansTheRemainingArcAroundTheMovedTa
         EXPECT_NEAR(DistanceTo(pose, 0.0, 5.0), 10.0, 1e-6);
     }
     EXPECT_NEAR(BearingDeg(path.front(), 0.0, 5.0), -90.0, 1e-6);
-    EXPECT_NEAR(BearingDeg(path.back(), 0.0, 5.0), -179.0, 1.0);
-    EXPECT_NEAR(static_cast<double>(path.size()), 90.0, 1.0);
+    EXPECT_NEAR(BearingDeg(path.back(), 0.0, 5.0), -179.0, 1e-6);
+    EXPECT_EQ(path.size(), 90u);
 }
 
 TEST_F(EncircleReplanTest, SmallContactUpdatesKeepTheCircle)

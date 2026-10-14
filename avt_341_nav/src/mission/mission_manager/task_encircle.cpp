@@ -81,8 +81,9 @@ bool Encircle::updateTarget(const geometry_msgs::msg::PoseStamped & target) {
     const double before_start_rad = remaining_rad - range_rad;
     remaining_rad = past_end_rad < before_start_rad ? 0.0 : range_rad;
   }
-  buildCirclePath_(end_rad - sign * remaining_rad, remaining_rad / pi * 180.0 + 1.0);
-  mgr->publishPath(circle_path_);
+  // Whole-degree steps back from the end bearing, so the arc ends exactly on it.
+  const double steps = std::floor(remaining_rad / pi * 180.0 + 1e-9);
+  buildCirclePath_(end_rad - sign * steps / 180.0 * pi, steps + 1.0);
   return true;
 }
 

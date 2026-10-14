@@ -23,6 +23,9 @@ sensor_msgs::msg::CameraInfo MakeDownsizedFlirInfo() {
     info.roi.width = 2432;
     info.roi.height = 2048;
     info.roi.do_rectify = true;
+    info.distortion_model = "plumb_bob";
+    info.d = {-0.029579, 0.045666, -0.000751, 2.4e-05, 0.0};
+    info.r = {0.99, 0.01, 0.0, -0.01, 0.99, 0.0, 0.0, 0.0, 1.0};
     return info;
 }
 
@@ -44,6 +47,12 @@ TEST(ToImageCameraInfo, DownsizedImageGetsBinnedAndCroppedIntrinsics) {
     EXPECT_EQ(out.binning_y, 0u);
     EXPECT_EQ(out.roi.width, 0u);
     EXPECT_EQ(out.roi.x_offset, 0u);
+    ASSERT_EQ(out.d.size(), 5u);
+    for (double coefficient : out.d) {
+        EXPECT_DOUBLE_EQ(coefficient, 0.0);
+    }
+    EXPECT_DOUBLE_EQ(out.r[0], 1.0);
+    EXPECT_DOUBLE_EQ(out.r[1], 0.0);
 }
 
 TEST(ToImageCameraInfo, FullResolutionInfoKeepsItsSize) {
@@ -65,6 +74,7 @@ TEST(ToImageCameraInfo, MissingProjectionFallsBackToK) {
     EXPECT_NEAR(out.k[0], 1454.7885 / 4.0, 1e-9);
     EXPECT_NEAR(out.k[2], (1212.21805 - 8.0) / 4.0, 1e-9);
     EXPECT_NEAR(out.k[5], 1021.03138 / 4.0, 1e-9);
+    EXPECT_DOUBLE_EQ(out.d[0], -0.029579);
 }
 
 TEST(ToImageCameraInfo, EmptyInfoStaysEmpty) {

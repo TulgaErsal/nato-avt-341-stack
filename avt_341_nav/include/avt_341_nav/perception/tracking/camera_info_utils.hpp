@@ -19,6 +19,8 @@ namespace perception {
  *
  * The camera matrix is taken from P (the rectified projection) when it is
  * set, otherwise from K, because the detections are made on rectified images.
+ * With P the image has no distortion left, so D is zeroed and R reset to
+ * identity; with K the raw distortion D still applies to the scaled K.
  * A downsized image (e.g. image_proc CropDecimate) keeps the full-resolution
  * K/P in its CameraInfo and only reports binning_x/y and roi.
  */
@@ -45,6 +47,10 @@ inline sensor_msgs::msg::CameraInfo ToImageCameraInfo(
              0.0, 0.0, 1.0, 0.0};
     out.width = static_cast<uint32_t>((has_roi ? info.roi.width : info.width) / bx);
     out.height = static_cast<uint32_t>((has_roi ? info.roi.height : info.height) / by);
+    if (has_p) {
+        out.d.assign(info.d.size(), 0.0);
+        out.r = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+    }
     out.binning_x = 0;
     out.binning_y = 0;
     out.roi = sensor_msgs::msg::RegionOfInterest();

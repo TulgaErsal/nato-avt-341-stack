@@ -144,7 +144,9 @@ ros__parameters:
     encircle_degrees:
       type: double
       default_value: 180.0
-      description: "Angular range to encircle around a target of interest."
+      description: "Angular range to encircle around a target of interest (at most one full loop)."
+      validation:
+        bounds<>: [ 0.0, 360.0 ]
     encircle_cw:
       type: bool
       default_value: true
