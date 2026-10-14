@@ -5,7 +5,7 @@ ros__parameters:
   # ====================================================================================================================
   steering_delta_abs_max:
     type: double
-    default_value: 0.5
+    default_value: 0.628319
     description: "Max steering angle (rad) used to normalize cmd_steer into an effort when output_steering_percent is true, or to clamp the passed-through angle otherwise."
   output_steering_percent:
     type: bool
