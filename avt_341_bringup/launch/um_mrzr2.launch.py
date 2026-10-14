@@ -76,7 +76,7 @@ def tf2_nodes(context):
             package='tf2_ros',
             executable='static_transform_publisher',
             name='lidar_to_flir_publisher',
-            arguments=['0.114996', '-0.090527', '-0.047696', '0.497703', '0.500851', '-0.500116', '0.501323', 'os_lidar', 'flir_camera']
+            arguments=['-0.047735', '-0.114694', '-0.090890', '-0.497703', '-0.500851', '0.500116', '0.501323', 'os_lidar', 'flir_camera']
         ),
         Node(
             package='tf2_ros',
