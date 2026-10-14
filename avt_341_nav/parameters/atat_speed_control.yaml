@@ -9,7 +9,7 @@ ros__parameters:
     description: "Max steering angle (rad) used to normalize cmd_steer into an effort when output_steering_percent is true, or to clamp the passed-through angle otherwise."
   output_steering_percent:
     type: bool
-    default_value: false
+    default_value: true
     description: "Set to true to output steering commands as a percentage of steering_delta_abs_max (angular.z -> % steering) instead of the clamped wheel angle (angular.z -> wheel angle [rad], matching this stack's other speed controller)."
 
   # KPID throttle control
