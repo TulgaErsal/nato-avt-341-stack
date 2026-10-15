@@ -122,6 +122,33 @@ ament_target_dependencies(static_grid_layer_test
   geometry_msgs
 )
 
+# Raytrace Clearing Method Tests
+# ------------------------------
+message(STATUS "Adding raytrace clearing method unit tests")
+ament_add_gtest(raytrace_clearing_method_test
+  perception/clearing_methods/raytrace_clearing_method_test.cpp
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/perception/clearing_methods/raytrace_clearing_method.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/perception/clearing_methods/costmap_clearing_method.cpp"
+)
+
+target_include_directories(raytrace_clearing_method_test
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(raytrace_clearing_method_test
+  ${PROJECT_NAME}_proxy
+  perception_params_dto
+)
+
+ament_target_dependencies(raytrace_clearing_method_test
+  rclcpp
+  nav_msgs
+  sensor_msgs
+  geometry_msgs
+  visualization_msgs
+)
+
 # Camera Projection Utility Tests
 # -------------------------------
 message(STATUS "Adding camera projection utility tests")

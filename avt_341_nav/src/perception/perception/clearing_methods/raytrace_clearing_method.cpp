@@ -195,6 +195,9 @@ void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
         // Empty cell
         cells_[y][x].ResetHeight();
         BroadcastClearToSiblings(x, y);
+    } else if (rt_config_.use_voxels) {
+        // Update cell height to the top of the highest remaining voxel, not its floor
+        cells_[y][x].high.val = static_cast<float>(z_i + 1) * vx_h_res + vx_h_min;
     } else {
         // Update cell height
         cells_[y][x].high.val = static_cast<float>(z_i) * vx_h_res + vx_h_min;
