@@ -1,4 +1,5 @@
 #include "avt_341_nav/perception/clearing_methods/raytrace_clearing_method.h"
+#include <cmath>
 #include "avt_341_nav/core/string_utils.hpp"
 #include "avt_341_nav/node/node_utils.h"
 #include "geometry_msgs/msg/point.hpp"
@@ -160,6 +161,13 @@ void RaytraceClearingMethod::ClearOccupancy(const sensor_msgs::msg::PointCloud &
     }
 }
 
+int RaytraceClearingMethod::TopVoxelIndex(float height) const {
+    // A top on a voxel boundary belongs to the voxel below it
+    constexpr float kBoundaryTolerance = 1e-3f;
+    return static_cast<int>(std::floor(
+        (height - rt_config_.voxel_height_min) / rt_config_.voxel_height_res - kBoundaryTolerance));
+}
+
 void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
 
     if (x < 0 || x >= Nx_ || y < 0 || y >= Ny_) {
@@ -169,7 +177,9 @@ void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
     const float& vx_h_res = rt_config_.voxel_height_res;
     const float& vx_h_min = rt_config_.voxel_height_min;
 
-    int z_i = static_cast<int>((cells_[y][x].high.val - vx_h_min) / vx_h_res);
+    int z_i = rt_config_.use_voxels
+        ? TopVoxelIndex(cells_[y][x].high.val)
+        : static_cast<int>((cells_[y][x].high.val - vx_h_min) / vx_h_res);
 
     const int check_offset = rt_config_.clr_on_scan_below_only ? 1 : 0;
     if (!cells_[y][x].filled() || (z_i - check_offset) < z || z < 0 || z >= N_VOXELS_PER_CELL) {
@@ -394,7 +404,7 @@ void RaytraceClearingMethod::Visualize() const {
                 if (rt_config_.use_voxels) {
 
                     int z_pos = std::max(0, static_cast<int>((cells_[y][x].low.val - vx_h_min) / vx_h_res));
-                    int max_z_pos = std::min(N_VOXELS_PER_CELL, static_cast<int>((cells_[y][x].high.val - vx_h_min) / vx_h_res));
+                    int max_z_pos = std::min(N_VOXELS_PER_CELL - 1, TopVoxelIndex(cells_[y][x].high.val));
 
                     while (z_pos <= max_z_pos) {
                         if (voxel_grid[y * Nx_ + x].test(z_pos)) {
