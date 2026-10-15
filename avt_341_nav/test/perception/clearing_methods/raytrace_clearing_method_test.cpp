@@ -155,6 +155,18 @@ TEST_F(RaytraceClearVoxelTest, VisualizeWithColumnAboveVoxelRangeDoesNotThrow) {
     EXPECT_NO_THROW(method_->Visualize());
 }
 
+TEST_F(RaytraceClearVoxelTest, RayBelowColumnAboveVoxelRangeTrimsWithoutThrowing) {
+    const float above_range = kVoxelMin + RaytraceClearingMethod::N_VOXELS_PER_CELL * 0.25f + 5.0f;
+    Build(BuildOptions().Res(0.25f).Column(above_range - 10.0f, above_range));
+    const int ray_z = RaytraceClearingMethod::N_VOXELS_PER_CELL - 4;
+
+    EXPECT_NO_THROW(method_->ClearVoxelAt(kX, kY, ray_z));
+
+    ASSERT_TRUE(FenceCell().filled());
+    EXPECT_FLOAT_EQ(FenceCell().high.val, VoxelTop(ray_z - 1));
+    EXPECT_FALSE(method_->TestVoxel(kX, kY, RaytraceClearingMethod::N_VOXELS_PER_CELL - 1));
+}
+
 // Clearing the same column twice, at resolutions that are and are not exact in binary
 class RaytraceSecondClearTest
     : public RaytraceClearVoxelTest, public ::testing::WithParamInterface<float> {

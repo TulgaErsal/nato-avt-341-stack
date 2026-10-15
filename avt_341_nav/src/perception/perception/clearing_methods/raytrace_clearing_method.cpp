@@ -189,6 +189,7 @@ void RaytraceClearingMethod::ClearVoxelAt(int x, int y, int z) {
     int z_min = std::max(0, static_cast<int>((cells_[y][x].low.val - vx_h_min) / vx_h_res));
 
     if (rt_config_.use_voxels) {
+        z_i = std::min(z_i, N_VOXELS_PER_CELL - 1);
         // Remove voxels from z_i down to z
         while (z_i >= z) {
             voxel_grid[y * Nx_ + x].set(z_i, false);
