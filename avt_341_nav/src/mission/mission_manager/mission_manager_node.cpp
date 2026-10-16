@@ -377,7 +377,7 @@ int main(int argc, char **argv) {
 
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
-    auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
+    auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
     auto veh1_sub = get_veh_odom_sub(
