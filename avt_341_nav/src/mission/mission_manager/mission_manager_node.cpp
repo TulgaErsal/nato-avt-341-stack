@@ -343,6 +343,8 @@ int main(int argc, char **argv) {
     avt_341_nav::params::mission_manager::ParamsListener param_listener(nh);
     const auto params = param_listener.get_params();
     rclcpp::Rate loop_rate(10);
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(nh);
 
     const std::string my_name = toUpper(params.name);
 
@@ -531,7 +533,7 @@ int main(int argc, char **argv) {
         }
         speed_factor_pub->publish(speed_msg);
         
-        rclcpp::spin_some(nh);
+        executor.spin_all(std::chrono::milliseconds(50));
         loop_rate.sleep();
     }
 
