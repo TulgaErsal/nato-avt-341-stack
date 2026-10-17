@@ -483,8 +483,13 @@ void MissionManager::checkGoalArrival() {
 
 void MissionManager::resetTaskList(bool send_completion_msg) {
   RCLCPP_INFO(node_->get_logger(), "%s CANCEL_ALL: Clearing task list of size %d.", my_name.c_str(), task_list.size());
-  for(auto task : task_list) {
-    cancelTask(task->msg_id, send_completion_msg);
+  for(Task* task : task_list) {
+    task->onPreempt();
+    RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
+    if(send_completion_msg){
+      publishTaskCompletion(task);
+    }
+    delete task;
   }
   task_list.clear();
 }

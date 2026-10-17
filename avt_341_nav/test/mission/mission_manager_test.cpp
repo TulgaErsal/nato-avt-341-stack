@@ -395,3 +395,73 @@ TEST_F(ToiRegexPerTaskTest, TasksWithAnotherMsgIdDoNotCarryTheRegex)
     manager->updateTasks();
     EXPECT_TRUE(applied_.empty());
 }
+
+// Follow with LEADER_ARRIVED
+// ------------------------------------------------------------------------------------------------
+
+using avt_341_nav::mission::Follow;
+using avt_341_nav::mission::FormationDefinition;
+using avt_341_nav::mission::MissionPoint;
+
+class FollowLeaderArrivedTest : public MissionManagerContactsTest {
+  protected:
+    std::unique_ptr<MissionManager> MakeFollowerManager()
+    {
+        auto goal_filter = avt_341_nav::mission::create_goal_filter("MRZR2", "none", node_, params_.fgf_obs_avoid);
+        return std::make_unique<MissionManager>(params_, "MRZR2", node_, goal_filter);
+    }
+
+    Follow* MakeFollow(MissionManager & manager, int msg_id)
+    {
+        auto comm = MakeCommand(MissionMsgType::Formation, "");
+        comm.msg_id = msg_id;
+        comm.formation = "COLUMN";
+        comm.leader_name = "MRZR";
+        comm.follower1_name = "MRZR2";
+        comm.termination_method = "LEADER_ARRIVED";
+        FormationMsg msg(comm);
+        MissionPoint mp{"MP_Y", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+        auto formation_def = new FormationDefinition(msg, mp, params_.formation, "MRZR2");
+        return new Follow(&manager, "MRZR", msg_id, formation_def, 5.0, -1.0, -1.0);
+    }
+};
+
+TEST_F(FollowLeaderArrivedTest, LeaderTaskCompleteFinishesFollowWithoutArrive)
+{
+    auto manager = MakeFollowerManager();
+    std::unique_ptr<Follow> follow(MakeFollow(*manager, 309));
+    EXPECT_FALSE(follow->is_done());
+
+    manager->handleTaskComplete(TaskCompleteMsg("MRZR", -1, "MRZR", 308));
+    manager->handleTaskComplete(TaskCompleteMsg("FEDA", -1, "MRZR", 309));
+    EXPECT_FALSE(follow->is_done());
+
+    manager->handleTaskComplete(TaskCompleteMsg("MRZR", -1, "MRZR", 309));
+    EXPECT_TRUE(follow->is_done());
+}
+
+TEST_F(FollowLeaderArrivedTest, LeaderArriveStillFinishesFollow)
+{
+    auto manager = MakeFollowerManager();
+    std::unique_ptr<Follow> follow(MakeFollow(*manager, 309));
+    manager->handleArrive(ArrivedMsg("MRZR", -1, "TASK_309"));
+    EXPECT_TRUE(follow->is_done());
+}
+
+// resetTaskList
+// ------------------------------------------------------------------------------------------------
+
+TEST_F(MissionManagerContactsTest, CancelAllClearsTasksThatShareAMsgId)
+{
+    auto manager = MakeManager();
+    for(int i = 0; i < 3; ++i) {
+        manager->addTask(new WaitForDuration(manager.get(), "MRZR", -1, 100.0));
+    }
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", 7, 100.0));
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", -1, 100.0));
+    manager->updateTasks();
+    ASSERT_NE(manager->currentTask(), nullptr);
+
+    manager->resetTaskList(true);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+}
