@@ -12,6 +12,7 @@
 */
 
 // c++ includes
+#include <optional>
 #include <string>
 #include <sstream>
 // local includes
@@ -48,6 +49,7 @@ public:
     bool is_preemptable;
     bool arrived = false;
     double task_speed = -1.0;
+    std::optional<std::string> toi_regex;
     FormationDefinition* getFormationDef() const { return formation_def_; }
     virtual geometry_msgs::msg::PoseStamped terminalPose() const;
 

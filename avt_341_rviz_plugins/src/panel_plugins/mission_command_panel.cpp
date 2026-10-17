@@ -33,7 +33,7 @@ namespace avt_341::rviz_plugins
         toi_regex_entry_->setToolTip(
             "Regex matched against detected object class ids (e.g. \"car\" for the COCO detector, \"^TI_\" in "
             "simulation); matches become targets of interest that the vehicle investigates.\n"
-            "Sent with every command and applied to the object tracker by FORM, MOVETO and PATH_FOLLOW.\n"
+            "Sent with every command; FORM, MOVETO and PATH_FOLLOW apply it to the object tracker when their task starts.\n"
             "Empty keeps the vehicle's current regex; ^$ turns target of interest detection off.");
 
         // Setup entries

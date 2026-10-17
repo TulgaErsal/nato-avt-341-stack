@@ -341,3 +341,57 @@ TEST_F(EncircleReplanTest, VehiclePastTheEndOfTheArcGetsOnlyTheEndPoint)
     ASSERT_EQ(encircle->circlePath().poses.size(), 1u);
     EXPECT_NEAR(BearingDeg(encircle->circlePath().poses.front(), 0.0, 5.0), -179.0, 1e-6);
 }
+
+// toi_regex applied per task
+// ------------------------------------------------------------------------------------------------
+
+using avt_341_nav::mission::WaitForDuration;
+
+class ToiRegexPerTaskTest : public MissionManagerContactsTest {
+  protected:
+    std::unique_ptr<MissionManager> MakeRecordingManager()
+    {
+        auto manager = MakeManager();
+        manager->setToiRegexHandler([this](const std::string & regex) { applied_.push_back(regex); });
+        return manager;
+    }
+
+    void Queue(MissionManager & manager, int msg_id, const std::optional<std::string> & regex)
+    {
+        manager.setIncomingToiRegex(regex, msg_id);
+        manager.addTask(new WaitForDuration(&manager, "MRZR", msg_id, 0.0));
+        manager.setIncomingToiRegex(std::nullopt, 0);
+    }
+
+    std::vector<std::string> applied_;
+};
+
+TEST_F(ToiRegexPerTaskTest, RegexIsAppliedWhenItsTaskStartsNotWhenQueued)
+{
+    auto manager = MakeRecordingManager();
+    Queue(*manager, 11, std::nullopt);
+    Queue(*manager, 12, "car");
+    Queue(*manager, 13, "^$");
+    Queue(*manager, 14, std::nullopt);
+    EXPECT_TRUE(applied_.empty());
+
+    manager->updateTasks();
+    EXPECT_TRUE(applied_.empty());
+    manager->updateTasks();
+    EXPECT_EQ(applied_, std::vector<std::string>({"car"}));
+    manager->updateTasks();
+    EXPECT_EQ(applied_, std::vector<std::string>({"car", "^$"}));
+    manager->updateTasks();
+    EXPECT_EQ(applied_, std::vector<std::string>({"car", "^$"}));
+    EXPECT_EQ(manager->currentTask(), nullptr);
+}
+
+TEST_F(ToiRegexPerTaskTest, TasksWithAnotherMsgIdDoNotCarryTheRegex)
+{
+    auto manager = MakeRecordingManager();
+    manager->setIncomingToiRegex("car", 12);
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", -1, 0.0));
+    manager->setIncomingToiRegex(std::nullopt, 0);
+    manager->updateTasks();
+    EXPECT_TRUE(applied_.empty());
+}

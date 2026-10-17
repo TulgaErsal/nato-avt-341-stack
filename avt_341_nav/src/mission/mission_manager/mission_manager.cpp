@@ -217,6 +217,10 @@ bool MissionManager::getMissionPath(MissionPath& mission_path, std::string name)
 }
 
 bool MissionManager::addTask(Task* task, const std::string & priority_type) {
+    if(incoming_toi_regex_.has_value() && task->msg_id == incoming_toi_msg_id_) {
+        task->toi_regex = incoming_toi_regex_;
+    }
+
     // if no active task, put it on the list
 
     if(PriorityType::isCancelAllPrevious(priority_type)){
@@ -365,6 +369,9 @@ void MissionManager::updateTasks() {
         if(!active_task->init_done){
           publishSpeedSetPoint();
           active_task->init();
+          if(active_task->toi_regex.has_value() && toi_regex_handler_) {
+              toi_regex_handler_(*active_task->toi_regex);
+          }
           goal_filter_->Reset();
           RCLCPP_INFO(node_->get_logger(), "    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
           publishTaskChange();

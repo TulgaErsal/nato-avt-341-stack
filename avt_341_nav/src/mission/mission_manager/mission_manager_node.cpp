@@ -359,6 +359,7 @@ int main(int argc, char **argv) {
 
     mgr = std::make_shared<avt_341_nav::mission::MissionManager>(
         params, my_name, nh, goal_filter);
+    mgr->setToiRegexHandler(UpdateTrackerToiRegex);
 
     std::shared_ptr<avt_341_nav::mission::FormationSpeedController>
         speedController = avt_341_nav::mission::createFormationSpeedController(
@@ -457,9 +458,7 @@ int main(int argc, char **argv) {
             //std::string msg_text = rosToSerializedMsg(rcvd_msg);
             RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
-            if(const auto toi_regex = toiRegexUpdate(rcvd_msg)) {
-                UpdateTrackerToiRegex(*toi_regex);
-            }
+            mgr->setIncomingToiRegex(toiRegexUpdate(rcvd_msg), rcvd_msg.msg_id);
 
             if(rcvd_msg.type == MissionMsgType::Formation) {
                 mgr->handleFormationRequest(FormationMsg(rcvd_msg));
@@ -490,6 +489,7 @@ int main(int argc, char **argv) {
             else{
               RCLCPP_WARN(nh->get_logger(), "Unknown message type: %s", rcvd_msg.type.c_str());
             }
+            mgr->setIncomingToiRegex(std::nullopt, 0);
         }
 
         if(!contacts.empty()){

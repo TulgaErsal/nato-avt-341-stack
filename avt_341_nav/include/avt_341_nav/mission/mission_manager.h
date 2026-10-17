@@ -15,7 +15,9 @@
 // c++ includes
 #include <string>
 #include <chrono>
+#include <functional>
 #include <map>
+#include <optional>
 // local includes
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/map_marker_list.hpp"
@@ -137,6 +139,12 @@ class MissionManager{
     double local_origin_y;
 
     // Task management
+    // A task added with the msg_id of the incoming command carries its toi_regex, applied when the task starts.
+    void setToiRegexHandler(std::function<void(const std::string &)> handler) { toi_regex_handler_ = std::move(handler); }
+    void setIncomingToiRegex(const std::optional<std::string> & toi_regex, int msg_id) {
+        incoming_toi_regex_ = toi_regex;
+        incoming_toi_msg_id_ = msg_id;
+    }
     void updateTasks();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(const nav_msgs::msg::Path& path);
@@ -183,6 +191,10 @@ class MissionManager{
     std::vector<ArrivedMsg> arrivals_;
 
     FormationSignature last_command_signature_;
+
+    std::function<void(const std::string &)> toi_regex_handler_;
+    std::optional<std::string> incoming_toi_regex_;
+    int incoming_toi_msg_id_ = 0;
 
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavGoalSequence>> waypoint_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::String>> reset_pub = nullptr;
