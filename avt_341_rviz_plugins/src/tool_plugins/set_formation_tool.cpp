@@ -120,12 +120,11 @@ SetFormationTool::SetFormationTool()
     target_msg_id_property_ = new IntProperty(
         "Target Message ID", 0, "Communication.target_msg_id.", form_group );
 
-    // Defaults to the object tracker's own default so that publishing a formation does not silently
-    // turn off target of interest detection; an empty value tells the tracker to ignore all of them.
     toi_regex_property_ = new StringProperty(
-        "TOI Regex", "^TI_",
-        "Communication.toi_regex: detected object ids matching this regex are the targets of "
-        "interest for this formation. Empty means no target of interest is investigated.",
+        "TOI Regex", "",
+        "Communication.toi_regex: detected object ids matching this regex are the targets of interest "
+        "(e.g. \"car\" for the COCO detector, \"^TI_\" in simulation). Empty keeps the vehicle's current "
+        "regex; ^$ turns target of interest detection off.",
         form_group );
 }
 

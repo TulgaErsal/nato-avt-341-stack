@@ -144,7 +144,9 @@ ros__parameters:
     encircle_degrees:
       type: double
       default_value: 180.0
-      description: "Angular range to encircle around a target of interest."
+      description: "Angular range to encircle around a target of interest (at most one full loop)."
+      validation:
+        bounds<>: [ 0.0, 360.0 ]
     encircle_cw:
       type: bool
       default_value: true
@@ -153,6 +155,12 @@ ros__parameters:
       type: double
       default_value: 5.0
       description: "Distance at which the vehicle is considered to have approached the target of interest."
+    encircle_replan_distance:
+      type: double
+      default_value: 2.0
+      description: "Once an encircle is running, a contact position update that moves the target at least this planar distance [m] re-plans the rest of the circle around the new position. 0 keeps the circle fixed."
+      validation:
+        gt_eq<>: [ 0.0 ]
     contact_trigger_delay:
       type: double
       default_value: 1.0
@@ -161,10 +169,16 @@ ros__parameters:
       type: double
       default_value: 1.0
       description: "Distance threshold for combining observations of the same target."
+    team_vehicle_exclusion_radius:
+      type: double
+      default_value: 5.0
+      description: "Target contacts within this planar distance [m] of any team vehicle (including the ego vehicle) are ignored, so team members detected as targets of interest are not investigated. 0 disables the filter."
+      validation:
+        gt_eq<>: [ 0.0 ]
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'
-      description: "Object tracking node whose target_selection.toi_regex is reconfigured when a formation command carries a toi_regex. Relative names resolve under this vehicle's namespace."
+      description: "Object tracking node whose target_selection.toi_regex is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:
     type: bool

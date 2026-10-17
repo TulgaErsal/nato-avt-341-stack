@@ -104,17 +104,18 @@
     broadcast_over_ros: true
     vehicle_namespaces: ['mrzr', 'mrzr2', 'feda']
 
-# object_detector_node / object_tracker_node run on the template defaults
+/**/object_tracker_node:
+  ros__parameters:
+    #frames:
+    #  odometry_child_frame: 'feda/odom'
+    target_selection:
+      toi_regex: '^$'
+      #autostart_target_classes: ['FED Alpha']
+
+# object_detector_node runs on the template defaults
 
 #/**/object_detector_node:
 #  ros__parameters:
 #    model:
 #      name: 'fedav8m-cuda-640x640'
 #      classes: ['FED Alpha']
-#
-#/**/object_tracker_node:
-#  ros__parameters:
-#    frames:
-#      odometry_child_frame: 'feda/odom'
-#    target_selection:
-#      autostart_target_classes: ['FED Alpha']

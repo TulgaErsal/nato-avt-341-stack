@@ -17,6 +17,7 @@
 
 #include "avt_341_msgs/msg/communication.hpp"
 #include <rclcpp/rclcpp.hpp>
+#include "avt_341_nav/communication/socket_message_framer.h"
 #include "avt_341_nav/communication/tcp_socket_proxy.h"
 #include "avt_341_nav/mission/mission_manager_parser.h"
 #include <avt_341_nav/socket_comms_params_service.hpp>
@@ -55,6 +56,7 @@ int main(int argc, char* argv[])
 
     int msg_count = 0;
     char buffer[256];
+    avt_341_nav::communication::SocketMessageFramer framer;
     avt_341_msgs::msg::Communication packed_msg;
     const int port = static_cast<int>(params.port);
 
@@ -110,8 +112,8 @@ int main(int argc, char* argv[])
                 pub->publish(next_msg);
               }
             }else{
-              strcpy(buffer, msg_serialized.c_str());
-              int n = client->write(buffer, strlen(buffer));
+              const std::string framed = avt_341_nav::communication::SocketMessageFramer::Frame(msg_serialized);
+              int n = client->write(framed.c_str(), static_cast<int>(framed.size()));
               if(n < 0)
                 RCLCPP_ERROR(nh->get_logger(), "Error writing to socket\n");
               else {
@@ -123,14 +125,16 @@ int main(int argc, char* argv[])
         std::fill(std::begin(buffer), std::end(buffer), '\0');
 
         // read the socket
-        if(client->read_available(buffer, 256) > 0)
+        const int n_read = client->read_available(buffer, sizeof(buffer));
+        if(n_read > 0)
         {
-            std::string buffer_str = std::string(buffer);
-            if(params.verbose_comm_log){
-              RCLCPP_INFO(nh->get_logger(), "Read %s", buffer_str.c_str());
+            for(const auto & msg_text : framer.Feed(std::string(buffer, n_read))) {
+              if(params.verbose_comm_log){
+                RCLCPP_INFO(nh->get_logger(), "Read %s", msg_text.c_str());
+              }
+              packed_msg = serializedToROSMsg(msg_text);
+              msg_pub->publish(packed_msg);
             }
-            packed_msg = serializedToROSMsg(buffer_str);
-            msg_pub->publish(packed_msg);
         }
 
         rclcpp::spin_some(nh);

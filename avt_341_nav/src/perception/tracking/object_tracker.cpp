@@ -530,17 +530,23 @@ void ObjectTracker::EstimatorTick() {
             has_detection_ = false;
             has_first_detection_ = false;
             filter_initialized_ = false;
+            has_new_measurement_ = false;
             has_had_first_lidar_measurement_ = false;
             tracked_obstacle_id_ = -1;
         }
     }
 
     if (!filter_initialized_) {
-        filter_->SetInitialPosition(coord_transformer_.Transform(
-            frame_ids_.Camera(), frame_ids_.Map(),
-            bounding_box_centroid_));
-        filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        if (!has_new_measurement_) {
+            return;
+        }
+        const Eigen::Vector3d seed = coord_transformer_.Transform(
+            frame_ids_.Camera(), frame_ids_.Map(), bounding_box_centroid_);
         filter_->ResetCovariance();
+        filter_->SetInitialPosition(seed);
+        filter_->SetInitialVelocity(Eigen::Vector<double, 3>::Zero());
+        bounding_box_centroid_global_ = seed;
+        bounding_box_centroid_filtered_ = seed;
         filter_initialized_ = true;
     }
 

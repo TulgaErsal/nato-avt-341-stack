@@ -2,6 +2,15 @@
 #include <sstream>
 #include "avt_341_msgs/msg/communication.hpp"
 
+// Rejoin tokens[first..] so that a trailing regex containing commas survives tokenization.
+static std::string joinTrailingTokens(const std::vector<std::string> & tokens, size_t first){
+  std::string joined = tokens[first];
+  for(size_t i = first + 1; i < tokens.size(); i++) {
+    joined += "," + tokens[i];
+  }
+  return joined;
+}
+
 std::vector<std::string> tokenizeMsg(std::string input){
   std::vector<std::string> tokens;
   size_t pos = 0;
@@ -15,11 +24,39 @@ std::vector<std::string> tokenizeMsg(std::string input){
   return tokens;
 }
 
+// True when a serialized message of the given type has one of the field counts its formats define
+// (see the format comments in serializedToROSMsg), so that parsing never indexes past the tokens.
+static bool hasValidFieldCount(const std::string & type, size_t n){
+  if(type == MissionMsgType::Formation) {
+    return n == 10 || n == 11 || n >= 18;
+  }
+  if(type == MissionMsgType::MoveTo) {
+    return n == 6 || n >= 10;
+  }
+  if(type == MissionMsgType::PathFollow) {
+    return n >= 7;
+  }
+  if(type == MissionMsgType::WaitUntilComplete) {
+    return n >= 6;
+  }
+  if(type == MissionMsgType::Acknowledge || type == MissionMsgType::TaskComplete ||
+     type == MissionMsgType::SetSpeed || type == MissionMsgType::Cancel || type == MissionMsgType::Overwatch) {
+    return n >= 5;
+  }
+  if(type == MissionMsgType::Arrived || type == MissionMsgType::Shutdown || type == MissionMsgType::CancelAll) {
+    return n >= 4;
+  }
+  return true;
+}
+
 avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
-  auto tokens = tokenizeMsg(msg);
+  // Drop line endings and trailing whitespace a socket server may append, so they cannot end up in the
+  // trailing toi_regex field.
+  const auto last = msg.find_last_not_of(" \t\r\n");
+  auto tokens = tokenizeMsg(last == std::string::npos ? std::string() : msg.substr(0, last + 1));
 
   avt_341_msgs::msg::Communication message;
-  if(tokens.size() < 3){
+  if(tokens.size() < 3 || !hasValidFieldCount(tokens[2], tokens.size())){
     return message;
   }
   message.sender_name = tokens[0];
@@ -62,10 +99,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
       // toi_regex is the trailing field. Rejoin any remaining tokens so that a regex containing
       // commas (for example "TI_[0-9]{1,3}") survives tokenization.
       if(tokens.size() > 18) {
-        message.toi_regex = tokens[18];
-        for(size_t i = 19; i < tokens.size(); i++) {
-          message.toi_regex += "," + tokens[i];
-        }
+        message.toi_regex = joinTrailingTokens(tokens, 18);
       }
     }
   }
@@ -85,6 +119,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   }
     // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<priority>
     // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>
+    // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>,<toi_regex>
   else if(message.type == MissionMsgType::MoveTo) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
@@ -99,6 +134,9 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
       message.distance = std::stod(tokens[7]);
       message.yaw_threshold = std::stod(tokens[8]);
       message.priority_type = tokens[9];
+      if(tokens.size() > 10) {
+        message.toi_regex = joinTrailingTokens(tokens, 10);
+      }
     }
   }
     // <sender>,<msg_id>,SHUTDOWN,<receiver>
@@ -121,15 +159,20 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.receiver_name = tokens[3];
     message.target_msg_id = atoi(tokens[4].c_str());
   }
+    // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>
+    // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>,<toi_regex>
   else if(message.type == MissionMsgType::PathFollow) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
     message.desired_speed = std::stod(tokens[5]);
     message.priority_type = tokens[6];
+    if(tokens.size() > 7) {
+      message.toi_regex = joinTrailingTokens(tokens, 7);
+    }
   }
     // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>
     // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
-  else if(message.type == MissionMsgType::WaitUntilComplete && tokens.size() >= 6) {
+  else if(message.type == MissionMsgType::WaitUntilComplete) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
     message.target_msg_id = atoi(tokens[5].c_str());
@@ -165,10 +208,10 @@ std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
   else if(msg.type == MissionMsgType::TaskComplete) {
     stream << "," << msg.receiver_name << "," << msg.target_msg_id;
   }
-  // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>
+  // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>,<toi_regex>
   else if(msg.type == MissionMsgType::MoveTo) {
     stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.x_offset << "," << msg.y_offset
-    << "," << msg.distance << "," << msg.yaw_threshold << "," << msg.priority_type;
+    << "," << msg.distance << "," << msg.yaw_threshold << "," << msg.priority_type << "," << msg.toi_regex;
   }
   // <sender>,<msg_id>,SHUTDOWN,<receiver>,<priority>
   else if(msg.type == MissionMsgType::Shutdown) {
@@ -190,9 +233,10 @@ std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
   else if(msg.type == MissionMsgType::Overwatch) {
     stream << "," << msg.receiver_name << "," << msg.target_msg_id << "," << msg.priority_type;
   }
-  // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>
+  // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>,<toi_regex>
   else if(msg.type == MissionMsgType::PathFollow) {
-    stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.desired_speed << "," << msg.priority_type;
+    stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.desired_speed << "," << msg.priority_type
+    << "," << msg.toi_regex;
   }
   // <sender>,<msg_id>,WAIT_UNTIL_COMPLETE,<receiver>,<target_vehicle>,<target_msg_id>,<priority>
   else if(msg.type == MissionMsgType::WaitUntilComplete) {
@@ -255,6 +299,15 @@ std::shared_ptr<MissionManagerDto> serializedToConcreteMsg(const std::string & m
 std::string concreteToSerializedMsg(MissionManagerDto * msg){
   auto ros_msg = msg->toROSMsg();
   return rosToSerializedMsg(ros_msg);
+}
+
+std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg){
+  const bool carries_toi_regex = msg.type == MissionMsgType::Formation || msg.type == MissionMsgType::MoveTo ||
+                                 msg.type == MissionMsgType::PathFollow;
+  if(carries_toi_regex && !msg.toi_regex.empty()) {
+    return msg.toi_regex;
+  }
+  return std::nullopt;
 }
 
 bool isMsgFor(const std::string & veh, const avt_341_msgs::msg::Communication & msg){

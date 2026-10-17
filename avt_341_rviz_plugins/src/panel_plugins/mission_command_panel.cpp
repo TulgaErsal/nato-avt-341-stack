@@ -26,10 +26,15 @@ namespace avt_341::rviz_plugins
         y_offset_entry_ = new QLineEdit("0.0");
         distance_entry_ = new QLineEdit("0.0");
         target_msg_entry_ = new QLineEdit("0");
-        // Only applies to FORM messages. Defaults to the object tracker's own default so that a
-        // formation command does not silently turn off target of interest detection; clearing the
-        // field tells the tracker to ignore all targets of interest.
-        toi_regex_entry_ = new QLineEdit("^TI_");
+        // Empty by default so that a MOVETO or PATH_FOLLOW sent from the panel never silently replaces the
+        // regex that is active on the vehicle.
+        toi_regex_entry_ = new QLineEdit("");
+        toi_regex_entry_->setPlaceholderText("^TI_ (sim), car (COCO)");
+        toi_regex_entry_->setToolTip(
+            "Regex matched against detected object class ids (e.g. \"car\" for the COCO detector, \"^TI_\" in "
+            "simulation); matches become targets of interest that the vehicle investigates.\n"
+            "Sent with every command; FORM, MOVETO and PATH_FOLLOW apply it to the object tracker when their task starts.\n"
+            "Empty keeps the vehicle's current regex; ^$ turns target of interest detection off.");
 
         // Setup entries
         msg_id_entry_->setValidator(new QIntValidator(0, 99, this));

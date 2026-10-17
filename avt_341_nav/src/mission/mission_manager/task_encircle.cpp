@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include <math.h>
+#include <algorithm>
+#include <cmath>
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
@@ -12,6 +14,7 @@ namespace mission {
 Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
   const ToiParameters & params)
     : Encircle(manager, sender, msg_id, target, params.encircle_radius, params.encircle_degrees, params.encircle_cw, params.goal_threshold) {
+  replan_distance_ = params.encircle_replan_distance;
 }
 
 Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
@@ -23,25 +26,65 @@ Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_
 
 void Encircle::init_() {
 
-  circle_path_.poses.clear();
   geometry_msgs::msg::Pose current_pose = mgr->odometry.pose.pose;
-  const auto pi = std::atan(1.0)*4.0;
   double dx = current_pose.position.x - target_.pose.position.x;
   double dy = current_pose.position.y - target_.pose.position.y;
-  double starting_rad = std::atan2(dy, dx);
+  start_rad_ = std::atan2(dy, dx);
+  buildCirclePath_(start_rad_, angular_range_degrees_);
+
+  mgr->publishPath(circle_path_);
+  mgr->publishGpToggle(0);
+
+}
+
+void Encircle::buildCirclePath_(double from_rad, double degrees) {
+  circle_path_.poses.clear();
+  const auto pi = std::atan(1.0)*4.0;
   double sign = is_cw_ ? -1.0 : 1.0;
 
-  for(int r_idx = 0; r_idx < static_cast<int>(angular_range_degrees_); r_idx += 1){
-    double r = starting_rad + sign * r_idx / 180.0 * pi;
+  for(int r_idx = 0; r_idx < std::max(1, static_cast<int>(degrees)); r_idx += 1){
+    double r = from_rad + sign * r_idx / 180.0 * pi;
     geometry_msgs::msg::PoseStamped pose;
     pose.pose.position.x = std::cos(r) * radius_ + target_.pose.position.x;
     pose.pose.position.y = std::sin(r) * radius_ + target_.pose.position.y;
     circle_path_.poses.push_back(pose);
   }
+}
 
-  mgr->publishPath(circle_path_);
-  mgr->publishGpToggle(0);
+bool Encircle::updateTarget(const geometry_msgs::msg::PoseStamped & target) {
+  if (!init_done) {
+    target_ = target;
+    return false;
+  }
+  const double shift = std::hypot(target.pose.position.x - target_.pose.position.x,
+                                  target.pose.position.y - target_.pose.position.y);
+  if (replan_distance_ <= 0.0 || shift < replan_distance_) {
+    return false;
+  }
+  target_ = target;
 
+  // Keep the end of the arc at the same bearing from the target and re-plan
+  // the part still ahead of the vehicle around the new target.
+  const auto pi = std::atan(1.0)*4.0;
+  const double sign = is_cw_ ? -1.0 : 1.0;
+  const double range_rad = std::max(0.0, angular_range_degrees_ - 1.0) / 180.0 * pi;
+  const double end_rad = start_rad_ + sign * range_rad;
+  const double current_rad = std::atan2(mgr->odometry.pose.pose.position.y - target_.pose.position.y,
+                                        mgr->odometry.pose.pose.position.x - target_.pose.position.x);
+  double remaining_rad = std::fmod(sign * (end_rad - current_rad), 2.0 * pi);
+  if (remaining_rad < 0.0) {
+    remaining_rad += 2.0 * pi;
+  }
+  if (remaining_rad > range_rad) {
+    // Outside the arc: either just past its end or still before its start.
+    const double past_end_rad = 2.0 * pi - remaining_rad;
+    const double before_start_rad = remaining_rad - range_rad;
+    remaining_rad = past_end_rad < before_start_rad ? 0.0 : range_rad;
+  }
+  // Whole-degree steps back from the end bearing, so the arc ends exactly on it.
+  const double steps = std::floor(remaining_rad / pi * 180.0 + 1e-9);
+  buildCirclePath_(end_rad - sign * steps / 180.0 * pi, steps + 1.0);
+  return true;
 }
 
 void Encircle::run() {

@@ -47,8 +47,8 @@
 
 /**/object_tracker_node:
   remappings:
-    camera_info: /flir_camera/camera_info
-    image: /flir_camera/image_raw
+    camera_info: /flir_camera_downsized/camera_info
+    image: /flir_camera_downsized/image_color_rect
     points/input: /ouster/points
     detection_2d: detections/vision
     avt_341/reset: avt_341/reset

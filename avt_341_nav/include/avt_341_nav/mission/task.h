@@ -12,6 +12,7 @@
 */
 
 // c++ includes
+#include <optional>
 #include <string>
 #include <sstream>
 // local includes
@@ -48,6 +49,7 @@ public:
     bool is_preemptable;
     bool arrived = false;
     double task_speed = -1.0;
+    std::optional<std::string> toi_regex;
     FormationDefinition* getFormationDef() const { return formation_def_; }
     virtual geometry_msgs::msg::PoseStamped terminalPose() const;
 
@@ -139,11 +141,15 @@ public:
     std::string description() const override;
     geometry_msgs::msg::PoseStamped terminalPose() const override;
 
-    void updateTarget(const geometry_msgs::msg::PoseStamped & target) { target_ = target; }
+    bool updateTarget(const geometry_msgs::msg::PoseStamped & target);
     void setContactName(const std::string & name) { contact_name_ = name; }
     const std::string & contactName() const { return contact_name_; }
+    const geometry_msgs::msg::PoseStamped & target() const { return target_; }
+    const nav_msgs::msg::Path & circlePath() const { return circle_path_; }
 
 private:
+  void buildCirclePath_(double from_rad, double degrees);
+
   bool arrived;
   geometry_msgs::msg::PoseStamped target_;
   std::string contact_name_;
@@ -151,6 +157,8 @@ private:
   double angular_range_degrees_;
   bool is_cw_;
   double goal_threshold_;
+  double replan_distance_ = 0.0;
+  double start_rad_ = 0.0;
   nav_msgs::msg::Path circle_path_;
 }; // class Encircle
 

@@ -50,8 +50,7 @@ std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
 std::optional<std::string> applied_toi_regex;
 
-// Reconfigure the object tracking node with the targets of interest regex of a formation command.
-// An empty regex is a valid value: it tells the tracker to ignore all targets of interest.
+// Reconfigure the object tracking node with the targets of interest regex of a mission command (see toiRegexUpdate).
 void UpdateTrackerToiRegex(const std::string & toi_regex) {
     if(applied_toi_regex.has_value() && applied_toi_regex.value() == toi_regex) {
         return;
@@ -60,7 +59,7 @@ void UpdateTrackerToiRegex(const std::string & toi_regex) {
     try {
         std::regex{toi_regex};
     } catch (const std::regex_error & e) {
-        RCLCPP_WARN(nh->get_logger(), "Ignoring invalid toi_regex \"%s\" in formation command: %s",
+        RCLCPP_WARN(nh->get_logger(), "Ignoring invalid toi_regex \"%s\" in mission command: %s",
             toi_regex.c_str(), e.what());
         return;
     }
@@ -155,6 +154,33 @@ void VehicleOdometryCallback(nav_msgs::msg::Odometry::SharedPtr msg) {
       mgr->rcvd_leader_odom = true;
       leader_pub->publish(*msg);
     }
+}
+
+// Team vehicle odometry with poses expressed in the map frame (target contacts are in the map frame).
+// Uses the latest transform without waiting; if it is unavailable the raw pose is kept, so the vehicle
+// still counts as a team member (map and odom coincide on the current vehicles).
+std::map<std::string, nav_msgs::msg::Odometry> FormationOdomsInMapFrame() {
+    std::map<std::string, nav_msgs::msg::Odometry> odoms_map;
+    for(const auto & [veh_name, veh_odom] : formation_odoms) {
+        nav_msgs::msg::Odometry odom_map = veh_odom;
+        const std::string & frame = veh_odom.header.frame_id;
+        if(frame != "map") {
+            geometry_msgs::msg::PoseStamped pose, pose_map;
+            pose.header.frame_id = frame;
+            pose.pose = veh_odom.pose.pose;
+            if(tf->get_buffer().canTransform("map", frame, tf2::TimePointZero) &&
+               tf->transform_pose(pose, pose_map, "map", 0.0)) {
+                odom_map.header.frame_id = "map";
+                odom_map.pose.pose = pose_map.pose;
+            } else {
+                RCLCPP_WARN_THROTTLE(nh->get_logger(), *nh->get_clock(), 5000,
+                    "No transform from %s to map for %s odometry; using its pose unchanged for target contact handling.",
+                    frame.c_str(), veh_name.c_str());
+            }
+        }
+        odoms_map[veh_name] = odom_map;
+    }
+    return odoms_map;
 }
 
 // Receive information on target contacts
@@ -317,6 +343,8 @@ int main(int argc, char **argv) {
     avt_341_nav::params::mission_manager::ParamsListener param_listener(nh);
     const auto params = param_listener.get_params();
     rclcpp::Rate loop_rate(10);
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(nh);
 
     const std::string my_name = toUpper(params.name);
 
@@ -331,6 +359,7 @@ int main(int argc, char **argv) {
 
     mgr = std::make_shared<avt_341_nav::mission::MissionManager>(
         params, my_name, nh, goal_filter);
+    mgr->setToiRegexHandler(UpdateTrackerToiRegex);
 
     std::shared_ptr<avt_341_nav::mission::FormationSpeedController>
         speedController = avt_341_nav::mission::createFormationSpeedController(
@@ -349,7 +378,7 @@ int main(int argc, char **argv) {
 
     // set up subscriptions
     auto communication_sub = nh->create_subscription<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
-    auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 100, EgoOdometryCallback);
+    auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state", 10, NavStateCallback);
     auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
     auto veh1_sub = get_veh_odom_sub(
@@ -429,8 +458,9 @@ int main(int argc, char **argv) {
             //std::string msg_text = rosToSerializedMsg(rcvd_msg);
             RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
+            mgr->setIncomingToiRegex(toiRegexUpdate(rcvd_msg), rcvd_msg.msg_id);
+
             if(rcvd_msg.type == MissionMsgType::Formation) {
-                UpdateTrackerToiRegex(rcvd_msg.toi_regex);
                 mgr->handleFormationRequest(FormationMsg(rcvd_msg));
             } else if(rcvd_msg.type == MissionMsgType::Acknowledge) {
                 mgr->handleAcknowledge(AcknowledgeMsg(rcvd_msg));
@@ -459,12 +489,16 @@ int main(int argc, char **argv) {
             else{
               RCLCPP_WARN(nh->get_logger(), "Unknown message type: %s", rcvd_msg.type.c_str());
             }
+            mgr->setIncomingToiRegex(std::nullopt, 0);
         }
 
-        while(!contacts.empty()){
-          auto rcvd_msg = contacts.front();
-          contacts.pop();
-          mgr->handleContacts(rcvd_msg, formation_odoms);
+        if(!contacts.empty()){
+          const auto team_poses = FormationOdomsInMapFrame();
+          while(!contacts.empty()){
+            auto rcvd_msg = contacts.front();
+            contacts.pop();
+            mgr->handleContacts(rcvd_msg, team_poses);
+          }
         }
 
         // Incoming internal notifications
@@ -499,7 +533,7 @@ int main(int argc, char **argv) {
         }
         speed_factor_pub->publish(speed_msg);
         
-        rclcpp::spin_some(nh);
+        executor.spin_all(std::chrono::milliseconds(50));
         loop_rate.sleep();
     }
 

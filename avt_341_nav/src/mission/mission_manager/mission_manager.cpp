@@ -217,6 +217,10 @@ bool MissionManager::getMissionPath(MissionPath& mission_path, std::string name)
 }
 
 bool MissionManager::addTask(Task* task, const std::string & priority_type) {
+    if(incoming_toi_regex_.has_value() && task->msg_id == incoming_toi_msg_id_) {
+        task->toi_regex = incoming_toi_regex_;
+    }
+
     // if no active task, put it on the list
 
     if(PriorityType::isCancelAllPrevious(priority_type)){
@@ -365,6 +369,9 @@ void MissionManager::updateTasks() {
         if(!active_task->init_done){
           publishSpeedSetPoint();
           active_task->init();
+          if(active_task->toi_regex.has_value() && toi_regex_handler_) {
+              toi_regex_handler_(*active_task->toi_regex);
+          }
           goal_filter_->Reset();
           RCLCPP_INFO(node_->get_logger(), "    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
           publishTaskChange();
@@ -453,10 +460,9 @@ void MissionManager::updateExistingContact(
                 moveto->target_pose = pose;
             }
         } else if (auto* encircle = dynamic_cast<Encircle*>(task)) {
-            // Only update while the task is still queued (init_done=false).
-            // Once init_() has run the circle path is already computed.
-            if (!encircle->init_done && encircle->contactName() == name) {
-                encircle->updateTarget(pose);
+            if (encircle->contactName() == name && encircle->updateTarget(pose)) {
+                RCLCPP_INFO(node_->get_logger(), "Re-planned encircle of \"%s\" around (%.2f, %.2f).",
+                            name.c_str(), pose.pose.position.x, pose.pose.position.y);
             }
         }
     }
@@ -477,8 +483,13 @@ void MissionManager::checkGoalArrival() {
 
 void MissionManager::resetTaskList(bool send_completion_msg) {
   RCLCPP_INFO(node_->get_logger(), "%s CANCEL_ALL: Clearing task list of size %d.", my_name.c_str(), task_list.size());
-  for(auto task : task_list) {
-    cancelTask(task->msg_id, send_completion_msg);
+  for(Task* task : task_list) {
+    task->onPreempt();
+    RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
+    if(send_completion_msg){
+      publishTaskCompletion(task);
+    }
+    delete task;
   }
   task_list.clear();
 }
@@ -573,6 +584,18 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
     const double now = node_->now().seconds();
 
     for(const auto& pose: contacts.poses) {
+        if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
+            const auto team_vehicle = FindVehicleWithin(
+                pose.pose.position, veh_poses, params_.toi.team_vehicle_exclusion_radius);
+            if (team_vehicle.has_value()) {
+                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                    "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
+                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
+                    params_.toi.team_vehicle_exclusion_radius, team_vehicle->c_str());
+                continue;
+            }
+        }
+
         auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
             [&](const Contact& c) { return c.name == pose.header.frame_id; });
 

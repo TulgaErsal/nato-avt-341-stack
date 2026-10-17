@@ -58,6 +58,7 @@
 
 #include <avt_341_nav/core/eigen_dto_conversion.hpp>
 #include <avt_341_nav/core/string_utils.hpp>
+#include <avt_341_nav/perception/tracking/camera_info_utils.hpp>
 #include <avt_341_nav/perception/tracking/formation_vehicle_tracker.hpp>
 #include <avt_341_nav/perception/tracking/toi_tracker.hpp>
 
@@ -364,7 +365,7 @@ bool ObjectTrackerNode::IsEgoVehicle(const std::string& target_class) const {
 bool ObjectTrackerNode::MatchesToiRegex(
     const std::string& target_class) const {
     const std::string& toi_regex = params_.target_selection.toi_regex;
-    if (toi_regex.empty()) {
+    if (toi_regex.empty() || target_class.empty()) {
         return false;
     }
     try {
@@ -841,10 +842,17 @@ void ObjectTrackerNode::CameraInfoCallback(
     const sensor_msgs::msg::CameraInfo::SharedPtr camera_info_message) {
     RCLCPP_DEBUG_ONCE(get_logger(), "Camera info callback triggered!!");
 
-    // Store the sensor_msgs/msg/CameraInfo message and mark camera info as
-    // received.
-    camera_info_message_ = camera_info_message;
+    // Store the intrinsics of the published image (binning and ROI applied)
+    // and mark camera info as received.
+    camera_info_message_ = std::make_shared<sensor_msgs::msg::CameraInfo>(
+        ToImageCameraInfo(*camera_info_message));
     has_camera_info_ = true;
+    RCLCPP_INFO_ONCE(get_logger(),
+                     "Camera intrinsics for the %ux%u image: fx=%.2f fy=%.2f "
+                     "cx=%.2f cy=%.2f.",
+                     camera_info_message_->width, camera_info_message_->height,
+                     camera_info_message_->k[0], camera_info_message_->k[4],
+                     camera_info_message_->k[2], camera_info_message_->k[5]);
 }
 
 void ObjectTrackerNode::DetectionsCallback(
