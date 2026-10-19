@@ -25,6 +25,7 @@ set(AVT341_SOURCE_FILES
     "control/control"
     "control/speed_control"
     "control/atat_speed_control"
+    "control/krc_speed_control"
     "daq/data_acquisition"
     "mission/goal_filtering"
     "mission/mission_manager"

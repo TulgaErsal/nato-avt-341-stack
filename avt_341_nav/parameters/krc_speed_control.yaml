@@ -1,0 +1,58 @@
+code_namespace: avt_341_nav/params/krc_speed_control
+ros__parameters:
+
+  # PID throttle control
+  # ====================================================================================================================
+  throttle_kp:
+    type: double
+    default_value: 0.248
+    description: "Proportional gain for the PID speed controller."
+  throttle_ki:
+    type: double
+    default_value: 0.103
+    description: "Integral gain for the PID speed controller."
+  throttle_kd:
+    type: double
+    default_value: 0.25
+    description: "Derivative gain for the PID speed controller."
+  max_integral:
+    type: double
+    default_value: 4.0
+    description: "Maximum absolute value of the integral term in the PID speed controller."
+  min_throttle:
+    type: double
+    default_value: 0.2
+    description: "Minimum throttle output to overcome stiction."
+  max_throttle:
+    type: double
+    default_value: 0.7
+    description: "Maximum throttle output."
+
+  # Braking
+  # ====================================================================================================================
+  stopped_speed:
+    type: double
+    default_value: 0.1
+    description: "Minimum speed command (m/s) for active controls. Below this the throttle is zero and stopped_brake is
+      applied."
+  stopped_brake:
+    type: double
+    default_value: 0.2
+    description: "Brake setting applied when the speed command is below stopped_speed."
+
+  # Vehicle / timing
+  # ====================================================================================================================
+  control_rate:
+    type: double
+    default_value: 20.0
+    description: "Rate (Hz) at which the control loop runs and publishes avt_341/cmd_vel."
+    validation:
+      gt<>: [ 0.0 ]
+  wheelbase:
+    type: double
+    default_value: 2.019
+    description: "Vehicle wheelbase (m)."
+  verbose:
+    type: bool
+    default_value: false
+    description: "Display log messages."
