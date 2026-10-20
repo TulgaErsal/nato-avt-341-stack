@@ -56,3 +56,13 @@ ros__parameters:
     type: bool
     default_value: false
     description: "Display log messages."
+
+  cmd_input_timeout_hz:
+    type: double
+    default_value: 10.0
+    description: "Watchdog timeout rate for velocity input. If no message received in 1/rate period, no control published."
+
+  speed_input_timeout_hz:
+    type: double
+    default_value: 5.0
+    description: "Watchdog timeout rate for current vehicle speed input. If no message received in 1/rate period, no control published."

@@ -37,8 +37,8 @@ class VelocityControl(Node):
         self.params = self.param_listener.get_params()
 
         # Subscribers
-        self.vel_cmd = TopicWatchdog(self, 'avt_341/velocity_rqst', Twist)
-        self.current_speed = TopicWatchdog(self, 'avt_341/forward_speed', Float64)
+        self.vel_cmd = TopicWatchdog(self, 'avt_341/velocity_rqst', Twist, watchdog_rate=self.params.cmd_input_timeout_hz)
+        self.current_speed = TopicWatchdog(self, 'avt_341/forward_speed', Float64, watchdog_rate=self.params.speed_input_timeout_hz)
 
         # Publishers
         self.cmd_pub = self.create_publisher(Twist, 'avt_341/cmd_vel', 1)
