@@ -4,10 +4,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 
 #include "avt_341_msgs/msg/communication.hpp"
+#include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/mission/mission_manager_parser.h"
@@ -464,4 +466,133 @@ TEST_F(MissionManagerContactsTest, CancelAllClearsTasksThatShareAMsgId)
 
     manager->resetTaskList(true);
     EXPECT_EQ(manager->currentTask(), nullptr);
+}
+
+// Contacts identified by position
+// ------------------------------------------------------------------------------------------------
+
+class ToiInvestigationTest : public MissionManagerContactsTest {
+  protected:
+    void SetUp() override
+    {
+        MissionManagerContactsTest::SetUp();
+        status_sub_ = node_->create_subscription<avt_341_msgs::msg::MissionModuleStatus>(
+            "avt_341/task_change", rclcpp::QoS(1).transient_local(),
+            [this](avt_341_msgs::msg::MissionModuleStatus::SharedPtr msg) { status_ = *msg; });
+        investigated_sub_ = node_->create_subscription<nav_msgs::msg::Path>(
+            "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local(),
+            [this](nav_msgs::msg::Path::SharedPtr msg) { investigated_ = *msg; });
+    }
+
+    std::vector<std::string> Tasks(MissionManager & manager)
+    {
+        manager.publishTaskChange();
+        rclcpp::spin_some(node_);
+        std::vector<std::string> tasks;
+        if (!status_.active_task.task_description.empty()) {
+            tasks.push_back(status_.active_task.task_description);
+        }
+        tasks.insert(tasks.end(), status_.queued_tasks.begin(), status_.queued_tasks.end());
+        return tasks;
+    }
+
+    nav_msgs::msg::Path Investigated()
+    {
+        rclcpp::spin_some(node_);
+        return investigated_;
+    }
+
+    static bool Has(const std::string & description, const std::string & text)
+    {
+        return description.find(text) != std::string::npos;
+    }
+
+    rclcpp::Subscription<avt_341_msgs::msg::MissionModuleStatus>::SharedPtr status_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr investigated_sub_;
+    avt_341_msgs::msg::MissionModuleStatus status_;
+    nav_msgs::msg::Path investigated_;
+};
+
+TEST_F(ToiInvestigationTest, SecondTargetOfTheSameClassIsInvestigatedAfterTheFirst)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    manager->updateTasks();
+    manager->handleContacts(MakeContact("car", 80.0, 30.0), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 4u);
+    EXPECT_TRUE(Has(tasks[0], "CONTACT car_1"));
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+    EXPECT_TRUE(Has(tasks[2], "CONTACT car_2"));
+    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(80, 30)"));
+}
+
+TEST_F(ToiInvestigationTest, NearbyReportRefinesTheTargetInsteadOfAddingOne)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    manager->handleContacts(MakeContact("car", 53.0, 31.0), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 2u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(53, 31)"));
+}
+
+TEST_F(ToiInvestigationTest, ReportOfAnotherTargetDoesNotMoveTheCurrentOne)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    manager->handleContacts(MakeContact("car", 80.0, 30.0), team_);
+    manager->handleContacts(MakeContact("car", 79.0, 31.0), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 4u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(79, 31)"));
+}
+
+TEST_F(ToiInvestigationTest, EncircleCompletionMarksItsContactInvestigated)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    EXPECT_TRUE(Investigated().poses.empty());
+
+    Encircle encircle(manager.get(), "MRZR", 9999, MakePose(50.0, 30.0), params_.toi);
+    encircle.setContactName("car_1");
+    encircle.on_done();
+
+    const auto investigated = Investigated();
+    ASSERT_EQ(investigated.poses.size(), 1u);
+    EXPECT_DOUBLE_EQ(investigated.poses[0].pose.position.x, 50.0);
+    EXPECT_DOUBLE_EQ(investigated.poses[0].pose.position.y, 30.0);
+}
+
+TEST_F(ToiInvestigationTest, InvestigatedTargetIsNotInvestigatedAgain)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    manager->markContactInvestigated("car_1");
+    manager->resetTaskList(false);
+
+    manager->handleContacts(MakeContact("car", 52.0, 29.0), team_);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+
+    manager->handleContacts(MakeContact("car", 80.0, 30.0), team_);
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 2u);
+    EXPECT_TRUE(Has(tasks[0], "CONTACT car_2"));
+}
+
+TEST_F(ToiInvestigationTest, ResetForgetsInvestigatedTargets)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    manager->markContactInvestigated("car_1");
+    ASSERT_EQ(Investigated().poses.size(), 1u);
+
+    manager->reset();
+    EXPECT_TRUE(Investigated().poses.empty());
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    EXPECT_NE(manager->currentTask(), nullptr);
 }

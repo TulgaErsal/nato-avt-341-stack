@@ -11,6 +11,8 @@
 #define AVT_341_TOI_TRACKER_H
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -41,10 +43,23 @@ class ToiTracker : public ObjectTracker {
 
     void Reset() override;
 
+    /** @brief Map positions of targets that have been investigated. Targets
+     *         within "target_selection.investigated_toi_radius" of them are
+     *         not tracked, and a tracked one is released. */
+    void SetInvestigatedPositions(std::vector<Eigen::Vector3d> positions) {
+        investigated_positions_ = std::move(positions);
+    }
+
    protected:
     /** @brief Publish a contact on the first active-tracking tick (encircle
      *         trigger) and then every contact_update_interval_ticks_. */
     void MaybePublishContactUpdate() override;
+
+    bool IsExcludedPosition(const Eigen::Vector3d& map_position) const override;
+
+    bool HasExcludedPositions() const override {
+        return !investigated_positions_.empty();
+    }
 
    private:
     void PublishTargetContact();
@@ -60,6 +75,8 @@ class ToiTracker : public ObjectTracker {
     int contact_update_counter_ = 0;
 
     static constexpr int contact_update_interval_ticks_ = 10;
+
+    std::vector<Eigen::Vector3d> investigated_positions_;
 };
 
 }  // namespace perception

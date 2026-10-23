@@ -167,8 +167,10 @@ ros__parameters:
       description: "Seconds a contact must persist before MoveTo and Encircle tasks are created (0 triggers immediately)."
     same_object_distance_threshold:
       type: double
-      default_value: 1.0
-      description: "Distance threshold for combining observations of the same target."
+      default_value: 5.0
+      description: "Target contacts of the same class within this planar distance [m] of a known contact are the same target: they refine its position, or are ignored once it has been investigated. Contacts farther from every known contact are new targets and are investigated after the current one."
+      validation:
+        gt_eq<>: [ 0.0 ]
     team_vehicle_exclusion_radius:
       type: double
       default_value: 5.0

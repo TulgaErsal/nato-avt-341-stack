@@ -55,6 +55,7 @@ MissionManager::MissionManager(
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
+    investigated_contacts_pub = node_->create_publisher<nav_msgs::msg::Path>("avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
 
     publishTaskChange();
 }
@@ -402,44 +403,59 @@ double MissionManager::nowSeconds() const {
 }
 
 // Contact Management
-bool MissionManager::hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
-	std::vector<Contact>::iterator it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
-	            [&](const Contact& e) {
-                  return e.name == name &&
-                         IsClose(
-                             e.pose.pose, pose.pose,
-                             params_.toi.same_object_distance_threshold);
-                });
-  return it != mission_contacts.end();
+std::vector<Contact>::iterator MissionManager::findContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
+    auto closest = mission_contacts.end();
+    double closest_dist_sq = params_.toi.same_object_distance_threshold * params_.toi.same_object_distance_threshold;
+    for (auto it = mission_contacts.begin(); it != mission_contacts.end(); ++it) {
+        if (it->target_class != target_class) {
+            continue;
+        }
+        const double dist_sq = PosePlanarDistanceSq(it->pose.pose.position, pose.pose.position);
+        if (dist_sq <= closest_dist_sq) {
+            closest_dist_sq = dist_sq;
+            closest = it;
+        }
+    }
+    return closest;
 }
 
-auto MissionManager::getClosestNewContact() {
-    auto it = std::min_element(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& a, const Contact& b) {
-        if((a.investigating || a.investigated) && (b.investigating || b.investigated)) {
-            return false;
-        }
-        if(a.investigating || a.investigated) {
-            return false; // Contact b is closer
-        }
-        if(b.investigating || b.investigated) {
-            return true; // Contact a is closer
-        }
-        double da = PosePlanarDistanceSq(odometry.pose.pose.position, a.pose.pose.position);
-        double db = PosePlanarDistanceSq(odometry.pose.pose.position, b.pose.pose.position);
-        return da < db;
-    });
-    return it;
-}
-
-void MissionManager::addContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
+Contact & MissionManager::addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
   Contact new_contact;
-  new_contact.name = name;
+  new_contact.name = target_class + "_" + std::to_string(++contact_count_);
+  new_contact.target_class = target_class;
   new_contact.pose = pose;
   new_contact.investigating = false;
   new_contact.investigated = false;
   new_contact.is_new = true;
   new_contact.first_seen_sec = node_->now().seconds();
   mission_contacts.push_back(new_contact);
+  return mission_contacts.back();
+}
+
+void MissionManager::markContactInvestigated(const std::string & name) {
+    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        [&](const Contact& c) { return c.name == name; });
+    if (it == mission_contacts.end()) {
+        return;
+    }
+    it->investigating = false;
+    it->investigated = true;
+    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" at (%.2f, %.2f) investigated.", name.c_str(), it->pose.pose.position.x, it->pose.pose.position.y);
+    publishInvestigatedContacts();
+}
+
+void MissionManager::publishInvestigatedContacts() {
+    nav_msgs::msg::Path msg;
+    msg.header.stamp = node_->now();
+    msg.header.frame_id = "map";
+    for (const auto & contact : mission_contacts) {
+        if (contact.investigated) {
+            geometry_msgs::msg::PoseStamped pose = contact.pose;
+            pose.header.frame_id = contact.target_class;
+            msg.poses.push_back(pose);
+        }
+    }
+    investigated_contacts_pub->publish(msg);
 }
 
 void MissionManager::updateExistingContact(
@@ -500,6 +516,8 @@ void MissionManager::reset(){
   task_completions_.clear();
   current_gp_goal = geometry_msgs::msg::PoseStamped();
   mission_contacts.clear();
+  contact_count_ = 0;
+  publishInvestigatedContacts();
   arrivals_.clear();
   goal_filter_->Reset();
   speed_setpoint_state = -1.0;
@@ -596,11 +614,14 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             }
         }
 
-        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
-            [&](const Contact& c) { return c.name == pose.header.frame_id; });
+        auto existing = findContact(pose.header.frame_id, pose);
 
         if (existing != mission_contacts.end()) {
-            if (existing->is_new) {
+            if (existing->investigated) {
+                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                    "Ignoring contact \"%s\" at (%.2f, %.2f): already investigated as \"%s\".",
+                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y, existing->name.c_str());
+            } else if (existing->is_new) {
                 // Tasks not yet created: keep updating the position and wait for the delay.
                 existing->pose = pose;
                 if (now - existing->first_seen_sec >=
@@ -615,13 +636,12 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             continue;
         }
 
-        addContact(pose.header.frame_id, pose);
-        Contact & contact = mission_contacts.back();
+        Contact & contact = addContact(pose.header.frame_id, pose);
 
         if (params_.toi.contact_trigger_delay <= 0.0) {
             createToiTasks(contact, veh_poses);
         } else {
-            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen; waiting %.1f s before creating tasks.", contact.name.c_str(), params_.toi.contact_trigger_delay);
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);
         }
     }
 }
