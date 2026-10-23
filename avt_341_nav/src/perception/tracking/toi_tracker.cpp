@@ -6,7 +6,6 @@
 
 #include <avt_341_nav/perception/tracking/toi_tracker.hpp>
 
-#include <cmath>
 #include <utility>
 
 #include <avt_341_nav/core/eigen_dto_conversion.hpp>
@@ -29,17 +28,6 @@ void ToiTracker::Reset() {
     ObjectTracker::Reset();
     encircle_triggered_ = false;
     contact_update_counter_ = 0;
-}
-
-bool ToiTracker::IsExcludedPosition(const Eigen::Vector3d& map_position) const {
-    const double radius = params_.target_selection.investigated_toi_radius;
-    for (const auto& investigated : investigated_positions_) {
-        if (std::hypot(map_position.x() - investigated.x(),
-                       map_position.y() - investigated.y()) < radius) {
-            return true;
-        }
-    }
-    return false;
 }
 
 void ToiTracker::PublishTargetContact() {

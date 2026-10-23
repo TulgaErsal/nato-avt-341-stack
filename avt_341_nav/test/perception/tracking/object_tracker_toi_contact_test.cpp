@@ -119,16 +119,19 @@ protected:
     }
 
     // One detection per target TARGET_RANGE ahead of the camera and offset
-    // by the given map y [m], in the given order.
-    void PublishDetections(const std::vector<double>& y_offsets) {
+    // by the given map y [m], in the given order. A detection's box height can
+    // instead suggest the given apparent range.
+    void PublishDetections(const std::vector<double>& y_offsets,
+                           const std::vector<double>& apparent_ranges = {}) {
         vision_msgs::msg::Detection2DArray detections;
         detections.header.stamp = tracking_node_->get_clock()->now();
         detections.header.frame_id = CAMERA_FRAME;
-        for (const double y_offset : y_offsets) {
+        for (size_t i = 0; i < y_offsets.size(); ++i) {
+            const double apparent_range = i < apparent_ranges.size() ? apparent_ranges[i] : TARGET_RANGE;
             vision_msgs::msg::Detection2D detection;
-            detection.bbox.center.position.x = IMAGE_CX - IMAGE_F * y_offset / TARGET_RANGE;
+            detection.bbox.center.position.x = IMAGE_CX - IMAGE_F * y_offsets[i] / TARGET_RANGE;
             detection.bbox.center.position.y = IMAGE_CY;
-            detection.bbox.size_y = IMAGE_F * 1.9 / TARGET_RANGE;
+            detection.bbox.size_y = IMAGE_F * 1.9 / apparent_range;
             detection.bbox.size_x = 1.5 * detection.bbox.size_y;
             vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
             hypothesis.hypothesis.class_id = TARGET;
@@ -150,9 +153,10 @@ protected:
         investigated_pub_->publish(investigated);
     }
 
-    void TrackFrames(const std::vector<double>& y_offsets, int frames) {
+    void TrackFrames(const std::vector<double>& y_offsets, int frames,
+                     const std::vector<double>& apparent_ranges = {}) {
         for (int i = 0; i < frames; ++i) {
-            PublishDetections(y_offsets);
+            PublishDetections(y_offsets, apparent_ranges);
             Spin(100ms);
         }
     }
@@ -241,6 +245,20 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetAloneIsNotTracked) {
     Spin(100ms);
     TrackFrames({0.0}, 20);
     EXPECT_TRUE(contacts_.empty());
+}
+
+TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetWithAnOffRangeEstimateIsStillSkipped) {
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0, OTHER_Y_OFFSET}, 30, {1.5 * TARGET_RANGE, TARGET_RANGE});
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.poses.front().pose.position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
+        EXPECT_NEAR(p.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
+    }
 }
 
 TEST_F(ObjectTrackerToiContactTest, FirstContactWaitsForSeveralCameraDetections) {

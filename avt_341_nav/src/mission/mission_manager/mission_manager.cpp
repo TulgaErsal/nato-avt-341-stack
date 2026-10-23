@@ -62,7 +62,7 @@ MissionManager::MissionManager(
 
 MissionManager::~MissionManager() {
     // Clean up the memory allocated to tasks
-    reset();
+    reset(false);
 }
 
 std::vector<std::string> getLine(std::istream& stream) {
@@ -444,6 +444,19 @@ void MissionManager::markContactInvestigated(const std::string & name) {
     publishInvestigatedContacts();
 }
 
+void MissionManager::forgetCancelledContact(const Task * task) {
+    const auto * encircle = dynamic_cast<const Encircle *>(task);
+    if (encircle == nullptr || encircle->contactName().empty()) {
+        return;
+    }
+    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        [&](const Contact& c) { return c.name == encircle->contactName() && !c.investigated; });
+    if (it != mission_contacts.end()) {
+        RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" cancelled; forgetting it.", it->name.c_str());
+        mission_contacts.erase(it);
+    }
+}
+
 void MissionManager::publishInvestigatedContacts() {
     nav_msgs::msg::Path msg;
     msg.header.stamp = node_->now();
@@ -451,7 +464,7 @@ void MissionManager::publishInvestigatedContacts() {
     for (const auto & contact : mission_contacts) {
         if (contact.investigated) {
             geometry_msgs::msg::PoseStamped pose = contact.pose;
-            pose.header.frame_id = contact.target_class;
+            pose.header.frame_id = msg.header.frame_id;
             msg.poses.push_back(pose);
         }
     }
@@ -505,19 +518,22 @@ void MissionManager::resetTaskList(bool send_completion_msg) {
     if(send_completion_msg){
       publishTaskCompletion(task);
     }
+    forgetCancelledContact(task);
     delete task;
   }
   task_list.clear();
 }
 
-void MissionManager::reset(){
+void MissionManager::reset(bool notify_tracker){
   resetTaskList(false);
   obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
   task_completions_.clear();
   current_gp_goal = geometry_msgs::msg::PoseStamped();
   mission_contacts.clear();
   contact_count_ = 0;
-  publishInvestigatedContacts();
+  if (notify_tracker) {
+    publishInvestigatedContacts();
+  }
   arrivals_.clear();
   goal_filter_->Reset();
   speed_setpoint_state = -1.0;
@@ -539,6 +555,7 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
       publishTaskCompletion(task);
     }
     task_list.erase(it);
+    forgetCancelledContact(task);
     delete task;
   }
 }
