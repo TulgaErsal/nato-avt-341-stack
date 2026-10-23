@@ -76,6 +76,7 @@ void ObjectTracker::CreatePerTargetPublishers() {
 
 void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     camera_info_ = context.camera_info;
+    const bool fresh_detection = std::exchange(has_fresh_detection_, false);
 
 	
 	// Reset detector covariance
@@ -161,6 +162,10 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                 has_detection_ = false;
             }
         }
+    }
+
+    if (has_detection_ && fresh_detection) {
+        ++camera_detection_count_;
     }
 
     // Tracking measurement via obstacle detector bounding box markers.
@@ -494,6 +499,7 @@ void ObjectTracker::EstimatorTick() {
             has_new_measurement_ = false;
             has_had_first_lidar_measurement_ = false;
             tracked_obstacle_id_ = -1;
+            camera_detection_count_ = 0;
         }
     }
 
@@ -662,6 +668,7 @@ void ObjectTracker::IngestDetections(
 
     has_first_detection_ = true;
     has_detection_ = true;
+    has_fresh_detection_ = true;
 }
 
 std::optional<Eigen::Vector2d> ObjectTracker::ProjectToImage(
@@ -802,6 +809,7 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
     has_new_measurement_ = false;
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
+    camera_detection_count_ = 0;
 
     const rclcpp::Time now = node_->get_clock()->now();
     last_valid_target_time_ = now;

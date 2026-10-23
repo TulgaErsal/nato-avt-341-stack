@@ -51,8 +51,9 @@ class ToiTracker : public ObjectTracker {
     }
 
    protected:
-    /** @brief Publish a contact on the first active-tracking tick (encircle
-     *         trigger) and then every contact_update_interval_ticks_. */
+    /** @brief Publish a contact on the first active-tracking tick after
+     *         "target_selection.toi_min_detections" camera detections
+     *         (encircle trigger) and then every contact_update_interval_ticks_. */
     void MaybePublishContactUpdate() override;
 
     bool IsExcludedPosition(const Eigen::Vector3d& map_position) const override;
