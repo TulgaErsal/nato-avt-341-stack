@@ -725,10 +725,61 @@ std::optional<ObjectTracker::MarkerMatch> ObjectTracker::AssociateMarker(
     return best;
 }
 
+const std::vector<Eigen::Vector3d>& ObjectTracker::ExcludedPositions() const {
+    static const std::vector<Eigen::Vector3d> none;
+    return none;
+}
+
+bool ObjectTracker::IsExcludedPosition(const Eigen::Vector3d& map_position) const {
+    const double radius = ExclusionRadius();
+    for (const auto& excluded : ExcludedPositions()) {
+        if (std::hypot(map_position.x() - excluded.x(),
+                       map_position.y() - excluded.y()) <= radius) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ObjectTracker::IsExcludedDetection(
+    const vision_msgs::msg::Detection2D& detection,
+    const TrackerSensorContext& context) {
+    if (ExcludedPositions().empty()) {
+        return false;
+    }
+    if (context.has_obstacle_markers && context.obstacle_markers) {
+        if (const auto match =
+                AssociateMarker(detection, *context.obstacle_markers)) {
+            return IsExcludedPosition(coord_transformer_.Transform(
+                frame_ids_.Camera(), frame_ids_.Map(), match->pos_cam));
+        }
+    }
+    if (IsExcludedPosition(coord_transformer_.Transform(
+            frame_ids_.Camera(), frame_ids_.Map(),
+            ConvertBBoxCoordinatesToPoseCentroid_rdf(detection,
+                                                     camera_info_)))) {
+        return true;
+    }
+    for (const auto& excluded : ExcludedPositions()) {
+        const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
+            frame_ids_.Map(), frame_ids_.Camera(), excluded);
+        if (pos_cam.z() <= 0.0) {
+            continue;
+        }
+        const double u =
+            camera_info_->k[0] * pos_cam.x() / pos_cam.z() + camera_info_->k[2];
+        if (std::abs(u - detection.bbox.center.position.x) <=
+            detection.bbox.size_x / 2.0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
-    const bool tracking = filter_initialized_ && has_tracked_target_;
     std::optional<Eigen::Vector2d> track_pixel;
-    if (tracking) {
+    if (filter_initialized_ && has_tracked_target_ &&
+        candidate_detections_.size() > 1) {
         track_pixel = ProjectToImage(coord_transformer_.Transform(
             frame_ids_.Map(), frame_ids_.Camera(),
             bounding_box_centroid_filtered_));
@@ -737,35 +788,18 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
     const vision_msgs::msg::Detection2D* best = nullptr;
     double best_pixel_dist = std::numeric_limits<double>::infinity();
     for (const auto& detection : candidate_detections_) {
-        if (HasExcludedPositions()) {
-            std::optional<MarkerMatch> match;
-            if (context.has_obstacle_markers && context.obstacle_markers) {
-                match = AssociateMarker(detection, *context.obstacle_markers);
-            }
-            const Eigen::Vector3d pos_cam =
-                match ? match->pos_cam
-                      : ConvertBBoxCoordinatesToPoseCentroid_rdf(detection,
-                                                                 camera_info_);
-            if (IsExcludedPosition(coord_transformer_.Transform(
-                    frame_ids_.Camera(), frame_ids_.Map(), pos_cam))) {
-                continue;
-            }
-        }
-        if (!tracking || candidate_detections_.size() == 1) {
-            best = &detection;
-            break;
+        if (IsExcludedDetection(detection, context)) {
+            continue;
         }
         if (!track_pixel) {
-            continue;
+            best = &detection;
+            break;
         }
         const double pixel_dist =
             (*track_pixel - Eigen::Vector2d(detection.bbox.center.position.x,
                                             detection.bbox.center.position.y))
                 .norm();
-        const double max_pixel_dist =
-            params_.tracking.obstacle_association_max_dist * 0.5 *
-            std::hypot(detection.bbox.size_x, detection.bbox.size_y);
-        if (pixel_dist < max_pixel_dist && pixel_dist < best_pixel_dist) {
+        if (pixel_dist < best_pixel_dist) {
             best_pixel_dist = pixel_dist;
             best = &detection;
         }

@@ -163,7 +163,7 @@ ros__parameters:
     investigated_toi_radius:
       type: double
       default_value: 5.0
-      description: "Targets of interest within this planar distance [m] of a target the mission manager has investigated (avt_341/investigated_contacts) are not tracked, so the tracker can pick up other targets of interest."
+      description: "Targets of interest within this planar distance [m] of a target the mission manager has investigated (avt_341/investigated_contacts) are not tracked, so the tracker can pick up other targets of interest. Keep it equal to mission_manager_node's toi.same_object_distance_threshold."
       validation:
         gt_eq<>: [ 0.0 ]
 

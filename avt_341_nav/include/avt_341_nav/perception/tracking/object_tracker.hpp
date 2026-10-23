@@ -169,16 +169,27 @@ class ObjectTracker {
      */
     virtual void MaybePublishContactUpdate() {}
 
-    /** @brief True if a target at @p map_position must not be tracked. Never
-     *         for the base tracker; ToiTracker excludes targets that have
-     *         already been investigated. */
-    virtual bool IsExcludedPosition(const Eigen::Vector3d& /*map_position*/) const {
-        return false;
-    }
+    /** @brief Map positions of targets that must not be tracked. None for
+     *         the base tracker; ToiTracker excludes targets that have already
+     *         been investigated. */
+    virtual const std::vector<Eigen::Vector3d>& ExcludedPositions() const;
 
-    /** @brief False while IsExcludedPosition() is false everywhere, which
-     *         spares SelectDetection the per-detection position estimate. */
-    virtual bool HasExcludedPositions() const { return false; }
+    /** @brief Planar radius [m] around each excluded position. */
+    virtual double ExclusionRadius() const { return 0.0; }
+
+    /** @brief True if @p map_position is within ExclusionRadius() of an
+     *         excluded position. */
+    bool IsExcludedPosition(const Eigen::Vector3d& map_position) const;
+
+    /**
+     * @brief True if @p detection shows an excluded target: its associated
+     * obstacle marker is at an excluded position or, without a marker, its
+     * camera range estimate is, or an excluded position projects inside its
+     * bounding-box columns (the camera range estimate can be off by more than
+     * the exclusion radius at long range; the bearing is not).
+     */
+    bool IsExcludedDetection(const vision_msgs::msg::Detection2D& detection,
+                             const TrackerSensorContext& context);
 
     /** @brief Obstacle detector marker associated with a camera detection. */
     struct MarkerMatch {
@@ -202,12 +213,13 @@ class ObjectTracker {
     /**
      * @brief Pick the cached detection to track this tick.
      *
-     * Detections at excluded positions are skipped. While a target is
-     * tracked and several detections remain, only a detection on which its
-     * estimate projects (within obstacle_association_max_dist
-     * half-diagonals) qualifies, the closest one winning, so another object
-     * of the same class cannot take over the track. Otherwise the first
-     * remaining detection wins.
+     * Detections of excluded targets are skipped. While a target is tracked
+     * and several detections remain, the one closest to the projection of its
+     * estimate wins, so another object of the same class cannot take over the
+     * track. Otherwise the first remaining detection wins. No detection is
+     * rejected for being far from the track: when the LiDAR marker
+     * association drifts onto another obstacle, the camera detection is what
+     * pulls the track back (the filter's chi2 gate guards the estimate).
      *
      * @return False if no detection qualifies.
      */

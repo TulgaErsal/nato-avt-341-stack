@@ -56,10 +56,12 @@ class ToiTracker : public ObjectTracker {
      *         (encircle trigger) and then every contact_update_interval_ticks_. */
     void MaybePublishContactUpdate() override;
 
-    bool IsExcludedPosition(const Eigen::Vector3d& map_position) const override;
+    const std::vector<Eigen::Vector3d>& ExcludedPositions() const override {
+        return investigated_positions_;
+    }
 
-    bool HasExcludedPositions() const override {
-        return !investigated_positions_.empty();
+    double ExclusionRadius() const override {
+        return params_.target_selection.investigated_toi_radius;
     }
 
    private:
