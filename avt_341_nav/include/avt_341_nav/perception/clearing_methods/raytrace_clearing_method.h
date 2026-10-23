@@ -86,6 +86,8 @@ protected:
 
     void ClearVoxelAt(int x, int y, int z);
 
+    int TopVoxelIndex(float height) const;
+
     void Reset() override;
 
     void SetLidarFrame();
