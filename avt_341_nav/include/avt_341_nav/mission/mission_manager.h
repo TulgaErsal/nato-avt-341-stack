@@ -54,6 +54,7 @@ struct Contact {
     std::string target_class;
     bool investigated;
     bool investigating;
+    bool dismissed = false;  // its investigation was cancelled: not re-tasked until a reset
     bool is_new;       // true until MoveTo+Encircle tasks are created
     double first_seen_sec;
 };
@@ -229,8 +230,8 @@ class MissionManager{
     MissionPoint getClosestOverwatch();
     Contact & addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
     void publishInvestigatedContacts();
-    // A cancelled Encircle leaves its contact uninvestigated: forget it so a later report starts over.
-    void forgetCancelledContact(const Task * task);
+    // A cancelled Encircle dismisses its contact: later reports of it are ignored and the tracker leaves it alone.
+    void dismissCancelledContact(const Task * task);
     void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
     void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void updateOverwatchPositions();

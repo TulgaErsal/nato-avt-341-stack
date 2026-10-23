@@ -48,6 +48,7 @@ rclcpp::Node::SharedPtr nh = nullptr;
 std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 
 std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
+double same_object_distance_threshold = 0.0;
 std::optional<std::string> applied_toi_regex;
 
 // Reconfigure the object tracking node with the targets of interest regex of a mission command (see toiRegexUpdate).
@@ -71,7 +72,8 @@ void UpdateTrackerToiRegex(const std::string & toi_regex) {
     }
 
     tracker_param_client->set_parameters(
-        {rclcpp::Parameter("target_selection.toi_regex", toi_regex)},
+        {rclcpp::Parameter("target_selection.toi_regex", toi_regex),
+         rclcpp::Parameter("target_selection.investigated_toi_radius", same_object_distance_threshold)},
         [toi_regex](const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
             const auto results = future.get();
             if(results.empty() || !results.front().successful) {
@@ -351,6 +353,7 @@ int main(int argc, char **argv) {
     PublishGisStaticTransform(params.frames);
 
     tracker_param_client = std::make_shared<rclcpp::AsyncParametersClient>(nh, params.toi.tracker_node_name);
+    same_object_distance_threshold = params.toi.same_object_distance_threshold;
 
     std::shared_ptr<avt_341_nav::mission::GoalFilter> goal_filter =
         avt_341_nav::mission::create_goal_filter(

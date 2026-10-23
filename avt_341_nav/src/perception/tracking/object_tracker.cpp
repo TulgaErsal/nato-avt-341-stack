@@ -687,6 +687,19 @@ std::optional<Eigen::Vector2d> ObjectTracker::ProjectToImage(
     return Eigen::Vector2d(u, v);
 }
 
+std::optional<double> ObjectTracker::ProjectToColumn(
+    const Eigen::Vector3d& pos_cam) const {
+    if (pos_cam.z() <= 0.0) {
+        return std::nullopt;
+    }
+    const double u =
+        camera_info_->k[0] * pos_cam.x() / pos_cam.z() + camera_info_->k[2];
+    if (u < 0.0 || u > static_cast<double>(camera_info_->width)) {
+        return std::nullopt;
+    }
+    return u;
+}
+
 std::optional<ObjectTracker::MarkerMatch> ObjectTracker::AssociateMarker(
     const vision_msgs::msg::Detection2D& detection,
     const visualization_msgs::msg::MarkerArray& markers) const {
@@ -754,22 +767,23 @@ bool ObjectTracker::IsExcludedDetection(
                 frame_ids_.Camera(), frame_ids_.Map(), match->pos_cam));
         }
     }
+    const Eigen::Vector3d camera_estimate =
+        ConvertBBoxCoordinatesToPoseCentroid_rdf(detection, camera_info_);
     if (IsExcludedPosition(coord_transformer_.Transform(
-            frame_ids_.Camera(), frame_ids_.Map(),
-            ConvertBBoxCoordinatesToPoseCentroid_rdf(detection,
-                                                     camera_info_)))) {
+            frame_ids_.Camera(), frame_ids_.Map(), camera_estimate))) {
         return true;
+    }
+    if (filter_initialized_ && has_tracked_target_) {
+        return false;
     }
     for (const auto& excluded : ExcludedPositions()) {
         const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
             frame_ids_.Map(), frame_ids_.Camera(), excluded);
-        if (pos_cam.z() <= 0.0) {
-            continue;
-        }
-        const double u =
-            camera_info_->k[0] * pos_cam.x() / pos_cam.z() + camera_info_->k[2];
-        if (std::abs(u - detection.bbox.center.position.x) <=
-            detection.bbox.size_x / 2.0) {
+        const std::optional<double> u = ProjectToColumn(pos_cam);
+        if (u && std::abs(*u - detection.bbox.center.position.x) <=
+                     detection.bbox.size_x / 2.0 &&
+            camera_estimate.z() >= 0.5 * pos_cam.z() &&
+            camera_estimate.z() <= 2.0 * pos_cam.z()) {
             return true;
         }
     }
@@ -777,30 +791,47 @@ bool ObjectTracker::IsExcludedDetection(
 }
 
 bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
-    std::optional<Eigen::Vector2d> track_pixel;
-    if (filter_initialized_ && has_tracked_target_ &&
-        candidate_detections_.size() > 1) {
-        track_pixel = ProjectToImage(coord_transformer_.Transform(
+    std::optional<double> track_column;
+    if (filter_initialized_ && has_tracked_target_) {
+        const Eigen::Vector3d track_cam = coord_transformer_.Transform(
             frame_ids_.Map(), frame_ids_.Camera(),
-            bounding_box_centroid_filtered_));
+            bounding_box_centroid_filtered_);
+        if (track_cam.z() > 0.0) {
+            // Part of a near target can be in view while its center is not.
+            const double margin =
+                camera_info_->k[0] * 0.5 *
+                std::max(object_size_.x(), object_size_.y()) / track_cam.z();
+            const double u = camera_info_->k[0] * track_cam.x() /
+                                 track_cam.z() +
+                             camera_info_->k[2];
+            if (u >= -margin &&
+                u <= static_cast<double>(camera_info_->width) + margin) {
+                track_column = u;
+            }
+        }
+        if (!track_column) {
+            RCLCPP_DEBUG(logger_,
+                         "Tracked \"%s\" is outside the image; ignoring its "
+                         "camera detections.",
+                         target_class_.c_str());
+            return false;
+        }
     }
 
     const vision_msgs::msg::Detection2D* best = nullptr;
-    double best_pixel_dist = std::numeric_limits<double>::infinity();
+    double best_column_dist = std::numeric_limits<double>::infinity();
     for (const auto& detection : candidate_detections_) {
         if (IsExcludedDetection(detection, context)) {
             continue;
         }
-        if (!track_pixel) {
+        if (!track_column) {
             best = &detection;
             break;
         }
-        const double pixel_dist =
-            (*track_pixel - Eigen::Vector2d(detection.bbox.center.position.x,
-                                            detection.bbox.center.position.y))
-                .norm();
-        if (pixel_dist < best_pixel_dist) {
-            best_pixel_dist = pixel_dist;
+        const double column_dist =
+            std::abs(*track_column - detection.bbox.center.position.x);
+        if (column_dist < best_column_dist) {
+            best_column_dist = column_dist;
             best = &detection;
         }
     }

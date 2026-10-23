@@ -182,11 +182,13 @@ class ObjectTracker {
     bool IsExcludedPosition(const Eigen::Vector3d& map_position) const;
 
     /**
-     * @brief True if @p detection shows an excluded target: its associated
-     * obstacle marker is at an excluded position or, without a marker, its
-     * camera range estimate is, or an excluded position projects inside its
-     * bounding-box columns (the camera range estimate can be off by more than
-     * the exclusion radius at long range; the bearing is not).
+     * @brief True if @p detection shows an excluded target. With an
+     * associated obstacle marker, the marker's position alone decides.
+     * Without one, the camera range estimate decides, and while nothing is
+     * tracked so does the bearing: an excluded position projecting inside the
+     * bounding-box columns at a range within a factor of 2 of the camera range
+     * estimate (which can be off by more than the exclusion radius at long
+     * range) also excludes it.
      */
     bool IsExcludedDetection(const vision_msgs::msg::Detection2D& detection,
                              const TrackerSensorContext& context);
@@ -210,16 +212,23 @@ class ObjectTracker {
      *         the camera and inside the image. */
     std::optional<Eigen::Vector2d> ProjectToImage(const Eigen::Vector3d& pos_cam) const;
 
+    /** @brief Image column of a camera-frame point, if it is in front of the
+     *         camera and within the image width. */
+    std::optional<double> ProjectToColumn(const Eigen::Vector3d& pos_cam) const;
+
     /**
      * @brief Pick the cached detection to track this tick.
      *
-     * Detections of excluded targets are skipped. While a target is tracked
-     * and several detections remain, the one closest to the projection of its
-     * estimate wins, so another object of the same class cannot take over the
-     * track. Otherwise the first remaining detection wins. No detection is
-     * rejected for being far from the track: when the LiDAR marker
-     * association drifts onto another obstacle, the camera detection is what
-     * pulls the track back (the filter's chi2 gate guards the estimate).
+     * Detections of excluded targets are skipped. While a target is tracked,
+     * none qualifies if no part of it can be in the image (its estimate
+     * projects outside the image by more than its half-size, from the LiDAR
+     * box), and otherwise the detection whose center column
+     * is closest to that projection wins, so another object of the same class
+     * cannot take over the track. Otherwise the first remaining detection
+     * wins. A detection in the image is never rejected for being far from the
+     * track: when the LiDAR marker association drifts onto another obstacle,
+     * the camera detection is what pulls the track back (the filter's chi2
+     * gate guards the estimate).
      *
      * @return False if no detection qualifies.
      */
