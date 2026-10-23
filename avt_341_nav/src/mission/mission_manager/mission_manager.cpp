@@ -444,7 +444,7 @@ void MissionManager::markContactInvestigated(const std::string & name) {
     publishInvestigatedContacts();
 }
 
-void MissionManager::forgetCancelledContact(const Task * task) {
+void MissionManager::dismissCancelledContact(const Task * task) {
     const auto * encircle = dynamic_cast<const Encircle *>(task);
     if (encircle == nullptr || encircle->contactName().empty()) {
         return;
@@ -452,8 +452,10 @@ void MissionManager::forgetCancelledContact(const Task * task) {
     auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
         [&](const Contact& c) { return c.name == encircle->contactName() && !c.investigated; });
     if (it != mission_contacts.end()) {
-        RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" cancelled; forgetting it.", it->name.c_str());
-        mission_contacts.erase(it);
+        RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" cancelled; dismissing it.", it->name.c_str());
+        it->investigating = false;
+        it->dismissed = true;
+        publishInvestigatedContacts();
     }
 }
 
@@ -462,7 +464,7 @@ void MissionManager::publishInvestigatedContacts() {
     msg.header.stamp = node_->now();
     msg.header.frame_id = "map";
     for (const auto & contact : mission_contacts) {
-        if (contact.investigated) {
+        if (contact.investigated || contact.dismissed) {
             geometry_msgs::msg::PoseStamped pose = contact.pose;
             pose.header.frame_id = msg.header.frame_id;
             msg.poses.push_back(pose);
@@ -518,7 +520,7 @@ void MissionManager::resetTaskList(bool send_completion_msg) {
     if(send_completion_msg){
       publishTaskCompletion(task);
     }
-    forgetCancelledContact(task);
+    dismissCancelledContact(task);
     delete task;
   }
   task_list.clear();
@@ -555,7 +557,24 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
       publishTaskCompletion(task);
     }
     task_list.erase(it);
-    forgetCancelledContact(task);
+    dismissCancelledContact(task);
+    if (const auto * encircle = dynamic_cast<const Encircle *>(task); encircle != nullptr && !encircle->contactName().empty()) {
+      // The approach to a target whose encircle was cancelled is pointless.
+      auto approach = std::find_if(std::begin(task_list), std::end(task_list), [&](Task* t) {
+        const auto * moveto = dynamic_cast<const MoveTo *>(t);
+        return moveto != nullptr && moveto->goal_type == MoveTo::CONTACT && moveto->name == encircle->contactName();
+      });
+      if (approach != task_list.end()) {
+        Task* approach_task = *approach;
+        approach_task->onPreempt();
+        RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), approach_task->description().c_str());
+        if(send_completion_msg){
+          publishTaskCompletion(approach_task);
+        }
+        task_list.erase(approach);
+        delete approach_task;
+      }
+    }
     delete task;
   }
 }
@@ -634,10 +653,11 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
         auto existing = findContact(pose.header.frame_id, pose);
 
         if (existing != mission_contacts.end()) {
-            if (existing->investigated) {
+            if (existing->investigated || existing->dismissed) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
-                    "Ignoring contact \"%s\" at (%.2f, %.2f): already investigated as \"%s\".",
-                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y, existing->name.c_str());
+                    "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
+                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
+                    existing->investigated ? "investigated" : "dismissed", existing->name.c_str());
             } else if (existing->is_new) {
                 // Tasks not yet created: keep updating the position and wait for the delay.
                 existing->pose = pose;

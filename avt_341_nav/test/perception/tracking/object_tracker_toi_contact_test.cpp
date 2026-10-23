@@ -53,17 +53,7 @@ protected:
         helper_node_ = rclcpp::Node::make_shared("toi_contact_test_helper");
 
         tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(helper_node_);
-        geometry_msgs::msg::TransformStamped camera_tf;
-        camera_tf.header.frame_id = "map";
-        camera_tf.child_frame_id = CAMERA_FRAME;
-        camera_tf.transform.translation.x = CAMERA_X;
-        camera_tf.transform.translation.y = CAMERA_Y;
-        camera_tf.transform.translation.z = CAMERA_Z;
-        camera_tf.transform.rotation.x = -0.5;
-        camera_tf.transform.rotation.y = 0.5;
-        camera_tf.transform.rotation.z = -0.5;
-        camera_tf.transform.rotation.w = 0.5;
-        tf_broadcaster_->sendTransform(camera_tf);
+        PublishCameraTf(-0.5, 0.5, -0.5, 0.5);
 
         camera_info_pub_ = helper_node_->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);
         detections_pub_ = helper_node_->create_publisher<vision_msgs::msg::Detection2DArray>("detection_2d", 10);
@@ -84,6 +74,22 @@ protected:
     void TearDown() override {
         exec_.remove_node(tracking_node_);
         exec_.remove_node(helper_node_);
+    }
+
+    // Camera at (CAMERA_X, CAMERA_Y, CAMERA_Z) in map; (-0.5, 0.5, -0.5, 0.5)
+    // looks along +x.
+    void PublishCameraTf(double qx, double qy, double qz, double qw) {
+        geometry_msgs::msg::TransformStamped camera_tf;
+        camera_tf.header.frame_id = "map";
+        camera_tf.child_frame_id = CAMERA_FRAME;
+        camera_tf.transform.translation.x = CAMERA_X;
+        camera_tf.transform.translation.y = CAMERA_Y;
+        camera_tf.transform.translation.z = CAMERA_Z;
+        camera_tf.transform.rotation.x = qx;
+        camera_tf.transform.rotation.y = qy;
+        camera_tf.transform.rotation.z = qz;
+        camera_tf.transform.rotation.w = qw;
+        tf_broadcaster_->sendTransform(camera_tf);
     }
 
     void SpinUntil(std::function<bool()> condition, std::chrono::milliseconds timeout) {
@@ -129,7 +135,7 @@ protected:
         for (size_t i = 0; i < y_offsets.size(); ++i) {
             const double apparent_range = i < apparent_ranges.size() ? apparent_ranges[i] : TARGET_RANGE;
             vision_msgs::msg::Detection2D detection;
-            detection.bbox.center.position.x = IMAGE_CX - IMAGE_F * y_offsets[i] / TARGET_RANGE;
+            detection.bbox.center.position.x = IMAGE_CX - IMAGE_F * y_offsets[i] / apparent_range;
             detection.bbox.center.position.y = IMAGE_CY;
             detection.bbox.size_y = IMAGE_F * 1.9 / apparent_range;
             detection.bbox.size_x = 1.5 * detection.bbox.size_y;
@@ -258,6 +264,62 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetWithAnOffRangeEstimateIsSt
         const auto& p = contact.poses.front().pose.position;
         EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
         EXPECT_NEAR(p.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, NewTargetInLineBeyondAnInvestigatedOneIsPickedUp) {
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {TARGET_RANGE + 25.0});
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.poses.front().pose.position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE + 25.0, 0.5);
+        EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackedTargetPassingInFrontOfAnInvestigatedOneKeepsItsDetections) {
+    constexpr double range = 12.0;
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({-4.0}, 20, {range});
+    ASSERT_FALSE(contacts_.empty());
+
+    for (int i = 1; i <= 20; ++i) {
+        TrackFrames({-4.0 + 0.2 * i}, 1, {range});
+    }
+    contacts_.clear();
+    TrackFrames({0.0}, 20, {range});
+
+    ASSERT_FALSE(contacts_.empty());
+    const auto& p = contacts_.back().poses.front().pose.position;
+    EXPECT_NEAR(p.x, CAMERA_X + range, 0.5);
+    EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TargetThatLeavesTheImageDoesNotLendItsTrack) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+
+    // Turn the camera 50 deg left: the tracked target is now out of view,
+    // and another target of the same class 6.9 m from it is seen 30 deg to
+    // the right, 20 m away.
+    PublishCameraTf(-0.664463, 0.241845, -0.241845, 0.664463);
+    Spin(200ms);
+    contacts_.clear();
+    const double depth = TARGET_RANGE * std::cos(30.0 * M_PI / 180.0);
+    TrackFrames({-depth * std::tan(30.0 * M_PI / 180.0)}, 40, {depth});
+
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.poses.front().pose.position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
+        EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
     }
 }
 

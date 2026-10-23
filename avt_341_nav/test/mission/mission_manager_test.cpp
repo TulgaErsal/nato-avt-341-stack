@@ -598,29 +598,29 @@ TEST_F(ToiInvestigationTest, ResetForgetsInvestigatedTargets)
     EXPECT_NE(manager->currentTask(), nullptr);
 }
 
-TEST_F(ToiInvestigationTest, CancelledInvestigationStartsOverOnTheNextReport)
+TEST_F(ToiInvestigationTest, CancelledInvestigationIsNotTaskedAgain)
 {
     auto manager = MakeManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
     manager->resetTaskList(true);
-    EXPECT_EQ(manager->currentTask(), nullptr);
+    ASSERT_EQ(Investigated().poses.size(), 1u);
 
     manager->handleContacts(MakeContact("car", 51.0, 30.0), team_);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+
+    manager->handleContacts(MakeContact("car", 80.0, 30.0), team_);
     const auto tasks = Tasks(*manager);
     ASSERT_EQ(tasks.size(), 2u);
     EXPECT_TRUE(Has(tasks[0], "CONTACT car_2"));
 }
 
-TEST_F(ToiInvestigationTest, CancelledEncircleStartsOverOnTheNextReport)
+TEST_F(ToiInvestigationTest, CancellingTheEncircleAlsoDropsItsApproach)
 {
     auto manager = MakeManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
     manager->cancelTask(9999, false);
-    manager->cancelTask(-1, false);
     EXPECT_EQ(manager->currentTask(), nullptr);
 
     manager->handleContacts(MakeContact("car", 51.0, 30.0), team_);
-    const auto tasks = Tasks(*manager);
-    ASSERT_EQ(tasks.size(), 2u);
-    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(51, 30)"));
+    EXPECT_EQ(manager->currentTask(), nullptr);
 }

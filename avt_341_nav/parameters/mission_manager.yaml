@@ -168,7 +168,7 @@ ros__parameters:
     same_object_distance_threshold:
       type: double
       default_value: 5.0
-      description: "Target contacts of the same class within this planar distance [m] of a known contact are the same target: they refine its position, or are ignored once it has been investigated. Contacts farther from every known contact are new targets and are investigated after the current one. Keep object_tracker_node's target_selection.investigated_toi_radius equal to this."
+      description: "Target contacts of the same class within this planar distance [m] of a known contact are the same target: they refine its position, or are ignored once it has been investigated. Contacts farther from every known contact are new targets and are investigated after the current one. It is also applied to the object tracking node's target_selection.investigated_toi_radius together with each toi_regex."
       validation:
         gt_eq<>: [ 0.0 ]
     team_vehicle_exclusion_radius:
@@ -180,7 +180,7 @@ ros__parameters:
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'
-      description: "Object tracking node whose target_selection.toi_regex is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
+      description: "Object tracking node whose target_selection.toi_regex (and investigated_toi_radius, see same_object_distance_threshold) is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:
     type: bool
