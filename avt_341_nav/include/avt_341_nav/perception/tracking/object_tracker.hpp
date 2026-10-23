@@ -317,6 +317,14 @@ class ObjectTracker {
      *         has been received since the tracker reset. */
     bool has_first_detection_ = false;
 
+    /** @brief Camera detections of the target used by tracking ticks since
+     *         the tracker or its estimator was last reset. */
+    int camera_detection_count_ = 0;
+
+    /** @brief A detection was ingested since the last tracking tick
+     *         (has_detection_ can stay set on a re-used detection). */
+    bool has_fresh_detection_ = false;
+
     /** @brief Time stamp of the last valid detection message containing the
      *         target. */
     rclcpp::Time last_valid_detection_time_;

@@ -243,6 +243,18 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetAloneIsNotTracked) {
     EXPECT_TRUE(contacts_.empty());
 }
 
+TEST_F(ObjectTrackerToiContactTest, FirstContactWaitsForSeveralCameraDetections) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 2);
+    Spin(500ms);
+    EXPECT_TRUE(contacts_.empty());
+
+    TrackFrames({0.0}, 1);
+    Spin(200ms);
+    EXPECT_FALSE(contacts_.empty());
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     std::vector<const char*> args(argv, argv + argc);

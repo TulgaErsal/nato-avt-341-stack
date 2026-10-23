@@ -65,6 +65,8 @@ bool ApplyRuntimeParameters(ObjectTrackerSettings& params,
                       updated_params.target_selection.toi_regex);
     assign_if_changed(params.target_selection.investigated_toi_radius,
                       updated_params.target_selection.investigated_toi_radius);
+    assign_if_changed(params.target_selection.toi_min_detections,
+                      updated_params.target_selection.toi_min_detections);
     return changed;
 }
 

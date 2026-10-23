@@ -70,6 +70,10 @@ void ToiTracker::MaybePublishContactUpdate() {
     if (!is_actively_tracking) return;
 
     if (!encircle_triggered_) {
+        if (camera_detection_count_ <
+            params_.target_selection.toi_min_detections) {
+            return;
+        }
         PublishTargetContact();
         encircle_triggered_ = true;
         contact_update_counter_ = 0;

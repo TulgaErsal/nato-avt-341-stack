@@ -154,6 +154,12 @@ ros__parameters:
       type: bool
       default_value: false
       description: "Track generic targets that are neither formation vehicles nor TOI objects."
+    toi_min_detections:
+      type: int
+      default_value: 3
+      description: "Camera detections a target of interest needs, since its track started, before its first contact is published. Keeps a single spurious detection, which the LiDAR obstacle detector can keep tracked, from triggering an investigation."
+      validation:
+        gt_eq<>: [ 1 ]
     investigated_toi_radius:
       type: double
       default_value: 5.0
