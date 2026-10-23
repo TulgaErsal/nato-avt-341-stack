@@ -11,7 +11,9 @@
 #define AVT_341_OBJECT_TRACKER_H
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -86,18 +88,20 @@ class ObjectTracker {
     // -------------------------------------------------------------------------
 
     /**
-     * @brief Cache one camera detection matching this tracker's target class.
+     * @brief Cache the camera detections matching this tracker's target class.
      *
      * Rejects detections whose bounding box touches an image edge (a clipped
      * bbox produces a biased centroid estimate). The rejection requires
-     * camera intrinsics and is skipped while @p camera_info is null.
+     * camera intrinsics and is skipped while @p camera_info is null. The next
+     * tracking tick picks one of the remaining detections (see
+     * SelectDetection).
      *
-     * @param detection The matching vision_msgs/Detection2D.
+     * @param detections The matching vision_msgs/Detection2D messages.
      * @param header_stamp Stamp of the enclosing Detection2DArray header.
      * @param camera_info Latest camera intrinsics (may be null).
      */
-    void IngestDetection(
-        const vision_msgs::msg::Detection2D& detection,
+    void IngestDetections(
+        const std::vector<vision_msgs::msg::Detection2D>& detections,
         const rclcpp::Time& header_stamp,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info);
 
@@ -164,6 +168,50 @@ class ObjectTracker {
      * to publish target contacts.
      */
     virtual void MaybePublishContactUpdate() {}
+
+    /** @brief True if a target at @p map_position must not be tracked. Never
+     *         for the base tracker; ToiTracker excludes targets that have
+     *         already been investigated. */
+    virtual bool IsExcludedPosition(const Eigen::Vector3d& /*map_position*/) const {
+        return false;
+    }
+
+    /** @brief False while IsExcludedPosition() is false everywhere, which
+     *         spares SelectDetection the per-detection position estimate. */
+    virtual bool HasExcludedPositions() const { return false; }
+
+    /** @brief Obstacle detector marker associated with a camera detection. */
+    struct MarkerMatch {
+        int id = -1;
+        double pixel_dist = 0.0;
+        Eigen::Vector3d pos_cam = Eigen::Vector3d::Zero();
+        Eigen::Vector3d size = Eigen::Vector3d::Zero();
+        Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity();
+    };
+
+    /** @brief The marker that projects closest to the detection bbox center,
+     *         within obstacle_association_max_dist half-diagonals. */
+    std::optional<MarkerMatch> AssociateMarker(
+        const vision_msgs::msg::Detection2D& detection,
+        const visualization_msgs::msg::MarkerArray& markers) const;
+
+    /** @brief Pixel coordinates of a camera-frame point, if it is in front of
+     *         the camera and inside the image. */
+    std::optional<Eigen::Vector2d> ProjectToImage(const Eigen::Vector3d& pos_cam) const;
+
+    /**
+     * @brief Pick the cached detection to track this tick.
+     *
+     * Detections at excluded positions are skipped. While a target is
+     * tracked and several detections remain, only a detection on which its
+     * estimate projects (within obstacle_association_max_dist
+     * half-diagonals) qualifies, the closest one winning, so another object
+     * of the same class cannot take over the track. Otherwise the first
+     * remaining detection wins.
+     *
+     * @return False if no detection qualifies.
+     */
+    bool SelectDetection(const TrackerSensorContext& context);
 
     // JN addition
     /** @brief Get coordinates from camera bounding box when the LiDAR
@@ -255,6 +303,9 @@ class ObjectTracker {
     // -------------------------------------------------------------------------
 
     vision_msgs::msg::Detection2D detections_message_;
+
+    /** @brief Detections of the target class cached since the last tick. */
+    std::vector<vision_msgs::msg::Detection2D> candidate_detections_;
 
     double detection_score_ = 0.0;
 

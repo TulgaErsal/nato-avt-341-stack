@@ -67,6 +67,8 @@ protected:
 
         camera_info_pub_ = helper_node_->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);
         detections_pub_ = helper_node_->create_publisher<vision_msgs::msg::Detection2DArray>("detection_2d", 10);
+        investigated_pub_ = helper_node_->create_publisher<nav_msgs::msg::Path>(
+            "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
         contacts_sub_ = helper_node_->create_subscription<nav_msgs::msg::Path>(
             "avt_341/target_contacts", 10,
             [this](nav_msgs::msg::Path::SharedPtr msg) { contacts_.push_back(*msg); });
@@ -113,20 +115,46 @@ protected:
     // A detection centered on the optical axis whose height puts the target
     // TARGET_RANGE ahead of the camera in the 608x512 image.
     void PublishDetection() {
+        PublishDetections({0.0});
+    }
+
+    // One detection per target TARGET_RANGE ahead of the camera and offset
+    // by the given map y [m], in the given order.
+    void PublishDetections(const std::vector<double>& y_offsets) {
         vision_msgs::msg::Detection2DArray detections;
         detections.header.stamp = tracking_node_->get_clock()->now();
         detections.header.frame_id = CAMERA_FRAME;
-        vision_msgs::msg::Detection2D detection;
-        detection.bbox.center.position.x = IMAGE_CX;
-        detection.bbox.center.position.y = IMAGE_CY;
-        detection.bbox.size_y = IMAGE_F * 1.9 / TARGET_RANGE;
-        detection.bbox.size_x = 1.5 * detection.bbox.size_y;
-        vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
-        hypothesis.hypothesis.class_id = TARGET;
-        hypothesis.hypothesis.score = 0.9;
-        detection.results.push_back(hypothesis);
-        detections.detections.push_back(detection);
+        for (const double y_offset : y_offsets) {
+            vision_msgs::msg::Detection2D detection;
+            detection.bbox.center.position.x = IMAGE_CX - IMAGE_F * y_offset / TARGET_RANGE;
+            detection.bbox.center.position.y = IMAGE_CY;
+            detection.bbox.size_y = IMAGE_F * 1.9 / TARGET_RANGE;
+            detection.bbox.size_x = 1.5 * detection.bbox.size_y;
+            vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
+            hypothesis.hypothesis.class_id = TARGET;
+            hypothesis.hypothesis.score = 0.9;
+            detection.results.push_back(hypothesis);
+            detections.detections.push_back(detection);
+        }
         detections_pub_->publish(detections);
+    }
+
+    void PublishInvestigated(double x, double y) {
+        nav_msgs::msg::Path investigated;
+        investigated.header.frame_id = "map";
+        geometry_msgs::msg::PoseStamped pose;
+        pose.header.frame_id = TARGET;
+        pose.pose.position.x = x;
+        pose.pose.position.y = y;
+        investigated.poses.push_back(pose);
+        investigated_pub_->publish(investigated);
+    }
+
+    void TrackFrames(const std::vector<double>& y_offsets, int frames) {
+        for (int i = 0; i < frames; ++i) {
+            PublishDetections(y_offsets);
+            Spin(100ms);
+        }
     }
 
     std::shared_ptr<avt_341_nav::perception::ObjectTrackerNode> tracking_node_;
@@ -134,6 +162,7 @@ protected:
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
     rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_pub_;
     rclcpp::Publisher<vision_msgs::msg::Detection2DArray>::SharedPtr detections_pub_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr investigated_pub_;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr contacts_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimate_sub_;
     rclcpp::executors::SingleThreadedExecutor exec_;
@@ -162,6 +191,56 @@ TEST_F(ObjectTrackerToiContactTest, CameraOnlyContactsAreAtTheTargetNotTheCamera
         const auto& p = estimate.pose.pose.position;
         EXPECT_GT(std::hypot(p.x - CAMERA_X, p.y - CAMERA_Y), 0.5 * TARGET_RANGE);
     }
+}
+
+// A second target of the same class to the right of the tracked one: near
+// enough to pass the filter's gate, and far enough to be investigated on its own.
+constexpr double NEAR_Y_OFFSET = -4.0;
+constexpr double OTHER_Y_OFFSET = -10.0;
+
+TEST_F(ObjectTrackerToiContactTest, TrackedTargetKeepsItsDetectionWhenAnotherIsListedFirst) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+
+    contacts_.clear();
+    TrackFrames({NEAR_Y_OFFSET, 0.0}, 50);
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.poses.front().pose.position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
+        EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetIsReleasedForTheNextOne) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0, OTHER_Y_OFFSET}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_NEAR(contacts_.back().poses.front().pose.position.y, CAMERA_Y, 0.5);
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    contacts_.clear();
+    TrackFrames({0.0, OTHER_Y_OFFSET}, 30);
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.poses.front().pose.position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
+        EXPECT_NEAR(p.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetAloneIsNotTracked) {
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    EXPECT_TRUE(contacts_.empty());
 }
 
 int main(int argc, char** argv) {

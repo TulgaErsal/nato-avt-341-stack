@@ -51,6 +51,7 @@ struct Contact {
     // timestamp, position, class/name, investigated
     geometry_msgs::msg::PoseStamped pose;
     std::string name;
+    std::string target_class;
     bool investigated;
     bool investigating;
     bool is_new;       // true until MoveTo+Encircle tasks are created
@@ -119,6 +120,7 @@ class MissionManager{
 
     // internal messages
     void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
+    void markContactInvestigated(const std::string & name);
 
     // external messages
     // Returns the created task, or nullptr if the message was not for this vehicle.
@@ -197,6 +199,7 @@ class MissionManager{
     std::string base_link_frame_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
+    int contact_count_ = 0;
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
     std::vector<CompletedTask> completed_tasks_;
@@ -218,12 +221,13 @@ class MissionManager{
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionModuleStatus>> task_change_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MapMarkerList>> map_markers_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Path>> current_waypoint_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Path>> investigated_contacts_pub = nullptr;
 
     // Methods
-    bool hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose);
-    auto getClosestNewContact();
+    std::vector<Contact>::iterator findContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
     MissionPoint getClosestOverwatch();
-    void addContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose);
+    Contact & addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
+    void publishInvestigatedContacts();
     void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
     void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void updateOverwatchPositions();

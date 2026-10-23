@@ -102,6 +102,9 @@ bool Encircle::is_done() {
 }
 
 void Encircle::on_done() {
+  if (!contact_name_.empty()) {
+    mgr->markContactInvestigated(contact_name_);
+  }
 }
 
 std::string Encircle::description() const {
