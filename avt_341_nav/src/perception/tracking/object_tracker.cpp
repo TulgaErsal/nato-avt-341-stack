@@ -500,7 +500,6 @@ void ObjectTracker::EstimatorTick() {
             has_had_first_lidar_measurement_ = false;
             tracked_obstacle_id_ = -1;
             camera_detection_count_ = 0;
-            out_of_view_since_.reset();
         }
     }
 
@@ -811,28 +810,12 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
             }
         }
         if (!track_column) {
-            // A LiDAR association that drifted onto an obstacle out of view
-            // would otherwise hold the track as long as that obstacle stays.
-            const rclcpp::Time now = node_->get_clock()->now();
-            if (!out_of_view_since_) {
-                out_of_view_since_ = now;
-            } else if ((now - *out_of_view_since_).seconds() >
-                       params_.tracking.target_timeout) {
-                RCLCPP_INFO(logger_,
-                            "Tracked \"%s\" out of view for %.1f s while the "
-                            "camera sees its class; releasing it.",
-                            target_class_.c_str(),
-                            (now - *out_of_view_since_).seconds());
-                Reset();
-                return false;
-            }
             RCLCPP_DEBUG(logger_,
                          "Tracked \"%s\" is outside the image; ignoring its "
                          "camera detections.",
                          target_class_.c_str());
             return false;
         }
-        out_of_view_since_.reset();
     }
 
     const vision_msgs::msg::Detection2D* best = nullptr;
@@ -892,7 +875,6 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
     camera_detection_count_ = 0;
-    out_of_view_since_.reset();
 
     const rclcpp::Time now = node_->get_clock()->now();
     last_valid_target_time_ = now;
