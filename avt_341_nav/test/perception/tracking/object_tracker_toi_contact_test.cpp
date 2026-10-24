@@ -377,28 +377,16 @@ protected:
     }
 
     static inline const std::vector<double> A = {CAMERA_X + TARGET_RANGE, CAMERA_Y};
-    static constexpr double B_X = CAMERA_X + 18.793852;
-    static constexpr double B_Y = CAMERA_Y + 6.840403;
 };
 
-TEST_F(ObjectTrackerToiOutOfViewTest, TargetThatLeavesTheImageKeepsItsTrackFromLidar) {
+TEST_F(ObjectTrackerToiOutOfViewTest, TargetThatLeavesTheImageKeepsItsTrackWhileLidarSeesIt) {
     TrackThenTurn();
-    SeeB(40);
+    SeeB(90);  // longer than target_timeout
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
         EXPECT_TRUE(AtA(contact));
     }
-}
-
-TEST_F(ObjectTrackerToiOutOfViewTest, OutOfViewTrackIsReleasedWhileTheCameraKeepsSeeingItsClass) {
-    TrackThenTurn();
-    SeeB(90);
-
-    ASSERT_FALSE(contacts_.empty());
-    const auto& p = contacts_.back().poses.front().pose.position;
-    EXPECT_NEAR(p.x, B_X, 1.0);
-    EXPECT_NEAR(p.y, B_Y, 1.0);
 }
 
 TEST_F(ObjectTrackerToiContactTest, NewTargetInLineAtASimilarRangeIsSkippedWithoutLidar) {

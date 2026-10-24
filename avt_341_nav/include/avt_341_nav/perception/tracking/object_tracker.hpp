@@ -222,9 +222,9 @@ class ObjectTracker {
      * Detections of excluded targets are skipped. While a target is tracked,
      * none qualifies if no part of it can be in the image (its estimate
      * projects outside the image by more than its half-size, from the LiDAR
-     * box); if that lasts longer than target_timeout while detections of the
-     * class keep coming, the track is released (Reset()), since it may be a
-     * LiDAR association that drifted onto an obstacle out of view. Otherwise the detection whose center column
+     * box), and the track carries on LiDAR-only for as long as LiDAR keeps
+     * the target (CheckTargetTimeout drops it once neither sensor does).
+     * Otherwise the detection whose center column
      * is closest to that projection wins, so another object of the same class
      * cannot take over the track. Otherwise the first remaining detection
      * wins. A detection in the image is never rejected for being far from the
@@ -347,10 +347,6 @@ class ObjectTracker {
     /** @brief A detection was ingested since the last tracking tick
      *         (has_detection_ can stay set on a re-used detection). */
     bool has_fresh_detection_ = false;
-
-    /** @brief Since when camera detections of the target class have been
-     *         ignored because the tracked target is out of view. */
-    std::optional<rclcpp::Time> out_of_view_since_;
 
     /** @brief Time stamp of the last valid detection message containing the
      *         target. */
