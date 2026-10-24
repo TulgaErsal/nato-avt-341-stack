@@ -164,8 +164,14 @@ protected:
         investigated_pub_->publish(investigated);
     }
 
-    // A LiDAR obstacle box (car-sized) at a map position, with its cluster.
-    void PublishObstacle(double x, double y) {
+    struct Obstacle {
+        int id;
+        double x;
+        double y;
+    };
+
+    // LiDAR obstacle boxes (car-sized) at map positions, with their cluster.
+    void PublishObstacles(const std::vector<Obstacle>& obstacles) {
         std_msgs::msg::Header header;
         header.stamp = helper_node_->get_clock()->now();
         header.frame_id = "map";
@@ -174,31 +180,36 @@ protected:
         cloud.header = header;
         sensor_msgs::PointCloud2Modifier modifier(cloud);
         modifier.setPointCloud2FieldsByString(1, "xyz");
-        modifier.resize(4);
+        modifier.resize(4 * obstacles.size());
         sensor_msgs::PointCloud2Iterator<float> it_x(cloud, "x"), it_y(cloud, "y"), it_z(cloud, "z");
-        for (int i = 0; i < 4; ++i, ++it_x, ++it_y, ++it_z) {
-            *it_x = static_cast<float>(x + (i % 2 ? 1.0 : -1.0));
-            *it_y = static_cast<float>(y + (i / 2 ? 0.5 : -0.5));
-            *it_z = static_cast<float>(CAMERA_Z);
+        visualization_msgs::msg::MarkerArray markers;
+        for (const auto& obstacle : obstacles) {
+            for (int i = 0; i < 4; ++i, ++it_x, ++it_y, ++it_z) {
+                *it_x = static_cast<float>(obstacle.x + (i % 2 ? 1.0 : -1.0));
+                *it_y = static_cast<float>(obstacle.y + (i / 2 ? 0.5 : -0.5));
+                *it_z = static_cast<float>(CAMERA_Z);
+            }
+            visualization_msgs::msg::Marker box;
+            box.header = header;
+            box.ns = "lidar_bboxes";
+            box.id = obstacle.id;
+            box.type = visualization_msgs::msg::Marker::CUBE;
+            box.action = visualization_msgs::msg::Marker::ADD;
+            box.pose.position.x = obstacle.x;
+            box.pose.position.y = obstacle.y;
+            box.pose.position.z = CAMERA_Z;
+            box.pose.orientation.w = 1.0;
+            box.scale.x = 4.5;
+            box.scale.y = 1.8;
+            box.scale.z = 1.5;
+            markers.markers.push_back(box);
         }
         clusters_pub_->publish(cloud);
-
-        visualization_msgs::msg::MarkerArray markers;
-        visualization_msgs::msg::Marker box;
-        box.header = header;
-        box.ns = "lidar_bboxes";
-        box.id = 7;
-        box.type = visualization_msgs::msg::Marker::CUBE;
-        box.action = visualization_msgs::msg::Marker::ADD;
-        box.pose.position.x = x;
-        box.pose.position.y = y;
-        box.pose.position.z = CAMERA_Z;
-        box.pose.orientation.w = 1.0;
-        box.scale.x = 4.5;
-        box.scale.y = 1.8;
-        box.scale.z = 1.5;
-        markers.markers.push_back(box);
         bboxes_pub_->publish(markers);
+    }
+
+    void PublishObstacle(double x, double y) {
+        PublishObstacles({{7, x, y}});
     }
 
     // Each frame: the given detections and, if requested, a LiDAR box at
@@ -383,6 +394,40 @@ TEST_F(ObjectTrackerToiOutOfViewTest, TargetThatLeavesTheImageKeepsItsTrackWhile
     TrackThenTurn();
     SeeB(90);  // longer than target_timeout
 
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_TRUE(AtA(contact));
+    }
+}
+
+TEST_F(ObjectTrackerToiOutOfViewTest, CameraCorrectsLidarDriftWhenTheTargetIsBackInView) {
+    const Obstacle car{7, A[0], A[1]};
+    const Obstacle neighbor{9, A[0], A[1] - 2.5};
+    const Obstacle car_relabeled{10, A[0], A[1]};
+    TrackThenTurn();
+    for (int i = 0; i < 10; ++i) {
+        PublishObstacles({car});
+        Spin(100ms);
+    }
+    // The car's box is missing for one scan and the neighbor's is re-acquired.
+    PublishObstacles({neighbor});
+    Spin(100ms);
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({neighbor, car_relabeled});
+        Spin(100ms);
+    }
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_NEAR(contacts_.back().poses.front().pose.position.y, neighbor.y, 0.5);
+
+    // The car is back in view, its relabeled box next to the neighbor's.
+    PublishCameraTf(-0.5, 0.5, -0.5, 0.5);
+    Spin(200ms);
+    contacts_.clear();
+    for (int i = 0; i < 15; ++i) {
+        PublishObstacles({neighbor, car_relabeled});
+        PublishDetections({0.0});
+        Spin(100ms);
+    }
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
         EXPECT_TRUE(AtA(contact));
