@@ -164,6 +164,8 @@ int main(int argc, char* argv[]) {
 	grid.Reset();
 	start_time = n->now().seconds();
 	rclcpp::Rate rate(settings.runtime.rate);
+	rclcpp::executors::SingleThreadedExecutor executor;
+	executor.add_node(n);
 	int nloops = 0;
 	double last_compute_time_pub = 0.0;
 
@@ -216,7 +218,7 @@ int main(int argc, char* argv[]) {
 			reset_called = false;
 		}
 
-		rclcpp::spin_some(n);
+		executor.spin_all(std::chrono::milliseconds(50));
 		rate.sleep();
 	}
 
