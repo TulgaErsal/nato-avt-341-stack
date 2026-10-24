@@ -11,8 +11,11 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <vision_msgs/msg/detection2_d_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <avt_341_nav/perception/tracking/object_tracker_node.hpp>
 
@@ -57,6 +60,8 @@ protected:
 
         camera_info_pub_ = helper_node_->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);
         detections_pub_ = helper_node_->create_publisher<vision_msgs::msg::Detection2DArray>("detection_2d", 10);
+        bboxes_pub_ = helper_node_->create_publisher<visualization_msgs::msg::MarkerArray>("obstacles/bboxes", 10);
+        clusters_pub_ = helper_node_->create_publisher<sensor_msgs::msg::PointCloud2>("obstacles/cloud_clusters", 10);
         investigated_pub_ = helper_node_->create_publisher<nav_msgs::msg::Path>(
             "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
         contacts_sub_ = helper_node_->create_subscription<nav_msgs::msg::Path>(
@@ -159,9 +164,52 @@ protected:
         investigated_pub_->publish(investigated);
     }
 
+    // A LiDAR obstacle box (car-sized) at a map position, with its cluster.
+    void PublishObstacle(double x, double y) {
+        std_msgs::msg::Header header;
+        header.stamp = helper_node_->get_clock()->now();
+        header.frame_id = "map";
+
+        sensor_msgs::msg::PointCloud2 cloud;
+        cloud.header = header;
+        sensor_msgs::PointCloud2Modifier modifier(cloud);
+        modifier.setPointCloud2FieldsByString(1, "xyz");
+        modifier.resize(4);
+        sensor_msgs::PointCloud2Iterator<float> it_x(cloud, "x"), it_y(cloud, "y"), it_z(cloud, "z");
+        for (int i = 0; i < 4; ++i, ++it_x, ++it_y, ++it_z) {
+            *it_x = static_cast<float>(x + (i % 2 ? 1.0 : -1.0));
+            *it_y = static_cast<float>(y + (i / 2 ? 0.5 : -0.5));
+            *it_z = static_cast<float>(CAMERA_Z);
+        }
+        clusters_pub_->publish(cloud);
+
+        visualization_msgs::msg::MarkerArray markers;
+        visualization_msgs::msg::Marker box;
+        box.header = header;
+        box.ns = "lidar_bboxes";
+        box.id = 7;
+        box.type = visualization_msgs::msg::Marker::CUBE;
+        box.action = visualization_msgs::msg::Marker::ADD;
+        box.pose.position.x = x;
+        box.pose.position.y = y;
+        box.pose.position.z = CAMERA_Z;
+        box.pose.orientation.w = 1.0;
+        box.scale.x = 4.5;
+        box.scale.y = 1.8;
+        box.scale.z = 1.5;
+        markers.markers.push_back(box);
+        bboxes_pub_->publish(markers);
+    }
+
+    // Each frame: the given detections and, if requested, a LiDAR box at
+    // obstacle_xy.
     void TrackFrames(const std::vector<double>& y_offsets, int frames,
-                     const std::vector<double>& apparent_ranges = {}) {
+                     const std::vector<double>& apparent_ranges = {},
+                     const std::vector<double>& obstacle_xy = {}) {
         for (int i = 0; i < frames; ++i) {
+            if (obstacle_xy.size() == 2) {
+                PublishObstacle(obstacle_xy[0], obstacle_xy[1]);
+            }
             PublishDetections(y_offsets, apparent_ranges);
             Spin(100ms);
         }
@@ -173,6 +221,8 @@ protected:
     rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_pub_;
     rclcpp::Publisher<vision_msgs::msg::Detection2DArray>::SharedPtr detections_pub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr investigated_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr bboxes_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr clusters_pub_;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr contacts_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimate_sub_;
     rclcpp::executors::SingleThreadedExecutor exec_;
@@ -301,26 +351,62 @@ TEST_F(ObjectTrackerToiContactTest, TrackedTargetPassingInFrontOfAnInvestigatedO
     EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
 }
 
-TEST_F(ObjectTrackerToiContactTest, TargetThatLeavesTheImageDoesNotLendItsTrack) {
-    PublishCameraInfo();
-    Spin(100ms);
-    TrackFrames({0.0}, 20);
-    ASSERT_FALSE(contacts_.empty());
-
-    // Turn the camera 50 deg left: the tracked target is now out of view,
-    // and another target of the same class 6.9 m from it is seen 30 deg to
-    // the right, 20 m away.
-    PublishCameraTf(-0.664463, 0.241845, -0.241845, 0.664463);
-    Spin(200ms);
-    contacts_.clear();
-    const double depth = TARGET_RANGE * std::cos(30.0 * M_PI / 180.0);
-    TrackFrames({-depth * std::tan(30.0 * M_PI / 180.0)}, 40, {depth});
-
-    for (const auto& contact : contacts_) {
-        const auto& p = contact.poses.front().pose.position;
-        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
-        EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
+// The tracked target A, held by its LiDAR box, leaves the camera's view when
+// the camera turns 50 deg left; another target B of the same class 6.9 m from
+// A is then seen 30 deg to the right, 20 m away.
+class ObjectTrackerToiOutOfViewTest : public ObjectTrackerToiContactTest {
+protected:
+    void TrackThenTurn() {
+        PublishCameraInfo();
+        Spin(100ms);
+        TrackFrames({0.0}, 20, {}, A);
+        ASSERT_FALSE(contacts_.empty());
+        PublishCameraTf(-0.664463, 0.241845, -0.241845, 0.664463);
+        Spin(200ms);
+        contacts_.clear();
     }
+
+    void SeeB(int frames) {
+        const double depth = TARGET_RANGE * std::cos(30.0 * M_PI / 180.0);
+        TrackFrames({-depth * std::tan(30.0 * M_PI / 180.0)}, frames, {depth}, A);
+    }
+
+    static bool AtA(const nav_msgs::msg::Path& contact) {
+        const auto& p = contact.poses.front().pose.position;
+        return std::hypot(p.x - A[0], p.y - A[1]) < 1.0;
+    }
+
+    static inline const std::vector<double> A = {CAMERA_X + TARGET_RANGE, CAMERA_Y};
+    static constexpr double B_X = CAMERA_X + 18.793852;
+    static constexpr double B_Y = CAMERA_Y + 6.840403;
+};
+
+TEST_F(ObjectTrackerToiOutOfViewTest, TargetThatLeavesTheImageKeepsItsTrackFromLidar) {
+    TrackThenTurn();
+    SeeB(40);
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_TRUE(AtA(contact));
+    }
+}
+
+TEST_F(ObjectTrackerToiOutOfViewTest, OutOfViewTrackIsReleasedWhileTheCameraKeepsSeeingItsClass) {
+    TrackThenTurn();
+    SeeB(90);
+
+    ASSERT_FALSE(contacts_.empty());
+    const auto& p = contacts_.back().poses.front().pose.position;
+    EXPECT_NEAR(p.x, B_X, 1.0);
+    EXPECT_NEAR(p.y, B_Y, 1.0);
+}
+
+TEST_F(ObjectTrackerToiContactTest, NewTargetInLineAtASimilarRangeIsSkippedWithoutLidar) {
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {1.5 * TARGET_RANGE});
+    EXPECT_TRUE(contacts_.empty());
 }
 
 TEST_F(ObjectTrackerToiContactTest, FirstContactWaitsForSeveralCameraDetections) {
@@ -339,7 +425,8 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     std::vector<const char*> args(argv, argv + argc);
     args.insert(args.end(), {"--ros-args", "-p", "frames.use_vehicle_prefix:=false",
-                             "-p", "frames.camera:=test_camera"});
+                             "-p", "frames.camera:=test_camera",
+                             "-p", "obstacle_detector.use_external_detector:=true"});
     rclcpp::init(static_cast<int>(args.size()), args.data());
     int result = RUN_ALL_TESTS();
     rclcpp::shutdown();

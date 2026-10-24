@@ -76,14 +76,20 @@ void UpdateTrackerToiRegex(const std::string & toi_regex) {
          rclcpp::Parameter("target_selection.investigated_toi_radius", same_object_distance_threshold)},
         [toi_regex](const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
             const auto results = future.get();
-            if(results.empty() || !results.front().successful) {
-                const std::string reason = results.empty() ? "no result returned" : results.front().reason;
-                RCLCPP_WARN(nh->get_logger(), "Failed to apply toi_regex \"%s\" to the object tracking node: %s",
-                    toi_regex.c_str(), reason.c_str());
+            bool all_applied = results.size() == 2;
+            for(size_t i = 0; i < results.size(); ++i) {
+                if(!results[i].successful) {
+                    RCLCPP_WARN(nh->get_logger(), "Failed to apply %s to the object tracking node: %s",
+                        i == 0 ? ("toi_regex \"" + toi_regex + "\"").c_str() : "investigated_toi_radius",
+                        results[i].reason.c_str());
+                    all_applied = false;
+                }
+            }
+            if(!all_applied) {
                 return;
             }
-            // Only remember the value once it is known to have been applied, so that a failed
-            // reconfigure is retried on the next formation command.
+            // Only remember the value once both parameters are known to have been applied, so that
+            // a failed reconfigure is retried on the next formation command.
             applied_toi_regex = toi_regex;
             RCLCPP_INFO(nh->get_logger(), "Applied toi_regex \"%s\" to the object tracking node.", toi_regex.c_str());
         });

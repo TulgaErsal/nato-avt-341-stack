@@ -165,7 +165,11 @@ class MissionManager{
     void checkGoalArrival();
     // notify_tracker=false skips publishing the (now empty) investigated contacts, e.g. on shutdown.
     void reset(bool notify_tracker = true);
-    void resetTaskList(bool send_completion_msg);
+    // What happens to the contact of a cancelled Encircle.
+    enum class CancelledContact { Dismiss, Forget, Keep };
+    // Dismiss: an operator cancel; later reports of the target are ignored until a reset.
+    // Forget: a superseding command; a later report re-tasks the target.
+    void resetTaskList(bool send_completion_msg, CancelledContact cancelled_contact = CancelledContact::Dismiss);
     void cancelTask(int task_id,bool send_completion_msg);
     void onGoalReached(const geometry_msgs::msg::PoseStamped & pose);
     // Only completions received after the first `since` completions count.
@@ -218,8 +222,7 @@ class MissionManager{
     MissionPoint getClosestOverwatch();
     Contact & addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
     void publishInvestigatedContacts();
-    // A cancelled Encircle dismisses its contact: later reports of it are ignored and the tracker leaves it alone.
-    void dismissCancelledContact(const Task * task);
+    void handleCancelledContact(const Task * task, CancelledContact cancelled_contact);
     void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
     void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void updateOverwatchPositions();

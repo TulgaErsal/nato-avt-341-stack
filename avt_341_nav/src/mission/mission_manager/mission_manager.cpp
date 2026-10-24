@@ -225,7 +225,7 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     // if no active task, put it on the list
 
     if(PriorityType::isCancelAllPrevious(priority_type)){
-      resetTaskList(true);
+      resetTaskList(true, CancelledContact::Forget);
     }
 
     bool is_preempt = PriorityType::isPreempt(priority_type);
@@ -444,19 +444,25 @@ void MissionManager::markContactInvestigated(const std::string & name) {
     publishInvestigatedContacts();
 }
 
-void MissionManager::dismissCancelledContact(const Task * task) {
+void MissionManager::handleCancelledContact(const Task * task, CancelledContact cancelled_contact) {
     const auto * encircle = dynamic_cast<const Encircle *>(task);
-    if (encircle == nullptr || encircle->contactName().empty()) {
+    if (cancelled_contact == CancelledContact::Keep || encircle == nullptr || encircle->contactName().empty()) {
         return;
     }
     auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
         [&](const Contact& c) { return c.name == encircle->contactName() && !c.investigated; });
-    if (it != mission_contacts.end()) {
-        RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" cancelled; dismissing it.", it->name.c_str());
-        it->investigating = false;
-        it->dismissed = true;
-        publishInvestigatedContacts();
+    if (it == mission_contacts.end()) {
+        return;
     }
+    if (cancelled_contact == CancelledContact::Forget) {
+        RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" superseded; forgetting it.", it->name.c_str());
+        mission_contacts.erase(it);
+        return;
+    }
+    RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" cancelled; dismissing it.", it->name.c_str());
+    it->investigating = false;
+    it->dismissed = true;
+    publishInvestigatedContacts();
 }
 
 void MissionManager::publishInvestigatedContacts() {
@@ -512,7 +518,7 @@ void MissionManager::checkGoalArrival() {
     }
 }
 
-void MissionManager::resetTaskList(bool send_completion_msg) {
+void MissionManager::resetTaskList(bool send_completion_msg, CancelledContact cancelled_contact) {
   RCLCPP_INFO(node_->get_logger(), "%s CANCEL_ALL: Clearing task list of size %d.", my_name.c_str(), task_list.size());
   for(Task* task : task_list) {
     task->onPreempt();
@@ -520,14 +526,14 @@ void MissionManager::resetTaskList(bool send_completion_msg) {
     if(send_completion_msg){
       publishTaskCompletion(task);
     }
-    dismissCancelledContact(task);
+    handleCancelledContact(task, cancelled_contact);
     delete task;
   }
   task_list.clear();
 }
 
 void MissionManager::reset(bool notify_tracker){
-  resetTaskList(false);
+  resetTaskList(false, CancelledContact::Keep);
   obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
   task_completions_.clear();
   current_gp_goal = geometry_msgs::msg::PoseStamped();
@@ -557,7 +563,7 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
       publishTaskCompletion(task);
     }
     task_list.erase(it);
-    dismissCancelledContact(task);
+    handleCancelledContact(task, CancelledContact::Dismiss);
     if (const auto * encircle = dynamic_cast<const Encircle *>(task); encircle != nullptr && !encircle->contactName().empty()) {
       // The approach to a target whose encircle was cancelled is pointless.
       auto approach = std::find_if(std::begin(task_list), std::end(task_list), [&](Task* t) {
@@ -899,7 +905,7 @@ void MissionManager::handleCancelTask(const CancelMsg & msg){
 }
 
 void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
-  resetTaskList(true);
+  resetTaskList(true, CancelledContact::Dismiss);
   publishTaskChange();
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
