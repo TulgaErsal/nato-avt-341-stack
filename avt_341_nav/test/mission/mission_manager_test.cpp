@@ -569,7 +569,7 @@ class ToiInvestigationTest : public MissionManagerContactsTest {
             [this](avt_341_msgs::msg::MissionModuleStatus::SharedPtr msg) { status_ = *msg; });
         investigated_sub_ = node_->create_subscription<nav_msgs::msg::Path>(
             "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local(),
-            [this](nav_msgs::msg::Path::SharedPtr msg) { investigated_ = *msg; });
+            [this](nav_msgs::msg::Path::SharedPtr msg) { investigated_ = *msg; ++investigated_count_; });
     }
 
     std::vector<std::string> Tasks(MissionManager & manager)
@@ -599,6 +599,7 @@ class ToiInvestigationTest : public MissionManagerContactsTest {
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr investigated_sub_;
     avt_341_msgs::msg::MissionModuleStatus status_;
     nav_msgs::msg::Path investigated_;
+    int investigated_count_ = 0;
 };
 
 TEST_F(ToiInvestigationTest, SecondTargetOfTheSameClassIsInvestigatedAfterTheFirst)
@@ -711,4 +712,27 @@ TEST_F(ToiInvestigationTest, CancellingTheEncircleAlsoDropsItsApproach)
 
     manager->handleContacts(MakeContact("car", 51.0, 30.0), team_);
     EXPECT_EQ(manager->currentTask(), nullptr);
+}
+
+TEST_F(ToiInvestigationTest, SupersedingCommandRetasksTheTarget)
+{
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", 5, 100.0), PriorityType::CANCEL_ALL_PREVIOUS);
+    EXPECT_TRUE(Investigated().poses.empty());
+
+    manager->handleContacts(MakeContact("car", 51.0, 30.0), team_);
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[0], "CONTACT car_2"));
+}
+
+TEST_F(ToiInvestigationTest, ShutdownDoesNotNotifyTheTracker)
+{
+    {
+        auto manager = MakeManager();
+        manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    }
+    Investigated();
+    EXPECT_EQ(investigated_count_, 0);
 }
