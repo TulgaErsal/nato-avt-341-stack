@@ -154,6 +154,7 @@ class MissionManager{
     void publishGpToggle(int state);
     void publishArrival(const std::string & sender_name, const std::string & objective);
     void publishTaskStatus();
+    void publishCurrentWaypoint();
     // Publishes the latched snapshot of the active and queued tasks. Call after
     // any operation that mutates the task list outside of updateTasks(),
     // otherwise the retained sample is served stale to late-joining subscribers.
@@ -206,6 +207,7 @@ class MissionManager{
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionTaskStatus>> task_status_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionModuleStatus>> task_change_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MapMarkerList>> map_markers_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Path>> current_waypoint_pub = nullptr;
 
     // Methods
     bool hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose);

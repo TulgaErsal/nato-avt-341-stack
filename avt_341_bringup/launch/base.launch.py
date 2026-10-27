@@ -8,6 +8,7 @@ from launch_ros.actions import Node, PushRosNamespace, SetParameter
 
 from avt_341_param_lib.runtime.launch_params import (
     ParameterCollection,
+    perform_for_vehicle,
     perform_yaml,
     relevant_params_files,
 )
@@ -33,7 +34,7 @@ def _is_true(text):
 
 def is_cfg(key, negate=False):
     """Condition: launch configuration `key` is true (false when negate=True)."""
-    def condition(context):
+    def condition(context, vehicle_index):
         value = _is_true(LaunchConfiguration(key).perform(context))
         return not value if negate else value
     return condition
@@ -43,20 +44,26 @@ def is_not_cfg(key):
 
 def is_local_planner(*methods):
     """Condition: the local_planner_method launch configuration is one of `methods`."""
-    def condition(context):
+    def condition(context, vehicle_index):
         return LaunchConfiguration('local_planner_method').perform(context) in methods
     return condition
 
+SPEED_CONTROL_METHODS = ('none', 'default', 'atat', 'krc')
+
+def speed_control_method(context, vehicle_index):
+    """The vehicle's speed_control_method: one shared value, or its entry of a per-vehicle list."""
+    return perform_for_vehicle(context, 'speed_control_method', vehicle_index)
+
 def is_speed_control(*methods):
-    """Condition: the speed_control_method launch configuration is one of `methods`."""
-    def condition(context):
-        return LaunchConfiguration('speed_control_method').perform(context) in methods
+    """Condition: the vehicle's speed_control_method is one of `methods`."""
+    def condition(context, vehicle_index):
+        return speed_control_method(context, vehicle_index) in methods
     return condition
 
 def all_of(*conditions):
     """Condition: every one of `conditions` holds."""
-    def condition(context):
-        return all(c(context) for c in conditions)
+    def condition(context, vehicle_index):
+        return all(c(context, vehicle_index) for c in conditions)
     return condition
 
 
@@ -111,10 +118,19 @@ NODES = {
 pargs = ParameterCollection.from_node_specs(NODES)
 
 
-def _launch_remappings(context):
-    """Topic remappings computed from launch configurations, keyed by NODES name."""
+def _validate_speed_control_methods(context, vehicles):
+    for vehicle_index, vid in enumerate(vehicles):
+        method = speed_control_method(context, vehicle_index)
+        if method not in SPEED_CONTROL_METHODS:
+            raise RuntimeError(
+                f"speed_control_method '{method}' of vehicle '{vid}' is not one of "
+                f"{list(SPEED_CONTROL_METHODS)}")
+
+
+def _launch_remappings(context, vehicle_index):
+    """Topic remappings of one vehicle computed from launch configurations, keyed by NODES name."""
     remappings = {}
-    if is_speed_control('krc')(context):
+    if is_speed_control('krc')(context, vehicle_index):
         # speed_control_node velocity output feeds the KRC controller, which
         # publishes the final throttle/brake command on avt_341/cmd_vel.
         remappings['speed_control_node'] = [('avt_341/cmd_vel', 'avt_341/velocity_rqst')]
@@ -175,13 +191,13 @@ def _robot_state_publisher(vid, vehicle_index, context, node_config):
 
 def _spawn_vehicles(context, *args, **kwargs):
     vehicles = [str(vid).strip('/') for vid in perform_yaml(context, 'vehicle_ids')]
+    _validate_speed_control_methods(context, vehicles)
     params_files = resolve_params_files(
         perform_yaml(context, 'ros_param_files') or [], vehicles,
         node_fqns=candidate_node_fqns(NODES, vehicles))
     node_config = NodeConfigCollection(
         LaunchConfiguration('node_config_file').perform(context))
     cli_overrides = pargs.resolve_cli_overrides(context, vehicles)
-    launch_remappings = _launch_remappings(context)
     spawn_filter = {
         str(vid).strip('/')
         for vid in perform_yaml(context, 'spawn_filter_vehicle_ids') or []}
@@ -194,11 +210,12 @@ def _spawn_vehicles(context, *args, **kwargs):
     for vehicle_index, vid in enumerate(vehicles):
         if vid not in spawned_vehicles:
             continue
+        launch_remappings = _launch_remappings(context, vehicle_index)
         group = [PushRosNamespace(vid)]
         for name, spec in NODES.items():
             if not spec.allows_vehicle(context, vid):
                 continue
-            if spec.condition is not None and not spec.condition(context):
+            if spec.condition is not None and not spec.condition(context, vehicle_index):
                 continue
             group.append(_make_node(
                 name, spec, vid, vehicles, params_files, cli_overrides, node_config,
@@ -253,7 +270,7 @@ def generate_launch_description():
 
         # Feature flags
         DeclareLaunchArgument('local_planner_method',            default_value='rcc',                                                 description='Local planner method. Values = [rcc, dwa, mpc, pf]'),
-        DeclareLaunchArgument('speed_control_method',            default_value='default',                                             description='Speed control method (only with local_planner_method=dwa or mpc). Values = [none, default, atat, krc]; krc also runs the default speed control node as its input'),
+        DeclareLaunchArgument('speed_control_method',            default_value='default',                                             description='Speed control method (only with local_planner_method=dwa or mpc). Values = [none, default, atat, krc]; krc also runs the default speed control node as its input. One value applies to all vehicles; a list such as "[default, krc]" gives one value per vehicle by position in vehicle_ids, repeating when shorter than the vehicle count'),
         DeclareLaunchArgument('use_lidar_obstacle_detector',     default_value='False',                                               description='Enable lidar obstacle segmentation'),
         DeclareLaunchArgument('use_dual_costmaps',               default_value='True',                                                description='Spawn the dual global and local costmap perception nodes; when false a single perception_node is spawned instead'),
         DeclareLaunchArgument('use_perception_rms',              default_value='True',                                                description='Enable the RMS perception node'),

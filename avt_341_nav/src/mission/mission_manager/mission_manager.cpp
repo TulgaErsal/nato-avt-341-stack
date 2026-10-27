@@ -55,6 +55,9 @@ MissionManager::MissionManager(
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
+    if (params_.check_goal_arrival) {
+        current_waypoint_pub = node_->create_publisher<nav_msgs::msg::Path>("avt_341/waypoints", 10);
+    }
 
     publishTaskChange();
 }
@@ -378,6 +381,7 @@ void MissionManager::updateTasks() {
         }
 
         if(params_.check_goal_arrival) {
+            publishCurrentWaypoint();
             checkGoalArrival();
         }
 
@@ -479,6 +483,19 @@ void MissionManager::checkGoalArrival() {
             active_task->onGoalReached(gp);
         }
     }
+}
+
+void MissionManager::publishCurrentWaypoint() {
+    Task* active_task = currentTask();
+    if(active_task == nullptr || current_waypoint_pub == nullptr) {
+        return;
+    }
+    nav_msgs::msg::Path waypoints;
+    waypoints.header.stamp = node_->now();
+    waypoints.header.frame_id = "map";
+    waypoints.poses.push_back(active_task->terminalPose());
+    waypoints.poses.back().header = waypoints.header;
+    current_waypoint_pub->publish(waypoints);
 }
 
 void MissionManager::resetTaskList(bool send_completion_msg) {

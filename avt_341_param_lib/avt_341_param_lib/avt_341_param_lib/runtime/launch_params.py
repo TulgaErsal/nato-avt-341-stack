@@ -592,3 +592,29 @@ class ParameterCollection:
 def perform_yaml(context, arg_name: str):
     """Perform a launch configuration and parse its value as yaml."""
     return yaml.safe_load(LaunchConfiguration(arg_name).perform(context))
+
+# TODO: Remove in future, only implemented to support speed controller methods defined in separate nodes
+def select_for_vehicle(text: str, vehicle_index: int, arg_name: str) -> str:
+    """Value of a launch argument for the vehicle at ``vehicle_index``.
+
+    A yaml list holds one value per vehicle, indexed by the vehicle's position
+    in ``vehicle_ids`` modulo the list length (a shorter list repeats). Any
+    other text is one value shared by all vehicles and is returned as given.
+    """
+    try:
+        value = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return text
+    if not isinstance(value, list):
+        return text
+    if not value:
+        raise RuntimeError(
+            f"Launch argument '{arg_name}' holds an empty list; expected one "
+            'value, or a list with one value per vehicle')
+    return str(value[vehicle_index % len(value)])
+
+
+def perform_for_vehicle(context, arg_name: str, vehicle_index: int) -> str:
+    """Perform a launch configuration holding one shared value or a yaml list of per-vehicle values."""
+    return select_for_vehicle(
+        LaunchConfiguration(arg_name).perform(context), vehicle_index, arg_name)

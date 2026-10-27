@@ -15,6 +15,7 @@ from avt_341_param_lib.runtime.launch_params import (
     convert_typed_value,
     load_template_specs,
     relevant_params_files,
+    select_for_vehicle,
     selector_matches,
 )
 
@@ -1105,3 +1106,25 @@ def test_convert_pkg_path_errors(monkeypatch):
         convert_cli_value('$pkg_path{}/f.csv', 'string', 'a')
     with pytest.raises(ValueError, match='unterminated'):
         convert_cli_value('$pkg_path{nope/f.csv', 'string', 'a')
+
+
+@pytest.mark.parametrize('text', ['krc', 'True', '1.0', '', '{a: b}', '[unterminated'])
+def test_select_for_vehicle_passes_non_list_text_through(text):
+    assert select_for_vehicle(text, 0, 'arg') == text
+    assert select_for_vehicle(text, 3, 'arg') == text
+
+
+@pytest.mark.parametrize(
+    'index, expected', [(0, 'default'), (1, 'krc'), (2, 'default'), (3, 'krc')])
+def test_select_for_vehicle_indexes_list_modulo_length(index, expected):
+    assert select_for_vehicle("['default', 'krc']", index, 'arg') == expected
+
+
+@pytest.mark.parametrize('index, expected', [(0, 'True'), (1, '2'), (2, 'none')])
+def test_select_for_vehicle_list_entries_are_text(index, expected):
+    assert select_for_vehicle('[True, 2, none]', index, 'arg') == expected
+
+
+def test_select_for_vehicle_rejects_empty_list():
+    with pytest.raises(RuntimeError, match="'speed_control_method'"):
+        select_for_vehicle('[]', 0, 'speed_control_method')

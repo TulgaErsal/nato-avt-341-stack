@@ -19,7 +19,7 @@ class NodeSpec:
         # one template path or a list of paths (a node whose executable links
         # several generated parameter services); normalized to a list
         self.templates = [template] if isinstance(template, str) else list(template or [])
-        self.condition = condition          # callable(context) -> bool; None = always
+        self.condition = condition          # callable(context, vehicle_index) -> bool; None = always
         self.sub_ns = sub_ns                # sub-namespace below the vehicle namespace
         self.extra_params = extra_params    # callable(vid, vehicles) -> dict of launch-computed params
         self.output = output
