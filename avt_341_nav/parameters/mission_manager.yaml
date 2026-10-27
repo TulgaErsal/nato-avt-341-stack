@@ -155,6 +155,12 @@ ros__parameters:
       type: double
       default_value: 5.0
       description: "Distance at which the vehicle is considered to have approached the target of interest."
+    encircle_speed:
+      type: double
+      default_value: 2.5
+      description: "Speed setpoint [m/s] while encircling a target of interest; 0 keeps the mission's. The MPC heads for a goal point the goal point processor picks speed x (prediction_time_horizon + goal_lookahead_time_padding) metres along the circle, so a slower encircle keeps that goal closer and the vehicle on the circle."
+      validation:
+        gt_eq<>: [ 0.0 ]
     encircle_replan_distance:
       type: double
       default_value: 2.0
