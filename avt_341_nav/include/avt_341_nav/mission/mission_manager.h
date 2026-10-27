@@ -13,6 +13,7 @@
 */
 
 // c++ includes
+#include <cstdint>
 #include <string>
 #include <chrono>
 #include <functional>
@@ -55,6 +56,7 @@ struct Contact {
     bool investigated;
     bool investigating;
     bool dismissed = false;  // its investigation was cancelled: not re-tasked until a reset
+    int64_t track_start_ns = 0;  // tracker's track identity (start time of the track that last reported it)
     bool is_new;       // true until MoveTo+Encircle tasks are created
     double first_seen_sec;
 };
@@ -122,6 +124,8 @@ class MissionManager{
     // internal messages
     void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
     void markContactInvestigated(const std::string & name);
+    // Investigations start only with a task under way and, if reported (e.g. /autonomy_enabled), autonomy enabled.
+    void setAutonomyEnabled(bool enabled) { autonomy_enabled_ = enabled; }
 
     // external messages
     // Returns the created task, or nullptr if the message was not for this vehicle.
@@ -206,6 +210,7 @@ class MissionManager{
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     int contact_count_ = 0;
+    bool autonomy_enabled_ = true;
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
     std::vector<CompletedTask> completed_tasks_;
@@ -234,6 +239,7 @@ class MissionManager{
     MissionPoint getClosestOverwatch();
     Contact & addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
     void publishInvestigatedContacts();
+    bool investigationAllowed(const Contact & contact) const;
     void handleCancelledContact(const Task * task, CancelledContact cancelled_contact);
     void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
     void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);

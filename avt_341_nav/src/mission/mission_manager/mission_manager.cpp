@@ -457,6 +457,16 @@ Contact & MissionManager::addContact(const std::string & target_class, const geo
   return mission_contacts.back();
 }
 
+bool MissionManager::investigationAllowed(const Contact & contact) const {
+    const char * reason = task_list.empty() ? "no active task" : !autonomy_enabled_ ? "autonomy disabled" : nullptr;
+    if (reason != nullptr) {
+        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+            "Not investigating contact \"%s\" at (%.2f, %.2f): %s.", contact.name.c_str(),
+            contact.pose.pose.position.x, contact.pose.pose.position.y, reason);
+    }
+    return reason == nullptr;
+}
+
 void MissionManager::markContactInvestigated(const std::string & name) {
     auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
         [&](const Contact& c) { return c.name == name; });
@@ -695,9 +705,16 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             }
         }
 
-        auto existing = findContact(pose.header.frame_id, pose);
+        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
+        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& c) {
+            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id;
+        });
+        if (existing == mission_contacts.end()) {
+            existing = findContact(pose.header.frame_id, pose);
+        }
 
         if (existing != mission_contacts.end()) {
+            existing->track_start_ns = track_start_ns;
             if (existing->investigated || existing->dismissed) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
@@ -707,7 +724,7 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
                 // Tasks not yet created: keep updating the position and wait for the delay.
                 existing->pose = pose;
                 if (now - existing->first_seen_sec >=
-                    params_.toi.contact_trigger_delay) {
+                    params_.toi.contact_trigger_delay && investigationAllowed(*existing)) {
                     RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", existing->name.c_str(), params_.toi.contact_trigger_delay);
                     createToiTasks(*existing, veh_poses);
                 }
@@ -719,8 +736,9 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
         }
 
         Contact & contact = addContact(pose.header.frame_id, pose);
+        contact.track_start_ns = track_start_ns;
 
-        if (params_.toi.contact_trigger_delay <= 0.0) {
+        if (params_.toi.contact_trigger_delay <= 0.0 && investigationAllowed(contact)) {
             createToiTasks(contact, veh_poses);
         } else {
             RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);

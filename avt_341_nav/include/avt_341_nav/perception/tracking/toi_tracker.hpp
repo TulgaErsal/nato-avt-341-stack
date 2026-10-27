@@ -51,9 +51,13 @@ class ToiTracker : public ObjectTracker {
     }
 
    protected:
-    /** @brief Publish a contact on the first active-tracking tick after
-     *         "target_selection.toi_min_detections" camera detections
-     *         (encircle trigger) and then every contact_update_interval_ticks_. */
+    /** @brief Publish a track's first contact on the first active-tracking
+     *         tick after "target_selection.toi_min_detections" camera
+     *         detections (encircle trigger), then every
+     *         contact_update_interval_ticks_. Each contact pose's header.stamp
+     *         is the time its track started, the same for all contacts of one
+     *         track, so the mission manager can tell a track's moved estimate
+     *         from another target. */
     void MaybePublishContactUpdate() override;
 
     const std::vector<Eigen::Vector3d>& ExcludedPositions() const override {
@@ -73,7 +77,8 @@ class ToiTracker : public ObjectTracker {
     // Target contacts (encircle trigger)
     // -------------------------------------------------------------------------
 
-    bool encircle_triggered_ = false;
+    /** @brief Start of the track whose first contact has been published. */
+    int64_t published_track_start_ns_ = 0;
 
     int contact_update_counter_ = 0;
 

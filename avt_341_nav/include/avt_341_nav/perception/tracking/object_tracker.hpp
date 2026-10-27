@@ -10,6 +10,7 @@
 #ifndef AVT_341_OBJECT_TRACKER_H
 #define AVT_341_OBJECT_TRACKER_H
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -347,6 +348,11 @@ class ObjectTracker {
     /** @brief A detection was ingested since the last tracking tick
      *         (has_detection_ can stay set on a re-used detection). */
     bool has_fresh_detection_ = false;
+
+    /** @brief When the current track started (its filter was first
+     *         initialized since the last reset or timeout) [ns]; 0 without a
+     *         track. A re-initialization on the first LiDAR lock keeps it. */
+    int64_t track_start_ns_ = 0;
 
     /** @brief Time stamp of the last valid detection message containing the
      *         target. */

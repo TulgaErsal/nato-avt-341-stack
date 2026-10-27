@@ -177,6 +177,10 @@ ros__parameters:
       description: "Target contacts within this planar distance [m] of any team vehicle (including the ego vehicle) are ignored, so team members detected as targets of interest are not investigated. 0 disables the filter."
       validation:
         gt_eq<>: [ 0.0 ]
+    autonomy_topic:
+      type: string
+      default_value: '/autonomy_enabled'
+      description: "std_msgs/Bool topic reporting whether the vehicle is under autonomous control; no investigation is started while it reports false (none is started without an active task either). Empty, or no message, leaves investigations enabled."
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'

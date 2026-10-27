@@ -314,6 +314,29 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetAloneIsNotTracked) {
     EXPECT_TRUE(contacts_.empty());
 }
 
+TEST_F(ObjectTrackerToiContactTest, ContactsOfOneTrackShareItsStartStamp) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0, OTHER_Y_OFFSET}, 20);
+    ASSERT_GE(contacts_.size(), 2u);
+    const auto first_track = rclcpp::Time(contacts_.front().poses.front().header.stamp);
+    EXPECT_GT(first_track.nanoseconds(), 0);
+    for (const auto& contact : contacts_) {
+        EXPECT_EQ(rclcpp::Time(contact.poses.front().header.stamp), first_track);
+    }
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    contacts_.clear();
+    TrackFrames({0.0, OTHER_Y_OFFSET}, 30);
+    ASSERT_GE(contacts_.size(), 2u);
+    const auto second_track = rclcpp::Time(contacts_.front().poses.front().header.stamp);
+    EXPECT_NE(second_track, first_track);
+    for (const auto& contact : contacts_) {
+        EXPECT_EQ(rclcpp::Time(contact.poses.front().header.stamp), second_track);
+    }
+}
+
 TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetWithAnOffRangeEstimateIsStillSkipped) {
     PublishCameraInfo();
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
@@ -428,6 +451,24 @@ TEST_F(ObjectTrackerToiOutOfViewTest, CameraCorrectsLidarDriftWhenTheTargetIsBac
         PublishDetections({0.0});
         Spin(100ms);
     }
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_TRUE(AtA(contact));
+    }
+}
+
+TEST_F(ObjectTrackerToiOutOfViewTest, LidarLockHoldsWhileOnlyAPartOfTheTargetIsInView) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 15);
+    TrackFrames({0.0}, 5, {}, A);  // first LiDAR lock re-initializes the filter
+    // Turn the camera 40 deg right: the target's box now projects just left of
+    // the image while a partial detection of it, with a range estimate 50 %
+    // long, stays at its left edge.
+    PublishCameraTf(-0.298836, 0.640856, -0.640856, 0.298836);
+    contacts_.clear();
+    TrackFrames({21.1}, 30, {1.5 * TARGET_RANGE}, A);
+
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
         EXPECT_TRUE(AtA(contact));

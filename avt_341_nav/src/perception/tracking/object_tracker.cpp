@@ -174,6 +174,21 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     // marker positions as LiDAR measurements, replacing the internal PCL
     // clustering pipeline.
 
+    // A detection without a marker near it would replace a held LiDAR lock by
+    // the camera range estimate, which is poor near the image edges: carry on
+    // with the locked marker while it is reported.
+    if (state_ == TrackerState::FULL_TRACKING && tracked_obstacle_id_ >= 0 &&
+        context.has_obstacle_markers && context.obstacle_markers &&
+        !AssociateMarker(detections_message_, *context.obstacle_markers)) {
+        const auto& markers = context.obstacle_markers->markers;
+        if (std::any_of(markers.begin(), markers.end(), [this](const auto& marker) {
+                return marker.action != visualization_msgs::msg::Marker::DELETEALL &&
+                       marker.id == tracked_obstacle_id_;
+            })) {
+            state_ = TrackerState::LIDAR_ONLY_TRACKING;
+        }
+    }
+
     if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
         // In LIDAR_ONLY mode we already have an associated obstacle ID from
         // a previous FULL_TRACKING cycle. Find that marker in the latest
@@ -500,6 +515,7 @@ void ObjectTracker::EstimatorTick() {
             has_had_first_lidar_measurement_ = false;
             tracked_obstacle_id_ = -1;
             camera_detection_count_ = 0;
+            track_start_ns_ = 0;
         }
     }
 
@@ -515,6 +531,9 @@ void ObjectTracker::EstimatorTick() {
         bounding_box_centroid_global_ = seed;
         bounding_box_centroid_filtered_ = seed;
         filter_initialized_ = true;
+        if (track_start_ns_ == 0) {
+            track_start_ns_ = node_->get_clock()->now().nanoseconds();
+        }
     }
 
     // Do not advance the filter when there is no active detection.
@@ -875,6 +894,7 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
     camera_detection_count_ = 0;
+    track_start_ns_ = 0;
 
     const rclcpp::Time now = node_->get_clock()->now();
     last_valid_target_time_ = now;

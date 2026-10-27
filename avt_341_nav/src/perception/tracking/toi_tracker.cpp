@@ -26,13 +26,12 @@ ToiTracker::ToiTracker(
 
 void ToiTracker::Reset() {
     ObjectTracker::Reset();
-    encircle_triggered_ = false;
     contact_update_counter_ = 0;
 }
 
 void ToiTracker::PublishTargetContact() {
     geometry_msgs::msg::PoseStamped contact_pose;
-    contact_pose.header.stamp = node_->get_clock()->now();
+    contact_pose.header.stamp = rclcpp::Time(track_start_ns_, node_->get_clock()->get_clock_type());
     contact_pose.header.frame_id = target_class_;
     contact_pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
     contact_pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
@@ -57,13 +56,13 @@ void ToiTracker::MaybePublishContactUpdate() {
 
     if (!is_actively_tracking) return;
 
-    if (!encircle_triggered_) {
+    if (published_track_start_ns_ != track_start_ns_) {
         if (camera_detection_count_ <
             params_.target_selection.toi_min_detections) {
             return;
         }
         PublishTargetContact();
-        encircle_triggered_ = true;
+        published_track_start_ns_ = track_start_ns_;
         contact_update_counter_ = 0;
     } else if (++contact_update_counter_ >= contact_update_interval_ticks_) {
         PublishTargetContact();

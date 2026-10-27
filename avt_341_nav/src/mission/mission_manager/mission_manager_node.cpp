@@ -28,6 +28,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/string.hpp"
 
 std::queue<avt_341_msgs::msg::Communication> comm_msgs;
@@ -389,6 +390,11 @@ int main(int argc, char **argv) {
     auto communication_sub = nh->create_subscription<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
     auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state", 10, NavStateCallback);
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr autonomy_sub;
+    if (!params.toi.autonomy_topic.empty()) {
+        autonomy_sub = nh->create_subscription<std_msgs::msg::Bool>(params.toi.autonomy_topic, 10,
+            [](std_msgs::msg::Bool::SharedPtr msg) { mgr->setAutonomyEnabled(msg->data); });
+    }
     auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
     auto veh1_sub = get_veh_odom_sub(
         params.vehicle_namespaces, 0, params.use_avt_tracker,
