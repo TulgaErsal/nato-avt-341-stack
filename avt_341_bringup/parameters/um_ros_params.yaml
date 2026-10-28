@@ -64,7 +64,7 @@
 /**/object_tracker_node:
   ros__parameters:
     camera:
-      ego_mask_top: 0.7
+      ego_mask_top: 0.8
     target_selection:
       toi_regex: '^$'
     obstacle_detector:
