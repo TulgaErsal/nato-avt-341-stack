@@ -1,6 +1,8 @@
 // clas definition
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/node/node_utils.h"
+#include "avt_341_nav/core/frame_id_collection.hpp"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -44,6 +46,8 @@ MissionManager::MissionManager(
 
     local_origin_x = params_.frames.gis.origin_x;
     local_origin_y = params_.frames.gis.origin_y;
+    base_link_frame_ = avt_341_nav::core::FrameIdCollection(
+        params_.frames, avt_341_nav::node::GetLeadingNodeNamespace(node_)).BaseLink();
 
     waypoint_pub = node_->create_publisher<avt_341_msgs::msg::NavGoalSequence>("avt_341/new_waypoints", 10);
     reset_pub = node_->create_publisher<std_msgs::msg::String>("avt_341/reset", 10);
@@ -319,6 +323,7 @@ avt_341_msgs::msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const T
     avt_341_msgs::msg::MissionTaskStatus status_msg;
     status_msg.header.stamp = node_->now();
     status_msg.header.frame_id = "map";
+    status_msg.ego_frame_id = base_link_frame_;
 
     if(task == nullptr) {
         status_msg.task_id = -1;
@@ -348,9 +353,9 @@ void MissionManager::publishTaskCompletion(const std::string & sender_name, int 
   communication_pub->publish(TaskCompleteMsg(my_name, -1, sender_name, msg_id).toROSMsg());
 }
 
-void MissionManager::publishTaskChange() {
+avt_341_msgs::msg::MissionModuleStatus MissionManager::createModuleStatusMsg() const {
     avt_341_msgs::msg::MissionModuleStatus status_msg;
-    const Task* active_task = currentTask();
+    const Task* active_task = task_list.empty() ? nullptr : task_list.front();
     status_msg.active_task = createTaskStatusMsg(active_task);
     status_msg.header = status_msg.active_task.header;
 
@@ -361,7 +366,17 @@ void MissionManager::publishTaskChange() {
         }
     }
 
-    task_change_pub->publish(status_msg);
+    status_msg.completed_tasks.reserve(completed_tasks_.size());
+    status_msg.completed_task_durations.reserve(completed_tasks_.size());
+    for (const CompletedTask & completed : completed_tasks_) {
+        status_msg.completed_tasks.push_back(completed.description);
+        status_msg.completed_task_durations.push_back(completed.duration_sec);
+    }
+    return status_msg;
+}
+
+void MissionManager::publishTaskChange() {
+    task_change_pub->publish(createModuleStatusMsg());
 }
 
 
@@ -370,6 +385,9 @@ void MissionManager::updateTasks() {
     if(active_task != nullptr) {
 
         if(!active_task->init_done){
+          if(active_task->start_time_sec < 0.0) {
+            active_task->start_time_sec = nowSeconds();
+          }
           publishSpeedSetPoint();
           active_task->init();
           if(active_task->toi_regex.has_value() && toi_regex_handler_) {
@@ -388,7 +406,10 @@ void MissionManager::updateTasks() {
         active_task->run();
         if(active_task->is_done()){
           active_task->on_done();
-          RCLCPP_INFO(node_->get_logger(), "    > %s TASK COMPLETE (of %d): %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
+          active_task->end_time_sec = nowSeconds();
+          const double duration_sec = active_task->end_time_sec - active_task->start_time_sec;
+          completed_tasks_.push_back({active_task->description(), duration_sec});
+          RCLCPP_INFO(node_->get_logger(), "    > %s TASK COMPLETE (of %d) after %.1f s: %s", my_name.c_str(), task_list.size(), duration_sec, active_task->description().c_str());
           publishTaskCompletion(active_task);
           task_list.pop_front();
           delete active_task;
@@ -515,6 +536,7 @@ void MissionManager::reset(){
   resetTaskList(false);
   obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
   task_completions_.clear();
+  completed_tasks_.clear();
   current_gp_goal = geometry_msgs::msg::PoseStamped();
   mission_contacts.clear();
   arrivals_.clear();

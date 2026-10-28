@@ -91,6 +91,18 @@
       properties (no topic); drag it with the left mouse button to move it.
     </description>
   </class>
+  <class name="avt_341_rviz_plugins/MissionTaskStatus"
+         type="avt_341::rviz_plugins::MissionTaskStatusDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      Shows an avt_341_msgs/MissionTaskStatus (task description and speed
+      setpoint) on a colored 2D panel that follows the vehicle frame named by
+      the message's ego_frame_id (its base_link) at a configurable offset.
+      Background and text colors are configurable; the panel keeps its pixel
+      size whatever the camera does.
+    </description>
+    <message_type>avt_341_msgs/msg/MissionTaskStatus</message_type>
+  </class>
   <class name="avt_341_rviz_plugins/Set Nav Goal"
          type="avt_341::rviz_plugins::SetNavGoalTool"
          base_class_type="rviz_common::Tool">

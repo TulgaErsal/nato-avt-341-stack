@@ -51,6 +51,9 @@ MAP_FRAME_ID: str = "map"
 # Master timer frequency. No topic can publish faster than this.
 TICK_RATE_HZ: float = 30.0
 
+# Finished tasks kept in the mocked mission module status, newest last.
+MAX_COMPLETED_TASKS: int = 6
+
 # Depth of the publisher queues.
 QOS_DEPTH: int = 10
 
@@ -189,6 +192,10 @@ class MockUiDataPublisher(Node):
             vehicle_id: self._make_active_task(vehicle_id)
             for vehicle_id in VEHICLE_IDS
         }
+        # (description, run time [s]) of the tasks each vehicle has finished.
+        self._completed_tasks: Dict[str, List] = {
+            vehicle_id: [] for vehicle_id in VEHICLE_IDS
+        }
 
         self._timer = self.create_timer(1.0 / TICK_RATE_HZ, self._on_tick)
 
@@ -316,6 +323,7 @@ class MockUiDataPublisher(Node):
         """
         msg = MissionTaskStatus()
         msg.header = self._header(MAP_FRAME_ID)
+        msg.ego_frame_id = f"{vehicle_id}/base_link"
         msg.task_id = -1
         if random.random() < IDLE_PROBABILITY:
             return msg
@@ -371,11 +379,21 @@ class MockUiDataPublisher(Node):
         This topic mocks a task *change*, so it is where a new active task is
         picked; the status stream then refreshes whatever is chosen here.
         """
+        # The task that was running until now counts as finished, with a
+        # made-up run time; the history is capped so the table stays readable.
+        previous = self._active_tasks[vehicle_id]
+        completed = self._completed_tasks[vehicle_id]
+        if previous.task_description:
+            completed.append((previous.task_description,
+                              random.uniform(5.0, 180.0)))
+            del completed[:-MAX_COMPLETED_TASKS]
         self._active_tasks[vehicle_id] = self._make_active_task(vehicle_id)
 
         msg = MissionModuleStatus()
         msg.active_task = self._emit_active_task(vehicle_id)
         msg.header = msg.active_task.header
+        msg.completed_tasks = [description for description, _ in completed]
+        msg.completed_task_durations = [duration for _, duration in completed]
         # The queue is drawn from the task list behind the active one, so it can
         # only be non-empty while something is running.
         if msg.active_task.task_description:

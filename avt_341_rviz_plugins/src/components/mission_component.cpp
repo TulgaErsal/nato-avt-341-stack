@@ -1,6 +1,7 @@
 #include <avt_341_rviz_plugins/components/mission_component.h>
 
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <utility>
 
@@ -9,6 +10,7 @@
 #include <QFormLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QList>
 #include <QStackedLayout>
 #include <QStringList>
 #include <QTableWidget>
@@ -87,17 +89,20 @@ MissionComponent::MissionComponent( const QString& vehicle_id,
     task_description_value_->setWordWrap( true );
     formation_vehicles_value_->setWordWrap( true );
 
-    // The task list goes in a read-only single-column table (same style as the
+    // The task list goes in a read-only two-column table (same style as the
     // ComputeComponent status grid): descriptions can be long, so cells give
     // word wrap, per-row heights and scrolling for free. The vertical header
-    // stays visible as the 1-based execution position; the column header is
-    // hidden because the "Task List:" label above the table already titles it.
-    task_list_table_ = new QTableWidget( 0, 1 );
-    task_list_table_->horizontalHeader()->setVisible( false );
+    // stays visible as the 1-based execution position; the second column
+    // carries the run time of the tasks that already finished.
+    task_list_table_ = new QTableWidget( 0, 2 );
+    task_list_table_->setHorizontalHeaderLabels( { "Task", "Duration" } );
+    task_list_table_->horizontalHeader()->setSectionsClickable( false );
+    task_list_table_->horizontalHeader()->setHighlightSections( false );
     task_list_table_->setEditTriggers( QAbstractItemView::NoEditTriggers );
     task_list_table_->setSelectionMode( QAbstractItemView::NoSelection );
     task_list_table_->setFocusPolicy( Qt::NoFocus );
     task_list_table_->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::Stretch );
+    task_list_table_->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
     // Row heights track their (word-wrapped) content.
     task_list_table_->setWordWrap( true );
     task_list_table_->verticalHeader()->setSectionResizeMode( QHeaderView::ResizeToContents );
@@ -228,20 +233,46 @@ void MissionComponent::setActiveTaskFields( const avt_341_msgs::msg::MissionTask
 
 void MissionComponent::updateTaskList( const avt_341_msgs::msg::MissionModuleStatus& msg )
 {
-    // The running task heads the list and the queue follows it in execution
-    // order, so the table's row numbers read as "1 = running now".
-    QStringList descriptions;
+    // Rows run in execution order -- the tasks that already finished, then the
+    // running task, then the queue behind it -- so the row numbers read as the
+    // mission's task sequence. Only finished tasks have a run time to show.
+    enum class RowKind
+    {
+        Completed,
+        Active,
+        Queued
+    };
+    struct Row
+    {
+        QString description;
+        QString duration;
+        RowKind kind;
+    };
+    QList<Row> rows;
+
+    const int completed_count = static_cast<int>( msg.completed_tasks.size() );
+    const int duration_count = static_cast<int>( msg.completed_task_durations.size() );
+    for ( int i = 0; i < completed_count; ++i )
+    {
+        const QString duration =
+            i < duration_count
+                ? QString::number( msg.completed_task_durations[i], 'f', 1 ) + " s"
+                : QString( kEmptyValue );
+        rows.append( { valueOrDash( QString::fromStdString( msg.completed_tasks[i] ) ),
+                       duration, RowKind::Completed } );
+    }
     if ( has_active_task_ )
     {
-        descriptions << valueOrDash(
-            QString::fromStdString( msg.active_task.task_description ) );
+        rows.append( { valueOrDash( QString::fromStdString( msg.active_task.task_description ) ),
+                       QString( kEmptyValue ), RowKind::Active } );
     }
     for ( const std::string& description : msg.queued_tasks )
     {
-        descriptions << valueOrDash( QString::fromStdString( description ) );
+        rows.append( { valueOrDash( QString::fromStdString( description ) ),
+                       QString( kEmptyValue ), RowKind::Queued } );
     }
 
-    const int count = static_cast<int>( descriptions.size() );
+    const int count = rows.size();
     task_list_stack_->setCurrentWidget( count == 0
                                             ? task_list_empty_overlay_
                                             : static_cast<QWidget*>( task_list_table_ ) );
@@ -249,14 +280,24 @@ void MissionComponent::updateTaskList( const avt_341_msgs::msg::MissionModuleSta
     task_list_table_->setRowCount( count );
     for ( int row = 0; row < count; ++row )
     {
-        QTableWidgetItem* item = new QTableWidgetItem( descriptions.at( row ) );
-        // Highlight the running task, which is row 0 whenever there is one.
-        if ( has_active_task_ && row == 0 )
+        QTableWidgetItem* description_item = new QTableWidgetItem( rows.at( row ).description );
+        QTableWidgetItem* duration_item = new QTableWidgetItem( rows.at( row ).duration );
+        duration_item->setTextAlignment( Qt::AlignRight | Qt::AlignVCenter );
+        for ( QTableWidgetItem* item : { description_item, duration_item } )
         {
-            item->setBackground( QBrush( status_colors::kGreen ) );
-            item->setForeground( QBrush( Qt::white ) );
+            // The running task is highlighted; finished tasks are faded out.
+            if ( rows.at( row ).kind == RowKind::Active )
+            {
+                item->setBackground( QBrush( status_colors::kGreen ) );
+                item->setForeground( QBrush( Qt::white ) );
+            }
+            else if ( rows.at( row ).kind == RowKind::Completed )
+            {
+                item->setForeground( QBrush( status_colors::kGray ) );
+            }
         }
-        task_list_table_->setItem( row, 0, item );
+        task_list_table_->setItem( row, 0, description_item );
+        task_list_table_->setItem( row, 1, duration_item );
     }
 }
 

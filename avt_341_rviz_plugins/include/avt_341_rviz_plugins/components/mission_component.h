@@ -28,9 +28,10 @@ namespace rviz_plugins {
 ///
 /// The detail rows describe the active task, or -- once it finishes and nothing
 /// replaces it -- the last one that ran, so the panel keeps reporting what the
-/// vehicle was doing after it goes idle. The task list below them shows only
-/// what is really outstanding: the active task first (highlighted) followed by
-/// the queue behind it, and nothing at all when the vehicle is idle.
+/// vehicle was doing after it goes idle. The task list below them is the
+/// mission's task sequence: the tasks that already finished (faded, with
+/// their run time), then the active task (highlighted), then the queue
+/// behind it.
 ///
 /// The single feed is the latched MissionModuleStatus topic, which is
 /// authoritative: the mission manager publishes it on every task-list change,
@@ -88,8 +89,9 @@ protected:
     QLabel* formation_vehicles_value_;
     QLabel* formation_offsets_value_;
 
-    // Full-width table of task descriptions, active task first; the vertical
-    // header provides the 1-based execution position. The table stays visible
+    // Full-width task table in execution order (finished, active, queued) with
+    // a duration column for the finished tasks; the vertical header provides
+    // the 1-based position. The table stays visible
     // when there is nothing to show, with an overlay stacked over its empty body
     // carrying the "No tasks." message.
     QTableWidget* task_list_table_;

@@ -3,6 +3,10 @@
 # Stamped header for the message.
 std_msgs/Header header
 
+# tf frame of the ego vehicle this status belongs to (its base_link), for anchoring
+# displays to the vehicle. Empty if unknown.
+string ego_frame_id
+
 # Mission manager task ID being executing associated with the current formation. -1 if no task is running.
 int32 task_id -1
 

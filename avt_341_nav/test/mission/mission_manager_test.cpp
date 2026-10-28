@@ -502,3 +502,54 @@ TEST_F(MissionManagerContactsTest, CheckGoalArrivalPublishesTheActiveGoalAsWaypo
     EXPECT_DOUBLE_EQ(waypoints->poses.front().pose.position.y, -5.0);
     EXPECT_EQ(manager->currentTask(), move_to);
 }
+
+// Completed task history
+// ------------------------------------------------------------------------------------------------
+
+TEST_F(MissionManagerContactsTest, CompletedTasksAreRecordedWithDurationsAndReported)
+{
+    auto manager = MakeManager();
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", 21, 0.0));
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", 22, 0.0));
+    manager->updateTasks();
+    manager->updateTasks();
+    ASSERT_EQ(manager->currentTask(), nullptr);
+
+    const auto & completed = manager->completedTasks();
+    ASSERT_EQ(completed.size(), 2u);
+    EXPECT_NE(completed[0].description.find("ID 21"), std::string::npos);
+    EXPECT_NE(completed[1].description.find("ID 22"), std::string::npos);
+    EXPECT_GE(completed[0].duration_sec, 0.0);
+    EXPECT_GE(completed[1].duration_sec, 0.0);
+
+    const auto status = manager->createModuleStatusMsg();
+    EXPECT_EQ(status.active_task.task_id, -1);
+    ASSERT_EQ(status.completed_tasks.size(), 2u);
+    ASSERT_EQ(status.completed_task_durations.size(), 2u);
+    EXPECT_EQ(status.completed_tasks[0], completed[0].description);
+    EXPECT_EQ(status.completed_tasks[1], completed[1].description);
+    EXPECT_DOUBLE_EQ(status.completed_task_durations[0], completed[0].duration_sec);
+    EXPECT_DOUBLE_EQ(status.completed_task_durations[1], completed[1].duration_sec);
+
+    manager->reset();
+    EXPECT_TRUE(manager->completedTasks().empty());
+    EXPECT_TRUE(manager->createModuleStatusMsg().completed_tasks.empty());
+}
+
+// Task status ego frame
+// ------------------------------------------------------------------------------------------------
+
+TEST_F(MissionManagerContactsTest, TaskStatusCarriesTheEgoBaseLinkFrame)
+{
+    params_.frames.base_link = "base_link";
+    params_.frames.use_vehicle_prefix = false;
+    auto status = MakeManager()->createTaskStatusMsg(nullptr);
+    EXPECT_EQ(status.header.frame_id, "map");
+    EXPECT_EQ(status.ego_frame_id, "base_link");
+
+    params_.frames.use_vehicle_prefix = true;
+    node_ = std::make_shared<rclcpp::Node>("mission_manager_frame_test", "/mrzr2");
+    status = MakeManager()->createTaskStatusMsg(nullptr);
+    EXPECT_EQ(status.header.frame_id, "map");
+    EXPECT_EQ(status.ego_frame_id, "mrzr2/base_link");
+}

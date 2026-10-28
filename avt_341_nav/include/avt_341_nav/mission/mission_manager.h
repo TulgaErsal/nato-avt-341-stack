@@ -57,6 +57,12 @@ struct Contact {
     double first_seen_sec;
 };
 
+// A task that ran to completion and how long it took, reported in the module status.
+struct CompletedTask {
+    std::string description;
+    double duration_sec;
+};
+
 // Signature of a task-creating mission command, used to detect formation changes
 struct FormationSignature {
     std::string command_type;
@@ -160,6 +166,8 @@ class MissionManager{
     // otherwise the retained sample is served stale to late-joining subscribers.
     void publishTaskChange();
     avt_341_msgs::msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
+    avt_341_msgs::msg::MissionModuleStatus createModuleStatusMsg() const;
+    const std::vector<CompletedTask> & completedTasks() const { return completed_tasks_; }
     void checkGoalArrival();
     void reset();
     void resetTaskList(bool send_completion_msg);
@@ -186,10 +194,12 @@ class MissionManager{
     rclcpp::Node::SharedPtr node_;
     std::shared_ptr<GoalFilter> goal_filter_;
     double speed_setpoint_state = -1.0;
+    std::string base_link_frame_;
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
+    std::vector<CompletedTask> completed_tasks_;
 
     FormationSignature last_command_signature_;
 

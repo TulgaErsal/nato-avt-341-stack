@@ -83,6 +83,7 @@ set(SRC_FILES
     src/display_plugins/map_color_scheme.cpp
     src/display_plugins/legend_display.cpp
     src/display_plugins/legend_properties.cpp
+    src/display_plugins/mission_task_status_display.cpp
     src/tool_plugins/set_nav_goal_tool.cpp
     src/tool_plugins/set_formation_tool.cpp
     src/primitives/accordion_group.cpp
@@ -98,6 +99,7 @@ set(SRC_FILES
     src/primitives/map_change_overlay.cpp
     src/primitives/screen_overlay.cpp
     src/primitives/legend_renderer.cpp
+    src/primitives/text_panel_renderer.cpp
     src/primitives/vector_field.cpp
     src/primitives/matrix_field.cpp)
 
@@ -212,6 +214,9 @@ install(FILES resources/plugin_icons/augmented_map.svg
 install(FILES resources/plugin_icons/legend.svg
   DESTINATION "share/${PROJECT_NAME}/icons/classes"
   RENAME "Legend.svg")
+install(FILES resources/plugin_icons/mission_task_status.svg
+  DESTINATION "share/${PROJECT_NAME}/icons/classes"
+  RENAME "MissionTaskStatus.svg")
 
 # Install image assets so they resolve at runtime via rviz_common::loadPixmap
 # package:// URLs (e.g. the logo shown in the Setup tab header).
