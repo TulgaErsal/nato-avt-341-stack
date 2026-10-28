@@ -1,8 +1,10 @@
 #include <avt_341_rviz_plugins/primitives/vector_field.h>
 
 #include <algorithm>
+#include <initializer_list>
 
 #include <QHBoxLayout>
+#include <QSizePolicy>
 
 namespace avt_341::rviz_plugins
 {
@@ -13,54 +15,60 @@ VectorField::VectorField( const QString& label, int num_entries,
     : QWidget( parent )
 {
     // Clamp the number of entries to the supported range [1, 3].
-    num_entries = std::max( 1, std::min( num_entries, 3 ) );
+    num_entries_ = std::max( 1, std::min( num_entries, 3 ) );
 
-    QHBoxLayout* layout = new QHBoxLayout;
-    layout->setContentsMargins( 0, 0, 0, 0 );
+    layout_ = new QHBoxLayout;
+    layout_->setContentsMargins( 0, 0, 0, 0 );
 
     // "<Label>:" — kept tight so a column of fields can share a label width.
     label_ = new QLabel( label + ":" );
-    layout->addWidget( label_ );
+    layout_->addWidget( label_ );
 
     // One colored axis box + read-only value field per entry. The value fields
     // expand by default, so the value row fills the remaining width.
-    for ( int i = 0; i < num_entries; ++i )
+    for ( int i = 0; i < num_entries_; ++i )
     {
         const QString axis = i < axis_labels.size() ? axis_labels.at( i ) : QString();
         const QColor color = i < axis_colors.size() ? axis_colors.at( i ) : QColor( Qt::gray );
         const QString tooltip = i < axis_tooltips.size() ? axis_tooltips.at( i ) : QString();
-
-        QLabel* axis_box = new QLabel( axis );
-        axis_box->setAlignment( Qt::AlignCenter );
-        axis_box->setToolTip( tooltip );
-        // Dark text on light backgrounds, white on dark, so the axis tag stays
-        // readable whatever the box color is.
-        const double luminance =
-            0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue();
-        const QString text_color = luminance > 150.0 ? QStringLiteral( "#333333" )
-                                                      : QStringLiteral( "white" );
-        axis_box->setStyleSheet(
-            QString( "background-color: %1; color: %2; font-weight: bold; "
-                     "padding: 2px 6px; border-radius: 2px;" )
-                .arg( color.name(), text_color ) );
-
-        QLineEdit* value_edit = new QLineEdit( "0.00" );
-        value_edit->setReadOnly( true );
-        value_edit->setAlignment( Qt::AlignRight );
-        value_edit->setToolTip( tooltip );
-        value_edits_.append( value_edit );
-
-        // Keep each colored box flush against its value field; the spacing
-        // between entries (and after the label) still comes from the outer layout.
-        QHBoxLayout* entry_layout = new QHBoxLayout;
-        entry_layout->setContentsMargins( 0, 0, 0, 0 );
-        entry_layout->setSpacing( 0 );
-        entry_layout->addWidget( axis_box );
-        entry_layout->addWidget( value_edit );
-        layout->addLayout( entry_layout );
+        value_edits_.append( addEntry( axis, tooltip, color ).value_edit );
     }
 
-    setLayout( layout );
+    setLayout( layout_ );
+}
+
+VectorField::Entry VectorField::addEntry( const QString& axis, const QString& tooltip,
+                                          const QColor& color )
+{
+    QLabel* axis_box = new QLabel( axis );
+    axis_box->setAlignment( Qt::AlignCenter );
+    axis_box->setToolTip( tooltip );
+    // Dark text on light backgrounds, white on dark, so the axis tag stays
+    // readable whatever the box color is.
+    const double luminance =
+        0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue();
+    const QString text_color = luminance > 150.0 ? QStringLiteral( "#333333" )
+                                                  : QStringLiteral( "white" );
+    axis_box->setStyleSheet(
+        QString( "background-color: %1; color: %2; font-weight: bold; "
+                 "padding: 2px 6px; border-radius: 2px;" )
+            .arg( color.name(), text_color ) );
+
+    QLineEdit* value_edit = new QLineEdit( "0.00" );
+    value_edit->setReadOnly( true );
+    value_edit->setAlignment( Qt::AlignRight );
+    value_edit->setToolTip( tooltip );
+
+    // Keep each colored box flush against its value field; the spacing
+    // between entries (and after the label) still comes from the outer layout.
+    QHBoxLayout* entry_layout = new QHBoxLayout;
+    entry_layout->setContentsMargins( 0, 0, 0, 0 );
+    entry_layout->setSpacing( 0 );
+    entry_layout->addWidget( axis_box );
+    entry_layout->addWidget( value_edit );
+    layout_->addLayout( entry_layout );
+
+    return { axis_box, value_edit };
 }
 
 void VectorField::setValues( const QVector<double>& values )
@@ -69,6 +77,31 @@ void VectorField::setValues( const QVector<double>& values )
     for ( int i = 0; i < n; ++i )
     {
         value_edits_[i]->setText( QString::number( values[i], 'f', 2 ) );
+    }
+}
+
+void VectorField::setColumnCount( int columns )
+{
+    const int padding = std::max( 0, std::min( columns, 3 ) - num_entries_ );
+    while ( placeholders_.size() < padding )
+    {
+        // A one-character tag keeps the hidden box as wide as a real cell's.
+        placeholders_.append(
+            addEntry( QStringLiteral( "x" ), QString(), QColor( 220, 220, 220 ) ) );
+    }
+
+    // Padding cells stay hidden but keep their space; any beyond the requested
+    // column count collapse to nothing.
+    for ( int i = 0; i < placeholders_.size(); ++i )
+    {
+        for ( QWidget* widget : { static_cast<QWidget*>( placeholders_[i].axis_box ),
+                                  static_cast<QWidget*>( placeholders_[i].value_edit ) } )
+        {
+            QSizePolicy policy = widget->sizePolicy();
+            policy.setRetainSizeWhenHidden( i < padding );
+            widget->setSizePolicy( policy );
+            widget->hide();
+        }
     }
 }
 

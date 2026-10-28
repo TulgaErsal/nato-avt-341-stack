@@ -12,6 +12,8 @@
 #include <QWidget>
 #endif
 
+class QHBoxLayout;
+
 namespace avt_341 {
 namespace rviz_plugins {
 
@@ -45,6 +47,12 @@ public:
     /// Update the displayed values (one per entry; extra values are ignored).
     void setValues( const QVector<double>& values );
 
+    /// Lay the cells out as if the field had `columns` entries (clamped to
+    /// [num_entries, 3]): the unused trailing cells are hidden but keep their
+    /// space, so a shorter vector lines up with 3-component rows instead of
+    /// stretching its cells across the full width (the default).
+    void setColumnCount( int columns );
+
     /// Force a fixed width on this field's label so a column of fields can
     /// share a common label width (see alignLabels()).
     void setLabelWidth( int width );
@@ -57,9 +65,22 @@ public:
     static void alignLabels( const QList<VectorField*>& fields );
 
 protected:
+    struct Entry
+    {
+        QLabel* axis_box;
+        QLineEdit* value_edit;
+    };
+
+    // Appends one "[axis] value" cell to the row.
+    Entry addEntry( const QString& axis, const QString& tooltip, const QColor& color );
+
     // QT Widgets
+    QHBoxLayout* layout_;
     QLabel* label_;
     QVector<QLineEdit*> value_edits_;
+    // Hidden cells padding the row out to the column count (see setColumnCount()).
+    QVector<Entry> placeholders_;
+    int num_entries_;
 
 };
 

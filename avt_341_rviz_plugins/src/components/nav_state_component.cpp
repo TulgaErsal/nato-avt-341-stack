@@ -60,6 +60,13 @@ void NavStateComponent::buildUi()
         "Goal", 3, { "x", "y", theta },
         { "goal position x", "goal position y", "goal yaw (heading)" } );
 
+    // Thresholds: distance and yaw error below which the goal counts as reached.
+    threshold_field_ = new VectorField(
+        "Thresh", 2, { "d", theta },
+        { "goal distance threshold", "goal yaw threshold (radians)" } );
+    // Pad to three cells so the two values line up with the rows above.
+    threshold_field_->setColumnCount( 3 );
+
     // Nav State row: "<Label>:" + colored status text.
     nav_state_label_ = new QLabel( "State:" );
     nav_state_value_ = new QLabel( "None" );
@@ -86,12 +93,14 @@ void NavStateComponent::buildUi()
     const int label_width = std::max(
         { pose_field_->labelWidthHint(), velocity_field_->labelWidthHint(),
           command_field_->labelWidthHint(), goal_field_->labelWidthHint(),
+          threshold_field_->labelWidthHint(),
           nav_state_label_->sizeHint().width(),
           duration_label_->sizeHint().width() } );
     pose_field_->setLabelWidth( label_width );
     velocity_field_->setLabelWidth( label_width );
     command_field_->setLabelWidth( label_width );
     goal_field_->setLabelWidth( label_width );
+    threshold_field_->setLabelWidth( label_width );
     nav_state_label_->setFixedWidth( label_width );
     duration_label_->setFixedWidth( label_width );
 
@@ -104,6 +113,7 @@ void NavStateComponent::buildUi()
     layout->addSpacing( 12 );
     layout->addLayout( nav_state_row );
     layout->addWidget( goal_field_ );
+    layout->addWidget( threshold_field_ );
     layout->addLayout( duration_row );
     layout->addStretch();
     setLayout( layout );
@@ -139,6 +149,8 @@ void NavStateComponent::subscribe()
             goal_field_->setValues( { msg->goal.pose.position.x,
                                       msg->goal.pose.position.y,
                                       yawOf( msg->goal.pose.orientation ) } );
+            threshold_field_->setValues(
+                { msg->goal.dist_threshold, msg->goal.yaw_threshold } );
             duration_value_->setText(
                 QString::number( msg->goal_duration, 'f', 2 ) + " s" );
         } );

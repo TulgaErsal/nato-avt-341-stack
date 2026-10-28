@@ -22,7 +22,7 @@ class VectorField;
 
 /// Per-vehicle "Nav State" tab content. Subscribes to the vehicle's odometry,
 /// nav-state, command-velocity and desired-speed topics and shows pose,
-/// velocity, command, run state, goal and goal duration.
+/// velocity, command, run state, goal, goal thresholds and goal duration.
 ///
 /// Like the other components it subscribes using the panel's node, which the
 /// panel spins on the UI thread, so the callbacks update the widgets directly.
@@ -67,6 +67,7 @@ protected:
     VectorField* velocity_field_ = nullptr;
     VectorField* command_field_ = nullptr;
     VectorField* goal_field_ = nullptr;
+    VectorField* threshold_field_ = nullptr;
     QLabel* nav_state_label_ = nullptr;
     QLabel* nav_state_value_ = nullptr;
     QLabel* duration_label_ = nullptr;
