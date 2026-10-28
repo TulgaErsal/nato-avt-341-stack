@@ -155,8 +155,10 @@ private:
   void buildCirclePath_(double from_rad, double degrees);
   double rangeRad_() const;
   double bearingFromTarget_(const geometry_msgs::msg::Point & point) const;
+  double blockedFractionAhead_(const nav_msgs::msg::OccupancyGrid & grid) const;
 
   bool arrived;
+  bool abandoned_ = false;
   geometry_msgs::msg::PoseStamped target_;
   std::string contact_name_;
   double radius_;
@@ -164,6 +166,11 @@ private:
   bool is_cw_;
   double goal_threshold_;
   double replan_distance_ = 0.0;
+  double blocked_time_ = 0.0;
+  double blocked_lookahead_ = 0.0;
+  double blocked_fraction_ = 1.0;
+  double blocked_clearance_ = 0.0;
+  double blocked_since_ = -1.0;
   double start_rad_ = 0.0;
   double swept_rad_ = 0.0;
   geometry_msgs::msg::Point last_position_;

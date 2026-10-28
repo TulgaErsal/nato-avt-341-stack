@@ -5,6 +5,7 @@
 #include <math.h>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
@@ -16,6 +17,10 @@ Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_
     : Encircle(manager, sender, msg_id, target, params.encircle_radius, params.encircle_degrees, params.encircle_cw, params.goal_threshold) {
   replan_distance_ = params.encircle_replan_distance;
   speed_limit = params.encircle_speed;
+  blocked_time_ = params.encircle_blocked_time;
+  blocked_lookahead_ = params.encircle_blocked_lookahead;
+  blocked_fraction_ = params.encircle_blocked_fraction;
+  blocked_clearance_ = params.encircle_blocked_clearance;
 }
 
 Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
@@ -95,10 +100,67 @@ void Encircle::run() {
   mgr->publishGpToggle(0);
 
   arrived = arrived || swept_rad_ >= rangeRad_() - goal_threshold_ / radius_;
+
+  if (arrived || blocked_time_ <= 0.0 || !mgr->occupancy_grid) {
+    return;
+  }
+  const double now = mgr->nowSeconds();
+  const double fraction = blockedFractionAhead_(*mgr->occupancy_grid);
+  if (fraction < blocked_fraction_) {
+    blocked_since_ = -1.0;
+  } else if (blocked_since_ < 0.0) {
+    blocked_since_ = now;
+  } else if (now - blocked_since_ >= blocked_time_) {
+    abandoned_ = true;
+    RCLCPP_WARN(mgr->logger(), "Abandoning the encircle of \"%s\": %.0f%% of the next %.0f m of the circle has been blocked for %.1f s.",
+                contact_name_.c_str(), 100.0 * fraction, blocked_lookahead_, now - blocked_since_);
+  }
+}
+
+// Fraction of the circle poses within blocked_lookahead_ ahead of the vehicle with an occupied cell within blocked_clearance_.
+double Encircle::blockedFractionAhead_(const nav_msgs::msg::OccupancyGrid & grid) const {
+  const auto & poses = circle_path_.poses;
+  const auto & ego = mgr->odometry.pose.pose.position;
+  size_t start = 0;
+  double best = std::numeric_limits<double>::max();
+  for (size_t i = 0; i < poses.size(); ++i) {
+    const double d = std::hypot(poses[i].pose.position.x - ego.x, poses[i].pose.position.y - ego.y);
+    if (d < best) {
+      best = d;
+      start = i;
+    }
+  }
+  const double res = grid.info.resolution;
+  const int width = static_cast<int>(grid.info.width);
+  const int height = static_cast<int>(grid.info.height);
+  const int reach = static_cast<int>(std::ceil(blocked_clearance_ / res));
+  int checked = 0;
+  int blocked = 0;
+  double length = 0.0;
+  for (size_t i = start; i < poses.size(); ++i) {
+    const auto & p = poses[i].pose.position;
+    if (i > start) {
+      length += std::hypot(p.x - poses[i - 1].pose.position.x, p.y - poses[i - 1].pose.position.y);
+      if (length > blocked_lookahead_) {
+        break;
+      }
+    }
+    const int col = static_cast<int>(std::floor((p.x - grid.info.origin.position.x) / res));
+    const int row = static_cast<int>(std::floor((p.y - grid.info.origin.position.y) / res));
+    bool hit = false;
+    for (int r = std::max(row - reach, 0); r <= std::min(row + reach, height - 1) && !hit; ++r) {
+      for (int c = std::max(col - reach, 0); c <= std::min(col + reach, width - 1) && !hit; ++c) {
+        hit = grid.data[static_cast<size_t>(r) * width + c] > 0;
+      }
+    }
+    ++checked;
+    blocked += hit ? 1 : 0;
+  }
+  return checked > 0 ? static_cast<double>(blocked) / checked : 0.0;
 }
 
 bool Encircle::is_done() {
-  return arrived;
+  return arrived || abandoned_;
 }
 
 void Encircle::on_done() {

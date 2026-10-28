@@ -316,6 +316,50 @@ void DriveAlongCircle(MissionManager & manager, Encircle & encircle, double radi
     }
 }
 
+// A 40 m square grid around the target with the rows between y_min and y_max occupied.
+nav_msgs::msg::OccupancyGrid::SharedPtr MakeBandGrid(double y_min, double y_max)
+{
+    auto grid = std::make_shared<nav_msgs::msg::OccupancyGrid>();
+    grid->info.resolution = 0.25;
+    grid->info.width = 160;
+    grid->info.height = 160;
+    grid->info.origin.position.x = -20.0;
+    grid->info.origin.position.y = -20.0;
+    grid->data.assign(160 * 160, 0);
+    for (int row = 0; row < 160; ++row) {
+        const double y = -20.0 + (row + 0.5) * 0.25;
+        if (y >= y_min && y <= y_max) {
+            std::fill_n(grid->data.begin() + row * 160, 160, 100);
+        }
+    }
+    return grid;
+}
+
+TEST_F(EncircleReplanTest, EncircleIsAbandonedWhenTheCircleAheadStaysBlocked)
+{
+    params_.toi.encircle_blocked_time = 0.2;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    manager->occupancy_grid = MakeBandGrid(-6.0, -2.0);
+    encircle->run();
+    EXPECT_FALSE(encircle->is_done());
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    encircle->run();
+    EXPECT_TRUE(encircle->is_done());
+}
+
+TEST_F(EncircleReplanTest, ObstaclesBehindTheVehicleDoNotAbandonTheEncircle)
+{
+    params_.toi.encircle_blocked_time = 0.2;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    manager->occupancy_grid = MakeBandGrid(2.0, 6.0);
+    encircle->run();
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    encircle->run();
+    EXPECT_FALSE(encircle->is_done());
+}
+
 TEST_F(EncircleReplanTest, QueuedEncircleOnlyTakesTheNewTarget)
 {
     auto manager = MakeManager();

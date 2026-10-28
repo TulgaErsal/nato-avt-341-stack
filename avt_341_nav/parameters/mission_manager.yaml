@@ -161,6 +161,30 @@ ros__parameters:
       description: "Speed limit [m/s] while encircling a target of interest (a slower mission speed is kept); 0 keeps the mission's. The MPC heads for a goal point the goal point processor picks speed x (prediction_time_horizon + goal_lookahead_time_padding) metres along the circle, so a slower encircle keeps that goal closer and the vehicle on the circle."
       validation:
         gt_eq<>: [ 0.0 ]
+    encircle_blocked_time:
+      type: double
+      default_value: 3.0
+      description: "An encircle is abandoned (its target counted as investigated) once at least encircle_blocked_fraction of the next encircle_blocked_lookahead metres of the circle has had an occupied cell of avt_341/occupancy_grid within encircle_blocked_clearance for this long [s]. 0 never abandons it."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    encircle_blocked_lookahead:
+      type: double
+      default_value: 10.0
+      description: "Length of the circle ahead of the vehicle checked for obstacles [m] (see encircle_blocked_time)."
+      validation:
+        gt<>: [ 0.0 ]
+    encircle_blocked_fraction:
+      type: double
+      default_value: 0.5
+      description: "Fraction of the circle ahead that must be blocked (see encircle_blocked_time)."
+      validation:
+        bounds<>: [ 0.0, 1.0 ]
+    encircle_blocked_clearance:
+      type: double
+      default_value: 0.75
+      description: "A circle pose is blocked when an occupied cell lies within this distance of it [m] (see encircle_blocked_time)."
+      validation:
+        gt_eq<>: [ 0.0 ]
     encircle_replan_distance:
       type: double
       default_value: 2.0
