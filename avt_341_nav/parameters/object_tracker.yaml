@@ -58,6 +58,12 @@ ros__parameters:
       type: double
       default_value: 4.0
       description: "Bounding-box measurement uncertainty [px]."
+    ego_mask_top:
+      type: double
+      default_value: 1.0
+      description: "Image row, as a fraction of the image height from the top, below which the camera sees the ego vehicle itself (e.g. its hood). Detections centered below it are ignored, so the object detector labeling the ego vehicle cannot start a track. 1.0 disables."
+      validation:
+        bounds<>: [ 0.0, 1.0 ]
 
   sync:
     enabled:

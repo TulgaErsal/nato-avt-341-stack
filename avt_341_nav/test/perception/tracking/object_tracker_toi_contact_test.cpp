@@ -527,12 +527,36 @@ TEST_F(ObjectTrackerToiContactTest, FirstContactWaitsForSeveralCameraDetections)
     EXPECT_FALSE(contacts_.empty());
 }
 
+TEST_F(ObjectTrackerToiContactTest, DetectionOfTheEgoHoodStartsNoTrack) {
+    PublishCameraInfo();
+    Spin(100ms);
+    for (int i = 0; i < 20; ++i) {
+        vision_msgs::msg::Detection2DArray detections;
+        detections.header.stamp = tracking_node_->get_clock()->now();
+        detections.header.frame_id = CAMERA_FRAME;
+        vision_msgs::msg::Detection2D detection;
+        detection.bbox.center.position.x = IMAGE_CX;
+        detection.bbox.center.position.y = 449.0;
+        detection.bbox.size_x = 500.0;
+        detection.bbox.size_y = 115.0;
+        vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
+        hypothesis.hypothesis.class_id = TARGET;
+        hypothesis.hypothesis.score = 0.7;
+        detection.results.push_back(hypothesis);
+        detections.detections.push_back(detection);
+        detections_pub_->publish(detections);
+        Spin(100ms);
+    }
+    EXPECT_TRUE(contacts_.empty());
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     std::vector<const char*> args(argv, argv + argc);
     args.insert(args.end(), {"--ros-args", "-p", "frames.use_vehicle_prefix:=false",
                              "-p", "frames.camera:=test_camera",
-                             "-p", "obstacle_detector.use_external_detector:=true"});
+                             "-p", "obstacle_detector.use_external_detector:=true",
+                             "-p", "camera.ego_mask_top:=0.7"});
     rclcpp::init(static_cast<int>(args.size()), args.data());
     int result = RUN_ALL_TESTS();
     rclcpp::shutdown();

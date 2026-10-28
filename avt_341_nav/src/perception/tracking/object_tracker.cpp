@@ -672,6 +672,16 @@ void ObjectTracker::IngestDetections(
                              camera_info->height);
                 continue;
             }
+            if (params_.camera.ego_mask_top < 1.0 &&
+                bbox.center.position.y >=
+                    params_.camera.ego_mask_top * camera_info->height) {
+                RCLCPP_DEBUG(logger_,
+                             "Bounding box centered at row %.1f is on the ego "
+                             "vehicle (camera.ego_mask_top %.2f) — skipping.",
+                             bbox.center.position.y,
+                             params_.camera.ego_mask_top);
+                continue;
+            }
         }
         candidate_detections_.push_back(detection);
     }
