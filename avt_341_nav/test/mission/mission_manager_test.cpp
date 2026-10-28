@@ -821,3 +821,43 @@ TEST_F(ToiInvestigationTest, SightedTargetKeepsItsContactWhenATrackLocatesItFurt
     EXPECT_TRUE(Has(tasks[2], "CONTACT car_2"));
     EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(82, 56)"));
 }
+
+TEST_F(ToiInvestigationTest, SightingDoesNotMoveATrackedTarget)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 53.0, 31.0), team_);
+    manager->handleContacts(MakeContact("car", 59.0, 30.0), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+}
+
+TEST_F(ToiInvestigationTest, TrackThatJumpsToAnotherTargetDoesNotDragItsContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 95.0, 30.0, 100), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 5u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(95, 30)"));
+}
+
+TEST_F(ToiInvestigationTest, EncircleSpeedOnlyLimitsTheMissionSpeed)
+{
+    params_.max_speed = 5.0;
+    params_.toi.encircle_speed = 2.5;
+    auto manager = MakeManager();
+    manager->addTask(new Encircle(manager.get(), "MRZR", 9999, MakePose(0.0, 0.0), params_.toi));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 2.5);
+
+    manager->resetTaskList(false);
+    auto set_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    set_speed.desired_speed = 1.5;
+    manager->handleSetSpeedMsg(SetSpeedMsg(set_speed));
+    manager->addTask(new Encircle(manager.get(), "MRZR", 9999, MakePose(0.0, 0.0), params_.toi));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 1.5);
+}

@@ -536,7 +536,7 @@ void ObjectTracker::EstimatorTick() {
         bounding_box_centroid_filtered_ = seed;
         filter_initialized_ = true;
         if (track_start_ns_ == 0) {
-            track_start_ns_ = node_->get_clock()->now().nanoseconds();
+            track_start_ns_ = std::max<int64_t>(1, node_->get_clock()->now().nanoseconds());
         }
     }
 

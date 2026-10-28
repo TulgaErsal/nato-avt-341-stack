@@ -436,8 +436,8 @@ std::vector<Contact>::iterator MissionManager::findContact(const std::string & t
         if (it->target_class != target_class) {
             continue;
         }
-        // A contact only sighted so far (no track) has the camera's range error.
-        const double gate = it->track_start_ns == 0
+        // Sightings, and contacts only sighted so far, have the camera's range error.
+        const double gate = it->track_start_ns == 0 || rclcpp::Time(pose.header.stamp).nanoseconds() == 0
             ? std::max(params_.toi.same_object_distance_threshold, params_.toi.sighting_match_distance)
             : params_.toi.same_object_distance_threshold;
         const double dist_sq = PosePlanarDistanceSq(it->pose.pose.position, pose.pose.position);
@@ -711,20 +711,27 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
         }
 
         const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
+        const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
         auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& c) {
-            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id;
+            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
+                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
         });
         if (existing == mission_contacts.end()) {
             existing = findContact(pose.header.frame_id, pose);
         }
 
         if (existing != mission_contacts.end()) {
-            existing->track_start_ns = track_start_ns;
+            if (track_start_ns != 0) {
+                existing->track_start_ns = track_start_ns;
+            }
             if (existing->investigated || existing->dismissed) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
                     pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
                     existing->investigated ? "investigated" : "dismissed", existing->name.c_str());
+            } else if (track_start_ns == 0 && existing->track_start_ns != 0) {
+                RCLCPP_DEBUG(node_->get_logger(), "Sighting at (%.2f, %.2f) is tracked contact \"%s\"; keeping its tracked position.",
+                    pose.pose.position.x, pose.pose.position.y, existing->name.c_str());
             } else if (existing->is_new) {
                 // Tasks not yet created: keep updating the position and wait for the delay.
                 existing->pose = pose;
@@ -743,8 +750,10 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
         Contact & contact = addContact(pose.header.frame_id, pose);
         contact.track_start_ns = track_start_ns;
 
-        if (params_.toi.contact_trigger_delay <= 0.0 && investigationAllowed(contact)) {
-            createToiTasks(contact, veh_poses);
+        if (params_.toi.contact_trigger_delay <= 0.0) {
+            if (investigationAllowed(contact)) {
+                createToiTasks(contact, veh_poses);
+            }
         } else {
             RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);
         }
@@ -814,12 +823,14 @@ double MissionManager::resolveSpeedSetpoint(const Task* task) const {
   // Else take default max speed
 
   constexpr double eps = std::numeric_limits<double>::epsilon();
+  double speed = speed_setpoint_state > eps ? speed_setpoint_state : params_.max_speed;
   if(task != nullptr && task->task_speed > eps){
-    return task->task_speed;
+    speed = task->task_speed;
   }
-
-  return speed_setpoint_state > eps ? speed_setpoint_state
-                                    : params_.max_speed;
+  if(task != nullptr && task->speed_limit > eps){
+    speed = std::min(speed, task->speed_limit);
+  }
+  return speed;
 }
 
 void MissionManager::handleFormationRequest(FormationMsg msg) {

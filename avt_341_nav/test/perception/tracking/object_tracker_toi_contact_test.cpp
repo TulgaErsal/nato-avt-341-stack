@@ -67,6 +67,9 @@ protected:
         contacts_sub_ = helper_node_->create_subscription<nav_msgs::msg::Path>(
             "avt_341/target_contacts", 10,
             [this](nav_msgs::msg::Path::SharedPtr msg) {
+                if (msg->poses.empty()) {
+                    return;
+                }
                 // Sightings (contacts without a track, stamp 0) are kept apart from track contacts.
                 (rclcpp::Time(msg->poses.front().header.stamp).nanoseconds() == 0 ? sightings_ : contacts_).push_back(*msg);
             });

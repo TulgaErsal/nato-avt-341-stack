@@ -158,7 +158,7 @@ ros__parameters:
     encircle_speed:
       type: double
       default_value: 2.5
-      description: "Speed setpoint [m/s] while encircling a target of interest; 0 keeps the mission's. The MPC heads for a goal point the goal point processor picks speed x (prediction_time_horizon + goal_lookahead_time_padding) metres along the circle, so a slower encircle keeps that goal closer and the vehicle on the circle."
+      description: "Speed limit [m/s] while encircling a target of interest (a slower mission speed is kept); 0 keeps the mission's. The MPC heads for a goal point the goal point processor picks speed x (prediction_time_horizon + goal_lookahead_time_padding) metres along the circle, so a slower encircle keeps that goal closer and the vehicle on the circle."
       validation:
         gt_eq<>: [ 0.0 ]
     encircle_replan_distance:
@@ -180,7 +180,13 @@ ros__parameters:
     sighting_match_distance:
       type: double
       default_value: 12.0
-      description: "Planar distance [m] within which a report matches a contact known only from sightings (the tracker's reports of other targets of interest while it follows one; no track yet, camera range estimates). Once a track reports on it, same_object_distance_threshold applies."
+      description: "Planar distance [m] within which a sighting (the tracker's report of another target of interest while it follows one; camera range estimate) matches a contact, and any report matches a contact known only from sightings. A sighting never moves a contact a track has reported on. Reports of a track match a tracked contact within same_object_distance_threshold."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    track_match_distance:
+      type: double
+      default_value: 30.0
+      description: "A report of the tracker's track updates the contact that track reported before only within this planar distance [m] of it; farther off, it is matched by position like a report of a new track (a track that jumped to another target does not drag the old contact)."
       validation:
         gt_eq<>: [ 0.0 ]
     team_vehicle_exclusion_radius:

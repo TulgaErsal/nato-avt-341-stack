@@ -49,6 +49,7 @@ public:
     bool is_preemptable;
     bool arrived = false;
     double task_speed = -1.0;
+    double speed_limit = -1.0;
     // Node clock [s] when the task first started executing and when it completed; -1 until set.
     double start_time_sec = -1.0;
     double end_time_sec = -1.0;

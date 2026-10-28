@@ -15,7 +15,7 @@ Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_
   const ToiParameters & params)
     : Encircle(manager, sender, msg_id, target, params.encircle_radius, params.encircle_degrees, params.encircle_cw, params.goal_threshold) {
   replan_distance_ = params.encircle_replan_distance;
-  task_speed = params.encircle_speed;
+  speed_limit = params.encircle_speed;
 }
 
 Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
