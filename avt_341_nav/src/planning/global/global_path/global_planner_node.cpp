@@ -752,6 +752,13 @@ int main(int argc, char* argv[])
         }
       }
     } else {
+      // While another node publishes the path (an encircle), drop the plan for the goal before it.
+      if (planning_future.valid()) {
+        path_planner->RequestCancel();
+        planning_future.get();
+        path_planner->ClearCancel();
+      }
+      last_valid_ros_path.poses.clear();
       SetRunState(NavStackState::Active);
     }
 
