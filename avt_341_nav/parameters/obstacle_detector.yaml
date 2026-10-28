@@ -130,19 +130,19 @@ ros__parameters:
   # ====================================================================================================================
   lidar_points_topic:
     type: string
-    default_value: '/avt_341/points'
+    default_value: 'avt_341/points'
     description: "Input sensor point cloud topic."
   cloud_ground_topic:
     type: string
-    default_value: '/avt_341/lidar_detector/cloud_ground'
+    default_value: 'avt_341/lidar_detector/cloud_ground'
     description: "Output ground points topic."
   cloud_clusters_topic:
     type: string
-    default_value: '/avt_341/lidar_detector/cloud_clusters'
+    default_value: 'avt_341/lidar_detector/cloud_clusters'
     description: "Output obstacle points topic."
   bboxes_topic:
     type: string
-    default_value: '/avt_341/lidar_detector/bboxes'
+    default_value: 'avt_341/lidar_detector/bboxes'
     description: "Output cluster bounding boxes."
   publish_seg_as_one:
     type: bool

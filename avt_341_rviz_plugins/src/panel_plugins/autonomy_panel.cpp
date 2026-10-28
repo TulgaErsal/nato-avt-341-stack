@@ -1,5 +1,8 @@
 #include <avt_341_rviz_plugins/panel_plugins/autonomy_panel.h>
 
+#include <map>
+#include <vector>
+
 #include <rviz_common/config.hpp>
 
 #include <QLayoutItem>
@@ -30,6 +33,39 @@ void setMissionBadge( AccordionGroup* group, bool active )
 {
     group->setBadge( active ? "active" : "no tasks",
                      active ? status_colors::kGreen : status_colors::kGray );
+}
+
+// Writes a monitored-topic list as one { topic, expected_hz } map per entry.
+void saveMonitoredTopics(
+    rviz_common::Config list,
+    const std::vector<ComputeComponent::MonitoredTopicSpec>& specs )
+{
+    for ( const ComputeComponent::MonitoredTopicSpec& spec : specs )
+    {
+        rviz_common::Config entry = list.listAppendNew();
+        entry.mapSetValue( "topic", spec.suffix );
+        entry.mapSetValue( "expected_hz", spec.expected_hz );
+    }
+}
+
+// Reads a list written by saveMonitoredTopics, skipping entries with a blank topic.
+std::vector<ComputeComponent::MonitoredTopicSpec> loadMonitoredTopics(
+    const rviz_common::Config& list )
+{
+    std::vector<ComputeComponent::MonitoredTopicSpec> specs;
+    for ( int i = 0; i < list.listLength(); ++i )
+    {
+        const rviz_common::Config entry = list.listChildAt( i );
+        QString suffix;
+        float hz = 0.0f;
+        entry.mapGetString( "topic", &suffix );
+        entry.mapGetFloat( "expected_hz", &hz );
+        if ( !suffix.trimmed().isEmpty() )
+        {
+            specs.push_back( { suffix.trimmed(), static_cast<double>( hz ) } );
+        }
+    }
+    return specs;
 }
 
 }  // namespace
@@ -118,15 +154,20 @@ void AutonomyPanel::save( rviz_common::Config config ) const
     }
 
     // 3) Compute monitored topics (shared across all vehicles) + alert threshold.
-    rviz_common::Config compute_topics = config.mapMakeChild( "compute_topics" );
-    for ( const ComputeComponent::MonitoredTopicSpec& spec :
-          ComputeComponent::monitoredTopics() )
-    {
-        rviz_common::Config entry = compute_topics.listAppendNew();
-        entry.mapSetValue( "topic", spec.suffix );
-        entry.mapSetValue( "expected_hz", spec.expected_hz );
-    }
+    saveMonitoredTopics( config.mapMakeChild( "compute_topics" ),
+                         ComputeComponent::monitoredTopics() );
     config.mapSetValue( "compute_threshold", ComputeComponent::thresholdFraction() );
+
+    // 3b) Per-vehicle overrides of the compute config, keyed by vehicle id.
+    rviz_common::Config compute_overrides =
+        config.mapMakeChild( "compute_vehicle_overrides" );
+    for ( const auto& [vehicle_id, vehicle_config] : ComputeComponent::vehicleOverrides() )
+    {
+        rviz_common::Config entry = compute_overrides.listAppendNew();
+        entry.mapSetValue( "vehicle", vehicle_id );
+        saveMonitoredTopics( entry.mapMakeChild( "topics" ), vehicle_config.topics );
+        entry.mapSetValue( "threshold", vehicle_config.threshold_fraction );
+    }
 }
 
 void AutonomyPanel::load( const rviz_common::Config& config )
@@ -153,23 +194,37 @@ void AutonomyPanel::load( const rviz_common::Config& config )
     const rviz_common::Config compute_topics = config.mapGetChild( "compute_topics" );
     if ( compute_topics.getType() == rviz_common::Config::List )
     {
-        std::vector<ComputeComponent::MonitoredTopicSpec> specs;
-        for ( int i = 0; i < compute_topics.listLength(); ++i )
-        {
-            const rviz_common::Config entry = compute_topics.listChildAt( i );
-            QString suffix;
-            float hz = 0.0f;
-            entry.mapGetString( "topic", &suffix );
-            entry.mapGetFloat( "expected_hz", &hz );
-            if ( !suffix.trimmed().isEmpty() )
-            {
-                specs.push_back( { suffix.trimmed(), static_cast<double>( hz ) } );
-            }
-        }
-
         float threshold = static_cast<float>( ComputeComponent::thresholdFraction() );
         config.mapGetFloat( "compute_threshold", &threshold );
-        ComputeComponent::applyGlobalConfig( specs, static_cast<double>( threshold ) );
+        ComputeComponent::applyGlobalConfig( loadMonitoredTopics( compute_topics ),
+                                             static_cast<double>( threshold ) );
+    }
+
+    // 3b) Per-vehicle overrides. Applied after the shared config, which drops
+    // them; a present list, even empty, replaces the current overrides.
+    const rviz_common::Config compute_overrides =
+        config.mapGetChild( "compute_vehicle_overrides" );
+    if ( compute_overrides.getType() == rviz_common::Config::List )
+    {
+        std::map<QString, ComputeComponent::MonitoredTopicConfig> overrides;
+        for ( int i = 0; i < compute_overrides.listLength(); ++i )
+        {
+            const rviz_common::Config entry = compute_overrides.listChildAt( i );
+            QString vehicle_id;
+            entry.mapGetString( "vehicle", &vehicle_id );
+            vehicle_id = vehicle_id.trimmed();
+            const rviz_common::Config topics = entry.mapGetChild( "topics" );
+            if ( vehicle_id.isEmpty() || topics.getType() != rviz_common::Config::List )
+            {
+                continue;
+            }
+
+            float threshold = static_cast<float>( ComputeComponent::thresholdFraction() );
+            entry.mapGetFloat( "threshold", &threshold );
+            overrides[vehicle_id] = { loadMonitoredTopics( topics ),
+                                      static_cast<double>( threshold ) };
+        }
+        ComputeComponent::applyVehicleOverrides( overrides );
     }
 
     // 1b) Per-vehicle label colors. Applied before the vehicle list so the tab

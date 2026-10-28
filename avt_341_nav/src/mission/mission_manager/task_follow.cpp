@@ -78,6 +78,12 @@ void Follow::on_done() {
     std::cout << mgr->my_name << " Follow Task is completed" << std::endl;
 }
 
+std::string Follow::label() const {
+    std::ostringstream stream;
+    stream << "Follow " << formation_def_->followedVehicle();
+    return stream.str();
+}
+
 std::string Follow::description() const {
     std::ostringstream stream;
     stream << "ID " << msg_id << " FOLLOW " << formation_def_->followedVehicle()

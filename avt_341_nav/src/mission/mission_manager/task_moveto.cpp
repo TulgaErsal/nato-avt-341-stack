@@ -103,6 +103,12 @@ void MoveTo::onPreempt(){
   init_done = false;
 }
 
+std::string MoveTo::label() const {
+  std::ostringstream stream;
+  stream << "Move to " << name;
+  return stream.str();
+}
+
 std::string MoveTo::description() const {
   std::ostringstream stream;
   const double goal_yaw = core::GetHeadingFromOrientation(goal.pose.orientation) * 180.0 / M_PI;

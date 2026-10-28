@@ -34,10 +34,12 @@ namespace rviz_plugins {
 /// nodes on the vehicle's shared compute-times topic. Rows turn red whenever a
 /// measured value crosses its configured threshold.
 ///
-/// The monitored topics, their expected rates and the alert threshold are a
-/// single per-process configuration shared across all vehicles, edited through a
-/// "Configure Monitored Topics" popup. A change made on one vehicle's component
-/// re-applies to every live component.
+/// The monitored topics, their expected rates and the alert threshold are edited
+/// through a "Configure Monitored Topics" popup. By default ("All vehicles") a
+/// change replaces the shared per-process configuration and re-applies to every
+/// live component; with that option off it is recorded as a per-vehicle override
+/// and applied to this vehicle's component only. The shared configuration and
+/// the overrides are static so the panel can save and restore them.
 ///
 /// Topic rates are measured type-agnostically: each topic's type is discovered
 /// from the ROS graph at runtime and subscribed via a generic (serialized)
@@ -59,14 +61,38 @@ public:
         double expected_hz = 0.0;
     };
 
-    /// Read the shared monitored-topic configuration (for save / restore).
-    static const std::vector<MonitoredTopicSpec>& monitoredTopics() { return s_monitored_topics_; }
-    static double thresholdFraction() { return s_threshold_fraction_; }
+    /// A complete configuration: the monitored topics plus the alert threshold
+    /// (a fraction of each topic's expected rate).
+    struct MonitoredTopicConfig
+    {
+        std::vector<MonitoredTopicSpec> topics;
+        double threshold_fraction = 0.0;
+    };
 
-    /// Replaces the shared configuration and re-applies it to every live
-    /// instance, so the change affects all vehicles.
+    /// Read the shared monitored-topic configuration (for save / restore).
+    static const std::vector<MonitoredTopicSpec>& monitoredTopics()
+    {
+        return s_shared_config_.topics;
+    }
+    static double thresholdFraction() { return s_shared_config_.threshold_fraction; }
+
+    /// Read the per-vehicle overrides, keyed by vehicle id (for save / restore).
+    /// A vehicle is listed only after a change was applied to it alone.
+    static const std::map<QString, MonitoredTopicConfig>& vehicleOverrides()
+    {
+        return s_vehicle_overrides_;
+    }
+
+    /// Replaces the shared configuration, drops every per-vehicle override and
+    /// re-applies it to every live instance, so the change affects all vehicles.
     static void applyGlobalConfig( const std::vector<MonitoredTopicSpec>& specs,
                                    double threshold_fraction );
+
+    /// Replaces the set of per-vehicle overrides. Live instances of the listed
+    /// vehicles take their override and all others return to the shared
+    /// configuration; instances created later for a listed vehicle start from it.
+    static void applyVehicleOverrides(
+        const std::map<QString, MonitoredTopicConfig>& overrides );
 
 Q_SIGNALS:
     // Emitted when the overall health changes: healthy = no monitored topic is
@@ -80,7 +106,8 @@ protected Q_SLOTS:
     void updateRates();
 
     // Opens the configuration popup; on accept, applies the new configuration to
-    // every vehicle's compute component.
+    // every vehicle's compute component or, with "All vehicles" unchecked, to
+    // this one only.
     void onConfigureTopics();
 
 protected:
@@ -114,9 +141,18 @@ protected:
     // Fills the table with one row per monitored topic.
     void populateTable();
 
-    // Rebuilds this component's monitored topics from the shared configuration,
+    // Rebuilds this component's monitored topics from its current configuration,
     // repopulates the table and (re-)subscribes.
     void applyConfig();
+
+    // Records a configuration as this vehicle's override and applies it to this
+    // component only; the shared configuration and the other vehicles are left
+    // untouched.
+    void applyLocalConfig( const MonitoredTopicConfig& config );
+
+    // Stores a configuration on this component and re-applies it, without
+    // touching the shared configuration or the override map.
+    void setConfig( const MonitoredTopicConfig& config );
 
     // For each not-yet-subscribed topic, looks its type up in the ROS graph and,
     // once found, creates a generic (serialized) rate-counting subscription.
@@ -143,6 +179,11 @@ protected:
     QString vehicle_id_;
     rclcpp::Node::SharedPtr node_;
     std::vector<std::unique_ptr<MonitoredTopic>> topics_;
+
+    // This component's configuration: the shared one, or this vehicle's override
+    // when one exists.
+    MonitoredTopicConfig config_;
+
     rclcpp::Subscription<avt_341_msgs::msg::ComputeTimeArray>::SharedPtr
         compute_times_subscription_;
 
@@ -167,10 +208,11 @@ protected:
     QPushButton* configure_button_ = nullptr;
     QTimer* measurement_timer_ = nullptr;
 
-    // Shared (per-process) configuration and the live instances that mirror it,
-    // so a change made on one vehicle applies to all of them.
-    static std::vector<MonitoredTopicSpec> s_monitored_topics_;
-    static double s_threshold_fraction_;
+    // Per-process state the panel saves and restores: the shared configuration,
+    // the per-vehicle overrides of it (keyed by vehicle id), and the live
+    // instances a change is pushed to.
+    static MonitoredTopicConfig s_shared_config_;
+    static std::map<QString, MonitoredTopicConfig> s_vehicle_overrides_;
     static std::vector<ComputeComponent*> s_instances_;
 
 };

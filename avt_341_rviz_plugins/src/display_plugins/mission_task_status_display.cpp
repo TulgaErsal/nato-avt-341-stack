@@ -14,6 +14,7 @@
 
 #include <rviz_common/display_context.hpp>
 #include <rviz_common/frame_manager_iface.hpp>
+#include <rviz_common/properties/bool_property.hpp>
 #include <rviz_common/properties/color_property.hpp>
 #include <rviz_common/properties/float_property.hpp>
 #include <rviz_common/properties/int_property.hpp>
@@ -25,6 +26,7 @@
 namespace avt_341::rviz_plugins
 {
 
+using rviz_common::properties::BoolProperty;
 using rviz_common::properties::ColorProperty;
 using rviz_common::properties::FloatProperty;
 using rviz_common::properties::IntProperty;
@@ -45,10 +47,22 @@ QString speedText( double task_speed )
     return task_speed < 0.0 ? QString( "Speed: -" )
                             : QString( "Speed: %1 m/s" ).arg( task_speed, 0, 'f', 2 );
 }
+
+/// The short task label, or the full description when asked for (and as a
+/// fallback for publishers that predate the label field).
+const std::string& taskText( const avt_341_msgs::msg::MissionTaskStatus& msg, bool verbose )
+{
+    return verbose || msg.task_label.empty() ? msg.task_description : msg.task_label;
+}
 } // namespace
 
 MissionTaskStatusDisplay::MissionTaskStatusDisplay()
 {
+    verbose_description_ = new BoolProperty(
+        "Verbose description", false,
+        "Show the task's full description instead of its short label.",
+        this, SLOT( queueRedraw() ), this );
+
     offset_ = new VectorProperty(
         "Offset", Ogre::Vector3( 0.0f, 0.0f, 2.0f ),
         "Offset [m] from the origin of the vehicle frame (ego_frame_id), along that "
@@ -67,7 +81,7 @@ MissionTaskStatusDisplay::MissionTaskStatusDisplay()
 
     text_color_ = new ColorProperty(
         "Text Color", QColor( 255, 255, 255 ),
-        "Color of the task description and speed text.",
+        "Color of the task text and speed text.",
         this, SLOT( queueRedraw() ), this );
     font_size_ = new IntProperty(
         "Font Size", 14, "Text size in pixels.", this, SLOT( queueRedraw() ), this );
@@ -224,7 +238,8 @@ void MissionTaskStatusDisplay::renderPanel()
     const avt_341_msgs::msg::MissionTaskStatus& msg = *last_msg_;
     const QImage image = RenderTextPanel(
         toStyle(),
-        { QString::fromStdString( msg.task_description ), speedText( msg.task_speed ) },
+        { QString::fromStdString( taskText( msg, verbose_description_->getBool() ) ),
+          speedText( msg.task_speed ) },
         ratio );
     if ( !overlay_->setImage( image ) )
     {

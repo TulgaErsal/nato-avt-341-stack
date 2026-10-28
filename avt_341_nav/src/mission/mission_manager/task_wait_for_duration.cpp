@@ -22,6 +22,12 @@ bool WaitForDuration::is_done() {
 void WaitForDuration::on_done() {
 }
 
+std::string WaitForDuration::label() const{
+  std::ostringstream stream;
+  stream << "Wait " << duration_s_ << " s";
+  return stream.str();
+}
+
 std::string WaitForDuration::description() const{
   std::ostringstream stream;
   stream << "ID " << msg_id << " WAIT_FOR_DURATION: " << duration_s_ << " s";

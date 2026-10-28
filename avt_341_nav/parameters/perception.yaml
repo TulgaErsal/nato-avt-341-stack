@@ -97,7 +97,7 @@ ros__parameters:
       description: "Primary point-cloud input topic."
     clear_topic:
       type: string
-      default_value: '/avt_341/lidar_detector/cloud_ground'
+      default_value: 'avt_341/lidar_detector/cloud_ground'
       description: "Optional point-cloud topic whose points only invoke clearing methods."
     contribute_occupancy:
       type: bool

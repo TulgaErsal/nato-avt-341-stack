@@ -77,6 +77,12 @@ void PathFollow::onPreempt(){
   init_done = false;
 }
 
+std::string PathFollow::label() const {
+  std::ostringstream stream;
+  stream << "Follow path " << name;
+  return stream.str();
+}
+
 std::string PathFollow::description() const {
   std::ostringstream stream;
   stream << "ID " << msg_id << " PATH_FOLLOW: " << name;

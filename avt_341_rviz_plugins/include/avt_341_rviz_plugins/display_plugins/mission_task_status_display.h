@@ -20,6 +20,7 @@
 
 namespace rviz_common {
 namespace properties {
+class BoolProperty;
 class ColorProperty;
 class FloatProperty;
 class IntProperty;
@@ -30,9 +31,10 @@ class VectorProperty;
 namespace avt_341 {
 namespace rviz_plugins {
 
-/// RViz display for avt_341_msgs/MissionTaskStatus: the task description and
-/// speed setpoint on a colored panel that follows the vehicle frame the message
-/// names in ego_frame_id (its base_link). The panel is a 2D screen-space
+/// RViz display for avt_341_msgs/MissionTaskStatus: the task label (or, with
+/// "Verbose description" on, its full description) and speed setpoint on a
+/// colored panel that follows the vehicle frame the message names in
+/// ego_frame_id (its base_link). The panel is a 2D screen-space
 /// overlay (see ScreenOverlay) whose bottom centre sits on the projected position
 /// of a configurable Offset from that frame; it keeps its pixel size whatever the
 /// camera does. Background and text colors are configurable.
@@ -87,6 +89,7 @@ private:
     bool panel_visible_ = false;
     QPointF placement_;           ///< Top-left of the panel at the last update.
 
+    rviz_common::properties::BoolProperty*  verbose_description_ = nullptr;
     rviz_common::properties::VectorProperty* offset_ = nullptr;
     rviz_common::properties::ColorProperty* background_color_ = nullptr;
     rviz_common::properties::FloatProperty* background_alpha_ = nullptr;

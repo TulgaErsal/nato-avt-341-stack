@@ -331,6 +331,7 @@ avt_341_msgs::msg::MissionTaskStatus MissionManager::createTaskStatusMsg(const T
     }
 
     status_msg.task_id = task->msg_id;
+    status_msg.task_label = task->label();
     status_msg.task_description = task->description();
     status_msg.target_pose = task->terminalPose().pose;
     status_msg.task_speed = resolveSpeedSetpoint(task);

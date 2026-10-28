@@ -37,7 +37,8 @@ public:
     virtual void run() = 0;
     virtual bool is_done() { return true; }
     virtual void on_done() = 0;
-    virtual std::string description() const { return "Task"; }
+    virtual std::string label() const { return "Task"; }
+    virtual std::string description() const { return label(); }
     virtual void onGoalReached(const geometry_msgs::msg::PoseStamped & pose){};
     virtual void onPreempt() {}
 
@@ -93,6 +94,7 @@ public:
     std::string goal_type;
     std::string name;
     bool terminate_on_all_arrived_;
+    std::string label() const override;
     std::string description() const override;
 private:
     bool setGoalInternal(const geometry_msgs::msg::PoseStamped & pose, const std::string & name_in, const std::string & pose_type);
@@ -111,6 +113,7 @@ public:
     bool is_done() override;
     void on_done() override;
     void onPreempt() override { init_done = false; }
+    std::string label() const override;
     std::string description() const override;
 private:
   std::string target_veh_;
@@ -125,6 +128,7 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
+    std::string label() const override;
     std::string description() const override;
 private:
   double duration_s_;
@@ -141,6 +145,7 @@ public:
     void run() override;
     bool is_done() override;
     void on_done() override;
+    std::string label() const override;
     std::string description() const override;
     geometry_msgs::msg::PoseStamped terminalPose() const override;
 
@@ -174,6 +179,7 @@ public:
     bool is_done() override;
     void on_done() override;
     void onPreempt() override;
+    std::string label() const override;
     std::string description() const override;
     geometry_msgs::msg::PoseStamped terminalPose() const override;
 
@@ -203,6 +209,7 @@ public:
     std::string goal_type;
     std::string name;
     bool terminate_on_all_arrived_;
+    std::string label() const override;
     std::string description() const override;
 private:
     bool setPathInternal(const nav_msgs::msg::Path & path_in, const std::string & name_in);

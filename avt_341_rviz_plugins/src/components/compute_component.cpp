@@ -8,6 +8,7 @@
 
 #include <QAbstractScrollArea>
 #include <QBrush>
+#include <QCheckBox>
 #include <QColor>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -145,12 +146,14 @@ namespace avt_341::rviz_plugins
 {
 
 // Shared (per-process) configuration. The defaults match what the component
-// previously hard-coded. Edited via the Configure popup and applied to every
-// live instance, so the configuration is global rather than per-vehicle.
-std::vector<ComputeComponent::MonitoredTopicSpec> ComputeComponent::s_monitored_topics_ = {
-    { "avt_341/odometry", 30.0 }
+// previously hard-coded. New instances start from it unless their vehicle has an
+// override, and an "All vehicles" change in the Configure popup replaces it,
+// drops the overrides and pushes it to every live instance.
+ComputeComponent::MonitoredTopicConfig ComputeComponent::s_shared_config_ = {
+    { { "avt_341/odometry", 30.0 } }, 0.80
 };
-double ComputeComponent::s_threshold_fraction_ = 0.80;
+std::map<QString, ComputeComponent::MonitoredTopicConfig>
+    ComputeComponent::s_vehicle_overrides_ = {};
 std::vector<ComputeComponent*> ComputeComponent::s_instances_ = {};
 
 ComputeComponent::ComputeComponent( const QString& vehicle_id,
@@ -161,8 +164,12 @@ ComputeComponent::ComputeComponent( const QString& vehicle_id,
 
     buildUi();
 
-    // Build the monitored topics from the shared config and subscribe to any
+    // Start from this vehicle's override when one was applied (or restored)
+    // earlier, otherwise from the shared config, and subscribe to any topic
     // whose publisher is already up; the rest are picked up on later ticks.
+    const auto override_it = s_vehicle_overrides_.find( vehicle_id_ );
+    config_ = override_it != s_vehicle_overrides_.end() ? override_it->second
+                                                        : s_shared_config_;
     applyConfig();
 
     // Recompute and repaint the rates once per measurement window.
@@ -288,10 +295,10 @@ void ComputeComponent::populateTable()
 
 void ComputeComponent::applyConfig()
 {
-    // Rebuild the monitored topics from the shared config. Clearing the vector
-    // destroys the previous subscriptions.
+    // Rebuild the monitored topics from this component's config. Clearing the
+    // vector destroys the previous subscriptions.
     topics_.clear();
-    for ( const MonitoredTopicSpec& spec : s_monitored_topics_ )
+    for ( const MonitoredTopicSpec& spec : config_.topics )
     {
         auto topic = std::make_unique<MonitoredTopic>();
         topic->label = spec.suffix;
@@ -307,14 +314,42 @@ void ComputeComponent::applyConfig()
 void ComputeComponent::applyGlobalConfig( const std::vector<MonitoredTopicSpec>& specs,
                                           double threshold_fraction )
 {
-    s_monitored_topics_ = specs;
-    s_threshold_fraction_ = threshold_fraction;
+    s_shared_config_ = { specs, threshold_fraction };
+    s_vehicle_overrides_.clear();
 
-    // Re-apply to every live compute component so the change affects all vehicles.
+    // Push to every live compute component so the change affects all vehicles,
+    // replacing any per-vehicle configuration applied earlier.
     for ( ComputeComponent* instance : s_instances_ )
     {
-        instance->applyConfig();
+        instance->setConfig( s_shared_config_ );
     }
+}
+
+void ComputeComponent::applyVehicleOverrides(
+    const std::map<QString, MonitoredTopicConfig>& overrides )
+{
+    s_vehicle_overrides_ = overrides;
+
+    // Listed vehicles take their override; every other live component returns
+    // to the shared configuration.
+    for ( ComputeComponent* instance : s_instances_ )
+    {
+        const auto it = s_vehicle_overrides_.find( instance->vehicle_id_ );
+        instance->setConfig( it != s_vehicle_overrides_.end() ? it->second
+                                                              : s_shared_config_ );
+    }
+}
+
+void ComputeComponent::applyLocalConfig( const MonitoredTopicConfig& config )
+{
+    setConfig( config );
+    s_vehicle_overrides_[vehicle_id_] = config_;
+}
+
+void ComputeComponent::setConfig( const MonitoredTopicConfig& config )
+{
+    config_ = config;
+    applyConfig();
 }
 
 void ComputeComponent::onConfigureTopics()
@@ -323,13 +358,14 @@ void ComputeComponent::onConfigureTopics()
     dialog.setWindowTitle( "Configure Monitored Topics" );
     dialog.resize( 440, 320 );
 
-    // Editable topic suffix + expected rate table, seeded from the shared config.
+    // Editable topic suffix + expected rate table, seeded from this vehicle's
+    // current config.
     QTableWidget* edit_table = new QTableWidget( 0, 2, &dialog );
     edit_table->setHorizontalHeaderLabels( { "Topic", "Expected Hz" } );
     edit_table->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::Stretch );
     edit_table->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
     edit_table->verticalHeader()->setVisible( false );
-    for ( const MonitoredTopicSpec& spec : s_monitored_topics_ )
+    for ( const MonitoredTopicSpec& spec : config_.topics )
     {
         const int row = edit_table->rowCount();
         edit_table->insertRow( row );
@@ -368,13 +404,21 @@ void ComputeComponent::onConfigureTopics()
     threshold_spin->setRange( 0.0, 100.0 );
     threshold_spin->setDecimals( 0 );
     threshold_spin->setSuffix( " %" );
-    threshold_spin->setValue( s_threshold_fraction_ * 100.0 );
+    threshold_spin->setValue( config_.threshold_fraction * 100.0 );
     threshold_spin->setToolTip(
         "A topic is flagged when its measured rate drops below this percentage "
         "of its expected rate." );
 
     QFormLayout* threshold_form = new QFormLayout;
     threshold_form->addRow( "Alert threshold:", threshold_spin );
+
+    // Scope of the change: every vehicle (the shared config, the default) or
+    // only the vehicle this component belongs to.
+    QCheckBox* all_vehicles_check = new QCheckBox( "Apply to all vehicles", &dialog );
+    all_vehicles_check->setChecked( true );
+    all_vehicles_check->setToolTip(
+        "Apply this configuration to every vehicle. Uncheck to apply it to "
+        "vehicle '" + vehicle_id_ + "' only." );
 
     QDialogButtonBox* buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog );
@@ -387,6 +431,7 @@ void ComputeComponent::onConfigureTopics()
     layout->addWidget( edit_table );
     layout->addLayout( button_row );
     layout->addLayout( threshold_form );
+    layout->addWidget( all_vehicles_check );
     layout->addWidget( buttons );
 
     if ( dialog.exec() != QDialog::Accepted )
@@ -409,7 +454,15 @@ void ComputeComponent::onConfigureTopics()
         specs.push_back( { suffix, hz } );
     }
 
-    applyGlobalConfig( specs, threshold_spin->value() / 100.0 );
+    const MonitoredTopicConfig edited{ specs, threshold_spin->value() / 100.0 };
+    if ( all_vehicles_check->isChecked() )
+    {
+        applyGlobalConfig( edited.topics, edited.threshold_fraction );
+    }
+    else
+    {
+        applyLocalConfig( edited );
+    }
 }
 
 void ComputeComponent::discoverAndSubscribe()
@@ -498,7 +551,7 @@ void ComputeComponent::updateRates()
         const std::uint64_t count = topic.count.exchange( 0, std::memory_order_relaxed );
         const double hz = count * 1000.0 / kMeasurementWindowMs;
 
-        const bool alert = hz < topic.expected_hz * s_threshold_fraction_;
+        const bool alert = hz < topic.expected_hz * config_.threshold_fraction;
         topics_table_->item( row, kRateColumn )->setText( formatHz( hz ) );
         setTopicRowAlert( row, alert );
         any_alert = any_alert || alert;

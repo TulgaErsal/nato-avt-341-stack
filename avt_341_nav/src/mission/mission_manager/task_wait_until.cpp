@@ -31,6 +31,12 @@ bool WaitUntilComplete::is_done() {
 void WaitUntilComplete::on_done() {
 }
 
+std::string WaitUntilComplete::label() const{
+  std::ostringstream stream;
+  stream << "Wait for " << target_veh_ << " task " << target_msg_id_;
+  return stream.str();
+}
+
 std::string WaitUntilComplete::description() const{
   std::ostringstream stream;
   stream << "ID " << msg_id << " WAIT_UNTIL_COMPLETE: " << target_veh_ << " " << target_msg_id_;

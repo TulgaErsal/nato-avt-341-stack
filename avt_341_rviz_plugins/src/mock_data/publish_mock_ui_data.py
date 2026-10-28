@@ -329,12 +329,22 @@ class MockUiDataPublisher(Node):
             return msg
 
         msg.task_id = random.randint(0, 50)
-        msg.task_description = random.choice([
+        task_type = random.choice([
             "MOVE_TO", "HOLD_POSITION", "FORM_WEDGE", "ENCIRCLE", "FOLLOW"
         ])
+        msg.task_description = task_type
         others = [v for v in VEHICLE_IDS if v != vehicle_id]
         # Empty tracked_vehicle => this vehicle is the leader / not following.
         msg.tracked_vehicle = random.choice([""] + others)
+        # Short label in the shape Task::label() gives each task type; unlike
+        # the description it stays fixed for the task's lifetime.
+        msg.task_label = {
+            "MOVE_TO": f"Move to WP{random.randint(1, 9)}",
+            "HOLD_POSITION": "Hold position",
+            "FORM_WEDGE": "Form wedge",
+            "ENCIRCLE": f"Encircle C{random.randint(1, 5)}",
+            "FOLLOW": f"Follow {msg.tracked_vehicle or 'leader'}",
+        }[task_type]
         msg.formation_type = random.choice(
             ["", "wedge", "column", "line", "encircle"])
         # A random subset of the other vehicles participate in the formation.

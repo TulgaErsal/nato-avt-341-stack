@@ -104,6 +104,15 @@ bool Encircle::is_done() {
 void Encircle::on_done() {
 }
 
+std::string Encircle::label() const {
+  std::ostringstream stream;
+  stream << "Encircle";
+  if (!contact_name_.empty()) {
+    stream << " " << contact_name_;
+  }
+  return stream.str();
+}
+
 std::string Encircle::description() const {
   std::ostringstream stream;
   stream << "ID " << msg_id << " ENCIRCLE: target_position=(" << target_.pose.position.x << ", " << target_.pose.position.y

@@ -10,6 +10,9 @@ string ego_frame_id
 # Mission manager task ID being executing associated with the current formation. -1 if no task is running.
 int32 task_id -1
 
+# Short, human-readable label of the current task being executed.
+string task_label
+
 # Human-readable description of the current task being executed.
 string task_description
 
