@@ -2,6 +2,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/parameter_client.hpp>
 #include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/node/occupancy_grid_subscriber.h"
 #include "avt_341_nav/node/tf_interface.h"
 // local includes
 #include "avt_341_nav/mission/mission_manager.h"
@@ -371,6 +372,9 @@ int main(int argc, char **argv) {
         params, my_name, nh, goal_filter);
     mgr->setToiRegexHandler(UpdateTrackerToiRegex);
 
+    auto grid_sub = std::make_shared<avt_341_nav::node::OccupancyGridSubscriber>(
+        nh, "avt_341/occupancy_grid", 1, params.costmap.publish.method);
+
     std::shared_ptr<avt_341_nav::mission::FormationSpeedController>
         speedController = avt_341_nav::mission::createFormationSpeedController(
             my_name, params.fsc, nh, tf);
@@ -533,6 +537,10 @@ int main(int argc, char **argv) {
                 speed_zone_monitor->UpdateOdometry(odom);
             }
             odom_rcvd = false;
+        }
+
+        if (grid_sub->HasData()) {
+            mgr->occupancy_grid = grid_sub->GetGrid();
         }
 
         // update tasks

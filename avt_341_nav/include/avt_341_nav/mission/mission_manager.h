@@ -27,6 +27,7 @@
 #include "avt_341_msgs/msg/nav_goal.hpp"
 #include "avt_341_msgs/msg/nav_goal_sequence.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -147,6 +148,7 @@ class MissionManager{
     std::string my_name;
     nav_msgs::msg::Odometry odometry;
     nav_msgs::msg::Odometry leader_odometry;
+    nav_msgs::msg::OccupancyGrid::ConstSharedPtr occupancy_grid;
     bool rcvd_leader_odom = false;
     int nav_state;
     bool goal_changed;
@@ -197,6 +199,7 @@ class MissionManager{
     geometry_msgs::msg::PoseStamped current_gp_goal;
     double getSpeedSetpoint();
     double nowSeconds() const;
+    rclcpp::Logger logger() const { return node_->get_logger(); }
 
   private:
 
