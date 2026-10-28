@@ -701,9 +701,21 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
 void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
 
     for(const auto& pose: contacts.poses) {
+        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
+        const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
+        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& c) {
+            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
+                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
+        });
+
         if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
+            // The ego vehicle closes in on a target it investigates, so its track keeps updating it.
+            auto team = veh_poses;
+            if (existing != mission_contacts.end()) {
+                team.erase(my_name);
+            }
             const auto team_vehicle = FindVehicleWithin(
-                pose.pose.position, veh_poses, params_.toi.team_vehicle_exclusion_radius);
+                pose.pose.position, team, params_.toi.team_vehicle_exclusion_radius);
             if (team_vehicle.has_value()) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
@@ -713,12 +725,6 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             }
         }
 
-        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
-        const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
-        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& c) {
-            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
-                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
-        });
         if (existing == mission_contacts.end()) {
             existing = findContact(pose.header.frame_id, pose);
         }

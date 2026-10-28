@@ -877,6 +877,29 @@ TEST_F(ToiInvestigationTest, SightingConfirmsATrackedTargetWaitingForItsTasks)
     EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
 }
 
+TEST_F(ToiInvestigationTest, TrackKeepsUpdatingItsTargetWhenTheEgoVehicleIsClose)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 8.0, 3.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 4.0, 1.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 2.0, 1.0, 200), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(4, 1)"));
+}
+
+TEST_F(ToiInvestigationTest, TrackedContactStillIgnoredAtAnotherTeamVehicle)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 40.0, 10.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 52.0, 3.0, 100), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(40, 10)"));
+}
+
 TEST_F(ToiInvestigationTest, ContactReportedOnceIsConfirmedAfterTheDelay)
 {
     params_.toi.contact_trigger_delay = 0.2;
