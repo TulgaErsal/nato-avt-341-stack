@@ -861,3 +861,18 @@ TEST_F(ToiInvestigationTest, EncircleSpeedOnlyLimitsTheMissionSpeed)
     manager->addTask(new Encircle(manager.get(), "MRZR", 9999, MakePose(0.0, 0.0), params_.toi));
     EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 1.5);
 }
+
+TEST_F(ToiInvestigationTest, SightingConfirmsATrackedTargetWaitingForItsTasks)
+{
+    params_.toi.contact_trigger_delay = 1.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+    rclcpp::sleep_for(std::chrono::milliseconds(1100));
+    manager->handleContacts(MakeContact("car", 53.0, 31.0), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[0], "CONTACT car_1"));
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+}

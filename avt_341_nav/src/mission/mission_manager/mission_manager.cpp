@@ -724,23 +724,24 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             if (track_start_ns != 0) {
                 existing->track_start_ns = track_start_ns;
             }
+            // A sighting never moves a contact a track has reported on.
+            const bool moves_contact = track_start_ns != 0 || existing->track_start_ns == 0;
             if (existing->investigated || existing->dismissed) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
                     pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
                     existing->investigated ? "investigated" : "dismissed", existing->name.c_str());
-            } else if (track_start_ns == 0 && existing->track_start_ns != 0) {
-                RCLCPP_DEBUG(node_->get_logger(), "Sighting at (%.2f, %.2f) is tracked contact \"%s\"; keeping its tracked position.",
-                    pose.pose.position.x, pose.pose.position.y, existing->name.c_str());
             } else if (existing->is_new) {
                 // Tasks not yet created: keep updating the position and wait for the delay.
-                existing->pose = pose;
+                if (moves_contact) {
+                    existing->pose = pose;
+                }
                 if (now - existing->first_seen_sec >=
                     params_.toi.contact_trigger_delay && investigationAllowed(*existing)) {
                     RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", existing->name.c_str(), params_.toi.contact_trigger_delay);
                     createToiTasks(*existing, veh_poses);
                 }
-            } else {
+            } else if (moves_contact) {
                 // Tasks already created: propagate refined position to queued tasks.
                 updateExistingContact(existing, pose);
             }
