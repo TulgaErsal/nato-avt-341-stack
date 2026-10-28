@@ -59,6 +59,7 @@ struct Contact {
     int64_t track_start_ns = 0;  // tracker's track identity (start time of the track that last reported it)
     bool is_new;       // true until MoveTo+Encircle tasks are created
     double first_seen_sec;
+    bool reported_while_allowed = false;  // last report came while investigation was allowed
 };
 
 // A task that ran to completion and how long it took, reported in the module status.
@@ -123,6 +124,8 @@ class MissionManager{
 
     // internal messages
     void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
+    bool hasPendingContacts() const;
+    void confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> &);
     void markContactInvestigated(const std::string & name);
     // Investigations start only with a task under way and, if reported (e.g. /autonomy_enabled), autonomy enabled.
     void setAutonomyEnabled(bool enabled) { autonomy_enabled_ = enabled; }
@@ -239,7 +242,9 @@ class MissionManager{
     MissionPoint getClosestOverwatch();
     Contact & addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
     void publishInvestigatedContacts();
+    const char * investigationBlockedReason() const;
     bool investigationAllowed(const Contact & contact) const;
+    void maybeCreateToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void handleCancelledContact(const Task * task, CancelledContact cancelled_contact);
     void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
     void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);

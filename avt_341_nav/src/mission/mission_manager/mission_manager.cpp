@@ -462,8 +462,12 @@ Contact & MissionManager::addContact(const std::string & target_class, const geo
   return mission_contacts.back();
 }
 
+const char * MissionManager::investigationBlockedReason() const {
+    return task_list.empty() ? "no active task" : !autonomy_enabled_ ? "autonomy disabled" : nullptr;
+}
+
 bool MissionManager::investigationAllowed(const Contact & contact) const {
-    const char * reason = task_list.empty() ? "no active task" : !autonomy_enabled_ ? "autonomy disabled" : nullptr;
+    const char * reason = investigationBlockedReason();
     if (reason != nullptr) {
         RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
             "Not investigating contact \"%s\" at (%.2f, %.2f): %s.", contact.name.c_str(),
@@ -695,7 +699,6 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
 
 // Message Handlers
 void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
-    const double now = node_->now().seconds();
 
     for(const auto& pose: contacts.poses) {
         if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
@@ -736,11 +739,8 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
                 if (moves_contact) {
                     existing->pose = pose;
                 }
-                if (now - existing->first_seen_sec >=
-                    params_.toi.contact_trigger_delay && investigationAllowed(*existing)) {
-                    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", existing->name.c_str(), params_.toi.contact_trigger_delay);
-                    createToiTasks(*existing, veh_poses);
-                }
+                existing->reported_while_allowed = investigationBlockedReason() == nullptr;
+                maybeCreateToiTasks(*existing, veh_poses);
             } else if (moves_contact) {
                 // Tasks already created: propagate refined position to queued tasks.
                 updateExistingContact(existing, pose);
@@ -750,6 +750,7 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
 
         Contact & contact = addContact(pose.header.frame_id, pose);
         contact.track_start_ns = track_start_ns;
+        contact.reported_while_allowed = investigationBlockedReason() == nullptr;
 
         if (params_.toi.contact_trigger_delay <= 0.0) {
             if (investigationAllowed(contact)) {
@@ -757,6 +758,28 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             }
         } else {
             RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);
+        }
+    }
+}
+
+void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    if (node_->now().seconds() - contact.first_seen_sec >= params_.toi.contact_trigger_delay && investigationAllowed(contact)) {
+        RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", contact.name.c_str(), params_.toi.contact_trigger_delay);
+        createToiTasks(contact, veh_poses);
+    }
+}
+
+bool MissionManager::hasPendingContacts() const {
+    return std::any_of(mission_contacts.begin(), mission_contacts.end(), [](const Contact & c) {
+        return c.is_new && c.reported_while_allowed && !c.investigated && !c.dismissed;
+    });
+}
+
+// A contact reported only once (a target the tracker saw briefly) is confirmed once the delay has passed.
+void MissionManager::confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    for (auto & contact : mission_contacts) {
+        if (contact.is_new && contact.reported_while_allowed && !contact.investigated && !contact.dismissed) {
+            maybeCreateToiTasks(contact, veh_poses);
         }
     }
 }

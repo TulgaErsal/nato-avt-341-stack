@@ -876,3 +876,31 @@ TEST_F(ToiInvestigationTest, SightingConfirmsATrackedTargetWaitingForItsTasks)
     EXPECT_TRUE(Has(tasks[0], "CONTACT car_1"));
     EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
 }
+
+TEST_F(ToiInvestigationTest, ContactReportedOnceIsConfirmedAfterTheDelay)
+{
+    params_.toi.contact_trigger_delay = 0.2;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->confirmPendingContacts(team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    ASSERT_TRUE(manager->hasPendingContacts());
+    manager->confirmPendingContacts(team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+    EXPECT_FALSE(manager->hasPendingContacts());
+}
+
+TEST_F(ToiInvestigationTest, ContactReportedWhileIdleIsNotConfirmedOnceAMissionStarts)
+{
+    params_.toi.contact_trigger_delay = 0.2;
+    auto manager = MakeManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+
+    Busy(*manager);
+    EXPECT_FALSE(manager->hasPendingContacts());
+    manager->confirmPendingContacts(team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+}

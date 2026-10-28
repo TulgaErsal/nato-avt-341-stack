@@ -515,6 +515,9 @@ int main(int argc, char **argv) {
             mgr->handleContacts(rcvd_msg, team_poses);
           }
         }
+        if(mgr->hasPendingContacts()){
+          mgr->confirmPendingContacts(FormationOdomsInMapFrame());
+        }
 
         // Incoming internal notifications
         // Monitor navigation state
