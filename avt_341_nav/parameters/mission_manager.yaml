@@ -139,11 +139,11 @@ ros__parameters:
       description: "Approach distance to a target of interest before encircling."
     encircle_radius:
       type: double
-      default_value: 10.0
+      default_value: 5.0
       description: "Encircle radius around a target of interest."
     encircle_degrees:
       type: double
-      default_value: 180.0
+      default_value: 270.0
       description: "Angular range to encircle around a target of interest (at most one full loop)."
       validation:
         bounds<>: [ 0.0, 360.0 ]
@@ -153,7 +153,7 @@ ros__parameters:
       description: "If true, encircle the target of interest clockwise."
     goal_threshold:
       type: double
-      default_value: 5.0
+      default_value: 2.5
       description: "Distance at which the vehicle is considered to have approached the target of interest."
     encircle_speed:
       type: double

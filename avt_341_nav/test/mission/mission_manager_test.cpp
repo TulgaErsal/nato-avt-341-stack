@@ -293,6 +293,7 @@ class EncircleReplanTest : public MissionManagerContactsTest {
         params_.toi.encircle_radius = 10.0;
         params_.toi.encircle_degrees = 180.0;
         params_.toi.encircle_cw = true;
+        params_.toi.goal_threshold = 5.0;
         params_.toi.encircle_replan_distance = 2.0;
     }
 
