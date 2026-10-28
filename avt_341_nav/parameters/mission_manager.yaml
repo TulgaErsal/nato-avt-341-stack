@@ -177,6 +177,12 @@ ros__parameters:
       description: "Target contacts of the same class within this planar distance [m] of a known contact are the same target: they refine its position, or are ignored once it has been investigated. Contacts farther from every known contact are new targets and are investigated after the current one. It is also applied to the object tracking node's target_selection.investigated_toi_radius together with each toi_regex."
       validation:
         gt_eq<>: [ 0.0 ]
+    sighting_match_distance:
+      type: double
+      default_value: 12.0
+      description: "Planar distance [m] within which a report matches a contact known only from sightings (the tracker's reports of other targets of interest while it follows one; no track yet, camera range estimates). Once a track reports on it, same_object_distance_threshold applies."
+      validation:
+        gt_eq<>: [ 0.0 ]
     team_vehicle_exclusion_radius:
       type: double
       default_value: 5.0

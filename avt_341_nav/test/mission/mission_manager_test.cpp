@@ -807,3 +807,17 @@ TEST_F(ToiInvestigationTest, NoInvestigationWhileAutonomyIsDisabled)
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
     EXPECT_TRUE(HasContactTask(*manager));
 }
+
+TEST_F(ToiInvestigationTest, SightedTargetKeepsItsContactWhenATrackLocatesItFurtherOff)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 80.0, 60.0), team_);
+    manager->handleContacts(MakeContact("car", 86.0, 66.0), team_);
+    manager->handleContacts(MakeContact("car", 82.0, 56.0, 200), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 5u);
+    EXPECT_TRUE(Has(tasks[2], "CONTACT car_2"));
+    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(82, 56)"));
+}

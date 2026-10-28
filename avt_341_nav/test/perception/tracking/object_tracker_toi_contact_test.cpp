@@ -66,7 +66,10 @@ protected:
             "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
         contacts_sub_ = helper_node_->create_subscription<nav_msgs::msg::Path>(
             "avt_341/target_contacts", 10,
-            [this](nav_msgs::msg::Path::SharedPtr msg) { contacts_.push_back(*msg); });
+            [this](nav_msgs::msg::Path::SharedPtr msg) {
+                // Sightings (contacts without a track, stamp 0) are kept apart from track contacts.
+                (rclcpp::Time(msg->poses.front().header.stamp).nanoseconds() == 0 ? sightings_ : contacts_).push_back(*msg);
+            });
         estimate_sub_ = helper_node_->create_subscription<nav_msgs::msg::Odometry>(
             "avt_341/odometry/estimated/ti_car", 10,
             [this](nav_msgs::msg::Odometry::SharedPtr msg) { estimates_.push_back(*msg); });
@@ -238,6 +241,7 @@ protected:
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimate_sub_;
     rclcpp::executors::SingleThreadedExecutor exec_;
     std::vector<nav_msgs::msg::Path> contacts_;
+    std::vector<nav_msgs::msg::Path> sightings_;
     std::vector<nav_msgs::msg::Odometry> estimates_;
 };
 
@@ -421,6 +425,31 @@ TEST_F(ObjectTrackerToiOutOfViewTest, TargetThatLeavesTheImageKeepsItsTrackWhile
     for (const auto& contact : contacts_) {
         EXPECT_TRUE(AtA(contact));
     }
+}
+
+TEST_F(ObjectTrackerToiOutOfViewTest, OtherTargetSeenWhileTrackingIsReportedAsASighting) {
+    TrackThenTurn();
+    SeeB(20);
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_TRUE(AtA(contact));
+    }
+    ASSERT_GE(sightings_.size(), 2u);
+    for (const auto& sighting : sightings_) {
+        ASSERT_EQ(sighting.poses.size(), 1u);
+        EXPECT_NEAR(sighting.poses[0].pose.position.x, CAMERA_X + 18.793852, 1.0);
+        EXPECT_NEAR(sighting.poses[0].pose.position.y, CAMERA_Y + 6.840403, 1.0);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetIsNotReportedAsASighting) {
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0, OTHER_Y_OFFSET}, 30, {1.5 * TARGET_RANGE, TARGET_RANGE});
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_TRUE(sightings_.empty());
 }
 
 TEST_F(ObjectTrackerToiOutOfViewTest, CameraCorrectsLidarDriftWhenTheTargetIsBackInView) {

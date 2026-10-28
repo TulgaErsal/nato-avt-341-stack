@@ -120,7 +120,11 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         return;
     }
 
-    if (has_detection_ && !SelectDetection(context)) {
+    const bool selected = has_detection_ && SelectDetection(context);
+    if (fresh_detection && filter_initialized_ && has_tracked_target_) {
+        OnOtherDetections(context, selected ? &detections_message_ : nullptr);
+    }
+    if (has_detection_ && !selected) {
         has_detection_ = false;
         if (!has_tracked_target_) {
             has_first_detection_ = false;
@@ -773,9 +777,26 @@ bool ObjectTracker::IsExcludedPosition(const Eigen::Vector3d& map_position) cons
     return false;
 }
 
-bool ObjectTracker::IsExcludedDetection(
+Eigen::Vector3d ObjectTracker::EstimateMapPosition(
     const vision_msgs::msg::Detection2D& detection,
     const TrackerSensorContext& context) {
+    if (context.has_obstacle_markers && context.obstacle_markers) {
+        if (const auto match =
+                AssociateMarker(detection, *context.obstacle_markers)) {
+            return coord_transformer_.Transform(frame_ids_.Camera(),
+                                                frame_ids_.Map(), match->pos_cam);
+        }
+    }
+    const Eigen::Matrix3d r_rdf = R_rdf_;
+    const Eigen::Vector3d pos_cam =
+        ConvertBBoxCoordinatesToPoseCentroid_rdf(detection, camera_info_);
+    R_rdf_ = r_rdf;
+    return coord_transformer_.Transform(frame_ids_.Camera(), frame_ids_.Map(), pos_cam);
+}
+
+bool ObjectTracker::IsExcludedDetection(
+    const vision_msgs::msg::Detection2D& detection,
+    const TrackerSensorContext& context, bool always_check_bearing) {
     if (ExcludedPositions().empty()) {
         return false;
     }
@@ -792,7 +813,7 @@ bool ObjectTracker::IsExcludedDetection(
             frame_ids_.Camera(), frame_ids_.Map(), camera_estimate))) {
         return true;
     }
-    if (filter_initialized_ && has_tracked_target_) {
+    if (filter_initialized_ && has_tracked_target_ && !always_check_bearing) {
         return false;
     }
     for (const auto& excluded : ExcludedPositions()) {

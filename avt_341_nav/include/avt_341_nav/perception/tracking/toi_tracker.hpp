@@ -60,6 +60,14 @@ class ToiTracker : public ObjectTracker {
      *         from another target. */
     void MaybePublishContactUpdate() override;
 
+    /** @brief While a target is tracked, publish the other detections of the
+     *         class that are neither near it nor excluded as sightings: contacts
+     *         without a track (header.stamp 0), at most once per
+     *         contact_update_interval_ticks_, so the mission manager can queue
+     *         their investigation although the tracker keeps its target. */
+    void OnOtherDetections(const TrackerSensorContext& context,
+                           const vision_msgs::msg::Detection2D* selected) override;
+
     const std::vector<Eigen::Vector3d>& ExcludedPositions() const override {
         return investigated_positions_;
     }
@@ -81,6 +89,8 @@ class ToiTracker : public ObjectTracker {
     int64_t published_track_start_ns_ = 0;
 
     int contact_update_counter_ = 0;
+
+    rclcpp::Time last_sightings_time_{0, 0, RCL_ROS_TIME};
 
     static constexpr int contact_update_interval_ticks_ = 10;
 

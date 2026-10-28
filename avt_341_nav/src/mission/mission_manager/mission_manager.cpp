@@ -5,6 +5,7 @@
 #include "avt_341_nav/core/frame_id_collection.hpp"
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <utility>
 #include <avt_341_nav/core/dto_conversion.h>
@@ -430,13 +431,17 @@ double MissionManager::nowSeconds() const {
 // Contact Management
 std::vector<Contact>::iterator MissionManager::findContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
     auto closest = mission_contacts.end();
-    double closest_dist_sq = params_.toi.same_object_distance_threshold * params_.toi.same_object_distance_threshold;
+    double closest_dist_sq = std::numeric_limits<double>::max();
     for (auto it = mission_contacts.begin(); it != mission_contacts.end(); ++it) {
         if (it->target_class != target_class) {
             continue;
         }
+        // A contact only sighted so far (no track) has the camera's range error.
+        const double gate = it->track_start_ns == 0
+            ? std::max(params_.toi.same_object_distance_threshold, params_.toi.sighting_match_distance)
+            : params_.toi.same_object_distance_threshold;
         const double dist_sq = PosePlanarDistanceSq(it->pose.pose.position, pose.pose.position);
-        if (dist_sq <= closest_dist_sq) {
+        if (dist_sq <= gate * gate && dist_sq < closest_dist_sq) {
             closest_dist_sq = dist_sq;
             closest = it;
         }

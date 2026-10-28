@@ -186,13 +186,26 @@ class ObjectTracker {
      * @brief True if @p detection shows an excluded target. With an
      * associated obstacle marker, the marker's position alone decides.
      * Without one, the camera range estimate decides, and while nothing is
-     * tracked so does the bearing: an excluded position projecting inside the
+     * tracked (or with @p always_check_bearing) so does the bearing: an excluded position projecting inside the
      * bounding-box columns at a range within a factor of 2 of the camera range
      * estimate (which can be off by more than the exclusion radius at long
      * range) also excludes it.
      */
     bool IsExcludedDetection(const vision_msgs::msg::Detection2D& detection,
-                             const TrackerSensorContext& context);
+                             const TrackerSensorContext& context,
+                             bool always_check_bearing = false);
+
+    /** @brief Called on each tick with fresh detections while a target is
+     *         tracked, with the detection used for it (nullptr if none).
+     *         No-op for the base tracker; ToiTracker reports the other
+     *         detections of its class as sightings. */
+    virtual void OnOtherDetections(const TrackerSensorContext& /*context*/,
+                                   const vision_msgs::msg::Detection2D* /*selected*/) {}
+
+    /** @brief Map position of a detection: its associated obstacle marker's,
+     *         or else the camera range estimate. */
+    Eigen::Vector3d EstimateMapPosition(const vision_msgs::msg::Detection2D& detection,
+                                        const TrackerSensorContext& context);
 
     /** @brief Obstacle detector marker associated with a camera detection. */
     struct MarkerMatch {

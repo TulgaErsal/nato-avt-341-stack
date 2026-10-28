@@ -6,6 +6,7 @@
 
 #include <avt_341_nav/perception/tracking/toi_tracker.hpp>
 
+#include <cmath>
 #include <utility>
 
 #include <avt_341_nav/core/eigen_dto_conversion.hpp>
@@ -27,6 +28,47 @@ ToiTracker::ToiTracker(
 void ToiTracker::Reset() {
     ObjectTracker::Reset();
     contact_update_counter_ = 0;
+}
+
+void ToiTracker::OnOtherDetections(const TrackerSensorContext& context,
+                                   const vision_msgs::msg::Detection2D* selected) {
+    const rclcpp::Time now = node_->get_clock()->now();
+    if (last_sightings_time_.nanoseconds() != 0 &&
+        (now - last_sightings_time_).seconds() <
+            contact_update_interval_ticks_ / params_.tracking.tracking_rate) {
+        return;
+    }
+    nav_msgs::msg::Path sightings;
+    sightings.header.stamp = now;
+    sightings.header.frame_id = "map";
+    for (const auto& detection : candidate_detections_) {
+        if (selected != nullptr &&
+            detection.bbox.center.position.x == selected->bbox.center.position.x &&
+            detection.bbox.center.position.y == selected->bbox.center.position.y) {
+            continue;
+        }
+        const Eigen::Vector3d position = EstimateMapPosition(detection, context);
+        if (IsExcludedDetection(detection, context, true) ||
+            std::hypot(position.x() - bounding_box_centroid_filtered_.x(),
+                       position.y() - bounding_box_centroid_filtered_.y()) <=
+                params_.target_selection.investigated_toi_radius) {
+            continue;
+        }
+        geometry_msgs::msg::PoseStamped pose;
+        pose.header.frame_id = target_class_;
+        pose.pose.position = core::ToPointMsg(position);
+        pose.pose.orientation.w = 1.0;
+        sightings.poses.push_back(pose);
+    }
+    if (sightings.poses.empty()) {
+        return;
+    }
+    target_contacts_publisher_->publish(sightings);
+    last_sightings_time_ = now;
+    for (const auto& pose : sightings.poses) {
+        RCLCPP_INFO(logger_, "Published sighting of another \"%s\" at (%.2f, %.2f).",
+                    target_class_.c_str(), pose.pose.position.x, pose.pose.position.y);
+    }
 }
 
 void ToiTracker::PublishTargetContact() {
