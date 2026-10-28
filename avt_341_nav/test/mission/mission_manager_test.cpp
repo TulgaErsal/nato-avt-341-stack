@@ -305,6 +305,17 @@ class EncircleReplanTest : public MissionManagerContactsTest {
     }
 };
 
+// Moves the vehicle along the circle of the given radius around the origin from from_deg to to_deg in 10 deg steps,
+// running the encircle at each.
+void DriveAlongCircle(MissionManager & manager, Encircle & encircle, double radius, double from_deg, double to_deg)
+{
+    const double step = to_deg < from_deg ? -10.0 : 10.0;
+    for (double deg = from_deg; step < 0.0 ? deg >= to_deg : deg <= to_deg; deg += step) {
+        manager.odometry = MakeOdom(radius * std::cos(deg * M_PI / 180.0), radius * std::sin(deg * M_PI / 180.0));
+        encircle.run();
+    }
+}
+
 TEST_F(EncircleReplanTest, QueuedEncircleOnlyTakesTheNewTarget)
 {
     auto manager = MakeManager();
@@ -321,7 +332,7 @@ TEST_F(EncircleReplanTest, RunningEncircleReplansTheRemainingArcAroundTheMovedTa
     ASSERT_EQ(encircle->circlePath().poses.size(), 180u);
     EXPECT_NEAR(BearingDeg(encircle->circlePath().poses.back(), 0.0, 0.0), -179.0, 1e-6);
 
-    manager->odometry = MakeOdom(0.0, -10.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -90.0);
     ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 5.0)));
     EXPECT_DOUBLE_EQ(encircle->target().pose.position.y, 5.0);
 
@@ -355,15 +366,40 @@ TEST_F(EncircleReplanTest, ZeroReplanDistanceKeepsTheCircle)
     EXPECT_NEAR(DistanceTo(encircle->circlePath().poses.back(), 0.0, 0.0), 10.0, 1e-6);
 }
 
-TEST_F(EncircleReplanTest, VehiclePastTheEndOfTheArcGetsOnlyTheEndPoint)
+TEST_F(EncircleReplanTest, EncircleCompletesOnceTheArcIsSwept)
 {
     auto manager = MakeManager();
-    auto encircle = StartEncircle(*manager, 20.0, 0.0);
-    const double past_end = (-179.0 - 10.0) * M_PI / 180.0;
-    manager->odometry = MakeOdom(10.0 * std::cos(past_end), 5.0 + 10.0 * std::sin(past_end));
-    ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 5.0)));
-    ASSERT_EQ(encircle->circlePath().poses.size(), 1u);
-    EXPECT_NEAR(BearingDeg(encircle->circlePath().poses.front(), 0.0, 5.0), -179.0, 1e-6);
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -140.0);
+    EXPECT_FALSE(encircle->is_done());
+    DriveAlongCircle(*manager, *encircle, 10.0, -150.0, -160.0);
+    EXPECT_TRUE(encircle->is_done());
+}
+
+TEST_F(EncircleReplanTest, ReachingTheEndOfTheArcTheShortWayDoesNotCompleteTheEncircle)
+{
+    params_.toi.encircle_degrees = 270.0;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, 10.0, 90.0);
+    EXPECT_FALSE(encircle->is_done());
+
+    ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 3.0)));
+    const auto & path = encircle->circlePath().poses;
+    EXPECT_GT(path.size(), 270u);
+    EXPECT_LT(std::hypot(path.front().pose.position.x - manager->odometry.pose.pose.position.x,
+                         path.front().pose.position.y - manager->odometry.pose.pose.position.y), 4.0);
+}
+
+TEST_F(EncircleReplanTest, TargetJumpKeepsTheArcSweptSoFar)
+{
+    params_.toi.encircle_degrees = 270.0;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -100.0);
+    ASSERT_TRUE(encircle->updateTarget(MakePose(-3.0, -4.0)));
+    EXPECT_EQ(encircle->circlePath().poses.size(), 170u);
+    EXPECT_FALSE(encircle->is_done());
 }
 
 // toi_regex applied per task

@@ -153,6 +153,8 @@ public:
 
 private:
   void buildCirclePath_(double from_rad, double degrees);
+  double rangeRad_() const;
+  double bearingFromTarget_(const geometry_msgs::msg::Point & point) const;
 
   bool arrived;
   geometry_msgs::msg::PoseStamped target_;
@@ -163,6 +165,8 @@ private:
   double goal_threshold_;
   double replan_distance_ = 0.0;
   double start_rad_ = 0.0;
+  double swept_rad_ = 0.0;
+  geometry_msgs::msg::Point last_position_;
   nav_msgs::msg::Path circle_path_;
 }; // class Encircle
 

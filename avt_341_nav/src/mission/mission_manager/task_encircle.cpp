@@ -31,6 +31,8 @@ void Encircle::init_() {
   double dx = current_pose.position.x - target_.pose.position.x;
   double dy = current_pose.position.y - target_.pose.position.y;
   start_rad_ = std::atan2(dy, dx);
+  swept_rad_ = 0.0;
+  last_position_ = current_pose.position;
   buildCirclePath_(start_rad_, angular_range_degrees_);
 
   mgr->publishPath(circle_path_);
@@ -64,38 +66,35 @@ bool Encircle::updateTarget(const geometry_msgs::msg::PoseStamped & target) {
   }
   target_ = target;
 
-  // Keep the end of the arc at the same bearing from the target and re-plan
-  // the part still ahead of the vehicle around the new target.
+  // Re-plan the arc still to sweep around the new target, from the vehicle's bearing.
   const auto pi = std::atan(1.0)*4.0;
-  const double sign = is_cw_ ? -1.0 : 1.0;
-  const double range_rad = std::max(0.0, angular_range_degrees_ - 1.0) / 180.0 * pi;
-  const double end_rad = start_rad_ + sign * range_rad;
-  const double current_rad = std::atan2(mgr->odometry.pose.pose.position.y - target_.pose.position.y,
-                                        mgr->odometry.pose.pose.position.x - target_.pose.position.x);
-  double remaining_rad = std::fmod(sign * (end_rad - current_rad), 2.0 * pi);
-  if (remaining_rad < 0.0) {
-    remaining_rad += 2.0 * pi;
-  }
-  if (remaining_rad > range_rad) {
-    // Outside the arc: either just past its end or still before its start.
-    const double past_end_rad = 2.0 * pi - remaining_rad;
-    const double before_start_rad = remaining_rad - range_rad;
-    remaining_rad = past_end_rad < before_start_rad ? 0.0 : range_rad;
-  }
-  // Whole-degree steps back from the end bearing, so the arc ends exactly on it.
+  const double remaining_rad = std::clamp(rangeRad_() - swept_rad_, 0.0, 2.0 * pi - pi / 180.0);
   const double steps = std::floor(remaining_rad / pi * 180.0 + 1e-9);
-  buildCirclePath_(end_rad - sign * steps / 180.0 * pi, steps + 1.0);
+  buildCirclePath_(bearingFromTarget_(mgr->odometry.pose.pose.position), steps + 1.0);
   return true;
 }
 
+double Encircle::rangeRad_() const {
+  return std::max(0.0, angular_range_degrees_ - 1.0) / 180.0 * std::atan(1.0) * 4.0;
+}
+
+double Encircle::bearingFromTarget_(const geometry_msgs::msg::Point & point) const {
+  return std::atan2(point.y - target_.pose.position.y, point.x - target_.pose.position.x);
+}
+
 void Encircle::run() {
+  // Angle the vehicle has swept around the target in the encircle direction, so cutting across to the end of the arc
+  // does not count as having encircled it.
+  const auto pi = std::atan(1.0)*4.0;
+  const auto & position = mgr->odometry.pose.pose.position;
+  const double step = std::remainder(bearingFromTarget_(position) - bearingFromTarget_(last_position_), 2.0 * pi);
+  swept_rad_ += is_cw_ ? -step : step;
+  last_position_ = position;
 
   mgr->publishPath(circle_path_);
   mgr->publishGpToggle(0);
 
-  double dx = mgr->odometry.pose.pose.position.x - circle_path_.poses.back().pose.position.x;
-  double dy = mgr->odometry.pose.pose.position.y - circle_path_.poses.back().pose.position.y;
-  arrived = arrived || (dx*dx + dy*dy < goal_threshold_*goal_threshold_);
+  arrived = arrived || swept_rad_ >= rangeRad_() - goal_threshold_ / radius_;
 }
 
 bool Encircle::is_done() {
