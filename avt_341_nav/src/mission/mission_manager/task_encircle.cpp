@@ -21,6 +21,8 @@ Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_
   blocked_lookahead_ = params.encircle_blocked_lookahead;
   blocked_fraction_ = params.encircle_blocked_fraction;
   blocked_clearance_ = params.encircle_blocked_clearance;
+  tangent_entry_ = params.encircle_tangent_entry;
+  stall_time_ = params.encircle_stall_time;
 }
 
 Encircle::Encircle(MissionManager* manager, const std::string & sender, int msg_id, const geometry_msgs::msg::PoseStamped & target,
@@ -38,7 +40,7 @@ void Encircle::init_() {
   start_rad_ = std::atan2(dy, dx);
   swept_rad_ = 0.0;
   last_position_ = current_pose.position;
-  buildCirclePath_(start_rad_, angular_range_degrees_);
+  buildPath_(rangeRad_());
 
   mgr->publishPath(circle_path_);
   mgr->publishGpToggle(0);
@@ -59,6 +61,38 @@ void Encircle::buildCirclePath_(double from_rad, double degrees) {
   }
 }
 
+// A straight line from the vehicle to its tangent point on the circle (when tangent entry is on and the vehicle is
+// outside), then the rest of the arc to sweep along the circle. The line's sweep counts, so the path ends where the arc
+// from the vehicle's bearing would.
+void Encircle::buildPath_(double remaining_rad) {
+  const auto pi = std::atan(1.0)*4.0;
+  const double sign = is_cw_ ? -1.0 : 1.0;
+  const auto & ego = mgr->odometry.pose.pose.position;
+  const double entry = std::min(entryRad_(), remaining_rad);
+  const double arc = std::clamp(remaining_rad - entry, 0.0, 2.0 * pi - pi / 180.0);
+  buildCirclePath_(bearingFromTarget_(ego) + sign * entry, std::floor(arc / pi * 180.0 + 1e-9) + 1.0);
+  if (entry <= 0.0) {
+    return;
+  }
+  const auto tangent = circle_path_.poses.front().pose.position;
+  const double length = std::hypot(tangent.x - ego.x, tangent.y - ego.y);
+  const int n = static_cast<int>(std::ceil(length / (radius_ * pi / 180.0)));
+  std::vector<geometry_msgs::msg::PoseStamped> line;
+  for (int i = 0; i < n; ++i) {
+    geometry_msgs::msg::PoseStamped pose;
+    pose.pose.position.x = ego.x + (tangent.x - ego.x) * i / n;
+    pose.pose.position.y = ego.y + (tangent.y - ego.y) * i / n;
+    line.push_back(pose);
+  }
+  circle_path_.poses.insert(circle_path_.poses.begin(), line.begin(), line.end());
+}
+
+double Encircle::entryRad_() const {
+  const auto & ego = mgr->odometry.pose.pose.position;
+  const double distance = std::hypot(ego.x - target_.pose.position.x, ego.y - target_.pose.position.y);
+  return tangent_entry_ && distance > radius_ ? std::acos(radius_ / distance) : 0.0;
+}
+
 bool Encircle::updateTarget(const geometry_msgs::msg::PoseStamped & target) {
   if (!init_done) {
     target_ = target;
@@ -72,10 +106,7 @@ bool Encircle::updateTarget(const geometry_msgs::msg::PoseStamped & target) {
   target_ = target;
 
   // Re-plan the arc still to sweep around the new target, from the vehicle's bearing.
-  const auto pi = std::atan(1.0)*4.0;
-  const double remaining_rad = std::clamp(rangeRad_() - swept_rad_, 0.0, 2.0 * pi - pi / 180.0);
-  const double steps = std::floor(remaining_rad / pi * 180.0 + 1e-9);
-  buildCirclePath_(bearingFromTarget_(mgr->odometry.pose.pose.position), steps + 1.0);
+  buildPath_(std::max(rangeRad_() - swept_rad_, 0.0));
   return true;
 }
 
@@ -100,11 +131,26 @@ void Encircle::run() {
   mgr->publishGpToggle(0);
 
   arrived = arrived || swept_rad_ >= rangeRad_() - goal_threshold_ / radius_;
-
-  if (arrived || blocked_time_ <= 0.0 || !mgr->occupancy_grid) {
+  if (arrived) {
     return;
   }
+
   const double now = mgr->nowSeconds();
+  if (stall_time_ > 0.0) {
+    if (progress_since_ < 0.0 || !mgr->autonomyEnabled() || swept_rad_ > progress_swept_rad_ + 5.0 / 180.0 * pi) {
+      progress_since_ = now;
+      progress_swept_rad_ = swept_rad_;
+    } else if (now - progress_since_ >= stall_time_) {
+      abandoned_ = true;
+      RCLCPP_WARN(mgr->logger(), "Abandoning the encircle of \"%s\": no progress around it for %.1f s.",
+                  contact_name_.c_str(), now - progress_since_);
+      return;
+    }
+  }
+
+  if (blocked_time_ <= 0.0 || !mgr->occupancy_grid) {
+    return;
+  }
   const double fraction = blockedFractionAhead_(*mgr->occupancy_grid);
   if (fraction < blocked_fraction_) {
     blocked_since_ = -1.0;

@@ -185,6 +185,16 @@ ros__parameters:
       description: "A circle pose is blocked when an occupied cell lies within this distance of it [m] (see encircle_blocked_time)."
       validation:
         gt_eq<>: [ 0.0 ]
+    encircle_tangent_entry:
+      type: bool
+      default_value: true
+      description: "If true, an encircle starting outside its circle first drives straight to the circle's tangent point in the encircle direction, then along the circle. The bearing swept along that line counts toward encircle_degrees, so the path ends where it would without it. If false, the circle starts at the vehicle's bearing from the target."
+    encircle_stall_time:
+      type: double
+      default_value: 15.0
+      description: "An encircle is abandoned (its target counted as investigated) once the vehicle has swept no further around the target for this long with autonomy enabled [s]. 0 never abandons it."
+      validation:
+        gt_eq<>: [ 0.0 ]
     encircle_replan_distance:
       type: double
       default_value: 2.0

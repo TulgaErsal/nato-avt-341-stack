@@ -153,6 +153,8 @@ public:
 
 private:
   void buildCirclePath_(double from_rad, double degrees);
+  void buildPath_(double remaining_rad);
+  double entryRad_() const;
   double rangeRad_() const;
   double bearingFromTarget_(const geometry_msgs::msg::Point & point) const;
   double blockedFractionAhead_(const nav_msgs::msg::OccupancyGrid & grid) const;
@@ -171,6 +173,10 @@ private:
   double blocked_fraction_ = 1.0;
   double blocked_clearance_ = 0.0;
   double blocked_since_ = -1.0;
+  bool tangent_entry_ = false;
+  double stall_time_ = 0.0;
+  double progress_since_ = -1.0;
+  double progress_swept_rad_ = 0.0;
   double start_rad_ = 0.0;
   double swept_rad_ = 0.0;
   geometry_msgs::msg::Point last_position_;

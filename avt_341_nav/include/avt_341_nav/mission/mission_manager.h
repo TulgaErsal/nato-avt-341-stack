@@ -130,6 +130,7 @@ class MissionManager{
     void markContactInvestigated(const std::string & name);
     // Investigations start only with a task under way and, if reported (e.g. /autonomy_enabled), autonomy enabled.
     void setAutonomyEnabled(bool enabled) { autonomy_enabled_ = enabled; }
+    bool autonomyEnabled() const { return autonomy_enabled_; }
 
     // external messages
     // Returns the created task, or nullptr if the message was not for this vehicle.

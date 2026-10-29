@@ -295,6 +295,8 @@ class EncircleReplanTest : public MissionManagerContactsTest {
         params_.toi.encircle_cw = true;
         params_.toi.goal_threshold = 5.0;
         params_.toi.encircle_replan_distance = 2.0;
+        params_.toi.encircle_tangent_entry = false;
+        params_.toi.encircle_stall_time = 0.0;
     }
 
     std::unique_ptr<Encircle> StartEncircle(MissionManager & manager, double vx, double vy)
@@ -444,6 +446,85 @@ TEST_F(EncircleReplanTest, TargetJumpKeepsTheArcSweptSoFar)
     DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -100.0);
     ASSERT_TRUE(encircle->updateTarget(MakePose(-3.0, -4.0)));
     EXPECT_EQ(encircle->circlePath().poses.size(), 170u);
+    EXPECT_FALSE(encircle->is_done());
+}
+
+TEST_F(EncircleReplanTest, TangentEntryJoinsTheCircleAtTheTangentPointAndEndsWhereTheArcWould)
+{
+    params_.toi.encircle_tangent_entry = true;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 20.0, 0.0);
+    const auto & path = encircle->circlePath().poses;
+    EXPECT_NEAR(path.front().pose.position.x, 20.0, 1e-6);
+    EXPECT_NEAR(path.front().pose.position.y, 0.0, 1e-6);
+    size_t join = 0;
+    while (join < path.size() && DistanceTo(path[join], 0.0, 0.0) > 10.0 + 1e-6) {
+        ++join;
+    }
+    ASSERT_LT(join, path.size());
+    EXPECT_NEAR(BearingDeg(path[join], 0.0, 0.0), -60.0, 1e-6);
+    for (const auto & pose : path) {
+        EXPECT_GT(DistanceTo(pose, 0.0, 0.0), 10.0 - 1e-6);
+    }
+    EXPECT_EQ(path.size() - join, 120u);
+    EXPECT_NEAR(BearingDeg(path.back(), 0.0, 0.0), -179.0, 1e-6);
+}
+
+TEST_F(EncircleReplanTest, TangentEntryCompletesOnceTheRangeIsSweptIncludingTheApproach)
+{
+    params_.toi.encircle_tangent_entry = true;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 20.0, 0.0);
+    for (int i = 1; i <= 10; ++i) {
+        manager->odometry = MakeOdom(20.0 - 1.5 * i, -0.866 * i);
+        encircle->run();
+    }
+    DriveAlongCircle(*manager, *encircle, 10.0, -60.0, -150.0);
+    EXPECT_FALSE(encircle->is_done());
+    DriveAlongCircle(*manager, *encircle, 10.0, -160.0, -160.0);
+    EXPECT_TRUE(encircle->is_done());
+}
+
+TEST_F(EncircleReplanTest, TangentReplanKeepsTheEndOfTheArc)
+{
+    params_.toi.encircle_tangent_entry = true;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -90.0);
+    ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 5.0)));
+    const auto & path = encircle->circlePath().poses;
+    EXPECT_NEAR(DistanceTo(path.front(), 0.0, -10.0), 0.0, 1e-6);
+    EXPECT_NEAR(BearingDeg(path.back(), 0.0, 5.0), -179.0, 1.0);
+}
+
+TEST_F(EncircleReplanTest, EncircleIsAbandonedWhenItMakesNoProgress)
+{
+    params_.toi.encircle_stall_time = 0.2;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    encircle->run();
+    rclcpp::sleep_for(std::chrono::milliseconds(150));
+    DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -10.0);
+    rclcpp::sleep_for(std::chrono::milliseconds(150));
+    encircle->run();
+    EXPECT_FALSE(encircle->is_done());
+    rclcpp::sleep_for(std::chrono::milliseconds(100));
+    encircle->run();
+    EXPECT_TRUE(encircle->is_done());
+}
+
+TEST_F(EncircleReplanTest, StallTimerWaitsWhileAutonomyIsDisabled)
+{
+    params_.toi.encircle_stall_time = 0.2;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    manager->setAutonomyEnabled(false);
+    encircle->run();
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    encircle->run();
+    EXPECT_FALSE(encircle->is_done());
+    manager->setAutonomyEnabled(true);
+    encircle->run();
     EXPECT_FALSE(encircle->is_done());
 }
 
