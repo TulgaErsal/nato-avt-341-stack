@@ -66,6 +66,7 @@ void Encircle::buildCirclePath_(double from_rad, double degrees) {
 // from the vehicle's bearing would.
 void Encircle::buildPath_(double remaining_rad) {
   const auto pi = std::atan(1.0)*4.0;
+  away_from_end_ = false;
   const double sign = is_cw_ ? -1.0 : 1.0;
   const auto & ego = mgr->odometry.pose.pose.position;
   const double entry = std::min(entryRad_(), remaining_rad);
@@ -132,6 +133,19 @@ void Encircle::run() {
 
   arrived = arrived || swept_rad_ >= rangeRad_() - goal_threshold_ / radius_;
   if (arrived) {
+    return;
+  }
+
+  // Reaching the end of the path, e.g. across the arc's gap, ends the encircle: the path has nothing left to follow.
+  const auto & end = circle_path_.poses.back().pose.position;
+  if (std::hypot(position.x - end.x, position.y - end.y) > goal_threshold_) {
+    away_from_end_ = true;
+  } else if (away_from_end_) {
+    abandoned_ = true;
+    if (swept_rad_ < rangeRad_() - pi / 4.0) {
+      RCLCPP_WARN(mgr->logger(), "Ending the encircle of \"%s\": reached the end of its path after sweeping %.0f of %.0f deg.",
+                  contact_name_.c_str(), swept_rad_ * 180.0 / pi, rangeRad_() * 180.0 / pi);
+    }
     return;
   }
 

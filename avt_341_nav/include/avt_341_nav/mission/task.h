@@ -177,6 +177,7 @@ private:
   double stall_time_ = 0.0;
   double progress_since_ = -1.0;
   double progress_swept_rad_ = 0.0;
+  bool away_from_end_ = false;
   double start_rad_ = 0.0;
   double swept_rad_ = 0.0;
   geometry_msgs::msg::Point last_position_;

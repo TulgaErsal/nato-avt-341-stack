@@ -428,7 +428,7 @@ TEST_F(EncircleReplanTest, ReachingTheEndOfTheArcTheShortWayDoesNotCompleteTheEn
     params_.toi.encircle_degrees = 270.0;
     auto manager = MakeManager();
     auto encircle = StartEncircle(*manager, 10.0, 0.0);
-    DriveAlongCircle(*manager, *encircle, 10.0, 10.0, 90.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, 10.0, 50.0);
     EXPECT_FALSE(encircle->is_done());
 
     ASSERT_TRUE(encircle->updateTarget(MakePose(0.0, 3.0)));
@@ -436,6 +436,28 @@ TEST_F(EncircleReplanTest, ReachingTheEndOfTheArcTheShortWayDoesNotCompleteTheEn
     EXPECT_GT(path.size(), 270u);
     EXPECT_LT(std::hypot(path.front().pose.position.x - manager->odometry.pose.pose.position.x,
                          path.front().pose.position.y - manager->odometry.pose.pose.position.y), 4.0);
+}
+
+TEST_F(EncircleReplanTest, ReachingThePathEndTheShortWayEndsTheEncircle)
+{
+    params_.toi.encircle_degrees = 270.0;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    DriveAlongCircle(*manager, *encircle, 10.0, 10.0, 60.0);
+    EXPECT_FALSE(encircle->is_done());
+    DriveAlongCircle(*manager, *encircle, 10.0, 70.0, 70.0);
+    EXPECT_TRUE(encircle->is_done());
+}
+
+TEST_F(EncircleReplanTest, StartingNextToTheEndOfAFullLoopDoesNotEndTheEncircle)
+{
+    params_.toi.encircle_degrees = 360.0;
+    auto manager = MakeManager();
+    auto encircle = StartEncircle(*manager, 10.0, 0.0);
+    encircle->run();
+    EXPECT_FALSE(encircle->is_done());
+    DriveAlongCircle(*manager, *encircle, 10.0, -10.0, -90.0);
+    EXPECT_FALSE(encircle->is_done());
 }
 
 TEST_F(EncircleReplanTest, TargetJumpKeepsTheArcSweptSoFar)

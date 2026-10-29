@@ -154,7 +154,7 @@ ros__parameters:
     goal_threshold:
       type: double
       default_value: 2.5
-      description: "Distance at which the vehicle is considered to have approached the target of interest."
+      description: "Distance at which the vehicle is considered to have approached the target of interest. Coming this close to the end of an encircle path, having been farther from it, ends the encircle."
     encircle_speed:
       type: double
       default_value: 2.5
@@ -191,7 +191,7 @@ ros__parameters:
       description: "If true, an encircle starting outside its circle first drives straight to the circle's tangent point in the encircle direction, then along the circle. The bearing swept along that line counts toward encircle_degrees, so the path ends where it would without it. If false, the circle starts at the vehicle's bearing from the target."
     encircle_stall_time:
       type: double
-      default_value: 15.0
+      default_value: 7.0
       description: "An encircle is abandoned (its target counted as investigated) once the vehicle has swept no further around the target for this long with autonomy enabled [s]. 0 never abandons it."
       validation:
         gt_eq<>: [ 0.0 ]
