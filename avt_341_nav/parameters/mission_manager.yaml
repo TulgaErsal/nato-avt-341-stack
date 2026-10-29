@@ -187,7 +187,7 @@ ros__parameters:
         gt_eq<>: [ 0.0 ]
     encircle_tangent_entry:
       type: bool
-      default_value: true
+      default_value: false
       description: "If true, an encircle starting outside its circle first drives straight to the circle's tangent point in the encircle direction, then along the circle. The bearing swept along that line counts toward encircle_degrees, so the path ends where it would without it. If false, the circle starts at the vehicle's bearing from the target."
     encircle_stall_time:
       type: double
