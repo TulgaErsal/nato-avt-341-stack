@@ -5,6 +5,7 @@
 #include "avt_341_nav/core/frame_id_collection.hpp"
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <utility>
 #include <avt_341_nav/core/dto_conversion.h>
@@ -62,13 +63,14 @@ MissionManager::MissionManager(
     if (params_.check_goal_arrival) {
         current_waypoint_pub = node_->create_publisher<nav_msgs::msg::Path>("avt_341/waypoints", 10);
     }
+    investigated_contacts_pub = node_->create_publisher<nav_msgs::msg::Path>("avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
 
     publishTaskChange();
 }
 
 MissionManager::~MissionManager() {
     // Clean up the memory allocated to tasks
-    reset();
+    reset(false);
 }
 
 std::vector<std::string> getLine(std::istream& stream) {
@@ -231,7 +233,7 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     // if no active task, put it on the list
 
     if(PriorityType::isCancelAllPrevious(priority_type)){
-      resetTaskList(true);
+      resetTaskList(true, CancelledContact::Forget);
     }
 
     bool is_preempt = PriorityType::isPreempt(priority_type);
@@ -428,44 +430,98 @@ double MissionManager::nowSeconds() const {
 }
 
 // Contact Management
-bool MissionManager::hasContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
-	std::vector<Contact>::iterator it = std::find_if(std::begin(mission_contacts), std::end(mission_contacts),
-	            [&](const Contact& e) {
-                  return e.name == name &&
-                         IsClose(
-                             e.pose.pose, pose.pose,
-                             params_.toi.same_object_distance_threshold);
-                });
-  return it != mission_contacts.end();
+std::vector<Contact>::iterator MissionManager::findContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
+    auto closest = mission_contacts.end();
+    double closest_dist_sq = std::numeric_limits<double>::max();
+    for (auto it = mission_contacts.begin(); it != mission_contacts.end(); ++it) {
+        if (it->target_class != target_class) {
+            continue;
+        }
+        // Sightings, and contacts only sighted so far, have the camera's range error.
+        const double gate = it->track_start_ns == 0 || rclcpp::Time(pose.header.stamp).nanoseconds() == 0
+            ? std::max(params_.toi.same_object_distance_threshold, params_.toi.sighting_match_distance)
+            : params_.toi.same_object_distance_threshold;
+        const double dist_sq = PosePlanarDistanceSq(it->pose.pose.position, pose.pose.position);
+        if (dist_sq <= gate * gate && dist_sq < closest_dist_sq) {
+            closest_dist_sq = dist_sq;
+            closest = it;
+        }
+    }
+    return closest;
 }
 
-auto MissionManager::getClosestNewContact() {
-    auto it = std::min_element(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& a, const Contact& b) {
-        if((a.investigating || a.investigated) && (b.investigating || b.investigated)) {
-            return false;
-        }
-        if(a.investigating || a.investigated) {
-            return false; // Contact b is closer
-        }
-        if(b.investigating || b.investigated) {
-            return true; // Contact a is closer
-        }
-        double da = PosePlanarDistanceSq(odometry.pose.pose.position, a.pose.pose.position);
-        double db = PosePlanarDistanceSq(odometry.pose.pose.position, b.pose.pose.position);
-        return da < db;
-    });
-    return it;
-}
-
-void MissionManager::addContact(const std::string & name, const geometry_msgs::msg::PoseStamped & pose) {
+Contact & MissionManager::addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
   Contact new_contact;
-  new_contact.name = name;
+  new_contact.name = target_class + "_" + std::to_string(++contact_count_);
+  new_contact.target_class = target_class;
   new_contact.pose = pose;
   new_contact.investigating = false;
   new_contact.investigated = false;
   new_contact.is_new = true;
   new_contact.first_seen_sec = node_->now().seconds();
   mission_contacts.push_back(new_contact);
+  return mission_contacts.back();
+}
+
+const char * MissionManager::investigationBlockedReason() const {
+    return task_list.empty() ? "no active task" : !autonomy_enabled_ ? "autonomy disabled" : nullptr;
+}
+
+bool MissionManager::investigationAllowed(const Contact & contact) const {
+    const char * reason = investigationBlockedReason();
+    if (reason != nullptr) {
+        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+            "Not investigating contact \"%s\" at (%.2f, %.2f): %s.", contact.name.c_str(),
+            contact.pose.pose.position.x, contact.pose.pose.position.y, reason);
+    }
+    return reason == nullptr;
+}
+
+void MissionManager::markContactInvestigated(const std::string & name) {
+    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        [&](const Contact& c) { return c.name == name; });
+    if (it == mission_contacts.end()) {
+        return;
+    }
+    it->investigating = false;
+    it->investigated = true;
+    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" at (%.2f, %.2f) investigated.", name.c_str(), it->pose.pose.position.x, it->pose.pose.position.y);
+    publishInvestigatedContacts();
+}
+
+void MissionManager::handleCancelledContact(const Task * task, CancelledContact cancelled_contact) {
+    const auto * encircle = dynamic_cast<const Encircle *>(task);
+    if (cancelled_contact == CancelledContact::Keep || encircle == nullptr || encircle->contactName().empty()) {
+        return;
+    }
+    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        [&](const Contact& c) { return c.name == encircle->contactName() && !c.investigated; });
+    if (it == mission_contacts.end()) {
+        return;
+    }
+    if (cancelled_contact == CancelledContact::Forget) {
+        RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" superseded; forgetting it.", it->name.c_str());
+        mission_contacts.erase(it);
+        return;
+    }
+    RCLCPP_INFO(node_->get_logger(), "Investigation of contact \"%s\" cancelled; dismissing it.", it->name.c_str());
+    it->investigating = false;
+    it->dismissed = true;
+    publishInvestigatedContacts();
+}
+
+void MissionManager::publishInvestigatedContacts() {
+    nav_msgs::msg::Path msg;
+    msg.header.stamp = node_->now();
+    msg.header.frame_id = "map";
+    for (const auto & contact : mission_contacts) {
+        if (contact.investigated || contact.dismissed) {
+            geometry_msgs::msg::PoseStamped pose = contact.pose;
+            pose.header.frame_id = msg.header.frame_id;
+            msg.poses.push_back(pose);
+        }
+    }
+    investigated_contacts_pub->publish(msg);
 }
 
 void MissionManager::updateExistingContact(
@@ -520,7 +576,7 @@ void MissionManager::publishCurrentWaypoint() {
     current_waypoint_pub->publish(waypoints);
 }
 
-void MissionManager::resetTaskList(bool send_completion_msg) {
+void MissionManager::resetTaskList(bool send_completion_msg, CancelledContact cancelled_contact) {
   RCLCPP_INFO(node_->get_logger(), "%s CANCEL_ALL: Clearing task list of size %d.", my_name.c_str(), task_list.size());
   for(Task* task : task_list) {
     task->onPreempt();
@@ -528,18 +584,23 @@ void MissionManager::resetTaskList(bool send_completion_msg) {
     if(send_completion_msg){
       publishTaskCompletion(task);
     }
+    handleCancelledContact(task, cancelled_contact);
     delete task;
   }
   task_list.clear();
 }
 
-void MissionManager::reset(){
-  resetTaskList(false);
+void MissionManager::reset(bool notify_tracker){
+  resetTaskList(false, CancelledContact::Keep);
   obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
   task_completions_.clear();
   completed_tasks_.clear();
   current_gp_goal = geometry_msgs::msg::PoseStamped();
   mission_contacts.clear();
+  contact_count_ = 0;
+  if (notify_tracker) {
+    publishInvestigatedContacts();
+  }
   arrivals_.clear();
   goal_filter_->Reset();
   speed_setpoint_state = -1.0;
@@ -561,6 +622,24 @@ void MissionManager::cancelTask(int task_id, bool send_completion_msg){
       publishTaskCompletion(task);
     }
     task_list.erase(it);
+    handleCancelledContact(task, CancelledContact::Dismiss);
+    if (const auto * encircle = dynamic_cast<const Encircle *>(task); encircle != nullptr && !encircle->contactName().empty()) {
+      // The approach to a target whose encircle was cancelled is pointless.
+      auto approach = std::find_if(std::begin(task_list), std::end(task_list), [&](Task* t) {
+        const auto * moveto = dynamic_cast<const MoveTo *>(t);
+        return moveto != nullptr && moveto->goal_type == MoveTo::CONTACT && moveto->name == encircle->contactName();
+      });
+      if (approach != task_list.end()) {
+        Task* approach_task = *approach;
+        approach_task->onPreempt();
+        RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), approach_task->description().c_str());
+        if(send_completion_msg){
+          publishTaskCompletion(approach_task);
+        }
+        task_list.erase(approach);
+        delete approach_task;
+      }
+    }
     delete task;
   }
 }
@@ -621,12 +700,23 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
 
 // Message Handlers
 void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
-    const double now = node_->now().seconds();
 
     for(const auto& pose: contacts.poses) {
+        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
+        const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
+        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& c) {
+            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
+                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
+        });
+
         if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
+            // The ego vehicle closes in on a target it investigates, so its track keeps updating it.
+            auto team = veh_poses;
+            if (existing != mission_contacts.end()) {
+                team.erase(my_name);
+            }
             const auto team_vehicle = FindVehicleWithin(
-                pose.pose.position, veh_poses, params_.toi.team_vehicle_exclusion_radius);
+                pose.pose.position, team, params_.toi.team_vehicle_exclusion_radius);
             if (team_vehicle.has_value()) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
@@ -636,32 +726,67 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             }
         }
 
-        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(),
-            [&](const Contact& c) { return c.name == pose.header.frame_id; });
+        if (existing == mission_contacts.end()) {
+            existing = findContact(pose.header.frame_id, pose);
+        }
 
         if (existing != mission_contacts.end()) {
-            if (existing->is_new) {
+            if (track_start_ns != 0) {
+                existing->track_start_ns = track_start_ns;
+            }
+            // A sighting never moves a contact a track has reported on.
+            const bool moves_contact = track_start_ns != 0 || existing->track_start_ns == 0;
+            if (existing->investigated || existing->dismissed) {
+                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                    "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
+                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
+                    existing->investigated ? "investigated" : "dismissed", existing->name.c_str());
+            } else if (existing->is_new) {
                 // Tasks not yet created: keep updating the position and wait for the delay.
-                existing->pose = pose;
-                if (now - existing->first_seen_sec >=
-                    params_.toi.contact_trigger_delay) {
-                    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", existing->name.c_str(), params_.toi.contact_trigger_delay);
-                    createToiTasks(*existing, veh_poses);
+                if (moves_contact) {
+                    existing->pose = pose;
                 }
-            } else {
+                existing->reported_while_allowed = investigationBlockedReason() == nullptr;
+                maybeCreateToiTasks(*existing, veh_poses);
+            } else if (moves_contact) {
                 // Tasks already created: propagate refined position to queued tasks.
                 updateExistingContact(existing, pose);
             }
             continue;
         }
 
-        addContact(pose.header.frame_id, pose);
-        Contact & contact = mission_contacts.back();
+        Contact & contact = addContact(pose.header.frame_id, pose);
+        contact.track_start_ns = track_start_ns;
+        contact.reported_while_allowed = investigationBlockedReason() == nullptr;
 
         if (params_.toi.contact_trigger_delay <= 0.0) {
-            createToiTasks(contact, veh_poses);
+            if (investigationAllowed(contact)) {
+                createToiTasks(contact, veh_poses);
+            }
         } else {
-            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen; waiting %.1f s before creating tasks.", contact.name.c_str(), params_.toi.contact_trigger_delay);
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);
+        }
+    }
+}
+
+void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    if (node_->now().seconds() - contact.first_seen_sec >= params_.toi.contact_trigger_delay && investigationAllowed(contact)) {
+        RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", contact.name.c_str(), params_.toi.contact_trigger_delay);
+        createToiTasks(contact, veh_poses);
+    }
+}
+
+bool MissionManager::hasPendingContacts() const {
+    return std::any_of(mission_contacts.begin(), mission_contacts.end(), [](const Contact & c) {
+        return c.is_new && c.reported_while_allowed && !c.investigated && !c.dismissed;
+    });
+}
+
+// A contact reported only once (a target the tracker saw briefly) is confirmed once the delay has passed.
+void MissionManager::confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    for (auto & contact : mission_contacts) {
+        if (contact.is_new && contact.reported_while_allowed && !contact.investigated && !contact.dismissed) {
+            maybeCreateToiTasks(contact, veh_poses);
         }
     }
 }
@@ -729,12 +854,14 @@ double MissionManager::resolveSpeedSetpoint(const Task* task) const {
   // Else take default max speed
 
   constexpr double eps = std::numeric_limits<double>::epsilon();
+  double speed = speed_setpoint_state > eps ? speed_setpoint_state : params_.max_speed;
   if(task != nullptr && task->task_speed > eps){
-    return task->task_speed;
+    speed = task->task_speed;
   }
-
-  return speed_setpoint_state > eps ? speed_setpoint_state
-                                    : params_.max_speed;
+  if(task != nullptr && task->speed_limit > eps){
+    speed = std::min(speed, task->speed_limit);
+  }
+  return speed;
 }
 
 void MissionManager::handleFormationRequest(FormationMsg msg) {
@@ -882,7 +1009,7 @@ void MissionManager::handleCancelTask(const CancelMsg & msg){
 }
 
 void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
-  resetTaskList(true);
+  resetTaskList(true, CancelledContact::Dismiss);
   publishTaskChange();
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }

@@ -11,8 +11,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <avt_341_nav/core/coord_transform.hpp>
 #include <avt_341_nav/core/eigen_dto_conversion.hpp>
@@ -74,6 +76,7 @@ void ObjectTracker::CreatePerTargetPublishers() {
 
 void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     camera_info_ = context.camera_info;
+    const bool fresh_detection = std::exchange(has_fresh_detection_, false);
 
 	
 	// Reset detector covariance
@@ -104,6 +107,30 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                      "No valid initial target detection received, skipping "
                      "tracking ...");
         return;
+    }
+
+    if (filter_initialized_ &&
+        IsExcludedPosition(bounding_box_centroid_filtered_)) {
+        RCLCPP_INFO(logger_,
+                    "Target \"%s\" at (%.2f, %.2f) is excluded; releasing "
+                    "it.",
+                    target_class_.c_str(), bounding_box_centroid_filtered_.x(),
+                    bounding_box_centroid_filtered_.y());
+        Reset();
+        return;
+    }
+
+    const bool selected = has_detection_ && SelectDetection(context);
+    if (fresh_detection && filter_initialized_ && has_tracked_target_) {
+        OnOtherDetections(context, selected ? &detections_message_ : nullptr);
+    }
+    if (has_detection_ && !selected) {
+        has_detection_ = false;
+        if (!has_tracked_target_) {
+            has_first_detection_ = false;
+            state_ = TrackerState::INACTIVE;
+            return;
+        }
     }
 
     if (has_tracked_target_ && !has_detection_) {
@@ -141,11 +168,30 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         }
     }
 
+    if (has_detection_ && fresh_detection) {
+        ++camera_detection_count_;
+    }
+
     // Tracking measurement via obstacle detector bounding box markers.
     // The LiDAR obstacle detector runs its own clustering and tracking
     // pipeline and produces bounding boxes as a MarkerArray. We use the
     // marker positions as LiDAR measurements, replacing the internal PCL
     // clustering pipeline.
+
+    // A detection without a marker near it would replace a held LiDAR lock by
+    // the camera range estimate, which is poor near the image edges: carry on
+    // with the locked marker while it is reported.
+    if (state_ == TrackerState::FULL_TRACKING && tracked_obstacle_id_ >= 0 &&
+        context.has_obstacle_markers && context.obstacle_markers &&
+        !AssociateMarker(detections_message_, *context.obstacle_markers)) {
+        const auto& markers = context.obstacle_markers->markers;
+        if (std::any_of(markers.begin(), markers.end(), [this](const auto& marker) {
+                return marker.action != visualization_msgs::msg::Marker::DELETEALL &&
+                       marker.id == tracked_obstacle_id_;
+            })) {
+            state_ = TrackerState::LIDAR_ONLY_TRACKING;
+        }
+    }
 
     if (state_ == TrackerState::LIDAR_ONLY_TRACKING) {
         // In LIDAR_ONLY mode we already have an associated obstacle ID from
@@ -368,83 +414,22 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             return;
         }
 
-        // Detection bounding-box center in pixel coordinates.
         const double det_u =
             detections_message_.bbox.center.position.x;
         const double det_v =
             detections_message_.bbox.center.position.y;
+        const std::optional<MarkerMatch> match =
+            AssociateMarker(detections_message_, *context.obstacle_markers);
 
-        // Maximum allowed pixel distance: the half-diagonal of the detection
-        // bounding box, scaled by obstacle_association_max_dist. Using
-        // obstacle_association_max_dist = 1.0 means the marker's projection
-        // must land within one half-diagonal of the bbox center. Increase it
-        // to be more permissive.
-        const double bbox_half_diag = 0.5 * std::sqrt(
-            detections_message_.bbox.size_x *
-            detections_message_.bbox.size_x +
-            detections_message_.bbox.size_y *
-            detections_message_.bbox.size_y);
-        const double max_pixel_dist =
-            params_.tracking.obstacle_association_max_dist * bbox_half_diag;
-
-        double best_pixel_dist = max_pixel_dist;
-        int best_id = -1;
-        Eigen::Vector3d best_pos_cam;
-        Eigen::Vector3d best_size;
-        Eigen::Quaterniond best_quat = Eigen::Quaterniond::Identity();
-
-        for (const auto& marker : context.obstacle_markers->markers) {
-            if (marker.action ==
-                visualization_msgs::msg::Marker::DELETEALL) {
-                continue;
-            }
-
-            // Transform marker position to camera frame.
-            const Eigen::Vector3d pos = core::ToEigen(marker.pose.position);
-            const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
-                marker.header.frame_id, frame_ids_.Camera(), pos);
-
-            // Skip markers behind the camera.
-            if (pos_cam.z() <= 0.0) continue;
-
-            // Project to image pixel coordinates using camera intrinsics.
-            const double fx = camera_info_->k[0];
-            const double fy = camera_info_->k[4];
-            const double cx = camera_info_->k[2];
-            const double cy = camera_info_->k[5];
-            const double proj_u = fx * pos_cam.x() / pos_cam.z() + cx;
-            const double proj_v = fy * pos_cam.y() / pos_cam.z() + cy;
-
-            // Skip projections outside the image.
-            if (proj_u < 0.0 ||
-                proj_u > static_cast<double>(camera_info_->width) ||
-                proj_v < 0.0 ||
-                proj_v > static_cast<double>(camera_info_->height)) {
-                continue;
-            }
-
-            const double pixel_dist = std::sqrt(
-                (proj_u - det_u) * (proj_u - det_u) +
-                (proj_v - det_v) * (proj_v - det_v));
-
-            if (pixel_dist < best_pixel_dist) {
-                best_pixel_dist = pixel_dist;
-                best_id = marker.id;
-                best_pos_cam = pos_cam;
-                best_size = core::ToEigen(marker.scale);
-                best_quat = core::ToEigen(marker.pose.orientation);
-            }
-        }
-
-        if (best_id < 0) {
+        if (!match) {
             // No obstacle marker projects near the camera detection bbox.
             // Fall back to the camera range estimate until the obstacle
             // detector picks up the target again.
             RCLCPP_INFO(logger_,
-                        "FULL_TRACKING: no obstacle marker projects within "
-                        "%.0f px of detection center (%.0f, %.0f); "
+                        "FULL_TRACKING: no obstacle marker projects near "
+                        "detection center (%.0f, %.0f); "
                         "using camera-only measurement.",
-                        max_pixel_dist, det_u, det_v);
+                        det_u, det_v);
             CameraCentroidEstimate();
             state_ = TrackerState::CAMERA_ONLY_TRACKING;
             has_detection_ = true;
@@ -456,11 +441,11 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         }
 
         // Associate this obstacle with the target.
-        tracked_obstacle_id_ = best_id;
-        bounding_box_centroid_ = best_pos_cam;
-        bounding_box_size_ = best_size;
-        object_size_ = best_size;
-        bounding_box_orientation_ = best_quat;
+        tracked_obstacle_id_ = match->id;
+        bounding_box_centroid_ = match->pos_cam;
+        bounding_box_size_ = match->size;
+        object_size_ = match->size;
+        bounding_box_orientation_ = match->orientation;
 
         // On the first LiDAR lock-on, reset the Kalman filter so it
         // re-initializes from the reliable LiDAR position rather than
@@ -470,7 +455,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             RCLCPP_INFO(logger_,
                         "FULL_TRACKING: first LiDAR lock on obstacle ID %d; "
                         "re-initializing filter from LiDAR position.",
-                        best_id);
+                        match->id);
             filter_initialized_ = false;
         }
 
@@ -481,12 +466,12 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         last_lidar_seen_time_ = last_valid_target_time_;
         last_lidar_world_pos_ = coord_transformer_.Transform(
             frame_ids_.Camera(), frame_ids_.Map(),
-            best_pos_cam);
+            match->pos_cam);
 
         RCLCPP_DEBUG(logger_,
                     "FULL_TRACKING: associated obstacle ID %d "
                     "(projected %.0f px from detection center).",
-                    tracked_obstacle_id_, best_pixel_dist);
+                    tracked_obstacle_id_, match->pixel_dist);
     }
 
     has_detection_ = false;
@@ -533,6 +518,8 @@ void ObjectTracker::EstimatorTick() {
             has_new_measurement_ = false;
             has_had_first_lidar_measurement_ = false;
             tracked_obstacle_id_ = -1;
+            camera_detection_count_ = 0;
+            track_start_ns_ = 0;
         }
     }
 
@@ -548,6 +535,9 @@ void ObjectTracker::EstimatorTick() {
         bounding_box_centroid_global_ = seed;
         bounding_box_centroid_filtered_ = seed;
         filter_initialized_ = true;
+        if (track_start_ns_ == 0) {
+            track_start_ns_ = std::max<int64_t>(1, node_->get_clock()->now().nanoseconds());
+        }
     }
 
     // Do not advance the filter when there is no active detection.
@@ -654,44 +644,258 @@ void ObjectTracker::EstimatorTick() {
     }
 }
 
-void ObjectTracker::IngestDetection(
-    const vision_msgs::msg::Detection2D& detection,
+void ObjectTracker::IngestDetections(
+    const std::vector<vision_msgs::msg::Detection2D>& detections,
     const rclcpp::Time& header_stamp,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info) {
-    // Reject the detection if the bounding box touches any image edge.
-    // A clipped bbox produces a biased centroid estimate because part of the
-    // object is outside the frame; the range/bearing estimate from
-    // ConvertBBoxCoordinatesToPoseCentroid_rdf becomes unreliable.
-    if (camera_info) {
-        const auto& bbox = detection.bbox;
-        const double left   = bbox.center.position.x - bbox.size_x / 2.0;
-        const double right  = bbox.center.position.x + bbox.size_x / 2.0;
-        const double top    = bbox.center.position.y - bbox.size_y / 2.0;
-        const double bottom = bbox.center.position.y + bbox.size_y / 2.0;
-        if (left <= 0.0 ||
-            right  >= static_cast<double>(camera_info->width) ||
-            top    <= 0.0 ||
-            bottom >= static_cast<double>(camera_info->height)) {
-            RCLCPP_DEBUG(logger_,
-                         "Bounding box touches image edge (l=%.1f r=%.1f "
-                         "t=%.1f b=%.1f img=%ux%u) — skipping camera update.",
-                         left, right, top, bottom,
-                         camera_info->width,
-                         camera_info->height);
-            has_detection_ = false;
-            return;
+    candidate_detections_.clear();
+    for (const auto& detection : detections) {
+        // Reject the detection if the bounding box touches any image edge.
+        // A clipped bbox produces a biased centroid estimate because part of
+        // the object is outside the frame; the range/bearing estimate from
+        // ConvertBBoxCoordinatesToPoseCentroid_rdf becomes unreliable.
+        if (camera_info) {
+            const auto& bbox = detection.bbox;
+            const double left   = bbox.center.position.x - bbox.size_x / 2.0;
+            const double right  = bbox.center.position.x + bbox.size_x / 2.0;
+            const double top    = bbox.center.position.y - bbox.size_y / 2.0;
+            const double bottom = bbox.center.position.y + bbox.size_y / 2.0;
+            if (left <= 0.0 ||
+                right  >= static_cast<double>(camera_info->width) ||
+                top    <= 0.0 ||
+                bottom >= static_cast<double>(camera_info->height)) {
+                RCLCPP_DEBUG(logger_,
+                             "Bounding box touches image edge (l=%.1f r=%.1f "
+                             "t=%.1f b=%.1f img=%ux%u) — skipping camera update.",
+                             left, right, top, bottom,
+                             camera_info->width,
+                             camera_info->height);
+                continue;
+            }
+            if (params_.camera.ego_mask_top < 1.0 &&
+                bbox.center.position.y >=
+                    params_.camera.ego_mask_top * camera_info->height) {
+                RCLCPP_DEBUG(logger_,
+                             "Bounding box centered at row %.1f is on the ego "
+                             "vehicle (camera.ego_mask_top %.2f) — skipping.",
+                             bbox.center.position.y,
+                             params_.camera.ego_mask_top);
+                continue;
+            }
         }
+        candidate_detections_.push_back(detection);
     }
 
-    // Store the vision_msgs/msg/Detection2D message, keep track of its
-    // timestamp and mark detections as received.
-    detections_message_ = detection;
-    detection_score_ = detection.results[0].hypothesis.score;
+    if (candidate_detections_.empty()) {
+        has_detection_ = false;
+        return;
+    }
+
+    // Store the first vision_msgs/msg/Detection2D message (the tracking tick
+    // may pick another candidate), keep track of its timestamp and mark
+    // detections as received.
+    detections_message_ = candidate_detections_.front();
+    detection_score_ = detections_message_.results[0].hypothesis.score;
     last_valid_detection_time_ = header_stamp;
     last_valid_detection_callback_time_ = node_->get_clock()->now();
 
     has_first_detection_ = true;
     has_detection_ = true;
+    has_fresh_detection_ = true;
+}
+
+std::optional<Eigen::Vector2d> ObjectTracker::ProjectToImage(
+    const Eigen::Vector3d& pos_cam) const {
+    if (pos_cam.z() <= 0.0) {
+        return std::nullopt;
+    }
+    const double u =
+        camera_info_->k[0] * pos_cam.x() / pos_cam.z() + camera_info_->k[2];
+    const double v =
+        camera_info_->k[4] * pos_cam.y() / pos_cam.z() + camera_info_->k[5];
+    if (u < 0.0 || u > static_cast<double>(camera_info_->width) ||
+        v < 0.0 || v > static_cast<double>(camera_info_->height)) {
+        return std::nullopt;
+    }
+    return Eigen::Vector2d(u, v);
+}
+
+std::optional<double> ObjectTracker::ProjectToColumn(
+    const Eigen::Vector3d& pos_cam) const {
+    if (pos_cam.z() <= 0.0) {
+        return std::nullopt;
+    }
+    const double u =
+        camera_info_->k[0] * pos_cam.x() / pos_cam.z() + camera_info_->k[2];
+    if (u < 0.0 || u > static_cast<double>(camera_info_->width)) {
+        return std::nullopt;
+    }
+    return u;
+}
+
+std::optional<ObjectTracker::MarkerMatch> ObjectTracker::AssociateMarker(
+    const vision_msgs::msg::Detection2D& detection,
+    const visualization_msgs::msg::MarkerArray& markers) const {
+    // Maximum allowed pixel distance: the half-diagonal of the detection
+    // bounding box, scaled by obstacle_association_max_dist. Using
+    // obstacle_association_max_dist = 1.0 means the marker's projection
+    // must land within one half-diagonal of the bbox center. Increase it
+    // to be more permissive.
+    const Eigen::Vector2d det_center(detection.bbox.center.position.x,
+                                     detection.bbox.center.position.y);
+    const double bbox_half_diag = 0.5 * std::hypot(detection.bbox.size_x,
+                                                   detection.bbox.size_y);
+    double best_pixel_dist =
+        params_.tracking.obstacle_association_max_dist * bbox_half_diag;
+
+    std::optional<MarkerMatch> best;
+    for (const auto& marker : markers.markers) {
+        if (marker.action == visualization_msgs::msg::Marker::DELETEALL) {
+            continue;
+        }
+        const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
+            marker.header.frame_id, frame_ids_.Camera(),
+            core::ToEigen(marker.pose.position));
+        const std::optional<Eigen::Vector2d> pixel = ProjectToImage(pos_cam);
+        if (!pixel) {
+            continue;
+        }
+        const double pixel_dist = (*pixel - det_center).norm();
+        if (pixel_dist < best_pixel_dist) {
+            best_pixel_dist = pixel_dist;
+            best = MarkerMatch{marker.id, pixel_dist, pos_cam,
+                               core::ToEigen(marker.scale),
+                               core::ToEigen(marker.pose.orientation)};
+        }
+    }
+    return best;
+}
+
+const std::vector<Eigen::Vector3d>& ObjectTracker::ExcludedPositions() const {
+    static const std::vector<Eigen::Vector3d> none;
+    return none;
+}
+
+bool ObjectTracker::IsExcludedPosition(const Eigen::Vector3d& map_position) const {
+    const double radius = ExclusionRadius();
+    for (const auto& excluded : ExcludedPositions()) {
+        if (std::hypot(map_position.x() - excluded.x(),
+                       map_position.y() - excluded.y()) <= radius) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Eigen::Vector3d ObjectTracker::EstimateMapPosition(
+    const vision_msgs::msg::Detection2D& detection,
+    const TrackerSensorContext& context) {
+    if (context.has_obstacle_markers && context.obstacle_markers) {
+        if (const auto match =
+                AssociateMarker(detection, *context.obstacle_markers)) {
+            return coord_transformer_.Transform(frame_ids_.Camera(),
+                                                frame_ids_.Map(), match->pos_cam);
+        }
+    }
+    const Eigen::Matrix3d r_rdf = R_rdf_;
+    const Eigen::Vector3d pos_cam =
+        ConvertBBoxCoordinatesToPoseCentroid_rdf(detection, camera_info_);
+    R_rdf_ = r_rdf;
+    return coord_transformer_.Transform(frame_ids_.Camera(), frame_ids_.Map(), pos_cam);
+}
+
+bool ObjectTracker::IsExcludedDetection(
+    const vision_msgs::msg::Detection2D& detection,
+    const TrackerSensorContext& context, bool always_check_bearing) {
+    if (ExcludedPositions().empty()) {
+        return false;
+    }
+    if (context.has_obstacle_markers && context.obstacle_markers) {
+        if (const auto match =
+                AssociateMarker(detection, *context.obstacle_markers)) {
+            return IsExcludedPosition(coord_transformer_.Transform(
+                frame_ids_.Camera(), frame_ids_.Map(), match->pos_cam));
+        }
+    }
+    const Eigen::Vector3d camera_estimate =
+        ConvertBBoxCoordinatesToPoseCentroid_rdf(detection, camera_info_);
+    if (IsExcludedPosition(coord_transformer_.Transform(
+            frame_ids_.Camera(), frame_ids_.Map(), camera_estimate))) {
+        return true;
+    }
+    if (filter_initialized_ && has_tracked_target_ && !always_check_bearing) {
+        return false;
+    }
+    for (const auto& excluded : ExcludedPositions()) {
+        const Eigen::Vector3d pos_cam = coord_transformer_.Transform(
+            frame_ids_.Map(), frame_ids_.Camera(), excluded);
+        const std::optional<double> u = ProjectToColumn(pos_cam);
+        if (u && std::abs(*u - detection.bbox.center.position.x) <=
+                     detection.bbox.size_x / 2.0 &&
+            camera_estimate.z() >= 0.5 * pos_cam.z() &&
+            camera_estimate.z() <= 2.0 * pos_cam.z()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
+    std::optional<double> track_column;
+    if (filter_initialized_ && has_tracked_target_) {
+        const Eigen::Vector3d track_cam = coord_transformer_.Transform(
+            frame_ids_.Map(), frame_ids_.Camera(),
+            bounding_box_centroid_filtered_);
+        if (track_cam.z() > 0.0) {
+            // Part of a near target can be in view while its center is not.
+            const double margin =
+                camera_info_->k[0] * 0.5 *
+                std::max(object_size_.x(), object_size_.y()) / track_cam.z();
+            const double u = camera_info_->k[0] * track_cam.x() /
+                                 track_cam.z() +
+                             camera_info_->k[2];
+            if (u >= -margin &&
+                u <= static_cast<double>(camera_info_->width) + margin) {
+                track_column = u;
+            }
+        }
+        if (!track_column) {
+            RCLCPP_DEBUG(logger_,
+                         "Tracked \"%s\" is outside the image; ignoring its "
+                         "camera detections.",
+                         target_class_.c_str());
+            return false;
+        }
+    }
+
+    const vision_msgs::msg::Detection2D* best = nullptr;
+    double best_column_dist = std::numeric_limits<double>::infinity();
+    for (const auto& detection : candidate_detections_) {
+        if (IsExcludedDetection(detection, context)) {
+            continue;
+        }
+        if (!track_column) {
+            best = &detection;
+            break;
+        }
+        const double column_dist =
+            std::abs(*track_column - detection.bbox.center.position.x);
+        if (column_dist < best_column_dist) {
+            best_column_dist = column_dist;
+            best = &detection;
+        }
+    }
+
+    if (best == nullptr) {
+        RCLCPP_DEBUG(logger_,
+                     "None of the %zu \"%s\" detections qualifies for "
+                     "tracking.",
+                     candidate_detections_.size(), target_class_.c_str());
+        return false;
+    }
+    detections_message_ = *best;
+    detection_score_ = best->results[0].hypothesis.score;
+    return true;
 }
 
 void ObjectTracker::MarkDetectionMiss() {
@@ -720,6 +924,8 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
     has_new_measurement_ = false;
     has_had_first_lidar_measurement_ = false;
     tracked_obstacle_id_ = -1;
+    camera_detection_count_ = 0;
+    track_start_ns_ = 0;
 
     const rclcpp::Time now = node_->get_clock()->now();
     last_valid_target_time_ = now;

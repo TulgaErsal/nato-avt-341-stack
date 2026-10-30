@@ -11,6 +11,8 @@
 #define AVT_341_TOI_TRACKER_H
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -41,10 +43,38 @@ class ToiTracker : public ObjectTracker {
 
     void Reset() override;
 
+    /** @brief Map positions of targets that have been investigated. Targets
+     *         within "target_selection.investigated_toi_radius" of them are
+     *         not tracked, and a tracked one is released. */
+    void SetInvestigatedPositions(std::vector<Eigen::Vector3d> positions) {
+        investigated_positions_ = std::move(positions);
+    }
+
    protected:
-    /** @brief Publish a contact on the first active-tracking tick (encircle
-     *         trigger) and then every contact_update_interval_ticks_. */
+    /** @brief Publish a track's first contact on the first active-tracking
+     *         tick after "target_selection.toi_min_detections" camera
+     *         detections (encircle trigger), then every
+     *         contact_update_interval_ticks_. Each contact pose's header.stamp
+     *         is the time its track started, the same for all contacts of one
+     *         track, so the mission manager can tell a track's moved estimate
+     *         from another target. */
     void MaybePublishContactUpdate() override;
+
+    /** @brief While a target is tracked, publish the other detections of the
+     *         class that are neither near it nor excluded as sightings: contacts
+     *         without a track (header.stamp 0), at most once per
+     *         contact_update_interval_ticks_, so the mission manager can queue
+     *         their investigation although the tracker keeps its target. */
+    void OnOtherDetections(const TrackerSensorContext& context,
+                           const vision_msgs::msg::Detection2D* selected) override;
+
+    const std::vector<Eigen::Vector3d>& ExcludedPositions() const override {
+        return investigated_positions_;
+    }
+
+    double ExclusionRadius() const override {
+        return params_.target_selection.investigated_toi_radius;
+    }
 
    private:
     void PublishTargetContact();
@@ -55,11 +85,16 @@ class ToiTracker : public ObjectTracker {
     // Target contacts (encircle trigger)
     // -------------------------------------------------------------------------
 
-    bool encircle_triggered_ = false;
+    /** @brief Start of the track whose first contact has been published. */
+    int64_t published_track_start_ns_ = 0;
 
     int contact_update_counter_ = 0;
 
+    rclcpp::Time last_sightings_time_{0, 0, RCL_ROS_TIME};
+
     static constexpr int contact_update_interval_ticks_ = 10;
+
+    std::vector<Eigen::Vector3d> investigated_positions_;
 };
 
 }  // namespace perception

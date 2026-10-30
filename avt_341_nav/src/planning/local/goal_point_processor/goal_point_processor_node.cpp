@@ -16,6 +16,7 @@
 #include "avt_341_nav/core/ros_msg_utils.hpp"
 #include "avt_341_nav/core/dto_conversion.h"
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
+#include <algorithm>
 #include <memory>
 // Globals
 std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> pub_steering_angle;
@@ -111,6 +112,12 @@ void publishSteeringRate(double current_angle) {
     last_steer_angle = current_angle;
     last_steer_time = n->now();
     steer_initialized = true;
+}
+
+bool is_on_path(const avt_341_nav::core::vec2& point, const nav_msgs::msg::Path& path, double tolerance) {
+    return std::any_of(path.poses.begin(), path.poses.end(), [&](const geometry_msgs::msg::PoseStamped& pose) {
+        return (avt_341_nav::core::vec2(pose.pose.position.x, pose.pose.position.y) - point).mag() <= tolerance;
+    });
 }
 
 bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Path global_path, std_msgs::msg::Float64 ss) {
@@ -272,7 +279,7 @@ bool new_input_available(std_msgs::msg::Float64MultiArray veh, nav_msgs::msg::Pa
 				turningAround = true;
 				goal = globalPoint;
             }
-			else {
+			else if (is_on_path(goal, global_path, params.goal_hold_path_tolerance)) {
 				return true;
 			}
         }

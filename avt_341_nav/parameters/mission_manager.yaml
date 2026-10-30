@@ -139,11 +139,11 @@ ros__parameters:
       description: "Approach distance to a target of interest before encircling."
     encircle_radius:
       type: double
-      default_value: 10.0
+      default_value: 7.0
       description: "Encircle radius around a target of interest."
     encircle_degrees:
       type: double
-      default_value: 180.0
+      default_value: 270.0
       description: "Angular range to encircle around a target of interest (at most one full loop)."
       validation:
         bounds<>: [ 0.0, 360.0 ]
@@ -153,8 +153,48 @@ ros__parameters:
       description: "If true, encircle the target of interest clockwise."
     goal_threshold:
       type: double
-      default_value: 5.0
-      description: "Distance at which the vehicle is considered to have approached the target of interest."
+      default_value: 2.5
+      description: "Distance at which the vehicle is considered to have approached the target of interest. Coming this close to the end of an encircle path, having been farther from it, ends the encircle."
+    encircle_speed:
+      type: double
+      default_value: 2.5
+      description: "Speed limit [m/s] while encircling a target of interest (a slower mission speed is kept); 0 keeps the mission's. The MPC heads for a goal point the goal point processor picks speed x (prediction_time_horizon + goal_lookahead_time_padding) metres along the circle, so a slower encircle keeps that goal closer and the vehicle on the circle."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    encircle_blocked_time:
+      type: double
+      default_value: 3.0
+      description: "An encircle is abandoned (its target counted as investigated) once at least encircle_blocked_fraction of the next encircle_blocked_lookahead metres of the circle has had an occupied cell of avt_341/occupancy_grid within encircle_blocked_clearance for this long [s]. 0 never abandons it."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    encircle_blocked_lookahead:
+      type: double
+      default_value: 10.0
+      description: "Length of the circle ahead of the vehicle checked for obstacles [m] (see encircle_blocked_time)."
+      validation:
+        gt<>: [ 0.0 ]
+    encircle_blocked_fraction:
+      type: double
+      default_value: 0.5
+      description: "Fraction of the circle ahead that must be blocked (see encircle_blocked_time)."
+      validation:
+        bounds<>: [ 0.0, 1.0 ]
+    encircle_blocked_clearance:
+      type: double
+      default_value: 0.75
+      description: "A circle pose is blocked when an occupied cell lies within this distance of it [m] (see encircle_blocked_time)."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    encircle_tangent_entry:
+      type: bool
+      default_value: false
+      description: "If true, an encircle starting outside its circle first drives straight to the circle's tangent point in the encircle direction, then along the circle. The bearing swept along that line counts toward encircle_degrees, so the path ends where it would without it. If false, the circle starts at the vehicle's bearing from the target."
+    encircle_stall_time:
+      type: double
+      default_value: 7.0
+      description: "An encircle is abandoned (its target counted as investigated) once the vehicle has swept no further around the target for this long with autonomy enabled [s]. 0 never abandons it."
+      validation:
+        gt_eq<>: [ 0.0 ]
     encircle_replan_distance:
       type: double
       default_value: 2.0
@@ -167,18 +207,36 @@ ros__parameters:
       description: "Seconds a contact must persist before MoveTo and Encircle tasks are created (0 triggers immediately)."
     same_object_distance_threshold:
       type: double
-      default_value: 1.0
-      description: "Distance threshold for combining observations of the same target."
+      default_value: 5.0
+      description: "Target contacts of the same class within this planar distance [m] of a known contact are the same target: they refine its position, or are ignored once it has been investigated. Contacts farther from every known contact are new targets and are investigated after the current one. It is also applied to the object tracking node's target_selection.investigated_toi_radius together with each toi_regex."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    sighting_match_distance:
+      type: double
+      default_value: 12.0
+      description: "Planar distance [m] within which a sighting (the tracker's report of another target of interest while it follows one; camera range estimate) matches a contact, and any report matches a contact known only from sightings. A sighting never moves a contact a track has reported on. Reports of a track match a tracked contact within same_object_distance_threshold."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    track_match_distance:
+      type: double
+      default_value: 30.0
+      description: "A report of the tracker's track updates the contact that track reported before only within this planar distance [m] of it; farther off, it is matched by position like a report of a new track (a track that jumped to another target does not drag the old contact)."
+      validation:
+        gt_eq<>: [ 0.0 ]
     team_vehicle_exclusion_radius:
       type: double
       default_value: 5.0
       description: "Target contacts within this planar distance [m] of any team vehicle (including the ego vehicle) are ignored, so team members detected as targets of interest are not investigated. 0 disables the filter."
       validation:
         gt_eq<>: [ 0.0 ]
+    autonomy_topic:
+      type: string
+      default_value: '/autonomy_enabled'
+      description: "std_msgs/Bool topic reporting whether the vehicle is under autonomous control; no investigation is started while it reports false (none is started without an active task either). Empty, or no message, leaves investigations enabled."
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'
-      description: "Object tracking node whose target_selection.toi_regex is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
+      description: "Object tracking node whose target_selection.toi_regex (and investigated_toi_radius, see same_object_distance_threshold) is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:
     type: bool

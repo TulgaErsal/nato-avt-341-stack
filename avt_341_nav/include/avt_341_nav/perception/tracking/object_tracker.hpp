@@ -10,8 +10,11 @@
 #ifndef AVT_341_OBJECT_TRACKER_H
 #define AVT_341_OBJECT_TRACKER_H
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -86,18 +89,20 @@ class ObjectTracker {
     // -------------------------------------------------------------------------
 
     /**
-     * @brief Cache one camera detection matching this tracker's target class.
+     * @brief Cache the camera detections matching this tracker's target class.
      *
      * Rejects detections whose bounding box touches an image edge (a clipped
      * bbox produces a biased centroid estimate). The rejection requires
-     * camera intrinsics and is skipped while @p camera_info is null.
+     * camera intrinsics and is skipped while @p camera_info is null. The next
+     * tracking tick picks one of the remaining detections (see
+     * SelectDetection).
      *
-     * @param detection The matching vision_msgs/Detection2D.
+     * @param detections The matching vision_msgs/Detection2D messages.
      * @param header_stamp Stamp of the enclosing Detection2DArray header.
      * @param camera_info Latest camera intrinsics (may be null).
      */
-    void IngestDetection(
-        const vision_msgs::msg::Detection2D& detection,
+    void IngestDetections(
+        const std::vector<vision_msgs::msg::Detection2D>& detections,
         const rclcpp::Time& header_stamp,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr& camera_info);
 
@@ -164,6 +169,86 @@ class ObjectTracker {
      * to publish target contacts.
      */
     virtual void MaybePublishContactUpdate() {}
+
+    /** @brief Map positions of targets that must not be tracked. None for
+     *         the base tracker; ToiTracker excludes targets that have already
+     *         been investigated. */
+    virtual const std::vector<Eigen::Vector3d>& ExcludedPositions() const;
+
+    /** @brief Planar radius [m] around each excluded position. */
+    virtual double ExclusionRadius() const { return 0.0; }
+
+    /** @brief True if @p map_position is within ExclusionRadius() of an
+     *         excluded position. */
+    bool IsExcludedPosition(const Eigen::Vector3d& map_position) const;
+
+    /**
+     * @brief True if @p detection shows an excluded target. With an
+     * associated obstacle marker, the marker's position alone decides.
+     * Without one, the camera range estimate decides, and while nothing is
+     * tracked (or with @p always_check_bearing) so does the bearing: an excluded position projecting inside the
+     * bounding-box columns at a range within a factor of 2 of the camera range
+     * estimate (which can be off by more than the exclusion radius at long
+     * range) also excludes it.
+     */
+    bool IsExcludedDetection(const vision_msgs::msg::Detection2D& detection,
+                             const TrackerSensorContext& context,
+                             bool always_check_bearing = false);
+
+    /** @brief Called on each tick with fresh detections while a target is
+     *         tracked, with the detection used for it (nullptr if none).
+     *         No-op for the base tracker; ToiTracker reports the other
+     *         detections of its class as sightings. */
+    virtual void OnOtherDetections(const TrackerSensorContext& /*context*/,
+                                   const vision_msgs::msg::Detection2D* /*selected*/) {}
+
+    /** @brief Map position of a detection: its associated obstacle marker's,
+     *         or else the camera range estimate. */
+    Eigen::Vector3d EstimateMapPosition(const vision_msgs::msg::Detection2D& detection,
+                                        const TrackerSensorContext& context);
+
+    /** @brief Obstacle detector marker associated with a camera detection. */
+    struct MarkerMatch {
+        int id = -1;
+        double pixel_dist = 0.0;
+        Eigen::Vector3d pos_cam = Eigen::Vector3d::Zero();
+        Eigen::Vector3d size = Eigen::Vector3d::Zero();
+        Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity();
+    };
+
+    /** @brief The marker that projects closest to the detection bbox center,
+     *         within obstacle_association_max_dist half-diagonals. */
+    std::optional<MarkerMatch> AssociateMarker(
+        const vision_msgs::msg::Detection2D& detection,
+        const visualization_msgs::msg::MarkerArray& markers) const;
+
+    /** @brief Pixel coordinates of a camera-frame point, if it is in front of
+     *         the camera and inside the image. */
+    std::optional<Eigen::Vector2d> ProjectToImage(const Eigen::Vector3d& pos_cam) const;
+
+    /** @brief Image column of a camera-frame point, if it is in front of the
+     *         camera and within the image width. */
+    std::optional<double> ProjectToColumn(const Eigen::Vector3d& pos_cam) const;
+
+    /**
+     * @brief Pick the cached detection to track this tick.
+     *
+     * Detections of excluded targets are skipped. While a target is tracked,
+     * none qualifies if no part of it can be in the image (its estimate
+     * projects outside the image by more than its half-size, from the LiDAR
+     * box), and the track carries on LiDAR-only for as long as LiDAR keeps
+     * the target (CheckTargetTimeout drops it once neither sensor does).
+     * Otherwise the detection whose center column
+     * is closest to that projection wins, so another object of the same class
+     * cannot take over the track. Otherwise the first remaining detection
+     * wins. A detection in the image is never rejected for being far from the
+     * track: when the LiDAR marker association drifts onto another obstacle,
+     * the camera detection is what pulls the track back (the filter's chi2
+     * gate guards the estimate).
+     *
+     * @return False if no detection qualifies.
+     */
+    bool SelectDetection(const TrackerSensorContext& context);
 
     // JN addition
     /** @brief Get coordinates from camera bounding box when the LiDAR
@@ -256,6 +341,9 @@ class ObjectTracker {
 
     vision_msgs::msg::Detection2D detections_message_;
 
+    /** @brief Detections of the target class cached since the last tick. */
+    std::vector<vision_msgs::msg::Detection2D> candidate_detections_;
+
     double detection_score_ = 0.0;
 
     /** @brief Whether or not there is a valid detection containing the target
@@ -265,6 +353,19 @@ class ObjectTracker {
     /** @brief Whether or not the first valid detection containing the target
      *         has been received since the tracker reset. */
     bool has_first_detection_ = false;
+
+    /** @brief Camera detections of the target used by tracking ticks since
+     *         the tracker or its estimator was last reset. */
+    int camera_detection_count_ = 0;
+
+    /** @brief A detection was ingested since the last tracking tick
+     *         (has_detection_ can stay set on a re-used detection). */
+    bool has_fresh_detection_ = false;
+
+    /** @brief When the current track started (its filter was first
+     *         initialized since the last reset or timeout) [ns]; 0 without a
+     *         track. A re-initialization on the first LiDAR lock keeps it. */
+    int64_t track_start_ns_ = 0;
 
     /** @brief Time stamp of the last valid detection message containing the
      *         target. */

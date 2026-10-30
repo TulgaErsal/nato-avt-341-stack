@@ -50,6 +50,7 @@ public:
     bool is_preemptable;
     bool arrived = false;
     double task_speed = -1.0;
+    double speed_limit = -1.0;
     // Node clock [s] when the task first started executing and when it completed; -1 until set.
     double start_time_sec = -1.0;
     double end_time_sec = -1.0;
@@ -157,8 +158,14 @@ public:
 
 private:
   void buildCirclePath_(double from_rad, double degrees);
+  void buildPath_(double remaining_rad);
+  double entryRad_() const;
+  double rangeRad_() const;
+  double bearingFromTarget_(const geometry_msgs::msg::Point & point) const;
+  double blockedFractionAhead_(const nav_msgs::msg::OccupancyGrid & grid) const;
 
   bool arrived;
+  bool abandoned_ = false;
   geometry_msgs::msg::PoseStamped target_;
   std::string contact_name_;
   double radius_;
@@ -166,7 +173,19 @@ private:
   bool is_cw_;
   double goal_threshold_;
   double replan_distance_ = 0.0;
+  double blocked_time_ = 0.0;
+  double blocked_lookahead_ = 0.0;
+  double blocked_fraction_ = 1.0;
+  double blocked_clearance_ = 0.0;
+  double blocked_since_ = -1.0;
+  bool tangent_entry_ = false;
+  double stall_time_ = 0.0;
+  double progress_since_ = -1.0;
+  double progress_swept_rad_ = 0.0;
+  bool away_from_end_ = false;
   double start_rad_ = 0.0;
+  double swept_rad_ = 0.0;
+  geometry_msgs::msg::Point last_position_;
   nav_msgs::msg::Path circle_path_;
 }; // class Encircle
 

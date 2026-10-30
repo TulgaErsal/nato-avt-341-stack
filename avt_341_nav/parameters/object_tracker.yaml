@@ -58,6 +58,12 @@ ros__parameters:
       type: double
       default_value: 4.0
       description: "Bounding-box measurement uncertainty [px]."
+    ego_mask_top:
+      type: double
+      default_value: 1.0
+      description: "Image row, as a fraction of the image height from the top, below which the camera sees the ego vehicle itself (e.g. its hood). Detections centered below it are ignored, so the object detector labeling the ego vehicle cannot start a track. 1.0 disables."
+      validation:
+        bounds<>: [ 0.0, 1.0 ]
 
   sync:
     enabled:
@@ -154,6 +160,18 @@ ros__parameters:
       type: bool
       default_value: false
       description: "Track generic targets that are neither formation vehicles nor TOI objects."
+    toi_min_detections:
+      type: int
+      default_value: 3
+      description: "Camera detections a target of interest needs, since its track started, before its first contact is published. Keeps a single spurious detection, which the LiDAR obstacle detector can keep tracked, from triggering an investigation."
+      validation:
+        gt_eq<>: [ 1 ]
+    investigated_toi_radius:
+      type: double
+      default_value: 5.0
+      description: "Targets of interest within this planar distance [m] of a target the mission manager has investigated or dismissed (avt_341/investigated_contacts) are not tracked, so the tracker can pick up other targets of interest. The mission manager sets it to its toi.same_object_distance_threshold whenever it applies a toi_regex."
+      validation:
+        gt_eq<>: [ 0.0 ]
 
   obstacle_detector:
     use_external_detector:

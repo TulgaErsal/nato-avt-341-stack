@@ -349,6 +349,12 @@ class ObjectTrackerNode : public rclcpp::Node {
 
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
 
+    /** @brief Targets the mission manager has investigated, handed to every
+     *         ToiTracker so it leaves them alone. */
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr investigated_contacts_subscription_;
+    std::vector<Eigen::Vector3d> investigated_positions_;
+    void InvestigatedContactsCallback(nav_msgs::msg::Path::SharedPtr msg);
+
     /** Single common odometry topic for tracked lead vehicle */
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher_;
 

@@ -181,6 +181,11 @@ void ObjectTrackerNode::CreateSubscriptions() {
         "avt_341/reset", 10,
         std::bind(&ObjectTrackerNode::ResetCallback, this, std::placeholders::_1));
 
+    investigated_contacts_subscription_ = create_subscription<nav_msgs::msg::Path>(
+        "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local(),
+        std::bind(&ObjectTrackerNode::InvestigatedContactsCallback, this,
+                  std::placeholders::_1));
+
     // Initialize the integrated obstacle detector.
     obstacle_detector_ =
         std::make_shared<avt_341_nav::perception::LidarObstacleDetector<pcl::PointXYZ>>();
@@ -334,9 +339,11 @@ std::unique_ptr<ObjectTracker> ObjectTrackerNode::CreateTracker(
     // Toi tracker
     // ------------------------------------------------------------------------------------------
     if (MatchesToiRegex(target_class)) {
-        return std::make_unique<ToiTracker>(
+        auto tracker = std::make_unique<ToiTracker>(
             this, target_class, params_, *coord_transformer_,
             leader_odom_publisher_, target_contacts_publisher_);
+        tracker->SetInvestigatedPositions(investigated_positions_);
+        return tracker;
     }
 
     // Generic tracker
@@ -885,18 +892,17 @@ void ObjectTrackerNode::DetectionsCallback(
         // We only consider the highest scoring result for each detection,
         // under the assumption that the hypotheses array is sorted from
         // highest to lowest scoring.
-        const vision_msgs::msg::Detection2D* match = nullptr;
+        std::vector<vision_msgs::msg::Detection2D> matches;
         for (const auto& detection : detections_message->detections) {
             if (!detection.results.empty() &&
                 detection.results[0].hypothesis.class_id == target_class) {
-                match = &detection;
-                break;
+                matches.push_back(detection);
             }
         }
 
-        if (match) {
-            tracker->IngestDetection(*match, detections_message->header.stamp,
-                                     camera_info);
+        if (!matches.empty()) {
+            tracker->IngestDetections(matches, detections_message->header.stamp,
+                                      camera_info);
         } else {
             RCLCPP_INFO(get_logger(),
                         "Target %s not found in the current detection, skipping ...",
@@ -948,6 +954,21 @@ void ObjectTrackerNode::TaskChangedCallback(
 
     RCLCPP_INFO(get_logger(), "Target selection set to \"%s\".",
                 target_class.c_str());
+}
+
+void ObjectTrackerNode::InvestigatedContactsCallback(
+    nav_msgs::msg::Path::SharedPtr msg) {
+    investigated_positions_.clear();
+    for (const auto& pose : msg->poses) {
+        investigated_positions_.push_back(core::ToEigen(pose.pose.position));
+    }
+    for (auto& [target_class, tracker] : trackers_) {
+        if (auto* toi_tracker = dynamic_cast<ToiTracker*>(tracker.get())) {
+            toi_tracker->SetInvestigatedPositions(investigated_positions_);
+        }
+    }
+    RCLCPP_INFO(get_logger(), "%zu targets of interest investigated.",
+                investigated_positions_.size());
 }
 
 void ObjectTrackerNode::ResetCallback(std_msgs::msg::String::SharedPtr msg) {

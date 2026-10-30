@@ -2,6 +2,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/parameter_client.hpp>
 #include "avt_341_nav/node/node_types.h"
+#include "avt_341_nav/node/occupancy_grid_subscriber.h"
 #include "avt_341_nav/node/tf_interface.h"
 // local includes
 #include "avt_341_nav/mission/mission_manager.h"
@@ -28,6 +29,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/string.hpp"
 
 std::queue<avt_341_msgs::msg::Communication> comm_msgs;
@@ -48,6 +50,7 @@ rclcpp::Node::SharedPtr nh = nullptr;
 std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 
 std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
+double same_object_distance_threshold = 0.0;
 std::optional<std::string> applied_toi_regex;
 
 // Reconfigure the object tracking node with the targets of interest regex of a mission command (see toiRegexUpdate).
@@ -71,17 +74,24 @@ void UpdateTrackerToiRegex(const std::string & toi_regex) {
     }
 
     tracker_param_client->set_parameters(
-        {rclcpp::Parameter("target_selection.toi_regex", toi_regex)},
+        {rclcpp::Parameter("target_selection.toi_regex", toi_regex),
+         rclcpp::Parameter("target_selection.investigated_toi_radius", same_object_distance_threshold)},
         [toi_regex](const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
             const auto results = future.get();
-            if(results.empty() || !results.front().successful) {
-                const std::string reason = results.empty() ? "no result returned" : results.front().reason;
-                RCLCPP_WARN(nh->get_logger(), "Failed to apply toi_regex \"%s\" to the object tracking node: %s",
-                    toi_regex.c_str(), reason.c_str());
+            bool all_applied = results.size() == 2;
+            for(size_t i = 0; i < results.size(); ++i) {
+                if(!results[i].successful) {
+                    RCLCPP_WARN(nh->get_logger(), "Failed to apply %s to the object tracking node: %s",
+                        i == 0 ? ("toi_regex \"" + toi_regex + "\"").c_str() : "investigated_toi_radius",
+                        results[i].reason.c_str());
+                    all_applied = false;
+                }
+            }
+            if(!all_applied) {
                 return;
             }
-            // Only remember the value once it is known to have been applied, so that a failed
-            // reconfigure is retried on the next formation command.
+            // Only remember the value once both parameters are known to have been applied, so that
+            // a failed reconfigure is retried on the next formation command.
             applied_toi_regex = toi_regex;
             RCLCPP_INFO(nh->get_logger(), "Applied toi_regex \"%s\" to the object tracking node.", toi_regex.c_str());
         });
@@ -351,6 +361,7 @@ int main(int argc, char **argv) {
     PublishGisStaticTransform(params.frames);
 
     tracker_param_client = std::make_shared<rclcpp::AsyncParametersClient>(nh, params.toi.tracker_node_name);
+    same_object_distance_threshold = params.toi.same_object_distance_threshold;
 
     std::shared_ptr<avt_341_nav::mission::GoalFilter> goal_filter =
         avt_341_nav::mission::create_goal_filter(
@@ -360,6 +371,9 @@ int main(int argc, char **argv) {
     mgr = std::make_shared<avt_341_nav::mission::MissionManager>(
         params, my_name, nh, goal_filter);
     mgr->setToiRegexHandler(UpdateTrackerToiRegex);
+
+    auto grid_sub = std::make_shared<avt_341_nav::node::OccupancyGridSubscriber>(
+        nh, "avt_341/occupancy_grid", 1, params.costmap.publish.method);
 
     std::shared_ptr<avt_341_nav::mission::FormationSpeedController>
         speedController = avt_341_nav::mission::createFormationSpeedController(
@@ -380,6 +394,11 @@ int main(int argc, char **argv) {
     auto communication_sub = nh->create_subscription<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 10, CommunicationCallback);
     auto odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry", 1, EgoOdometryCallback);
     auto nav_state_sub = nh->create_subscription<avt_341_msgs::msg::NavState>("avt_341/state", 10, NavStateCallback);
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr autonomy_sub;
+    if (!params.toi.autonomy_topic.empty()) {
+        autonomy_sub = nh->create_subscription<std_msgs::msg::Bool>(params.toi.autonomy_topic, 10,
+            [](std_msgs::msg::Bool::SharedPtr msg) { mgr->setAutonomyEnabled(msg->data); });
+    }
     auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
     auto veh1_sub = get_veh_odom_sub(
         params.vehicle_namespaces, 0, params.use_avt_tracker,
@@ -500,6 +519,9 @@ int main(int argc, char **argv) {
             mgr->handleContacts(rcvd_msg, team_poses);
           }
         }
+        if(mgr->hasPendingContacts()){
+          mgr->confirmPendingContacts(FormationOdomsInMapFrame());
+        }
 
         // Incoming internal notifications
         // Monitor navigation state
@@ -515,6 +537,10 @@ int main(int argc, char **argv) {
                 speed_zone_monitor->UpdateOdometry(odom);
             }
             odom_rcvd = false;
+        }
+
+        if (grid_sub->HasData()) {
+            mgr->occupancy_grid = grid_sub->GetGrid();
         }
 
         // update tasks
