@@ -113,7 +113,11 @@ ros__parameters:
     obstacle_association_max_dist:
       type: double
       default_value: 5.0
-      description: "Maximum scaled pixel distance used to associate a LiDAR marker with a camera detection."
+      description: "Maximum pixel distance, in detection bbox half-diagonals, at which a LiDAR marker locates a detection that is not the tracked target (sightings, exclusion checks)."
+    target_association_max_dist:
+      type: double
+      default_value: 1.5
+      description: "Maximum pixel distance, in detection bbox half-diagonals, at which the tracked target's detection is associated with a LiDAR marker. Farther markers are other obstacles, e.g. one nearer on the same bearing while the target's own marker is missing."
     lidar_reacquire_max_time:
       type: double
       default_value: 0.5

@@ -217,10 +217,11 @@ class ObjectTracker {
     };
 
     /** @brief The marker that projects closest to the detection bbox center,
-     *         within obstacle_association_max_dist half-diagonals. */
+     *         within max_half_diagonals of the bbox half-diagonal. */
     std::optional<MarkerMatch> AssociateMarker(
         const vision_msgs::msg::Detection2D& detection,
-        const visualization_msgs::msg::MarkerArray& markers) const;
+        const visualization_msgs::msg::MarkerArray& markers,
+        double max_half_diagonals) const;
 
     /** @brief Pixel coordinates of a camera-frame point, if it is in front of
      *         the camera and inside the image. */

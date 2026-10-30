@@ -183,7 +183,8 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     // with the locked marker while it is reported.
     if (state_ == TrackerState::FULL_TRACKING && tracked_obstacle_id_ >= 0 &&
         context.has_obstacle_markers && context.obstacle_markers &&
-        !AssociateMarker(detections_message_, *context.obstacle_markers)) {
+        !AssociateMarker(detections_message_, *context.obstacle_markers,
+                         params_.tracking.target_association_max_dist)) {
         const auto& markers = context.obstacle_markers->markers;
         if (std::any_of(markers.begin(), markers.end(), [this](const auto& marker) {
                 return marker.action != visualization_msgs::msg::Marker::DELETEALL &&
@@ -419,7 +420,8 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         const double det_v =
             detections_message_.bbox.center.position.y;
         const std::optional<MarkerMatch> match =
-            AssociateMarker(detections_message_, *context.obstacle_markers);
+            AssociateMarker(detections_message_, *context.obstacle_markers,
+                            params_.tracking.target_association_max_dist);
 
         if (!match) {
             // No obstacle marker projects near the camera detection bbox.
@@ -735,18 +737,17 @@ std::optional<double> ObjectTracker::ProjectToColumn(
 
 std::optional<ObjectTracker::MarkerMatch> ObjectTracker::AssociateMarker(
     const vision_msgs::msg::Detection2D& detection,
-    const visualization_msgs::msg::MarkerArray& markers) const {
+    const visualization_msgs::msg::MarkerArray& markers,
+    double max_half_diagonals) const {
     // Maximum allowed pixel distance: the half-diagonal of the detection
-    // bounding box, scaled by obstacle_association_max_dist. Using
-    // obstacle_association_max_dist = 1.0 means the marker's projection
-    // must land within one half-diagonal of the bbox center. Increase it
-    // to be more permissive.
+    // bounding box, scaled by max_half_diagonals. 1.0 means the marker's
+    // projection must land within one half-diagonal of the bbox center.
     const Eigen::Vector2d det_center(detection.bbox.center.position.x,
                                      detection.bbox.center.position.y);
     const double bbox_half_diag = 0.5 * std::hypot(detection.bbox.size_x,
                                                    detection.bbox.size_y);
     double best_pixel_dist =
-        params_.tracking.obstacle_association_max_dist * bbox_half_diag;
+        max_half_diagonals * bbox_half_diag;
 
     std::optional<MarkerMatch> best;
     for (const auto& marker : markers.markers) {
@@ -792,7 +793,8 @@ Eigen::Vector3d ObjectTracker::EstimateMapPosition(
     const TrackerSensorContext& context) {
     if (context.has_obstacle_markers && context.obstacle_markers) {
         if (const auto match =
-                AssociateMarker(detection, *context.obstacle_markers)) {
+                AssociateMarker(detection, *context.obstacle_markers,
+                                params_.tracking.obstacle_association_max_dist)) {
             return coord_transformer_.Transform(frame_ids_.Camera(),
                                                 frame_ids_.Map(), match->pos_cam);
         }
@@ -812,7 +814,8 @@ bool ObjectTracker::IsExcludedDetection(
     }
     if (context.has_obstacle_markers && context.obstacle_markers) {
         if (const auto match =
-                AssociateMarker(detection, *context.obstacle_markers)) {
+                AssociateMarker(detection, *context.obstacle_markers,
+                                params_.tracking.obstacle_association_max_dist)) {
             return IsExcludedPosition(coord_transformer_.Transform(
                 frame_ids_.Camera(), frame_ids_.Map(), match->pos_cam));
         }

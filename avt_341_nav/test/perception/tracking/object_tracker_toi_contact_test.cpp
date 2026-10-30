@@ -507,6 +507,27 @@ TEST_F(ObjectTrackerToiOutOfViewTest, LidarLockHoldsWhileOnlyAPartOfTheTargetIsI
     }
 }
 
+TEST_F(ObjectTrackerToiOutOfViewTest, TrackedTargetDoesNotLatchOntoANearerObstacleWhileItsBoxIsMissing) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 15);
+    TrackFrames({0.0}, 10, {}, A);
+    // The target's box drops out while the camera still sees it; an obstacle
+    // 8 m nearer projects about three detection half-diagonals to the side.
+    const Obstacle nearer{9, CAMERA_X + 12.0, CAMERA_Y - 3.0};
+    contacts_.clear();
+    for (int i = 0; i < 80; ++i) {
+        PublishObstacles({nearer});
+        PublishDetections({0.0});
+        Spin(100ms);
+    }
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_TRUE(AtA(contact));
+    }
+}
+
 TEST_F(ObjectTrackerToiContactTest, NewTargetInLineAtASimilarRangeIsSkippedWithoutLidar) {
     PublishCameraInfo();
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
