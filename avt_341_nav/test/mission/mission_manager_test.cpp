@@ -1519,6 +1519,20 @@ TEST_F(ToiInvestigationTest, ContactReportedOnceIsConfirmedAfterTheDelay)
     EXPECT_FALSE(manager->hasPendingContacts());
 }
 
+TEST_F(ToiInvestigationTest, SightingReportedOnceIsNotConfirmedAfterTheDelay)
+{
+    params_.toi.contact_trigger_delay = 0.2;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    EXPECT_FALSE(manager->hasPendingContacts());
+    manager->confirmPendingContacts(team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+
+    manager->handleContacts(MakeContact("car", 50.5, 30.0), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+}
+
 TEST_F(ToiInvestigationTest, ContactReportedWhileIdleIsNotConfirmedOnceAMissionStarts)
 {
     params_.toi.contact_trigger_delay = 0.2;

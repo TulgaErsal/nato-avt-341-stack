@@ -798,14 +798,16 @@ void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::
 
 bool MissionManager::hasPendingContacts() const {
     return std::any_of(mission_contacts.begin(), mission_contacts.end(), [](const Contact & c) {
-        return c.is_new && c.reported_while_allowed && !c.investigated && !c.dismissed;
+        return c.is_new && c.track_start_ns != 0 && c.reported_while_allowed && !c.investigated && !c.dismissed;
     });
 }
 
-// A contact reported only once (a target the tracker saw briefly) is confirmed once the delay has passed.
+// A contact reported only once (a target the tracker saw briefly) is confirmed once the delay has passed. A contact
+// known only from sightings (camera-only, possibly a single frame) needs a second report instead.
 void MissionManager::confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
     for (auto & contact : mission_contacts) {
-        if (contact.is_new && contact.reported_while_allowed && !contact.investigated && !contact.dismissed) {
+        if (contact.is_new && contact.track_start_ns != 0 && contact.reported_while_allowed && !contact.investigated &&
+            !contact.dismissed) {
             maybeCreateToiTasks(contact, veh_poses);
         }
     }
