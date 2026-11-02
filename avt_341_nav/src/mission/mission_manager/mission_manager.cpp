@@ -65,7 +65,7 @@ MissionManager::MissionManager(
     }
     investigated_contacts_pub = node_->create_publisher<nav_msgs::msg::Path>("avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
 
-    publishTaskChange();
+    publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::RESET);
 }
 
 MissionManager::~MissionManager() {
@@ -256,7 +256,7 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
       task_list.push_back(task);
       RCLCPP_INFO(node_->get_logger(), "%s QUEUED %s", my_name.c_str(), task->description().c_str());
     }
-    publishTaskChange();
+    publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_ADDED);
     return true;
 }
 
@@ -356,11 +356,12 @@ void MissionManager::publishTaskCompletion(const std::string & sender_name, int 
   communication_pub->publish(TaskCompleteMsg(my_name, -1, sender_name, msg_id).toROSMsg());
 }
 
-avt_341_msgs::msg::MissionModuleStatus MissionManager::createModuleStatusMsg() const {
+avt_341_msgs::msg::MissionModuleStatus MissionManager::createModuleStatusMsg(uint8_t change_type) const {
     avt_341_msgs::msg::MissionModuleStatus status_msg;
     const Task* active_task = task_list.empty() ? nullptr : task_list.front();
     status_msg.active_task = createTaskStatusMsg(active_task);
     status_msg.header = status_msg.active_task.header;
+    status_msg.change_type = change_type;
 
     if (!task_list.empty()) {
         status_msg.queued_tasks.reserve(task_list.size() - 1);
@@ -378,8 +379,8 @@ avt_341_msgs::msg::MissionModuleStatus MissionManager::createModuleStatusMsg() c
     return status_msg;
 }
 
-void MissionManager::publishTaskChange() {
-    task_change_pub->publish(createModuleStatusMsg());
+void MissionManager::publishTaskChange(uint8_t change_type) {
+    task_change_pub->publish(createModuleStatusMsg(change_type));
 }
 
 
@@ -398,7 +399,7 @@ void MissionManager::updateTasks() {
           }
           goal_filter_->Reset();
           RCLCPP_INFO(node_->get_logger(), "    > %s EXECUTING (of %d) %s", my_name.c_str(), task_list.size(), active_task->description().c_str());
-          publishTaskChange();
+          publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_STARTED);
         }
 
         if(params_.check_goal_arrival) {
@@ -416,7 +417,7 @@ void MissionManager::updateTasks() {
           publishTaskCompletion(active_task);
           task_list.pop_front();
           delete active_task;
-          publishTaskChange();
+          publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_DONE);
         }
     }
 }
@@ -923,7 +924,7 @@ void MissionManager::insertFormationChangeDelay(Task* formation_task, const Form
     Task* waitTask = new WaitForDuration(this, formation_task->sender_name, -1, wait_s);
     task_list.insert(task_it, waitTask);
     RCLCPP_INFO(node_->get_logger(), "%s formation change detected, waiting %.1f s before %s", my_name.c_str(), wait_s, formation_task->description().c_str());
-    publishTaskChange();
+    publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_ADDED);
 }
 
 void MissionManager::handleAcknowledge(const AcknowledgeMsg & msg) {
@@ -992,7 +993,7 @@ void MissionManager::handleSetSpeedMsg(const SetSpeedMsg & msg) {
     }
     RCLCPP_INFO(node_->get_logger(), "SET SPEED TO %lf", speed_setpoint_state);
     publishSpeedSetPoint();
-    publishTaskChange();
+    publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_UPDATED);
 }
 
 void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose){
@@ -1004,13 +1005,13 @@ void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose)
 
 void MissionManager::handleCancelTask(const CancelMsg & msg){
   cancelTask(msg.target_msg_id, true);
-  publishTaskChange();
+  publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_DONE);
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 
 void MissionManager::handleCancelAllTask(const CancelAllMsg & msg){
   resetTaskList(true, CancelledContact::Dismiss);
-  publishTaskChange();
+  publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::TASK_DONE);
   publishTaskCompletion(msg.sender_name, msg.msg_id);
 }
 

@@ -727,7 +727,7 @@ TEST_F(MissionManagerContactsTest, CompletedTasksAreRecordedWithDurationsAndRepo
     EXPECT_GE(completed[0].duration_sec, 0.0);
     EXPECT_GE(completed[1].duration_sec, 0.0);
 
-    const auto status = manager->createModuleStatusMsg();
+    const auto status = manager->createModuleStatusMsg(avt_341_msgs::msg::MissionModuleStatus::NONE);
     EXPECT_EQ(status.active_task.task_id, -1);
     ASSERT_EQ(status.completed_tasks.size(), 2u);
     ASSERT_EQ(status.completed_task_durations.size(), 2u);
@@ -738,7 +738,67 @@ TEST_F(MissionManagerContactsTest, CompletedTasksAreRecordedWithDurationsAndRepo
 
     manager->reset();
     EXPECT_TRUE(manager->completedTasks().empty());
-    EXPECT_TRUE(manager->createModuleStatusMsg().completed_tasks.empty());
+    EXPECT_TRUE(manager->createModuleStatusMsg(avt_341_msgs::msg::MissionModuleStatus::NONE).completed_tasks.empty());
+}
+
+// Task change types
+// ------------------------------------------------------------------------------------------------
+
+TEST_F(MissionManagerContactsTest, TaskChangeCarriesTheChangeType)
+{
+    using avt_341_msgs::msg::MissionModuleStatus;
+    using avt_341_nav::mission::CancelAllMsg;
+    using avt_341_nav::mission::SetSpeedMsg;
+
+    std::optional<MissionModuleStatus> status;
+    auto status_sub = node_->create_subscription<MissionModuleStatus>(
+        "avt_341/task_change", rclcpp::QoS(1).transient_local(),
+        [&status](MissionModuleStatus::SharedPtr msg) { status = *msg; });
+    // Spins until a task_change sample with the given change_type arrives.
+    auto received = [&](uint8_t change_type) {
+        status.reset();
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while(std::chrono::steady_clock::now() < deadline) {
+            rclcpp::spin_some(node_);
+            if(status.has_value() && status->change_type == change_type) {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return false;
+    };
+
+    auto manager = MakeManager();
+    ASSERT_TRUE(received(MissionModuleStatus::RESET));
+    EXPECT_EQ(status->active_task.task_id, -1);
+
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", 41, 1000.0));
+    ASSERT_TRUE(received(MissionModuleStatus::TASK_ADDED));
+    EXPECT_EQ(status->active_task.task_id, 41);
+
+    manager->updateTasks();
+    ASSERT_TRUE(received(MissionModuleStatus::TASK_STARTED));
+
+    manager->handleSetSpeedMsg(SetSpeedMsg("MRZR", 42, "MRZR", 2.5));
+    ASSERT_TRUE(received(MissionModuleStatus::TASK_UPDATED));
+    EXPECT_DOUBLE_EQ(status->active_task.task_speed, 2.5);
+
+    manager->handleCancelAllTask(CancelAllMsg("MRZR", 43, "MRZR"));
+    ASSERT_TRUE(received(MissionModuleStatus::TASK_DONE));
+    EXPECT_EQ(status->active_task.task_id, -1);
+    EXPECT_TRUE(status->completed_tasks.empty());
+
+    manager->addTask(new WaitForDuration(manager.get(), "MRZR", 44, 0.0));
+    ASSERT_TRUE(received(MissionModuleStatus::TASK_ADDED));
+    manager->updateTasks();
+    ASSERT_TRUE(received(MissionModuleStatus::TASK_DONE));
+    EXPECT_EQ(status->active_task.task_id, -1);
+    ASSERT_EQ(status->completed_tasks.size(), 1u);
+
+    manager->reset();
+    manager->publishTaskChange(MissionModuleStatus::RESET);
+    ASSERT_TRUE(received(MissionModuleStatus::RESET));
+    EXPECT_TRUE(status->completed_tasks.empty());
 }
 
 // Task status ego frame
@@ -777,7 +837,7 @@ class ToiInvestigationTest : public MissionManagerContactsTest {
 
     std::vector<std::string> Tasks(MissionManager & manager)
     {
-        manager.publishTaskChange();
+        manager.publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::NONE);
         rclcpp::spin_some(node_);
         std::vector<std::string> tasks;
         if (!status_.active_task.task_description.empty()) {

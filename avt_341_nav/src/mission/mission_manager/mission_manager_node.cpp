@@ -444,7 +444,7 @@ int main(int argc, char **argv) {
         if(reset_called){
           RCLCPP_INFO(nh->get_logger(), "Resetting node");
           mgr->reset();
-          mgr->publishTaskChange();
+          mgr->publishTaskChange(avt_341_msgs::msg::MissionModuleStatus::RESET);
           current_goal_rcvd = false;
           mgr->rcvd_leader_odom = false;
           while(!reached_goals.empty()) reached_goals.pop();

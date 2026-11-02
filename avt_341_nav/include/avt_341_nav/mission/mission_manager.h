@@ -177,9 +177,9 @@ class MissionManager{
     // Publishes the latched snapshot of the active and queued tasks. Call after
     // any operation that mutates the task list outside of updateTasks(),
     // otherwise the retained sample is served stale to late-joining subscribers.
-    void publishTaskChange();
+    void publishTaskChange(uint8_t change_type);
     avt_341_msgs::msg::MissionTaskStatus createTaskStatusMsg(const Task* task) const;
-    avt_341_msgs::msg::MissionModuleStatus createModuleStatusMsg() const;
+    avt_341_msgs::msg::MissionModuleStatus createModuleStatusMsg(uint8_t change_type) const;
     const std::vector<CompletedTask> & completedTasks() const { return completed_tasks_; }
     void checkGoalArrival();
     // notify_tracker=false skips publishing the (now empty) investigated contacts, e.g. on shutdown.
