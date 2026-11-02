@@ -747,8 +747,6 @@ TEST_F(MissionManagerContactsTest, CompletedTasksAreRecordedWithDurationsAndRepo
 TEST_F(MissionManagerContactsTest, TaskChangeCarriesTheChangeType)
 {
     using avt_341_msgs::msg::MissionModuleStatus;
-    using avt_341_nav::mission::CancelAllMsg;
-    using avt_341_nav::mission::SetSpeedMsg;
 
     std::optional<MissionModuleStatus> status;
     auto status_sub = node_->create_subscription<MissionModuleStatus>(
