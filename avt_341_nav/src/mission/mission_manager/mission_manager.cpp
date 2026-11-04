@@ -1023,6 +1023,12 @@ void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose)
 }
 
 bool MissionManager::handleCommand(const avt_341_msgs::msg::Communication & msg) {
+    if(!survivesSerialization(msg)) {
+        RCLCPP_ERROR(node_->get_logger(), "Rejected command %d of type %s: its serialized form is malformed: %s",
+            msg.msg_id, msg.type.c_str(), rosToSerializedMsg(msg).c_str());
+        return true;
+    }
+
     if(msg.type == MissionMsgType::Shutdown) {
         std::cout << my_name << " is shutting down" << std::endl;
         return false;

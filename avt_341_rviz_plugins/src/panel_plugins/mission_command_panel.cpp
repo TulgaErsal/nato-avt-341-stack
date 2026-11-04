@@ -57,7 +57,7 @@ namespace avt_341::rviz_plugins
         distance_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         target_msg_entry_->setValidator(new QIntValidator(0, 99, this));
         auto * goal_weight_validator = new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this);
-        QLocale goal_weight_locale;
+        QLocale goal_weight_locale = QLocale::c();
         goal_weight_locale.setNumberOptions(QLocale::RejectGroupSeparator);
         goal_weight_validator->setLocale(goal_weight_locale);
         w_distance_to_goal_entry_->setValidator(goal_weight_validator);

@@ -143,7 +143,7 @@ class MissionManager{
     void handleSetSpeedMsg(const SetSpeedMsg & msg);
     void handleOverwatch(const OverwatchMsg & msg);
     void handleWaitUntilComplete(const WaitUntilCompleteMsg & msg);
-    // Returns false for a shutdown command.
+    // Returns false for a shutdown command, which only ends this cycle's message handling: the node keeps running.
     bool handleCommand(const avt_341_msgs::msg::Communication & msg);
     void handleCancelTask(const CancelMsg & msg);
     void handleCancelAllTask(const CancelAllMsg & msg);

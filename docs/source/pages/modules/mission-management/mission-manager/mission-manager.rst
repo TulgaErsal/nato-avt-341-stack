@@ -100,8 +100,9 @@ tasks) and an empty task list publish -1, and the MPC uses its
 task resumes. In the serialized format the value follows the last field as
 `w_distance_to_goal=<value>`, where the value is positive and finite. The
 communication node rejects and logs a command with a malformed weight, or with
-any other token of the form `name=value`. The vehicle never receives that
-command, so a queued mission moves on to its next task, and a
+any other token of the form `name=<number>`. The Mission Manager applies the same
+check to commands received over ROS, so every vehicle treats a command alike on
+either transport. A queued mission then moves on to its next task, and a
 `WAIT_UNTIL_COMPLETE` on the rejected message's ID waits until it is cancelled.
 
 Contact Handling

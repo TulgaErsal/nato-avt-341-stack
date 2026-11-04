@@ -130,7 +130,7 @@ SetFormationTool::SetFormationTool()
     w_distance_to_goal_property_ = new FloatProperty(
         "Goal Weight", -1.0f,
         "Communication.w_distance_to_goal: MPC w_distance_to_goal while this formation's task is active. "
-        "-1 (message default) = use the MPC's parameter.",
+        "0 or below (message default -1) = use the MPC's parameter.",
         form_group );
     w_distance_to_goal_property_->setMin( -1.0f );
 }

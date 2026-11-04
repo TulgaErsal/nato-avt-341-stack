@@ -20,6 +20,8 @@ double goalWeightOverride(const avt_341_msgs::msg::Communication & msg);
 bool isVehicleInFormation(const std::string & veh, const avt_341_msgs::msg::Communication & msg);
 
 avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg);
+// False when the serialized form of the message would be rejected, as it would be by a vehicle receiving it over a socket.
+bool survivesSerialization(const avt_341_msgs::msg::Communication & msg);
 avt_341_msgs::msg::Communication concreteToROSMsg(MissionManagerDto * msg);
 
 std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341_msgs::msg::Communication & msg);

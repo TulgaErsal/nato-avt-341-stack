@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <exception>
 #include <sstream>
 #include "avt_341_msgs/msg/communication.hpp"
 
@@ -10,7 +11,7 @@
 static const std::string GOAL_WEIGHT_PREFIX = "w_distance_to_goal=";
 
 // A mistyped weight must be recognized too, so that it cannot fall into toi_regex or priority:
-// the token has the shape name=value, or contains the weight's name.
+// the token has the shape name=number, or contains the weight's name.
 static bool looksLikeGoalWeight(const std::string & token){
   std::string text = token;
   std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -26,8 +27,14 @@ static bool looksLikeGoalWeight(const std::string & token){
   if(equals == 0 || first == equals || last == std::string::npos) {
     return false;
   }
-  return std::all_of(text.begin() + first, text.begin() + last + 1,
-                     [](unsigned char c) { return std::isalnum(c) || c == '_'; });
+  if(!std::all_of(text.begin() + first, text.begin() + last + 1,
+                  [](unsigned char c) { return std::isalnum(c) || c == '_'; })) {
+    return false;
+  }
+  const std::string value = text.substr(equals + 1, text.find_last_not_of(" \t") - equals);
+  char * end = nullptr;
+  std::strtod(value.c_str(), &end);
+  return end != value.c_str() && *end == '\0';
 }
 
 static bool parseGoalWeight(const std::string & token, double & weight){
@@ -364,6 +371,14 @@ std::shared_ptr<MissionManagerDto> serializedToConcreteMsg(const std::string & m
 std::string concreteToSerializedMsg(MissionManagerDto * msg){
   auto ros_msg = msg->toROSMsg();
   return rosToSerializedMsg(ros_msg);
+}
+
+bool survivesSerialization(const avt_341_msgs::msg::Communication & msg){
+  try {
+    return !serializedToROSMsg(rosToSerializedMsg(msg)).type.empty();
+  } catch(const std::exception &) {
+    return false;
+  }
 }
 
 std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg){

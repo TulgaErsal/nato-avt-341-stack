@@ -242,6 +242,7 @@ TEST(GoalWeightCommand, MalformedWeightRejectsTheCommand)
                              moveto + ",w_distance_to_goal:600",
                              moveto + ",w_distance_to_goal 600",
                              moveto + ",car,w_dsitance_to_goal=600",
+                             moveto + ",x=1",
                              moveto + ",car,w_distance_to_goal =600",
                              moveto + ",w_distance_to_goal=600,car",
                              short_moveto + ",w_distance_to_goal=abc",
@@ -280,7 +281,7 @@ TEST(GoalWeightCommand, NamesAndRegexesThatResembleTheWeightAreKept)
     EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,W_DISTRICT,QUEUE").objective_name, "W_DISTRICT");
     EXPECT_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,W_DIST,4.5").receiver_name, "W_DIST");
     const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
-    for(const auto & regex : {std::string("w_dist.*"), std::string("car(?=_1)"), std::string("^$"), std::string("TI_[0-9]{1,3},car")}) {
+    for(const auto & regex : {std::string("w_dist.*"), std::string("car(?=_1)"), std::string("label=car"), std::string("label="), std::string("^$"), std::string("TI_[0-9]{1,3},car")}) {
         EXPECT_EQ(serializedToROSMsg(moveto + "," + regex).toi_regex, regex);
         const auto with_weight = serializedToROSMsg(moveto + "," + regex + ",w_distance_to_goal=600");
         EXPECT_EQ(with_weight.toi_regex, regex);
@@ -1107,6 +1108,47 @@ TEST_F(GoalWeightOverrideTest, HandleCommandAppliesTheWeightAndRegexToItsTaskOnl
     ASSERT_NE(manager->currentTask(), nullptr);
     EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, -1.0);
     EXPECT_FALSE(manager->currentTask()->toi_regex.has_value());
+}
+
+TEST(GoalWeightCommand, SurvivesSerializationMatchesTheSocketPath)
+{
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow,
+                             MissionMsgType::SetSpeed, MissionMsgType::Acknowledge, MissionMsgType::Arrived,
+                             MissionMsgType::TaskComplete, MissionMsgType::Cancel, MissionMsgType::CancelAll,
+                             MissionMsgType::Overwatch, MissionMsgType::WaitUntilComplete, MissionMsgType::Shutdown}) {
+        EXPECT_TRUE(survivesSerialization(MakeCommand(type, ""))) << type;
+    }
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        EXPECT_TRUE(survivesSerialization(MakeCommand(type, "label=car"))) << type;
+        EXPECT_FALSE(survivesSerialization(MakeCommand(type, "x=1"))) << type;
+    }
+    auto comma_in_name = MakeCommand(MissionMsgType::Formation, "");
+    comma_in_name.objective_name = "MP,Y";
+    EXPECT_FALSE(survivesSerialization(comma_in_name));
+}
+
+TEST_F(GoalWeightOverrideTest, HandleCommandRejectsWhatTheSocketPathWouldReject)
+{
+    params_.formation_change_delay.is_enabled = false;
+    auto manager = MakeManager();
+    MissionPoint point{};
+    point.name = "MP_Y";
+    point.rot_w = 1.0;
+    manager->setMissionPoints({point});
+
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo}) {
+        auto msg = MakeCommand(type, "x=1");
+        msg.formation = "COLUMN";
+        msg.leader_name = "MRZR";
+        msg.follower1_name = "FEDA";
+        EXPECT_TRUE(manager->handleCommand(msg)) << type;
+        EXPECT_EQ(manager->currentTask(), nullptr) << type;
+    }
+
+    auto label = MakeCommand(MissionMsgType::MoveTo, "label=car");
+    EXPECT_TRUE(manager->handleCommand(label));
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_EQ(manager->currentTask()->toi_regex, std::optional<std::string>("label=car"));
 }
 
 TEST_F(GoalWeightOverrideTest, HandleCommandReportsShutdown)
