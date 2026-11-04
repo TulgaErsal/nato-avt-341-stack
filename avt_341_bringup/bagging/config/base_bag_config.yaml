@@ -209,6 +209,12 @@ log_topics:
     field: 'poses.pose.position.{position_keys[:2]}'
     units: 'm'
 
+  # MPC goal weight override (-1 = MPC default)
+  - name: '{vehicles}_w_distance_to_goal_override'
+    topic: '/{vehicles}/avt_341/w_distance_to_goal_override'
+    field: 'data'
+    units: ''
+
   # ==========================================================================================================
   # PERCEPTION COSTMAP
   # ==========================================================================================================

@@ -1,6 +1,11 @@
 #include "avt_341_nav/mission/mission_manager_parser.h"
+#include <cmath>
+#include <cstdlib>
 #include <sstream>
 #include "avt_341_msgs/msg/communication.hpp"
+
+// Serialized after the trailing toi_regex of FORM, MOVETO and PATH_FOLLOW, only when set.
+static const std::string GOAL_WEIGHT_PREFIX = "w_distance_to_goal=";
 
 // Rejoin tokens[first..] so that a trailing regex containing commas survives tokenization.
 static std::string joinTrailingTokens(const std::vector<std::string> & tokens, size_t first){
@@ -56,6 +61,10 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   auto tokens = tokenizeMsg(last == std::string::npos ? std::string() : msg.substr(0, last + 1));
 
   avt_341_msgs::msg::Communication message;
+  if(tokens.back().rfind(GOAL_WEIGHT_PREFIX, 0) == 0) {
+    message.w_distance_to_goal = std::atof(tokens.back().c_str() + GOAL_WEIGHT_PREFIX.size());
+    tokens.pop_back();
+  }
   if(tokens.size() < 3 || !hasValidFieldCount(tokens[2], tokens.size())){
     return message;
   }
@@ -243,6 +252,11 @@ std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
     stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.target_msg_id << "," << msg.priority_type;
   }
 
+  const double goal_weight = goalWeightOverride(msg);
+  if(goal_weight > 0.0) {
+    stream << "," << GOAL_WEIGHT_PREFIX << goal_weight;
+  }
+
   return stream.str();
 
 }
@@ -308,6 +322,15 @@ std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication
     return msg.toi_regex;
   }
   return std::nullopt;
+}
+
+double goalWeightOverride(const avt_341_msgs::msg::Communication & msg){
+  const bool carries_goal_weight = msg.type == MissionMsgType::Formation || msg.type == MissionMsgType::MoveTo ||
+                                   msg.type == MissionMsgType::PathFollow;
+  if(carries_goal_weight && msg.w_distance_to_goal > 0.0 && std::isfinite(msg.w_distance_to_goal)) {
+    return msg.w_distance_to_goal;
+  }
+  return -1.0;
 }
 
 bool isMsgFor(const std::string & veh, const avt_341_msgs::msg::Communication & msg){

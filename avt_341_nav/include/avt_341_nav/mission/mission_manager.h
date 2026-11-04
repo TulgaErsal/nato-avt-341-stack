@@ -164,7 +164,13 @@ class MissionManager{
         incoming_toi_regex_ = toi_regex;
         incoming_toi_msg_id_ = msg_id;
     }
+    // A task added with the msg_id of the incoming command carries its w_distance_to_goal override.
+    void setIncomingGoalWeight(double w_distance_to_goal, int msg_id) {
+        incoming_goal_weight_ = w_distance_to_goal;
+        incoming_goal_weight_msg_id_ = msg_id;
+    }
     void updateTasks();
+    void publishGoalWeightOverride();
     bool addTask(Task * task, const std::string & priority_type = PriorityType::QUEUE);
     void publishPath(const nav_msgs::msg::Path& path);
     void publishGoal(const avt_341_msgs::msg::NavGoal & goal_in);
@@ -227,6 +233,9 @@ class MissionManager{
     std::function<void(const std::string &)> toi_regex_handler_;
     std::optional<std::string> incoming_toi_regex_;
     int incoming_toi_msg_id_ = 0;
+    double incoming_goal_weight_ = -1.0;
+    int incoming_goal_weight_msg_id_ = 0;
+    std::optional<double> published_goal_weight_;
 
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::NavGoalSequence>> waypoint_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::String>> reset_pub = nullptr;
@@ -235,6 +244,7 @@ class MissionManager{
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Int32>> gp_toggle_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::Communication>> communication_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> speed_pub = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> goal_weight_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionTaskStatus>> task_status_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MissionModuleStatus>> task_change_pub = nullptr;
     std::shared_ptr<rclcpp::Publisher<avt_341_msgs::msg::MapMarkerList>> map_markers_pub = nullptr;

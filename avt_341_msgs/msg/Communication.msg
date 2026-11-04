@@ -19,3 +19,4 @@ float64 distance
 float64 yaw_threshold -1
 int32 target_msg_id
 string toi_regex
+float64 w_distance_to_goal -1

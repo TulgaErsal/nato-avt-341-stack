@@ -57,6 +57,7 @@ MissionManager::MissionManager(
     communication_pub = node_->create_publisher<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local());
+    goal_weight_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/w_distance_to_goal_override", rclcpp::QoS(1).transient_local());
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
@@ -229,6 +230,9 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     if(incoming_toi_regex_.has_value() && task->msg_id == incoming_toi_msg_id_) {
         task->toi_regex = incoming_toi_regex_;
     }
+    if(task->msg_id == incoming_goal_weight_msg_id_) {
+        task->w_distance_to_goal = incoming_goal_weight_;
+    }
 
     // if no active task, put it on the list
 
@@ -384,7 +388,20 @@ void MissionManager::publishTaskChange(uint8_t change_type) {
 }
 
 
+void MissionManager::publishGoalWeightOverride() {
+    const Task* task = currentTask();
+    const double weight = task != nullptr ? task->w_distance_to_goal : -1.0;
+    if(published_goal_weight_.has_value() && published_goal_weight_.value() == weight) {
+        return;
+    }
+    published_goal_weight_ = weight;
+    std_msgs::msg::Float64 weight_msg;
+    weight_msg.data = weight;
+    goal_weight_pub->publish(weight_msg);
+}
+
 void MissionManager::updateTasks() {
+    publishGoalWeightOverride();
     Task* active_task = currentTask();
     if(active_task != nullptr) {
 

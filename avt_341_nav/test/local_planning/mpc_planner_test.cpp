@@ -172,6 +172,43 @@ TEST(MPCPlannerTest, PlanPath) {
     }
 }
 
+TEST(MPCPlannerTest, GoalWeightChangesTheSolutionAfterSetup) {
+    jl_module_t* mpc_module = (jl_module_t *)jl_eval_string("Main.MPC");
+    ASSERT_NE(mpc_module, nullptr) << "Main.MPC module not found";
+
+    SetDefaultMPCParameters(mpc_module);
+    jl_function_t* j_set_w = jl_get_function(mpc_module, "SetWDistanceToGoal");
+    jl_function_t* j_plan = jl_get_function(mpc_module, "Plan");
+    jl_function_t* j_set_state = jl_get_function(mpc_module, "SetState");
+    jl_function_t* j_set_goal_point = jl_get_function(mpc_module, "SetGoalPoint");
+
+    jl_call1(j_set_w, jl_box_float64(1.0));
+    jl_eval_string("Main.MPC.eval(:(beta = 0.1))");
+    jl_call0(jl_get_function(mpc_module, "Setup"));
+    ASSERT_FALSE(HasJuliaException()) << "MPC Setup failed";
+
+    std::vector<double> state_data = {0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    jl_value_t* array_type = jl_apply_array_type((jl_value_t*)jl_float64_type, 1);
+
+    auto final_y_with_weight = [&](double weight) {
+        jl_call1(j_set_w, jl_box_float64(weight));
+        jl_array_t *jl_state = jl_ptr_to_array_1d(array_type, state_data.data(), state_data.size(), 0);
+        jl_call1(j_set_state, (jl_value_t*)jl_state);
+        jl_call2(j_set_goal_point, jl_box_float64(5.0), jl_box_float64(5.0));
+        jl_call0(j_plan);
+        return jl_unbox_float64(jl_eval_string("Main.MPC.n.r.ocp.X[end, 2]"));
+    };
+
+    final_y_with_weight(1.0);
+    const double y_small_weight = final_y_with_weight(1.0);
+    ASSERT_FALSE(HasJuliaException());
+    final_y_with_weight(1000.0);
+    const double y_large_weight = final_y_with_weight(1000.0);
+    ASSERT_FALSE(HasJuliaException());
+    std::cout << "Final y with goal weight 1: " << y_small_weight << ", with 1000: " << y_large_weight << std::endl;
+    EXPECT_GT(y_large_weight, y_small_weight + 0.1);
+}
+
 TEST(MPCPlannerTest, PerColPointObstaclesSeeObstacleAheadAmongThousands) {
     jl_module_t* mpc_module = (jl_module_t *)jl_eval_string("Main.MPC");
     ASSERT_NE(mpc_module, nullptr);

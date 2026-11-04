@@ -74,6 +74,7 @@ protected:
     QLineEdit* distance_entry_;
     QLineEdit* target_msg_entry_;
     QLineEdit* toi_regex_entry_;
+    QLineEdit* w_distance_to_goal_entry_;
 
     // QT Buttons
     QPushButton* send_msg_button_;

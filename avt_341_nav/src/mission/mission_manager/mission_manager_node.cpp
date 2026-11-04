@@ -478,6 +478,7 @@ int main(int argc, char **argv) {
             RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
             mgr->setIncomingToiRegex(toiRegexUpdate(rcvd_msg), rcvd_msg.msg_id);
+            mgr->setIncomingGoalWeight(goalWeightOverride(rcvd_msg), rcvd_msg.msg_id);
 
             if(rcvd_msg.type == MissionMsgType::Formation) {
                 mgr->handleFormationRequest(FormationMsg(rcvd_msg));
@@ -509,6 +510,7 @@ int main(int argc, char **argv) {
               RCLCPP_WARN(nh->get_logger(), "Unknown message type: %s", rcvd_msg.type.c_str());
             }
             mgr->setIncomingToiRegex(std::nullopt, 0);
+            mgr->setIncomingGoalWeight(-1.0, 0);
         }
 
         if(!contacts.empty()){

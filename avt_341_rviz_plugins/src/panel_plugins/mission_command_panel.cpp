@@ -36,6 +36,12 @@ namespace avt_341::rviz_plugins
             "Sent with every command; FORM, MOVETO and PATH_FOLLOW apply it to the object tracker when their task starts.\n"
             "Empty keeps the vehicle's current regex; ^$ turns target of interest detection off.");
 
+        w_distance_to_goal_entry_ = new QLineEdit("");
+        w_distance_to_goal_entry_->setPlaceholderText("MPC default");
+        w_distance_to_goal_entry_->setToolTip(
+            "MPC w_distance_to_goal while the task of this FORM, MOVETO or PATH_FOLLOW is active.\n"
+            "Empty uses the MPC's w_distance_to_goal parameter.");
+
         // Setup entries
         msg_id_entry_->setValidator(new QIntValidator(0, 99, this));
         msg_type_combo_->addItems({ "FORM", "ACK", "ARRIVE", "TASK_COMPLETE", "MOVETO", "SHUTDOWN", "SET_SPEED", "CANCEL", "CANCEL_ALL", "OVERWATCH", "WAIT_UNTIL_COMPLETE" });
@@ -95,8 +101,10 @@ namespace avt_341::rviz_plugins
         layout->addWidget( target_msg_entry_,                   18, 1,  Qt::AlignLeft);
         layout->addWidget( new QLabel( "TOI Regex:" ),          19, 0,  Qt::AlignRight);
         layout->addWidget( toi_regex_entry_,                    19, 1,  Qt::AlignLeft);
-        layout->addWidget( send_msg_button_,                    20, 0,  1,  2,  Qt::AlignHCenter);
-        layout->addWidget( reset_perception_button_,            21, 0,  1,  2,  Qt::AlignHCenter);
+        layout->addWidget( new QLabel( "Goal Weight:" ),        20, 0,  Qt::AlignRight);
+        layout->addWidget( w_distance_to_goal_entry_,           20, 1,  Qt::AlignLeft);
+        layout->addWidget( send_msg_button_,                    21, 0,  1,  2,  Qt::AlignHCenter);
+        layout->addWidget( reset_perception_button_,            22, 0,  1,  2,  Qt::AlignHCenter);
         setLayout( layout );
 
         // Create signal/slot connections.
@@ -136,6 +144,9 @@ namespace avt_341::rviz_plugins
         command_msg.target_msg_id = target_msg_entry_->text().toInt();
         // Not uppercased: this is a regex matched against detected object ids, so case is significant.
         command_msg.toi_regex = toi_regex_entry_->text().toStdString();
+        if(!w_distance_to_goal_entry_->text().isEmpty()) {
+            command_msg.w_distance_to_goal = w_distance_to_goal_entry_->text().toDouble();
+        }
         command_pub_->publish(command_msg);
     }
 

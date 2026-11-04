@@ -19,6 +19,8 @@
 #include "avt_341_nav/mission/task.h"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include <limits>
 
 using avt_341_nav::mission::MissionManager;
 using avt_341_nav::mission::MissionManagerParams;
@@ -173,6 +175,55 @@ TEST(SerializedMessages, ValidShortFormatsStillParse)
     EXPECT_EQ(serializedToROSMsg("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,QUEUE").priority_type, "QUEUE");
     EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,4.5").desired_speed, 4.5);
     EXPECT_EQ(serializedToROSMsg("MRZR,-1,ARRIVE,TASK_0").objective_name, "TASK_0");
+}
+
+// w_distance_to_goal override
+// ------------------------------------------------------------------------------------------------
+
+TEST(GoalWeightCommand, CarriedByTaskCommandsOnly)
+{
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        auto msg = MakeCommand(type, "");
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), -1.0) << type;
+        msg.w_distance_to_goal = 600.0;
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), 600.0) << type;
+        msg.w_distance_to_goal = 0.0;
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), -1.0) << type;
+        msg.w_distance_to_goal = std::numeric_limits<double>::infinity();
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), -1.0) << type;
+    }
+    auto set_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    set_speed.w_distance_to_goal = 600.0;
+    EXPECT_DOUBLE_EQ(goalWeightOverride(set_speed), -1.0);
+}
+
+TEST(GoalWeightCommand, SurvivesSerializationWithAndWithoutRegex)
+{
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        for(const auto & regex : {std::string(""), std::string("car"), std::string("TI_[0-9]{1,3},car")}) {
+            auto msg = MakeCommand(type, regex);
+            msg.w_distance_to_goal = 600.0;
+            const auto with_weight = serializedToROSMsg(rosToSerializedMsg(msg));
+            EXPECT_DOUBLE_EQ(with_weight.w_distance_to_goal, 600.0) << type << " " << regex;
+            EXPECT_EQ(with_weight.toi_regex, regex) << type;
+            EXPECT_EQ(with_weight.priority_type, "QUEUE") << type;
+
+            msg.w_distance_to_goal = -1.0;
+            const auto text = rosToSerializedMsg(msg);
+            EXPECT_EQ(text.find("w_distance_to_goal"), std::string::npos) << text;
+            EXPECT_DOUBLE_EQ(goalWeightOverride(serializedToROSMsg(text)), -1.0) << text;
+            EXPECT_EQ(serializedToROSMsg(text).toi_regex, regex) << text;
+        }
+    }
+}
+
+TEST(GoalWeightCommand, ParsedFromTheShortFormats)
+{
+    const auto moveto = serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE,w_distance_to_goal=600\r\n");
+    EXPECT_EQ(moveto.type, MissionMsgType::MoveTo);
+    EXPECT_EQ(moveto.priority_type, "QUEUE");
+    EXPECT_DOUBLE_EQ(moveto.w_distance_to_goal, 600.0);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE").w_distance_to_goal, -1.0);
 }
 
 // Team vehicle contact filter
@@ -862,6 +913,98 @@ class ToiInvestigationTest : public MissionManagerContactsTest {
     nav_msgs::msg::Path investigated_;
     int investigated_count_ = 0;
 };
+
+class GoalWeightOverrideTest : public MissionManagerContactsTest {
+  protected:
+    void SetUp() override
+    {
+        MissionManagerContactsTest::SetUp();
+        override_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+            "avt_341/w_distance_to_goal_override", rclcpp::QoS(1).transient_local(),
+            [this](std_msgs::msg::Float64::SharedPtr msg) { override_ = msg->data; ++override_count_; });
+    }
+
+    static void AddTask(MissionManager & manager, int msg_id, double weight, const std::string & priority = "QUEUE")
+    {
+        manager.setIncomingGoalWeight(weight, msg_id);
+        manager.addTask(new avt_341_nav::mission::WaitForDuration(&manager, "MRZR", msg_id, 1000.0), priority);
+        manager.setIncomingGoalWeight(-1.0, 0);
+    }
+
+    double Override(MissionManager & manager)
+    {
+        manager.updateTasks();
+        rclcpp::spin_some(node_);
+        return override_;
+    }
+
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr override_sub_;
+    double override_ = 0.0;
+    int override_count_ = 0;
+};
+
+TEST_F(GoalWeightOverrideTest, FollowsTheActiveTaskAndFallsBackToTheDefault)
+{
+    auto manager = MakeManager();
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+
+    AddTask(*manager, 1, -1.0);
+    AddTask(*manager, 2, 600.0);
+    AddTask(*manager, 3, -1.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+
+    manager->cancelTask(1, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+    manager->cancelTask(2, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, ClearedWhenTheTaskListEmpties)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+    manager->cancelTask(1, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+
+    AddTask(*manager, 2, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+    manager->resetTaskList(false);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, PreemptingTaskUsesItsOwnValueAndThePreemptedTasksAppliesOnResume)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+
+    AddTask(*manager, 2, -1.0, "PREEMPT");
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+    manager->cancelTask(2, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+}
+
+TEST_F(GoalWeightOverrideTest, InvestigationTasksUseTheDefault)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, PublishesOnlyOnChange)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    Override(*manager);
+    Override(*manager);
+    Override(*manager);
+    EXPECT_EQ(override_count_, 1);
+}
 
 TEST_F(ToiInvestigationTest, SecondTargetOfTheSameClassIsInvestigatedAfterTheFirst)
 {
