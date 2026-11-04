@@ -130,7 +130,7 @@ SetFormationTool::SetFormationTool()
     w_distance_to_goal_property_ = new FloatProperty(
         "Goal Weight", -1.0f,
         "Communication.w_distance_to_goal: MPC w_distance_to_goal while this formation's task is active. "
-        "0 or below (message default -1) = use the MPC's parameter.",
+        "Above 0, or -1 (message default) to use the MPC's parameter. Any other value is refused when you click.",
         form_group );
     w_distance_to_goal_property_->setMin( -1.0f );
 }
@@ -320,6 +320,13 @@ int SetFormationTool::processMouseEvent( rviz_common::ViewportMouseEvent& event 
     if ( !findNearestMarker( point.x, point.y, marker_id ) )
     {
         setStatus( "No map marker within the pick tolerance of the click." );
+        return Render;
+    }
+
+    const float goal_weight = w_distance_to_goal_property_->getFloat();
+    if ( goal_weight <= 0.0f && goal_weight != -1.0f )
+    {
+        setStatus( "FORM not sent: Goal Weight must be above 0, or -1 for the MPC default." );
         return Render;
     }
 
