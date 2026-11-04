@@ -101,8 +101,9 @@ task resumes. In the serialized format the value follows the last field as
 `w_distance_to_goal=<value>`, where the value is positive and finite. The
 communication node rejects and logs a command with a malformed weight, or with
 any other token of the form `name=<number>`. The Mission Manager applies the same
-check to commands received over ROS, so every vehicle treats a command alike on
-either transport. A queued mission then moves on to its next task, and a
+check to commands received over ROS, so a command that fails it is rejected on
+either transport. A command whose number field is not a complete, finite number
+is rejected the same way. A queued mission then moves on to its next task, and a
 `WAIT_UNTIL_COMPLETE` on the rejected message's ID waits until it is cancelled.
 
 Contact Handling

@@ -2,8 +2,12 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
+#include <limits>
+#include <stdexcept>
 #include <sstream>
 #include "avt_341_msgs/msg/communication.hpp"
 
@@ -101,6 +105,31 @@ static bool hasValidFieldCount(const std::string & type, size_t n){
   return true;
 }
 
+// Number fields must be complete and finite, so that a mistyped value cannot become a valid one.
+static bool onlySpacesFollow(const char * text){
+  return text[std::strspn(text, " \t")] == '\0';
+}
+
+static double strictDouble(const std::string & token){
+  char * end = nullptr;
+  const double value = std::strtod(token.c_str(), &end);
+  if(end == token.c_str() || !onlySpacesFollow(end) || !std::isfinite(value)) {
+    throw std::invalid_argument("not a finite number: " + token);
+  }
+  return value;
+}
+
+static int strictInt(const std::string & token){
+  char * end = nullptr;
+  errno = 0;
+  const long value = std::strtol(token.c_str(), &end, 10);
+  if(end == token.c_str() || !onlySpacesFollow(end) || errno == ERANGE ||
+     value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+    throw std::invalid_argument("not an integer: " + token);
+  }
+  return static_cast<int>(value);
+}
+
 static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & msg) {
   // Drop line endings and trailing whitespace a socket server may append, so they cannot end up in the
   // trailing toi_regex field.
@@ -127,7 +156,7 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
   }
   message.w_distance_to_goal = goal_weight;
   message.sender_name = tokens[0];
-  message.msg_id = atoi(tokens[1].c_str());
+  message.msg_id = strictInt(tokens[1]);
   message.type = tokens[2];
   message.priority_type = "Q";
   message.receiver_name = "";
@@ -144,7 +173,7 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
     message.follower2_name = tokens[6];
     message.follower3_name = tokens[7];
     message.objective_name = tokens[8];
-    message.desired_speed = std::stod(tokens[9]);
+    message.desired_speed = strictDouble(tokens[9]);
     message.x_scale = -1.0;
     message.y_scale = -1.0;
     message.x_offset = 0.0;
@@ -154,12 +183,12 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
     if(tokens.size() == 11) {
       message.priority_type = tokens[10];
     }else if(tokens.size() > 11) {
-      message.x_scale = std::stod(tokens[10]);
-      message.y_scale = std::stod(tokens[11]);
-      message.x_offset = std::stod(tokens[12]);
-      message.y_offset = std::stod(tokens[13]);
-      message.distance = std::stod(tokens[14]);
-      message.yaw_threshold = std::stod(tokens[15]);
+      message.x_scale = strictDouble(tokens[10]);
+      message.y_scale = strictDouble(tokens[11]);
+      message.x_offset = strictDouble(tokens[12]);
+      message.y_offset = strictDouble(tokens[13]);
+      message.distance = strictDouble(tokens[14]);
+      message.yaw_threshold = strictDouble(tokens[15]);
       message.termination_method = tokens[16];
       message.priority_type = tokens[17];
 
@@ -173,7 +202,7 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
   else if(message.type == MissionMsgType::Acknowledge) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = std::stoi(tokens[4]);
+    message.target_msg_id = strictInt(tokens[4]);
   }
     // <sender>,<msg_id>,ARRIVE,<objective>
   else if(message.type == MissionMsgType::Arrived) {
@@ -182,7 +211,7 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
     // <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
   else if(message.type == MissionMsgType::TaskComplete) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = atoi(tokens[4].c_str());
+    message.target_msg_id = strictInt(tokens[4]);
   }
     // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<priority>
     // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>
@@ -196,10 +225,10 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
     if(tokens.size() == 6) {
       message.priority_type = tokens[5];
     }else if(tokens.size() > 6){
-      message.x_offset = std::stod(tokens[5]);
-      message.y_offset = std::stod(tokens[6]);
-      message.distance = std::stod(tokens[7]);
-      message.yaw_threshold = std::stod(tokens[8]);
+      message.x_offset = strictDouble(tokens[5]);
+      message.y_offset = strictDouble(tokens[6]);
+      message.distance = strictDouble(tokens[7]);
+      message.yaw_threshold = strictDouble(tokens[8]);
       message.priority_type = tokens[9];
       if(tokens.size() > 10) {
         message.toi_regex = joinTrailingTokens(tokens, 10);
@@ -213,25 +242,25 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
     // <sender>,<msg_id>,SET_SPEED,<receiver>,<speed>
   else if(message.type == MissionMsgType::SetSpeed) {
     message.receiver_name = tokens[3];
-    message.desired_speed = std::stod(tokens[4]);
+    message.desired_speed = strictDouble(tokens[4]);
   }
   else if(message.type == MissionMsgType::Cancel) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = atoi(tokens[4].c_str());
+    message.target_msg_id = strictInt(tokens[4]);
   }
   else if(message.type == MissionMsgType::CancelAll) {
     message.receiver_name = tokens[3];
   }
   else if(message.type == MissionMsgType::Overwatch) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = atoi(tokens[4].c_str());
+    message.target_msg_id = strictInt(tokens[4]);
   }
     // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>
     // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>,<toi_regex>
   else if(message.type == MissionMsgType::PathFollow) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
-    message.desired_speed = std::stod(tokens[5]);
+    message.desired_speed = strictDouble(tokens[5]);
     message.priority_type = tokens[6];
     if(tokens.size() > 7) {
       message.toi_regex = joinTrailingTokens(tokens, 7);
@@ -242,7 +271,7 @@ static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & m
   else if(message.type == MissionMsgType::WaitUntilComplete) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
-    message.target_msg_id = atoi(tokens[5].c_str());
+    message.target_msg_id = strictInt(tokens[5]);
     if(tokens.size() > 6) {
       message.priority_type = tokens[6];
     }

@@ -174,6 +174,23 @@ TEST(SerializedMessages, UnconvertibleNumbersParseToEmptyMessage)
     for(const auto & text : {std::string("MRZR,0,SET_SPEED,MRZR,abc"),
                              std::string("MRZR,0,SET_SPEED,MRZR,"),
                              std::string("MRZR,0,SET_SPEED,MRZR,1e999"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,nan"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,inf"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,-inf"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,5abc"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,nan,0,5,-1,QUEUE"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1x,QUEUE"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,inf,QUEUE"),
+                             std::string("MRZR,abc,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,3.7,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,99999999999,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,0,CANCEL,MRZR,abc"),
+                             std::string("MRZR,0,CANCEL,MRZR,"),
+                             std::string("MRZR,0,ACK,MRZR,1x"),
+                             std::string("MRZR,0,TASK_COMPLETE,MRZR,x1"),
+                             std::string("MRZR,0,OVERWATCH,MRZR,abc"),
+                             std::string("MRZR,0,WAIT_UNTIL_COMPLETE,MRZR,FEDA,abc"),
                              std::string("MRZR,0,MOVETO,MRZR,MP_Y,abc,0,5,-1,QUEUE"),
                              std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,abc,-1,QUEUE"),
                              std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,abc"),
@@ -183,6 +200,19 @@ TEST(SerializedMessages, UnconvertibleNumbersParseToEmptyMessage)
         EXPECT_EQ(msg.type, "") << text;
         EXPECT_EQ(msg.sender_name, "") << text;
     }
+}
+
+TEST(SerializedMessages, ValidNumbersStillParse)
+{
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,1.5 ,0,5,-1,QUEUE").x_offset, 1.5);
+    EXPECT_EQ(serializedToROSMsg("MRZR,3 ,MOVETO,MRZR,MP_Y,QUEUE").msg_id, 3);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR, 1e1").desired_speed, 10.0);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,0").desired_speed, 0.0);
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,0").type, MissionMsgType::SetSpeed);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,-5").desired_speed, -5.0);
+    EXPECT_EQ(serializedToROSMsg("MRZR,-1,ARRIVE,TASK_0").msg_id, -1);
+    EXPECT_EQ(serializedToROSMsg("MRZR,12,CANCEL,MRZR,7").target_msg_id, 7);
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,1.5,-2,5,-1,QUEUE").x_offset, 1.5);
 }
 
 TEST(SerializedMessages, ValidShortFormatsStillParse)
@@ -1138,6 +1168,12 @@ TEST(GoalWeightCommand, SurvivesSerializationMatchesTheSocketPath)
         EXPECT_TRUE(survivesSerialization(MakeCommand(type, "label=car"))) << type;
         EXPECT_FALSE(survivesSerialization(MakeCommand(type, "x=1"))) << type;
     }
+    auto nan_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    nan_speed.desired_speed = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(survivesSerialization(nan_speed));
+    auto inf_offset = MakeCommand(MissionMsgType::MoveTo, "");
+    inf_offset.x_offset = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(survivesSerialization(inf_offset));
     auto comma_in_name = MakeCommand(MissionMsgType::Formation, "");
     comma_in_name.objective_name = "MP,Y";
     EXPECT_FALSE(survivesSerialization(comma_in_name));
