@@ -54,6 +54,7 @@ namespace avt_341::rviz_plugins
         y_offset_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         distance_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         target_msg_entry_->setValidator(new QIntValidator(0, 99, this));
+        w_distance_to_goal_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
 
         // Create button
         send_msg_button_ = new QPushButton("Send Message");

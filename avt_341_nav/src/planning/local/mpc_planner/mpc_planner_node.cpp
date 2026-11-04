@@ -15,6 +15,7 @@
  *         Keweenaw Research Center (KRC)
  */
 #include <avt_341_nav/planning/local/mpc_planner_node.h>
+#include <avt_341_nav/planning/local/mpc_goal_weight.h>
 #include <avt_341_nav/node/node_types.h>
 #include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
@@ -244,11 +245,9 @@ void SpeedCallback(std_msgs::msg::Float64::SharedPtr speed_msg)
     CATCH_JULIA_EXCEPTION;
 }
 
-// The active task's override when it has one, else the w_distance_to_goal parameter.
 void ApplyGoalWeight()
 {
-    const double weight = w_distance_to_goal_override > 0.0 && std::isfinite(w_distance_to_goal_override)
-        ? w_distance_to_goal_override : mpc_params.w_distance_to_goal;
+    const double weight = EffectiveGoalWeight(w_distance_to_goal_override, mpc_params.w_distance_to_goal);
     jl_call1(j_set_w_distance_to_goal, jl_box_float64(weight));
     CATCH_JULIA_EXCEPTION;
 }

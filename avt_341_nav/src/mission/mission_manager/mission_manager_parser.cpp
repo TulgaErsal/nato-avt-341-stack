@@ -1,4 +1,6 @@
 #include "avt_341_nav/mission/mission_manager_parser.h"
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <sstream>
@@ -6,6 +8,34 @@
 
 // Serialized after the trailing toi_regex of FORM, MOVETO and PATH_FOLLOW, only when set.
 static const std::string GOAL_WEIGHT_PREFIX = "w_distance_to_goal=";
+
+// A mistyped weight must be recognized too, so that it cannot fall into toi_regex or priority.
+static bool looksLikeGoalWeight(const std::string & token){
+  const auto first = token.find_first_not_of(" \t");
+  if(first == std::string::npos) {
+    return false;
+  }
+  std::string text = token.substr(first);
+  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+  return text.rfind("w_dist", 0) == 0;
+}
+
+static bool parseGoalWeight(const std::string & token, double & weight){
+  if(token.rfind(GOAL_WEIGHT_PREFIX, 0) != 0) {
+    return false;
+  }
+  const char * value = token.c_str() + GOAL_WEIGHT_PREFIX.size();
+  if(*value == '\0' || std::isspace(static_cast<unsigned char>(*value))) {
+    return false;
+  }
+  char * end = nullptr;
+  weight = std::strtod(value, &end);
+  return *end == '\0' && weight > 0.0 && std::isfinite(weight);
+}
+
+static bool carriesGoalWeight(const std::string & type){
+  return type == MissionMsgType::Formation || type == MissionMsgType::MoveTo || type == MissionMsgType::PathFollow;
+}
 
 // Rejoin tokens[first..] so that a trailing regex containing commas survives tokenization.
 static std::string joinTrailingTokens(const std::vector<std::string> & tokens, size_t first){
@@ -61,13 +91,24 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   auto tokens = tokenizeMsg(last == std::string::npos ? std::string() : msg.substr(0, last + 1));
 
   avt_341_msgs::msg::Communication message;
-  if(tokens.back().rfind(GOAL_WEIGHT_PREFIX, 0) == 0) {
-    message.w_distance_to_goal = std::atof(tokens.back().c_str() + GOAL_WEIGHT_PREFIX.size());
+  const bool has_goal_weight = looksLikeGoalWeight(tokens.back());
+  double goal_weight = message.w_distance_to_goal;
+  if(has_goal_weight) {
+    if(!parseGoalWeight(tokens.back(), goal_weight)) {
+      return message;
+    }
     tokens.pop_back();
+  }
+  if(std::any_of(tokens.begin(), tokens.end(), looksLikeGoalWeight)) {
+    return message;
   }
   if(tokens.size() < 3 || !hasValidFieldCount(tokens[2], tokens.size())){
     return message;
   }
+  if(has_goal_weight && !carriesGoalWeight(tokens[2])) {
+    return message;
+  }
+  message.w_distance_to_goal = goal_weight;
   message.sender_name = tokens[0];
   message.msg_id = atoi(tokens[1].c_str());
   message.type = tokens[2];
@@ -325,9 +366,7 @@ std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication
 }
 
 double goalWeightOverride(const avt_341_msgs::msg::Communication & msg){
-  const bool carries_goal_weight = msg.type == MissionMsgType::Formation || msg.type == MissionMsgType::MoveTo ||
-                                   msg.type == MissionMsgType::PathFollow;
-  if(carries_goal_weight && msg.w_distance_to_goal > 0.0 && std::isfinite(msg.w_distance_to_goal)) {
+  if(carriesGoalWeight(msg.type) && msg.w_distance_to_goal > 0.0 && std::isfinite(msg.w_distance_to_goal)) {
     return msg.w_distance_to_goal;
   }
   return -1.0;

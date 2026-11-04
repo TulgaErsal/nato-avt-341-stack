@@ -25,6 +25,7 @@
 using avt_341_nav::mission::MissionManager;
 using avt_341_nav::mission::MissionManagerParams;
 using avt_341_nav::mission::Encircle;
+using avt_341_nav::mission::MissionPoint;
 
 namespace {
 
@@ -224,6 +225,49 @@ TEST(GoalWeightCommand, ParsedFromTheShortFormats)
     EXPECT_EQ(moveto.priority_type, "QUEUE");
     EXPECT_DOUBLE_EQ(moveto.w_distance_to_goal, 600.0);
     EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE").w_distance_to_goal, -1.0);
+}
+
+TEST(GoalWeightCommand, MalformedWeightRejectsTheCommand)
+{
+    const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
+    const std::string short_moveto = "MRZR,0,MOVETO,MRZR,MP_Y,QUEUE";
+    const std::string form = "MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5";
+    const std::string path = "MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE";
+    for(const auto & text : std::vector<std::string>{moveto + ",w_distance_to_goal =600",
+                             moveto + ", w_distance_to_goal=600",
+                             moveto + ",W_DISTANCE_TO_GOAL=600",
+                             moveto + ",w_distance_goal=600",
+                             moveto + ",car,w_distance_to_goal =600",
+                             moveto + ",w_distance_to_goal=600,car",
+                             short_moveto + ",w_distance_to_goal=abc",
+                             short_moveto + ",w_distance_to_goal=600abc",
+                             short_moveto + ",w_distance_to_goal=",
+                             short_moveto + ",w_distance_to_goal= 600",
+                             short_moveto + ",w_distance_to_goal=0",
+                             short_moveto + ",w_distance_to_goal=-1",
+                             short_moveto + ",w_distance_to_goal=inf",
+                             short_moveto + ",w_distance_to_goal=nan",
+                             "MRZR,0,MOVETO,MRZR,MP_Y,w_distance_to_goal=600,QUEUE",
+                             form + ",w_distance_to_goal =600",
+                             form + ",QUEUE,w_distance_to_goal=abc",
+                             path + ",w_distance_to_goal =600",
+                             "MRZR,0,SET_SPEED,MRZR,4.5,w_distance_to_goal=600"}) {
+        const auto msg = serializedToROSMsg(text);
+        EXPECT_EQ(msg.type, "") << text;
+        EXPECT_EQ(msg.toi_regex, "") << text;
+        EXPECT_DOUBLE_EQ(msg.w_distance_to_goal, -1.0) << text;
+    }
+}
+
+TEST(GoalWeightCommand, WellFormedWeightsAndRegexesStillParse)
+{
+    const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
+    EXPECT_DOUBLE_EQ(serializedToROSMsg(moveto + ",w_distance_to_goal=600.5").w_distance_to_goal, 600.5);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg(moveto + ",w_distance_to_goal=1e3 \r\n").w_distance_to_goal, 1000.0);
+    const auto with_regex = serializedToROSMsg(moveto + ",car,w_distance_to_goal=600");
+    EXPECT_DOUBLE_EQ(with_regex.w_distance_to_goal, 600.0);
+    EXPECT_EQ(with_regex.toi_regex, "car");
+    EXPECT_EQ(serializedToROSMsg(moveto + ",car_w_dist").toi_regex, "car_w_dist");
 }
 
 // Team vehicle contact filter
@@ -994,6 +1038,35 @@ TEST_F(GoalWeightOverrideTest, InvestigationTasksUseTheDefault)
     manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
     ASSERT_TRUE(HasContactTask(*manager));
     EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, FormCommandAppliesToTheLeaderAndFollowerTasks)
+{
+    params_.formation_change_delay.is_enabled = false;
+    for(const auto & leader : {std::string("MRZR"), std::string("FEDA")}) {
+        const bool is_leader = leader == "MRZR";
+        for(const double weight : {600.0, -1.0}) {
+            auto manager = MakeManager();
+            MissionPoint point{};
+            point.name = "MP_Y";
+            point.rot_w = 1.0;
+            manager->setMissionPoints({point});
+
+            auto msg = MakeCommand(MissionMsgType::Formation, "");
+            msg.formation = "COLUMN";
+            msg.leader_name = leader;
+            msg.follower1_name = is_leader ? "FEDA" : "MRZR";
+            msg.w_distance_to_goal = weight;
+            manager->setIncomingGoalWeight(goalWeightOverride(msg), msg.msg_id);
+            manager->handleFormationRequest(FormationMsg(msg));
+            manager->setIncomingGoalWeight(-1.0, 0);
+
+            ASSERT_NE(manager->currentTask(), nullptr) << leader;
+            EXPECT_EQ(manager->currentTask()->description().find("FOLLOW") == std::string::npos, is_leader)
+                << manager->currentTask()->description();
+            EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, weight) << leader;
+        }
+    }
 }
 
 TEST_F(GoalWeightOverrideTest, PublishesOnlyOnChange)

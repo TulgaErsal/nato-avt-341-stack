@@ -3,6 +3,9 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <limits>
+
+#include <avt_341_nav/planning/local/mpc_goal_weight.h>
 
 // Julia header throws "No Target Architecture" error otherwise on Windows systems
 #ifdef _WIN64
@@ -170,6 +173,14 @@ TEST(MPCPlannerTest, PlanPath) {
         EXPECT_GT(last_x, 0.0);
         std::cout << "Path generated with " << path_len << " points. Final X: " << last_x << std::endl;
     }
+}
+
+TEST(GoalWeightSelection, OverrideWinsOnlyWhenPositiveAndFinite) {
+    EXPECT_DOUBLE_EQ(EffectiveGoalWeight(600.0, 150.0), 600.0);
+    EXPECT_DOUBLE_EQ(EffectiveGoalWeight(-1.0, 150.0), 150.0);
+    EXPECT_DOUBLE_EQ(EffectiveGoalWeight(0.0, 150.0), 150.0);
+    EXPECT_DOUBLE_EQ(EffectiveGoalWeight(std::numeric_limits<double>::infinity(), 150.0), 150.0);
+    EXPECT_DOUBLE_EQ(EffectiveGoalWeight(std::numeric_limits<double>::quiet_NaN(), 150.0), 150.0);
 }
 
 TEST(MPCPlannerTest, GoalWeightChangesTheSolutionAfterSetup) {

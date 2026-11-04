@@ -133,6 +133,10 @@ int main(int argc, char* argv[])
                 RCLCPP_INFO(nh->get_logger(), "Read %s", msg_text.c_str());
               }
               packed_msg = serializedToROSMsg(msg_text);
+              if(packed_msg.type.empty()) {
+                RCLCPP_ERROR(nh->get_logger(), "Rejected malformed command: %s", msg_text.c_str());
+                continue;
+              }
               msg_pub->publish(packed_msg);
             }
         }

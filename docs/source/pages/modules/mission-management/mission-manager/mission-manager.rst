@@ -98,7 +98,9 @@ and the MPC uses it. A task without a value (including target investigation
 tasks) and an empty task list publish -1, and the MPC uses its
 `w_distance_to_goal` parameter. A preempted task's value applies again when the
 task resumes. In the serialized format the value follows the last field as
-`w_distance_to_goal=<value>`.
+`w_distance_to_goal=<value>`, where the value is positive and finite. The
+communication node rejects and logs a command with a malformed weight, so a
+queued mission continues with its next command.
 
 Contact Handling
 ----------------
