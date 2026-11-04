@@ -331,3 +331,13 @@ log_topics:
     topic: '/{vehicles}/avt_341/compute_times'
     field: ''
     units: ''
+
+  # ==========================================================================================================
+  # CONTROL MODE
+  # ==========================================================================================================
+
+  - name: '{vehicles}_autonomy_enabled'
+    topic: '/{vehicles}/autonomy_enabled'
+    field: 'data'
+    type: 'std_msgs/msg/Bool'
+    units: ''
