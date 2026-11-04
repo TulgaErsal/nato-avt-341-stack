@@ -112,8 +112,9 @@ static bool onlySpacesFollow(const char * text){
 
 static double strictDouble(const std::string & token){
   char * end = nullptr;
+  errno = 0;
   const double value = std::strtod(token.c_str(), &end);
-  if(end == token.c_str() || !onlySpacesFollow(end) || !std::isfinite(value)) {
+  if(end == token.c_str() || !onlySpacesFollow(end) || errno == ERANGE || !std::isfinite(value)) {
     throw std::invalid_argument("not a finite number: " + token);
   }
   return value;

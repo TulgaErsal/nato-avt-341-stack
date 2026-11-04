@@ -174,6 +174,8 @@ TEST(SerializedMessages, UnconvertibleNumbersParseToEmptyMessage)
     for(const auto & text : {std::string("MRZR,0,SET_SPEED,MRZR,abc"),
                              std::string("MRZR,0,SET_SPEED,MRZR,"),
                              std::string("MRZR,0,SET_SPEED,MRZR,1e999"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,1e-999"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,1e-310"),
                              std::string("MRZR,0,SET_SPEED,MRZR,nan"),
                              std::string("MRZR,0,SET_SPEED,MRZR,inf"),
                              std::string("MRZR,0,SET_SPEED,MRZR,-inf"),
@@ -210,6 +212,7 @@ TEST(SerializedMessages, ValidNumbersStillParse)
     EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,0").desired_speed, 0.0);
     EXPECT_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,0").type, MissionMsgType::SetSpeed);
     EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,-5").desired_speed, -5.0);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,1e-300").desired_speed, 1e-300);
     EXPECT_EQ(serializedToROSMsg("MRZR,-1,ARRIVE,TASK_0").msg_id, -1);
     EXPECT_EQ(serializedToROSMsg("MRZR,12,CANCEL,MRZR,7").target_msg_id, 7);
     EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,1.5,-2,5,-1,QUEUE").x_offset, 1.5);
