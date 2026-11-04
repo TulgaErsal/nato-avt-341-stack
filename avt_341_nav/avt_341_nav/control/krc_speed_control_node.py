@@ -92,6 +92,8 @@ class VelocityControl(Node):
         if not self.param_listener.is_old(self.params):
             return
         self.params = self.param_listener.get_params()
+        self.get_logger().info(f'Params update: kp={self.params.throttle_kp}, '
+                               f'kd={self.params.throttle_kd}, ki={self.params.throttle_ki}')
 
         if self.params.throttle_kp != self.pid.Kp or \
                 self.params.throttle_ki != self.pid.Ki or \
