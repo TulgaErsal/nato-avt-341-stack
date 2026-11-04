@@ -9,15 +9,25 @@
 // Serialized after the trailing toi_regex of FORM, MOVETO and PATH_FOLLOW, only when set.
 static const std::string GOAL_WEIGHT_PREFIX = "w_distance_to_goal=";
 
-// A mistyped weight must be recognized too, so that it cannot fall into toi_regex or priority.
+// A mistyped weight must be recognized too, so that it cannot fall into toi_regex or priority:
+// the token has the shape name=value, or contains the weight's name.
 static bool looksLikeGoalWeight(const std::string & token){
-  const auto first = token.find_first_not_of(" \t");
-  if(first == std::string::npos) {
+  std::string text = token;
+  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+  if(text.find("w_distance_to_goal") != std::string::npos) {
+    return true;
+  }
+  const auto equals = text.find('=');
+  if(equals == std::string::npos) {
     return false;
   }
-  std::string text = token.substr(first);
-  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
-  return text.rfind("w_dist", 0) == 0;
+  const auto first = text.find_first_not_of(" \t");
+  const auto last = text.find_last_not_of(" \t", equals - 1);
+  if(equals == 0 || first == equals || last == std::string::npos) {
+    return false;
+  }
+  return std::all_of(text.begin() + first, text.begin() + last + 1,
+                     [](unsigned char c) { return std::isalnum(c) || c == '_'; });
 }
 
 static bool parseGoalWeight(const std::string & token, double & weight){

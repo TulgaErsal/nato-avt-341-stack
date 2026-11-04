@@ -237,6 +237,11 @@ TEST(GoalWeightCommand, MalformedWeightRejectsTheCommand)
                              moveto + ", w_distance_to_goal=600",
                              moveto + ",W_DISTANCE_TO_GOAL=600",
                              moveto + ",w_distance_goal=600",
+                             moveto + ",w_dsitance_to_goal=600",
+                             moveto + ",goal_weight=600",
+                             moveto + ",w_distance_to_goal:600",
+                             moveto + ",w_distance_to_goal 600",
+                             moveto + ",car,w_dsitance_to_goal=600",
                              moveto + ",car,w_distance_to_goal =600",
                              moveto + ",w_distance_to_goal=600,car",
                              short_moveto + ",w_distance_to_goal=abc",
@@ -268,6 +273,19 @@ TEST(GoalWeightCommand, WellFormedWeightsAndRegexesStillParse)
     EXPECT_DOUBLE_EQ(with_regex.w_distance_to_goal, 600.0);
     EXPECT_EQ(with_regex.toi_regex, "car");
     EXPECT_EQ(serializedToROSMsg(moveto + ",car_w_dist").toi_regex, "car_w_dist");
+}
+
+TEST(GoalWeightCommand, NamesAndRegexesThatResembleTheWeightAreKept)
+{
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,W_DISTRICT,QUEUE").objective_name, "W_DISTRICT");
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,W_DIST,4.5").receiver_name, "W_DIST");
+    const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
+    for(const auto & regex : {std::string("w_dist.*"), std::string("car(?=_1)"), std::string("^$"), std::string("TI_[0-9]{1,3},car")}) {
+        EXPECT_EQ(serializedToROSMsg(moveto + "," + regex).toi_regex, regex);
+        const auto with_weight = serializedToROSMsg(moveto + "," + regex + ",w_distance_to_goal=600");
+        EXPECT_EQ(with_weight.toi_regex, regex);
+        EXPECT_DOUBLE_EQ(with_weight.w_distance_to_goal, 600.0) << regex;
+    }
 }
 
 // Team vehicle contact filter
@@ -1057,9 +1075,7 @@ TEST_F(GoalWeightOverrideTest, FormCommandAppliesToTheLeaderAndFollowerTasks)
             msg.leader_name = leader;
             msg.follower1_name = is_leader ? "FEDA" : "MRZR";
             msg.w_distance_to_goal = weight;
-            manager->setIncomingGoalWeight(goalWeightOverride(msg), msg.msg_id);
-            manager->handleFormationRequest(FormationMsg(msg));
-            manager->setIncomingGoalWeight(-1.0, 0);
+            ASSERT_TRUE(manager->handleCommand(msg));
 
             ASSERT_NE(manager->currentTask(), nullptr) << leader;
             EXPECT_EQ(manager->currentTask()->description().find("FOLLOW") == std::string::npos, is_leader)
@@ -1067,6 +1083,39 @@ TEST_F(GoalWeightOverrideTest, FormCommandAppliesToTheLeaderAndFollowerTasks)
             EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, weight) << leader;
         }
     }
+}
+
+TEST_F(GoalWeightOverrideTest, HandleCommandAppliesTheWeightAndRegexToItsTaskOnly)
+{
+    params_.formation_change_delay.is_enabled = false;
+    auto manager = MakeManager();
+    MissionPoint point{};
+    point.name = "MP_Y";
+    point.rot_w = 1.0;
+    manager->setMissionPoints({point});
+
+    auto with_values = MakeCommand(MissionMsgType::MoveTo, "car");
+    with_values.w_distance_to_goal = 600.0;
+    ASSERT_TRUE(manager->handleCommand(with_values));
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, 600.0);
+    EXPECT_EQ(manager->currentTask()->toi_regex, std::optional<std::string>("car"));
+    manager->cancelTask(3, false);
+
+    // Same msg_id, added directly after the command: the incoming values must be cleared.
+    manager->addTask(new avt_341_nav::mission::WaitForDuration(manager.get(), "MRZR", 3, 1000.0));
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, -1.0);
+    EXPECT_FALSE(manager->currentTask()->toi_regex.has_value());
+}
+
+TEST_F(GoalWeightOverrideTest, HandleCommandReportsShutdown)
+{
+    auto manager = MakeManager();
+    auto shutdown = MakeCommand(MissionMsgType::Shutdown, "");
+    EXPECT_FALSE(manager->handleCommand(shutdown));
+    auto set_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    EXPECT_TRUE(manager->handleCommand(set_speed));
 }
 
 TEST_F(GoalWeightOverrideTest, PublishesOnlyOnChange)

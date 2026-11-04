@@ -1,4 +1,6 @@
 #include <avt_341_rviz_plugins/panel_plugins/mission_command_panel.h>
+#include <QLocale>
+#include <QMessageBox>
 
 namespace avt_341::rviz_plugins
 {
@@ -54,7 +56,11 @@ namespace avt_341::rviz_plugins
         y_offset_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         distance_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         target_msg_entry_->setValidator(new QIntValidator(0, 99, this));
-        w_distance_to_goal_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
+        auto * goal_weight_validator = new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this);
+        QLocale goal_weight_locale;
+        goal_weight_locale.setNumberOptions(QLocale::RejectGroupSeparator);
+        goal_weight_validator->setLocale(goal_weight_locale);
+        w_distance_to_goal_entry_->setValidator(goal_weight_validator);
 
         // Create button
         send_msg_button_ = new QPushButton("Send Message");
@@ -123,6 +129,20 @@ namespace avt_341::rviz_plugins
 
     void MissionCommandPanel::sendCommand()
     {
+        const QString command_type = msg_type_combo_->currentText();
+        const bool carries_goal_weight = command_type == "FORM" || command_type == "MOVETO" || command_type == "PATH_FOLLOW";
+        const QString goal_weight_text = w_distance_to_goal_entry_->text();
+        double goal_weight = -1.0;
+        if(carries_goal_weight && !goal_weight_text.isEmpty()) {
+            bool is_number = false;
+            goal_weight = goal_weight_text.toDouble(&is_number);
+            if(!w_distance_to_goal_entry_->hasAcceptableInput() || !is_number || goal_weight <= 0.0) {
+                QMessageBox::warning(this, "Command not sent",
+                    "Goal Weight \"" + goal_weight_text + "\" is not a number above 0. Correct it, or leave it empty for the MPC default.");
+                return;
+            }
+        }
+
         avt_341_msgs::msg::Communication command_msg;
         command_msg.sender_name = sender_name_entry_->text().toUpper().toStdString();
         command_msg.msg_id = msg_id_entry_->text().toInt();
@@ -145,8 +165,8 @@ namespace avt_341::rviz_plugins
         command_msg.target_msg_id = target_msg_entry_->text().toInt();
         // Not uppercased: this is a regex matched against detected object ids, so case is significant.
         command_msg.toi_regex = toi_regex_entry_->text().toStdString();
-        if(!w_distance_to_goal_entry_->text().isEmpty()) {
-            command_msg.w_distance_to_goal = w_distance_to_goal_entry_->text().toDouble();
+        if(carries_goal_weight && !goal_weight_text.isEmpty()) {
+            command_msg.w_distance_to_goal = goal_weight;
         }
         command_pub_->publish(command_msg);
     }

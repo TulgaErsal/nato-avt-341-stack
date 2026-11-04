@@ -1,5 +1,7 @@
 // clas definition
+#include <iostream>
 #include "avt_341_nav/mission/mission_manager.h"
+#include "avt_341_nav/mission/mission_manager_parser.h"
 #include "avt_341_nav/node/node_types.h"
 #include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/core/frame_id_collection.hpp"
@@ -1018,6 +1020,46 @@ void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose)
   if(task != nullptr){
     task->onGoalReached(pose);
   }
+}
+
+bool MissionManager::handleCommand(const avt_341_msgs::msg::Communication & msg) {
+    if(msg.type == MissionMsgType::Shutdown) {
+        std::cout << my_name << " is shutting down" << std::endl;
+        return false;
+    }
+
+    setIncomingToiRegex(toiRegexUpdate(msg), msg.msg_id);
+    setIncomingGoalWeight(goalWeightOverride(msg), msg.msg_id);
+
+    if(msg.type == MissionMsgType::Formation) {
+        handleFormationRequest(FormationMsg(msg));
+    } else if(msg.type == MissionMsgType::Acknowledge) {
+        handleAcknowledge(AcknowledgeMsg(msg));
+    } else if(msg.type == MissionMsgType::Arrived) {
+        handleArrive(ArrivedMsg(msg));
+    } else if(msg.type == MissionMsgType::TaskComplete) {
+        handleTaskComplete(TaskCompleteMsg(msg));
+    } else if(msg.type == MissionMsgType::MoveTo) {
+        handleMoveTo(MoveToMsg(msg));
+    } else if(msg.type == MissionMsgType::SetSpeed) {
+        handleSetSpeedMsg(SetSpeedMsg(msg));
+    } else if(msg.type == MissionMsgType::Cancel) {
+        handleCancelTask(CancelMsg(msg));
+    } else if(msg.type == MissionMsgType::CancelAll) {
+        handleCancelAllTask(CancelAllMsg(msg));
+    } else if(msg.type == MissionMsgType::Overwatch) {
+        handleOverwatch(OverwatchMsg(msg));
+    } else if(msg.type == MissionMsgType::PathFollow) {
+        handlePathFollow(PathFollowMsg(msg));
+    } else if(msg.type == MissionMsgType::WaitUntilComplete) {
+        handleWaitUntilComplete(WaitUntilCompleteMsg(msg));
+    } else {
+        RCLCPP_WARN(node_->get_logger(), "Unknown message type: %s", msg.type.c_str());
+    }
+
+    setIncomingToiRegex(std::nullopt, 0);
+    setIncomingGoalWeight(-1.0, 0);
+    return true;
 }
 
 void MissionManager::handleCancelTask(const CancelMsg & msg){
