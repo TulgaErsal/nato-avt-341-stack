@@ -101,7 +101,7 @@ static bool hasValidFieldCount(const std::string & type, size_t n){
   return true;
 }
 
-avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
+static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & msg) {
   // Drop line endings and trailing whitespace a socket server may append, so they cannot end up in the
   // trailing toi_regex field.
   const auto last = msg.find_last_not_of(" \t\r\n");
@@ -251,6 +251,14 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   return message;
 }
 
+avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
+  try {
+    return parseSerializedMsg(msg);
+  } catch(const std::exception &) {
+    return avt_341_msgs::msg::Communication();
+  }
+}
+
 std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
   std::ostringstream stream;
   stream << msg.sender_name << "," << msg.msg_id << "," << msg.type;
@@ -374,11 +382,7 @@ std::string concreteToSerializedMsg(MissionManagerDto * msg){
 }
 
 bool survivesSerialization(const avt_341_msgs::msg::Communication & msg){
-  try {
-    return !serializedToROSMsg(rosToSerializedMsg(msg)).type.empty();
-  } catch(const std::exception &) {
-    return false;
-  }
+  return !serializedToROSMsg(rosToSerializedMsg(msg)).type.empty();
 }
 
 std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg){

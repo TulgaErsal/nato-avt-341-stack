@@ -169,6 +169,22 @@ TEST(SerializedMessages, MalformedFieldCountsParseToEmptyMessage)
     }
 }
 
+TEST(SerializedMessages, UnconvertibleNumbersParseToEmptyMessage)
+{
+    for(const auto & text : {std::string("MRZR,0,SET_SPEED,MRZR,abc"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,1e999"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,abc,0,5,-1,QUEUE"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,abc,-1,QUEUE"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,abc"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,abc,10,0,0,0,-1,,QUEUE"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,abc,QUEUE")}) {
+        const auto msg = serializedToROSMsg(text);
+        EXPECT_EQ(msg.type, "") << text;
+        EXPECT_EQ(msg.sender_name, "") << text;
+    }
+}
+
 TEST(SerializedMessages, ValidShortFormatsStillParse)
 {
     EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE").objective_name, "MP_Y");
