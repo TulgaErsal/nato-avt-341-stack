@@ -41,7 +41,7 @@ namespace avt_341::rviz_plugins
         w_distance_to_goal_entry_ = new QLineEdit("");
         w_distance_to_goal_entry_->setPlaceholderText("MPC default");
         w_distance_to_goal_entry_->setToolTip(
-            "MPC w_distance_to_goal while the task of this FORM, MOVETO or PATH_FOLLOW is active.\n"
+            "MPC w_distance_to_goal while the task of this FORM or MOVETO is active.\n"
             "Empty uses the MPC's w_distance_to_goal parameter.");
 
         // Setup entries
@@ -56,7 +56,7 @@ namespace avt_341::rviz_plugins
         y_offset_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         distance_entry_->setValidator(new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this));
         target_msg_entry_->setValidator(new QIntValidator(0, 99, this));
-        auto * goal_weight_validator = new QDoubleValidator(0, std::numeric_limits<double>::max(), 4, this);
+        auto * goal_weight_validator = new QDoubleValidator(std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max(), 4, this);
         QLocale goal_weight_locale = QLocale::c();
         goal_weight_locale.setNumberOptions(QLocale::RejectGroupSeparator);
         goal_weight_validator->setLocale(goal_weight_locale);
@@ -130,7 +130,7 @@ namespace avt_341::rviz_plugins
     void MissionCommandPanel::sendCommand()
     {
         const QString command_type = msg_type_combo_->currentText();
-        const bool carries_goal_weight = command_type == "FORM" || command_type == "MOVETO" || command_type == "PATH_FOLLOW";
+        const bool carries_goal_weight = command_type == "FORM" || command_type == "MOVETO";
         const QString goal_weight_text = w_distance_to_goal_entry_->text();
         double goal_weight = -1.0;
         if(carries_goal_weight && !goal_weight_text.isEmpty()) {
