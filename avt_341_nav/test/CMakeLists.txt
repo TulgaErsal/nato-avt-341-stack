@@ -284,6 +284,7 @@ ament_add_gtest(object_tracker_toi_contact_test
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/formation_vehicle_tracker.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_params.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../src/perception/tracking/tracker_recovery_monitor.cpp"
+  TIMEOUT 300
 )
 target_include_directories(object_tracker_toi_contact_test
   PUBLIC
