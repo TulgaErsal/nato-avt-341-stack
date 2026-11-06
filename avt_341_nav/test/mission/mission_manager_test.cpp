@@ -19,10 +19,13 @@
 #include "avt_341_nav/mission/task.h"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include <limits>
 
 using avt_341_nav::mission::MissionManager;
 using avt_341_nav::mission::MissionManagerParams;
 using avt_341_nav::mission::Encircle;
+using avt_341_nav::mission::MissionPoint;
 
 namespace {
 
@@ -166,6 +169,55 @@ TEST(SerializedMessages, MalformedFieldCountsParseToEmptyMessage)
     }
 }
 
+TEST(SerializedMessages, UnconvertibleNumbersParseToEmptyMessage)
+{
+    for(const auto & text : {std::string("MRZR,0,SET_SPEED,MRZR,abc"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,1e999"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,1e-999"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,1e-310"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,nan"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,inf"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,-inf"),
+                             std::string("MRZR,0,SET_SPEED,MRZR,5abc"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,nan,0,5,-1,QUEUE"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1x,QUEUE"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,inf,QUEUE"),
+                             std::string("MRZR,abc,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,3.7,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,99999999999,MOVETO,MRZR,MP_Y,QUEUE"),
+                             std::string("MRZR,0,CANCEL,MRZR,abc"),
+                             std::string("MRZR,0,CANCEL,MRZR,"),
+                             std::string("MRZR,0,ACK,MRZR,1x"),
+                             std::string("MRZR,0,TASK_COMPLETE,MRZR,x1"),
+                             std::string("MRZR,0,OVERWATCH,MRZR,abc"),
+                             std::string("MRZR,0,WAIT_UNTIL_COMPLETE,MRZR,FEDA,abc"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,abc,0,5,-1,QUEUE"),
+                             std::string("MRZR,0,MOVETO,MRZR,MP_Y,0,0,abc,-1,QUEUE"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,abc"),
+                             std::string("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,abc,10,0,0,0,-1,,QUEUE"),
+                             std::string("MRZR,0,PATH_FOLLOW,MRZR,PATH_A,abc,QUEUE")}) {
+        const auto msg = serializedToROSMsg(text);
+        EXPECT_EQ(msg.type, "") << text;
+        EXPECT_EQ(msg.sender_name, "") << text;
+    }
+}
+
+TEST(SerializedMessages, ValidNumbersStillParse)
+{
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,1.5 ,0,5,-1,QUEUE").x_offset, 1.5);
+    EXPECT_EQ(serializedToROSMsg("MRZR,3 ,MOVETO,MRZR,MP_Y,QUEUE").msg_id, 3);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR, 1e1").desired_speed, 10.0);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,0").desired_speed, 0.0);
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,0").type, MissionMsgType::SetSpeed);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,-5").desired_speed, -5.0);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,1e-300").desired_speed, 1e-300);
+    EXPECT_EQ(serializedToROSMsg("MRZR,-1,ARRIVE,TASK_0").msg_id, -1);
+    EXPECT_EQ(serializedToROSMsg("MRZR,12,CANCEL,MRZR,7").target_msg_id, 7);
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,1.5,-2,5,-1,QUEUE").x_offset, 1.5);
+}
+
 TEST(SerializedMessages, ValidShortFormatsStillParse)
 {
     EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE").objective_name, "MP_Y");
@@ -173,6 +225,117 @@ TEST(SerializedMessages, ValidShortFormatsStillParse)
     EXPECT_EQ(serializedToROSMsg("MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5,QUEUE").priority_type, "QUEUE");
     EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,MRZR,4.5").desired_speed, 4.5);
     EXPECT_EQ(serializedToROSMsg("MRZR,-1,ARRIVE,TASK_0").objective_name, "TASK_0");
+}
+
+// w_distance_to_goal override
+// ------------------------------------------------------------------------------------------------
+
+TEST(GoalWeightCommand, CarriedByTaskCommandsOnly)
+{
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        auto msg = MakeCommand(type, "");
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), -1.0) << type;
+        msg.w_distance_to_goal = 600.0;
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), 600.0) << type;
+        msg.w_distance_to_goal = 0.0;
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), -1.0) << type;
+        msg.w_distance_to_goal = std::numeric_limits<double>::infinity();
+        EXPECT_DOUBLE_EQ(goalWeightOverride(msg), -1.0) << type;
+    }
+    auto set_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    set_speed.w_distance_to_goal = 600.0;
+    EXPECT_DOUBLE_EQ(goalWeightOverride(set_speed), -1.0);
+}
+
+TEST(GoalWeightCommand, SurvivesSerializationWithAndWithoutRegex)
+{
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        for(const auto & regex : {std::string(""), std::string("car"), std::string("TI_[0-9]{1,3},car")}) {
+            auto msg = MakeCommand(type, regex);
+            msg.w_distance_to_goal = 600.0;
+            const auto with_weight = serializedToROSMsg(rosToSerializedMsg(msg));
+            EXPECT_DOUBLE_EQ(with_weight.w_distance_to_goal, 600.0) << type << " " << regex;
+            EXPECT_EQ(with_weight.toi_regex, regex) << type;
+            EXPECT_EQ(with_weight.priority_type, "QUEUE") << type;
+
+            msg.w_distance_to_goal = -1.0;
+            const auto text = rosToSerializedMsg(msg);
+            EXPECT_EQ(text.find("w_distance_to_goal"), std::string::npos) << text;
+            EXPECT_DOUBLE_EQ(goalWeightOverride(serializedToROSMsg(text)), -1.0) << text;
+            EXPECT_EQ(serializedToROSMsg(text).toi_regex, regex) << text;
+        }
+    }
+}
+
+TEST(GoalWeightCommand, ParsedFromTheShortFormats)
+{
+    const auto moveto = serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE,w_distance_to_goal=600\r\n");
+    EXPECT_EQ(moveto.type, MissionMsgType::MoveTo);
+    EXPECT_EQ(moveto.priority_type, "QUEUE");
+    EXPECT_DOUBLE_EQ(moveto.w_distance_to_goal, 600.0);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,MP_Y,QUEUE").w_distance_to_goal, -1.0);
+}
+
+TEST(GoalWeightCommand, MalformedWeightRejectsTheCommand)
+{
+    const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
+    const std::string short_moveto = "MRZR,0,MOVETO,MRZR,MP_Y,QUEUE";
+    const std::string form = "MRZR,0,FORM,COLUMN,MRZR,FEDA,,,MP_AD,5";
+    const std::string path = "MRZR,0,PATH_FOLLOW,MRZR,PATH_A,5,QUEUE";
+    for(const auto & text : std::vector<std::string>{moveto + ",w_distance_to_goal =600",
+                             moveto + ", w_distance_to_goal=600",
+                             moveto + ",W_DISTANCE_TO_GOAL=600",
+                             moveto + ",w_distance_goal=600",
+                             moveto + ",w_dsitance_to_goal=600",
+                             moveto + ",goal_weight=600",
+                             moveto + ",w_distance_to_goal:600",
+                             moveto + ",w_distance_to_goal 600",
+                             moveto + ",car,w_dsitance_to_goal=600",
+                             moveto + ",x=1",
+                             moveto + ",car,w_distance_to_goal =600",
+                             moveto + ",w_distance_to_goal=600,car",
+                             short_moveto + ",w_distance_to_goal=abc",
+                             short_moveto + ",w_distance_to_goal=600abc",
+                             short_moveto + ",w_distance_to_goal=",
+                             short_moveto + ",w_distance_to_goal= 600",
+                             short_moveto + ",w_distance_to_goal=0",
+                             short_moveto + ",w_distance_to_goal=-1",
+                             short_moveto + ",w_distance_to_goal=inf",
+                             short_moveto + ",w_distance_to_goal=nan",
+                             "MRZR,0,MOVETO,MRZR,MP_Y,w_distance_to_goal=600,QUEUE",
+                             form + ",w_distance_to_goal =600",
+                             form + ",QUEUE,w_distance_to_goal=abc",
+                             path + ",w_distance_to_goal =600",
+                             "MRZR,0,SET_SPEED,MRZR,4.5,w_distance_to_goal=600"}) {
+        const auto msg = serializedToROSMsg(text);
+        EXPECT_EQ(msg.type, "") << text;
+        EXPECT_EQ(msg.toi_regex, "") << text;
+        EXPECT_DOUBLE_EQ(msg.w_distance_to_goal, -1.0) << text;
+    }
+}
+
+TEST(GoalWeightCommand, WellFormedWeightsAndRegexesStillParse)
+{
+    const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
+    EXPECT_DOUBLE_EQ(serializedToROSMsg(moveto + ",w_distance_to_goal=600.5").w_distance_to_goal, 600.5);
+    EXPECT_DOUBLE_EQ(serializedToROSMsg(moveto + ",w_distance_to_goal=1e3 \r\n").w_distance_to_goal, 1000.0);
+    const auto with_regex = serializedToROSMsg(moveto + ",car,w_distance_to_goal=600");
+    EXPECT_DOUBLE_EQ(with_regex.w_distance_to_goal, 600.0);
+    EXPECT_EQ(with_regex.toi_regex, "car");
+    EXPECT_EQ(serializedToROSMsg(moveto + ",car_w_dist").toi_regex, "car_w_dist");
+}
+
+TEST(GoalWeightCommand, NamesAndRegexesThatResembleTheWeightAreKept)
+{
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,MOVETO,MRZR,W_DISTRICT,QUEUE").objective_name, "W_DISTRICT");
+    EXPECT_EQ(serializedToROSMsg("MRZR,0,SET_SPEED,W_DIST,4.5").receiver_name, "W_DIST");
+    const std::string moveto = "MRZR,0,MOVETO,MRZR,MP_Y,0,0,5,-1,QUEUE";
+    for(const auto & regex : {std::string("w_dist.*"), std::string("car(?=_1)"), std::string("label=car"), std::string("label="), std::string("^$"), std::string("TI_[0-9]{1,3},car")}) {
+        EXPECT_EQ(serializedToROSMsg(moveto + "," + regex).toi_regex, regex);
+        const auto with_weight = serializedToROSMsg(moveto + "," + regex + ",w_distance_to_goal=600");
+        EXPECT_EQ(with_weight.toi_regex, regex);
+        EXPECT_DOUBLE_EQ(with_weight.w_distance_to_goal, 600.0) << regex;
+    }
 }
 
 // Team vehicle contact filter
@@ -862,6 +1025,205 @@ class ToiInvestigationTest : public MissionManagerContactsTest {
     nav_msgs::msg::Path investigated_;
     int investigated_count_ = 0;
 };
+
+class GoalWeightOverrideTest : public MissionManagerContactsTest {
+  protected:
+    void SetUp() override
+    {
+        MissionManagerContactsTest::SetUp();
+        override_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+            "avt_341/w_distance_to_goal_override", rclcpp::QoS(1).transient_local(),
+            [this](std_msgs::msg::Float64::SharedPtr msg) { override_ = msg->data; ++override_count_; });
+    }
+
+    static void AddTask(MissionManager & manager, int msg_id, double weight, const std::string & priority = "QUEUE")
+    {
+        manager.setIncomingGoalWeight(weight, msg_id);
+        manager.addTask(new avt_341_nav::mission::WaitForDuration(&manager, "MRZR", msg_id, 1000.0), priority);
+        manager.setIncomingGoalWeight(-1.0, 0);
+    }
+
+    double Override(MissionManager & manager)
+    {
+        manager.updateTasks();
+        rclcpp::spin_some(node_);
+        return override_;
+    }
+
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr override_sub_;
+    double override_ = 0.0;
+    int override_count_ = 0;
+};
+
+TEST_F(GoalWeightOverrideTest, FollowsTheActiveTaskAndFallsBackToTheDefault)
+{
+    auto manager = MakeManager();
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+
+    AddTask(*manager, 1, -1.0);
+    AddTask(*manager, 2, 600.0);
+    AddTask(*manager, 3, -1.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+
+    manager->cancelTask(1, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+    manager->cancelTask(2, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, ClearedWhenTheTaskListEmpties)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+    manager->cancelTask(1, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+
+    AddTask(*manager, 2, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+    manager->resetTaskList(false);
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, PreemptingTaskUsesItsOwnValueAndThePreemptedTasksAppliesOnResume)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+
+    AddTask(*manager, 2, -1.0, "PREEMPT");
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+    manager->cancelTask(2, false);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+}
+
+TEST_F(GoalWeightOverrideTest, InvestigationTasksUseTheDefault)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    EXPECT_DOUBLE_EQ(Override(*manager), 600.0);
+
+    manager->handleContacts(MakeContact("car", 50.0, 30.0), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(Override(*manager), -1.0);
+}
+
+TEST_F(GoalWeightOverrideTest, FormCommandAppliesToTheLeaderAndFollowerTasks)
+{
+    params_.formation_change_delay.is_enabled = false;
+    for(const auto & leader : {std::string("MRZR"), std::string("FEDA")}) {
+        const bool is_leader = leader == "MRZR";
+        for(const double weight : {600.0, -1.0}) {
+            auto manager = MakeManager();
+            MissionPoint point{};
+            point.name = "MP_Y";
+            point.rot_w = 1.0;
+            manager->setMissionPoints({point});
+
+            auto msg = MakeCommand(MissionMsgType::Formation, "");
+            msg.formation = "COLUMN";
+            msg.leader_name = leader;
+            msg.follower1_name = is_leader ? "FEDA" : "MRZR";
+            msg.w_distance_to_goal = weight;
+            ASSERT_TRUE(manager->handleCommand(msg));
+
+            ASSERT_NE(manager->currentTask(), nullptr) << leader;
+            EXPECT_EQ(manager->currentTask()->description().find("FOLLOW") == std::string::npos, is_leader)
+                << manager->currentTask()->description();
+            EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, weight) << leader;
+        }
+    }
+}
+
+TEST_F(GoalWeightOverrideTest, HandleCommandAppliesTheWeightAndRegexToItsTaskOnly)
+{
+    params_.formation_change_delay.is_enabled = false;
+    auto manager = MakeManager();
+    MissionPoint point{};
+    point.name = "MP_Y";
+    point.rot_w = 1.0;
+    manager->setMissionPoints({point});
+
+    auto with_values = MakeCommand(MissionMsgType::MoveTo, "car");
+    with_values.w_distance_to_goal = 600.0;
+    ASSERT_TRUE(manager->handleCommand(with_values));
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, 600.0);
+    EXPECT_EQ(manager->currentTask()->toi_regex, std::optional<std::string>("car"));
+    manager->cancelTask(3, false);
+
+    // Same msg_id, added directly after the command: the incoming values must be cleared.
+    manager->addTask(new avt_341_nav::mission::WaitForDuration(manager.get(), "MRZR", 3, 1000.0));
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_DOUBLE_EQ(manager->currentTask()->w_distance_to_goal, -1.0);
+    EXPECT_FALSE(manager->currentTask()->toi_regex.has_value());
+}
+
+TEST(GoalWeightCommand, SurvivesSerializationMatchesTheSocketPath)
+{
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow,
+                             MissionMsgType::SetSpeed, MissionMsgType::Acknowledge, MissionMsgType::Arrived,
+                             MissionMsgType::TaskComplete, MissionMsgType::Cancel, MissionMsgType::CancelAll,
+                             MissionMsgType::Overwatch, MissionMsgType::WaitUntilComplete, MissionMsgType::Shutdown}) {
+        EXPECT_TRUE(survivesSerialization(MakeCommand(type, ""))) << type;
+    }
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo, MissionMsgType::PathFollow}) {
+        EXPECT_TRUE(survivesSerialization(MakeCommand(type, "label=car"))) << type;
+        EXPECT_FALSE(survivesSerialization(MakeCommand(type, "x=1"))) << type;
+    }
+    auto nan_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    nan_speed.desired_speed = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(survivesSerialization(nan_speed));
+    auto inf_offset = MakeCommand(MissionMsgType::MoveTo, "");
+    inf_offset.x_offset = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(survivesSerialization(inf_offset));
+    auto comma_in_name = MakeCommand(MissionMsgType::Formation, "");
+    comma_in_name.objective_name = "MP,Y";
+    EXPECT_FALSE(survivesSerialization(comma_in_name));
+}
+
+TEST_F(GoalWeightOverrideTest, HandleCommandRejectsWhatTheSocketPathWouldReject)
+{
+    params_.formation_change_delay.is_enabled = false;
+    auto manager = MakeManager();
+    MissionPoint point{};
+    point.name = "MP_Y";
+    point.rot_w = 1.0;
+    manager->setMissionPoints({point});
+
+    for(const auto & type : {MissionMsgType::Formation, MissionMsgType::MoveTo}) {
+        auto msg = MakeCommand(type, "x=1");
+        msg.formation = "COLUMN";
+        msg.leader_name = "MRZR";
+        msg.follower1_name = "FEDA";
+        EXPECT_TRUE(manager->handleCommand(msg)) << type;
+        EXPECT_EQ(manager->currentTask(), nullptr) << type;
+    }
+
+    auto label = MakeCommand(MissionMsgType::MoveTo, "label=car");
+    EXPECT_TRUE(manager->handleCommand(label));
+    ASSERT_NE(manager->currentTask(), nullptr);
+    EXPECT_EQ(manager->currentTask()->toi_regex, std::optional<std::string>("label=car"));
+}
+
+TEST_F(GoalWeightOverrideTest, HandleCommandReportsShutdown)
+{
+    auto manager = MakeManager();
+    auto shutdown = MakeCommand(MissionMsgType::Shutdown, "");
+    EXPECT_FALSE(manager->handleCommand(shutdown));
+    auto set_speed = MakeCommand(MissionMsgType::SetSpeed, "");
+    EXPECT_TRUE(manager->handleCommand(set_speed));
+}
+
+TEST_F(GoalWeightOverrideTest, PublishesOnlyOnChange)
+{
+    auto manager = MakeManager();
+    AddTask(*manager, 1, 600.0);
+    Override(*manager);
+    Override(*manager);
+    Override(*manager);
+    EXPECT_EQ(override_count_, 1);
+}
 
 TEST_F(ToiInvestigationTest, SecondTargetOfTheSameClassIsInvestigatedAfterTheFirst)
 {

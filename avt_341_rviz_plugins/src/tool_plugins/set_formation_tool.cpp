@@ -126,6 +126,13 @@ SetFormationTool::SetFormationTool()
         "(e.g. \"car\" for the COCO detector, \"^TI_\" in simulation). Empty keeps the vehicle's current "
         "regex; ^$ turns target of interest detection off.",
         form_group );
+
+    w_distance_to_goal_property_ = new FloatProperty(
+        "Goal Weight", -1.0f,
+        "Communication.w_distance_to_goal: MPC w_distance_to_goal while this formation's task is active. "
+        "Above 0, or -1 (message default) to use the MPC's parameter. Any other value is refused when you click.",
+        form_group );
+    w_distance_to_goal_property_->setMin( -1.0f );
 }
 
 SetFormationTool::~SetFormationTool() = default;
@@ -289,6 +296,7 @@ void SetFormationTool::publishFormation( const std::string& objective_name )
     msg.target_msg_id = target_msg_id_property_->getInt();
     // Not uppercased: this is a regex matched against detected object ids, so case is significant.
     msg.toi_regex = toi_regex_property_->getStdString();
+    msg.w_distance_to_goal = w_distance_to_goal_property_->getFloat();
     // yaw_threshold is left at its message default (-1), as MissionCommandPanel does.
 
     publisher_->publish( msg );
@@ -312,6 +320,13 @@ int SetFormationTool::processMouseEvent( rviz_common::ViewportMouseEvent& event 
     if ( !findNearestMarker( point.x, point.y, marker_id ) )
     {
         setStatus( "No map marker within the pick tolerance of the click." );
+        return Render;
+    }
+
+    const float goal_weight = w_distance_to_goal_property_->getFloat();
+    if ( goal_weight <= 0.0f && goal_weight != -1.0f )
+    {
+        setStatus( "FORM not sent: Goal Weight must be above 0, or -1 for the MPC default." );
         return Render;
     }
 

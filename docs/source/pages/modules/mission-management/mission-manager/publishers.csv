@@ -1,2 +1,3 @@
 "Topic", "Message Type", "Description"
 "/avt_341/leader_odometry", "avt_341::msg::Odometry", "Publishes the leader's odometry"
+"/avt_341/w_distance_to_goal_override", "std_msgs::msg::Float64", "Publishes the active task's MPC w_distance_to_goal override (-1: use the MPC parameter). Latched."

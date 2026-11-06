@@ -1,6 +1,62 @@
 #include "avt_341_nav/mission/mission_manager_parser.h"
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+#include <exception>
+#include <limits>
+#include <stdexcept>
 #include <sstream>
 #include "avt_341_msgs/msg/communication.hpp"
+
+// Serialized after the trailing toi_regex of FORM, MOVETO and PATH_FOLLOW, only when set.
+static const std::string GOAL_WEIGHT_PREFIX = "w_distance_to_goal=";
+
+// A mistyped weight must be recognized too, so that it cannot fall into toi_regex or priority:
+// the token has the shape name=number, or contains the weight's name.
+static bool looksLikeGoalWeight(const std::string & token){
+  std::string text = token;
+  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+  if(text.find("w_distance_to_goal") != std::string::npos) {
+    return true;
+  }
+  const auto equals = text.find('=');
+  if(equals == std::string::npos) {
+    return false;
+  }
+  const auto first = text.find_first_not_of(" \t");
+  const auto last = text.find_last_not_of(" \t", equals - 1);
+  if(equals == 0 || first == equals || last == std::string::npos) {
+    return false;
+  }
+  if(!std::all_of(text.begin() + first, text.begin() + last + 1,
+                  [](unsigned char c) { return std::isalnum(c) || c == '_'; })) {
+    return false;
+  }
+  const std::string value = text.substr(equals + 1, text.find_last_not_of(" \t") - equals);
+  char * end = nullptr;
+  std::strtod(value.c_str(), &end);
+  return end != value.c_str() && *end == '\0';
+}
+
+static bool parseGoalWeight(const std::string & token, double & weight){
+  if(token.rfind(GOAL_WEIGHT_PREFIX, 0) != 0) {
+    return false;
+  }
+  const char * value = token.c_str() + GOAL_WEIGHT_PREFIX.size();
+  if(*value == '\0' || std::isspace(static_cast<unsigned char>(*value))) {
+    return false;
+  }
+  char * end = nullptr;
+  weight = std::strtod(value, &end);
+  return *end == '\0' && weight > 0.0 && std::isfinite(weight);
+}
+
+static bool carriesGoalWeight(const std::string & type){
+  return type == MissionMsgType::Formation || type == MissionMsgType::MoveTo || type == MissionMsgType::PathFollow;
+}
 
 // Rejoin tokens[first..] so that a trailing regex containing commas survives tokenization.
 static std::string joinTrailingTokens(const std::vector<std::string> & tokens, size_t first){
@@ -49,18 +105,59 @@ static bool hasValidFieldCount(const std::string & type, size_t n){
   return true;
 }
 
-avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
+// Number fields must be complete and finite, so that a mistyped value cannot become a valid one.
+static bool onlySpacesFollow(const char * text){
+  return text[std::strspn(text, " \t")] == '\0';
+}
+
+static double strictDouble(const std::string & token){
+  char * end = nullptr;
+  errno = 0;
+  const double value = std::strtod(token.c_str(), &end);
+  if(end == token.c_str() || !onlySpacesFollow(end) || errno == ERANGE || !std::isfinite(value)) {
+    throw std::invalid_argument("not a finite number: " + token);
+  }
+  return value;
+}
+
+static int strictInt(const std::string & token){
+  char * end = nullptr;
+  errno = 0;
+  const long value = std::strtol(token.c_str(), &end, 10);
+  if(end == token.c_str() || !onlySpacesFollow(end) || errno == ERANGE ||
+     value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+    throw std::invalid_argument("not an integer: " + token);
+  }
+  return static_cast<int>(value);
+}
+
+static avt_341_msgs::msg::Communication parseSerializedMsg(const std::string & msg) {
   // Drop line endings and trailing whitespace a socket server may append, so they cannot end up in the
   // trailing toi_regex field.
   const auto last = msg.find_last_not_of(" \t\r\n");
   auto tokens = tokenizeMsg(last == std::string::npos ? std::string() : msg.substr(0, last + 1));
 
   avt_341_msgs::msg::Communication message;
+  const bool has_goal_weight = looksLikeGoalWeight(tokens.back());
+  double goal_weight = message.w_distance_to_goal;
+  if(has_goal_weight) {
+    if(!parseGoalWeight(tokens.back(), goal_weight)) {
+      return message;
+    }
+    tokens.pop_back();
+  }
+  if(std::any_of(tokens.begin(), tokens.end(), looksLikeGoalWeight)) {
+    return message;
+  }
   if(tokens.size() < 3 || !hasValidFieldCount(tokens[2], tokens.size())){
     return message;
   }
+  if(has_goal_weight && !carriesGoalWeight(tokens[2])) {
+    return message;
+  }
+  message.w_distance_to_goal = goal_weight;
   message.sender_name = tokens[0];
-  message.msg_id = atoi(tokens[1].c_str());
+  message.msg_id = strictInt(tokens[1]);
   message.type = tokens[2];
   message.priority_type = "Q";
   message.receiver_name = "";
@@ -77,7 +174,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     message.follower2_name = tokens[6];
     message.follower3_name = tokens[7];
     message.objective_name = tokens[8];
-    message.desired_speed = std::stod(tokens[9]);
+    message.desired_speed = strictDouble(tokens[9]);
     message.x_scale = -1.0;
     message.y_scale = -1.0;
     message.x_offset = 0.0;
@@ -87,12 +184,12 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     if(tokens.size() == 11) {
       message.priority_type = tokens[10];
     }else if(tokens.size() > 11) {
-      message.x_scale = std::stod(tokens[10]);
-      message.y_scale = std::stod(tokens[11]);
-      message.x_offset = std::stod(tokens[12]);
-      message.y_offset = std::stod(tokens[13]);
-      message.distance = std::stod(tokens[14]);
-      message.yaw_threshold = std::stod(tokens[15]);
+      message.x_scale = strictDouble(tokens[10]);
+      message.y_scale = strictDouble(tokens[11]);
+      message.x_offset = strictDouble(tokens[12]);
+      message.y_offset = strictDouble(tokens[13]);
+      message.distance = strictDouble(tokens[14]);
+      message.yaw_threshold = strictDouble(tokens[15]);
       message.termination_method = tokens[16];
       message.priority_type = tokens[17];
 
@@ -106,7 +203,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     // <sender>,<msg_id>,ACK,<orig_msg_sender>,<orig_msg_id>
   else if(message.type == MissionMsgType::Acknowledge) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = std::stoi(tokens[4]);
+    message.target_msg_id = strictInt(tokens[4]);
   }
     // <sender>,<msg_id>,ARRIVE,<objective>
   else if(message.type == MissionMsgType::Arrived) {
@@ -115,7 +212,7 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     // <sender>,<msg_id>,TASK_COMPLETE,<orig_msg_sender>,<orig_msg_id>
   else if(message.type == MissionMsgType::TaskComplete) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = atoi(tokens[4].c_str());
+    message.target_msg_id = strictInt(tokens[4]);
   }
     // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<priority>
     // <sender>,<msg_id>,MOVETO,<receiver>,<objective>,<x_offset>,<y_offset>,<distance>,<yaw_threshold>,<priority>
@@ -129,10 +226,10 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     if(tokens.size() == 6) {
       message.priority_type = tokens[5];
     }else if(tokens.size() > 6){
-      message.x_offset = std::stod(tokens[5]);
-      message.y_offset = std::stod(tokens[6]);
-      message.distance = std::stod(tokens[7]);
-      message.yaw_threshold = std::stod(tokens[8]);
+      message.x_offset = strictDouble(tokens[5]);
+      message.y_offset = strictDouble(tokens[6]);
+      message.distance = strictDouble(tokens[7]);
+      message.yaw_threshold = strictDouble(tokens[8]);
       message.priority_type = tokens[9];
       if(tokens.size() > 10) {
         message.toi_regex = joinTrailingTokens(tokens, 10);
@@ -146,25 +243,25 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
     // <sender>,<msg_id>,SET_SPEED,<receiver>,<speed>
   else if(message.type == MissionMsgType::SetSpeed) {
     message.receiver_name = tokens[3];
-    message.desired_speed = std::stod(tokens[4]);
+    message.desired_speed = strictDouble(tokens[4]);
   }
   else if(message.type == MissionMsgType::Cancel) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = atoi(tokens[4].c_str());
+    message.target_msg_id = strictInt(tokens[4]);
   }
   else if(message.type == MissionMsgType::CancelAll) {
     message.receiver_name = tokens[3];
   }
   else if(message.type == MissionMsgType::Overwatch) {
     message.receiver_name = tokens[3];
-    message.target_msg_id = atoi(tokens[4].c_str());
+    message.target_msg_id = strictInt(tokens[4]);
   }
     // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>
     // <sender>,<msg_id>,PATH_FOLLOW,<receiver>,<path_id>,<speed>,<priority>,<toi_regex>
   else if(message.type == MissionMsgType::PathFollow) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
-    message.desired_speed = std::stod(tokens[5]);
+    message.desired_speed = strictDouble(tokens[5]);
     message.priority_type = tokens[6];
     if(tokens.size() > 7) {
       message.toi_regex = joinTrailingTokens(tokens, 7);
@@ -175,13 +272,21 @@ avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
   else if(message.type == MissionMsgType::WaitUntilComplete) {
     message.receiver_name = tokens[3];
     message.objective_name = tokens[4];
-    message.target_msg_id = atoi(tokens[5].c_str());
+    message.target_msg_id = strictInt(tokens[5]);
     if(tokens.size() > 6) {
       message.priority_type = tokens[6];
     }
   }
 
   return message;
+}
+
+avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg) {
+  try {
+    return parseSerializedMsg(msg);
+  } catch(const std::exception &) {
+    return avt_341_msgs::msg::Communication();
+  }
 }
 
 std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
@@ -243,6 +348,11 @@ std::string rosToSerializedMsg(const avt_341_msgs::msg::Communication & msg){
     stream << "," << msg.receiver_name << "," << msg.objective_name << "," << msg.target_msg_id << "," << msg.priority_type;
   }
 
+  const double goal_weight = goalWeightOverride(msg);
+  if(goal_weight > 0.0) {
+    stream << "," << GOAL_WEIGHT_PREFIX << goal_weight;
+  }
+
   return stream.str();
 
 }
@@ -301,6 +411,10 @@ std::string concreteToSerializedMsg(MissionManagerDto * msg){
   return rosToSerializedMsg(ros_msg);
 }
 
+bool survivesSerialization(const avt_341_msgs::msg::Communication & msg){
+  return !serializedToROSMsg(rosToSerializedMsg(msg)).type.empty();
+}
+
 std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg){
   const bool carries_toi_regex = msg.type == MissionMsgType::Formation || msg.type == MissionMsgType::MoveTo ||
                                  msg.type == MissionMsgType::PathFollow;
@@ -308,6 +422,13 @@ std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication
     return msg.toi_regex;
   }
   return std::nullopt;
+}
+
+double goalWeightOverride(const avt_341_msgs::msg::Communication & msg){
+  if(carriesGoalWeight(msg.type) && msg.w_distance_to_goal > 0.0 && std::isfinite(msg.w_distance_to_goal)) {
+    return msg.w_distance_to_goal;
+  }
+  return -1.0;
 }
 
 bool isMsgFor(const std::string & veh, const avt_341_msgs::msg::Communication & msg){

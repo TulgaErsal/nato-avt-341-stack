@@ -14,9 +14,14 @@ bool isMsgFor(const std::string & veh, MissionManagerDto* msg);
 // Targets of interest regex carried by a received command, if any; it is applied when the command's task starts.
 // FORM, MOVETO and PATH_FOLLOW carry a non-empty regex; an empty one keeps the current regex. "^$" disables targets of interest.
 std::optional<std::string> toiRegexUpdate(const avt_341_msgs::msg::Communication & msg);
+
+// The w_distance_to_goal override a FORM, MOVETO or PATH_FOLLOW command gives its task; -1 when it has none.
+double goalWeightOverride(const avt_341_msgs::msg::Communication & msg);
 bool isVehicleInFormation(const std::string & veh, const avt_341_msgs::msg::Communication & msg);
 
 avt_341_msgs::msg::Communication serializedToROSMsg(const std::string & msg);
+// False when the serialized form of the message would be rejected, as it would be by a vehicle receiving it over a socket.
+bool survivesSerialization(const avt_341_msgs::msg::Communication & msg);
 avt_341_msgs::msg::Communication concreteToROSMsg(MissionManagerDto * msg);
 
 std::shared_ptr<MissionManagerDto> rosToConcreteMsg(const avt_341_msgs::msg::Communication & msg);

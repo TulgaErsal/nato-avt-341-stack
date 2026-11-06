@@ -477,38 +477,9 @@ int main(int argc, char **argv) {
             //std::string msg_text = rosToSerializedMsg(rcvd_msg);
             RCLCPP_INFO(nh->get_logger(), "%s handling message: %s", mgr->my_name.c_str(), msg_text.c_str());
 
-            mgr->setIncomingToiRegex(toiRegexUpdate(rcvd_msg), rcvd_msg.msg_id);
-
-            if(rcvd_msg.type == MissionMsgType::Formation) {
-                mgr->handleFormationRequest(FormationMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::Acknowledge) {
-                mgr->handleAcknowledge(AcknowledgeMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::Arrived) {
-                mgr->handleArrive(ArrivedMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::TaskComplete) {
-                mgr->handleTaskComplete(TaskCompleteMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::MoveTo) {
-                mgr->handleMoveTo(MoveToMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::Shutdown) {
-                std::cout << mgr->my_name << " is shutting down" << std::endl;
+            if(!mgr->handleCommand(rcvd_msg)) {
                 break;
-            } else if(rcvd_msg.type == MissionMsgType::SetSpeed) {
-                mgr->handleSetSpeedMsg(SetSpeedMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::Cancel) {
-                mgr->handleCancelTask(CancelMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::CancelAll){
-                mgr->handleCancelAllTask(CancelAllMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::Overwatch){
-                mgr->handleOverwatch(OverwatchMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::PathFollow){
-                mgr->handlePathFollow(PathFollowMsg(rcvd_msg));
-            } else if(rcvd_msg.type == MissionMsgType::WaitUntilComplete){
-                mgr->handleWaitUntilComplete(WaitUntilCompleteMsg(rcvd_msg));
             }
-            else{
-              RCLCPP_WARN(nh->get_logger(), "Unknown message type: %s", rcvd_msg.type.c_str());
-            }
-            mgr->setIncomingToiRegex(std::nullopt, 0);
         }
 
         if(!contacts.empty()){

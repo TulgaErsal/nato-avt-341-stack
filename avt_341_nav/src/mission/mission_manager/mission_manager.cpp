@@ -1,5 +1,7 @@
 // clas definition
+#include <iostream>
 #include "avt_341_nav/mission/mission_manager.h"
+#include "avt_341_nav/mission/mission_manager_parser.h"
 #include "avt_341_nav/node/node_types.h"
 #include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/core/frame_id_collection.hpp"
@@ -57,6 +59,7 @@ MissionManager::MissionManager(
     communication_pub = node_->create_publisher<avt_341_msgs::msg::Communication>("avt_341/comm_messages", 100);
     gp_toggle_pub = node_->create_publisher<std_msgs::msg::Int32>("avt_341/gp_toggle", 10);
     speed_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local());
+    goal_weight_pub = node_->create_publisher<std_msgs::msg::Float64>("avt_341/w_distance_to_goal_override", rclcpp::QoS(1).transient_local());
     task_status_pub = node_->create_publisher<avt_341_msgs::msg::MissionTaskStatus>("avt_341/task_status", 10);
     task_change_pub = node_->create_publisher<avt_341_msgs::msg::MissionModuleStatus>("avt_341/task_change", rclcpp::QoS(1).transient_local());
     map_markers_pub = node_->create_publisher<avt_341_msgs::msg::MapMarkerList>("/avt_341/map_markers_change", rclcpp::QoS(1).transient_local());
@@ -229,6 +232,9 @@ bool MissionManager::addTask(Task* task, const std::string & priority_type) {
     if(incoming_toi_regex_.has_value() && task->msg_id == incoming_toi_msg_id_) {
         task->toi_regex = incoming_toi_regex_;
     }
+    if(task->msg_id == incoming_goal_weight_msg_id_) {
+        task->w_distance_to_goal = incoming_goal_weight_;
+    }
 
     // if no active task, put it on the list
 
@@ -384,7 +390,20 @@ void MissionManager::publishTaskChange(uint8_t change_type) {
 }
 
 
+void MissionManager::publishGoalWeightOverride() {
+    const Task* task = currentTask();
+    const double weight = task != nullptr ? task->w_distance_to_goal : -1.0;
+    if(published_goal_weight_.has_value() && published_goal_weight_.value() == weight) {
+        return;
+    }
+    published_goal_weight_ = weight;
+    std_msgs::msg::Float64 weight_msg;
+    weight_msg.data = weight;
+    goal_weight_pub->publish(weight_msg);
+}
+
 void MissionManager::updateTasks() {
+    publishGoalWeightOverride();
     Task* active_task = currentTask();
     if(active_task != nullptr) {
 
@@ -1001,6 +1020,52 @@ void MissionManager::onGoalReached(const geometry_msgs::msg::PoseStamped & pose)
   if(task != nullptr){
     task->onGoalReached(pose);
   }
+}
+
+bool MissionManager::handleCommand(const avt_341_msgs::msg::Communication & msg) {
+    if(!survivesSerialization(msg)) {
+        RCLCPP_ERROR(node_->get_logger(), "Rejected command %d of type %s: its serialized form is malformed: %s",
+            msg.msg_id, msg.type.c_str(), rosToSerializedMsg(msg).c_str());
+        return true;
+    }
+
+    if(msg.type == MissionMsgType::Shutdown) {
+        std::cout << my_name << " is shutting down" << std::endl;
+        return false;
+    }
+
+    setIncomingToiRegex(toiRegexUpdate(msg), msg.msg_id);
+    setIncomingGoalWeight(goalWeightOverride(msg), msg.msg_id);
+
+    if(msg.type == MissionMsgType::Formation) {
+        handleFormationRequest(FormationMsg(msg));
+    } else if(msg.type == MissionMsgType::Acknowledge) {
+        handleAcknowledge(AcknowledgeMsg(msg));
+    } else if(msg.type == MissionMsgType::Arrived) {
+        handleArrive(ArrivedMsg(msg));
+    } else if(msg.type == MissionMsgType::TaskComplete) {
+        handleTaskComplete(TaskCompleteMsg(msg));
+    } else if(msg.type == MissionMsgType::MoveTo) {
+        handleMoveTo(MoveToMsg(msg));
+    } else if(msg.type == MissionMsgType::SetSpeed) {
+        handleSetSpeedMsg(SetSpeedMsg(msg));
+    } else if(msg.type == MissionMsgType::Cancel) {
+        handleCancelTask(CancelMsg(msg));
+    } else if(msg.type == MissionMsgType::CancelAll) {
+        handleCancelAllTask(CancelAllMsg(msg));
+    } else if(msg.type == MissionMsgType::Overwatch) {
+        handleOverwatch(OverwatchMsg(msg));
+    } else if(msg.type == MissionMsgType::PathFollow) {
+        handlePathFollow(PathFollowMsg(msg));
+    } else if(msg.type == MissionMsgType::WaitUntilComplete) {
+        handleWaitUntilComplete(WaitUntilCompleteMsg(msg));
+    } else {
+        RCLCPP_WARN(node_->get_logger(), "Unknown message type: %s", msg.type.c_str());
+    }
+
+    setIncomingToiRegex(std::nullopt, 0);
+    setIncomingGoalWeight(-1.0, 0);
+    return true;
 }
 
 void MissionManager::handleCancelTask(const CancelMsg & msg){

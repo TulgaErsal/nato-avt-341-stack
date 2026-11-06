@@ -55,6 +55,8 @@ public:
     double start_time_sec = -1.0;
     double end_time_sec = -1.0;
     std::optional<std::string> toi_regex;
+    // Overrides the MPC's w_distance_to_goal while this task is active; <= 0 uses the MPC's parameter.
+    double w_distance_to_goal = -1.0;
     FormationDefinition* getFormationDef() const { return formation_def_; }
     virtual geometry_msgs::msg::PoseStamped terminalPose() const;
 

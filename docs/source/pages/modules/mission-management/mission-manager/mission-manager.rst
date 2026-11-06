@@ -88,6 +88,24 @@ Set Speed
 
 This sets the receiving vehicle's `desired_speed`.
 
+MPC Goal Weight
+^^^^^^^^^^^^^^^
+
+A `FORM`, `MOVETO` or `PATH_FOLLOW` command can set `w_distance_to_goal` to
+override the MPC's `w_distance_to_goal` for its task. While the task is active,
+the Mission Manager publishes the value on `avt_341/w_distance_to_goal_override`
+and the MPC uses it. A task without a value (including target investigation
+tasks) and an empty task list publish -1, and the MPC uses its
+`w_distance_to_goal` parameter. A preempted task's value applies again when the
+task resumes. In the serialized format the value follows the last field as
+`w_distance_to_goal=<value>`, where the value is positive and finite. The
+communication node rejects and logs a command with a malformed weight, or with
+any other token of the form `name=<number>`. The Mission Manager applies the same
+check to commands received over ROS, so a command that fails it is rejected on
+either transport. A command whose number field is not a complete, finite number
+is rejected the same way. A queued mission then moves on to its next task, and a
+`WAIT_UNTIL_COMPLETE` on the rejected message's ID waits until it is cancelled.
+
 Contact Handling
 ----------------
 

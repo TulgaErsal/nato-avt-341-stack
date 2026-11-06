@@ -165,6 +165,7 @@ jl_function_t* j_set_use_hard_constraints = NULL;
 jl_function_t* j_set_use_segmentation = NULL;
 jl_function_t* j_set_w_distance_to_obstacles = NULL;
 jl_function_t* j_set_w_distance_to_goal = NULL;
+double w_distance_to_goal_override = -1.0;
 jl_function_t* j_set_w_deviation_in_yaw = NULL;
 jl_function_t* j_set_w_yaw_accel = NULL;
 jl_function_t* j_set_w_traversability_cost = NULL;

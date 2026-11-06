@@ -15,9 +15,11 @@
  *         Keweenaw Research Center (KRC)
  */
 #include <avt_341_nav/planning/local/mpc_planner_node.h>
+#include <avt_341_nav/planning/local/mpc_goal_weight.h>
 #include <avt_341_nav/node/node_types.h>
 #include <avt_341_nav/core/compute_time_recorder.hpp>
 #include <avt_341_nav/mpc_local_planner_params_service.hpp>
+#include <cmath>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_msgs/msg/sinkage.hpp"
@@ -241,6 +243,21 @@ void SpeedCallback(std_msgs::msg::Float64::SharedPtr speed_msg)
 
     jl_call1(j_set_speed, j_speed);
     CATCH_JULIA_EXCEPTION;
+}
+
+void ApplyGoalWeight()
+{
+    const double weight = EffectiveGoalWeight(w_distance_to_goal_override, mpc_params.w_distance_to_goal);
+    jl_call1(j_set_w_distance_to_goal, jl_box_float64(weight));
+    CATCH_JULIA_EXCEPTION;
+}
+
+void GoalWeightOverrideCallback(std_msgs::msg::Float64::SharedPtr msg)
+{
+    w_distance_to_goal_override = msg->data;
+    ApplyGoalWeight();
+    RCLCPP_INFO(node->get_logger(), "w_distance_to_goal override from the mission manager: %.1f (<= 0 uses the parameter, %.1f).",
+        w_distance_to_goal_override, mpc_params.w_distance_to_goal);
 }
 
 void SinkageCallback(avt_341_msgs::msg::Sinkage::SharedPtr sinkage_msg)
@@ -701,8 +718,7 @@ void UpdateCostFnWeights(
 
     jl_call1(j_set_w_distance_to_obstacles,
              jl_box_float64(mpc_params.w_distance_to_obstacles));
-    jl_call1(j_set_w_distance_to_goal,
-             jl_box_float64(mpc_params.w_distance_to_goal));
+    ApplyGoalWeight();
     jl_call1(j_set_w_deviation_in_yaw,
              jl_box_float64(mpc_params.w_deviation_in_yaw));
     jl_call1(j_set_w_yaw_accel,
@@ -761,6 +777,7 @@ int main(int argc, char *argv[])
     auto head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_desiredHeading",1,HeadingCallback);
     auto final_head_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/mpc_final_heading",1,FinalHeadingCallback);
     auto speed_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/speed_setpoint", rclcpp::QoS(1).transient_local(), SpeedCallback);
+    auto goal_weight_override_sub = node->create_subscription<std_msgs::msg::Float64>("avt_341/w_distance_to_goal_override", rclcpp::QoS(1).transient_local(), GoalWeightOverrideCallback);
     auto sink_sub = node->create_subscription<avt_341_msgs::msg::Sinkage>("avt_341/sinkage",1,SinkageCallback);
     auto seg_sub = node->create_subscription<std_msgs::msg::Float64MultiArray>("avt_341/segmentation_cells",1,SegCallback);
     auto reset_sub = node->create_subscription<std_msgs::msg::String>("avt_341/reset",1,ResetCallback);
