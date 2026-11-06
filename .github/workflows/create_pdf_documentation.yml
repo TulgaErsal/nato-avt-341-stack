@@ -20,7 +20,7 @@ jobs:
   # Single deploy job since we're just deploying
   deploy:
     environment: documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
