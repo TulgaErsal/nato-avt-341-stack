@@ -144,12 +144,6 @@ log_topics:
     field: 'data'
     units: 'rad/s'
 
-  # Driveshaft speed output
-  - name: '{vehicles}_driveshaft_speed'
-    topic: '/{vehicles}/driveshaft_speed'
-    field: 'data'
-    units: 'rpm'
-
   # ==========================================================================================================
   # WHEELS
   # ==========================================================================================================
@@ -179,6 +173,12 @@ log_topics:
     topic: '/{vehicles}/avt_341/speed_setpoint'
     field: 'data'
     units: 'm/s'
+
+  # Desired Steering Angle (Front Wheel)
+  - name: '{vehicles}_desired_steering_angle'
+    topic: '/{vehicles}/avt_341/cmd_steer'
+    field: 'data'
+    units: 'rad'
 
   # ==========================================================================================================
   # PLANNERS

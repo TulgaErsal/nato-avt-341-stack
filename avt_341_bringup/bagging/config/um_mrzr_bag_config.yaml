@@ -47,9 +47,3 @@ log_topics:
     topic: '/{vehicles}/brake_command'
     field: 'data'
     units: '%'
-
-  # Desired Steering Angle (Front Wheel)
-  - name: '{vehicles}_desired_steering_angle'
-    topic: '/{vehicles}/avt_341/cmd_steer'
-    field: 'angular.z'
-    units: 'rad'
