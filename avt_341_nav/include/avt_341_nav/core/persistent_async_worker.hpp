@@ -55,11 +55,11 @@ private:
     }
   }
 
-  std::thread thread_;
   std::mutex mutex_;
   std::condition_variable cv_;
   std::function<void()> job_;
   bool stop_ = false;
+  std::thread thread_;
 };
 
 }  // namespace core
