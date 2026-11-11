@@ -192,6 +192,13 @@ bool FastMarching::SelectReachableGoal(const Point& goal) {
     std::vector<int> stack{start_};
     visited[start_] = 1;
 
+    const auto dist_sq_to_goal = [&](int idx) {
+        const Point p = IndexToPoint(FoldIndex(idx));
+        const double ex = static_cast<double>(p.x) - goal.x;
+        const double ey = static_cast<double>(p.y) - goal.y;
+        return ex * ex + ey * ey;
+    };
+
     double best_dist_sq = std::numeric_limits<double>::infinity();
     int best_idx = -1;
     while (!stack.empty()) {
@@ -201,10 +208,7 @@ bool FastMarching::SelectReachableGoal(const Point& goal) {
         const int cx = idx % w;
         const int cy = idx / w;
         if (cx == 0 || cy == 0 || cx == w - 1 || cy == h - 1) {
-            const Point p = IndexToPoint(FoldIndex(idx));
-            const double ex = static_cast<double>(p.x) - goal.x;
-            const double ey = static_cast<double>(p.y) - goal.y;
-            const double dist_sq = ex * ex + ey * ey;
+            const double dist_sq = dist_sq_to_goal(idx);
             if (dist_sq < best_dist_sq) {
                 best_dist_sq = dist_sq;
                 best_idx = idx;
@@ -222,7 +226,9 @@ bool FastMarching::SelectReachableGoal(const Point& goal) {
         }
     }
 
+    if (visited[goal_]) best_idx = goal_;
     if (best_idx < 0 || best_idx == start_) return false;
+    if (dist_sq_to_goal(best_idx) >= dist_sq_to_goal(start_)) return false;
 
     goal_redirected_ = best_idx != goal_;
     goal_ = best_idx;

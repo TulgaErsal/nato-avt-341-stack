@@ -698,6 +698,29 @@ TEST_P(FarGoalTest, VehicleAlreadyOnClosestCellGetsNoPath) {
   EXPECT_TRUE(planner->PlanPath(&grid, &seg, Point{300.0f, 50.25f}, Point{99.75f, 50.25f}).empty());
 }
 
+TEST_P(FarGoalTest, RefusesEdgeCellFartherFromGoalThanVehicle) {
+  auto grid = MakeFreeGrid(200, 0.5);
+  nav_msgs::msg::OccupancyGrid seg;
+  FillBlock(grid, 0, 80, 150, 83);
+  FillBlock(grid, 0, 120, 150, 123);
+  FillBlock(grid, 147, 80, 150, 123);
+
+  auto planner = MakePlanner();
+  EXPECT_TRUE(planner->PlanPath(&grid, &seg, Point{300.0f, 50.0f}, Point{50.0f, 50.0f}).empty());
+}
+
+TEST_P(FarGoalTest, GoalOnCellBoundaryKeepsClampedCell) {
+  auto grid = MakeFreeGrid(200, 0.5);
+  nav_msgs::msg::OccupancyGrid seg;
+
+  auto planner = MakePlanner();
+  const Point start{50.0f, 50.0f};
+  const auto path = planner->PlanPath(&grid, &seg, Point{300.0f, 50.0f}, start);
+
+  ExpectPathToTarget(path, grid, start, Point{99.75f, 50.25f});
+  EXPECT_FALSE(planner->GoalRedirected());
+}
+
 TEST_P(FarGoalTest, UnreachableGoalReturnsNoPathInsteadOfPreviousOne) {
   auto grid = MakeFreeGrid(200, 0.5);
   nav_msgs::msg::OccupancyGrid seg;

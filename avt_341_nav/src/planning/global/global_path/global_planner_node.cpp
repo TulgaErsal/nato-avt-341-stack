@@ -361,6 +361,12 @@ void ComputeGlobalPathServiceCallback(
       continue;
     }
 
+    if (path_planner->GoalRedirected()) {
+      RCLCPP_WARN(n->get_logger(),
+                  "ComputeGlobalPath: goal %zu (%.2f, %.2f) is off the planning grid and the grid cell nearest it is unreachable; segment ends at (%.2f, %.2f)",
+                  i, goal_pt.x, goal_pt.y, segment.back().x, segment.back().y);
+    }
+
     if (request->remove_threshold) {
       segment = TrimPathEnd(segment, dist_threshold);
     }
