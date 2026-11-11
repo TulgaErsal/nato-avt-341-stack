@@ -224,6 +224,7 @@ public:
 
   void RequestCancel() { cancel_.store(true, std::memory_order_relaxed); }
   void ClearCancel() { cancel_.store(false, std::memory_order_relaxed); }
+  bool CancelRequested() const { return cancel_.load(std::memory_order_relaxed); }
 
   /**
    * Attach a recorder so that the phases of PlanPath are profiled. Optional: planners are also

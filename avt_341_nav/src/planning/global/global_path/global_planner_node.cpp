@@ -686,6 +686,11 @@ int main(int argc, char* argv[])
                 }
               }
               last_valid_ros_path = ros_path;
+            } else if (!path_planner->CancelRequested() && plan_grid_info.width > 0) {
+              RCLCPP_WARN_THROTTLE(n->get_logger(), *n->get_clock(), 5000,
+                                   "No path found to goal (%.1f, %.1f) from (%.1f, %.1f); keeping the previous path",
+                                   goal.pose.position.x, goal.pose.position.y,
+                                   position.x, position.y);
             }
           } else {
             auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(

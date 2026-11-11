@@ -68,6 +68,7 @@ public:
 
 protected:
   void ComputeEDT();
+  void SelectReachableGoal(const Point& goal);
   
   std::string path_extraction_method_;
   float safety_margin_global_;

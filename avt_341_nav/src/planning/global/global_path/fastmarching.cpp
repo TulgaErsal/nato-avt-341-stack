@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
+#include <limits>
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
 namespace avt_341_nav {
@@ -72,6 +74,7 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
 
     Index goal_idx = PointToIndex(goal);
     Index start_idx = PointToIndex(position);
+    const bool goal_off_grid = goal_idx.ix < 0 || goal_idx.ix >= w || goal_idx.iy < 0 || goal_idx.iy >= h;
 
     // Clamp indexes
     goal_idx.ix = std::max(0, std::min(w - 1, goal_idx.ix));
@@ -160,14 +163,63 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
 
     clearance_recording.reset();
 
+    if (goal_off_grid) {
+        SelectReachableGoal(goal);
+    }
+
     {
         auto recording = RecordSection(planner_sections::SOLVE);
         if (!Solve()) {
             if (verbose_) std::cerr << "WARNING: Fast Marching failed to find path" << std::endl;
+            path_world_.clear();
         }
     }
 
     return path_world_;
+}
+
+void FastMarching::SelectReachableGoal(const Point& goal) {
+    if (weights_[start_] >= INF) return;
+
+    const int w = width_;
+    const int h = height_;
+    // The Eikonal update only reads the four cardinal neighbors, so diagonal-only links are unreachable.
+    const int dx[] = {-1, 1, 0, 0};
+    const int dy[] = {0, 0, -1, 1};
+
+    std::vector<uint8_t> visited(w * h, 0);
+    std::vector<int> stack{start_};
+    visited[start_] = 1;
+
+    double best_dist_sq = std::numeric_limits<double>::infinity();
+    int best_idx = start_;
+    while (!stack.empty()) {
+        const int idx = stack.back();
+        stack.pop_back();
+
+        const Point p = IndexToPoint(FoldIndex(idx));
+        const double ex = static_cast<double>(p.x) - goal.x;
+        const double ey = static_cast<double>(p.y) - goal.y;
+        const double dist_sq = ex * ex + ey * ey;
+        if (dist_sq < best_dist_sq) {
+            best_dist_sq = dist_sq;
+            best_idx = idx;
+        }
+
+        const int cx = idx % w;
+        const int cy = idx / w;
+        for (int i = 0; i < 4; ++i) {
+            const int nx = cx + dx[i];
+            const int ny = cy + dy[i];
+            if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+            const int n_idx = ny * w + nx;
+            if (visited[n_idx] || weights_[n_idx] >= INF) continue;
+            visited[n_idx] = 1;
+            stack.push_back(n_idx);
+        }
+    }
+
+    goal_ = best_idx;
 }
 
 void FastMarching::ComputeEDT() {

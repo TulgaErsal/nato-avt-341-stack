@@ -39,6 +39,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
 
     Index goal_idx = PointToIndex(goal);
     Index start_idx = PointToIndex(position);
+    const bool goal_off_grid = goal_idx.ix < 0 || goal_idx.ix >= w || goal_idx.iy < 0 || goal_idx.iy >= h;
 
     // Clamp indexes
     auto clamp = [&](Index& idx) {
@@ -135,11 +136,16 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
 
     clearance_recording.reset();
 
+    if (goal_off_grid) {
+        SelectReachableGoal(goal);
+    }
+
     // 3. Solve Path (Second Fast Marching step)
     {
         auto recording = RecordSection(planner_sections::SOLVE);
         if (!Solve()) {
             if (verbose_) std::cerr << "WARNING: Fast Marching Square failed to find path" << std::endl;
+            path_world_.clear();
         }
     }
 

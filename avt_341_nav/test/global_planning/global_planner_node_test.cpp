@@ -553,6 +553,111 @@ TEST(CostmapCropTest, CroppedPlanReachesGoalAndAvoidsObstacles) {
 // ---------------------------------------------------------------------------
 // Crop helper unit tests
 // ---------------------------------------------------------------------------
+static nav_msgs::msg::OccupancyGrid MakeFreeGrid(int size, double res) {
+  nav_msgs::msg::OccupancyGrid grid;
+  grid.info.resolution = res;
+  grid.info.width = size;
+  grid.info.height = size;
+  grid.data.assign(size * size, 0);
+  return grid;
+}
+
+static void FillBlock(nav_msgs::msg::OccupancyGrid& grid, int x0, int y0, int x1, int y1) {
+  const int w = static_cast<int>(grid.info.width);
+  for (int y = y0; y <= y1; ++y) {
+    for (int x = x0; x <= x1; ++x) {
+      grid.data[y * w + x] = 100;
+    }
+  }
+}
+
+static bool PathTouchesObstacle(const std::vector<Point>& path, const nav_msgs::msg::OccupancyGrid& grid) {
+  const int w = static_cast<int>(grid.info.width);
+  const int h = static_cast<int>(grid.info.height);
+  for (const auto& p : path) {
+    const int ix = static_cast<int>(std::floor(p.x / grid.info.resolution));
+    const int iy = static_cast<int>(std::floor(p.y / grid.info.resolution));
+    if (ix >= 0 && iy >= 0 && ix < w && iy < h && grid.data[iy * w + ix] > 0) return true;
+  }
+  return false;
+}
+
+class FarGoalTest : public ::testing::TestWithParam<std::string> {
+ protected:
+  std::unique_ptr<avt_341_nav::planning::Astar> MakePlanner() const {
+    GlobalPlannerParams params = g_params;
+    params.safety_margin_global = 0.25f;
+    params.safety_margin_soft = 0.25f;
+    params.obstacle_threshold = 0.0f;
+    params.clipping_distance = 0.0f;
+    return CreatePlanner(GetParam(), params);
+  }
+};
+
+TEST_P(FarGoalTest, RoutesAroundBlockedClampedCorner) {
+  auto grid = MakeFreeGrid(200, 0.5);
+  nav_msgs::msg::OccupancyGrid seg;
+  FillBlock(grid, 150, 150, 199, 199);
+
+  auto planner = MakePlanner();
+  const Point start{50.0f, 50.0f};
+  const auto path = planner->PlanPath(&grid, &seg, Point{300.0f, 300.0f}, start);
+
+  ASSERT_GE(path.size(), 2u);
+  EXPECT_LT(std::hypot(path.front().x - start.x, path.front().y - start.y), 3.0f);
+  EXPECT_FALSE(PathTouchesObstacle(path, grid));
+  EXPECT_GT(std::hypot(path.back().x - start.x, path.back().y - start.y), 40.0f);
+}
+
+TEST_P(FarGoalTest, IgnoresFreeCornerWalledOffFromStart) {
+  auto grid = MakeFreeGrid(200, 0.5);
+  nav_msgs::msg::OccupancyGrid seg;
+  FillBlock(grid, 180, 180, 199, 183);
+  FillBlock(grid, 180, 180, 183, 199);
+
+  auto planner = MakePlanner();
+  const Point start{50.0f, 50.0f};
+  const auto path = planner->PlanPath(&grid, &seg, Point{300.0f, 300.0f}, start);
+
+  ASSERT_GE(path.size(), 2u);
+  EXPECT_LT(std::hypot(path.front().x - start.x, path.front().y - start.y), 3.0f);
+  EXPECT_FALSE(PathTouchesObstacle(path, grid));
+  EXPECT_GT(std::hypot(path.back().x - start.x, path.back().y - start.y), 40.0f);
+}
+
+TEST_P(FarGoalTest, IgnoresCornerConnectedOnlyDiagonally) {
+  auto grid = MakeFreeGrid(200, 0.5);
+  nav_msgs::msg::OccupancyGrid seg;
+  FillBlock(grid, 198, 199, 198, 199);
+  FillBlock(grid, 199, 198, 199, 198);
+
+  auto planner = MakePlanner();
+  const Point start{50.0f, 50.0f};
+  const auto path = planner->PlanPath(&grid, &seg, Point{300.0f, 300.0f}, start);
+
+  ASSERT_GE(path.size(), 2u);
+  EXPECT_LT(std::hypot(path.front().x - start.x, path.front().y - start.y), 3.0f);
+  EXPECT_GT(std::hypot(path.back().x - start.x, path.back().y - start.y), 40.0f);
+}
+
+TEST_P(FarGoalTest, UnreachableGoalReturnsNoPathInsteadOfPreviousOne) {
+  auto grid = MakeFreeGrid(200, 0.5);
+  nav_msgs::msg::OccupancyGrid seg;
+
+  auto planner = MakePlanner();
+  const Point start{50.0f, 50.0f};
+  ASSERT_GE(planner->PlanPath(&grid, &seg, Point{80.0f, 80.0f}, start).size(), 2u);
+
+  FillBlock(grid, 130, 130, 170, 133);
+  FillBlock(grid, 130, 167, 170, 170);
+  FillBlock(grid, 130, 130, 133, 170);
+  FillBlock(grid, 167, 130, 170, 170);
+  EXPECT_TRUE(planner->PlanPath(&grid, &seg, Point{75.0f, 75.0f}, start).empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(FastMarchingPlanners, FarGoalTest,
+                         ::testing::Values("fast_marching", "fast_marching_square"));
+
 TEST(OccupancyGridUtilsTest, PaddedAabbOrdersPoints) {
   const auto box = avt_341_nav::core::MakePaddedAabb(9.0, 8.0, 1.0, 2.0, 3.0);
   EXPECT_DOUBLE_EQ(box.x_min, -2.0);
