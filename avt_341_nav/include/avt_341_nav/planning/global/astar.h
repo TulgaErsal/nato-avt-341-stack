@@ -224,6 +224,8 @@ public:
 
   void RequestCancel() { cancel_.store(true, std::memory_order_relaxed); }
   void ClearCancel() { cancel_.store(false, std::memory_order_relaxed); }
+  bool CancelRequested() const { return cancel_.load(std::memory_order_relaxed); }
+  bool GoalRedirected() const { return goal_redirected_; }
 
   /**
    * Attach a recorder so that the phases of PlanPath are profiled. Optional: planners are also
@@ -293,6 +295,7 @@ protected:
   virtual bool LineOfSight(const Index& i0, const Index& i1);
 
   std::atomic<bool> cancel_{false};
+  bool goal_redirected_ = false;
 
   float llx_, lly_;
   float map_res_;

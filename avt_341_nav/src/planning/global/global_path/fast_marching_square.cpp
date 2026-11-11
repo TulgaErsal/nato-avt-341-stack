@@ -39,6 +39,7 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
 
     Index goal_idx = PointToIndex(goal);
     Index start_idx = PointToIndex(position);
+    const bool goal_off_grid = IsOffGrid(goal);
 
     // Clamp indexes
     auto clamp = [&](Index& idx) {
@@ -134,6 +135,12 @@ std::vector<Point> FastMarchingSquare::PlanPath(nav_msgs::msg::OccupancyGrid* gr
     }
 
     clearance_recording.reset();
+
+    path_world_.clear();
+    goal_redirected_ = false;
+    if (goal_off_grid && !SelectReachableGoal(goal)) {
+        return path_world_;
+    }
 
     // 3. Solve Path (Second Fast Marching step)
     {
