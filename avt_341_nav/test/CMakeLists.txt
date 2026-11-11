@@ -102,6 +102,19 @@ target_link_libraries(utils_test
 )
 
 message(STATUS "Adding waypoint file parser unit tests")
+ament_add_gtest(persistent_async_worker_test
+        core/persistent_async_worker_test.cpp
+)
+
+target_include_directories(persistent_async_worker_test
+        PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+)
+
+target_link_libraries(persistent_async_worker_test
+        ${CMAKE_DL_LIBS}
+)
+
 ament_add_gtest(waypoint_file_parser_test
         core/waypoint_file_parser_test.cpp
 )
