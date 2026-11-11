@@ -89,6 +89,8 @@ bool timeout_logged = false;
 // flight at a time, guarded by planning_future.valid()
 nav_msgs::msg::MapMetaData plan_grid_info;
 std::string plan_grid_frame_id = "map";
+Point plan_goal{0.0f, 0.0f};
+Point plan_position{0.0f, 0.0f};
 
 void OdometryCallback(nav_msgs::msg::Odometry::SharedPtr rcv_odom)
 {
@@ -624,6 +626,12 @@ int main(int argc, char* argv[])
             timeout_logged = false;
 
             if (!new_path.empty()) {
+              if (path_planner->GoalRedirected()) {
+                RCLCPP_WARN_THROTTLE(n->get_logger(), *n->get_clock(), 5000,
+                                     "Goal (%.1f, %.1f) is off the planning grid and the grid cell nearest it is unreachable; heading for (%.1f, %.1f)",
+                                     plan_goal.x, plan_goal.y, new_path.back().x, new_path.back().y);
+              }
+
               if (params.publish_fm_map && params.planning_method == "fast_marching") {
                 nav_msgs::msg::OccupancyGrid fast_marching_grid;
                 //use the metadata of the (possibly cropped) grid the plan actually ran on,
@@ -689,8 +697,7 @@ int main(int argc, char* argv[])
             } else if (!path_planner->CancelRequested() && plan_grid_info.width > 0) {
               RCLCPP_WARN_THROTTLE(n->get_logger(), *n->get_clock(), 5000,
                                    "No path found to goal (%.1f, %.1f) from (%.1f, %.1f); keeping the previous path",
-                                   goal.pose.position.x, goal.pose.position.y,
-                                   position.x, position.y);
+                                   plan_goal.x, plan_goal.y, plan_position.x, plan_position.y);
             }
           } else {
             auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -713,6 +720,8 @@ int main(int argc, char* argv[])
           auto seg_snap = SnapshotGrid(segmentation_grid, crop_box);
 
           plan_grid_info = grid_snap.info;
+          plan_goal = goal_pt;
+          plan_position = pos_snap;
           plan_grid_frame_id = grid_snap.header.frame_id.empty() ? "map" : grid_snap.header.frame_id;
           if (crop_box_pub) {
             crop_box_pub->publish(BuildCropBoxMarker(plan_grid_info, plan_grid_frame_id, n->now()));

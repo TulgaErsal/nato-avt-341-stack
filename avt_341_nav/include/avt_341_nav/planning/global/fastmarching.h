@@ -68,7 +68,10 @@ public:
 
 protected:
   void ComputeEDT();
-  void SelectReachableGoal(const Point& goal);
+  bool IsOffGrid(const Point& p) const {
+    return p.x < llx_ || p.y < lly_ || p.x >= llx_ + width_ * map_res_ || p.y >= lly_ + height_ * map_res_;
+  }
+  bool SelectReachableGoal(const Point& goal);
   
   std::string path_extraction_method_;
   float safety_margin_global_;

@@ -74,7 +74,7 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
 
     Index goal_idx = PointToIndex(goal);
     Index start_idx = PointToIndex(position);
-    const bool goal_off_grid = goal_idx.ix < 0 || goal_idx.ix >= w || goal_idx.iy < 0 || goal_idx.iy >= h;
+    const bool goal_off_grid = IsOffGrid(goal);
 
     // Clamp indexes
     goal_idx.ix = std::max(0, std::min(w - 1, goal_idx.ix));
@@ -163,23 +163,24 @@ std::vector<Point> FastMarching::PlanPath(nav_msgs::msg::OccupancyGrid* grid,
 
     clearance_recording.reset();
 
-    if (goal_off_grid) {
-        SelectReachableGoal(goal);
+    path_world_.clear();
+    goal_redirected_ = false;
+    if (goal_off_grid && !SelectReachableGoal(goal)) {
+        return path_world_;
     }
 
     {
         auto recording = RecordSection(planner_sections::SOLVE);
         if (!Solve()) {
             if (verbose_) std::cerr << "WARNING: Fast Marching failed to find path" << std::endl;
-            path_world_.clear();
         }
     }
 
     return path_world_;
 }
 
-void FastMarching::SelectReachableGoal(const Point& goal) {
-    if (weights_[start_] >= INF) return;
+bool FastMarching::SelectReachableGoal(const Point& goal) {
+    if (weights_[start_] >= INF) return false;
 
     const int w = width_;
     const int h = height_;
@@ -192,22 +193,24 @@ void FastMarching::SelectReachableGoal(const Point& goal) {
     visited[start_] = 1;
 
     double best_dist_sq = std::numeric_limits<double>::infinity();
-    int best_idx = start_;
+    int best_idx = -1;
     while (!stack.empty()) {
         const int idx = stack.back();
         stack.pop_back();
 
-        const Point p = IndexToPoint(FoldIndex(idx));
-        const double ex = static_cast<double>(p.x) - goal.x;
-        const double ey = static_cast<double>(p.y) - goal.y;
-        const double dist_sq = ex * ex + ey * ey;
-        if (dist_sq < best_dist_sq) {
-            best_dist_sq = dist_sq;
-            best_idx = idx;
-        }
-
         const int cx = idx % w;
         const int cy = idx / w;
+        if (cx == 0 || cy == 0 || cx == w - 1 || cy == h - 1) {
+            const Point p = IndexToPoint(FoldIndex(idx));
+            const double ex = static_cast<double>(p.x) - goal.x;
+            const double ey = static_cast<double>(p.y) - goal.y;
+            const double dist_sq = ex * ex + ey * ey;
+            if (dist_sq < best_dist_sq) {
+                best_dist_sq = dist_sq;
+                best_idx = idx;
+            }
+        }
+
         for (int i = 0; i < 4; ++i) {
             const int nx = cx + dx[i];
             const int ny = cy + dy[i];
@@ -219,7 +222,11 @@ void FastMarching::SelectReachableGoal(const Point& goal) {
         }
     }
 
+    if (best_idx < 0 || best_idx == start_) return false;
+
+    goal_redirected_ = best_idx != goal_;
     goal_ = best_idx;
+    return true;
 }
 
 void FastMarching::ComputeEDT() {
