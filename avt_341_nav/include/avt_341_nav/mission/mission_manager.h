@@ -19,6 +19,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 // local includes
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/map_marker_list.hpp"
@@ -61,6 +62,8 @@ struct Contact {
     bool is_new;       // true until MoveTo+Encircle tasks are created
     double first_seen_sec;
     bool reported_while_allowed = false;  // last report came while investigation was allowed
+    geometry_msgs::msg::Point held_position;
+    bool has_held_position = false;
 };
 
 // A task that ran to completion and how long it took, reported in the module status.
@@ -211,6 +214,8 @@ class MissionManager{
     rclcpp::Logger logger() const { return node_->get_logger(); }
 
   private:
+    bool acceptTrackedMove(Contact & contact, const geometry_msgs::msg::PoseStamped & pose);
+    void removeContactTasks(const std::string & name);
 
     MissionManagerParams params_;
     std::vector<MissionPoint> mission_data;
@@ -225,6 +230,7 @@ class MissionManager{
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     int contact_count_ = 0;
+    std::set<int64_t> team_vehicle_tracks_;
     bool autonomy_enabled_ = true;
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;

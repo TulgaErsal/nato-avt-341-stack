@@ -618,6 +618,7 @@ void MissionManager::reset(bool notify_tracker){
   current_gp_goal = geometry_msgs::msg::PoseStamped();
   mission_contacts.clear();
   contact_count_ = 0;
+  team_vehicle_tracks_.clear();
   if (notify_tracker) {
     publishInvestigatedContacts();
   }
@@ -729,19 +730,55 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
                 PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
         });
 
+        const bool track_matched = existing != mission_contacts.end();
+
+        if (track_start_ns != 0 && team_vehicle_tracks_.count(track_start_ns) > 0) {
+            RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                "Ignoring contact \"%s\" at (%.2f, %.2f): its track is a team vehicle.",
+                pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y);
+            continue;
+        }
+
         if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
             // The ego vehicle closes in on a target it investigates, so its track keeps updating it.
             auto team = veh_poses;
-            if (existing != mission_contacts.end()) {
+            if (track_matched) {
                 team.erase(my_name);
             }
-            const auto team_vehicle = FindVehicleWithin(
+            auto team_vehicle = FindVehicleWithin(
                 pose.pose.position, team, params_.toi.team_vehicle_exclusion_radius);
             if (team_vehicle.has_value()) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
                     pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
                     params_.toi.team_vehicle_exclusion_radius, team_vehicle->c_str());
+            } else if (params_.toi.team_vehicle_line_of_sight_lateral > 0.0) {
+                const auto ego = veh_poses.find(my_name);
+                if (ego != veh_poses.end()) {
+                    auto others = veh_poses;
+                    others.erase(my_name);
+                    team_vehicle = FindVehicleOnLineOfSight(
+                        pose.pose.position, ego->second.pose.pose.position, others,
+                        params_.toi.team_vehicle_line_of_sight_lateral,
+                        params_.toi.team_vehicle_line_of_sight_range_fraction,
+                        params_.toi.team_vehicle_line_of_sight_min_range);
+                    if (team_vehicle.has_value()) {
+                        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                            "Ignoring contact \"%s\" at (%.2f, %.2f): on the line of sight to team vehicle %s.",
+                            pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
+                            team_vehicle->c_str());
+                    }
+                }
+            }
+            if (team_vehicle.has_value()) {
+                if (track_start_ns != 0 && *team_vehicle != my_name && (!track_matched || existing->is_new)) {
+                    team_vehicle_tracks_.insert(track_start_ns);
+                    if (track_matched) {
+                        RCLCPP_INFO(node_->get_logger(), "Forgetting contact \"%s\": its track is team vehicle %s.",
+                                    existing->name.c_str(), team_vehicle->c_str());
+                        mission_contacts.erase(existing);
+                    }
+                }
                 continue;
             }
         }
@@ -754,8 +791,38 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             if (track_start_ns != 0) {
                 existing->track_start_ns = track_start_ns;
             }
+            if (track_matched && !existing->investigated && !existing->dismissed) {
+                const double merge_sq = params_.toi.same_object_distance_threshold * params_.toi.same_object_distance_threshold;
+                const auto known = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+                    return &c != &*existing && (c.investigated || c.dismissed) && c.target_class == existing->target_class &&
+                        PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= merge_sq;
+                });
+                if (known != mission_contacts.end()) {
+                    RCLCPP_INFO(node_->get_logger(),
+                        "Contact \"%s\" reached (%.2f, %.2f), %s \"%s\"; merging it.",
+                        existing->name.c_str(), pose.pose.position.x, pose.pose.position.y,
+                        known->investigated ? "the investigated" : "the dismissed", known->name.c_str());
+                    removeContactTasks(existing->name);
+                    existing->pose = known->pose;
+                    existing->is_new = false;
+                    existing->investigating = false;
+                    existing->investigated = known->investigated;
+                    existing->dismissed = known->dismissed;
+                    existing->has_held_position = false;
+                    publishInvestigatedContacts();
+                    continue;
+                }
+            }
             // A sighting never moves a contact a track has reported on.
-            const bool moves_contact = track_start_ns != 0 || existing->track_start_ns == 0;
+            bool moves_contact = track_start_ns != 0 || existing->track_start_ns == 0;
+            if (moves_contact && track_matched && !existing->investigated && !existing->dismissed &&
+                !acceptTrackedMove(*existing, pose)) {
+                RCLCPP_INFO(node_->get_logger(),
+                    "Holding the report of contact \"%s\" at (%.2f, %.2f), %.1f m from its position, until its track confirms it.",
+                    existing->name.c_str(), pose.pose.position.x, pose.pose.position.y,
+                    PosePlanarDistance(existing->pose.pose.position, pose.pose.position));
+                moves_contact = false;
+            }
             if (existing->investigated || existing->dismissed) {
                 RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
                     "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
@@ -787,6 +854,40 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
             RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);
         }
     }
+}
+
+void MissionManager::removeContactTasks(const std::string & name) {
+    for (auto it = task_list.begin(); it != task_list.end();) {
+        Task * task = *it;
+        const auto * moveto = dynamic_cast<const MoveTo *>(task);
+        const auto * encircle = dynamic_cast<const Encircle *>(task);
+        if ((moveto != nullptr && moveto->goal_type == MoveTo::CONTACT && moveto->name == name) ||
+            (encircle != nullptr && encircle->contactName() == name)) {
+            task->onPreempt();
+            RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
+            it = task_list.erase(it);
+            delete task;
+        } else {
+            ++it;
+        }
+    }
+}
+
+bool MissionManager::acceptTrackedMove(Contact & contact, const geometry_msgs::msg::PoseStamped & pose) {
+    const double limit = params_.toi.contact_jump_distance;
+    if (limit <= 0.0 || PosePlanarDistanceSq(contact.pose.pose.position, pose.pose.position) <= limit * limit) {
+        contact.has_held_position = false;
+        return true;
+    }
+    const double confirm = params_.toi.same_object_distance_threshold;
+    if (contact.has_held_position &&
+        PosePlanarDistanceSq(contact.held_position, pose.pose.position) <= confirm * confirm) {
+        contact.has_held_position = false;
+        return true;
+    }
+    contact.held_position = pose.pose.position;
+    contact.has_held_position = true;
+    return false;
 }
 
 void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {

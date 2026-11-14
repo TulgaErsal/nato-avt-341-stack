@@ -1365,6 +1365,7 @@ TEST_F(ToiInvestigationTest, ShutdownDoesNotNotifyTheTracker)
 
 TEST_F(ToiInvestigationTest, OneTrackKeepsOneContactWhenItsEstimateJumps)
 {
+    params_.toi.contact_jump_distance = 0.0;
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
     manager->handleContacts(MakeContact("car", 52.0, 42.6, 100), team_);
@@ -1502,6 +1503,141 @@ TEST_F(ToiInvestigationTest, TrackedContactStillIgnoredAtAnotherTeamVehicle)
     const auto tasks = Tasks(*manager);
     ASSERT_EQ(tasks.size(), 3u);
     EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(40, 10)"));
+}
+
+class TeamVehicleLineOfSightTest : public ToiInvestigationTest {
+  protected:
+    void SetUp() override
+    {
+        ToiInvestigationTest::SetUp();
+        params_.toi.team_vehicle_exclusion_radius = 5.0;
+        params_.toi.team_vehicle_line_of_sight_lateral = 3.5;
+        params_.toi.team_vehicle_line_of_sight_range_fraction = 0.35;
+        params_.toi.team_vehicle_line_of_sight_min_range = 7.0;
+        params_.toi.contact_jump_distance = 0.0;
+    }
+};
+
+TEST_F(TeamVehicleLineOfSightTest, CameraRangeErrorAlongTheLineOfSightIsStillTheTeamVehicle)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 39.0, 2.5, 100), team_);
+    manager->handleContacts(MakeContact("car", 57.0, -2.0), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+}
+
+TEST_F(TeamVehicleLineOfSightTest, TargetOffTheLineOfSightIsInvestigated)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 40.0, 6.0, 100), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+}
+
+TEST_F(TeamVehicleLineOfSightTest, TargetFarBeyondTheTeamVehicleIsInvestigated)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 80.0, 1.0, 100), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+}
+
+TEST_F(TeamVehicleLineOfSightTest, TrackFirstSeenAtATeamVehicleStaysIgnoredWhenItDriftsOff)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 48.0, 1.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 60.0, 12.0, 100), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+
+    manager->handleContacts(MakeContact("car", 60.0, 12.0, 200), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+}
+
+TEST_F(TeamVehicleLineOfSightTest, PendingContactWhoseTrackReachesATeamVehicleIsForgotten)
+{
+    params_.toi.contact_trigger_delay = 0.2;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 40.0, 15.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 45.0, 1.0, 100), team_);
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    manager->confirmPendingContacts(team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+    EXPECT_FALSE(manager->hasPendingContacts());
+}
+
+TEST_F(TeamVehicleLineOfSightTest, InvestigatedTargetKeepsItsTrackWhenItPassesInFrontOfATeamVehicle)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 40.0, 15.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 45.0, 1.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 40.0, 16.0, 100), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(40, 16)"));
+}
+
+TEST_F(ToiInvestigationTest, SingleJumpOfATrackDoesNotMoveItsContact)
+{
+    params_.toi.contact_jump_distance = 5.0;
+    params_.toi.same_object_distance_threshold = 5.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 58.0, 36.0, 100), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+    manager->markContactInvestigated("car_1");
+    ASSERT_EQ(Investigated().poses.size(), 1u);
+    EXPECT_DOUBLE_EQ(Investigated().poses[0].pose.position.x, 50.0);
+}
+
+TEST_F(ToiInvestigationTest, JumpConfirmedByTheNextReportMovesTheContact)
+{
+    params_.toi.contact_jump_distance = 5.0;
+    params_.toi.same_object_distance_threshold = 5.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 58.0, 36.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 58.5, 36.0, 100), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(58.5, 36)"));
+}
+
+TEST_F(ToiInvestigationTest, TrackThatSettlesOnAnInvestigatedTargetIsMergedIntoIt)
+{
+    params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.contact_jump_distance = 5.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->markContactInvestigated("car_1");
+    manager->resetTaskList(false);
+    Busy(*manager);
+
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+
+    EXPECT_FALSE(HasContactTask(*manager));
+    EXPECT_EQ(Tasks(*manager).size(), 1u);
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+}
+
+TEST_F(ToiInvestigationTest, TrackPassingNearAnInvestigatedTargetOfAnotherClassIsNotMerged)
+{
+    params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.contact_jump_distance = 0.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("truck", 50.0, 30.0, 100), team_);
+    manager->markContactInvestigated("truck_1");
+    manager->resetTaskList(false);
+    Busy(*manager);
+
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
 }
 
 TEST_F(ToiInvestigationTest, ContactReportedOnceIsConfirmedAfterTheDelay)

@@ -229,6 +229,30 @@ ros__parameters:
       description: "Target contacts within this planar distance [m] of any team vehicle (including the ego vehicle) are ignored, so team members detected as targets of interest are not investigated. 0 disables the filter."
       validation:
         gt_eq<>: [ 0.0 ]
+    team_vehicle_line_of_sight_lateral:
+      type: double
+      default_value: 3.5
+      description: "Target contacts within this planar distance [m] of the line of sight from the ego vehicle to another team vehicle, and within team_vehicle_line_of_sight_range_fraction of its range (at least team_vehicle_line_of_sight_min_range), are also ignored as that team vehicle: the camera's bearing to a target is good, its range estimate is not. A track with such a report before its contact's tasks exist is a team vehicle; its contact is forgotten and its later reports are ignored. 0 disables this gate."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    team_vehicle_line_of_sight_range_fraction:
+      type: double
+      default_value: 0.35
+      description: "Range tolerance of the line-of-sight team vehicle gate, as a fraction of the range from the ego vehicle to the team vehicle (see team_vehicle_line_of_sight_lateral)."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    team_vehicle_line_of_sight_min_range:
+      type: double
+      default_value: 7.0
+      description: "Smallest range tolerance [m] of the line-of-sight team vehicle gate (see team_vehicle_line_of_sight_lateral)."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    contact_jump_distance:
+      type: double
+      default_value: 5.0
+      description: "A report of a track that would move its contact farther than this planar distance [m] is held, and moves the contact only when the track's next report confirms it (within same_object_distance_threshold of the held one). A single bad estimate then neither re-plans the encircle nor becomes the investigated position. 0 disables the hold."
+      validation:
+        gt_eq<>: [ 0.0 ]
     autonomy_topic:
       type: string
       default_value: '/autonomy_enabled'
