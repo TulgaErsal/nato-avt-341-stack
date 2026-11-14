@@ -1,3 +1,6 @@
+// Linux-only: the test interposes a libstdc++ symbol via dlsym(RTLD_NEXT), which has no MSVC equivalent.
+#ifdef __linux__
+
 #include <dlfcn.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
@@ -36,3 +39,5 @@ TEST(PersistentAsyncWorkerTest, RunsJobWhenConstructionIsSlowerThanThreadStart) 
   EXPECT_EQ(result.get(), 42);
   worker->~PersistentAsyncWorker();
 }
+
+#endif  // __linux__
