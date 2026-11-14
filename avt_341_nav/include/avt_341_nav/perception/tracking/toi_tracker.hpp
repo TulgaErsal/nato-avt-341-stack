@@ -60,6 +60,8 @@ class ToiTracker : public ObjectTracker {
      *         from another target. */
     void MaybePublishContactUpdate() override;
 
+    void OnExcludedTargetReleased() override;
+
     /** @brief While a target is tracked, publish the other detections of the
      *         class that are neither near it nor excluded as sightings: contacts
      *         without a track (header.stamp 0), at most once per

@@ -170,6 +170,8 @@ class ObjectTracker {
      */
     virtual void MaybePublishContactUpdate() {}
 
+    virtual void OnExcludedTargetReleased() {}
+
     /** @brief Map positions of targets that must not be tracked. None for
      *         the base tracker; ToiTracker excludes targets that have already
      *         been investigated. */
@@ -362,6 +364,8 @@ class ObjectTracker {
     /** @brief A detection was ingested since the last tracking tick
      *         (has_detection_ can stay set on a re-used detection). */
     bool has_fresh_detection_ = false;
+    bool release_excluded_track_ = false;
+    Eigen::Vector3d excluded_track_position_ = Eigen::Vector3d::Zero();
 
     /** @brief When the current track started (its filter was first
      *         initialized since the last reset or timeout) [ns]; 0 without a

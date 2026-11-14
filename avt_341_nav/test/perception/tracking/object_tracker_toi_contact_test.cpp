@@ -313,6 +313,50 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetIsReleasedForTheNextOne) {
     }
 }
 
+TEST_F(ObjectTrackerToiContactTest, TrackReleasedAtAnInvestigatedTargetReportsItsLastPosition) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    const size_t published = contacts_.size();
+    ASSERT_GT(published, 0u);
+    for (int i = 0; i < 20 && contacts_.size() == published; ++i) {
+        TrackFrames({0.0}, 1);
+    }
+    ASSERT_GT(contacts_.size(), published);
+    const int32_t track_sec = contacts_.back().poses.front().header.stamp.sec;
+    const uint32_t track_nanosec = contacts_.back().poses.front().header.stamp.nanosec;
+    contacts_.clear();
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 2.0, CAMERA_Y);
+    TrackFrames({0.0}, 3);
+
+    ASSERT_EQ(contacts_.size(), 1u);
+    const auto& last = contacts_.front().poses.front();
+    EXPECT_EQ(last.header.stamp.sec, track_sec);
+    EXPECT_EQ(last.header.stamp.nanosec, track_nanosec);
+    EXPECT_NEAR(last.pose.position.x, CAMERA_X + TARGET_RANGE, 1.0);
+    EXPECT_NEAR(last.pose.position.y, CAMERA_Y, 1.0);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTargetReportsItThere) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {1.6 * TARGET_RANGE});
+    ASSERT_FALSE(contacts_.empty());
+    ASSERT_GT(contacts_.back().poses.front().pose.position.x, CAMERA_X + 1.4 * TARGET_RANGE);
+    const int32_t track_sec = contacts_.back().poses.front().header.stamp.sec;
+    contacts_.clear();
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    TrackFrames({0.0}, 5, {1.6 * TARGET_RANGE}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+
+    ASSERT_FALSE(contacts_.empty());
+    const auto& last = contacts_.back().poses.front();
+    EXPECT_EQ(last.header.stamp.sec, track_sec);
+    EXPECT_NEAR(last.pose.position.x, CAMERA_X + TARGET_RANGE, 1.0);
+    EXPECT_NEAR(last.pose.position.y, CAMERA_Y, 1.0);
+}
+
 TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetAloneIsNotTracked) {
     PublishCameraInfo();
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
@@ -486,6 +530,27 @@ TEST_F(ObjectTrackerToiOutOfViewTest, CameraCorrectsLidarDriftWhenTheTargetIsBac
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
         EXPECT_TRUE(AtA(contact));
+    }
+}
+
+TEST_F(ObjectTrackerToiOutOfViewTest, RelabeledBoxOfAMovingTargetIsReacquiredWhereTheTargetIs) {
+    const Obstacle decoy{11, 0.5, 0.0};
+    TrackThenTurn();
+    double y = A[1];
+    for (int i = 0; i < 40; ++i) {
+        y -= 0.2;
+        PublishObstacles({{7, A[0], y}});
+        Spin(100ms);
+    }
+    contacts_.clear();
+    for (int i = 0; i < 40; ++i) {
+        y -= 0.2;
+        PublishObstacles({decoy, {10, A[0], y}});
+        Spin(100ms);
+    }
+    ASSERT_GE(contacts_.size(), 3u);
+    for (const auto& contact : contacts_) {
+        EXPECT_NEAR(contact.poses.front().pose.position.x, A[0], 1.5);
     }
 }
 

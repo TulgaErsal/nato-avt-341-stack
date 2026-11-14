@@ -116,11 +116,24 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
                     "it.",
                     target_class_.c_str(), bounding_box_centroid_filtered_.x(),
                     bounding_box_centroid_filtered_.y());
+        OnExcludedTargetReleased();
         Reset();
         return;
     }
 
     const bool selected = has_detection_ && SelectDetection(context);
+    if (release_excluded_track_) {
+        release_excluded_track_ = false;
+        RCLCPP_INFO(logger_,
+                    "Target \"%s\" is seen at the excluded (%.2f, %.2f); "
+                    "releasing it.",
+                    target_class_.c_str(), excluded_track_position_.x(),
+                    excluded_track_position_.y());
+        bounding_box_centroid_filtered_ = excluded_track_position_;
+        OnExcludedTargetReleased();
+        Reset();
+        return;
+    }
     if (fresh_detection && filter_initialized_ && has_tracked_target_) {
         OnOtherDetections(context, selected ? &detections_message_ : nullptr);
     }
@@ -294,7 +307,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
 				last_reliable_yaw_ = (100.0 / R_improved(2, 2) * improved_yaw + current_yaw_info_ * old_yaw) /
 					(yaw_info_);
 				last_lidar_world_pos_ = coord_transformer_.Transform(
-                    marker.header.frame_id,
+                    frame_ids_.Camera(),
                     frame_ids_.Map(), bounding_box_centroid_);// improved_centroid);
 			}
 			else {
@@ -873,8 +886,19 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
 
     const vision_msgs::msg::Detection2D* best = nullptr;
     double best_column_dist = std::numeric_limits<double>::infinity();
+    const vision_msgs::msg::Detection2D* excluded_on_track = nullptr;
+    double excluded_column_dist = std::numeric_limits<double>::infinity();
     for (const auto& detection : candidate_detections_) {
         if (IsExcludedDetection(detection, context)) {
+            if (track_column) {
+                const double column_dist =
+                    std::abs(*track_column - detection.bbox.center.position.x);
+                if (column_dist <= detection.bbox.size_x / 2.0 &&
+                    column_dist < excluded_column_dist) {
+                    excluded_column_dist = column_dist;
+                    excluded_on_track = &detection;
+                }
+            }
             continue;
         }
         if (!track_column) {
@@ -887,6 +911,12 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
             best_column_dist = column_dist;
             best = &detection;
         }
+    }
+
+    if (excluded_on_track != nullptr && excluded_column_dist < best_column_dist) {
+        excluded_track_position_ = EstimateMapPosition(*excluded_on_track, context);
+        release_excluded_track_ = true;
+        return false;
     }
 
     if (best == nullptr) {

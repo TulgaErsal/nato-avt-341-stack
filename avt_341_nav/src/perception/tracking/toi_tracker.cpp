@@ -92,6 +92,12 @@ void ToiTracker::PublishTargetContact() {
                 bounding_box_centroid_filtered_.z());
 }
 
+void ToiTracker::OnExcludedTargetReleased() {
+    if (published_track_start_ns_ == track_start_ns_ && track_start_ns_ != 0) {
+        PublishTargetContact();
+    }
+}
+
 void ToiTracker::MaybePublishContactUpdate() {
     const bool is_actively_tracking =
         filter_initialized_ && IsActiveTrackerState(state_);
