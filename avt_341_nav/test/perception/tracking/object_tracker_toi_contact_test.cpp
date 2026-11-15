@@ -73,6 +73,9 @@ protected:
                 // Sightings (contacts without a track, stamp 0) are kept apart from track contacts.
                 (rclcpp::Time(msg->poses.front().header.stamp).nanoseconds() == 0 ? sightings_ : contacts_).push_back(*msg);
             });
+        released_sub_ = helper_node_->create_subscription<nav_msgs::msg::Path>(
+            "avt_341/target_released", 10,
+            [this](nav_msgs::msg::Path::SharedPtr msg) { released_.push_back(*msg); });
         estimate_sub_ = helper_node_->create_subscription<nav_msgs::msg::Odometry>(
             "avt_341/odometry/estimated/ti_car", 10,
             [this](nav_msgs::msg::Odometry::SharedPtr msg) { estimates_.push_back(*msg); });
@@ -242,6 +245,8 @@ protected:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr clusters_pub_;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr contacts_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimate_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr released_sub_;
+    std::vector<nav_msgs::msg::Path> released_;
     rclcpp::executors::SingleThreadedExecutor exec_;
     std::vector<nav_msgs::msg::Path> contacts_;
     std::vector<nav_msgs::msg::Path> sightings_;
@@ -336,6 +341,10 @@ TEST_F(ObjectTrackerToiContactTest, TrackReleasedAtAnInvestigatedTargetReportsIt
     EXPECT_EQ(last.header.stamp.nanosec, track_nanosec);
     EXPECT_NEAR(last.pose.position.x, CAMERA_X + TARGET_RANGE, 1.0);
     EXPECT_NEAR(last.pose.position.y, CAMERA_Y, 1.0);
+    ASSERT_EQ(released_.size(), 1u);
+    EXPECT_EQ(released_.front().poses.front().header.stamp.sec, track_sec);
+    EXPECT_EQ(released_.front().poses.front().header.stamp.nanosec, track_nanosec);
+    EXPECT_NEAR(released_.front().poses.front().pose.position.x, last.pose.position.x, 1e-6);
 }
 
 TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTargetReportsItThere) {
@@ -380,6 +389,28 @@ TEST_F(ObjectTrackerToiContactTest, LidarTrackedTargetHiddenByAnInvestigatedOneI
         EXPECT_EQ(p.header.stamp.sec, track_sec);
         EXPECT_NEAR(p.pose.position.x, CAMERA_X + far, 1.0);
         EXPECT_NEAR(p.pose.position.y, CAMERA_Y, 1.0);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, CameraTrackedTargetHiddenByAMuchNearerInvestigatedOneIsNotReleasedThere) {
+    constexpr double far = 40.0;
+    constexpr double near = 15.0;
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + near, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {far});
+    ASSERT_FALSE(contacts_.empty());
+    contacts_.clear();
+
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({{9, CAMERA_X + near, CAMERA_Y}});
+        PublishDetections({0.0}, {near});
+        Spin(100ms);
+    }
+
+    EXPECT_TRUE(released_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_GT(contact.poses.front().pose.position.x, CAMERA_X + 0.75 * far);
     }
 }
 

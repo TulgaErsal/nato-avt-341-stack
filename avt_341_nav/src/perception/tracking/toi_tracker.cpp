@@ -19,10 +19,12 @@ ToiTracker::ToiTracker(
     const ObjectTrackerSettings& params,
     const core::CoordTransformer& coord_transformer,
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher,
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher)
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_released_publisher)
     : ObjectTracker(node, target_class, params, coord_transformer,
                     std::move(leader_odom_publisher)),
-      target_contacts_publisher_(std::move(target_contacts_publisher)) {
+      target_contacts_publisher_(std::move(target_contacts_publisher)),
+      target_released_publisher_(std::move(target_released_publisher)) {
 }
 
 void ToiTracker::Reset() {
@@ -72,7 +74,7 @@ void ToiTracker::OnOtherDetections(const TrackerSensorContext& context,
     }
 }
 
-void ToiTracker::PublishTargetContact() {
+nav_msgs::msg::Path ToiTracker::TargetContactMessage() const {
     geometry_msgs::msg::PoseStamped contact_pose;
     contact_pose.header.stamp = rclcpp::Time(track_start_ns_, node_->get_clock()->get_clock_type());
     contact_pose.header.frame_id = target_class_;
@@ -83,8 +85,11 @@ void ToiTracker::PublishTargetContact() {
     contact_msg.header.stamp = node_->get_clock()->now();
     contact_msg.header.frame_id = "map";
     contact_msg.poses.push_back(contact_pose);
+    return contact_msg;
+}
 
-    target_contacts_publisher_->publish(contact_msg);
+void ToiTracker::PublishTargetContact() {
+    target_contacts_publisher_->publish(TargetContactMessage());
     RCLCPP_INFO(logger_,
                 "Published target contact \"%s\" at (%.2f, %.2f, %.2f).",
                 target_class_.c_str(),
@@ -96,6 +101,9 @@ void ToiTracker::PublishTargetContact() {
 void ToiTracker::OnExcludedTargetReleased() {
     if (published_track_start_ns_ == track_start_ns_ && track_start_ns_ != 0) {
         PublishTargetContact();
+        if (target_released_publisher_) {
+            target_released_publisher_->publish(TargetContactMessage());
+        }
     }
 }
 

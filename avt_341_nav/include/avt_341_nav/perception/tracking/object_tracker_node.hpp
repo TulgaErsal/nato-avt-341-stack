@@ -348,6 +348,7 @@ class ObjectTrackerNode : public rclcpp::Node {
     // -------------------------------------------------------------------------
 
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_released_publisher_;
 
     /** @brief Targets the mission manager has investigated, handed to every
      *         ToiTracker so it leaves them alone. */

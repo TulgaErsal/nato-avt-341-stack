@@ -861,6 +861,7 @@ bool ObjectTracker::IsExcludedDetection(
 
 bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
     std::optional<double> track_column;
+    double track_range = 0.0;
     if (filter_initialized_ && has_tracked_target_) {
         const Eigen::Vector3d track_cam = coord_transformer_.Transform(
             frame_ids_.Map(), frame_ids_.Camera(),
@@ -876,6 +877,7 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
             if (u >= -margin &&
                 u <= static_cast<double>(camera_info_->width) + margin) {
                 track_column = u;
+                track_range = track_cam.z();
             }
         }
         if (!track_column) {
@@ -919,11 +921,17 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
     }
 
     if (excluded_on_track != nullptr && excluded_column_dist < best_column_dist) {
-        excluded_track_position_ = EstimateMapPosition(
+        const Eigen::Vector3d excluded_position = EstimateMapPosition(
             *excluded_on_track, context,
             params_.tracking.target_association_max_dist);
-        release_excluded_track_ = true;
-        return false;
+        const double excluded_range = coord_transformer_.Transform(
+            frame_ids_.Map(), frame_ids_.Camera(), excluded_position).z();
+        if (excluded_range >= 0.5 * track_range &&
+            excluded_range <= 2.0 * track_range) {
+            excluded_track_position_ = excluded_position;
+            release_excluded_track_ = true;
+            return false;
+        }
     }
 
     if (best == nullptr) {

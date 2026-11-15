@@ -35,7 +35,8 @@ class ToiTracker : public ObjectTracker {
                const ObjectTrackerSettings& params,
                const core::CoordTransformer& coord_transformer,
                rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher,
-               rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher);
+               rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
+               rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_released_publisher = nullptr);
 
     ObjectTrackerType GetTrackerType() const override {
         return ObjectTrackerType::Toi;
@@ -79,10 +80,12 @@ class ToiTracker : public ObjectTracker {
     }
 
    private:
+    nav_msgs::msg::Path TargetContactMessage() const;
     void PublishTargetContact();
 
     /** @brief Shared target contacts publisher owned by the node. */
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_released_publisher_;
 
     // Target contacts (encircle trigger)
     // -------------------------------------------------------------------------
