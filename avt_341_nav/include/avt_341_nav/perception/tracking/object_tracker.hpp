@@ -186,7 +186,9 @@ class ObjectTracker {
 
     /**
      * @brief True if @p detection shows an excluded target. With an
-     * associated obstacle marker, the marker's position alone decides.
+     * associated obstacle marker, the marker's position alone decides. While
+     * a target is tracked (and without @p always_check_bearing), a marker is
+     * associated as for the tracked target (target_association_max_dist).
      * Without one, the camera range estimate decides, and while nothing is
      * tracked (or with @p always_check_bearing) so does the bearing: an excluded position projecting inside the
      * bounding-box columns at a range within a factor of 2 of the camera range
@@ -207,7 +209,8 @@ class ObjectTracker {
     /** @brief Map position of a detection: its associated obstacle marker's,
      *         or else the camera range estimate. */
     Eigen::Vector3d EstimateMapPosition(const vision_msgs::msg::Detection2D& detection,
-                                        const TrackerSensorContext& context);
+                                        const TrackerSensorContext& context,
+                                        double max_half_diagonals);
 
     /** @brief Obstacle detector marker associated with a camera detection. */
     struct MarkerMatch {

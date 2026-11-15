@@ -47,7 +47,8 @@ void ToiTracker::OnOtherDetections(const TrackerSensorContext& context,
             detection.bbox.center.position.y == selected->bbox.center.position.y) {
             continue;
         }
-        const Eigen::Vector3d position = EstimateMapPosition(detection, context);
+        const Eigen::Vector3d position = EstimateMapPosition(
+            detection, context, params_.tracking.obstacle_association_max_dist);
         if (IsExcludedDetection(detection, context, true) ||
             std::hypot(position.x() - bounding_box_centroid_filtered_.x(),
                        position.y() - bounding_box_centroid_filtered_.y()) <=

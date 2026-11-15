@@ -803,11 +803,11 @@ bool ObjectTracker::IsExcludedPosition(const Eigen::Vector3d& map_position) cons
 
 Eigen::Vector3d ObjectTracker::EstimateMapPosition(
     const vision_msgs::msg::Detection2D& detection,
-    const TrackerSensorContext& context) {
+    const TrackerSensorContext& context, double max_half_diagonals) {
     if (context.has_obstacle_markers && context.obstacle_markers) {
         if (const auto match =
                 AssociateMarker(detection, *context.obstacle_markers,
-                                params_.tracking.obstacle_association_max_dist)) {
+                                max_half_diagonals)) {
             return coord_transformer_.Transform(frame_ids_.Camera(),
                                                 frame_ids_.Map(), match->pos_cam);
         }
@@ -825,10 +825,13 @@ bool ObjectTracker::IsExcludedDetection(
     if (ExcludedPositions().empty()) {
         return false;
     }
+    const bool tracking = filter_initialized_ && has_tracked_target_;
     if (context.has_obstacle_markers && context.obstacle_markers) {
         if (const auto match =
                 AssociateMarker(detection, *context.obstacle_markers,
-                                params_.tracking.obstacle_association_max_dist)) {
+                                tracking && !always_check_bearing
+                                    ? params_.tracking.target_association_max_dist
+                                    : params_.tracking.obstacle_association_max_dist)) {
             return IsExcludedPosition(coord_transformer_.Transform(
                 frame_ids_.Camera(), frame_ids_.Map(), match->pos_cam));
         }
@@ -839,7 +842,7 @@ bool ObjectTracker::IsExcludedDetection(
             frame_ids_.Camera(), frame_ids_.Map(), camera_estimate))) {
         return true;
     }
-    if (filter_initialized_ && has_tracked_target_ && !always_check_bearing) {
+    if (tracking && !always_check_bearing) {
         return false;
     }
     for (const auto& excluded : ExcludedPositions()) {
@@ -886,11 +889,13 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
 
     const vision_msgs::msg::Detection2D* best = nullptr;
     double best_column_dist = std::numeric_limits<double>::infinity();
+    const bool lidar_ranged = state_ == TrackerState::FULL_TRACKING ||
+                              state_ == TrackerState::LIDAR_ONLY_TRACKING;
     const vision_msgs::msg::Detection2D* excluded_on_track = nullptr;
     double excluded_column_dist = std::numeric_limits<double>::infinity();
     for (const auto& detection : candidate_detections_) {
         if (IsExcludedDetection(detection, context)) {
-            if (track_column) {
+            if (track_column && !lidar_ranged) {
                 const double column_dist =
                     std::abs(*track_column - detection.bbox.center.position.x);
                 if (column_dist <= detection.bbox.size_x / 2.0 &&
@@ -914,7 +919,9 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
     }
 
     if (excluded_on_track != nullptr && excluded_column_dist < best_column_dist) {
-        excluded_track_position_ = EstimateMapPosition(*excluded_on_track, context);
+        excluded_track_position_ = EstimateMapPosition(
+            *excluded_on_track, context,
+            params_.tracking.target_association_max_dist);
         release_excluded_track_ = true;
         return false;
     }

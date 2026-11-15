@@ -357,6 +357,60 @@ TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTarg
     EXPECT_NEAR(last.pose.position.y, CAMERA_Y, 1.0);
 }
 
+TEST_F(ObjectTrackerToiContactTest, LidarTrackedTargetHiddenByAnInvestigatedOneInFrontKeepsItsTrack) {
+    constexpr double far = 30.0;
+    constexpr double near = 15.0;
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + near, CAMERA_Y + 0.3);
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {far}, {CAMERA_X + far, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    const int32_t track_sec = contacts_.back().poses.front().header.stamp.sec;
+    contacts_.clear();
+
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({{9, CAMERA_X + near, CAMERA_Y + 0.3}, {7, CAMERA_X + far, CAMERA_Y}});
+        PublishDetections({0.3}, {near});
+        Spin(100ms);
+    }
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.poses.front();
+        EXPECT_EQ(p.header.stamp.sec, track_sec);
+        EXPECT_NEAR(p.pose.position.x, CAMERA_X + far, 1.0);
+        EXPECT_NEAR(p.pose.position.y, CAMERA_Y, 1.0);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, InvestigatedMarkerBesideACameraTrackedTargetDoesNotReleaseIt) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = contacts_.back().poses.front().header.stamp;
+    contacts_.clear();
+
+    // An investigated target 8 m nearer projects about three detection
+    // half-diagonals to the side of the tracked target's box.
+    const Obstacle investigated{9, CAMERA_X + 12.0, CAMERA_Y - 3.0};
+    PublishInvestigated(investigated.x, investigated.y);
+    Spin(100ms);
+    for (int i = 0; i < 30; ++i) {
+        PublishObstacles({investigated});
+        PublishDetections({0.0});
+        Spin(100ms);
+    }
+
+    EXPECT_GE(contacts_.size(), 2u);
+    for (const auto& contact : contacts_) {
+        EXPECT_EQ(rclcpp::Time(contact.poses.front().header.stamp), rclcpp::Time(track));
+        const auto& p = contact.poses.front().pose.position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 1.0);
+        EXPECT_NEAR(p.y, CAMERA_Y, 1.0);
+    }
+}
+
 TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetAloneIsNotTracked) {
     PublishCameraInfo();
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
