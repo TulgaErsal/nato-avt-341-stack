@@ -64,6 +64,8 @@ struct Contact {
     bool reported_while_allowed = false;  // last report came while investigation was allowed
     geometry_msgs::msg::Point held_position;
     bool has_held_position = false;
+    std::string merge_target;  // investigated or dismissed contact a held report of its track landed on
+    double merge_report_sec = 0.0;
 };
 
 // A task that ran to completion and how long it took, reported in the module status.
@@ -216,6 +218,9 @@ class MissionManager{
   private:
     bool acceptTrackedMove(Contact & contact, const geometry_msgs::msg::PoseStamped & pose);
     void removeContactTasks(const std::string & name);
+    void mergeContact(Contact & contact, const Contact & known);
+    bool clearOfTeamVehicles(const geometry_msgs::msg::Point & point,
+                             const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) const;
 
     MissionManagerParams params_;
     std::vector<MissionPoint> mission_data;
@@ -230,7 +235,7 @@ class MissionManager{
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     int contact_count_ = 0;
-    std::set<int64_t> team_vehicle_tracks_;
+    std::map<int64_t, int> team_vehicle_tracks_;  // track start -> consecutive reports clear of the team
     bool autonomy_enabled_ = true;
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;

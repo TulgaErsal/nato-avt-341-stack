@@ -1514,6 +1514,8 @@ class TeamVehicleLineOfSightTest : public ToiInvestigationTest {
         params_.toi.team_vehicle_line_of_sight_lateral = 3.5;
         params_.toi.team_vehicle_line_of_sight_range_fraction = 0.35;
         params_.toi.team_vehicle_line_of_sight_min_range = 7.0;
+        params_.toi.team_vehicle_track_clear_reports = 2;
+        params_.toi.team_vehicle_track_clear_lateral = 7.0;
         params_.toi.contact_jump_distance = 0.0;
     }
 };
@@ -1549,6 +1551,30 @@ TEST_F(TeamVehicleLineOfSightTest, TrackFirstSeenAtATeamVehicleStaysIgnoredWhenI
 
     manager->handleContacts(MakeContact("car", 60.0, 12.0, 200), team_);
     EXPECT_TRUE(HasContactTask(*manager));
+}
+
+TEST_F(TeamVehicleLineOfSightTest, TrackFirstSeenAtATeamVehicleIsATargetOnceItStaysClearOfIt)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 48.0, 1.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 60.0, 12.0, 100), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+    manager->handleContacts(MakeContact("car", 60.5, 12.0, 100), team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(60.5, 12)"));
+}
+
+TEST_F(TeamVehicleLineOfSightTest, TrackOfATeamVehicleStaysIgnoredWhileItsReportsReturnToTheLineOfSight)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 48.0, 1.0, 100), team_);
+    for (int i = 0; i < 3; ++i) {
+        manager->handleContacts(MakeContact("car", 60.0, 12.0, 100), team_);
+        manager->handleContacts(MakeContact("car", 30.0, -1.0, 100), team_);
+    }
+    EXPECT_FALSE(HasContactTask(*manager));
 }
 
 TEST_F(TeamVehicleLineOfSightTest, PendingContactWhoseTrackReachesATeamVehicleIsForgotten)
@@ -1609,6 +1635,7 @@ TEST_F(ToiInvestigationTest, TrackThatSettlesOnAnInvestigatedTargetIsMergedIntoI
 {
     params_.toi.same_object_distance_threshold = 5.0;
     params_.toi.contact_jump_distance = 5.0;
+    params_.toi.contact_merge_confirm_timeout = 2.0;
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
     manager->markContactInvestigated("car_1");
@@ -1618,6 +1645,8 @@ TEST_F(ToiInvestigationTest, TrackThatSettlesOnAnInvestigatedTargetIsMergedIntoI
     manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
     ASSERT_TRUE(HasContactTask(*manager));
     manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+    manager->handleContacts(MakeContact("car", 51.5, 31.0, 200), team_);
 
     EXPECT_FALSE(HasContactTask(*manager));
     EXPECT_EQ(Tasks(*manager).size(), 1u);
@@ -1625,10 +1654,94 @@ TEST_F(ToiInvestigationTest, TrackThatSettlesOnAnInvestigatedTargetIsMergedIntoI
     EXPECT_FALSE(HasContactTask(*manager));
 }
 
+TEST_F(ToiInvestigationTest, SingleReportOfATrackAtAnInvestigatedTargetDoesNotMergeItsContact)
+{
+    params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.contact_jump_distance = 0.0;
+    params_.toi.contact_merge_confirm_timeout = 2.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->markContactInvestigated("car_1");
+    manager->resetTaskList(false);
+    Busy(*manager);
+
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 62.5, 38.0, 200), team_);
+    manager->confirmPendingContacts(team_);
+
+    const auto tasks = Tasks(*manager);
+    ASSERT_EQ(tasks.size(), 3u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(62.5, 38)"));
+    EXPECT_EQ(Investigated().poses.size(), 1u);
+}
+
+TEST_F(ToiInvestigationTest, TrackWhoseLastReportIsAtAnInvestigatedTargetIsMergedIntoIt)
+{
+    params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.contact_jump_distance = 0.0;
+    params_.toi.contact_merge_confirm_timeout = 0.2;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->markContactInvestigated("car_1");
+    manager->resetTaskList(false);
+    Busy(*manager);
+
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+    manager->confirmPendingContacts(team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    ASSERT_TRUE(manager->hasPendingContacts());
+    manager->confirmPendingContacts(team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+    EXPECT_EQ(Tasks(*manager).size(), 1u);
+    EXPECT_FALSE(manager->hasPendingContacts());
+}
+
+TEST_F(ToiInvestigationTest, MergedInvestigationReleasesTheOverwatchVehicle)
+{
+    params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.contact_jump_distance = 0.0;
+    params_.toi.contact_merge_confirm_timeout = 0.0;
+    std::vector<avt_341_msgs::msg::Communication> sent;
+    auto comm_sub = node_->create_subscription<avt_341_msgs::msg::Communication>(
+        "avt_341/comm_messages", 100, [&sent](avt_341_msgs::msg::Communication::SharedPtr msg) { sent.push_back(*msg); });
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->markContactInvestigated("car_1");
+    manager->resetTaskList(false);
+    Busy(*manager);
+
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+    ASSERT_FALSE(HasContactTask(*manager));
+
+    std::optional<int> encircle_id;
+    bool completed = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!completed && std::chrono::steady_clock::now() < deadline) {
+        rclcpp::spin_some(node_);
+        encircle_id.reset();
+        for (const auto & msg : sent) {
+            if (msg.type == MissionMsgType::Overwatch && msg.receiver_name == "FEDA") {
+                encircle_id = msg.target_msg_id;
+            }
+            completed = completed || (encircle_id.has_value() && msg.type == MissionMsgType::TaskComplete &&
+                                      msg.sender_name == "MRZR" && msg.target_msg_id == *encircle_id);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(encircle_id.has_value());
+    EXPECT_TRUE(completed);
+}
+
 TEST_F(ToiInvestigationTest, TrackPassingNearAnInvestigatedTargetOfAnotherClassIsNotMerged)
 {
     params_.toi.same_object_distance_threshold = 5.0;
     params_.toi.contact_jump_distance = 0.0;
+    params_.toi.contact_merge_confirm_timeout = 0.0;
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("truck", 50.0, 30.0, 100), team_);
     manager->markContactInvestigated("truck_1");

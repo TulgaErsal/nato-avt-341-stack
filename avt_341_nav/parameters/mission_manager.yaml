@@ -232,7 +232,7 @@ ros__parameters:
     team_vehicle_line_of_sight_lateral:
       type: double
       default_value: 3.5
-      description: "Target contacts within this planar distance [m] of the line of sight from the ego vehicle to another team vehicle, and within team_vehicle_line_of_sight_range_fraction of its range (at least team_vehicle_line_of_sight_min_range), are also ignored as that team vehicle: the camera's bearing to a target is good, its range estimate is not. A track with such a report before its contact's tasks exist is a team vehicle; its contact is forgotten and its later reports are ignored. 0 disables this gate."
+      description: "Target contacts within this planar distance [m] of the line of sight from the ego vehicle to another team vehicle, and within team_vehicle_line_of_sight_range_fraction of its range (at least team_vehicle_line_of_sight_min_range), are also ignored as that team vehicle: the camera's bearing to a target is good, its range estimate is not. A track with such a report before its contact's tasks exist is a team vehicle; its contact is forgotten and its later reports are ignored (see team_vehicle_track_clear_reports). 0 disables this gate, as does team_vehicle_exclusion_radius 0."
       validation:
         gt_eq<>: [ 0.0 ]
     team_vehicle_line_of_sight_range_fraction:
@@ -245,6 +245,24 @@ ros__parameters:
       type: double
       default_value: 7.0
       description: "Smallest range tolerance [m] of the line-of-sight team vehicle gate (see team_vehicle_line_of_sight_lateral)."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    team_vehicle_track_clear_reports:
+      type: int
+      default_value: 2
+      description: "A track ignored as a team vehicle is a target again after this many consecutive reports clear of every other team vehicle: outside team_vehicle_exclusion_radius of it and at least team_vehicle_track_clear_lateral off the line of sight to it. A target that is on the line of sight to a team vehicle when first reported is then investigated once the vehicles move on. 0 ignores the track for good."
+      validation:
+        gt_eq<>: [ 0 ]
+    team_vehicle_track_clear_lateral:
+      type: double
+      default_value: 7.0
+      description: "Smallest planar distance [m] off the line of sight from the ego vehicle to another team vehicle for a report to count as clear of it (see team_vehicle_track_clear_reports). The camera's bearing to a team vehicle is good, so its reports stay close to that line however wrong their range."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    contact_merge_confirm_timeout:
+      type: double
+      default_value: 2.0
+      description: "A track report that lands within same_object_distance_threshold of an investigated or dismissed contact of its class is held. The contact merges into it on the track's next report there, or when the track sends no other report for this long [s]: the tracker's last report of a track it releases at an investigated target. A report elsewhere cancels the merge. 0 merges on the first report."
       validation:
         gt_eq<>: [ 0.0 ]
     contact_jump_distance:
