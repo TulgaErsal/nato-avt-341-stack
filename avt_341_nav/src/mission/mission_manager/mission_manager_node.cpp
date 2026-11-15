@@ -35,6 +35,7 @@
 std::queue<avt_341_msgs::msg::Communication> comm_msgs;
 std::queue<geometry_msgs::msg::PoseStamped> reached_goals;
 std::queue<nav_msgs::msg::Path> contacts;
+std::queue<nav_msgs::msg::Path> released_targets;
 
 nav_msgs::msg::Odometry odom;
 bool odom_rcvd = false;
@@ -194,6 +195,10 @@ std::map<std::string, nav_msgs::msg::Odometry> FormationOdomsInMapFrame() {
 }
 
 // Receive information on target contacts
+void TargetReleasedCallback(nav_msgs::msg::Path::SharedPtr msg) {
+  released_targets.push(*msg);
+}
+
 void TargetContactsCallback(nav_msgs::msg::Path::SharedPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
   // Handle detection of potential targets of interest
@@ -400,6 +405,7 @@ int main(int argc, char **argv) {
             [](std_msgs::msg::Bool::SharedPtr msg) { mgr->setAutonomyEnabled(msg->data); });
     }
     auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
+    auto released_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_released", 10, TargetReleasedCallback);
     auto veh1_sub = get_veh_odom_sub(
         params.vehicle_namespaces, 0, params.use_avt_tracker,
         my_name);
@@ -449,6 +455,7 @@ int main(int argc, char **argv) {
           mgr->rcvd_leader_odom = false;
           while(!reached_goals.empty()) reached_goals.pop();
           while(!contacts.empty()) contacts.pop();
+          while(!released_targets.empty()) released_targets.pop();
           std_msgs::msg::String reset_ack_msg;
           reset_ack_msg.data = avt_341_nav::node::NodeType::Mission;
           reset_ack_pub->publish(reset_ack_msg);
@@ -489,6 +496,10 @@ int main(int argc, char **argv) {
             contacts.pop();
             mgr->handleContacts(rcvd_msg, team_poses);
           }
+        }
+        while(!released_targets.empty()){
+          mgr->handleTargetReleased(released_targets.front());
+          released_targets.pop();
         }
         if(mgr->hasPendingContacts()){
           mgr->confirmPendingContacts(FormationOdomsInMapFrame());

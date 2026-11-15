@@ -65,7 +65,6 @@ struct Contact {
     geometry_msgs::msg::Point held_position;
     bool has_held_position = false;
     std::string merge_target;  // investigated or dismissed contact a held report of its track landed on
-    double merge_report_sec = 0.0;
 };
 
 // A task that ran to completion and how long it took, reported in the module status.
@@ -130,6 +129,8 @@ class MissionManager{
 
     // internal messages
     void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
+    // The tracker released these tracks at an investigated or dismissed target (avt_341/target_released).
+    void handleTargetReleased(const nav_msgs::msg::Path &);
     bool hasPendingContacts() const;
     void confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> &);
     void markContactInvestigated(const std::string & name);
@@ -219,6 +220,8 @@ class MissionManager{
     bool acceptTrackedMove(Contact & contact, const geometry_msgs::msg::PoseStamped & pose);
     void removeContactTasks(const std::string & name);
     void mergeContact(Contact & contact, const Contact & known);
+    std::vector<Contact>::iterator findMergeTarget(const Contact & contact, const geometry_msgs::msg::Point & point);
+    void cancelMergesElsewhere(int64_t track_start_ns, const geometry_msgs::msg::Point & point);
     bool clearOfTeamVehicles(const geometry_msgs::msg::Point & point,
                              const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) const;
 

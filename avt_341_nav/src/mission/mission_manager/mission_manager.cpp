@@ -731,6 +731,7 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
         });
 
         const bool track_matched = existing != mission_contacts.end();
+        cancelMergesElsewhere(track_start_ns, pose.pose.position);
 
         if (const auto team_track = team_vehicle_tracks_.find(track_start_ns); team_track != team_vehicle_tracks_.end()) {
             const int clear_reports = params_.toi.team_vehicle_track_clear_reports;
@@ -800,23 +801,18 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
                 existing->track_start_ns = track_start_ns;
             }
             if (track_matched && !existing->investigated && !existing->dismissed) {
-                const double merge_sq = params_.toi.same_object_distance_threshold * params_.toi.same_object_distance_threshold;
-                const auto known = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
-                    return &c != &*existing && (c.investigated || c.dismissed) && c.target_class == existing->target_class &&
-                        PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= merge_sq;
-                });
+                const auto known = findMergeTarget(*existing, pose.pose.position);
                 if (known != mission_contacts.end()) {
-                    if (existing->merge_target == known->name || params_.toi.contact_merge_confirm_timeout <= 0.0) {
+                    if (existing->merge_target == known->name) {
                         RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" reached (%.2f, %.2f) again.",
                             existing->name.c_str(), pose.pose.position.x, pose.pose.position.y);
                         mergeContact(*existing, *known);
                     } else {
                         RCLCPP_INFO(node_->get_logger(),
-                            "Contact \"%s\" reached (%.2f, %.2f), %s \"%s\"; merging it unless its track reports elsewhere.",
+                            "Contact \"%s\" reached (%.2f, %.2f), %s \"%s\"; merging it if its track confirms it.",
                             existing->name.c_str(), pose.pose.position.x, pose.pose.position.y,
                             known->investigated ? "the investigated" : "the dismissed", known->name.c_str());
                         existing->merge_target = known->name;
-                        existing->merge_report_sec = node_->now().seconds();
                     }
                     continue;
                 }
@@ -885,18 +881,60 @@ bool MissionManager::clearOfTeamVehicles(const geometry_msgs::msg::Point & point
     if (ego == veh_poses.end()) {
         return false;
     }
-    const double radius_sq = params_.toi.team_vehicle_exclusion_radius * params_.toi.team_vehicle_exclusion_radius;
-    for (const auto & [name, odom] : veh_poses) {
-        if (name == my_name) {
-            continue;
-        }
-        if (PosePlanarDistanceSq(point, odom.pose.pose.position) <= radius_sq ||
-            LineOfSightLateral(point, ego->second.pose.pose.position, odom.pose.pose.position) <
-                params_.toi.team_vehicle_track_clear_lateral) {
-            return false;
+    auto others = veh_poses;
+    others.erase(my_name);
+    const double scale = params_.toi.team_vehicle_track_clear_scale;
+    return !FindVehicleWithin(point, others, params_.toi.team_vehicle_exclusion_radius).has_value() &&
+        !FindVehicleOnLineOfSight(point, ego->second.pose.pose.position, others,
+                                  scale * params_.toi.team_vehicle_line_of_sight_lateral,
+                                  scale * params_.toi.team_vehicle_line_of_sight_range_fraction,
+                                  scale * params_.toi.team_vehicle_line_of_sight_min_range).has_value();
+}
+
+std::vector<Contact>::iterator MissionManager::findMergeTarget(const Contact & contact,
+                                                               const geometry_msgs::msg::Point & point) {
+    const double merge_sq = params_.toi.same_object_distance_threshold * params_.toi.same_object_distance_threshold;
+    return std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+        return &c != &contact && (c.investigated || c.dismissed) && c.target_class == contact.target_class &&
+            PosePlanarDistanceSq(c.pose.pose.position, point) <= merge_sq;
+    });
+}
+
+void MissionManager::cancelMergesElsewhere(int64_t track_start_ns, const geometry_msgs::msg::Point & point) {
+    if (track_start_ns == 0) {
+        return;
+    }
+    for (auto & contact : mission_contacts) {
+        if (contact.track_start_ns == track_start_ns && !contact.merge_target.empty()) {
+            const auto known = findMergeTarget(contact, point);
+            if (known == mission_contacts.end() || known->name != contact.merge_target) {
+                RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track reported (%.2f, %.2f); not merging it.",
+                            contact.name.c_str(), point.x, point.y);
+                contact.merge_target.clear();
+            }
         }
     }
-    return true;
+}
+
+void MissionManager::handleTargetReleased(const nav_msgs::msg::Path & released) {
+    const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
+    for (const auto & pose : released.poses) {
+        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
+        const auto contact = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
+                !c.investigated && !c.dismissed &&
+                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
+        });
+        if (contact == mission_contacts.end()) {
+            continue;
+        }
+        const auto known = findMergeTarget(*contact, pose.pose.position);
+        if (known != mission_contacts.end()) {
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track was released at (%.2f, %.2f).",
+                        contact->name.c_str(), pose.pose.position.x, pose.pose.position.y);
+            mergeContact(*contact, *known);
+        }
+    }
 }
 
 void MissionManager::removeContactTasks(const std::string & name) {
@@ -943,8 +981,8 @@ void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::
 
 bool MissionManager::hasPendingContacts() const {
     return std::any_of(mission_contacts.begin(), mission_contacts.end(), [](const Contact & c) {
-        return !c.merge_target.empty() ||
-            (c.is_new && c.track_start_ns != 0 && c.reported_while_allowed && !c.investigated && !c.dismissed);
+        return c.is_new && c.track_start_ns != 0 && c.reported_while_allowed && !c.investigated && !c.dismissed &&
+            c.merge_target.empty();
     });
 }
 
@@ -952,22 +990,7 @@ bool MissionManager::hasPendingContacts() const {
 // known only from sightings (camera-only, possibly a single frame) needs a second report instead.
 void MissionManager::confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
     for (auto & contact : mission_contacts) {
-        if (!contact.merge_target.empty()) {
-            if (node_->now().seconds() - contact.merge_report_sec < params_.toi.contact_merge_confirm_timeout) {
-                continue;
-            }
-            const auto known = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
-                return c.name == contact.merge_target;
-            });
-            if (known != mission_contacts.end()) {
-                RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": no other report of its track for %.1f s.",
-                    contact.name.c_str(), params_.toi.contact_merge_confirm_timeout);
-                mergeContact(contact, *known);
-                continue;
-            }
-            contact.merge_target.clear();
-        }
-        if (contact.is_new && contact.track_start_ns != 0 && contact.reported_while_allowed && !contact.investigated &&
+        if (contact.merge_target.empty() && contact.is_new && contact.track_start_ns != 0 && contact.reported_while_allowed && !contact.investigated &&
             !contact.dismissed) {
             maybeCreateToiTasks(contact, veh_poses);
         }

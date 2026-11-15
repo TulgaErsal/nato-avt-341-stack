@@ -35,9 +35,6 @@ std::optional<std::string> FindVehicleWithin(const geometry_msgs::msg::Point & p
                                              const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,
                                              double radius);
 
-double LineOfSightLateral(const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & observer,
-                          const geometry_msgs::msg::Point & vehicle);
-
 std::optional<std::string> FindVehicleOnLineOfSight(const geometry_msgs::msg::Point & point,
                                                     const geometry_msgs::msg::Point & observer,
                                                     const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,

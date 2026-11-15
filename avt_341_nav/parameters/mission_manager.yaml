@@ -250,21 +250,15 @@ ros__parameters:
     team_vehicle_track_clear_reports:
       type: int
       default_value: 2
-      description: "A track ignored as a team vehicle is a target again after this many consecutive reports clear of every other team vehicle: outside team_vehicle_exclusion_radius of it and at least team_vehicle_track_clear_lateral off the line of sight to it. A target that is on the line of sight to a team vehicle when first reported is then investigated once the vehicles move on. 0 ignores the track for good."
+      description: "A track ignored as a team vehicle is a target again after this many consecutive reports clear of every other team vehicle: outside team_vehicle_exclusion_radius of it and outside its line-of-sight gate scaled by team_vehicle_track_clear_scale. A target that is on the line of sight to a team vehicle when first reported is then investigated once the vehicles move on. 0 ignores the track for good."
       validation:
         gt_eq<>: [ 0 ]
-    team_vehicle_track_clear_lateral:
-      type: double
-      default_value: 7.0
-      description: "Smallest planar distance [m] off the line of sight from the ego vehicle to another team vehicle for a report to count as clear of it (see team_vehicle_track_clear_reports). The camera's bearing to a team vehicle is good, so its reports stay close to that line however wrong their range."
-      validation:
-        gt_eq<>: [ 0.0 ]
-    contact_merge_confirm_timeout:
+    team_vehicle_track_clear_scale:
       type: double
       default_value: 2.0
-      description: "A track report that lands within same_object_distance_threshold of an investigated or dismissed contact of its class is held. The contact merges into it on the track's next report there, or when the track sends no other report for this long [s]: the tracker's last report of a track it releases at an investigated target. A report elsewhere cancels the merge. 0 merges on the first report."
+      description: "A report counts as clear of a team vehicle (see team_vehicle_track_clear_reports) outside the line-of-sight gate scaled by this factor: team_vehicle_line_of_sight_lateral, _range_fraction and _min_range all multiplied by it. A team vehicle's reports stay near its line of sight and its range however wrong the camera range; a target's leave once the vehicles move on."
       validation:
-        gt_eq<>: [ 0.0 ]
+        gt_eq<>: [ 1.0 ]
     contact_jump_distance:
       type: double
       default_value: 5.0

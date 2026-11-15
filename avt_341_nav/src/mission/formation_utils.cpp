@@ -1,7 +1,6 @@
 #include "avt_341_nav/mission/formation_utils.h"
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include "geometry_msgs/msg/pose.hpp"
 
 void ConvertQuaternionToRotMat(TQuat q, Matrix3x3 &R) {
@@ -55,19 +54,6 @@ std::optional<std::string> FindVehicleWithin(const geometry_msgs::msg::Point & p
     }
   }
   return closest;
-}
-
-double LineOfSightLateral(const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & observer,
-                          const geometry_msgs::msg::Point & vehicle){
-  const double ux = vehicle.x - observer.x;
-  const double uy = vehicle.y - observer.y;
-  const double range = std::hypot(ux, uy);
-  const double px = point.x - observer.x;
-  const double py = point.y - observer.y;
-  if(range <= 0.0 || px * ux + py * uy <= 0.0){
-    return std::numeric_limits<double>::infinity();
-  }
-  return std::abs(ux * py - uy * px) / range;
 }
 
 std::optional<std::string> FindVehicleOnLineOfSight(const geometry_msgs::msg::Point & point,
