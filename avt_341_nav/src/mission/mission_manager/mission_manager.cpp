@@ -798,6 +798,11 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
 
         if (existing != mission_contacts.end()) {
             if (track_start_ns != 0) {
+                if (existing->track_start_ns != track_start_ns && !existing->merge_target.empty()) {
+                    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": a new track reports it; not merging it.",
+                                existing->name.c_str());
+                    existing->merge_target.clear();
+                }
                 existing->track_start_ns = track_start_ns;
             }
             if (track_matched && !existing->investigated && !existing->dismissed) {
@@ -926,14 +931,20 @@ void MissionManager::handleTargetReleased(const nav_msgs::msg::Path & released) 
                 PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
         });
         if (contact == mission_contacts.end()) {
+            RCLCPP_DEBUG(node_->get_logger(), "Release of a \"%s\" track at (%.2f, %.2f) matches no open contact.",
+                         pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y);
             continue;
         }
         const auto known = findMergeTarget(*contact, pose.pose.position);
-        if (known != mission_contacts.end()) {
-            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track was released at (%.2f, %.2f).",
-                        contact->name.c_str(), pose.pose.position.x, pose.pose.position.y);
-            mergeContact(*contact, *known);
+        if (known == mission_contacts.end()) {
+            RCLCPP_DEBUG(node_->get_logger(),
+                         "Contact \"%s\": its track was released at (%.2f, %.2f), away from investigated targets.",
+                         contact->name.c_str(), pose.pose.position.x, pose.pose.position.y);
+            continue;
         }
+        RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track was released at (%.2f, %.2f).",
+                    contact->name.c_str(), pose.pose.position.x, pose.pose.position.y);
+        mergeContact(*contact, *known);
     }
 }
 
@@ -990,9 +1001,18 @@ bool MissionManager::hasPendingContacts() const {
 // known only from sightings (camera-only, possibly a single frame) needs a second report instead.
 void MissionManager::confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
     for (auto & contact : mission_contacts) {
-        if (contact.merge_target.empty() && contact.is_new && contact.track_start_ns != 0 && contact.reported_while_allowed && !contact.investigated &&
-            !contact.dismissed) {
+        if (!contact.is_new || contact.track_start_ns == 0 || !contact.reported_while_allowed || contact.investigated ||
+            contact.dismissed) {
+            continue;
+        }
+        if (contact.merge_target.empty()) {
             maybeCreateToiTasks(contact, veh_poses);
+        } else if (contact.merge_target != contact.merge_hold_logged &&
+                   node_->now().seconds() - contact.first_seen_sec >= params_.toi.contact_trigger_delay) {
+            RCLCPP_INFO(node_->get_logger(),
+                "Contact \"%s\" not confirmed: its track last reported it at the investigated or dismissed \"%s\".",
+                contact.name.c_str(), contact.merge_target.c_str());
+            contact.merge_hold_logged = contact.merge_target;
         }
     }
 }

@@ -65,6 +65,7 @@ struct Contact {
     geometry_msgs::msg::Point held_position;
     bool has_held_position = false;
     std::string merge_target;  // investigated or dismissed contact a held report of its track landed on
+    std::string merge_hold_logged;
 };
 
 // A task that ran to completion and how long it took, reported in the module status.

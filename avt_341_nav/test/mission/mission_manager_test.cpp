@@ -1741,6 +1741,27 @@ TEST_F(ToiInvestigationTest, TrackReportingFarAwayCancelsItsPendingMerge)
     EXPECT_TRUE(std::any_of(tasks.begin(), tasks.end(), [](const std::string & t) { return Has(t, "car_2"); }));
 }
 
+TEST_F(ToiInvestigationTest, HeldMergeOfAnEndedTrackIsNotCompletedByTheNextTrack)
+{
+    params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.contact_jump_distance = 0.0;
+    params_.toi.track_match_distance = 30.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->markContactInvestigated("car_1");
+    manager->resetTaskList(false);
+    Busy(*manager);
+
+    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 61.5, 38.0, 300), team_);
+    manager->handleContacts(MakeContact("car", 51.0, 31.0, 300), team_);
+    EXPECT_EQ(Investigated().poses.size(), 1u);
+
+    manager->handleContacts(MakeContact("car", 51.5, 31.0, 300), team_);
+    EXPECT_EQ(Investigated().poses.size(), 2u);
+}
+
 TEST_F(ToiInvestigationTest, MergedInvestigationReleasesTheOverwatchVehicle)
 {
     params_.toi.same_object_distance_threshold = 5.0;
