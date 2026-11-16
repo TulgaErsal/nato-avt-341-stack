@@ -82,7 +82,13 @@ protected:
 
         exec_.add_node(tracking_node_);
         exec_.add_node(helper_node_);
+        SetReleaseTime(0.5);
         Spin(300ms);
+    }
+
+    void SetReleaseTime(double seconds) {
+        tracking_node_->set_parameter(
+            rclcpp::Parameter("target_selection.investigated_toi_release_time", seconds));
     }
 
     void TearDown() override {
@@ -306,7 +312,7 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetIsReleasedForTheNextOne) {
     EXPECT_NEAR(contacts_.back().poses.front().pose.position.y, CAMERA_Y, 0.5);
 
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
-    Spin(100ms);
+    Spin(800ms);
     contacts_.clear();
     TrackFrames({0.0, OTHER_Y_OFFSET}, 30);
 
@@ -333,7 +339,7 @@ TEST_F(ObjectTrackerToiContactTest, TrackReleasedAtAnInvestigatedTargetReportsIt
     contacts_.clear();
 
     PublishInvestigated(CAMERA_X + TARGET_RANGE + 2.0, CAMERA_Y);
-    TrackFrames({0.0}, 3);
+    TrackFrames({0.0}, 8);
 
     ASSERT_EQ(contacts_.size(), 1u);
     const auto& last = contacts_.front().poses.front();
@@ -347,6 +353,45 @@ TEST_F(ObjectTrackerToiContactTest, TrackReleasedAtAnInvestigatedTargetReportsIt
     EXPECT_NEAR(released_.front().poses.front().pose.position.x, last.pose.position.x, 1e-6);
 }
 
+TEST_F(ObjectTrackerToiContactTest, TrackOnAnInvestigatedTargetIsReleasedOnlyAfterTheHoldTime) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 2.0, CAMERA_Y);
+    TrackFrames({0.0}, 3);
+    EXPECT_TRUE(released_.empty());
+    TrackFrames({0.0}, 5);
+    EXPECT_EQ(released_.size(), 1u);
+}
+
+TEST_F(ObjectTrackerToiContactTest, SingleFramesWithARangeErrorOntoAnInvestigatedTargetDoNotReleaseTheTrack) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().poses.front().header.stamp);
+
+    PublishInvestigated(CAMERA_X + 1.6 * TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    contacts_.clear();
+    for (int i = 0; i < 2; ++i) {
+        TrackFrames({0.0}, 1, {1.6 * TARGET_RANGE});
+        TrackFrames({0.0}, 7);
+    }
+    TrackFrames({0.0}, 10);
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_EQ(rclcpp::Time(contact.poses.front().header.stamp), track);
+        EXPECT_NEAR(contact.poses.front().pose.position.x, CAMERA_X + TARGET_RANGE, 1.0);
+    }
+}
+
 TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTargetReportsItThere) {
     PublishCameraInfo();
     Spin(100ms);
@@ -357,7 +402,7 @@ TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTarg
     contacts_.clear();
 
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
-    TrackFrames({0.0}, 5, {1.6 * TARGET_RANGE}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    TrackFrames({0.0}, 8, {1.6 * TARGET_RANGE}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
 
     ASSERT_FALSE(contacts_.empty());
     const auto& last = contacts_.back().poses.front();
@@ -462,7 +507,7 @@ TEST_F(ObjectTrackerToiContactTest, ContactsOfOneTrackShareItsStartStamp) {
     }
 
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
-    Spin(100ms);
+    Spin(800ms);
     contacts_.clear();
     TrackFrames({0.0, OTHER_Y_OFFSET}, 30);
     ASSERT_GE(contacts_.size(), 2u);

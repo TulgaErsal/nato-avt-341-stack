@@ -109,30 +109,40 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         return;
     }
 
-    if (filter_initialized_ &&
-        IsExcludedPosition(bounding_box_centroid_filtered_)) {
-        RCLCPP_INFO(logger_,
-                    "Target \"%s\" at (%.2f, %.2f) is excluded; releasing "
-                    "it.",
-                    target_class_.c_str(), bounding_box_centroid_filtered_.x(),
-                    bounding_box_centroid_filtered_.y());
-        OnExcludedTargetReleased();
-        Reset();
-        return;
-    }
-
+    const bool position_excluded =
+        filter_initialized_ &&
+        IsExcludedPosition(bounding_box_centroid_filtered_);
     const bool selected = has_detection_ && SelectDetection(context);
-    if (release_excluded_track_) {
-        release_excluded_track_ = false;
-        RCLCPP_INFO(logger_,
-                    "Target \"%s\" is seen at the excluded (%.2f, %.2f); "
-                    "releasing it.",
-                    target_class_.c_str(), excluded_track_position_.x(),
-                    excluded_track_position_.y());
-        bounding_box_centroid_filtered_ = excluded_track_position_;
-        OnExcludedTargetReleased();
-        Reset();
-        return;
+    const bool seen_excluded = std::exchange(release_excluded_track_, false);
+    if (position_excluded || seen_excluded) {
+        const rclcpp::Time now = node_->get_clock()->now();
+        if (!excluded_since_) {
+            excluded_since_ = now;
+        }
+        if ((now - *excluded_since_).seconds() >=
+            params_.target_selection.investigated_toi_release_time) {
+            if (position_excluded) {
+                RCLCPP_INFO(logger_,
+                            "Target \"%s\" at (%.2f, %.2f) is excluded; "
+                            "releasing it.",
+                            target_class_.c_str(),
+                            bounding_box_centroid_filtered_.x(),
+                            bounding_box_centroid_filtered_.y());
+            } else {
+                RCLCPP_INFO(logger_,
+                            "Target \"%s\" is seen at the excluded (%.2f, "
+                            "%.2f); releasing it.",
+                            target_class_.c_str(),
+                            excluded_track_position_.x(),
+                            excluded_track_position_.y());
+                bounding_box_centroid_filtered_ = excluded_track_position_;
+            }
+            OnExcludedTargetReleased();
+            Reset();
+            return;
+        }
+    } else if (selected) {
+        excluded_since_.reset();
     }
     if (fresh_detection && filter_initialized_ && has_tracked_target_) {
         OnOtherDetections(context, selected ? &detections_message_ : nullptr);
@@ -891,8 +901,9 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
 
     const vision_msgs::msg::Detection2D* best = nullptr;
     double best_column_dist = std::numeric_limits<double>::infinity();
-    const bool lidar_ranged = state_ == TrackerState::FULL_TRACKING ||
-                              state_ == TrackerState::LIDAR_ONLY_TRACKING;
+    const bool lidar_ranged = tracked_obstacle_id_ >= 0 &&
+                              (state_ == TrackerState::FULL_TRACKING ||
+                               state_ == TrackerState::LIDAR_ONLY_TRACKING);
     const vision_msgs::msg::Detection2D* excluded_on_track = nullptr;
     double excluded_column_dist = std::numeric_limits<double>::infinity();
     for (const auto& detection : candidate_detections_) {
@@ -974,6 +985,7 @@ void ObjectTracker::ResetTrackingState(const Eigen::Vector3d& position,
     tracked_obstacle_id_ = -1;
     camera_detection_count_ = 0;
     track_start_ns_ = 0;
+    excluded_since_.reset();
 
     const rclcpp::Time now = node_->get_clock()->now();
     last_valid_target_time_ = now;
