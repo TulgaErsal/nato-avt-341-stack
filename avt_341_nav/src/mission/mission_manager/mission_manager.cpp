@@ -818,6 +818,7 @@ void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const 
                             existing->name.c_str(), pose.pose.position.x, pose.pose.position.y,
                             known->investigated ? "the investigated" : "the dismissed", known->name.c_str());
                         existing->merge_target = known->name;
+                        existing->merge_hold_logged.clear();
                     }
                     continue;
                 }
