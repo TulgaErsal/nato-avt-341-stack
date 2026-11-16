@@ -370,6 +370,7 @@ class ObjectTracker {
     bool release_excluded_track_ = false;
     Eigen::Vector3d excluded_track_position_ = Eigen::Vector3d::Zero();
     std::optional<rclcpp::Time> excluded_since_;
+    int64_t last_measurement_ns_ = 0;
 
     /** @brief When the current track started (its filter was first
      *         initialized since the last reset or timeout) [ns]; 0 without a

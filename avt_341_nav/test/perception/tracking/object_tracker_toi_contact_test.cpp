@@ -392,6 +392,55 @@ TEST_F(ObjectTrackerToiContactTest, SingleFramesWithARangeErrorOntoAnInvestigate
     }
 }
 
+TEST_F(ObjectTrackerToiContactTest, LidarTrackPassingNearAnInvestigatedTargetTwiceIsNotReleased) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().poses.front().header.stamp);
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y + 6.0);
+    Spin(100ms);
+    contacts_.clear();
+    const auto lidar_frames = [this](double y, int frames) {
+        for (int i = 0; i < frames; ++i) {
+            PublishObstacle(CAMERA_X + TARGET_RANGE, CAMERA_Y + y);
+            Spin(100ms);
+        }
+    };
+    for (int i = 0; i < 2; ++i) {
+        lidar_frames(3.0, 2);
+        lidar_frames(0.0, 8);
+    }
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(rclcpp::Time(contacts_.back().poses.front().header.stamp), track);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionsAreAcceptedIsNotReleasedWhileItsEstimateLags) {
+    SetReleaseTime(0.2);
+    tracking_node_->set_parameter(rclcpp::Parameter("target_selection.investigated_toi_radius", 5.0));
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().poses.front().header.stamp);
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 7.0, CAMERA_Y + 0.5);
+    Spin(100ms);
+    contacts_.clear();
+    for (int i = 0; i < 20; ++i) {
+        TrackFrames({0.0}, 1, {TARGET_RANGE + 15.0});
+    }
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(rclcpp::Time(contacts_.back().poses.front().header.stamp), track);
+    EXPECT_NEAR(contacts_.back().poses.front().pose.position.x, CAMERA_X + TARGET_RANGE + 15.0, 1.5);
+}
+
 TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTargetReportsItThere) {
     PublishCameraInfo();
     Spin(100ms);

@@ -114,7 +114,12 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
         IsExcludedPosition(bounding_box_centroid_filtered_);
     const bool selected = has_detection_ && SelectDetection(context);
     const bool seen_excluded = std::exchange(release_excluded_track_, false);
-    if (position_excluded || seen_excluded) {
+    const bool measured = std::exchange(last_measurement_ns_,
+                                        last_valid_target_time_.nanoseconds()) !=
+                          last_valid_target_time_.nanoseconds();
+    if (selected || (!position_excluded && !seen_excluded && measured)) {
+        excluded_since_.reset();
+    } else if (position_excluded || seen_excluded) {
         const rclcpp::Time now = node_->get_clock()->now();
         if (!excluded_since_) {
             excluded_since_ = now;
@@ -141,8 +146,6 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
             Reset();
             return;
         }
-    } else if (selected) {
-        excluded_since_.reset();
     }
     if (fresh_detection && filter_initialized_ && has_tracked_target_) {
         OnOtherDetections(context, selected ? &detections_message_ : nullptr);
