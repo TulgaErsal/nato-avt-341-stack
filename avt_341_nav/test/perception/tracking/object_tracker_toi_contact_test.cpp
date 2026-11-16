@@ -441,6 +441,19 @@ TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionsAreAcceptedIsNotReleased
     EXPECT_NEAR(contacts_.back().poses.front().pose.position.x, CAMERA_X + TARGET_RANGE + 15.0, 1.5);
 }
 
+TEST_F(ObjectTrackerToiContactTest, LidarLockOnAnInvestigatedTargetIsReleasedDespiteAnOffRangeDetection) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y + 2.0);
+    Spin(100ms);
+    TrackFrames({3.0}, 15, {TARGET_RANGE + 10.0}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    EXPECT_EQ(released_.size(), 1u);
+}
+
 TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTargetReportsItThere) {
     PublishCameraInfo();
     Spin(100ms);

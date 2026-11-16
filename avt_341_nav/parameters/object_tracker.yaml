@@ -180,7 +180,7 @@ ros__parameters:
     investigated_toi_release_time:
       type: double
       default_value: 0.5
-      description: "A tracked target of interest is released, and reported to the mission manager on avt_341/target_released, only once its position, or its detection in the track's image column, has stayed within investigated_toi_radius of an investigated target for this long [s]. A camera detection the track accepts, or a measurement while it is outside the radius, restarts it. Keeps one frame with a range error near an investigated target from cancelling the track's investigation."
+      description: "A tracked target of interest is released, and reported to the mission manager on avt_341/target_released, only once its position, or its detection in the track's image column, has stayed within investigated_toi_radius of an investigated target for this long [s]. A camera detection the track accepts (unless a LiDAR lock holds it inside the radius), or a measurement while it is outside the radius, restarts it. Keeps one frame with a range error near an investigated target from cancelling the track's investigation."
       validation:
         gt_eq<>: [ 0.0 ]
 

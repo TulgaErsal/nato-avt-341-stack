@@ -117,7 +117,9 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     const bool measured = std::exchange(last_measurement_ns_,
                                         last_valid_target_time_.nanoseconds()) !=
                           last_valid_target_time_.nanoseconds();
-    if (selected || (!position_excluded && !seen_excluded && measured)) {
+    const bool lidar_held_inside = position_excluded && tracked_obstacle_id_ >= 0;
+    if ((selected && !lidar_held_inside) ||
+        (!position_excluded && !seen_excluded && measured)) {
         excluded_since_.reset();
     } else if (position_excluded || seen_excluded) {
         const rclcpp::Time now = node_->get_clock()->now();
