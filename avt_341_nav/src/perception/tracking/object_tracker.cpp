@@ -117,7 +117,7 @@ void ObjectTracker::TrackingTick(const TrackerSensorContext& context) {
     const bool measured = std::exchange(last_measurement_ns_,
                                         last_valid_target_time_.nanoseconds()) !=
                           last_valid_target_time_.nanoseconds();
-    const bool lidar_held_inside = position_excluded && tracked_obstacle_id_ >= 0;
+    const bool lidar_held_inside = position_excluded && LidarRanged();
     if ((selected && !lidar_held_inside) ||
         (!position_excluded && !seen_excluded && measured)) {
         excluded_since_.reset();
@@ -805,6 +805,12 @@ const std::vector<Eigen::Vector3d>& ObjectTracker::ExcludedPositions() const {
     return none;
 }
 
+bool ObjectTracker::LidarRanged() const {
+    return tracked_obstacle_id_ >= 0 &&
+           (state_ == TrackerState::FULL_TRACKING ||
+            state_ == TrackerState::LIDAR_ONLY_TRACKING);
+}
+
 bool ObjectTracker::IsExcludedPosition(const Eigen::Vector3d& map_position) const {
     const double radius = ExclusionRadius();
     for (const auto& excluded : ExcludedPositions()) {
@@ -906,9 +912,7 @@ bool ObjectTracker::SelectDetection(const TrackerSensorContext& context) {
 
     const vision_msgs::msg::Detection2D* best = nullptr;
     double best_column_dist = std::numeric_limits<double>::infinity();
-    const bool lidar_ranged = tracked_obstacle_id_ >= 0 &&
-                              (state_ == TrackerState::FULL_TRACKING ||
-                               state_ == TrackerState::LIDAR_ONLY_TRACKING);
+    const bool lidar_ranged = LidarRanged();
     const vision_msgs::msg::Detection2D* excluded_on_track = nullptr;
     double excluded_column_dist = std::numeric_limits<double>::infinity();
     for (const auto& detection : candidate_detections_) {

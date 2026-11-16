@@ -180,6 +180,8 @@ class ObjectTracker {
     /** @brief Planar radius [m] around each excluded position. */
     virtual double ExclusionRadius() const { return 0.0; }
 
+    bool LidarRanged() const;
+
     /** @brief True if @p map_position is within ExclusionRadius() of an
      *         excluded position. */
     bool IsExcludedPosition(const Eigen::Vector3d& map_position) const;
