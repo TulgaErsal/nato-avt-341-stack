@@ -100,6 +100,7 @@
 #include <avt_341_nav/perception/lidar_obstacle_detector/lidar_obstacle_detector.hpp>
 #include <avt_341_nav/perception/tracking/object_tracker.hpp>
 #include <avt_341_nav/perception/tracking/tracker_params.hpp>
+#include <avt_341_msgs/msg/target_reports.hpp>
 #include <avt_341_msgs/msg/mission_module_status.hpp>
 #include <avt_341_msgs/msg/tracker_module_status.hpp>
 #include <avt_341_msgs/srv/set_target.hpp>
@@ -347,8 +348,8 @@ class ObjectTrackerNode : public rclcpp::Node {
     // Target contacts (shared topic, injected into every tracker)
     // -------------------------------------------------------------------------
 
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_released_publisher_;
+    rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_reports_publisher_;
+    rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_released_publisher_;
 
     /** @brief Targets the mission manager has investigated, handed to every
      *         ToiTracker so it leaves them alone. */

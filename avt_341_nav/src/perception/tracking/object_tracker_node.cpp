@@ -231,10 +231,10 @@ void ObjectTrackerNode::CreatePublishers() {
     reset_ack_publisher_ =
         create_publisher<std_msgs::msg::String>("avt_341/reset_ack", 1);
 
-    target_contacts_publisher_ =
-        create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
+    target_reports_publisher_ =
+        create_publisher<avt_341_msgs::msg::TargetReports>("avt_341/target_reports", 10);
     target_released_publisher_ =
-        create_publisher<nav_msgs::msg::Path>("avt_341/target_released", 10);
+        create_publisher<avt_341_msgs::msg::TargetReports>("avt_341/target_released", 10);
 	
 	leader_odom_publisher_ =
 		create_publisher<nav_msgs::msg::Odometry>("avt_341/odometry_estimate/leader", 1);
@@ -343,7 +343,7 @@ std::unique_ptr<ObjectTracker> ObjectTrackerNode::CreateTracker(
     if (MatchesToiRegex(target_class)) {
         auto tracker = std::make_unique<ToiTracker>(
             this, target_class, params_, *coord_transformer_,
-            leader_odom_publisher_, target_contacts_publisher_, target_released_publisher_);
+            leader_odom_publisher_, target_reports_publisher_, target_released_publisher_);
         tracker->SetInvestigatedPositions(investigated_positions_);
         return tracker;
     }

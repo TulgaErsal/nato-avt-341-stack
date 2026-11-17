@@ -58,6 +58,12 @@ ros__parameters:
       type: double
       default_value: 4.0
       description: "Bounding-box measurement uncertainty [px]."
+    border_margin:
+      type: double
+      default_value: 4.0
+      description: "Detections whose box comes within this many pixels of an image border are ignored: a box clipped by the border, or by the black margin of the rectified image, gives a range estimate that reads long."
+      validation:
+        gt_eq<>: [ 0.0 ]
     ego_mask_top:
       type: double
       default_value: 1.0
@@ -173,9 +179,57 @@ ros__parameters:
     investigated_toi_radius:
       type: double
       default_value: 5.0
-      description: "Targets of interest within this planar distance [m] of a target the mission manager has investigated or dismissed (avt_341/investigated_contacts) are not tracked, so the tracker can pick up other targets of interest. The mission manager sets it to its toi.same_object_distance_threshold whenever it applies a toi_regex."
+      description: "Targets of interest within this planar distance [m] of a target the mission manager has investigated or dismissed (avt_341/investigated_contacts) are not tracked, so the tracker can pick up other targets of interest. A report is LiDAR-ranged only while its LiDAR box stays within this distance of where it was when a camera detection last matched it. The mission manager sets it to its toi.lidar_same_object_distance whenever it applies a toi_regex."
       validation:
         gt_eq<>: [ 0.0 ]
+    same_object_distance:
+      type: double
+      default_value: 5.0
+      description: "A LiDAR box is the target of a camera detection only within this planar distance [m] of the detection's camera extent (see camera_extent_near_fraction). The mission manager sets it to its toi.same_object_distance_threshold whenever it applies a toi_regex."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_near_fraction:
+      type: double
+      default_value: 0.4
+      description: "A camera range estimate places a target on the stretch of its line of sight from this fraction of the range nearer (at most camera_extent_near_max) to camera_extent_far_fraction farther (at most camera_extent_far_max). The mission manager sets the four to its toi.camera_extent_* whenever it applies a toi_regex."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_near_max:
+      type: double
+      default_value: 15.0
+      description: "See camera_extent_near_fraction [m]."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_far_fraction:
+      type: double
+      default_value: 0.1
+      description: "See camera_extent_near_fraction."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_far_max:
+      type: double
+      default_value: 5.0
+      description: "See camera_extent_near_fraction [m]."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    lidar_ranged_max_offset:
+      type: double
+      default_value: 1.5
+      description: "A report is LiDAR-ranged only if the reported (filtered) position is within this planar distance [m] of its LiDAR box. After a camera-only stretch the filter still carries the camera estimate."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    lidar_ranged_box_length:
+      type: double_array
+      default_value: [ 1.0, 7.0 ]
+      description: "A LiDAR box can range a target of interest only if its longer horizontal side is within these bounds [m]."
+      validation:
+        fixed_size<>: [ 2 ]
+    lidar_ranged_box_height:
+      type: double_array
+      default_value: [ 0.5, 3.0 ]
+      description: "A LiDAR box can range a target of interest only if its height is within these bounds [m]."
+      validation:
+        fixed_size<>: [ 2 ]
 
     investigated_toi_release_time:
       type: double

@@ -19,11 +19,11 @@ ToiTracker::ToiTracker(
     const ObjectTrackerSettings& params,
     const core::CoordTransformer& coord_transformer,
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher,
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher,
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_released_publisher)
+    rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_reports_publisher,
+    rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_released_publisher)
     : ObjectTracker(node, target_class, params, coord_transformer,
                     std::move(leader_odom_publisher)),
-      target_contacts_publisher_(std::move(target_contacts_publisher)),
+      target_reports_publisher_(std::move(target_reports_publisher)),
       target_released_publisher_(std::move(target_released_publisher)) {
 }
 
@@ -40,69 +40,92 @@ void ToiTracker::OnOtherDetections(const TrackerSensorContext& context,
             contact_update_interval_ticks_ / params_.tracking.tracking_rate) {
         return;
     }
-    nav_msgs::msg::Path sightings;
+    avt_341_msgs::msg::TargetReports sightings;
     sightings.header.stamp = now;
     sightings.header.frame_id = "map";
+    const Eigen::Vector3d observer = CameraPositionInMap();
     for (const auto& detection : candidate_detections_) {
         if (selected != nullptr &&
             detection.bbox.center.position.x == selected->bbox.center.position.x &&
             detection.bbox.center.position.y == selected->bbox.center.position.y) {
             continue;
         }
-        const Eigen::Vector3d position = EstimateMapPosition(
-            detection, context, params_.tracking.obstacle_association_max_dist);
-        if (IsExcludedDetection(detection, context, true) ||
-            std::hypot(position.x() - bounding_box_centroid_filtered_.x(),
-                       position.y() - bounding_box_centroid_filtered_.y()) <=
-                params_.target_selection.investigated_toi_radius) {
+        if (IsExcludedDetection(detection, context, true)) {
             continue;
         }
-        geometry_msgs::msg::PoseStamped pose;
-        pose.header.frame_id = target_class_;
-        pose.pose.position = core::ToPointMsg(position);
-        pose.pose.orientation.w = 1.0;
-        sightings.poses.push_back(pose);
+        Eigen::Vector3d position;
+        bool lidar = false;
+        std::optional<MarkerMatch> match;
+        if (context.has_obstacle_markers && context.obstacle_markers) {
+            match = AssociateMarker(detection, *context.obstacle_markers,
+                                    params_.tracking.target_association_max_dist);
+        }
+        if (match) {
+            position = coord_transformer_.Transform(frame_ids_.Camera(), frame_ids_.Map(), match->pos_cam);
+            lidar = BoxMatchesDetection(detection, position, match->size);
+        }
+        if (!lidar) {
+            position = CameraMapEstimate(detection);
+        }
+        if (std::hypot(position.x() - bounding_box_centroid_filtered_.x(),
+                       position.y() - bounding_box_centroid_filtered_.y()) <=
+            params_.target_selection.investigated_toi_radius) {
+            continue;
+        }
+        sightings.reports.push_back(Report(position, lidar, 0, observer));
     }
-    if (sightings.poses.empty()) {
+    if (sightings.reports.empty()) {
         return;
     }
-    target_contacts_publisher_->publish(sightings);
+    target_reports_publisher_->publish(sightings);
     last_sightings_time_ = now;
-    for (const auto& pose : sightings.poses) {
-        RCLCPP_INFO(logger_, "Published sighting of another \"%s\" at (%.2f, %.2f).",
-                    target_class_.c_str(), pose.pose.position.x, pose.pose.position.y);
+    for (const auto& report : sightings.reports) {
+        RCLCPP_INFO(logger_, "Published sighting of another \"%s\" at (%.2f, %.2f), %s-ranged.",
+                    target_class_.c_str(), report.position.x, report.position.y,
+                    report.ranging == avt_341_msgs::msg::TargetReport::RANGING_LIDAR ? "LiDAR" : "camera");
     }
 }
 
-nav_msgs::msg::Path ToiTracker::TargetContactMessage() const {
-    geometry_msgs::msg::PoseStamped contact_pose;
-    contact_pose.header.stamp = rclcpp::Time(track_start_ns_, node_->get_clock()->get_clock_type());
-    contact_pose.header.frame_id = target_class_;
-    contact_pose.pose.position = core::ToPointMsg(bounding_box_centroid_filtered_);
-    contact_pose.pose.orientation = core::YawToQuaternionMsg(last_reliable_yaw_);
-
-    nav_msgs::msg::Path contact_msg;
-    contact_msg.header.stamp = node_->get_clock()->now();
-    contact_msg.header.frame_id = "map";
-    contact_msg.poses.push_back(contact_pose);
-    return contact_msg;
+avt_341_msgs::msg::TargetReport ToiTracker::Report(const Eigen::Vector3d& position, bool lidar,
+                                                    int64_t track_start_ns,
+                                                    const Eigen::Vector3d& observer) const {
+    avt_341_msgs::msg::TargetReport report;
+    report.target_class = target_class_;
+    report.track_start = rclcpp::Time(track_start_ns, node_->get_clock()->get_clock_type());
+    report.position = core::ToPointMsg(position);
+    report.yaw = last_reliable_yaw_;
+    report.ranging = lidar ? avt_341_msgs::msg::TargetReport::RANGING_LIDAR
+                           : avt_341_msgs::msg::TargetReport::RANGING_CAMERA;
+    report.observer = core::ToPointMsg(observer);
+    return report;
 }
 
-void ToiTracker::PublishTargetContact() {
-    target_contacts_publisher_->publish(TargetContactMessage());
+avt_341_msgs::msg::TargetReports ToiTracker::TrackReport(bool lidar) const {
+    avt_341_msgs::msg::TargetReports message;
+    message.header.stamp = node_->get_clock()->now();
+    message.header.frame_id = "map";
+    message.reports.push_back(
+        Report(bounding_box_centroid_filtered_, lidar, track_start_ns_, CameraPositionInMap()));
+    return message;
+}
+
+void ToiTracker::PublishTrackReport(bool lidar) {
+    target_reports_publisher_->publish(TrackReport(lidar));
     RCLCPP_INFO(logger_,
-                "Published target contact \"%s\" at (%.2f, %.2f, %.2f).",
+                "Published target contact \"%s\" at (%.2f, %.2f, %.2f), %s-ranged.",
                 target_class_.c_str(),
                 bounding_box_centroid_filtered_.x(),
                 bounding_box_centroid_filtered_.y(),
-                bounding_box_centroid_filtered_.z());
+                bounding_box_centroid_filtered_.z(),
+                lidar ? "LiDAR" : "camera");
 }
 
 void ToiTracker::OnExcludedTargetReleased() {
     if (published_track_start_ns_ == track_start_ns_ && track_start_ns_ != 0) {
-        PublishTargetContact();
+        const bool lidar = ReportLidarRanged();
+        PublishTrackReport(lidar);
         if (target_released_publisher_) {
-            target_released_publisher_->publish(TargetContactMessage());
+            target_released_publisher_->publish(TrackReport(lidar));
         }
     }
 }
@@ -118,11 +141,11 @@ void ToiTracker::MaybePublishContactUpdate() {
             params_.target_selection.toi_min_detections) {
             return;
         }
-        PublishTargetContact();
+        PublishTrackReport(ReportLidarRanged());
         published_track_start_ns_ = track_start_ns_;
         contact_update_counter_ = 0;
     } else if (++contact_update_counter_ >= contact_update_interval_ticks_) {
-        PublishTargetContact();
+        PublishTrackReport(ReportLidarRanged());
         contact_update_counter_ = 0;
     }
 }
