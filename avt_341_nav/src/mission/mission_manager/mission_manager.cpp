@@ -802,7 +802,10 @@ void MissionManager::publishCurrentWaypoint() {
 
 void MissionManager::resetTaskList(bool send_completion_msg, CancelledContact cancelled_contact) {
   RCLCPP_INFO(node_->get_logger(), "%s CANCEL_ALL: Clearing task list of size %d.", my_name.c_str(), task_list.size());
-  for(Task* task : task_list) {
+  // A dismissed contact can hold back or merge another contact, which removes that contact's tasks from task_list.
+  std::deque<Task*> tasks;
+  tasks.swap(task_list);
+  for(Task* task : tasks) {
     task->onPreempt();
     RCLCPP_INFO(node_->get_logger(), "%s CANCEL TASK: %s", my_name.c_str(), task->description().c_str());
     if(send_completion_msg){
@@ -811,7 +814,6 @@ void MissionManager::resetTaskList(bool send_completion_msg, CancelledContact ca
     handleCancelledContact(task, cancelled_contact);
     delete task;
   }
-  task_list.clear();
 }
 
 void MissionManager::reset(bool notify_tracker){

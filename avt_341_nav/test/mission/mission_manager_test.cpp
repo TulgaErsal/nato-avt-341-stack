@@ -2161,6 +2161,53 @@ TEST_F(ContactIdentityTest, HeldBackContactGetsNoTasksAfterTheDelay)
     EXPECT_FALSE(HasTasksFor(*manager, "car_2"));
 }
 
+// [E1b] through a dismissal: cancelling one contact's encircle holds back the other contact on its target.
+TEST_F(ContactIdentityTest, CancelledEncircleHoldsBackTheOtherContactOnItsTarget)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 90.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 80.0, 30.0, 200, 80.0, -40.0), team_);
+    manager->handleContacts(MakeContact("car", 84.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasTasksFor(*manager, "car_2"));
+
+    manager->cancelTask(9999, false);
+    EXPECT_TRUE(Find(*manager, "car_1")->dismissed);
+    EXPECT_TRUE(Find(*manager, "car_2")->held_fit);
+    EXPECT_FALSE(HasTasksFor(*manager, "car_2"));
+}
+
+// CANCEL_ALL while two contacts with tasks are on one target: dismissing the first holds back the second, whose tasks
+// are in the list being cleared.
+TEST_F(ContactIdentityTest, CancelAllWithTwoContactsOnOneTargetDismissesBoth)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 90.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 80.0, 30.0, 200, 80.0, -40.0), team_);
+    manager->handleContacts(MakeContact("car", 84.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasTasksFor(*manager, "car_1"));
+    ASSERT_TRUE(HasTasksFor(*manager, "car_2"));
+
+    manager->resetTaskList(true);
+    EXPECT_EQ(manager->currentTask(), nullptr);
+    EXPECT_TRUE(Find(*manager, "car_1")->dismissed);
+    EXPECT_TRUE(Find(*manager, "car_2")->dismissed);
+}
+
+// Held back: a contact waiting for a report is released by the next report that goes to it.
+TEST_F(ContactIdentityTest, ContactWaitingForAReportIsInvestigatedOnTheNextReportOfIt)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 80.0, 30.0, 200, 80.0, -40.0), team_);
+    manager->handleContacts(MakeContact("car", 100.0, 30.0, 300), team_);
+    manager->handleContacts(MakeContact("car", 100.5, 30.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 100.5, 30.0, 200), team_);
+    ASSERT_TRUE(Find(*manager, "car_1")->held_report);
+
+    manager->handleContacts(MakeCameraContact("car", 80.0, 30.5, 400, 80.0, -40.0), team_);
+    EXPECT_FALSE(Find(*manager, "car_1")->heldBack());
+    EXPECT_TRUE(HasTasksFor(*manager, "car_1"));
+}
+
 // Held back: a report that leaves the contact held back creates no tasks.
 TEST_F(ContactIdentityTest, ReportThatLeavesAContactHeldBackCreatesNoTasks)
 {
