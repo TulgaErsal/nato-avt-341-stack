@@ -29,6 +29,7 @@
 
 #include <avt_341_nav/core/coord_transform.hpp>
 #include <avt_341_nav/core/frame_id_collection.hpp>
+#include <avt_341_nav/core/target_extent.hpp>
 #include <avt_341_nav/perception/filtering/imm_filter.hpp>
 #include <avt_341_nav/perception/tracking/tracker_params.hpp>
 #include <avt_341_nav/perception/tracking/tracker_dto.hpp>
@@ -170,6 +171,8 @@ class ObjectTracker {
      */
     virtual void MaybePublishContactUpdate() {}
 
+    virtual void OnExcludedTargetReleased() {}
+
     /** @brief Map positions of targets that must not be tracked. None for
      *         the base tracker; ToiTracker excludes targets that have already
      *         been investigated. */
@@ -178,13 +181,31 @@ class ObjectTracker {
     /** @brief Planar radius [m] around each excluded position. */
     virtual double ExclusionRadius() const { return 0.0; }
 
+    bool LidarRanged() const;
+
+    core::CameraExtentSettings ExtentSettings() const;
+    Eigen::Vector3d CameraPositionInMap() const;
+    bool PlausibleBox(const Eigen::Vector3d& size) const;
+
+    /** @brief True if a LiDAR box of @p size at @p box_map can be the target of @p detection: a plausible size,
+     *         within target_selection.same_object_distance of the detection's camera extent. */
+    bool BoxMatchesDetection(const vision_msgs::msg::Detection2D& detection, const Eigen::Vector3d& box_map,
+                             const Eigen::Vector3d& size);
+
+    /** @brief True if the published position comes from the target's LiDAR box: a LiDAR lock, the position near
+     *         the box, and the box matched by the track's last associated detection and still near where it was
+     *         then. Otherwise the position carries the camera range estimate. */
+    bool ReportLidarRanged() const;
+
     /** @brief True if @p map_position is within ExclusionRadius() of an
      *         excluded position. */
     bool IsExcludedPosition(const Eigen::Vector3d& map_position) const;
 
     /**
      * @brief True if @p detection shows an excluded target. With an
-     * associated obstacle marker, the marker's position alone decides.
+     * associated obstacle marker, the marker's position alone decides. While
+     * a target is tracked (and without @p always_check_bearing), a marker is
+     * associated as for the tracked target (target_association_max_dist).
      * Without one, the camera range estimate decides, and while nothing is
      * tracked (or with @p always_check_bearing) so does the bearing: an excluded position projecting inside the
      * bounding-box columns at a range within a factor of 2 of the camera range
@@ -205,7 +226,11 @@ class ObjectTracker {
     /** @brief Map position of a detection: its associated obstacle marker's,
      *         or else the camera range estimate. */
     Eigen::Vector3d EstimateMapPosition(const vision_msgs::msg::Detection2D& detection,
-                                        const TrackerSensorContext& context);
+                                        const TrackerSensorContext& context,
+                                        double max_half_diagonals);
+
+    /** @brief Map position of a detection from the camera range estimate alone. */
+    Eigen::Vector3d CameraMapEstimate(const vision_msgs::msg::Detection2D& detection);
 
     /** @brief Obstacle detector marker associated with a camera detection. */
     struct MarkerMatch {
@@ -217,10 +242,11 @@ class ObjectTracker {
     };
 
     /** @brief The marker that projects closest to the detection bbox center,
-     *         within obstacle_association_max_dist half-diagonals. */
+     *         within max_half_diagonals of the bbox half-diagonal. */
     std::optional<MarkerMatch> AssociateMarker(
         const vision_msgs::msg::Detection2D& detection,
-        const visualization_msgs::msg::MarkerArray& markers) const;
+        const visualization_msgs::msg::MarkerArray& markers,
+        double max_half_diagonals) const;
 
     /** @brief Pixel coordinates of a camera-frame point, if it is in front of
      *         the camera and inside the image. */
@@ -361,6 +387,18 @@ class ObjectTracker {
     /** @brief A detection was ingested since the last tracking tick
      *         (has_detection_ can stay set on a re-used detection). */
     bool has_fresh_detection_ = false;
+    bool release_excluded_track_ = false;
+
+    /** @brief The locked LiDAR box at the tracked detection's last association with it, and whether that box
+     *         matched the detection (BoxMatchesDetection). Cleared when a selected detection does not match it. */
+    struct LidarMatch {
+        Eigen::Vector3d box_map = Eigen::Vector3d::Zero();
+        bool matches_detection = false;
+    };
+    std::optional<LidarMatch> lidar_match_;
+    Eigen::Vector3d excluded_track_position_ = Eigen::Vector3d::Zero();
+    std::optional<rclcpp::Time> excluded_since_;
+    int64_t last_measurement_ns_ = 0;
 
     /** @brief When the current track started (its filter was first
      *         initialized since the last reset or timeout) [ns]; 0 without a

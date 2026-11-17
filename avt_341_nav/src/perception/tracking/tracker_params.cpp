@@ -65,6 +65,24 @@ bool ApplyRuntimeParameters(ObjectTrackerSettings& params,
                       updated_params.target_selection.toi_regex);
     assign_if_changed(params.target_selection.investigated_toi_radius,
                       updated_params.target_selection.investigated_toi_radius);
+    assign_if_changed(params.target_selection.investigated_toi_release_time,
+                      updated_params.target_selection.investigated_toi_release_time);
+    assign_if_changed(params.target_selection.same_object_distance,
+                      updated_params.target_selection.same_object_distance);
+    assign_if_changed(params.target_selection.camera_extent_near_fraction,
+                      updated_params.target_selection.camera_extent_near_fraction);
+    assign_if_changed(params.target_selection.camera_extent_near_max,
+                      updated_params.target_selection.camera_extent_near_max);
+    assign_if_changed(params.target_selection.camera_extent_far_fraction,
+                      updated_params.target_selection.camera_extent_far_fraction);
+    assign_if_changed(params.target_selection.camera_extent_far_max,
+                      updated_params.target_selection.camera_extent_far_max);
+    assign_if_changed(params.target_selection.lidar_ranged_max_offset,
+                      updated_params.target_selection.lidar_ranged_max_offset);
+    assign_if_changed(params.target_selection.lidar_ranged_box_length,
+                      updated_params.target_selection.lidar_ranged_box_length);
+    assign_if_changed(params.target_selection.lidar_ranged_box_height,
+                      updated_params.target_selection.lidar_ranged_box_height);
     assign_if_changed(params.target_selection.toi_min_detections,
                       updated_params.target_selection.toi_min_detections);
     return changed;

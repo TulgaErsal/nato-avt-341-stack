@@ -320,13 +320,18 @@ log_topics:
 
   # Target of Interest Perceived Location X, Y
   - name: '{vehicles}_perceived_toi_{position_keys[:2]}'
-    topic: '/{vehicles}/avt_341/target_contacts'
-    field: 'poses.pose.position.{position_keys[:2]}'
+    topic: '/{vehicles}/avt_341/target_reports'
+    field: 'reports.position.{position_keys[:2]}'
     units: 'm'
 
   - name: '{vehicles}_perceived_toi_id'
-    topic: '/{vehicles}/avt_341/target_contacts'
-    field: 'poses.header.frame_id'
+    topic: '/{vehicles}/avt_341/target_reports'
+    field: 'reports.target_class'
+    units: ''
+
+  - name: '{vehicles}_perceived_toi_ranging'
+    topic: '/{vehicles}/avt_341/target_reports'
+    field: 'reports.ranging'
     units: ''
 
   # ==========================================================================================================

@@ -1,4 +1,5 @@
 #include "avt_341_nav/mission/formation_utils.h"
+#include <algorithm>
 #include <cmath>
 #include "geometry_msgs/msg/pose.hpp"
 
@@ -49,6 +50,32 @@ std::optional<std::string> FindVehicleWithin(const geometry_msgs::msg::Point & p
     const double dist_sq = PosePlanarDistanceSq(point, odom.pose.pose.position);
     if(dist_sq < closest_dist_sq){
       closest_dist_sq = dist_sq;
+      closest = name;
+    }
+  }
+  return closest;
+}
+
+std::optional<std::string> FindVehicleOnLineOfSight(const geometry_msgs::msg::Point & point,
+                                                    const geometry_msgs::msg::Point & observer,
+                                                    const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,
+                                                    double max_lateral, double range_fraction, double min_range_offset){
+  std::optional<std::string> closest;
+  double closest_lateral = max_lateral;
+  for(const auto & [name, odom] : veh_poses){
+    const double ux = odom.pose.pose.position.x - observer.x;
+    const double uy = odom.pose.pose.position.y - observer.y;
+    const double range = std::hypot(ux, uy);
+    if(range <= 0.0){
+      continue;
+    }
+    const double px = point.x - observer.x;
+    const double py = point.y - observer.y;
+    const double along = (px * ux + py * uy) / range;
+    const double lateral = std::abs(ux * py - uy * px) / range;
+    const double range_offset = std::abs(along - range);
+    if(along > 0.0 && lateral < closest_lateral && range_offset < std::max(min_range_offset, range_fraction * range)){
+      closest_lateral = lateral;
       closest = name;
     }
   }

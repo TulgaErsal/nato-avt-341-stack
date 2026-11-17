@@ -32,6 +32,8 @@ set(MESSAGE_DEFINITIONS
     "NavState"
     "MapMarker"
     "MapMarkerList"
+    "TargetReport"
+    "TargetReports"
 )
 
 set(SERVICE_DEFINITIONS

@@ -9,6 +9,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <avt_341_msgs/msg/target_reports.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -64,22 +65,31 @@ protected:
         clusters_pub_ = helper_node_->create_publisher<sensor_msgs::msg::PointCloud2>("obstacles/cloud_clusters", 10);
         investigated_pub_ = helper_node_->create_publisher<nav_msgs::msg::Path>(
             "avt_341/investigated_contacts", rclcpp::QoS(1).transient_local());
-        contacts_sub_ = helper_node_->create_subscription<nav_msgs::msg::Path>(
-            "avt_341/target_contacts", 10,
-            [this](nav_msgs::msg::Path::SharedPtr msg) {
-                if (msg->poses.empty()) {
+        contacts_sub_ = helper_node_->create_subscription<avt_341_msgs::msg::TargetReports>(
+            "avt_341/target_reports", 10,
+            [this](avt_341_msgs::msg::TargetReports::SharedPtr msg) {
+                if (msg->reports.empty()) {
                     return;
                 }
-                // Sightings (contacts without a track, stamp 0) are kept apart from track contacts.
-                (rclcpp::Time(msg->poses.front().header.stamp).nanoseconds() == 0 ? sightings_ : contacts_).push_back(*msg);
+                // Sightings (reports without a track, track_start 0) are kept apart from track reports.
+                (rclcpp::Time(msg->reports.front().track_start).nanoseconds() == 0 ? sightings_ : contacts_).push_back(*msg);
             });
+        released_sub_ = helper_node_->create_subscription<avt_341_msgs::msg::TargetReports>(
+            "avt_341/target_released", 10,
+            [this](avt_341_msgs::msg::TargetReports::SharedPtr msg) { released_.push_back(*msg); });
         estimate_sub_ = helper_node_->create_subscription<nav_msgs::msg::Odometry>(
             "avt_341/odometry/estimated/ti_car", 10,
             [this](nav_msgs::msg::Odometry::SharedPtr msg) { estimates_.push_back(*msg); });
 
         exec_.add_node(tracking_node_);
         exec_.add_node(helper_node_);
+        SetReleaseTime(0.5);
         Spin(300ms);
+    }
+
+    void SetReleaseTime(double seconds) {
+        tracking_node_->set_parameter(
+            rclcpp::Parameter("target_selection.investigated_toi_release_time", seconds));
     }
 
     void TearDown() override {
@@ -174,6 +184,8 @@ protected:
         int id;
         double x;
         double y;
+        double length = 4.5;
+        double height = 1.5;
     };
 
     // LiDAR obstacle boxes (car-sized) at map positions, with their cluster.
@@ -205,9 +217,9 @@ protected:
             box.pose.position.y = obstacle.y;
             box.pose.position.z = CAMERA_Z;
             box.pose.orientation.w = 1.0;
-            box.scale.x = 4.5;
+            box.scale.x = obstacle.length;
             box.scale.y = 1.8;
-            box.scale.z = 1.5;
+            box.scale.z = obstacle.height;
             markers.markers.push_back(box);
         }
         clusters_pub_->publish(cloud);
@@ -240,11 +252,13 @@ protected:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr investigated_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr bboxes_pub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr clusters_pub_;
-    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr contacts_sub_;
+    rclcpp::Subscription<avt_341_msgs::msg::TargetReports>::SharedPtr contacts_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimate_sub_;
+    rclcpp::Subscription<avt_341_msgs::msg::TargetReports>::SharedPtr released_sub_;
+    std::vector<avt_341_msgs::msg::TargetReports> released_;
     rclcpp::executors::SingleThreadedExecutor exec_;
-    std::vector<nav_msgs::msg::Path> contacts_;
-    std::vector<nav_msgs::msg::Path> sightings_;
+    std::vector<avt_341_msgs::msg::TargetReports> contacts_;
+    std::vector<avt_341_msgs::msg::TargetReports> sightings_;
     std::vector<nav_msgs::msg::Odometry> estimates_;
 };
 
@@ -258,8 +272,8 @@ TEST_F(ObjectTrackerToiContactTest, CameraOnlyContactsAreAtTheTargetNotTheCamera
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
-        ASSERT_EQ(contact.poses.size(), 1u);
-        const auto& p = contact.poses.front().pose.position;
+        ASSERT_EQ(contact.reports.size(), 1u);
+        const auto& p = contact.reports.front().position;
         EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
         EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
         EXPECT_NEAR(p.z, CAMERA_Z, 0.5);
@@ -287,7 +301,7 @@ TEST_F(ObjectTrackerToiContactTest, TrackedTargetKeepsItsDetectionWhenAnotherIsL
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
-        const auto& p = contact.poses.front().pose.position;
+        const auto& p = contact.reports.front().position;
         EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
         EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
     }
@@ -298,18 +312,267 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetIsReleasedForTheNextOne) {
     Spin(100ms);
     TrackFrames({0.0, OTHER_Y_OFFSET}, 20);
     ASSERT_FALSE(contacts_.empty());
-    EXPECT_NEAR(contacts_.back().poses.front().pose.position.y, CAMERA_Y, 0.5);
+    EXPECT_NEAR(contacts_.back().reports.front().position.y, CAMERA_Y, 0.5);
 
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
-    Spin(100ms);
+    Spin(800ms);
     contacts_.clear();
     TrackFrames({0.0, OTHER_Y_OFFSET}, 30);
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
-        const auto& p = contact.poses.front().pose.position;
+        const auto& p = contact.reports.front().position;
         EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
         EXPECT_NEAR(p.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackReleasedAtAnInvestigatedTargetReportsItsLastPosition) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    const size_t published = contacts_.size();
+    ASSERT_GT(published, 0u);
+    for (int i = 0; i < 20 && contacts_.size() == published; ++i) {
+        TrackFrames({0.0}, 1);
+    }
+    ASSERT_GT(contacts_.size(), published);
+    const int32_t track_sec = contacts_.back().reports.front().track_start.sec;
+    const uint32_t track_nanosec = contacts_.back().reports.front().track_start.nanosec;
+    contacts_.clear();
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 2.0, CAMERA_Y);
+    TrackFrames({0.0}, 8);
+
+    ASSERT_EQ(contacts_.size(), 1u);
+    const auto& last = contacts_.front().reports.front();
+    EXPECT_EQ(last.track_start.sec, track_sec);
+    EXPECT_EQ(last.track_start.nanosec, track_nanosec);
+    EXPECT_NEAR(last.position.x, CAMERA_X + TARGET_RANGE, 1.0);
+    EXPECT_NEAR(last.position.y, CAMERA_Y, 1.0);
+    ASSERT_EQ(released_.size(), 1u);
+    EXPECT_EQ(released_.front().reports.front().track_start.sec, track_sec);
+    EXPECT_EQ(released_.front().reports.front().track_start.nanosec, track_nanosec);
+    EXPECT_NEAR(released_.front().reports.front().position.x, last.position.x, 1e-6);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackOnAnInvestigatedTargetIsReleasedOnlyAfterTheHoldTime) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 2.0, CAMERA_Y);
+    TrackFrames({0.0}, 3);
+    EXPECT_TRUE(released_.empty());
+    TrackFrames({0.0}, 5);
+    EXPECT_EQ(released_.size(), 1u);
+}
+
+TEST_F(ObjectTrackerToiContactTest, SingleFramesWithARangeErrorOntoAnInvestigatedTargetDoNotReleaseTheTrack) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().reports.front().track_start);
+
+    PublishInvestigated(CAMERA_X + 1.6 * TARGET_RANGE, CAMERA_Y);
+    Spin(100ms);
+    contacts_.clear();
+    for (int i = 0; i < 2; ++i) {
+        TrackFrames({0.0}, 1, {1.6 * TARGET_RANGE});
+        TrackFrames({0.0}, 7);
+    }
+    TrackFrames({0.0}, 10);
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_EQ(rclcpp::Time(contact.reports.front().track_start), track);
+        EXPECT_NEAR(contact.reports.front().position.x, CAMERA_X + TARGET_RANGE, 1.0);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, LidarTrackPassingNearAnInvestigatedTargetTwiceIsNotReleased) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().reports.front().track_start);
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y + 6.0);
+    Spin(100ms);
+    contacts_.clear();
+    const auto lidar_frames = [this](double y, int frames) {
+        for (int i = 0; i < frames; ++i) {
+            PublishObstacle(CAMERA_X + TARGET_RANGE, CAMERA_Y + y);
+            Spin(100ms);
+        }
+    };
+    for (int i = 0; i < 2; ++i) {
+        lidar_frames(3.0, 2);
+        lidar_frames(0.0, 8);
+    }
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(rclcpp::Time(contacts_.back().reports.front().track_start), track);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionsAreAcceptedIsNotReleasedWhileItsEstimateLags) {
+    SetReleaseTime(0.2);
+    tracking_node_->set_parameter(rclcpp::Parameter("target_selection.investigated_toi_radius", 5.0));
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().reports.front().track_start);
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 7.0, CAMERA_Y + 0.5);
+    Spin(100ms);
+    contacts_.clear();
+    for (int i = 0; i < 20; ++i) {
+        TrackFrames({0.0}, 1, {TARGET_RANGE + 15.0});
+    }
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(rclcpp::Time(contacts_.back().reports.front().track_start), track);
+    EXPECT_NEAR(contacts_.back().reports.front().position.x, CAMERA_X + TARGET_RANGE + 15.0, 1.5);
+}
+
+TEST_F(ObjectTrackerToiContactTest, LidarLockOnAnInvestigatedTargetIsReleasedDespiteAnOffRangeDetection) {
+    SetReleaseTime(0.5);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y + 2.0);
+    Spin(100ms);
+    TrackFrames({3.0}, 15, {TARGET_RANGE + 10.0}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    EXPECT_EQ(released_.size(), 1u);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackThatLostItsLidarBoxIsNotReleasedWhileItsDetectionsAreAccepted) {
+    SetReleaseTime(0.2);
+    tracking_node_->set_parameter(rclcpp::Parameter("target_selection.investigated_toi_radius", 5.0));
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = rclcpp::Time(contacts_.back().reports.front().track_start);
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE + 7.0, CAMERA_Y + 0.5);
+    Spin(100ms);
+    contacts_.clear();
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({{9, CAMERA_X - 50.0, CAMERA_Y - 50.0}});
+        PublishDetections({0.0}, {TARGET_RANGE + 15.0});
+        Spin(100ms);
+    }
+
+    EXPECT_TRUE(released_.empty());
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(rclcpp::Time(contacts_.back().reports.front().track_start), track);
+    EXPECT_NEAR(contacts_.back().reports.front().position.x, CAMERA_X + TARGET_RANGE + 15.0, 1.5);
+}
+
+TEST_F(ObjectTrackerToiContactTest, TrackWhoseDetectionLandsOnAnInvestigatedTargetReportsItThere) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {1.6 * TARGET_RANGE});
+    ASSERT_FALSE(contacts_.empty());
+    ASSERT_GT(contacts_.back().reports.front().position.x, CAMERA_X + 1.4 * TARGET_RANGE);
+    const int32_t track_sec = contacts_.back().reports.front().track_start.sec;
+    contacts_.clear();
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
+    TrackFrames({0.0}, 8, {1.6 * TARGET_RANGE}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+
+    ASSERT_FALSE(contacts_.empty());
+    const auto& last = contacts_.back().reports.front();
+    EXPECT_EQ(last.track_start.sec, track_sec);
+    EXPECT_NEAR(last.position.x, CAMERA_X + TARGET_RANGE, 1.0);
+    EXPECT_NEAR(last.position.y, CAMERA_Y, 1.0);
+}
+
+TEST_F(ObjectTrackerToiContactTest, LidarTrackedTargetHiddenByAnInvestigatedOneInFrontKeepsItsTrack) {
+    constexpr double far = 30.0;
+    constexpr double near = 15.0;
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + near, CAMERA_Y + 0.3);
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {far}, {CAMERA_X + far, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    const int32_t track_sec = contacts_.back().reports.front().track_start.sec;
+    contacts_.clear();
+
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({{9, CAMERA_X + near, CAMERA_Y + 0.3}, {7, CAMERA_X + far, CAMERA_Y}});
+        PublishDetections({0.3}, {near});
+        Spin(100ms);
+    }
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        const auto& p = contact.reports.front();
+        EXPECT_EQ(p.track_start.sec, track_sec);
+        EXPECT_NEAR(p.position.x, CAMERA_X + far, 1.0);
+        EXPECT_NEAR(p.position.y, CAMERA_Y, 1.0);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, CameraTrackedTargetHiddenByAMuchNearerInvestigatedOneIsNotReleasedThere) {
+    constexpr double far = 40.0;
+    constexpr double near = 15.0;
+    PublishCameraInfo();
+    PublishInvestigated(CAMERA_X + near, CAMERA_Y);
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {far});
+    ASSERT_FALSE(contacts_.empty());
+    contacts_.clear();
+
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({{9, CAMERA_X + near, CAMERA_Y}});
+        PublishDetections({0.0}, {near});
+        Spin(100ms);
+    }
+
+    EXPECT_TRUE(released_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_GT(contact.reports.front().position.x, CAMERA_X + 0.75 * far);
+    }
+}
+
+TEST_F(ObjectTrackerToiContactTest, InvestigatedMarkerBesideACameraTrackedTargetDoesNotReleaseIt) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20);
+    ASSERT_FALSE(contacts_.empty());
+    const auto track = contacts_.back().reports.front().track_start;
+    contacts_.clear();
+
+    // An investigated target 8 m nearer projects about three detection
+    // half-diagonals to the side of the tracked target's box.
+    const Obstacle investigated{9, CAMERA_X + 12.0, CAMERA_Y - 3.0};
+    PublishInvestigated(investigated.x, investigated.y);
+    Spin(100ms);
+    for (int i = 0; i < 30; ++i) {
+        PublishObstacles({investigated});
+        PublishDetections({0.0});
+        Spin(100ms);
+    }
+
+    EXPECT_GE(contacts_.size(), 2u);
+    for (const auto& contact : contacts_) {
+        EXPECT_EQ(rclcpp::Time(contact.reports.front().track_start), rclcpp::Time(track));
+        const auto& p = contact.reports.front().position;
+        EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 1.0);
+        EXPECT_NEAR(p.y, CAMERA_Y, 1.0);
     }
 }
 
@@ -326,21 +589,21 @@ TEST_F(ObjectTrackerToiContactTest, ContactsOfOneTrackShareItsStartStamp) {
     Spin(100ms);
     TrackFrames({0.0, OTHER_Y_OFFSET}, 20);
     ASSERT_GE(contacts_.size(), 2u);
-    const auto first_track = rclcpp::Time(contacts_.front().poses.front().header.stamp);
+    const auto first_track = rclcpp::Time(contacts_.front().reports.front().track_start);
     EXPECT_GT(first_track.nanoseconds(), 0);
     for (const auto& contact : contacts_) {
-        EXPECT_EQ(rclcpp::Time(contact.poses.front().header.stamp), first_track);
+        EXPECT_EQ(rclcpp::Time(contact.reports.front().track_start), first_track);
     }
 
     PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y);
-    Spin(100ms);
+    Spin(800ms);
     contacts_.clear();
     TrackFrames({0.0, OTHER_Y_OFFSET}, 30);
     ASSERT_GE(contacts_.size(), 2u);
-    const auto second_track = rclcpp::Time(contacts_.front().poses.front().header.stamp);
+    const auto second_track = rclcpp::Time(contacts_.front().reports.front().track_start);
     EXPECT_NE(second_track, first_track);
     for (const auto& contact : contacts_) {
-        EXPECT_EQ(rclcpp::Time(contact.poses.front().header.stamp), second_track);
+        EXPECT_EQ(rclcpp::Time(contact.reports.front().track_start), second_track);
     }
 }
 
@@ -352,7 +615,7 @@ TEST_F(ObjectTrackerToiContactTest, InvestigatedTargetWithAnOffRangeEstimateIsSt
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
-        const auto& p = contact.poses.front().pose.position;
+        const auto& p = contact.reports.front().position;
         EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE, 0.5);
         EXPECT_NEAR(p.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
     }
@@ -366,7 +629,7 @@ TEST_F(ObjectTrackerToiContactTest, NewTargetInLineBeyondAnInvestigatedOneIsPick
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {
-        const auto& p = contact.poses.front().pose.position;
+        const auto& p = contact.reports.front().position;
         EXPECT_NEAR(p.x, CAMERA_X + TARGET_RANGE + 25.0, 0.5);
         EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
     }
@@ -387,7 +650,7 @@ TEST_F(ObjectTrackerToiContactTest, TrackedTargetPassingInFrontOfAnInvestigatedO
     TrackFrames({0.0}, 20, {range});
 
     ASSERT_FALSE(contacts_.empty());
-    const auto& p = contacts_.back().poses.front().pose.position;
+    const auto& p = contacts_.back().reports.front().position;
     EXPECT_NEAR(p.x, CAMERA_X + range, 0.5);
     EXPECT_NEAR(p.y, CAMERA_Y, 0.5);
 }
@@ -395,6 +658,141 @@ TEST_F(ObjectTrackerToiContactTest, TrackedTargetPassingInFrontOfAnInvestigatedO
 // The tracked target A, held by its LiDAR box, leaves the camera's view when
 // the camera turns 50 deg left; another target B of the same class 6.9 m from
 // A is then seen 30 deg to the right, 20 m away.
+// Ranging of the reports (avt_341_msgs/TargetReport)
+// -----------------------------------------------------------------------------
+
+constexpr uint8_t LIDAR_RANGED = avt_341_msgs::msg::TargetReport::RANGING_LIDAR;
+constexpr uint8_t CAMERA_RANGED = avt_341_msgs::msg::TargetReport::RANGING_CAMERA;
+
+TEST_F(ObjectTrackerToiContactTest, LockedTrackReportsItsLidarBoxFromTheCameraPosition) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+
+    ASSERT_FALSE(contacts_.empty());
+    const auto& report = contacts_.back().reports.front();
+    EXPECT_EQ(report.ranging, LIDAR_RANGED);
+    EXPECT_NEAR(report.observer.x, CAMERA_X, 1e-6);
+    EXPECT_NEAR(report.observer.y, CAMERA_Y, 1e-6);
+}
+
+TEST_F(ObjectTrackerToiContactTest, BoxOfImplausibleSizeDoesNotRangeTheTarget) {
+    PublishCameraInfo();
+    Spin(100ms);
+    for (int i = 0; i < 20; ++i) {
+        PublishObstacles({{7, CAMERA_X + TARGET_RANGE, CAMERA_Y, 12.0, 4.0}});
+        PublishDetections({0.0});
+        Spin(100ms);
+    }
+
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(contacts_.back().reports.front().ranging, CAMERA_RANGED);
+}
+
+TEST_F(ObjectTrackerToiContactTest, BoxFarBeyondTheDetectionsCameraRangeDoesNotRangeTheTarget) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE + 15.0, CAMERA_Y});
+
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_NEAR(contacts_.back().reports.front().position.x, CAMERA_X + TARGET_RANGE + 15.0, 1.0);
+    EXPECT_EQ(contacts_.back().reports.front().ranging, CAMERA_RANGED);
+}
+
+TEST_F(ObjectTrackerToiContactTest, LockThatCarriesOnPastADetectionElsewhereIsCameraRanged) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_EQ(contacts_.back().reports.front().ranging, LIDAR_RANGED);
+
+    contacts_.clear();
+    TrackFrames({3.0}, 15, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_EQ(contacts_.back().reports.front().ranging, CAMERA_RANGED);
+}
+
+TEST_F(ObjectTrackerToiContactTest, FilteredPositionAwayFromTheLidarBoxIsCameraRanged) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_EQ(contacts_.back().reports.front().ranging, LIDAR_RANGED);
+
+    contacts_.clear();
+    TrackFrames({0.0}, 15, {TARGET_RANGE + 15.0}, {CAMERA_X + TARGET_RANGE + 15.0, CAMERA_Y});
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_NEAR(contacts_.back().reports.front().position.x, CAMERA_X + TARGET_RANGE, 2.0);
+    EXPECT_EQ(contacts_.back().reports.front().ranging, CAMERA_RANGED);
+}
+
+TEST_F(ObjectTrackerToiContactTest, LockedBoxThatWalksAwayFromItsLastMatchIsCameraRanged) {
+    tracking_node_->set_parameter(rclcpp::Parameter("target_selection.investigated_toi_radius", 5.0));
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_EQ(contacts_.back().reports.front().ranging, LIDAR_RANGED);
+
+    contacts_.clear();
+    for (int i = 1; i <= 60; ++i) {
+        PublishObstacle(CAMERA_X + TARGET_RANGE + 0.2 * std::min(i, 35), CAMERA_Y);
+        Spin(100ms);
+    }
+    ASSERT_FALSE(contacts_.empty());
+    EXPECT_NEAR(contacts_.back().reports.front().position.x, CAMERA_X + TARGET_RANGE + 7.0, 0.5);
+    EXPECT_EQ(contacts_.back().reports.front().ranging, CAMERA_RANGED);
+}
+
+TEST_F(ObjectTrackerToiContactTest, SightingOnAMatchingBoxIsLidarRanged) {
+    PublishCameraInfo();
+    Spin(100ms);
+    for (int i = 0; i < 30; ++i) {
+        PublishObstacles({{7, CAMERA_X + TARGET_RANGE, CAMERA_Y}, {8, CAMERA_X + TARGET_RANGE, CAMERA_Y + OTHER_Y_OFFSET}});
+        PublishDetections({0.0, OTHER_Y_OFFSET});
+        Spin(100ms);
+    }
+
+    ASSERT_FALSE(sightings_.empty());
+    const auto& sighting = sightings_.back().reports.front();
+    EXPECT_EQ(sighting.ranging, LIDAR_RANGED);
+    EXPECT_NEAR(sighting.position.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
+}
+
+TEST_F(ObjectTrackerToiContactTest, SightingOnABoxThreeHalfDiagonalsAwayIsCameraRanged) {
+    tracking_node_->set_parameter(rclcpp::Parameter("target_selection.investigated_toi_radius", 5.0));
+    PublishCameraInfo();
+    Spin(100ms);
+    for (int i = 0; i < 30; ++i) {
+        PublishObstacles({{7, CAMERA_X + TARGET_RANGE, CAMERA_Y}, {8, CAMERA_X + TARGET_RANGE, CAMERA_Y - 5.0}});
+        PublishDetections({0.0, OTHER_Y_OFFSET});
+        Spin(100ms);
+    }
+
+    ASSERT_FALSE(sightings_.empty());
+    const auto& sighting = sightings_.back().reports.front();
+    EXPECT_EQ(sighting.ranging, CAMERA_RANGED);
+    EXPECT_NEAR(sighting.position.y, CAMERA_Y + OTHER_Y_OFFSET, 0.5);
+}
+
+TEST_F(ObjectTrackerToiContactTest, DetectionWithinTheBorderMarginIsIgnored) {
+    PublishCameraInfo();
+    Spin(100ms);
+    // Box left edge 2 px from the image border (camera.border_margin defaults to 4).
+    TrackFrames({13.775}, 20);
+    EXPECT_TRUE(contacts_.empty());
+}
+
+TEST_F(ObjectTrackerToiContactTest, LidarLockedTrackReleasedAtAnInvestigatedTargetIsReleasedLidarRanged) {
+    SetReleaseTime(0.2);
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 20, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+
+    PublishInvestigated(CAMERA_X + TARGET_RANGE, CAMERA_Y + 1.0);
+    Spin(100ms);
+    TrackFrames({0.0}, 10, {}, {CAMERA_X + TARGET_RANGE, CAMERA_Y});
+    ASSERT_EQ(released_.size(), 1u);
+    EXPECT_EQ(released_.front().reports.front().ranging, LIDAR_RANGED);
+}
+
 class ObjectTrackerToiOutOfViewTest : public ObjectTrackerToiContactTest {
 protected:
     void TrackThenTurn() {
@@ -412,8 +810,8 @@ protected:
         TrackFrames({-depth * std::tan(30.0 * M_PI / 180.0)}, frames, {depth}, A);
     }
 
-    static bool AtA(const nav_msgs::msg::Path& contact) {
-        const auto& p = contact.poses.front().pose.position;
+    static bool AtA(const avt_341_msgs::msg::TargetReports& contact) {
+        const auto& p = contact.reports.front().position;
         return std::hypot(p.x - A[0], p.y - A[1]) < 1.0;
     }
 
@@ -440,9 +838,9 @@ TEST_F(ObjectTrackerToiOutOfViewTest, OtherTargetSeenWhileTrackingIsReportedAsAS
     }
     ASSERT_GE(sightings_.size(), 2u);
     for (const auto& sighting : sightings_) {
-        ASSERT_EQ(sighting.poses.size(), 1u);
-        EXPECT_NEAR(sighting.poses[0].pose.position.x, CAMERA_X + 18.793852, 1.0);
-        EXPECT_NEAR(sighting.poses[0].pose.position.y, CAMERA_Y + 6.840403, 1.0);
+        ASSERT_EQ(sighting.reports.size(), 1u);
+        EXPECT_NEAR(sighting.reports[0].position.x, CAMERA_X + 18.793852, 1.0);
+        EXPECT_NEAR(sighting.reports[0].position.y, CAMERA_Y + 6.840403, 1.0);
     }
 }
 
@@ -472,7 +870,7 @@ TEST_F(ObjectTrackerToiOutOfViewTest, CameraCorrectsLidarDriftWhenTheTargetIsBac
         Spin(100ms);
     }
     ASSERT_FALSE(contacts_.empty());
-    EXPECT_NEAR(contacts_.back().poses.front().pose.position.y, neighbor.y, 0.5);
+    EXPECT_NEAR(contacts_.back().reports.front().position.y, neighbor.y, 0.5);
 
     // The car is back in view, its relabeled box next to the neighbor's.
     PublishCameraTf(-0.5, 0.5, -0.5, 0.5);
@@ -489,6 +887,27 @@ TEST_F(ObjectTrackerToiOutOfViewTest, CameraCorrectsLidarDriftWhenTheTargetIsBac
     }
 }
 
+TEST_F(ObjectTrackerToiOutOfViewTest, RelabeledBoxOfAMovingTargetIsReacquiredWhereTheTargetIs) {
+    const Obstacle decoy{11, 0.5, 0.0};
+    TrackThenTurn();
+    double y = A[1];
+    for (int i = 0; i < 40; ++i) {
+        y -= 0.2;
+        PublishObstacles({{7, A[0], y}});
+        Spin(100ms);
+    }
+    contacts_.clear();
+    for (int i = 0; i < 40; ++i) {
+        y -= 0.2;
+        PublishObstacles({decoy, {10, A[0], y}});
+        Spin(100ms);
+    }
+    ASSERT_GE(contacts_.size(), 3u);
+    for (const auto& contact : contacts_) {
+        EXPECT_NEAR(contact.reports.front().position.x, A[0], 1.5);
+    }
+}
+
 TEST_F(ObjectTrackerToiOutOfViewTest, LidarLockHoldsWhileOnlyAPartOfTheTargetIsInView) {
     PublishCameraInfo();
     Spin(100ms);
@@ -500,6 +919,27 @@ TEST_F(ObjectTrackerToiOutOfViewTest, LidarLockHoldsWhileOnlyAPartOfTheTargetIsI
     PublishCameraTf(-0.298836, 0.640856, -0.640856, 0.298836);
     contacts_.clear();
     TrackFrames({21.1}, 30, {1.5 * TARGET_RANGE}, A);
+
+    ASSERT_FALSE(contacts_.empty());
+    for (const auto& contact : contacts_) {
+        EXPECT_TRUE(AtA(contact));
+    }
+}
+
+TEST_F(ObjectTrackerToiOutOfViewTest, TrackedTargetDoesNotLatchOntoANearerObstacleWhileItsBoxIsMissing) {
+    PublishCameraInfo();
+    Spin(100ms);
+    TrackFrames({0.0}, 15);
+    TrackFrames({0.0}, 10, {}, A);
+    // The target's box drops out while the camera still sees it; an obstacle
+    // 8 m nearer projects about three detection half-diagonals to the side.
+    const Obstacle nearer{9, CAMERA_X + 12.0, CAMERA_Y - 3.0};
+    contacts_.clear();
+    for (int i = 0; i < 80; ++i) {
+        PublishObstacles({nearer});
+        PublishDetections({0.0});
+        Spin(100ms);
+    }
 
     ASSERT_FALSE(contacts_.empty());
     for (const auto& contact : contacts_) {

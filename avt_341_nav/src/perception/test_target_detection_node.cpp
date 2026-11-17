@@ -9,6 +9,7 @@
 #include "geometry_msgs/msg/point32.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "avt_341_msgs/msg/target_reports.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "avt_341_nav/node/node_utils.h"
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
 	// Subscriptions
     auto odom_sub = n->create_subscription<nav_msgs::msg::Odometry>("avt_341/odometry",10, OdometryCallback);
 	// Publishers
-    auto detect_pub = n->create_publisher<nav_msgs::msg::Path>("avt_341/target_contacts", 1);
+    auto detect_pub = n->create_publisher<avt_341_msgs::msg::TargetReports>("avt_341/target_reports", 10);
 
 	// handle parameters
 	double detection_range = 10.0f;
@@ -52,29 +53,32 @@ int main(int argc, char *argv[]) {
     avt_341_nav::node::get_parameter(n, "/targets_y", target_y, std::vector<double>(0));
 
 	geometry_msgs::msg::Point32 target_pt;
-	nav_msgs::msg::Path targets_pt; 
-	geometry_msgs::msg::PoseStamped pose;
+	avt_341_msgs::msg::TargetReports targets_pt;
+	const rclcpp::Time start = n->now();
 
 	rclcpp::Rate rate(10.0);
 	while (rclcpp::ok()){
-		targets_pt.poses.clear();
+		targets_pt.reports.clear();
 		targets_pt.header.stamp = n->now();
+		targets_pt.header.frame_id = "map";
 
 		// loop through the list of targets 
 		for(int i = 0; i < target_name.size(); i++) {
 			// if distance from robot to the target is less than detection_range, signal detection
-			target_pt.x = pose.pose.position.x = target_x[i];
-			target_pt.y = pose.pose.position.y = target_y[i];
+			target_pt.x = target_x[i];
+			target_pt.y = target_y[i];
 
 			if(CalcDistanceSquaredToTarget(current_pose.pose.pose.position, target_pt) < detection_range_squared) {
-				// Signal detection
-				//std::cout << "Target " << target_name[i] << " detected at " << target_x[i] << ", " << target_y[i] << std::endl;
-				pose.header.stamp = n->now();
-				pose.header.frame_id = target_name[i];
-				targets_pt.poses.push_back(pose);
+				avt_341_msgs::msg::TargetReport report;
+				report.target_class = target_name[i];
+				report.track_start = start + rclcpp::Duration(0, i + 1);
+				report.position.x = target_x[i];
+				report.position.y = target_y[i];
+				report.ranging = avt_341_msgs::msg::TargetReport::RANGING_LIDAR;
+				report.observer = current_pose.pose.pose.position;
+				targets_pt.reports.push_back(report);
 			}
 		}
-		//std::cout << "Publishing " << targets_pt.poses.size() << " Targets as Path" << std::endl;
 
 		detect_pub->publish(targets_pt);
 		rclcpp::spin_some(n);

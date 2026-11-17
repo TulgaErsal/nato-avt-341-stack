@@ -34,7 +34,8 @@
 
 std::queue<avt_341_msgs::msg::Communication> comm_msgs;
 std::queue<geometry_msgs::msg::PoseStamped> reached_goals;
-std::queue<nav_msgs::msg::Path> contacts;
+std::queue<avt_341_msgs::msg::TargetReports> contacts;
+std::queue<avt_341_msgs::msg::TargetReports> released_targets;
 
 nav_msgs::msg::Odometry odom;
 bool odom_rcvd = false;
@@ -50,7 +51,7 @@ rclcpp::Node::SharedPtr nh = nullptr;
 std::shared_ptr<avt_341_nav::node::TfInterface> tf = nullptr;
 
 std::shared_ptr<rclcpp::AsyncParametersClient> tracker_param_client = nullptr;
-double same_object_distance_threshold = 0.0;
+std::vector<rclcpp::Parameter> tracker_same_target_parameters;
 std::optional<std::string> applied_toi_regex;
 
 // Reconfigure the object tracking node with the targets of interest regex of a mission command (see toiRegexUpdate).
@@ -73,16 +74,17 @@ void UpdateTrackerToiRegex(const std::string & toi_regex) {
         return;
     }
 
+    std::vector<rclcpp::Parameter> parameters{rclcpp::Parameter("target_selection.toi_regex", toi_regex)};
+    parameters.insert(parameters.end(), tracker_same_target_parameters.begin(), tracker_same_target_parameters.end());
     tracker_param_client->set_parameters(
-        {rclcpp::Parameter("target_selection.toi_regex", toi_regex),
-         rclcpp::Parameter("target_selection.investigated_toi_radius", same_object_distance_threshold)},
-        [toi_regex](const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
+        parameters,
+        [toi_regex, parameters](const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> future) {
             const auto results = future.get();
-            bool all_applied = results.size() == 2;
+            bool all_applied = results.size() == parameters.size();
             for(size_t i = 0; i < results.size(); ++i) {
                 if(!results[i].successful) {
                     RCLCPP_WARN(nh->get_logger(), "Failed to apply %s to the object tracking node: %s",
-                        i == 0 ? ("toi_regex \"" + toi_regex + "\"").c_str() : "investigated_toi_radius",
+                        i == 0 ? ("toi_regex \"" + toi_regex + "\"").c_str() : parameters[i].get_name().c_str(),
                         results[i].reason.c_str());
                     all_applied = false;
                 }
@@ -194,7 +196,11 @@ std::map<std::string, nav_msgs::msg::Odometry> FormationOdomsInMapFrame() {
 }
 
 // Receive information on target contacts
-void TargetContactsCallback(nav_msgs::msg::Path::SharedPtr msg) {
+void TargetReleasedCallback(avt_341_msgs::msg::TargetReports::SharedPtr msg) {
+  released_targets.push(*msg);
+}
+
+void TargetContactsCallback(avt_341_msgs::msg::TargetReports::SharedPtr msg) {
 	//std::cout << ros::this_node::getName() << " Mission Manager received " << msg->poses.size() << " target contacts" << std::endl;
   // Handle detection of potential targets of interest
   if(mgr->nav_state != avt_341_nav::core::NavStackState::NotInit) {       // avoid premature detection of contacts
@@ -361,7 +367,13 @@ int main(int argc, char **argv) {
     PublishGisStaticTransform(params.frames);
 
     tracker_param_client = std::make_shared<rclcpp::AsyncParametersClient>(nh, params.toi.tracker_node_name);
-    same_object_distance_threshold = params.toi.same_object_distance_threshold;
+    tracker_same_target_parameters = {
+        rclcpp::Parameter("target_selection.investigated_toi_radius", params.toi.lidar_same_object_distance),
+        rclcpp::Parameter("target_selection.same_object_distance", params.toi.same_object_distance_threshold),
+        rclcpp::Parameter("target_selection.camera_extent_near_fraction", params.toi.camera_extent_near_fraction),
+        rclcpp::Parameter("target_selection.camera_extent_near_max", params.toi.camera_extent_near_max),
+        rclcpp::Parameter("target_selection.camera_extent_far_fraction", params.toi.camera_extent_far_fraction),
+        rclcpp::Parameter("target_selection.camera_extent_far_max", params.toi.camera_extent_far_max)};
 
     std::shared_ptr<avt_341_nav::mission::GoalFilter> goal_filter =
         avt_341_nav::mission::create_goal_filter(
@@ -399,7 +411,8 @@ int main(int argc, char **argv) {
         autonomy_sub = nh->create_subscription<std_msgs::msg::Bool>(params.toi.autonomy_topic, 10,
             [](std_msgs::msg::Bool::SharedPtr msg) { mgr->setAutonomyEnabled(msg->data); });
     }
-    auto detect_sub = nh->create_subscription<nav_msgs::msg::Path>("avt_341/target_contacts", 1, TargetContactsCallback);
+    auto detect_sub = nh->create_subscription<avt_341_msgs::msg::TargetReports>("avt_341/target_reports", 10, TargetContactsCallback);
+    auto released_sub = nh->create_subscription<avt_341_msgs::msg::TargetReports>("avt_341/target_released", 10, TargetReleasedCallback);
     auto veh1_sub = get_veh_odom_sub(
         params.vehicle_namespaces, 0, params.use_avt_tracker,
         my_name);
@@ -449,6 +462,7 @@ int main(int argc, char **argv) {
           mgr->rcvd_leader_odom = false;
           while(!reached_goals.empty()) reached_goals.pop();
           while(!contacts.empty()) contacts.pop();
+          while(!released_targets.empty()) released_targets.pop();
           std_msgs::msg::String reset_ack_msg;
           reset_ack_msg.data = avt_341_nav::node::NodeType::Mission;
           reset_ack_pub->publish(reset_ack_msg);
@@ -489,6 +503,10 @@ int main(int argc, char **argv) {
             contacts.pop();
             mgr->handleContacts(rcvd_msg, team_poses);
           }
+        }
+        while(!released_targets.empty()){
+          mgr->handleTargetReleased(released_targets.front());
+          released_targets.pop();
         }
         if(mgr->hasPendingContacts()){
           mgr->confirmPendingContacts(FormationOdomsInMapFrame());

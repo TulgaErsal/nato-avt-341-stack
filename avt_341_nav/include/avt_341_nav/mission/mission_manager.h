@@ -19,6 +19,8 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <list>
+#include <set>
 // local includes
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/map_marker_list.hpp"
@@ -26,6 +28,7 @@
 #include "avt_341_msgs/msg/mission_task_status.hpp"
 #include "avt_341_msgs/msg/nav_goal.hpp"
 #include "avt_341_msgs/msg/nav_goal_sequence.hpp"
+#include "avt_341_msgs/msg/target_reports.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -40,6 +43,7 @@
 #include "avt_341_nav/mission/formation_speed_control.h"
 #include "avt_341_nav/mission/mission_manager_dto.h"
 #include "avt_341_nav/mission/goal_filtering/goal_filter.hpp"
+#include "avt_341_nav/mission/target_position.h"
 #include <deque>
 
 
@@ -49,18 +53,28 @@ namespace mission {
 class Task;
 
 struct Contact {
-    // storage for contact information
-    // timestamp, position, class/name, investigated
-    geometry_msgs::msg::PoseStamped pose;
+    geometry_msgs::msg::PoseStamped pose;  // where its tasks go: its best position
+    TargetPosition position;
     std::string name;
     std::string target_class;
     bool investigated;
     bool investigating;
     bool dismissed = false;  // its investigation was cancelled: not re-tasked until a reset
-    int64_t track_start_ns = 0;  // tracker's track identity (start time of the track that last reported it)
+    int64_t track_start_ns = 0;  // the track bound to it (start time of the track), 0 for none
+    bool tracked = false;        // a track has reported it
     bool is_new;       // true until MoveTo+Encircle tasks are created
     double first_seen_sec;
     bool reported_while_allowed = false;  // last report came while investigation was allowed
+    // Held back: no tasks, and none created. held_fit: it fits a closed contact; held_report: its track moved to
+    // another target, and it waits for a report.
+    bool held_fit = false;
+    bool held_report = false;
+    std::string merge_target;  // closed contact its track's LiDAR report agreed with; merged on the next one
+    std::optional<Eigen::Vector2d> miss;              // last report of its track that did not fit it
+    std::optional<Eigen::Vector2d> verify_candidate;  // last LiDAR report of its track (closed, unverified contact)
+
+    bool closed() const { return investigated || dismissed; }
+    bool heldBack() const { return held_fit || held_report; }
 };
 
 // A task that ran to completion and how long it took, reported in the module status.
@@ -124,10 +138,13 @@ class MissionManager{
     bool getMissionPath(MissionPath& mission_path, std::string pathname);
 
     // internal messages
-    void handleContacts(const nav_msgs::msg::Path &, const std::map<std::string, nav_msgs::msg::Odometry> &);
+    void handleContacts(const avt_341_msgs::msg::TargetReports &, const std::map<std::string, nav_msgs::msg::Odometry> &);
+    // The tracker released these tracks at an investigated or dismissed target (avt_341/target_released).
+    void handleTargetReleased(const avt_341_msgs::msg::TargetReports &);
     bool hasPendingContacts() const;
     void confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> &);
     void markContactInvestigated(const std::string & name);
+    const std::list<Contact> & contacts() const { return mission_contacts; }
     // Investigations start only with a task under way and, if reported (e.g. /autonomy_enabled), autonomy enabled.
     void setAutonomyEnabled(bool enabled) { autonomy_enabled_ = enabled; }
     bool autonomyEnabled() const { return autonomy_enabled_; }
@@ -211,13 +228,36 @@ class MissionManager{
     rclcpp::Logger logger() const { return node_->get_logger(); }
 
   private:
+    enum class HoldReason { FitsClosed, WaitsForReport };
+    void handleReport(const avt_341_msgs::msg::TargetReport & report,
+                      const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
+    void handleUnboundReport(const avt_341_msgs::msg::TargetReport & report, const TargetPosition & position,
+                             int64_t track_start_ns, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
+    void updateOpenContact(Contact & contact, const avt_341_msgs::msg::TargetReport & report,
+                           const TargetPosition & position, bool tracked,
+                           const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
+    void verifyClosedContact(Contact & contact, const TargetPosition & position);
+    void onClosedContactChanged(const std::string & name);
+    void mergeInto(const std::string & merged_name, const std::string & survivor_name);
+    void holdBack(Contact & contact, HoldReason reason);
+    bool fitsClosedContact(const Contact & contact) const;
+    bool secondMiss(Contact & contact, const TargetPosition & position);
+    void bindTrack(Contact & contact, int64_t track_start_ns);
+    Contact * contactNamed(const std::string & name);
+    Contact * boundContact(int64_t track_start_ns, const std::string & target_class);
+    SameTargetSettings sameTarget() const;
+    bool fits(const TargetPosition & a, const TargetPosition & b) const;
+    bool agreesAsPoints(const TargetPosition & a, const TargetPosition & b) const;
+    void removeContactTasks(const std::string & name);
+    bool clearOfTeamVehicles(const geometry_msgs::msg::Point & point,
+                             const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) const;
 
     MissionManagerParams params_;
     std::vector<MissionPoint> mission_data;
     std::vector<MissionPoint> overwatch_positions;
     std::vector<MissionPath> mission_paths;
     std::deque<Task*> task_list;
-    std::vector<Contact> mission_contacts;
+    std::list<Contact> mission_contacts;
     rclcpp::Node::SharedPtr node_;
     std::shared_ptr<GoalFilter> goal_filter_;
     double speed_setpoint_state = -1.0;
@@ -225,6 +265,7 @@ class MissionManager{
 
     int obj_detection_cnt=9999; // TODO: Hack for task ids of contacts, replace later
     int contact_count_ = 0;
+    std::map<int64_t, int> team_vehicle_tracks_;  // track start -> consecutive reports clear of the team
     bool autonomy_enabled_ = true;
     std::vector<TaskCompleteMsg> task_completions_;
     std::vector<ArrivedMsg> arrivals_;
@@ -254,15 +295,14 @@ class MissionManager{
     std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Path>> investigated_contacts_pub = nullptr;
 
     // Methods
-    std::vector<Contact>::iterator findContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
     MissionPoint getClosestOverwatch();
-    Contact & addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose);
+    Contact & addContact(const avt_341_msgs::msg::TargetReport & report, const TargetPosition & position);
     void publishInvestigatedContacts();
     const char * investigationBlockedReason() const;
     bool investigationAllowed(const Contact & contact) const;
     void maybeCreateToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void handleCancelledContact(const Task * task, CancelledContact cancelled_contact);
-    void updateExistingContact(std::vector<Contact>::iterator it, const geometry_msgs::msg::PoseStamped & pose);
+    void updateExistingContact(Contact & contact, const geometry_msgs::msg::PoseStamped & pose);
     void createToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses);
     void updateOverwatchPositions();
     void publishTaskCompletion(Task * task);

@@ -17,6 +17,7 @@
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <avt_341_msgs/msg/target_reports.hpp>
 #include <avt_341_nav/perception/tracking/object_tracker.hpp>
 
 namespace avt_341_nav {
@@ -35,7 +36,8 @@ class ToiTracker : public ObjectTracker {
                const ObjectTrackerSettings& params,
                const core::CoordTransformer& coord_transformer,
                rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr leader_odom_publisher,
-               rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher);
+               rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_reports_publisher,
+               rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_released_publisher = nullptr);
 
     ObjectTrackerType GetTrackerType() const override {
         return ObjectTrackerType::Toi;
@@ -51,20 +53,26 @@ class ToiTracker : public ObjectTracker {
     }
 
    protected:
-    /** @brief Publish a track's first contact on the first active-tracking
+    /** @brief Publish a track's first report on the first active-tracking
      *         tick after "target_selection.toi_min_detections" camera
      *         detections (encircle trigger), then every
-     *         contact_update_interval_ticks_. Each contact pose's header.stamp
-     *         is the time its track started, the same for all contacts of one
+     *         contact_update_interval_ticks_. Each report's track_start
+     *         is the time its track started, the same for all reports of one
      *         track, so the mission manager can tell a track's moved estimate
      *         from another target. */
     void MaybePublishContactUpdate() override;
 
+    /** @brief Publish the track's last report and its release, with its ranging. A column release is never
+     *         LiDAR-ranged: it happens only to a track without a LiDAR lock. */
+    void OnExcludedTargetReleased() override;
+
     /** @brief While a target is tracked, publish the other detections of the
-     *         class that are neither near it nor excluded as sightings: contacts
-     *         without a track (header.stamp 0), at most once per
+     *         class that are neither near it nor excluded as sightings: reports
+     *         without a track (track_start 0), at most once per
      *         contact_update_interval_ticks_, so the mission manager can queue
-     *         their investigation although the tracker keeps its target. */
+     *         their investigation although the tracker keeps its target. A
+     *         sighting is LiDAR-ranged only on a box within
+     *         tracking.target_association_max_dist that BoxMatchesDetection. */
     void OnOtherDetections(const TrackerSensorContext& context,
                            const vision_msgs::msg::Detection2D* selected) override;
 
@@ -77,10 +85,14 @@ class ToiTracker : public ObjectTracker {
     }
 
    private:
-    void PublishTargetContact();
+    avt_341_msgs::msg::TargetReport Report(const Eigen::Vector3d& position, bool lidar, int64_t track_start_ns,
+                                           const Eigen::Vector3d& observer) const;
+    avt_341_msgs::msg::TargetReports TrackReport(bool lidar) const;
+    void PublishTrackReport(bool lidar);
 
-    /** @brief Shared target contacts publisher owned by the node. */
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr target_contacts_publisher_;
+    /** @brief Shared target reports publisher owned by the node. */
+    rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_reports_publisher_;
+    rclcpp::Publisher<avt_341_msgs::msg::TargetReports>::SharedPtr target_released_publisher_;
 
     // Target contacts (encircle trigger)
     // -------------------------------------------------------------------------

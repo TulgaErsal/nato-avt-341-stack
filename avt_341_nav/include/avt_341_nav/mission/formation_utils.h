@@ -35,6 +35,11 @@ std::optional<std::string> FindVehicleWithin(const geometry_msgs::msg::Point & p
                                              const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,
                                              double radius);
 
+std::optional<std::string> FindVehicleOnLineOfSight(const geometry_msgs::msg::Point & point,
+                                                    const geometry_msgs::msg::Point & observer,
+                                                    const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses,
+                                                    double max_lateral, double range_fraction, double min_range_offset);
+
 class FormationSpeedControlType {
 public:
   const static std::string SLOW_DOWN_LEADER;
