@@ -208,19 +208,37 @@ ros__parameters:
     same_object_distance_threshold:
       type: double
       default_value: 5.0
-      description: "Target contacts of the same class within this planar distance [m] of a known contact are the same target: they refine its position, or are ignored once it has been investigated. Contacts farther from every known contact are new targets and are investigated after the current one. It is also applied to the object tracking node's target_selection.investigated_toi_radius together with each toi_regex."
+      description: "Two reports, or a report and a contact, can be the same target when their positions come within this planar distance [m] and a camera range is involved; see lidar_same_object_distance between two LiDAR positions. A camera-ranged position counts as the stretch of its line of sight given by camera_extent_near_fraction. A report that can be exactly one contact goes to it; one that can be several is dropped; one that can be none is a new contact. Applied to the object tracking node's target_selection.same_object_distance together with each toi_regex."
       validation:
         gt_eq<>: [ 0.0 ]
-    sighting_match_distance:
+    lidar_same_object_distance:
       type: double
-      default_value: 12.0
-      description: "Planar distance [m] within which a sighting (the tracker's report of another target of interest while it follows one; camera range estimate) matches a contact, and any report matches a contact known only from sightings. A sighting never moves a contact a track has reported on. Reports of a track match a tracked contact within same_object_distance_threshold."
+      default_value: 7.0
+      description: "Same-target distance [m] between two LiDAR-ranged positions (see same_object_distance_threshold): the LiDAR box center of a car moves by up to about 6 m as the vehicle drives around it. Applied to the object tracking node's target_selection.investigated_toi_radius together with each toi_regex."
       validation:
         gt_eq<>: [ 0.0 ]
-    track_match_distance:
+    camera_extent_near_fraction:
       type: double
-      default_value: 30.0
-      description: "A report of the tracker's track updates the contact that track reported before only within this planar distance [m] of it; farther off, it is matched by position like a report of a new track (a track that jumped to another target does not drag the old contact)."
+      default_value: 0.4
+      description: "A camera-ranged report places its target on the stretch of the line of sight from this fraction of the range nearer than the estimate (at most camera_extent_near_max) to camera_extent_far_fraction farther (at most camera_extent_far_max): the camera range reads long, by up to about 40 % for a clipped detection. Targets must be farther apart than the reach of the stretch plus same_object_distance_threshold (25 m with the defaults). Applied to the object tracking node together with each toi_regex."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_near_max:
+      type: double
+      default_value: 15.0
+      description: "See camera_extent_near_fraction [m]."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_far_fraction:
+      type: double
+      default_value: 0.1
+      description: "See camera_extent_near_fraction."
+      validation:
+        gt_eq<>: [ 0.0 ]
+    camera_extent_far_max:
+      type: double
+      default_value: 5.0
+      description: "See camera_extent_near_fraction [m]."
       validation:
         gt_eq<>: [ 0.0 ]
     team_vehicle_exclusion_radius:
@@ -259,12 +277,6 @@ ros__parameters:
       description: "A report counts as clear of a team vehicle (see team_vehicle_track_clear_reports) outside the line-of-sight gate scaled by this factor: team_vehicle_line_of_sight_lateral, _range_fraction and _min_range all multiplied by it. A team vehicle's reports stay near its line of sight and its range however wrong the camera range; a target's leave once the vehicles move on."
       validation:
         gt_eq<>: [ 1.0 ]
-    contact_jump_distance:
-      type: double
-      default_value: 5.0
-      description: "A report of a track that would move its contact farther than this planar distance [m] is held, and moves the contact only when the track's next report confirms it (within same_object_distance_threshold of the held one). A single bad estimate then neither re-plans the encircle nor becomes the investigated position. 0 disables the hold."
-      validation:
-        gt_eq<>: [ 0.0 ]
     autonomy_topic:
       type: string
       default_value: '/autonomy_enabled'
@@ -272,7 +284,7 @@ ros__parameters:
     tracker_node_name:
       type: string
       default_value: 'object_tracker_node'
-      description: "Object tracking node whose target_selection.toi_regex (and investigated_toi_radius, see same_object_distance_threshold) is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
+      description: "Object tracking node whose target_selection.toi_regex (and its same-target settings, see same_object_distance_threshold) is reconfigured when the task of a FORM, MOVETO or PATH_FOLLOW command with a non-empty toi_regex starts ('^$' disables targets of interest). Relative names resolve under this vehicle's namespace."
 
   use_avt_tracker:
     type: bool

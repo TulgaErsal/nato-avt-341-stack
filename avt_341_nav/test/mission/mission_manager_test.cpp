@@ -26,6 +26,9 @@ using avt_341_nav::mission::MissionManager;
 using avt_341_nav::mission::MissionManagerParams;
 using avt_341_nav::mission::Encircle;
 using avt_341_nav::mission::MissionPoint;
+using avt_341_nav::mission::Contact;
+using avt_341_nav::mission::SameTargetSettings;
+using avt_341_nav::mission::TargetPosition;
 
 namespace {
 
@@ -54,18 +57,36 @@ nav_msgs::msg::Odometry MakeOdom(double x, double y)
     return odom;
 }
 
-nav_msgs::msg::Path MakeContact(const std::string & name, double x, double y, int32_t track_start_sec = 0)
+avt_341_msgs::msg::TargetReports MakeReport(const std::string & name, double x, double y, int32_t track_start_sec,
+                                             bool lidar, double observer_x = 0.0, double observer_y = 0.0)
 {
-    geometry_msgs::msg::PoseStamped pose;
-    pose.header.frame_id = name;
-    pose.header.stamp.sec = track_start_sec;
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
-    pose.pose.orientation.w = 1.0;
-    nav_msgs::msg::Path contacts;
-    contacts.header.frame_id = "map";
-    contacts.poses.push_back(pose);
-    return contacts;
+    avt_341_msgs::msg::TargetReport report;
+    report.target_class = name;
+    report.track_start.sec = track_start_sec;
+    report.position.x = x;
+    report.position.y = y;
+    report.ranging = lidar ? avt_341_msgs::msg::TargetReport::RANGING_LIDAR
+                           : avt_341_msgs::msg::TargetReport::RANGING_CAMERA;
+    report.observer.x = observer_x;
+    report.observer.y = observer_y;
+    avt_341_msgs::msg::TargetReports reports;
+    reports.header.frame_id = "map";
+    reports.reports.push_back(report);
+    return reports;
+}
+
+// A LiDAR-ranged report (a point).
+avt_341_msgs::msg::TargetReports MakeContact(const std::string & name, double x, double y, int32_t track_start_sec = 0)
+{
+    return MakeReport(name, x, y, track_start_sec, true);
+}
+
+// A camera-ranged report seen from (observer_x, observer_y).
+avt_341_msgs::msg::TargetReports MakeCameraContact(const std::string & name, double x, double y,
+                                                   int32_t track_start_sec = 0, double observer_x = 0.0,
+                                                   double observer_y = 0.0)
+{
+    return MakeReport(name, x, y, track_start_sec, false, observer_x, observer_y);
 }
 
 }  // namespace
@@ -1363,17 +1384,18 @@ TEST_F(ToiInvestigationTest, ShutdownDoesNotNotifyTheTracker)
     EXPECT_EQ(investigated_count_, 0);
 }
 
-TEST_F(ToiInvestigationTest, OneTrackKeepsOneContactWhenItsEstimateJumps)
+TEST_F(ToiInvestigationTest, CameraContactFollowsItsTrackOnASecondReportThatFitsNothingElse)
 {
-    params_.toi.contact_jump_distance = 0.0;
     auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->handleContacts(MakeContact("car", 52.0, 42.6, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 42.0, 40.0, 100), team_);
+    EXPECT_TRUE(Has(Tasks(*manager)[1], "ENCIRCLE: target_position=(50, 30)"));
+    manager->handleContacts(MakeCameraContact("car", 42.0, 40.0, 100), team_);
 
     const auto tasks = Tasks(*manager);
     ASSERT_EQ(tasks.size(), 3u);
     EXPECT_TRUE(Has(tasks[0], "CONTACT car_1"));
-    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(52, 42.6)"));
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(42, 40)"));
 }
 
 TEST_F(ToiInvestigationTest, AnotherTrackFarAwayIsAnotherTarget)
@@ -1417,22 +1439,22 @@ TEST_F(ToiInvestigationTest, SightedTargetKeepsItsContactWhenATrackLocatesItFurt
 {
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->handleContacts(MakeContact("car", 80.0, 60.0), team_);
-    manager->handleContacts(MakeContact("car", 86.0, 66.0), team_);
-    manager->handleContacts(MakeContact("car", 82.0, 56.0, 200), team_);
+    manager->handleContacts(MakeCameraContact("car", 80.0, 60.0), team_);
+    manager->handleContacts(MakeCameraContact("car", 86.0, 66.0), team_);
+    manager->handleContacts(MakeContact("car", 80.0, 58.0, 200), team_);
 
     const auto tasks = Tasks(*manager);
     ASSERT_EQ(tasks.size(), 5u);
     EXPECT_TRUE(Has(tasks[2], "CONTACT car_2"));
-    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(82, 56)"));
+    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(80, 58)"));
 }
 
 TEST_F(ToiInvestigationTest, SightingDoesNotMoveATrackedTarget)
 {
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->handleContacts(MakeContact("car", 53.0, 31.0), team_);
-    manager->handleContacts(MakeContact("car", 59.0, 30.0), team_);
+    manager->handleContacts(MakeCameraContact("car", 53.0, 31.0), team_);
+    manager->handleContacts(MakeCameraContact("car", 59.0, 30.0), team_);
 
     const auto tasks = Tasks(*manager);
     ASSERT_EQ(tasks.size(), 3u);
@@ -1443,6 +1465,7 @@ TEST_F(ToiInvestigationTest, TrackThatJumpsToAnotherTargetDoesNotDragItsContact)
 {
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 95.0, 30.0, 100), team_);
     manager->handleContacts(MakeContact("car", 95.0, 30.0, 100), team_);
 
     const auto tasks = Tasks(*manager);
@@ -1516,7 +1539,6 @@ class TeamVehicleLineOfSightTest : public ToiInvestigationTest {
         params_.toi.team_vehicle_line_of_sight_min_range = 7.0;
         params_.toi.team_vehicle_track_clear_reports = 2;
         params_.toi.team_vehicle_track_clear_scale = 2.0;
-        params_.toi.contact_jump_distance = 0.0;
     }
 };
 
@@ -1613,7 +1635,6 @@ TEST_F(TeamVehicleLineOfSightTest, InvestigatedTargetKeepsItsTrackWhenItPassesIn
 
 TEST_F(ToiInvestigationTest, SingleJumpOfATrackDoesNotMoveItsContact)
 {
-    params_.toi.contact_jump_distance = 5.0;
     params_.toi.same_object_distance_threshold = 5.0;
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
@@ -1627,192 +1648,19 @@ TEST_F(ToiInvestigationTest, SingleJumpOfATrackDoesNotMoveItsContact)
     EXPECT_DOUBLE_EQ(Investigated().poses[0].pose.position.x, 50.0);
 }
 
-TEST_F(ToiInvestigationTest, JumpConfirmedByTheNextReportMovesTheContact)
+TEST_F(ToiInvestigationTest, LidarJumpConfirmedByTheNextReportIsAnotherTarget)
 {
-    params_.toi.contact_jump_distance = 5.0;
     params_.toi.same_object_distance_threshold = 5.0;
+    params_.toi.lidar_same_object_distance = 7.0;
     auto manager = MakeBusyManager();
     manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
     manager->handleContacts(MakeContact("car", 58.0, 36.0, 100), team_);
     manager->handleContacts(MakeContact("car", 58.5, 36.0, 100), team_);
 
     const auto tasks = Tasks(*manager);
-    ASSERT_EQ(tasks.size(), 3u);
-    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(58.5, 36)"));
-}
-
-TEST_F(ToiInvestigationTest, TrackThatSettlesOnAnInvestigatedTargetIsMergedIntoIt)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 5.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    ASSERT_TRUE(HasContactTask(*manager));
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    EXPECT_TRUE(HasContactTask(*manager));
-    manager->handleContacts(MakeContact("car", 51.5, 31.0, 200), team_);
-
-    EXPECT_FALSE(HasContactTask(*manager));
-    EXPECT_EQ(Tasks(*manager).size(), 1u);
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    EXPECT_FALSE(HasContactTask(*manager));
-}
-
-TEST_F(ToiInvestigationTest, SingleReportOfATrackAtAnInvestigatedTargetDoesNotMergeItsContact)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 62.5, 38.0, 200), team_);
-    manager->confirmPendingContacts(team_);
-
-    const auto tasks = Tasks(*manager);
-    ASSERT_EQ(tasks.size(), 3u);
-    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(62.5, 38)"));
-    EXPECT_EQ(Investigated().poses.size(), 1u);
-}
-
-TEST_F(ToiInvestigationTest, TrackReleasedAtAnInvestigatedTargetIsMergedIntoIt)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    params_.toi.contact_trigger_delay = 0.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    rclcpp::sleep_for(std::chrono::milliseconds(300));
-    manager->confirmPendingContacts(team_);
-    EXPECT_TRUE(HasContactTask(*manager));
-
-    manager->handleTargetReleased(MakeContact("car", 51.0, 31.0, 200));
-    EXPECT_FALSE(HasContactTask(*manager));
-    EXPECT_EQ(Tasks(*manager).size(), 1u);
-}
-
-TEST_F(ToiInvestigationTest, TrackReleasedAwayFromInvestigatedTargetsIsNotMerged)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleTargetReleased(MakeContact("car", 63.0, 38.0, 200));
-    EXPECT_TRUE(HasContactTask(*manager));
-}
-
-TEST_F(ToiInvestigationTest, TrackReportingFarAwayCancelsItsPendingMerge)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    params_.toi.track_match_distance = 30.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 100.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.5, 31.0, 200), team_);
-
-    const auto tasks = Tasks(*manager);
-    EXPECT_TRUE(std::any_of(tasks.begin(), tasks.end(), [](const std::string & t) { return Has(t, "car_2"); }));
-}
-
-TEST_F(ToiInvestigationTest, HeldMergeOfAnEndedTrackIsNotCompletedByTheNextTrack)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    params_.toi.track_match_distance = 30.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 61.5, 38.0, 300), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 300), team_);
-    EXPECT_EQ(Investigated().poses.size(), 1u);
-
-    manager->handleContacts(MakeContact("car", 51.5, 31.0, 300), team_);
-    EXPECT_EQ(Investigated().poses.size(), 2u);
-}
-
-TEST_F(ToiInvestigationTest, MergedInvestigationReleasesTheOverwatchVehicle)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    std::vector<avt_341_msgs::msg::Communication> sent;
-    auto comm_sub = node_->create_subscription<avt_341_msgs::msg::Communication>(
-        "avt_341/comm_messages", 100, [&sent](avt_341_msgs::msg::Communication::SharedPtr msg) { sent.push_back(*msg); });
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("car_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.5, 31.0, 200), team_);
-    ASSERT_FALSE(HasContactTask(*manager));
-
-    std::optional<int> encircle_id;
-    bool completed = false;
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-    while (!completed && std::chrono::steady_clock::now() < deadline) {
-        rclcpp::spin_some(node_);
-        encircle_id.reset();
-        for (const auto & msg : sent) {
-            if (msg.type == MissionMsgType::Overwatch && msg.receiver_name == "FEDA") {
-                encircle_id = msg.target_msg_id;
-            }
-            completed = completed || (encircle_id.has_value() && msg.type == MissionMsgType::TaskComplete &&
-                                      msg.sender_name == "MRZR" && msg.target_msg_id == *encircle_id);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    ASSERT_TRUE(encircle_id.has_value());
-    EXPECT_TRUE(completed);
-}
-
-TEST_F(ToiInvestigationTest, TrackPassingNearAnInvestigatedTargetOfAnotherClassIsNotMerged)
-{
-    params_.toi.same_object_distance_threshold = 5.0;
-    params_.toi.contact_jump_distance = 0.0;
-    auto manager = MakeBusyManager();
-    manager->handleContacts(MakeContact("truck", 50.0, 30.0, 100), team_);
-    manager->markContactInvestigated("truck_1");
-    manager->resetTaskList(false);
-    Busy(*manager);
-
-    manager->handleContacts(MakeContact("car", 62.0, 38.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.0, 31.0, 200), team_);
-    manager->handleContacts(MakeContact("car", 51.5, 31.0, 200), team_);
-    EXPECT_TRUE(HasContactTask(*manager));
+    ASSERT_EQ(tasks.size(), 5u);
+    EXPECT_TRUE(Has(tasks[1], "ENCIRCLE: target_position=(50, 30)"));
+    EXPECT_TRUE(Has(tasks[3], "ENCIRCLE: target_position=(58.5, 36)"));
 }
 
 TEST_F(ToiInvestigationTest, ContactReportedOnceIsConfirmedAfterTheDelay)
@@ -1856,3 +1704,486 @@ TEST_F(ToiInvestigationTest, ContactReportedWhileIdleIsNotConfirmedOnceAMissionS
     manager->confirmPendingContacts(team_);
     EXPECT_FALSE(HasContactTask(*manager));
 }
+
+// Same-target geometry
+// ------------------------------------------------------------------------------------------------
+
+namespace {
+
+SameTargetSettings DefaultSameTarget()
+{
+    SameTargetSettings settings;
+    settings.extent = {0.4, 15.0, 0.1, 5.0};
+    settings.distance = 5.0;
+    settings.lidar_distance = 7.0;
+    return settings;
+}
+
+TargetPosition Lidar(double x, double y)
+{
+    TargetPosition position;
+    position.estimate = {x, y};
+    position.lidar = true;
+    return position;
+}
+
+TargetPosition Camera(double x, double y, double observer_x, double observer_y)
+{
+    TargetPosition position;
+    position.estimate = {x, y};
+    position.observer = {observer_x, observer_y};
+    return position;
+}
+
+}  // namespace
+
+TEST(TargetPosition, CameraStretchReachesFartherTowardTheCamera)
+{
+    const auto settings = DefaultSameTarget();
+    const auto camera = Camera(30.0, 0.0, 0.0, 0.0);  // stretch from 18 m to 33 m
+    EXPECT_TRUE(Fits(camera, Lidar(14.0, 0.0), settings));
+    EXPECT_FALSE(Fits(camera, Lidar(12.0, 0.0), settings));
+    EXPECT_TRUE(Fits(camera, Lidar(37.0, 0.0), settings));
+    EXPECT_FALSE(Fits(camera, Lidar(39.0, 0.0), settings));
+}
+
+TEST(TargetPosition, TwoLidarPointsFitFartherApartThanACameraRange)
+{
+    const auto settings = DefaultSameTarget();
+    EXPECT_TRUE(Fits(Lidar(0.0, 0.0), Lidar(6.0, 0.0), settings));
+    EXPECT_FALSE(Fits(Camera(6.0, 30.0, 6.0, 0.0), Lidar(0.0, 30.0), settings));
+}
+
+TEST(TargetPosition, VerifiedPositionFitsThroughItsLidarPoint)
+{
+    const auto settings = DefaultSameTarget();
+    auto verified = Camera(30.0, 0.0, 0.0, 0.0);
+    EXPECT_FALSE(Fits(verified, Lidar(30.0, 18.0), settings));
+    verified.point = Eigen::Vector2d(30.0, 12.0);
+    EXPECT_TRUE(Fits(verified, Lidar(30.0, 18.0), settings));
+    EXPECT_TRUE(AgreesAsPoints(verified, Lidar(30.0, 18.0), settings));
+}
+
+// Rows of the decision table in full-lw/md/toi_test_nov16.md, section 3
+// ------------------------------------------------------------------------------------------------
+
+class ContactIdentityTest : public ToiInvestigationTest {
+  protected:
+    void SetUp() override
+    {
+        ToiInvestigationTest::SetUp();
+        params_.toi.same_object_distance_threshold = 5.0;
+        params_.toi.lidar_same_object_distance = 7.0;
+        params_.toi.camera_extent_near_fraction = 0.4;
+        params_.toi.camera_extent_near_max = 15.0;
+        params_.toi.camera_extent_far_fraction = 0.1;
+        params_.toi.camera_extent_far_max = 5.0;
+    }
+
+    static const Contact * Find(const MissionManager & manager, const std::string & name)
+    {
+        for (const auto & contact : manager.contacts()) {
+            if (contact.name == name) {
+                return &contact;
+            }
+        }
+        return nullptr;
+    }
+
+    static int64_t Track(int32_t sec) { return int64_t(sec) * 1000000000; }
+
+    bool HasTasksFor(MissionManager & manager, const std::string & name)
+    {
+        const auto tasks = Tasks(manager);
+        return std::any_of(tasks.begin(), tasks.end(), [&](const std::string & t) { return Has(t, "CONTACT " + name + " "); });
+    }
+
+    // car_1, reported by track 100, investigated.
+    void Close(MissionManager & manager, const avt_341_msgs::msg::TargetReports & report)
+    {
+        manager.handleContacts(report, team_);
+        manager.markContactInvestigated("car_1");
+        manager.resetTaskList(false);
+        Busy(manager);
+    }
+
+    // Two contacts end up on one target (Nov 16, car_5 and car_6): car_1 (track 100, LiDAR) and car_2 (track 200)
+    // start 10 m apart, car_1's track moves it to (84, 30), 4 m from car_2 at (80, 30), and car_1 is investigated.
+    // car_2 is camera-ranged, seen from (80, -40), unless lidar.
+    void TwoContactsOnOneTarget(MissionManager & manager, bool lidar)
+    {
+        manager.handleContacts(MakeContact("car", 90.0, 30.0, 100), team_);
+        manager.handleContacts(lidar ? MakeContact("car", 80.0, 30.0, 200)
+                                     : MakeCameraContact("car", 80.0, 30.0, 200, 80.0, -40.0), team_);
+        manager.handleContacts(MakeContact("car", 84.0, 30.0, 100), team_);
+        manager.markContactInvestigated("car_1");
+    }
+
+    // car_1 (track 100) is seen by the camera from the south, first at (90, 40), then at (86, 40); car_2 (track 200)
+    // is seen from the west at (80, 30), its stretch ending 8 m from car_1's first one and 4 m from its second. Once
+    // car_1 is investigated, car_2 is held back.
+    void CameraContactsMeetingAtRightAngles(MissionManager & manager)
+    {
+        manager.handleContacts(MakeCameraContact("car", 90.0, 40.0, 100, 90.0, -30.0), team_);
+        manager.handleContacts(MakeCameraContact("car", 80.0, 30.0, 200, 60.0, 30.0), team_);
+        manager.handleContacts(MakeCameraContact("car", 86.0, 40.0, 100, 86.0, -30.0), team_);
+        manager.markContactInvestigated("car_1");
+    }
+};
+
+// [U2] Nov 16 car_3 and car_4: a new track's first report, 6.4 m along the line of sight from an open contact.
+TEST_F(ContactIdentityTest, NewTrackOnTheLineOfSightOfAnOpenCameraContactReportsThatContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 55.5, 33.3, 200), team_);
+    EXPECT_EQ(manager->contacts().size(), 1u);
+    EXPECT_EQ(Tasks(*manager).size(), 3u);
+}
+
+// [U2] Nov 16 car_5: a closed contact whose camera range read long, and the target 8 m nearer on its line of sight.
+TEST_F(ContactIdentityTest, NewTrackOnTheLineOfSightOfAClosedCameraContactIsIgnored)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeCameraContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeCameraContact("car", 42.9, 25.7, 200), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+    EXPECT_EQ(manager->contacts().size(), 1u);
+}
+
+// [U1]
+TEST_F(ContactIdentityTest, LidarReportThatFitsTwoContactsGoesToTheLidarPointWithinReach)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeCameraContact("car", 59.0, 40.0, 200, 59.0, -20.0), team_);
+    ASSERT_NE(Find(*manager, "car_2"), nullptr);
+    manager->handleContacts(MakeContact("car", 55.0, 31.0, 300), team_);
+    EXPECT_EQ(Find(*manager, "car_1")->track_start_ns, Track(300));
+}
+
+// [U3]
+TEST_F(ContactIdentityTest, CameraReportThatFitsTwoContactsIsDropped)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeCameraContact("car", 59.0, 40.0, 200, 59.0, -20.0), team_);
+    manager->handleContacts(MakeCameraContact("car", 54.5, 31.0, 300, 54.5, -20.0), team_);
+    EXPECT_EQ(manager->contacts().size(), 2u);
+    for (const auto & contact : manager->contacts()) {
+        EXPECT_NE(contact.track_start_ns, Track(300)) << contact.name;
+    }
+}
+
+// [U1-U3] A held-back contact is no candidate when a closed contact is.
+TEST_F(ContactIdentityTest, ReportThatFitsAClosedAndAHeldBackContactGoesToTheClosedOne)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    ASSERT_TRUE(Find(*manager, "car_2")->held_fit);
+    manager->handleContacts(MakeCameraContact("car", 82.0, 30.0, 400, 82.0, -30.0), team_);
+    EXPECT_EQ(Find(*manager, "car_1")->track_start_ns, Track(400));
+}
+
+// [C1]
+TEST_F(ContactIdentityTest, ClosedCameraContactTakesTheLidarPositionOfItsTracksSecondReport)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeCameraContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeContact("car", 44.0, 26.4, 200), team_);
+    EXPECT_FALSE(Find(*manager, "car_1")->position.point.has_value());
+    manager->handleContacts(MakeContact("car", 44.2, 26.5, 200), team_);
+
+    const auto * closed = Find(*manager, "car_1");
+    ASSERT_TRUE(closed->position.point.has_value());
+    EXPECT_DOUBLE_EQ(closed->position.point->x(), 44.2);
+    ASSERT_EQ(Investigated().poses.size(), 1u);
+    EXPECT_DOUBLE_EQ(Investigated().poses[0].pose.position.x, 44.2);
+}
+
+// [C1] A sighting never locates a closed contact.
+TEST_F(ContactIdentityTest, SightingsDoNotLocateAClosedCameraContact)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeCameraContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeContact("car", 44.0, 26.4), team_);
+    manager->handleContacts(MakeContact("car", 44.2, 26.5), team_);
+    EXPECT_FALSE(Find(*manager, "car_1")->position.point.has_value());
+}
+
+// [C2]
+TEST_F(ContactIdentityTest, TrackOfAClosedContactThatReportsElsewhereTwiceIsAnotherTarget)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeContact("car", 75.0, 30.0, 100), team_);
+    EXPECT_FALSE(HasContactTask(*manager));
+    manager->handleContacts(MakeContact("car", 75.5, 30.0, 100), team_);
+    EXPECT_TRUE(HasContactTask(*manager));
+}
+
+// [O1]
+TEST_F(ContactIdentityTest, CameraReportDoesNotMoveALidarContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 53.0, 32.0, 100), team_);
+    EXPECT_TRUE(Has(Tasks(*manager)[1], "ENCIRCLE: target_position=(50, 30)"));
+}
+
+// [O2]
+TEST_F(ContactIdentityTest, HeldContactIsMergedOnTheSecondLidarReportOfItsTrackAtTheClosedContact)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    ASSERT_TRUE(Find(*manager, "car_2")->held_fit);
+    manager->handleContacts(MakeContact("car", 84.5, 30.0, 200), team_);
+    EXPECT_NE(Find(*manager, "car_2"), nullptr);
+    manager->handleContacts(MakeContact("car", 84.3, 30.0, 200), team_);
+    EXPECT_EQ(Find(*manager, "car_2"), nullptr);
+    EXPECT_EQ(Find(*manager, "car_1")->track_start_ns, Track(200));
+}
+
+// [O2] The track agrees with the closed contact, but its contact does not fit it: the track moved, not the contact.
+TEST_F(ContactIdentityTest, ContactThatDoesNotFitTheClosedOneIsNotMergedByItsTrack)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 90.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 78.0, 30.0, 200, 78.0, -40.0), team_);
+    manager->handleContacts(MakeContact("car", 84.0, 30.0, 100), team_);
+    manager->markContactInvestigated("car_1");
+    ASSERT_FALSE(Find(*manager, "car_2")->heldBack());
+
+    manager->handleContacts(MakeContact("car", 82.5, 30.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 82.5, 30.0, 200), team_);
+    ASSERT_NE(Find(*manager, "car_2"), nullptr);
+    EXPECT_TRUE(HasTasksFor(*manager, "car_2"));
+}
+
+// [O3]
+TEST_F(ContactIdentityTest, LidarReportsOfAHeldContactsTrackLocateTheUnverifiedClosedContact)
+{
+    auto manager = MakeBusyManager();
+    CameraContactsMeetingAtRightAngles(*manager);
+    ASSERT_TRUE(Find(*manager, "car_2")->held_fit);
+    manager->handleContacts(MakeContact("car", 84.0, 30.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 84.3, 30.0, 200), team_);
+
+    const auto * closed = Find(*manager, "car_1");
+    ASSERT_TRUE(closed->position.point.has_value());
+    EXPECT_DOUBLE_EQ(closed->position.point->x(), 84.3);
+}
+
+// [O4] A camera report.
+TEST_F(ContactIdentityTest, CameraReportOfAnOpenContactThatFitsAClosedOneIsDropped)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    manager->handleContacts(MakeCameraContact("car", 81.0, 30.5, 200, 81.0, -40.0), team_);
+    EXPECT_DOUBLE_EQ(Find(*manager, "car_2")->position.estimate.x(), 80.0);
+}
+
+// [O4] A LiDAR report that fits a located closed contact only through its camera stretch.
+TEST_F(ContactIdentityTest, LidarReportThatFitsOnlyTheStretchOfALocatedClosedContactIsDropped)
+{
+    auto manager = MakeBusyManager();
+    CameraContactsMeetingAtRightAngles(*manager);
+    manager->handleContacts(MakeContact("car", 86.0, 44.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 86.0, 44.0, 100), team_);
+    ASSERT_TRUE(Find(*manager, "car_1")->position.point.has_value());
+
+    manager->handleContacts(MakeContact("car", 84.0, 28.0, 200), team_);
+    const auto * held = Find(*manager, "car_2");
+    EXPECT_FALSE(held->position.lidar);
+    EXPECT_DOUBLE_EQ(held->position.estimate.x(), 80.0);
+}
+
+// [O5a] A LiDAR-ranged contact keeps its tasks when its track moves to another contact.
+TEST_F(ContactIdentityTest, LidarContactKeepsItsTasksWhenItsTrackMovesToAnotherContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 80.0, 30.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 100.0, 30.0, 300), team_);
+    manager->handleContacts(MakeContact("car", 100.5, 30.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 100.5, 30.0, 200), team_);
+
+    EXPECT_TRUE(HasTasksFor(*manager, "car_1"));
+    EXPECT_EQ(Find(*manager, "car_1")->track_start_ns, 0);
+    EXPECT_EQ(Find(*manager, "car_2")->track_start_ns, Track(200));
+}
+
+// [O5a] A camera-ranged contact is held back when its track moves to another contact.
+TEST_F(ContactIdentityTest, CameraContactIsHeldBackWhenItsTrackMovesToAnotherContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 80.0, 30.0, 200, 80.0, -40.0), team_);
+    manager->handleContacts(MakeContact("car", 100.0, 30.0, 300), team_);
+    manager->handleContacts(MakeContact("car", 100.5, 30.0, 200), team_);
+    manager->handleContacts(MakeContact("car", 100.5, 30.0, 200), team_);
+
+    EXPECT_TRUE(Find(*manager, "car_1")->held_report);
+    EXPECT_FALSE(HasTasksFor(*manager, "car_1"));
+}
+
+// [E1a]
+TEST_F(ContactIdentityTest, OpenLidarContactThatAgreesWithAContactWhenItClosesIsMergedIntoIt)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, true);
+    EXPECT_EQ(Find(*manager, "car_2"), nullptr);
+}
+
+// [E1b] Nov 16 car_6: two open contacts settled on one target before one of them closed.
+TEST_F(ContactIdentityTest, OpenCameraContactThatFitsAContactWhenItClosesIsHeldBack)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    const auto * held = Find(*manager, "car_2");
+    ASSERT_NE(held, nullptr);
+    EXPECT_TRUE(held->held_fit);
+    EXPECT_FALSE(HasTasksFor(*manager, "car_2"));
+}
+
+// [E1a] after [C1]: locating a closed contact merges an open contact at its LiDAR point.
+TEST_F(ContactIdentityTest, LocatingAClosedContactMergesTheOpenContactAtItsLidarPoint)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeCameraContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeContact("car", 40.9, 31.5, 200), team_);
+    ASSERT_TRUE(HasTasksFor(*manager, "car_2"));
+
+    manager->handleContacts(MakeContact("car", 44.0, 26.4, 100), team_);
+    EXPECT_NE(Find(*manager, "car_2"), nullptr);
+    manager->handleContacts(MakeContact("car", 44.0, 26.4, 100), team_);
+    EXPECT_EQ(Find(*manager, "car_2"), nullptr);
+}
+
+// Merge: the survivor takes the merged contact's LiDAR point.
+TEST_F(ContactIdentityTest, MergedLidarContactLocatesTheClosedCameraContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 87.0, 40.0, 100, 87.0, -30.0), team_);
+    manager->handleContacts(MakeContact("car", 80.0, 30.0, 200), team_);
+    manager->handleContacts(MakeCameraContact("car", 83.0, 30.0, 100, 83.0, -30.0), team_);
+    manager->markContactInvestigated("car_1");
+
+    EXPECT_EQ(Find(*manager, "car_2"), nullptr);
+    ASSERT_EQ(Investigated().poses.size(), 1u);
+    EXPECT_DOUBLE_EQ(Investigated().poses[0].pose.position.x, 80.0);
+}
+
+// Merge: removing the merged contact's tasks releases its overwatch vehicle.
+TEST_F(ContactIdentityTest, MergedInvestigationReleasesTheOverwatchVehicle)
+{
+    std::vector<avt_341_msgs::msg::Communication> sent;
+    auto comm_sub = node_->create_subscription<avt_341_msgs::msg::Communication>(
+        "avt_341/comm_messages", 100, [&sent](avt_341_msgs::msg::Communication::SharedPtr msg) { sent.push_back(*msg); });
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, true);
+    ASSERT_EQ(Find(*manager, "car_2"), nullptr);
+
+    std::optional<int> encircle_id;
+    bool completed = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!completed && std::chrono::steady_clock::now() < deadline) {
+        rclcpp::spin_some(node_);
+        encircle_id.reset();
+        for (const auto & msg : sent) {
+            if (msg.type == MissionMsgType::Overwatch && msg.receiver_name == "FEDA") {
+                encircle_id = msg.target_msg_id;
+            }
+            completed = completed || (encircle_id.has_value() && msg.type == MissionMsgType::TaskComplete &&
+                                      msg.sender_name == "MRZR" && msg.target_msg_id == *encircle_id);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(encircle_id.has_value());
+    EXPECT_TRUE(completed);
+}
+
+// [E2]
+TEST_F(ContactIdentityTest, LidarReleaseAtTheClosedContactMergesAHeldContact)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    manager->handleTargetReleased(MakeContact("car", 84.2, 30.0, 200));
+    EXPECT_EQ(Find(*manager, "car_2"), nullptr);
+}
+
+// [E2] The release is at a closed contact the track's own contact does not fit: the track moved.
+TEST_F(ContactIdentityTest, ReleaseAwayFromItsLidarContactOnlyUnbindsTheTrack)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeContact("car", 80.0, 30.0, 200), team_);
+    manager->handleTargetReleased(MakeContact("car", 50.5, 30.0, 200));
+
+    const auto * open = Find(*manager, "car_2");
+    ASSERT_NE(open, nullptr);
+    EXPECT_EQ(open->track_start_ns, 0);
+    EXPECT_TRUE(HasTasksFor(*manager, "car_2"));
+}
+
+// [E2]
+TEST_F(ContactIdentityTest, ReleaseAwayFromItsCameraContactHoldsTheContactBack)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeCameraContact("car", 80.0, 30.0, 200, 80.0, -40.0), team_);
+    manager->handleTargetReleased(MakeContact("car", 50.5, 30.0, 200));
+
+    EXPECT_TRUE(Find(*manager, "car_2")->held_report);
+    EXPECT_FALSE(HasTasksFor(*manager, "car_2"));
+}
+
+// [E2]
+TEST_F(ContactIdentityTest, CameraReleaseOnlyUnbindsTheTrack)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    manager->handleTargetReleased(MakeCameraContact("car", 84.2, 30.0, 200, 84.2, -40.0));
+
+    const auto * held = Find(*manager, "car_2");
+    ASSERT_NE(held, nullptr);
+    EXPECT_EQ(held->track_start_ns, 0);
+}
+
+// Held back: no tasks once the delay has passed.
+TEST_F(ContactIdentityTest, HeldBackContactGetsNoTasksAfterTheDelay)
+{
+    params_.toi.contact_trigger_delay = 0.2;
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    ASSERT_TRUE(Find(*manager, "car_2")->held_fit);
+    rclcpp::sleep_for(std::chrono::milliseconds(300));
+    EXPECT_FALSE(manager->hasPendingContacts());
+    manager->confirmPendingContacts(team_);
+    EXPECT_FALSE(HasTasksFor(*manager, "car_2"));
+}
+
+// Held back: a report that leaves the contact held back creates no tasks.
+TEST_F(ContactIdentityTest, ReportThatLeavesAContactHeldBackCreatesNoTasks)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 90.0, 40.0, 100, 90.0, -30.0), team_);
+    manager->handleContacts(MakeContact("car", 84.0, 31.0, 200), team_);
+    manager->handleContacts(MakeCameraContact("car", 86.0, 40.0, 100, 86.0, -30.0), team_);
+    manager->markContactInvestigated("car_1");
+    ASSERT_TRUE(Find(*manager, "car_2")->held_fit);
+
+    manager->handleContacts(MakeCameraContact("car", 80.0, 29.0, 200, 80.0, -30.0), team_);
+    EXPECT_TRUE(Find(*manager, "car_2")->held_fit);
+    EXPECT_FALSE(HasTasksFor(*manager, "car_2"));
+}
+
+// Held back: a report that moves the contact clear of every closed contact releases it.
+TEST_F(ContactIdentityTest, HeldContactMovedClearOfTheClosedContactIsInvestigated)
+{
+    auto manager = MakeBusyManager();
+    TwoContactsOnOneTarget(*manager, false);
+    ASSERT_FALSE(HasTasksFor(*manager, "car_2"));
+    manager->handleContacts(MakeCameraContact("car", 78.0, 22.0, 200, 78.0, -40.0), team_);
+    EXPECT_FALSE(Find(*manager, "car_2")->heldBack());
+    EXPECT_TRUE(HasTasksFor(*manager, "car_2"));
+}
+

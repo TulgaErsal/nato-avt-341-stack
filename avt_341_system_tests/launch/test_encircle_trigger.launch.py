@@ -27,7 +27,7 @@ def launch_setup(context, *args, **kwargs):
 
     # Force autostart so the tracker begins without a mission manager task assignment,
     # and disable mission manager topic mode so the SetTarget service is available if needed.
-    # The tracker still publishes to avt_341/target_contacts when tracking starts.
+    # The tracker still publishes to avt_341/target_reports when tracking starts.
     tracking_params['tracker_use_mission_manager'] = False
     tracking_params['tracker_autostart'] = True
 
@@ -124,7 +124,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # 4. Mission Manager Node
-    # Subscribes to avt_341/target_contacts; when the tracker publishes a contact
+    # Subscribes to avt_341/target_reports; when the tracker publishes a contact
     # the mission manager adds a MoveTo + Encircle task pair.
     mission_manager_node = Node(
         package='avt_341_nav',

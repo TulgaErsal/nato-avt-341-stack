@@ -6,6 +6,7 @@
 #include "avt_341_nav/node/node_utils.h"
 #include "avt_341_nav/core/frame_id_collection.hpp"
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <limits>
 #include <sstream>
@@ -450,31 +451,85 @@ double MissionManager::nowSeconds() const {
 }
 
 // Contact Management
-std::vector<Contact>::iterator MissionManager::findContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
-    auto closest = mission_contacts.end();
-    double closest_dist_sq = std::numeric_limits<double>::max();
-    for (auto it = mission_contacts.begin(); it != mission_contacts.end(); ++it) {
-        if (it->target_class != target_class) {
-            continue;
-        }
-        // Sightings, and contacts only sighted so far, have the camera's range error.
-        const double gate = it->track_start_ns == 0 || rclcpp::Time(pose.header.stamp).nanoseconds() == 0
-            ? std::max(params_.toi.same_object_distance_threshold, params_.toi.sighting_match_distance)
-            : params_.toi.same_object_distance_threshold;
-        const double dist_sq = PosePlanarDistanceSq(it->pose.pose.position, pose.pose.position);
-        if (dist_sq <= gate * gate && dist_sq < closest_dist_sq) {
-            closest_dist_sq = dist_sq;
-            closest = it;
-        }
-    }
-    return closest;
+namespace {
+
+geometry_msgs::msg::PoseStamped PoseOf(const avt_341_msgs::msg::TargetReport & report) {
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header.stamp = report.track_start;
+    pose.header.frame_id = report.target_class;
+    pose.pose.position = report.position;
+    pose.pose.orientation.z = std::sin(0.5 * report.yaw);
+    pose.pose.orientation.w = std::cos(0.5 * report.yaw);
+    return pose;
 }
 
-Contact & MissionManager::addContact(const std::string & target_class, const geometry_msgs::msg::PoseStamped & pose) {
+const char * RangingName(const TargetPosition & position) {
+    return position.lidar ? "LiDAR" : "camera";
+}
+
+}  // namespace
+
+SameTargetSettings MissionManager::sameTarget() const {
+    SameTargetSettings settings;
+    settings.extent = {params_.toi.camera_extent_near_fraction, params_.toi.camera_extent_near_max,
+                       params_.toi.camera_extent_far_fraction, params_.toi.camera_extent_far_max};
+    settings.distance = params_.toi.same_object_distance_threshold;
+    settings.lidar_distance = params_.toi.lidar_same_object_distance;
+    return settings;
+}
+
+bool MissionManager::fits(const TargetPosition & a, const TargetPosition & b) const {
+    return Fits(a, b, sameTarget());
+}
+
+bool MissionManager::agreesAsPoints(const TargetPosition & a, const TargetPosition & b) const {
+    return AgreesAsPoints(a, b, sameTarget());
+}
+
+Contact * MissionManager::contactNamed(const std::string & name) {
+    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        [&](const Contact & c) { return c.name == name; });
+    return it == mission_contacts.end() ? nullptr : &*it;
+}
+
+Contact * MissionManager::boundContact(int64_t track_start_ns, const std::string & target_class) {
+    if (track_start_ns == 0) {
+        return nullptr;
+    }
+    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+        return c.track_start_ns == track_start_ns && c.target_class == target_class;
+    });
+    return it == mission_contacts.end() ? nullptr : &*it;
+}
+
+void MissionManager::bindTrack(Contact & contact, int64_t track_start_ns) {
+    if (track_start_ns == 0) {
+        return;
+    }
+    for (auto & other : mission_contacts) {
+        if (&other != &contact && other.track_start_ns == track_start_ns) {
+            other.track_start_ns = 0;
+        }
+    }
+    if (contact.track_start_ns != track_start_ns) {
+        if (!contact.merge_target.empty()) {
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": a new track reports it; not merging it.",
+                        contact.name.c_str());
+            contact.merge_target.clear();
+        }
+        contact.miss.reset();
+        contact.verify_candidate.reset();
+    }
+    contact.track_start_ns = track_start_ns;
+    contact.tracked = true;
+}
+
+Contact & MissionManager::addContact(const avt_341_msgs::msg::TargetReport & report, const TargetPosition & position) {
   Contact new_contact;
-  new_contact.name = target_class + "_" + std::to_string(++contact_count_);
-  new_contact.target_class = target_class;
-  new_contact.pose = pose;
+  new_contact.name = report.target_class + "_" + std::to_string(++contact_count_);
+  new_contact.target_class = report.target_class;
+  new_contact.pose = PoseOf(report);
+  new_contact.position = position;
   new_contact.investigating = false;
   new_contact.investigated = false;
   new_contact.is_new = true;
@@ -498,15 +553,17 @@ bool MissionManager::investigationAllowed(const Contact & contact) const {
 }
 
 void MissionManager::markContactInvestigated(const std::string & name) {
-    auto it = std::find_if(mission_contacts.begin(), mission_contacts.end(),
-        [&](const Contact& c) { return c.name == name; });
-    if (it == mission_contacts.end()) {
+    Contact * contact = contactNamed(name);
+    if (contact == nullptr) {
         return;
     }
-    it->investigating = false;
-    it->investigated = true;
-    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" at (%.2f, %.2f) investigated.", name.c_str(), it->pose.pose.position.x, it->pose.pose.position.y);
+    contact->investigating = false;
+    contact->investigated = true;
+    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" at (%.2f, %.2f) investigated (%s position).", name.c_str(),
+                contact->pose.pose.position.x, contact->pose.pose.position.y,
+                contact->position.hasLidar() ? "LiDAR" : "camera, unverified");
     publishInvestigatedContacts();
+    onClosedContactChanged(name);
 }
 
 void MissionManager::handleCancelledContact(const Task * task, CancelledContact cancelled_contact) {
@@ -528,6 +585,7 @@ void MissionManager::handleCancelledContact(const Task * task, CancelledContact 
     it->investigating = false;
     it->dismissed = true;
     publishInvestigatedContacts();
+    onClosedContactChanged(it->name);
 }
 
 void MissionManager::publishInvestigatedContacts() {
@@ -535,7 +593,7 @@ void MissionManager::publishInvestigatedContacts() {
     msg.header.stamp = node_->now();
     msg.header.frame_id = "map";
     for (const auto & contact : mission_contacts) {
-        if (contact.investigated || contact.dismissed) {
+        if (contact.closed()) {
             geometry_msgs::msg::PoseStamped pose = contact.pose;
             pose.header.frame_id = msg.header.frame_id;
             msg.poses.push_back(pose);
@@ -544,12 +602,10 @@ void MissionManager::publishInvestigatedContacts() {
     investigated_contacts_pub->publish(msg);
 }
 
-void MissionManager::updateExistingContact(
-    std::vector<Contact>::iterator it,
-    const geometry_msgs::msg::PoseStamped & pose)
+void MissionManager::updateExistingContact(Contact & contact, const geometry_msgs::msg::PoseStamped & pose)
 {
-    it->pose = pose;
-    const std::string & name = it->name;
+    contact.pose = pose;
+    const std::string & name = contact.name;
     RCLCPP_INFO(node_->get_logger(), "Updated contact \"%s\" position to (%.2f, %.2f).", name.c_str(), pose.pose.position.x, pose.pose.position.y);
 
     for (Task* task : task_list) {
@@ -570,7 +626,155 @@ void MissionManager::updateExistingContact(
     }
 }
 
+void MissionManager::holdBack(Contact & contact, HoldReason reason) {
+    const bool was_held = contact.heldBack();
+    (reason == HoldReason::FitsClosed ? contact.held_fit : contact.held_report) = true;
+    if (was_held) {
+        return;
+    }
+    RCLCPP_INFO(node_->get_logger(), "Holding contact \"%s\" at (%.2f, %.2f) back: %s.", contact.name.c_str(),
+                contact.pose.pose.position.x, contact.pose.pose.position.y,
+                reason == HoldReason::FitsClosed ? "it can be an investigated target"
+                                                 : "its track moved to another target; waiting for a report of it");
+    removeContactTasks(contact.name);
+    contact.is_new = true;
+    contact.investigating = false;
+    contact.merge_target.clear();
+}
+
+bool MissionManager::fitsClosedContact(const Contact & contact) const {
+    return std::any_of(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+        return &c != &contact && c.closed() && c.target_class == contact.target_class &&
+            fits(contact.position, c.position);
+    });
+}
+
+// A report goes to an open contact.
+void MissionManager::updateOpenContact(Contact & contact, const avt_341_msgs::msg::TargetReport & report,
+                                       const TargetPosition & position, bool tracked,
+                                       const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    bool moves = true;
+    if (contact.position.lidar && !position.lidar) {
+        moves = false;
+    } else if (!tracked && contact.tracked) {
+        moves = false;
+    }
+    if (moves) {
+        contact.position = position;
+    }
+    contact.miss.reset();
+    const bool was_held = contact.heldBack();
+    contact.held_report = false;
+    if (fitsClosedContact(contact)) {
+        holdBack(contact, HoldReason::FitsClosed);
+    } else {
+        contact.held_fit = false;
+        if (was_held) {
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" at (%.2f, %.2f) is no longer held back.",
+                        contact.name.c_str(), report.position.x, report.position.y);
+        }
+    }
+    if (contact.is_new) {
+        if (moves) {
+            contact.pose = PoseOf(report);
+        }
+        contact.reported_while_allowed = investigationBlockedReason() == nullptr;
+        maybeCreateToiTasks(contact, veh_poses);
+    } else if (moves) {
+        updateExistingContact(contact, PoseOf(report));
+    }
+}
+
+// A closed contact with only a camera position gains the LiDAR point of its track's second LiDAR report in a row at
+// one place (the camera stretch stays).
+void MissionManager::verifyClosedContact(Contact & contact, const TargetPosition & position) {
+    if (contact.position.hasLidar()) {
+        return;
+    }
+    if (!position.lidar) {
+        contact.verify_candidate.reset();
+        return;
+    }
+    if (!contact.verify_candidate ||
+        (*contact.verify_candidate - position.estimate).norm() > params_.toi.lidar_same_object_distance) {
+        contact.verify_candidate = position.estimate;
+        return;
+    }
+    contact.verify_candidate.reset();
+    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": LiDAR places it at (%.2f, %.2f), %.1f m from its camera position.",
+                contact.name.c_str(), position.estimate.x(), position.estimate.y(),
+                (position.estimate - contact.position.estimate).norm());
+    contact.position.point = position.estimate;
+    contact.pose.pose.position.x = position.estimate.x();
+    contact.pose.pose.position.y = position.estimate.y();
+    publishInvestigatedContacts();
+    onClosedContactChanged(contact.name);
+}
+
+// A contact closed or a closed contact gained a LiDAR point: open contacts of its target are merged into it if
+// LiDAR shows the same place, and held back otherwise.
+void MissionManager::onClosedContactChanged(const std::string & name) {
+    const Contact * closed = contactNamed(name);
+    if (closed == nullptr) {
+        return;
+    }
+    std::vector<std::string> merges;
+    std::vector<std::string> holds;
+    for (const auto & other : mission_contacts) {
+        if (other.closed() || other.target_class != closed->target_class || !fits(other.position, closed->position)) {
+            continue;
+        }
+        (other.position.lidar && agreesAsPoints(other.position, closed->position) ? merges : holds).push_back(other.name);
+    }
+    for (const auto & held : holds) {
+        if (Contact * contact = contactNamed(held)) {
+            holdBack(*contact, HoldReason::FitsClosed);
+        }
+    }
+    for (const auto & merged : merges) {
+        mergeInto(merged, name);
+    }
+}
+
+// The merged contact is deleted: its tasks are removed (which releases the overwatch), its track is bound to the
+// survivor, and an unverified survivor takes its LiDAR point.
+void MissionManager::mergeInto(const std::string & merged_name, const std::string & survivor_name) {
+    auto merged = std::find_if(mission_contacts.begin(), mission_contacts.end(),
+        [&](const Contact & c) { return c.name == merged_name; });
+    Contact * survivor = contactNamed(survivor_name);
+    if (merged == mission_contacts.end() || survivor == nullptr) {
+        return;
+    }
+    RCLCPP_INFO(node_->get_logger(), "Merging contact \"%s\" into %s \"%s\".", merged_name.c_str(),
+                survivor->investigated ? "the investigated" : "the dismissed", survivor_name.c_str());
+    removeContactTasks(merged_name);
+    const bool takes_point = merged->position.lidar && !survivor->position.hasLidar();
+    if (takes_point) {
+        survivor->position.point = merged->position.estimate;
+        survivor->pose.pose.position.x = merged->position.estimate.x();
+        survivor->pose.pose.position.y = merged->position.estimate.y();
+    }
+    const int64_t track = merged->track_start_ns;
+    mission_contacts.erase(merged);
+    bindTrack(*survivor, track);
+    publishInvestigatedContacts();
+    if (takes_point) {
+        onClosedContactChanged(survivor_name);
+    }
+}
+
+// True on the second report in a row, at one place, of the contact's track that does not fit it.
+bool MissionManager::secondMiss(Contact & contact, const TargetPosition & position) {
+    if (contact.miss && (*contact.miss - position.estimate).norm() <= params_.toi.lidar_same_object_distance) {
+        contact.miss.reset();
+        return true;
+    }
+    contact.miss = position.estimate;
+    return false;
+}
+
 void MissionManager::checkGoalArrival() {
+
     Task* active_task = currentTask();
     if(active_task != nullptr) {
         geometry_msgs::msg::PoseStamped gp = active_task->terminalPose();
@@ -720,165 +924,278 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
 }
 
 // Message Handlers
-void MissionManager::handleContacts(const nav_msgs::msg::Path & contacts, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+void MissionManager::handleContacts(const avt_341_msgs::msg::TargetReports & reports, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    for (const auto & report : reports.reports) {
+        handleReport(report, veh_poses);
+    }
+}
 
-    for(const auto& pose: contacts.poses) {
-        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
-        const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
-        auto existing = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact& c) {
-            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
-                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
-        });
+// Rows of the decision table in full-lw/md/toi_test_nov16.md, section 3, are given in brackets.
+void MissionManager::handleReport(const avt_341_msgs::msg::TargetReport & report,
+                                  const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    const int64_t track_start_ns = rclcpp::Time(report.track_start).nanoseconds();
+    const TargetPosition position = ToTargetPosition(report);
+    const geometry_msgs::msg::Point & point = report.position;
+    const char * target_class = report.target_class.c_str();
+    Contact * bound = boundContact(track_start_ns, report.target_class);
 
-        const bool track_matched = existing != mission_contacts.end();
-        cancelMergesElsewhere(track_start_ns, pose.pose.position);
+    if (const auto team_track = team_vehicle_tracks_.find(track_start_ns); team_track != team_vehicle_tracks_.end()) {
+        const int clear_reports = params_.toi.team_vehicle_track_clear_reports;
+        team_track->second = clearOfTeamVehicles(point, veh_poses) ? team_track->second + 1 : 0;
+        if (clear_reports <= 0 || team_track->second < clear_reports) {
+            RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                "Ignoring contact \"%s\" at (%.2f, %.2f): its track is a team vehicle.", target_class, point.x, point.y);
+            return;
+        }
+        RCLCPP_INFO(node_->get_logger(),
+            "Contact \"%s\" at (%.2f, %.2f): its track has stayed clear of the team vehicles; it is a target.",
+            target_class, point.x, point.y);
+        team_vehicle_tracks_.erase(team_track);
+    }
 
-        if (const auto team_track = team_vehicle_tracks_.find(track_start_ns); team_track != team_vehicle_tracks_.end()) {
-            const int clear_reports = params_.toi.team_vehicle_track_clear_reports;
-            team_track->second = clearOfTeamVehicles(pose.pose.position, veh_poses) ? team_track->second + 1 : 0;
-            if (clear_reports <= 0 || team_track->second < clear_reports) {
-                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
-                    "Ignoring contact \"%s\" at (%.2f, %.2f): its track is a team vehicle.",
-                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y);
-                continue;
+    if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
+        // The ego vehicle closes in on a target it investigates, so its track keeps updating it.
+        auto team = veh_poses;
+        if (bound != nullptr) {
+            team.erase(my_name);
+        }
+        auto team_vehicle = FindVehicleWithin(point, team, params_.toi.team_vehicle_exclusion_radius);
+        if (team_vehicle.has_value()) {
+            RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
+                target_class, point.x, point.y, params_.toi.team_vehicle_exclusion_radius, team_vehicle->c_str());
+        } else if (params_.toi.team_vehicle_line_of_sight_lateral > 0.0) {
+            const auto ego = veh_poses.find(my_name);
+            if (ego != veh_poses.end()) {
+                auto others = veh_poses;
+                others.erase(my_name);
+                team_vehicle = FindVehicleOnLineOfSight(
+                    point, ego->second.pose.pose.position, others,
+                    params_.toi.team_vehicle_line_of_sight_lateral,
+                    params_.toi.team_vehicle_line_of_sight_range_fraction,
+                    params_.toi.team_vehicle_line_of_sight_min_range);
+                if (team_vehicle.has_value()) {
+                    RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                        "Ignoring contact \"%s\" at (%.2f, %.2f): on the line of sight to team vehicle %s.",
+                        target_class, point.x, point.y, team_vehicle->c_str());
+                }
             }
+        }
+        if (team_vehicle.has_value()) {
+            if (track_start_ns != 0 && *team_vehicle != my_name && (bound == nullptr || bound->is_new)) {
+                team_vehicle_tracks_[track_start_ns] = 0;
+                if (bound != nullptr) {
+                    RCLCPP_INFO(node_->get_logger(), "Forgetting contact \"%s\": its track is team vehicle %s.",
+                                bound->name.c_str(), team_vehicle->c_str());
+                    const std::string forgotten = bound->name;
+                    mission_contacts.remove_if([&](const Contact & c) { return c.name == forgotten; });
+                }
+            }
+            return;
+        }
+    }
+
+    if (bound != nullptr && bound->closed()) {
+        if (fits(position, bound->position)) {
+            // [C1]
+            bound->miss.reset();
+            RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".", target_class, point.x, point.y,
+                bound->investigated ? "investigated" : "dismissed", bound->name.c_str());
+            verifyClosedContact(*bound, position);
+            return;
+        }
+        bound->verify_candidate.reset();
+        if (!secondMiss(*bound, position)) {
+            // [C2]
             RCLCPP_INFO(node_->get_logger(),
-                "Contact \"%s\" at (%.2f, %.2f): its track has stayed clear of the team vehicles; it is a target.",
-                pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y);
-            team_vehicle_tracks_.erase(team_track);
+                "Contact \"%s\": its track reported (%.2f, %.2f), which does not fit it; waiting for its next report.",
+                bound->name.c_str(), point.x, point.y);
+            return;
         }
+        RCLCPP_INFO(node_->get_logger(),
+            "Contact \"%s\": its track reported (%.2f, %.2f) again, which does not fit it; the track is another target.",
+            bound->name.c_str(), point.x, point.y);
+        bound->track_start_ns = 0;
+        bound = nullptr;
+    }
 
-        if (params_.toi.team_vehicle_exclusion_radius > 0.0) {
-            // The ego vehicle closes in on a target it investigates, so its track keeps updating it.
-            auto team = veh_poses;
-            if (track_matched) {
-                team.erase(my_name);
-            }
-            auto team_vehicle = FindVehicleWithin(
-                pose.pose.position, team, params_.toi.team_vehicle_exclusion_radius);
-            if (team_vehicle.has_value()) {
-                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
-                    "Ignoring contact \"%s\" at (%.2f, %.2f): within %.1f m of team vehicle %s.",
-                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
-                    params_.toi.team_vehicle_exclusion_radius, team_vehicle->c_str());
-            } else if (params_.toi.team_vehicle_line_of_sight_lateral > 0.0) {
-                const auto ego = veh_poses.find(my_name);
-                if (ego != veh_poses.end()) {
-                    auto others = veh_poses;
-                    others.erase(my_name);
-                    team_vehicle = FindVehicleOnLineOfSight(
-                        pose.pose.position, ego->second.pose.pose.position, others,
-                        params_.toi.team_vehicle_line_of_sight_lateral,
-                        params_.toi.team_vehicle_line_of_sight_range_fraction,
-                        params_.toi.team_vehicle_line_of_sight_min_range);
-                    if (team_vehicle.has_value()) {
-                        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
-                            "Ignoring contact \"%s\" at (%.2f, %.2f): on the line of sight to team vehicle %s.",
-                            pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
-                            team_vehicle->c_str());
-                    }
-                }
-            }
-            if (team_vehicle.has_value()) {
-                if (track_start_ns != 0 && *team_vehicle != my_name && (!track_matched || existing->is_new)) {
-                    team_vehicle_tracks_[track_start_ns] = 0;
-                    if (track_matched) {
-                        RCLCPP_INFO(node_->get_logger(), "Forgetting contact \"%s\": its track is team vehicle %s.",
-                                    existing->name.c_str(), team_vehicle->c_str());
-                        mission_contacts.erase(existing);
-                    }
-                }
-                continue;
-            }
-        }
-
-        if (existing == mission_contacts.end()) {
-            existing = findContact(pose.header.frame_id, pose);
-        }
-
-        if (existing != mission_contacts.end()) {
-            if (track_start_ns != 0) {
-                if (existing->track_start_ns != track_start_ns && !existing->merge_target.empty()) {
-                    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": a new track reports it; not merging it.",
-                                existing->name.c_str());
-                    existing->merge_target.clear();
-                }
-                existing->track_start_ns = track_start_ns;
-            }
-            if (track_matched && !existing->investigated && !existing->dismissed) {
-                const auto known = findMergeTarget(*existing, pose.pose.position);
-                if (known != mission_contacts.end()) {
-                    if (existing->merge_target == known->name) {
-                        RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" reached (%.2f, %.2f) again.",
-                            existing->name.c_str(), pose.pose.position.x, pose.pose.position.y);
-                        mergeContact(*existing, *known);
-                    } else {
-                        RCLCPP_INFO(node_->get_logger(),
-                            "Contact \"%s\" reached (%.2f, %.2f), %s \"%s\"; merging it if its track confirms it.",
-                            existing->name.c_str(), pose.pose.position.x, pose.pose.position.y,
-                            known->investigated ? "the investigated" : "the dismissed", known->name.c_str());
-                        existing->merge_target = known->name;
-                        existing->merge_hold_logged.clear();
-                    }
+    if (bound != nullptr) {
+        Contact & contact = *bound;
+        if (fits(position, contact.position)) {
+            contact.miss.reset();
+            Contact * nearest_closed = nullptr;
+            double nearest_margin = std::numeric_limits<double>::infinity();
+            Contact * agreeing = nullptr;
+            Contact * unverified = nullptr;
+            for (auto & other : mission_contacts) {
+                if (&other == &contact || !other.closed() || other.target_class != contact.target_class) {
                     continue;
                 }
-                existing->merge_target.clear();
-            }
-            // A sighting never moves a contact a track has reported on.
-            bool moves_contact = track_start_ns != 0 || existing->track_start_ns == 0;
-            if (moves_contact && track_matched && !existing->investigated && !existing->dismissed &&
-                !acceptTrackedMove(*existing, pose)) {
-                RCLCPP_INFO(node_->get_logger(),
-                    "Holding the report of contact \"%s\" at (%.2f, %.2f), %.1f m from its position, until its track confirms it.",
-                    existing->name.c_str(), pose.pose.position.x, pose.pose.position.y,
-                    PosePlanarDistance(existing->pose.pose.position, pose.pose.position));
-                moves_contact = false;
-            }
-            if (existing->investigated || existing->dismissed) {
-                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
-                    "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".",
-                    pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y,
-                    existing->investigated ? "investigated" : "dismissed", existing->name.c_str());
-            } else if (existing->is_new) {
-                // Tasks not yet created: keep updating the position and wait for the delay.
-                if (moves_contact) {
-                    existing->pose = pose;
+                const double margin = FitMargin(position, other.position, sameTarget());
+                if (margin > 0.0) {
+                    continue;
                 }
-                existing->reported_while_allowed = investigationBlockedReason() == nullptr;
-                maybeCreateToiTasks(*existing, veh_poses);
-            } else if (moves_contact) {
-                // Tasks already created: propagate refined position to queued tasks.
-                updateExistingContact(existing, pose);
+                if (margin < nearest_margin) {
+                    nearest_margin = margin;
+                    nearest_closed = &other;
+                }
+                if (agreeing == nullptr && agreesAsPoints(position, other.position)) {
+                    agreeing = &other;
+                }
+                if (unverified == nullptr && !other.position.hasLidar() && fits(contact.position, other.position)) {
+                    unverified = &other;
+                }
             }
-            continue;
+            if (nearest_closed == nullptr) {
+                // [O1]
+                contact.merge_target.clear();
+                updateOpenContact(contact, report, position, true, veh_poses);
+                return;
+            }
+            if (!position.lidar) {
+                // [O4]
+                RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                    "Contact \"%s\": dropping a camera report at (%.2f, %.2f), which fits the closed \"%s\".",
+                    contact.name.c_str(), point.x, point.y, nearest_closed->name.c_str());
+                return;
+            }
+            if (agreeing != nullptr) {
+                // [O2]
+                if (!fits(contact.position, agreeing->position)) {
+                    RCLCPP_INFO(node_->get_logger(),
+                        "Contact \"%s\": dropping a report at (%.2f, %.2f), the closed \"%s\", which the contact does not fit.",
+                        contact.name.c_str(), point.x, point.y, agreeing->name.c_str());
+                    return;
+                }
+                if (contact.merge_target == agreeing->name) {
+                    RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" reached (%.2f, %.2f) again.",
+                                contact.name.c_str(), point.x, point.y);
+                    mergeInto(contact.name, agreeing->name);
+                    return;
+                }
+                RCLCPP_INFO(node_->get_logger(),
+                    "Contact \"%s\" reached (%.2f, %.2f), %s \"%s\"; merging it if its track confirms it.",
+                    contact.name.c_str(), point.x, point.y,
+                    agreeing->investigated ? "the investigated" : "the dismissed", agreeing->name.c_str());
+                contact.merge_target = agreeing->name;
+                return;
+            }
+            if (unverified != nullptr) {
+                // [O3]
+                RCLCPP_INFO(node_->get_logger(),
+                    "Contact \"%s\": a LiDAR report at (%.2f, %.2f) counts toward locating the closed \"%s\".",
+                    contact.name.c_str(), point.x, point.y, unverified->name.c_str());
+                verifyClosedContact(*unverified, position);
+                return;
+            }
+            // [O4]
+            RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                "Contact \"%s\": dropping a report at (%.2f, %.2f), which fits the closed \"%s\" only through its camera range.",
+                contact.name.c_str(), point.x, point.y, nearest_closed->name.c_str());
+            return;
         }
+        if (!secondMiss(contact, position)) {
+            // [O5]
+            RCLCPP_INFO(node_->get_logger(),
+                "Contact \"%s\": its track reported (%.2f, %.2f), which does not fit it; waiting for its next report.",
+                contact.name.c_str(), point.x, point.y);
+            return;
+        }
+        const bool fits_other = std::any_of(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+            return &c != &contact && c.target_class == contact.target_class && fits(position, c.position);
+        });
+        if (!fits_other && !contact.position.lidar) {
+            // [O5b]
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track reported (%.2f, %.2f) again; moving it there.",
+                        contact.name.c_str(), point.x, point.y);
+            updateOpenContact(contact, report, position, true, veh_poses);
+            return;
+        }
+        // [O5a, O5c]
+        RCLCPP_INFO(node_->get_logger(),
+            "Contact \"%s\": its track reported (%.2f, %.2f) again, which does not fit it; the track is another target.",
+            contact.name.c_str(), point.x, point.y);
+        contact.track_start_ns = 0;
+        contact.merge_target.clear();
+        if (fits_other && !contact.position.lidar) {
+            holdBack(contact, HoldReason::WaitsForReport);
+        }
+    }
+    handleUnboundReport(report, position, track_start_ns, veh_poses);
+}
 
-        Contact & contact = addContact(pose.header.frame_id, pose);
+// A report of a new track, or of a track unbound from its contact, or a sighting.
+void MissionManager::handleUnboundReport(const avt_341_msgs::msg::TargetReport & report,
+                                         const TargetPosition & position, int64_t track_start_ns,
+                                         const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    const geometry_msgs::msg::Point & point = report.position;
+    std::vector<Contact *> candidates;
+    for (auto & contact : mission_contacts) {
+        if (contact.target_class == report.target_class && fits(position, contact.position)) {
+            candidates.push_back(&contact);
+        }
+    }
+    if (std::any_of(candidates.begin(), candidates.end(), [](const Contact * c) { return c->closed(); })) {
+        candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
+                                        [](const Contact * c) { return c->heldBack(); }),
+                         candidates.end());
+    }
+
+    Contact * target = nullptr;
+    if (position.lidar) {
+        // [U1]
+        double nearest = params_.toi.lidar_same_object_distance;
+        for (Contact * candidate : candidates) {
+            const auto distance = LidarPointDistance(position.estimate, candidate->position);
+            if (distance && *distance <= nearest) {
+                nearest = *distance;
+                target = candidate;
+            }
+        }
+    }
+    if (target == nullptr && candidates.size() == 1) {
+        // [U2]
+        target = candidates.front();
+    } else if (target == nullptr && candidates.size() > 1) {
+        // [U3]
+        std::string names;
+        for (const Contact * candidate : candidates) {
+            names += (names.empty() ? "\"" : ", \"") + candidate->name + "\"";
+        }
+        RCLCPP_INFO(node_->get_logger(), "Dropping a %s-ranged report of \"%s\" at (%.2f, %.2f): it fits %s.",
+                    RangingName(position), report.target_class.c_str(), point.x, point.y, names.c_str());
+        return;
+    }
+
+    if (target == nullptr) {
+        // [U4]
+        Contact & contact = addContact(report, position);
         contact.track_start_ns = track_start_ns;
+        contact.tracked = track_start_ns != 0;
         contact.reported_while_allowed = investigationBlockedReason() == nullptr;
-
         if (params_.toi.contact_trigger_delay <= 0.0) {
             if (investigationAllowed(contact)) {
                 createToiTasks(contact, veh_poses);
             }
         } else {
-            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f); waiting %.1f s before creating tasks.", contact.name.c_str(), pose.pose.position.x, pose.pose.position.y, params_.toi.contact_trigger_delay);
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" first seen at (%.2f, %.2f) (%s-ranged); waiting %.1f s before creating tasks.",
+                        contact.name.c_str(), point.x, point.y, RangingName(position), params_.toi.contact_trigger_delay);
         }
+        return;
     }
-}
 
-void MissionManager::mergeContact(Contact & contact, const Contact & known) {
-    RCLCPP_INFO(node_->get_logger(), "Merging contact \"%s\" into %s \"%s\".", contact.name.c_str(),
-                known.investigated ? "the investigated" : "the dismissed", known.name.c_str());
-    removeContactTasks(contact.name);
-    contact.pose = known.pose;
-    contact.is_new = false;
-    contact.investigating = false;
-    contact.investigated = known.investigated;
-    contact.dismissed = known.dismissed;
-    contact.has_held_position = false;
-    contact.merge_target.clear();
-    publishInvestigatedContacts();
+    bindTrack(*target, track_start_ns);
+    if (target->closed()) {
+        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+            "Ignoring contact \"%s\" at (%.2f, %.2f): already %s as \"%s\".", report.target_class.c_str(), point.x,
+            point.y, target->investigated ? "investigated" : "dismissed", target->name.c_str());
+        if (track_start_ns != 0) {
+            verifyClosedContact(*target, position);
+        }
+        return;
+    }
+    updateOpenContact(*target, report, position, track_start_ns != 0, veh_poses);
 }
 
 bool MissionManager::clearOfTeamVehicles(const geometry_msgs::msg::Point & point,
@@ -897,55 +1214,48 @@ bool MissionManager::clearOfTeamVehicles(const geometry_msgs::msg::Point & point
                                   scale * params_.toi.team_vehicle_line_of_sight_min_range).has_value();
 }
 
-std::vector<Contact>::iterator MissionManager::findMergeTarget(const Contact & contact,
-                                                               const geometry_msgs::msg::Point & point) {
-    const double merge_sq = params_.toi.same_object_distance_threshold * params_.toi.same_object_distance_threshold;
-    return std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
-        return &c != &contact && (c.investigated || c.dismissed) && c.target_class == contact.target_class &&
-            PosePlanarDistanceSq(c.pose.pose.position, point) <= merge_sq;
-    });
-}
-
-void MissionManager::cancelMergesElsewhere(int64_t track_start_ns, const geometry_msgs::msg::Point & point) {
-    if (track_start_ns == 0) {
-        return;
-    }
-    for (auto & contact : mission_contacts) {
-        if (contact.track_start_ns == track_start_ns && !contact.merge_target.empty()) {
-            const auto known = findMergeTarget(contact, point);
-            if (known == mission_contacts.end() || known->name != contact.merge_target) {
-                RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track reported (%.2f, %.2f); not merging it.",
-                            contact.name.c_str(), point.x, point.y);
-                contact.merge_target.clear();
-            }
-        }
-    }
-}
-
-void MissionManager::handleTargetReleased(const nav_msgs::msg::Path & released) {
-    const double track_gate_sq = params_.toi.track_match_distance * params_.toi.track_match_distance;
-    for (const auto & pose : released.poses) {
-        const int64_t track_start_ns = rclcpp::Time(pose.header.stamp).nanoseconds();
-        const auto contact = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
-            return track_start_ns != 0 && c.track_start_ns == track_start_ns && c.target_class == pose.header.frame_id &&
-                !c.investigated && !c.dismissed &&
-                PosePlanarDistanceSq(c.pose.pose.position, pose.pose.position) <= track_gate_sq;
-        });
-        if (contact == mission_contacts.end()) {
+// [E2]
+void MissionManager::handleTargetReleased(const avt_341_msgs::msg::TargetReports & released) {
+    for (const auto & report : released.reports) {
+        const int64_t track_start_ns = rclcpp::Time(report.track_start).nanoseconds();
+        Contact * contact = boundContact(track_start_ns, report.target_class);
+        if (contact == nullptr || contact->closed()) {
             RCLCPP_DEBUG(node_->get_logger(), "Release of a \"%s\" track at (%.2f, %.2f) matches no open contact.",
-                         pose.header.frame_id.c_str(), pose.pose.position.x, pose.pose.position.y);
+                         report.target_class.c_str(), report.position.x, report.position.y);
             continue;
         }
-        const auto known = findMergeTarget(*contact, pose.pose.position);
+        const TargetPosition position = ToTargetPosition(report);
+        if (!position.lidar) {
+            RCLCPP_INFO(node_->get_logger(),
+                "Contact \"%s\": its track was released at (%.2f, %.2f) on camera evidence; it no longer reports the contact.",
+                contact->name.c_str(), report.position.x, report.position.y);
+            contact->track_start_ns = 0;
+            contact->merge_target.clear();
+            continue;
+        }
+        auto known = std::find_if(mission_contacts.begin(), mission_contacts.end(), [&](const Contact & c) {
+            return c.closed() && c.target_class == contact->target_class && agreesAsPoints(position, c.position);
+        });
         if (known == mission_contacts.end()) {
             RCLCPP_DEBUG(node_->get_logger(),
                          "Contact \"%s\": its track was released at (%.2f, %.2f), away from investigated targets.",
-                         contact->name.c_str(), pose.pose.position.x, pose.pose.position.y);
+                         contact->name.c_str(), report.position.x, report.position.y);
             continue;
         }
-        RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track was released at (%.2f, %.2f).",
-                    contact->name.c_str(), pose.pose.position.x, pose.pose.position.y);
-        mergeContact(*contact, *known);
+        if (fits(contact->position, known->position)) {
+            RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": its track was released at (%.2f, %.2f).",
+                        contact->name.c_str(), report.position.x, report.position.y);
+            mergeInto(contact->name, known->name);
+            continue;
+        }
+        RCLCPP_INFO(node_->get_logger(),
+            "Contact \"%s\": its track was released at \"%s\", which the contact does not fit; it no longer reports the contact.",
+            contact->name.c_str(), known->name.c_str());
+        contact->track_start_ns = 0;
+        contact->merge_target.clear();
+        if (!contact->position.lidar) {
+            holdBack(*contact, HoldReason::WaitsForReport);
+        }
     }
 }
 
@@ -967,24 +1277,10 @@ void MissionManager::removeContactTasks(const std::string & name) {
     }
 }
 
-bool MissionManager::acceptTrackedMove(Contact & contact, const geometry_msgs::msg::PoseStamped & pose) {
-    const double limit = params_.toi.contact_jump_distance;
-    if (limit <= 0.0 || PosePlanarDistanceSq(contact.pose.pose.position, pose.pose.position) <= limit * limit) {
-        contact.has_held_position = false;
-        return true;
-    }
-    const double confirm = params_.toi.same_object_distance_threshold;
-    if (contact.has_held_position &&
-        PosePlanarDistanceSq(contact.held_position, pose.pose.position) <= confirm * confirm) {
-        contact.has_held_position = false;
-        return true;
-    }
-    contact.held_position = pose.pose.position;
-    contact.has_held_position = true;
-    return false;
-}
-
 void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    if (contact.heldBack()) {
+        return;
+    }
     if (node_->now().seconds() - contact.first_seen_sec >= params_.toi.contact_trigger_delay && investigationAllowed(contact)) {
         RCLCPP_INFO(node_->get_logger(), "Contact \"%s\" confirmed after %.1f s; creating tasks.", contact.name.c_str(), params_.toi.contact_trigger_delay);
         createToiTasks(contact, veh_poses);
@@ -993,7 +1289,7 @@ void MissionManager::maybeCreateToiTasks(Contact & contact, const std::map<std::
 
 bool MissionManager::hasPendingContacts() const {
     return std::any_of(mission_contacts.begin(), mission_contacts.end(), [](const Contact & c) {
-        return c.is_new && c.track_start_ns != 0 && c.reported_while_allowed && !c.investigated && !c.dismissed &&
+        return c.is_new && c.track_start_ns != 0 && c.reported_while_allowed && !c.closed() && !c.heldBack() &&
             c.merge_target.empty();
     });
 }
@@ -1002,23 +1298,16 @@ bool MissionManager::hasPendingContacts() const {
 // known only from sightings (camera-only, possibly a single frame) needs a second report instead.
 void MissionManager::confirmPendingContacts(const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
     for (auto & contact : mission_contacts) {
-        if (!contact.is_new || contact.track_start_ns == 0 || !contact.reported_while_allowed || contact.investigated ||
-            contact.dismissed) {
+        if (!contact.is_new || contact.track_start_ns == 0 || !contact.reported_while_allowed || contact.closed() ||
+            contact.heldBack() || !contact.merge_target.empty()) {
             continue;
         }
-        if (contact.merge_target.empty()) {
-            maybeCreateToiTasks(contact, veh_poses);
-        } else if (contact.merge_target != contact.merge_hold_logged &&
-                   node_->now().seconds() - contact.first_seen_sec >= params_.toi.contact_trigger_delay) {
-            RCLCPP_INFO(node_->get_logger(),
-                "Contact \"%s\" not confirmed: its track last reported it at the investigated or dismissed \"%s\".",
-                contact.name.c_str(), contact.merge_target.c_str());
-            contact.merge_hold_logged = contact.merge_target;
-        }
+        maybeCreateToiTasks(contact, veh_poses);
     }
 }
 
 void MissionManager::handleOverwatch(const OverwatchMsg & msg){
+
 
   MissionPoint mp = getClosestOverwatch();
   if(!mp.name.empty()){
