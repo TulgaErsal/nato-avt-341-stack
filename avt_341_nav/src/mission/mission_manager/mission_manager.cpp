@@ -653,11 +653,17 @@ bool MissionManager::fitsClosedContact(const Contact & contact) const {
 void MissionManager::updateOpenContact(Contact & contact, const avt_341_msgs::msg::TargetReport & report,
                                        const TargetPosition & position, bool tracked,
                                        const std::map<std::string, nav_msgs::msg::Odometry> & veh_poses) {
+    // [U2'] A LiDAR-ranged sighting locates a camera-only contact.
+    const bool sighting_locates = !tracked && contact.tracked && position.lidar && !contact.position.hasLidar();
     bool moves = true;
     if (contact.position.lidar && !position.lidar) {
         moves = false;
-    } else if (!tracked && contact.tracked) {
+    } else if (!tracked && contact.tracked && !sighting_locates) {
         moves = false;
+    }
+    if (sighting_locates) {
+        RCLCPP_INFO(node_->get_logger(), "Contact \"%s\": a LiDAR-ranged sighting places it at (%.2f, %.2f).",
+                    contact.name.c_str(), report.position.x, report.position.y);
     }
     if (moves) {
         contact.position = position;
@@ -886,6 +892,7 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
         params_.toi.approach_dist);
     investigateTask->setGoalByContact(contact);
     investigateTask->is_preemptable = false;
+    investigateTask->speed_limit = params_.toi.approach_speed;
     addTask(investigateTask, PriorityType::PREEMPT);
 
     const int encircle_task_id = obj_detection_cnt--;

@@ -14,6 +14,7 @@
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341_nav/mission/formation_speed_control.h"
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/mission/mission_manager_parser.h"
 #include "avt_341_nav/mission/task.h"
@@ -371,6 +372,7 @@ class MissionManagerContactsTest : public ::testing::Test {
     {
         node_ = std::make_shared<rclcpp::Node>("mission_manager_contacts_test");
         params_.toi.contact_trigger_delay = 0.0;
+        params_.toi.approach_speed = 0.0;
         team_ = {{"MRZR", MakeOdom(0.0, 0.0)}, {"FEDA", MakeOdom(50.0, 0.0)}};
     }
 
@@ -1490,6 +1492,68 @@ TEST_F(ToiInvestigationTest, EncircleSpeedOnlyLimitsTheMissionSpeed)
     EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 1.5);
 }
 
+// [S1]
+TEST_F(ToiInvestigationTest, ApproachRunsAtTheApproachSpeed)
+{
+    params_.max_speed = 5.0;
+    params_.toi.approach_speed = 3.5;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 3.5);
+}
+
+// [S1]
+TEST_F(ToiInvestigationTest, ApproachKeepsASlowerMissionSpeed)
+{
+    params_.max_speed = 3.0;
+    params_.toi.approach_speed = 3.5;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 3.0);
+}
+
+// [S4]
+TEST_F(ToiInvestigationTest, ZeroApproachSpeedKeepsTheMissionSpeed)
+{
+    params_.max_speed = 5.0;
+    params_.toi.approach_speed = 0.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 5.0);
+}
+
+// The formation speed factor is applied after the speed limit. The approach has no formation, even when the mission
+// task has one, so the factor stays 1.
+TEST_F(ToiInvestigationTest, ApproachHasNoFormationSoItsSpeedFactorIsOne)
+{
+    params_.toi.approach_speed = 3.5;
+    auto manager = MakeManager();
+    auto comm = MakeCommand(MissionMsgType::Formation, "");
+    comm.msg_id = 310;
+    comm.formation = "COLUMN";
+    comm.leader_name = "MRZR";
+    comm.follower1_name = "FEDA";
+    comm.termination_method = "LEADER_ARRIVED";
+    FormationMsg msg(comm);
+    MissionPoint mp{"MP_S", 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+    auto * mission = new MoveTo(manager.get(), "MRZR", 310, new FormationDefinition(msg, mp, params_.formation, "MRZR"));
+    mission->setGoalByPose(MakePose(100.0, 0.0));
+    manager->addTask(mission);
+    ASSERT_NE(manager->currentTask()->getFormationDef(), nullptr);
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    const auto * approach = manager->currentTask();
+    EXPECT_EQ(approach->getFormationDef(), nullptr);
+    std::map<std::string, nav_msgs::msg::Odometry> poses = team_;
+    avt_341_nav::mission::NullFormationSpeedController null_controller("MRZR", params_.fsc);
+    avt_341_nav::mission::SpeedUpFollowerFormationSpeedController speed_up("MRZR", params_.fsc);
+    EXPECT_DOUBLE_EQ(null_controller.getSpeedFactor(approach->getFormationDef(), approach->terminalPose(), poses, 3.5), 1.0);
+    EXPECT_DOUBLE_EQ(speed_up.getSpeedFactor(approach->getFormationDef(), approach->terminalPose(), poses, 3.5), 1.0);
+}
+
 TEST_F(ToiInvestigationTest, SightingConfirmsATrackedTargetWaitingForItsTasks)
 {
     params_.toi.contact_trigger_delay = 1.0;
@@ -2234,3 +2298,73 @@ TEST_F(ContactIdentityTest, HeldContactMovedClearOfTheClosedContactIsInvestigate
     EXPECT_TRUE(HasTasksFor(*manager, "car_2"));
 }
 
+// [U2'] Nov 17 TARGET_C: a LiDAR-ranged sighting of the target on the line of sight of its camera-only contact.
+TEST_F(ContactIdentityTest, LidarSightingLocatesAnOpenCameraContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 45.0, 27.0), team_);
+    const auto * contact = Find(*manager, "car_1");
+    EXPECT_TRUE(contact->position.lidar);
+    EXPECT_DOUBLE_EQ(contact->position.estimate.x(), 45.0);
+    EXPECT_TRUE(Has(Tasks(*manager)[1], "ENCIRCLE: target_position=(45, 27)"));
+}
+
+// [U2'] Only LiDAR evidence locates.
+TEST_F(ContactIdentityTest, CameraSightingDoesNotMoveAnOpenCameraContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeCameraContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeCameraContact("car", 45.0, 27.0), team_);
+    EXPECT_DOUBLE_EQ(Find(*manager, "car_1")->position.estimate.x(), 50.0);
+    EXPECT_TRUE(Has(Tasks(*manager)[1], "ENCIRCLE: target_position=(50, 30)"));
+}
+
+// [U2'] Only a camera-only contact is located by a sighting; a LiDAR contact moves only with its own track.
+TEST_F(ContactIdentityTest, LidarSightingDoesNotMoveAnOpenLidarContact)
+{
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    manager->handleContacts(MakeContact("car", 52.0, 31.0), team_);
+    EXPECT_DOUBLE_EQ(Find(*manager, "car_1")->position.estimate.x(), 50.0);
+    EXPECT_TRUE(Has(Tasks(*manager)[1], "ENCIRCLE: target_position=(50, 30)"));
+}
+
+// [U1, U2'] A LiDAR sighting within reach of a closed contact's LiDAR point goes to it, even when it also fits an
+// open camera-only contact.
+TEST_F(ContactIdentityTest, LidarSightingThatFitsAClosedAndAnOpenCameraContactMovesNeither)
+{
+    auto manager = MakeBusyManager();
+    Close(*manager, MakeContact("car", 50.0, 30.0, 100));
+    manager->handleContacts(MakeCameraContact("car", 59.0, 40.0, 200, 59.0, -20.0), team_);
+    ASSERT_NE(Find(*manager, "car_2"), nullptr);
+    manager->handleContacts(MakeContact("car", 55.0, 31.0), team_);
+    EXPECT_FALSE(Find(*manager, "car_2")->position.lidar);
+    EXPECT_DOUBLE_EQ(Find(*manager, "car_2")->position.estimate.x(), 59.0);
+    EXPECT_DOUBLE_EQ(Find(*manager, "car_1")->position.estimate.x(), 50.0);
+}
+
+// [U2'] The move re-plans a running encircle around the LiDAR position.
+TEST_F(ContactIdentityTest, LidarSightingRePlansARunningEncircle)
+{
+    auto manager = MakeBusyManager();
+    manager->odometry = MakeOdom(30.0, 10.0);
+    manager->handleContacts(MakeCameraContact("car", 50.0, 30.0, 100), team_);
+    manager->updateTasks();
+    auto * approach = dynamic_cast<avt_341_nav::mission::MoveTo *>(manager->currentTask());
+    ASSERT_NE(approach, nullptr);
+    manager->onGoalReached(approach->target_pose);
+    for (int i = 0; i < 3 && dynamic_cast<Encircle *>(manager->currentTask()) == nullptr; ++i) {
+        manager->updateTasks();
+    }
+    auto * encircle = dynamic_cast<Encircle *>(manager->currentTask());
+    ASSERT_NE(encircle, nullptr);
+    manager->updateTasks();
+    ASSERT_TRUE(encircle->init_done);
+
+    manager->handleContacts(MakeContact("car", 45.0, 27.0), team_);
+    ASSERT_FALSE(encircle->circlePath().poses.empty());
+    for (const auto & pose : encircle->circlePath().poses) {
+        EXPECT_NEAR(DistanceTo(pose, 45.0, 27.0), params_.toi.encircle_radius, 1e-6);
+    }
+}
