@@ -892,6 +892,7 @@ void MissionManager::createToiTasks(Contact & contact, const std::map<std::strin
         params_.toi.approach_dist);
     investigateTask->setGoalByContact(contact);
     investigateTask->is_preemptable = false;
+    investigateTask->speed_limit = params_.toi.approach_speed;
     addTask(investigateTask, PriorityType::PREEMPT);
 
     const int encircle_task_id = obj_detection_cnt--;

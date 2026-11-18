@@ -14,6 +14,7 @@
 #include "avt_341_msgs/msg/communication.hpp"
 #include "avt_341_msgs/msg/mission_module_status.hpp"
 #include "avt_341_nav/mission/goal_filtering/goal_filter_factory.hpp"
+#include "avt_341_nav/mission/formation_speed_control.h"
 #include "avt_341_nav/mission/mission_manager.h"
 #include "avt_341_nav/mission/mission_manager_parser.h"
 #include "avt_341_nav/mission/task.h"
@@ -371,6 +372,7 @@ class MissionManagerContactsTest : public ::testing::Test {
     {
         node_ = std::make_shared<rclcpp::Node>("mission_manager_contacts_test");
         params_.toi.contact_trigger_delay = 0.0;
+        params_.toi.approach_speed = 0.0;
         team_ = {{"MRZR", MakeOdom(0.0, 0.0)}, {"FEDA", MakeOdom(50.0, 0.0)}};
     }
 
@@ -1488,6 +1490,68 @@ TEST_F(ToiInvestigationTest, EncircleSpeedOnlyLimitsTheMissionSpeed)
     manager->handleSetSpeedMsg(SetSpeedMsg(set_speed));
     manager->addTask(new Encircle(manager.get(), "MRZR", 9999, MakePose(0.0, 0.0), params_.toi));
     EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 1.5);
+}
+
+// [S1]
+TEST_F(ToiInvestigationTest, ApproachRunsAtTheApproachSpeed)
+{
+    params_.max_speed = 5.0;
+    params_.toi.approach_speed = 3.5;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 3.5);
+}
+
+// [S1]
+TEST_F(ToiInvestigationTest, ApproachKeepsASlowerMissionSpeed)
+{
+    params_.max_speed = 3.0;
+    params_.toi.approach_speed = 3.5;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 3.0);
+}
+
+// [S4]
+TEST_F(ToiInvestigationTest, ZeroApproachSpeedKeepsTheMissionSpeed)
+{
+    params_.max_speed = 5.0;
+    params_.toi.approach_speed = 0.0;
+    auto manager = MakeBusyManager();
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    EXPECT_DOUBLE_EQ(manager->getSpeedSetpoint(), 5.0);
+}
+
+// The formation speed factor is applied after the speed limit. The approach has no formation, even when the mission
+// task has one, so the factor stays 1.
+TEST_F(ToiInvestigationTest, ApproachHasNoFormationSoItsSpeedFactorIsOne)
+{
+    params_.toi.approach_speed = 3.5;
+    auto manager = MakeManager();
+    auto comm = MakeCommand(MissionMsgType::Formation, "");
+    comm.msg_id = 310;
+    comm.formation = "COLUMN";
+    comm.leader_name = "MRZR";
+    comm.follower1_name = "FEDA";
+    comm.termination_method = "LEADER_ARRIVED";
+    FormationMsg msg(comm);
+    MissionPoint mp{"MP_S", 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+    auto * mission = new MoveTo(manager.get(), "MRZR", 310, new FormationDefinition(msg, mp, params_.formation, "MRZR"));
+    mission->setGoalByPose(MakePose(100.0, 0.0));
+    manager->addTask(mission);
+    ASSERT_NE(manager->currentTask()->getFormationDef(), nullptr);
+    manager->handleContacts(MakeContact("car", 50.0, 30.0, 100), team_);
+    ASSERT_TRUE(HasContactTask(*manager));
+    const auto * approach = manager->currentTask();
+    EXPECT_EQ(approach->getFormationDef(), nullptr);
+    std::map<std::string, nav_msgs::msg::Odometry> poses = team_;
+    avt_341_nav::mission::NullFormationSpeedController null_controller("MRZR", params_.fsc);
+    avt_341_nav::mission::SpeedUpFollowerFormationSpeedController speed_up("MRZR", params_.fsc);
+    EXPECT_DOUBLE_EQ(null_controller.getSpeedFactor(approach->getFormationDef(), approach->terminalPose(), poses, 3.5), 1.0);
+    EXPECT_DOUBLE_EQ(speed_up.getSpeedFactor(approach->getFormationDef(), approach->terminalPose(), poses, 3.5), 1.0);
 }
 
 TEST_F(ToiInvestigationTest, SightingConfirmsATrackedTargetWaitingForItsTasks)
